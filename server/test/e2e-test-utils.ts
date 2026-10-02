@@ -8,12 +8,14 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 import { Test, TestingModule } from "@nestjs/testing";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import type { Expo } from "expo-server-sdk";
 import { accessTokenPayload } from "src/auth/tokens";
 import { Contract } from "src/contract/entities/contract.entity";
 import { testConnectionOptions } from "src/datasources/dataSourceTest";
 import { ForumModule } from "src/forum/forum.module";
 import { NotifsModule } from "src/notifs/notifs.module";
 import { PosthogModule } from "src/posthog/posthog.module";
+import { EXPO_CLIENT } from "src/push/push.service";
 import { Form } from "src/tasks/entities/form.entity";
 import {
   FormSnapshot,
@@ -67,6 +69,19 @@ export async function eventually<T>(
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   throw new Error(`timed out waiting for ${label}`);
+}
+
+/** Accepts every push without calling Expo. */
+export function stubExpoClient(ctx: TestContext): void {
+  const expo = ctx.app.get<Expo>(EXPO_CLIENT);
+  jest
+    .spyOn(expo, "chunkPushNotifications")
+    .mockImplementation((messages) => [messages]);
+  jest
+    .spyOn(expo, "sendPushNotificationsAsync")
+    .mockImplementation(async (messages) =>
+      messages.map(() => ({ status: "ok", id: "receipt" })),
+    );
 }
 
 /** Resolves once some query in the test database waits on a row lock. */

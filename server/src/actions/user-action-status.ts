@@ -72,8 +72,8 @@ export type UserActionStatus = {
   withdrawal: UserActionWithdrawal | null;
   /**
    * View-only "mark as seen" overlay: the viewer hid this action's card from
-   * their home page (which also mutes their reminders). NOT a relation — a
-   * dismissed action is still assigned and completable. See the
+   * their home page. NOT a relation — a dismissed action is still assigned,
+   * reminded, completable, and counted for suspension. See the
    * `ActionActivityType.USER_DISMISSED` doc in `common/`.
    */
   dismissed: boolean;
@@ -130,22 +130,36 @@ export type UserActionWithdrawal = {
  * regular actions — a lapsed/suspended in-cohort member may still complete.
  * Onboarding actions keep the join-timing contract gate because the onboarding
  * sequence exists to get the contract signed. Dismissal and away never block
- * completion.
+ * completion. Past the deadline, only `shouldCompleteAfterDeadline` keeps it
+ * open; staff corrections bypass this rule entirely.
  */
 export function computeCanCompleteAction(params: {
   action: Pick<
     Action,
-    "preventCompletion" | "onboarding" | "memberActionPhase"
+    | "preventCompletion"
+    | "onboarding"
+    | "memberActionPhase"
+    | "shouldCompleteAfterDeadline"
   >;
   user: Pick<User, "contractEvents">;
   inCohort: boolean;
+  now: Date;
 }): boolean {
-  const { action, user, inCohort } = params;
+  const { action, user, inCohort, now } = params;
 
   if (action.preventCompletion) {
     return false;
   }
   if (!inCohort) {
+    return false;
+  }
+  if (
+    !action.shouldCompleteAfterDeadline &&
+    hasMemberActionDeadlinePassed(
+      action.memberActionPhase.deadlineEvent?.date,
+      now,
+    )
+  ) {
     return false;
   }
   if (
@@ -191,6 +205,7 @@ export function resolveUserActionStatus(params: {
     | "onboarding"
     | "optional"
     | "preventCompletion"
+    | "shouldCompleteAfterDeadline"
     | "staffPreview"
     | "archived"
   >;
@@ -281,6 +296,7 @@ export function resolveUserActionStatus(params: {
       action,
       user,
       inCohort: cohort.eligible,
+      now,
     }),
     relation,
     withdrawal,

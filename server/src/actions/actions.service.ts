@@ -117,6 +117,7 @@ import {
 } from "src/utils/action-user";
 import { CachedFilter } from "src/utils/cached-filter";
 import { yieldToEventLoop } from "src/utils/event-loop";
+import { findLeast } from "src/utils/filter";
 import { startDatePriorityComparator } from "src/utils/general-update";
 import type {
   IsRelation,
@@ -234,6 +235,12 @@ import {
   ReminderGroupTimingMode,
 } from "./entities/reminder-group.entity";
 import {
+  SUSPENSION_MISSED_SUITE_COUNT,
+  suspensionReasonKey,
+  trailingMissedSuiteIds,
+  type SuiteOutcome,
+} from "./missed-suite-streak";
+import {
   assertNotAPrerequisite,
   assertPrerequisitesValid,
 } from "./prerequisite-validation";
@@ -251,11 +258,9 @@ import {
 } from "./user-action-status";
 
 type SuspendPlanContext = {
-  orderedSuites: Array<{ suiteId: number; pastDate: Date | null }>;
-  expectedBySuite: Map<number, Set<number>>;
-  failedBySuite: Map<number, Set<number>>;
+  /** In close order. */
+  suites: SuiteOutcome[];
   idToUser: Map<number, User>;
-  allExpectedUsers: number[];
 };
 
 /**
@@ -271,11 +276,6 @@ export type SuspensionCandidate = { user: User; reasonKey: string };
  * the narrow reads hand back a narrow type instead.
  */
 export type LinkedAction = Pick<Action, "id" | "name">;
-
-export type MissedActionReminderContext = {
-  isFirstAssignedSuite: boolean;
-  consecutiveMissedSuiteCount: number;
-};
 
 /** Facepile preview size; member-list endpoints paginate full lists. */
 export const GLOBAL_FEED_FACEPILE_LIMIT = 8;
@@ -712,14 +712,12 @@ export class ActionsService {
    * `Action.usersJoined` counter (which keeps its legacy wire/DB name for now).
    * The formula:
    *
-   *   base recipients (assigned, INCLUDING dismissed)
+   *   base recipients (assigned)
    *   − away at any point during the member-action window
    *   − withdrawn (USER_WONT_COMPLETE)
    *   + everyone with a USER_COMPLETED activity
    *
-   * i.e. "could this user have done it at all?" — note this is NOT the same
-   * set as the reminder/suspension roster (computeIsAssignedAndPresent), which
-   * excludes dismissed users.
+   * i.e. "could this user have done it at all?"
    *
    * Batched: fetches the shared data in a handful of bulk queries instead of
    * per-action. Returns a map of actionId -> participant userIds.
@@ -746,14 +744,13 @@ export class ActionsService {
 
     const actionIds = entries.map((e) => e.action.id);
 
-    // 1. Batched base users (1 user query, 1 dismissed query, deduplicated cohorts)
+    // 1. Batched base users (1 user query, deduplicated cohorts)
     const baseUsersByAction =
       await this.actionEventRecipientService.findBaseUsersForEvents({
         entries: entries.map((e) => ({
           action: e.action,
           eventId: e.event.id,
         })),
-        includeDismissed: true,
         session,
       });
 
@@ -934,6 +931,7 @@ export class ActionsService {
       ),
     );
 
+    const now = new Date();
     return {
       requiredActionCount,
       members: users
@@ -943,6 +941,7 @@ export class ActionsService {
               action,
               user,
               inCohort: cohorts[index].has(user.id),
+              now,
             }),
           );
           const applicableIds = new Set(
@@ -1102,6 +1101,7 @@ export class ActionsService {
                 action,
                 user,
                 inCohort: cohort.eligible,
+                now,
               })
             : false,
           shouldParticipate,
@@ -1364,6 +1364,7 @@ export class ActionsService {
             action,
             user,
             inCohort: cohort.eligible,
+            now,
           })
         : false,
       shouldParticipate:
@@ -1845,6 +1846,7 @@ export class ActionsService {
     isOutOfTime?: boolean;
     isMoral?: boolean;
     adminCreated?: boolean;
+    now?: Date;
   }): Promise<ActionActivity> {
     const {
       actionId,
@@ -1855,6 +1857,7 @@ export class ActionsService {
       isOutOfTime,
       isMoral,
       adminCreated,
+      now = new Date(),
     } = options;
     const action = await this.findOneOrFail({ id: actionId, userId });
 
@@ -1873,7 +1876,7 @@ export class ActionsService {
     }
 
     if (type === ActionActivityType.USER_COMPLETED && !adminCreated) {
-      await this.ensureCompletionAllowed(action, userId);
+      await this.ensureCompletionAllowed({ action, userId, now });
     }
 
     const user = await this.userService.findOneOrFail(userId);
@@ -1953,6 +1956,7 @@ export class ActionsService {
     options: {
       taskFormResponse?: FormResponse;
       adminCreated?: boolean;
+      now?: Date;
     } = {},
   ): Promise<ActionActivity> {
     return this.createActionActivity({
@@ -1961,6 +1965,7 @@ export class ActionsService {
       type: ActionActivityType.USER_COMPLETED,
       taskFormResponse: options.taskFormResponse,
       adminCreated: options.adminCreated,
+      now: options.now,
     });
   }
 
@@ -2604,10 +2609,12 @@ export class ActionsService {
     return this.toActivityDtos({ activities, requestingUserId, comments });
   }
 
-  async isCompletionAllowed(
-    action: ParsedAction,
-    user: User,
-  ): Promise<boolean> {
+  async isCompletionAllowed(params: {
+    action: ParsedAction;
+    user: User;
+    now: Date;
+  }): Promise<boolean> {
+    const { action, user, now } = params;
     // preventCompletion short-circuits before the DB-hitting cohort
     // evaluation; the rule itself lives in computeCanCompleteAction.
     if (action.preventCompletion) {
@@ -2618,7 +2625,7 @@ export class ActionsService {
       action,
       user,
       session: new CohortResolutionSession(),
-      now: new Date(),
+      now,
       undecidedActionIds: new Set(),
     });
 
@@ -2626,16 +2633,22 @@ export class ActionsService {
       action,
       user,
       inCohort: cohort.eligible,
+      now,
     });
   }
 
-  async ensureCompletionAllowed(action: ParsedAction, userId: number) {
+  async ensureCompletionAllowed(params: {
+    action: ParsedAction;
+    userId: number;
+    now: Date;
+  }) {
+    const { action, userId, now } = params;
     const user = await this.userService.findOneOrFail(userId, {
       tags: true,
       contractEvents: true,
       awayRanges: true,
     });
-    if (!(await this.isCompletionAllowed(action, user))) {
+    if (!(await this.isCompletionAllowed({ action, user, now }))) {
       throw new ForbiddenException("This action is not available to you");
     }
   }
@@ -3672,7 +3685,7 @@ export class ActionsService {
       .filter(
         (action) =>
           action.status !== ActionStatus.Draft &&
-          action.shouldParticipate &&
+          action.viewer?.assigned &&
           // Action-wide optional tasks stay; reminder groups drop those
           // through `excludeOptionalActions`.
           !(action.viewer?.optional && !action.optional) &&
@@ -4161,331 +4174,145 @@ export class ActionsService {
 
   private async buildSuspendPlanContext(
     actions: ParsedAction[],
-    maxPastDate?: Date,
+    maxPastDate: Date,
   ): Promise<SuspendPlanContext> {
-    const suiteMap = new Map<
-      number,
-      {
-        suite: ActionSuite;
-        actions: ParsedAction[];
-        orderIndex: number;
-      }
-    >();
-
-    for (let i = 0; i < actions.length; i++) {
-      const action = actions[i];
-      if (!action.suite) continue;
-      if (action.onboarding) continue;
-      if (action.optional) continue;
-
-      const suiteId = action.suite.id;
-      if (!suiteMap.has(suiteId)) {
-        suiteMap.set(suiteId, {
-          suite: action.suite,
-          actions: [],
-          orderIndex: i,
-        });
-      }
-      suiteMap.get(suiteId)!.actions.push(action);
+    const actionsBySuite = new Map<number, ParsedAction[]>();
+    for (const action of actions) {
+      if (!action.suite || action.onboarding || action.optional) continue;
+      const suiteActions = actionsBySuite.get(action.suite.id) ?? [];
+      suiteActions.push(action);
+      actionsBySuite.set(action.suite.id, suiteActions);
     }
 
-    const orderedSuites = Array.from(suiteMap.values()).sort(
-      (a, b) => a.orderIndex - b.orderIndex,
+    const closedSuites = [...actionsBySuite].flatMap(
+      ([suiteId, suiteActions]) => {
+        let closedAt: Date | null = null;
+        for (const action of suiteActions) {
+          const deadline = action.memberActionPhase.deadlineEvent?.date;
+          if (!deadline) return [];
+          if (!closedAt || deadline > closedAt) closedAt = deadline;
+        }
+        if (!closedAt || closedAt > maxPastDate) return [];
+        return [{ suiteId, closedAt, actions: suiteActions }];
+      },
+    );
+    closedSuites.sort(
+      (a, b) =>
+        a.closedAt.getTime() - b.closedAt.getTime() || a.suiteId - b.suiteId,
     );
 
-    if (orderedSuites.length === 0) {
-      return {
-        orderedSuites: [],
-        expectedBySuite: new Map(),
-        failedBySuite: new Map(),
-        idToUser: new Map(),
-        allExpectedUsers: [],
-      };
+    if (closedSuites.length === 0) {
+      return { suites: [], idToUser: new Map() };
     }
 
-    const memberActionEventByActionId = new Map<number, ActionEvent>();
-    const memberActionMinDateByActionId = new Map<number, Date>();
-    const deadlineDateByActionId = new Map<number, Date>();
-    for (const suite of orderedSuites) {
-      for (const action of suite.actions) {
-        let minDate: Date | null = null;
-        for (const event of action.events) {
-          if (event.newStatus !== ActionStatus.MemberAction) continue;
-          if (!memberActionEventByActionId.has(action.id)) {
-            memberActionEventByActionId.set(action.id, event);
-          }
-          if (!minDate || event.date < minDate) {
-            minDate = event.date;
-          }
-        }
-        if (minDate) {
-          memberActionMinDateByActionId.set(action.id, minDate);
-        }
-        const memberEvent = memberActionEventByActionId.get(action.id);
-        if (memberEvent) {
-          const deadlineDate = action.memberActionPhase.deadlineEvent?.date;
-          if (deadlineDate) {
-            deadlineDateByActionId.set(action.id, deadlineDate);
-          }
-        }
-      }
-    }
-
-    const maxPastMs = maxPastDate?.getTime();
-    const orderedSuiteMeta = orderedSuites.map((suite) => {
-      let pastDate: Date | null = null;
-      for (const action of suite.actions) {
-        const deadline = deadlineDateByActionId.get(action.id);
-        if (!deadline) {
-          pastDate = null;
-          break;
-        }
-        if (!pastDate || deadline > pastDate) {
-          pastDate = deadline;
-        }
-      }
-      return { suiteId: suite.suite.id, pastDate };
+    const actionIds = closedSuites.flatMap((suite) =>
+      suite.actions.map((action) => action.id),
+    );
+    const satisfyingActivities = await this.actionActivityRepository.find({
+      where: {
+        actionId: In(actionIds),
+        type: In(TERMINAL_ACTIVITY_TYPES),
+      },
+      select: { actionId: true, userId: true },
     });
-
-    const suitesToProcess = orderedSuites.filter((_, index) => {
-      const pastDate = orderedSuiteMeta[index].pastDate;
-      if (!pastDate) return false;
-      if (maxPastMs !== undefined && pastDate.getTime() > maxPastMs) {
-        return false;
-      }
-      return true;
-    });
-
-    const orderedSuitesForContext = orderedSuiteMeta.filter((_, index) => {
-      const pastDate = orderedSuiteMeta[index].pastDate;
-      if (!pastDate) return false;
-      if (maxPastMs !== undefined && pastDate.getTime() > maxPastMs) {
-        return false;
-      }
-      return true;
-    });
-
-    if (suitesToProcess.length === 0) {
-      return {
-        orderedSuites: orderedSuitesForContext,
-        expectedBySuite: new Map(),
-        failedBySuite: new Map(),
-        idToUser: new Map(),
-        allExpectedUsers: [],
-      };
-    }
-
-    const actionIds: number[] = [];
-    for (const suite of suitesToProcess) {
-      for (const action of suite.actions) {
-        actionIds.push(action.id);
-      }
-    }
-
-    const [dismissedActivities, completionActivities] = await Promise.all([
-      this.actionActivityRepository.find({
-        where: {
-          actionId: In(actionIds),
-          type: ActionActivityType.USER_DISMISSED,
-        },
-      }),
-      this.actionActivityRepository.find({
-        where: {
-          actionId: In(actionIds),
-          type: In(TERMINAL_ACTIVITY_TYPES),
-        },
-      }),
-    ]);
+    const satisfied = new Set(
+      satisfyingActivities.map(
+        (activity) => `${activity.userId}:${activity.actionId}`,
+      ),
+    );
 
     // Share the active-user load and per-leaf cohort queries across every
     // action in the batch (see CohortResolutionSession).
     const session = new CohortResolutionSession();
     const activeUsers =
       await this.actionEventRecipientService.getActiveUsers(session);
-    const activeUsersById = new Map(activeUsers.map((user) => [user.id, user]));
+    const cohortByAction = new Map(
+      await Promise.all(
+        closedSuites.flatMap((suite) =>
+          suite.actions.map(
+            async (action) =>
+              [
+                action.id,
+                await this.actionEventRecipientService.resolveCohort({
+                  action,
+                  session,
+                }),
+              ] as const,
+          ),
+        ),
+      ),
+    );
 
-    const dismissedByAction = new Map<number, Set<number>>();
-    for (const activity of dismissedActivities) {
-      if (!dismissedByAction.has(activity.actionId)) {
-        dismissedByAction.set(activity.actionId, new Set());
-      }
-      dismissedByAction.get(activity.actionId)!.add(activity.userId);
-    }
+    const lastSignedDateByUser = new Map(
+      activeUsers.map((user) => [
+        user.id,
+        findLeast(
+          (user.contractEvents ?? []).filter(
+            (event) => event.type === ContractEventType.SIGNED,
+          ),
+          (a, b) => b.date.getTime() - a.date.getTime(),
+        )?.date ?? new Date(0),
+      ]),
+    );
 
-    const completedByAction = new Map<number, Set<number>>();
-    for (const activity of completionActivities) {
-      if (!completedByAction.has(activity.actionId)) {
-        completedByAction.set(activity.actionId, new Set());
-      }
-      completedByAction.get(activity.actionId)!.add(activity.userId);
-    }
-
-    const cohortByAction = new Map<number, Promise<Set<number>>>();
-    for (const suite of suitesToProcess) {
-      for (const action of suite.actions) {
-        if (!memberActionEventByActionId.has(action.id)) continue;
-        cohortByAction.set(
-          action.id,
-          this.actionEventRecipientService.resolveCohort({
-            action,
-            session,
-          }),
-        );
-      }
-    }
-    await Promise.all(cohortByAction.values());
-
-    const baseUsersByAction = new Map<number, User[]>();
-    for (const suite of suitesToProcess) {
-      for (const action of suite.actions) {
-        const event = memberActionEventByActionId.get(action.id);
-        if (!event) continue;
-
-        const dismissedSet = dismissedByAction.get(action.id) ?? new Set();
-        const deadlineDate =
-          action.memberActionPhase.deadlineEvent?.date ?? null;
-
-        const baseCandidates = activeUsers;
-
-        const cohortMemberIds = await cohortByAction.get(action.id)!;
-
-        const baseUsers = baseCandidates.filter((user) =>
-          computeIsAssignedAndPresent({
-            eventDate: event.date,
-            deadlineDate: deadlineDate,
-            cohortMemberIds,
-            user,
-            userDismissed: dismissedSet.has(user.id),
-            onboarding: action.onboarding,
-          }),
-        );
-
-        baseUsersByAction.set(action.id, baseUsers);
-      }
-    }
-
-    const expectedBySuite = new Map<number, Set<number>>();
-    const failedBySuite = new Map<number, Set<number>>();
     const idToUser = new Map<number, User>();
-
-    const lastSignedDateByUser = new Map<number, Date>();
-    const getLastSignedDate = (user: User) => {
-      const cached = lastSignedDateByUser.get(user.id);
-      if (cached) {
-        return cached;
-      }
-      const lastSignedDate =
-        user.contractEvents
-          ?.filter((event) => event.type === ContractEventType.SIGNED)
-          ?.sort((a, b) => b.date.getTime() - a.date.getTime())[0]?.date ??
-        new Date(0);
-      lastSignedDateByUser.set(user.id, lastSignedDate);
-      return lastSignedDate;
-    };
-
-    for (const suite of suitesToProcess) {
-      // A user fails a suite only when every non-optional action assigned to
-      // them in that suite is missed. Each action can have a different cohort.
-      const expectedUserIds = new Set<number>();
-      const usersWhoCompletedAnAssignedAction = new Set<number>();
-      const usersWithAnAssignmentSinceLastSigning = new Set<number>();
-
+    const suites: SuiteOutcome[] = [];
+    for (const suite of closedSuites) {
+      const missedActionIdsByUser = new Map<number, number[]>();
       for (const action of suite.actions) {
-        const event = memberActionEventByActionId.get(action.id);
-        if (!event) {
-          continue;
-        }
-
-        const baseUsers = baseUsersByAction.get(action.id) ?? [];
-        const completedSet = completedByAction.get(action.id) ?? new Set();
-
-        for (const user of baseUsers) {
-          expectedUserIds.add(user.id);
-          if (completedSet.has(user.id)) {
-            usersWhoCompletedAnAssignedAction.add(user.id);
+        const { event, deadlineEvent } = action.memberActionPhase;
+        if (!event) continue;
+        const cohortMemberIds = cohortByAction.get(action.id)!;
+        for (const user of activeUsers) {
+          if (
+            lastSignedDateByUser.get(user.id)! >= event.date ||
+            !computeIsAssignedAndPresent({
+              eventDate: event.date,
+              deadlineDate: deadlineEvent?.date ?? null,
+              cohortMemberIds,
+              user,
+              onboarding: action.onboarding,
+            })
+          ) {
+            continue;
           }
-          if (getLastSignedDate(user) < event.date) {
-            usersWithAnAssignmentSinceLastSigning.add(user.id);
+          const missed = missedActionIdsByUser.get(user.id) ?? [];
+          if (!satisfied.has(`${user.id}:${action.id}`)) {
+            missed.push(action.id);
           }
-        }
-      }
-
-      expectedBySuite.set(suite.suite.id, expectedUserIds);
-
-      const suiteFailed = new Set<number>();
-      for (const userId of expectedUserIds) {
-        if (
-          !usersWhoCompletedAnAssignedAction.has(userId) &&
-          usersWithAnAssignmentSinceLastSigning.has(userId)
-        ) {
-          const user = activeUsersById.get(userId)!;
-          if (user.hasActiveContract) {
-            suiteFailed.add(userId);
-            idToUser.set(user.id, user);
-          }
+          missedActionIdsByUser.set(user.id, missed);
+          idToUser.set(user.id, user);
         }
       }
-      failedBySuite.set(suite.suite.id, suiteFailed);
+      suites.push({
+        suiteId: suite.suiteId,
+        closedAt: suite.closedAt,
+        actions: suite.actions.map(({ id, name, timeEstimate }) => ({
+          id,
+          name,
+          timeEstimate,
+        })),
+        missedActionIdsByUser,
+      });
     }
 
-    const allExpectedUsers = new Set<number>();
-    for (const s of expectedBySuite.values()) {
-      for (const id of s) allExpectedUsers.add(id);
-    }
-
-    return {
-      orderedSuites: orderedSuitesForContext,
-      expectedBySuite,
-      failedBySuite,
-      idToUser,
-      allExpectedUsers: Array.from(allExpectedUsers),
-    };
+    return { suites, idToUser };
   }
 
   private computeUsersToSuspendFromContext(
     now: Date,
     context: SuspendPlanContext,
   ): SuspensionCandidate[] {
-    const pastSuites = context.orderedSuites.filter(
-      (suite) => suite.pastDate && suite.pastDate < now,
+    const closedSuites = context.suites.filter((suite) =>
+      hasMemberActionDeadlinePassed(suite.closedAt, now),
     );
-
-    const candidates: SuspensionCandidate[] = [];
-
-    for (const userId of context.allExpectedUsers) {
-      let streak = 0;
-      const lastThreeSuiteIds: number[] = [];
-
-      for (const suite of pastSuites) {
-        const expectedSet = context.expectedBySuite.get(suite.suiteId);
-        if (!expectedSet?.has(userId)) {
-          continue; // skip suites they were not expected to complete
-        }
-
-        const failedSet =
-          context.failedBySuite.get(suite.suiteId) ?? new Set<number>();
-        const failed = failedSet.has(userId);
-
-        if (failed) {
-          streak += 1;
-          lastThreeSuiteIds.push(suite.suiteId);
-          if (lastThreeSuiteIds.length > 3) lastThreeSuiteIds.shift();
-          if (streak >= 3) {
-            candidates.push({
-              user: context.idToUser.get(userId)!,
-              reasonKey: `s-${lastThreeSuiteIds.join("-")}`,
-            });
-            break;
-          }
-        } else {
-          // they were expected and did not fail => streak broken
-          streak = 0;
-          lastThreeSuiteIds.length = 0;
-        }
-      }
-    }
-
-    return candidates;
+    return [...context.idToUser.values()].flatMap((user) => {
+      if (!user.hasActiveContract) return [];
+      const run = trailingMissedSuiteIds(closedSuites, user.id);
+      return run.length >= SUSPENSION_MISSED_SUITE_COUNT
+        ? [{ user, reasonKey: suspensionReasonKey(run) }]
+        : [];
+    });
   }
 
   async findUsersToSuspend(now: Date, preloadedActions?: ParsedAction[]) {
@@ -4500,46 +4327,10 @@ export class ActionsService {
     return this.computeUsersToSuspendFromContext(now, context);
   }
 
-  async getMissedActionReminderContexts(
-    userIds: number[],
-    now: Date,
-  ): Promise<Map<number, MissedActionReminderContext>> {
-    const uniqueUserIds = [...new Set(userIds)];
-    if (uniqueUserIds.length === 0) {
-      return new Map();
-    }
-
+  /** Suites closed by `now`, in close order. */
+  async findClosedSuiteOutcomes(now: Date): Promise<SuiteOutcome[]> {
     const actions = await this.findAllSorted({ events: true, suite: true });
-    const context = await this.buildSuspendPlanContext(actions, now);
-
-    return new Map(
-      uniqueUserIds.map((userId) => {
-        let consecutiveMissedSuiteCount = 0;
-        let assignedSuiteCount = 0;
-        for (const suite of context.orderedSuites) {
-          if (!suite.pastDate || suite.pastDate >= now) {
-            continue;
-          }
-          if (!context.expectedBySuite.get(suite.suiteId)?.has(userId)) {
-            continue;
-          }
-          assignedSuiteCount += 1;
-          if (context.failedBySuite.get(suite.suiteId)?.has(userId)) {
-            consecutiveMissedSuiteCount += 1;
-          } else {
-            consecutiveMissedSuiteCount = 0;
-          }
-        }
-
-        return [
-          userId,
-          {
-            isFirstAssignedSuite: assignedSuiteCount === 1,
-            consecutiveMissedSuiteCount,
-          },
-        ] as const;
-      }),
-    );
+    return (await this.buildSuspendPlanContext(actions, now)).suites;
   }
 
   async getSuspendPlans(

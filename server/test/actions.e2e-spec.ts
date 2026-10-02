@@ -15,6 +15,7 @@ import {
 } from "src/forum/entities/comment.entity";
 import { City } from "src/geo/city.entity";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
+import { ActionEventNotifType } from "src/notifs/entities/action-event-notif.entity";
 import {
   Notification,
   NotificationCategory,
@@ -1696,6 +1697,60 @@ describe("Actions (e2e)", () => {
       await userRepo.delete(eligibleUser.id);
     });
 
+    it("keeps a dismissed action's member on its reminders", async () => {
+      const { action, event } = await createPublishedAction(
+        "Dismissed Reminder",
+        { status: ActionStatus.MemberAction, actionOverrides: {} },
+      );
+      const member = await userService.create({
+        email: `dismissed-reminder-${Date.now()}@example.com`,
+        password: "Password123!",
+        name: "Dismissed Reminder",
+        contractEvents: [
+          {
+            type: ContractEventType.SIGNED,
+            date: new Date(event.date.getTime() - 1000),
+            automatic: false,
+            contractId: ctx.defaultContractId,
+          },
+        ],
+        tags: [ctx.defaultTag],
+      });
+      await activityRepo.save(
+        activityRepo.create({
+          actionId: action.id,
+          userId: member.id,
+          type: ActionActivityType.USER_DISMISSED,
+        }),
+      );
+
+      try {
+        const tasks = await ctx.app
+          .get(ActionsService)
+          .findUncompletedTasks(member.id);
+        expect(tasks.map((task) => task.id)).toContain(action.id);
+
+        await saveLiveCohortDecisions(ctx, [action.id]);
+        const recipients = await ctx.app
+          .get(ActionEventRecipientService)
+          .findFilteredUsersForEvent(
+            {
+              ...event,
+              action: await actionRepo.findOneOrFail({
+                where: { id: action.id },
+                relations: { events: true },
+              }),
+            },
+            null,
+            ActionEventNotifType.PersonalReminder,
+          );
+        expect(recipients.map((user) => user.id)).toContain(member.id);
+      } finally {
+        await actionRepo.delete(action.id);
+        await userRepo.delete(member.id);
+      }
+    });
+
     it("shows onboarding actions to users without contracts", async () => {
       const { action } = await createPublishedAction("Onboarding Action", {
         status: ActionStatus.MemberAction,
@@ -2170,6 +2225,77 @@ describe("Actions (e2e)", () => {
       ).toBe(true);
 
       await actionRepo.delete(action.id);
+    });
+
+    it("closes ordinary completion at the deadline unless late completion is allowed", async () => {
+      const createClosedAction = async (
+        shouldCompleteAfterDeadline: boolean,
+      ) => {
+        const { action } = await createPublishedAction(
+          `Late Completion ${shouldCompleteAfterDeadline}`,
+          { actionOverrides: { shouldCompleteAfterDeadline } },
+        );
+        await eventRepo.save(
+          eventRepo.create({
+            title: "Deadline",
+            description: "Office phase",
+            newStatus: ActionStatus.OfficeAction,
+            date: new Date(Date.now() - milliseconds({ seconds: 0.5 })),
+            action,
+          }),
+        );
+        return action;
+      };
+      const viewOf = async (actionId: number) =>
+        (
+          await request(ctx.app.getHttpServer())
+            .get("/actions/loggedIn")
+            .set("Authorization", `Bearer ${ctx.accessToken}`)
+            .expect(200)
+        ).body.find((action: ActionDto) => action.id === actionId);
+      const closed = await createClosedAction(false);
+      const closedMidSubmit = await createClosedAction(false);
+      const lateAllowed = await createClosedAction(true);
+
+      try {
+        const closedView = await viewOf(closed.id);
+        expect(closedView.canParticipate).toBe(false);
+        expect(closedView.viewer.canComplete).toBe(false);
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/complete/${closed.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(403);
+
+        await request(ctx.app.getHttpServer())
+          .post("/actions/createActivity")
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({
+            actionId: closed.id,
+            userId: ctx.testUserId,
+            type: ActionActivityType.USER_COMPLETED,
+          })
+          .expect(201);
+
+        const lateView = await viewOf(lateAllowed.id);
+        expect(lateView.canParticipate).toBe(true);
+        expect(lateView.viewer.canComplete).toBe(true);
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/complete/${lateAllowed.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(201);
+
+        await ctx.app
+          .get(ActionsService)
+          .completeAction(closedMidSubmit.id, ctx.testUserId, {
+            now: new Date(Date.now() - milliseconds({ minutes: 1 })),
+          });
+      } finally {
+        await actionRepo.delete([
+          closed.id,
+          closedMidSubmit.id,
+          lateAllowed.id,
+        ]);
+      }
     });
 
     it("rejects invalid before cursor when fetching the activity feed", async () => {

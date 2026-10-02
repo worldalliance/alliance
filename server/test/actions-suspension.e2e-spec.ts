@@ -382,7 +382,7 @@ describe("findUsersToSuspend (e2e)", () => {
     expect(afterResigning).toHaveLength(0);
   });
 
-  it("counts a user as failing a suite only when they miss every assigned action", async () => {
+  it("counts only the actions assigned to each member toward their suite", async () => {
     const multiActionFailingUser = await userService.create({
       email: "suspension-multi-action@example.com",
       password: "Password123!",
@@ -521,6 +521,108 @@ describe("findUsersToSuspend (e2e)", () => {
     } finally {
       await actionRepo.delete(actions.map((action) => action.id));
     }
+  });
+
+  describe("missed streaks", () => {
+    let member: User;
+    let suiteActions: Action[][];
+
+    const createMemberSuites = async (
+      prefix: string,
+      dates: string[],
+      actionsPerSuite: number,
+    ) => {
+      member = await createSignedUser(
+        `${prefix}@example.com`,
+        new Date("2023-01-01T00:00:00Z"),
+      );
+      suiteActions = [];
+      for (const [i, date] of dates.entries()) {
+        const suite = await suiteRepo.save(
+          suiteRepo.create({ name: `${prefix} suite ${i}` }),
+        );
+        const actions: Action[] = [];
+        for (let j = 0; j < actionsPerSuite; j++) {
+          actions.push(
+            await createCompletedSuiteAction(
+              suite.name,
+              `${prefix} action ${i}.${j}`,
+              new Date(`${date}T00:00:00Z`),
+              {
+                cohortExpression: { type: "Manual", userIds: [member.id] },
+                suite,
+              },
+            ),
+          );
+        }
+        suiteActions.push(actions);
+      }
+      await saveLiveCohortDecisions(ctx);
+    };
+
+    const record = (action: Action, type: ActionActivityType) =>
+      activityRepo.save(
+        activityRepo.create({ actionId: action.id, userId: member.id, type }),
+      );
+
+    const isSuspended = async () =>
+      (await actionsService.findUsersToSuspend(now)).some(
+        ({ user }) => user.id === member.id,
+      );
+
+    afterEach(async () => {
+      await actionRepo.delete(suiteActions.flat().map((action) => action.id));
+    });
+
+    it("misses a suite when any assigned required action is missed", async () => {
+      await createMemberSuites(
+        "streak-partial",
+        ["2023-03-13", "2023-03-16", "2023-03-19"],
+        2,
+      );
+      for (const [first] of suiteActions) {
+        await record(first, ActionActivityType.USER_COMPLETED);
+      }
+      expect(await isSuspended()).toBe(true);
+
+      await record(suiteActions[2][1], ActionActivityType.USER_WONT_COMPLETE);
+      expect(await isSuspended()).toBe(false);
+    });
+
+    it("does not suspend for an older run that a satisfied suite reset", async () => {
+      await createMemberSuites(
+        "streak-reset",
+        ["2023-03-10", "2023-03-13", "2023-03-16", "2023-03-19"],
+        1,
+      );
+      await record(suiteActions[3][0], ActionActivityType.USER_COMPLETED);
+      expect(await isSuspended()).toBe(false);
+    });
+
+    it("counts dismissed actions as missed", async () => {
+      await createMemberSuites(
+        "streak-dismissed",
+        ["2023-03-13", "2023-03-16", "2023-03-19"],
+        1,
+      );
+      for (const [action] of suiteActions) {
+        await record(action, ActionActivityType.USER_DISMISSED);
+      }
+      expect(await isSuspended()).toBe(true);
+    });
+
+    it("recalculates the run after a late completion without erasing later misses", async () => {
+      await createMemberSuites(
+        "streak-late",
+        ["2023-03-10", "2023-03-13", "2023-03-16", "2023-03-19"],
+        1,
+      );
+      await record(suiteActions[0][0], ActionActivityType.USER_COMPLETED);
+      expect(await isSuspended()).toBe(true);
+
+      await record(suiteActions[1][0], ActionActivityType.USER_COMPLETED);
+      expect(await isSuspended()).toBe(false);
+    });
   });
 
   it("previews suspensions from a suite that has not launched yet", async () => {

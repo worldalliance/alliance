@@ -378,44 +378,25 @@ export class ActionEventRecipientService {
 
   /**
    * Batched version of findBaseUsersForEvent: loads shared data once
-   * (active users, dismissed activities, cohort expressions) and filters
-   * per action. Returns a map from actionId -> eligible users.
+   * (active users, cohort expressions) and filters per action. Returns a map
+   * from actionId -> eligible users.
    */
   public async findBaseUsersForEvents(params: {
     entries: Array<{ action: ParsedAction; eventId: number }>;
     includeSuspended?: boolean;
-    includeDismissed?: boolean;
     /** Share loads across calls within one request; see resolveCohortMemberIds. */
     session?: CohortResolutionSession;
     resolvingActionIds?: ReadonlySet<number>;
   }): Promise<Map<number, User[]>> {
-    const { entries, includeSuspended, includeDismissed } = params;
+    const { entries, includeSuspended } = params;
     if (entries.length === 0) return new Map();
     const session = params.session ?? new CohortResolutionSession();
     const resolvingActionIds = params.resolvingActionIds ?? new Set<number>();
 
-    const actionIds = entries.map((e) => e.action.id);
-
     // 1. One query: all active users (shared through the session)
     const allUsers = await this.getActiveUsers(session);
 
-    // 2. One query: all dismissed activities for these actions
-    const allDismissed = await this.actionActivityRepository.find({
-      where: {
-        actionId: In(actionIds),
-        type: ActionActivityType.USER_DISMISSED,
-      },
-      select: { actionId: true, userId: true },
-    });
-    const dismissedByAction = new Map<number, Set<number>>();
-    for (const act of allDismissed) {
-      if (!dismissedByAction.has(act.actionId)) {
-        dismissedByAction.set(act.actionId, new Set());
-      }
-      dismissedByAction.get(act.actionId)!.add(act.userId);
-    }
-
-    // 3. Cohort resolution — the session memoizes whole expressions and
+    // 2. Cohort resolution — the session memoizes whole expressions and
     // individual leaves, so duplicates across entries resolve once.
     const cohortByAction = new Map<number, Promise<Set<number>>>();
     for (const { action } of entries) {
@@ -431,7 +412,7 @@ export class ActionEventRecipientService {
     // Await all cohort resolutions in parallel
     await Promise.all(cohortByAction.values());
 
-    // 4. Per-action filtering
+    // 3. Per-action filtering
     const result = new Map<number, User[]>();
     for (const { action, eventId } of entries) {
       // Analytics passes hundreds of entries, each filtering every active
@@ -446,7 +427,6 @@ export class ActionEventRecipientService {
       }
 
       const deadlineDate = action.memberActionPhase.deadlineEvent?.date ?? null;
-      const usersDismissed = dismissedByAction.get(action.id) ?? new Set();
       const cohortMemberIds = await cohortByAction.get(action.id)!;
 
       const eligible = allUsers.filter((user) =>
@@ -455,10 +435,8 @@ export class ActionEventRecipientService {
           eventDate: event.date,
           deadlineDate,
           cohortMemberIds,
-          userDismissed: usersDismissed.has(user.id),
           onboarding: action.onboarding,
           includeSuspended,
-          includeDismissed,
         }),
       );
 
@@ -472,18 +450,11 @@ export class ActionEventRecipientService {
     action: ParsedAction;
     eventId: number;
     includeSuspended?: boolean;
-    includeDismissed?: boolean;
     session?: CohortResolutionSession;
     resolvingActionIds?: ReadonlySet<number>;
   }): Promise<User[]> {
-    const {
-      action,
-      eventId,
-      includeSuspended,
-      includeDismissed,
-      session,
-      resolvingActionIds,
-    } = params;
+    const { action, eventId, includeSuspended, session, resolvingActionIds } =
+      params;
 
     if (!action.events.some((event) => event.id === eventId)) {
       throw new Error(`Event not found: ${eventId}`);
@@ -492,7 +463,6 @@ export class ActionEventRecipientService {
     const result = await this.findBaseUsersForEvents({
       entries: [{ action, eventId }],
       includeSuspended,
-      includeDismissed,
       session,
       resolvingActionIds,
     });
@@ -533,7 +503,6 @@ export class ActionEventRecipientService {
     const session = new CohortResolutionSession();
     const [
       usersWithTags,
-      usersDismissed,
       cohortMemberIds,
       perActionCohortMemberIds,
       completionActivities,
@@ -542,14 +511,6 @@ export class ActionEventRecipientService {
         users.map((user) => user.id),
         { tags: true, awayRanges: true, contractEvents: true },
       ),
-      this.actionActivityRepository
-        .find({
-          where: {
-            action: { id: event.action.id },
-            type: ActionActivityType.USER_DISMISSED,
-          },
-        })
-        .then((acts) => new Set(acts.map((a) => a.userId))),
       this.resolveCohort({
         action: eventAction,
         session,
@@ -606,7 +567,6 @@ export class ActionEventRecipientService {
           eventDate: event.date,
           deadlineDate: deadlineEvent?.date ?? null,
           cohortMemberIds: participationCohortMemberIds,
-          userDismissed: usersDismissed.has(user.id),
           onboarding: event.action.onboarding,
         }),
       )

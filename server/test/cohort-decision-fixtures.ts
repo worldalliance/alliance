@@ -1,5 +1,6 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { millisecondsInDay } from "date-fns/constants";
+import { In } from "typeorm";
 import { readsSavedDecisions } from "../src/actions/cohort-decision";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
@@ -31,12 +32,19 @@ export const addDays = (date: Date, days: number) =>
  * the pass in tests of readers that take the cohort from saved decisions. A
  * member already decided keeps their row.
  */
-export async function saveLiveCohortDecisions(ctx: TestContext): Promise<void> {
+export async function saveLiveCohortDecisions(
+  ctx: TestContext,
+  onlyActionIds?: number[],
+): Promise<void> {
   const now = new Date();
   const [actions, userIds] = await Promise.all([
-    ctx.dataSource
-      .getRepository(Action)
-      .find({ where: { publicOnly: false }, relations: { events: true } }),
+    ctx.dataSource.getRepository(Action).find({
+      where: {
+        publicOnly: false,
+        ...(onlyActionIds && { id: In(onlyActionIds) }),
+      },
+      relations: { events: true },
+    }),
     ctx.app.get(UserService).findActiveUserIds(),
   ]);
   const recipientService = ctx.app.get(ActionEventRecipientService);

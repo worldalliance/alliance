@@ -411,7 +411,7 @@ export default function MembershipScreen() {
                   What happens if I don&apos;t follow the contract?
                 </Text>
                 <Text className="text-base">
-                  If you miss all assigned non-optional actions for 3 weeks in a
+                  If you miss any assigned non-optional task for 3 weeks in a
                   row, your contract will be suspended automatically. You can
                   re-sign the contract to re-join the Alliance.
                 </Text>

@@ -103,6 +103,9 @@ const taskPanelHeaderByState: Record<
   [ActionPageTaskPanelState.MemberActionClosed]: (
     <p>{taskHeaders.actionPage.memberActionClosed}</p>
   ),
+  [ActionPageTaskPanelState.DeadlineMissed]: (
+    <p>{taskHeaders.actionPage.deadlinePassed.title}</p>
+  ),
   [ActionPageTaskPanelState.MissingDataOrNotActive]: null,
   [ActionPageTaskPanelState.ShowTaskWithMissedDeadline]: renderTitledHeader(
     taskHeaders.actionPage.deadlinePassed,
@@ -324,6 +327,7 @@ const ActionPageTaskPanel = () => {
     case ActionPageTaskPanelState.PublicOnlyAuthenticated:
     case ActionPageTaskPanelState.NotAssigned:
     case ActionPageTaskPanelState.MemberActionClosed:
+    case ActionPageTaskPanelState.DeadlineMissed:
     case ActionPageTaskPanelState.OnboardingSignContractFirst:
       return renderStackedCard(
         <ActionTaskPanel

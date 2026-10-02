@@ -50,6 +50,7 @@ function makeAction(
     onboarding: false,
     optional: false,
     preventCompletion: false,
+    shouldCompleteAfterDeadline: false,
     staffPreview: false,
     archived: false,
     ...overrides,
@@ -339,6 +340,7 @@ describe("resolveUserActionStatus", () => {
     });
     expect(status.deadlineAt).toEqual(pastDeadline);
     expect(status.deadlinePassed).toBe(true);
+    expect(status.canComplete).toBe(false);
     expect(status.display).toBe(UserActionRelationPillStatus.MissedDeadline);
   });
 
@@ -449,6 +451,7 @@ describe("computeCanCompleteAction", () => {
         action: makeAction(),
         user: makeLapsedUser(),
         inCohort: true,
+        now: NOW,
       }),
     ).toBe(true);
   });
@@ -459,6 +462,7 @@ describe("computeCanCompleteAction", () => {
         action: makeAction(),
         user: makeUser(),
         inCohort: false,
+        now: NOW,
       }),
     ).toBe(false);
   });
@@ -469,6 +473,7 @@ describe("computeCanCompleteAction", () => {
         action: makeAction({ onboarding: true }),
         user: makeUser(),
         inCohort: true,
+        now: NOW,
       }),
     ).toBe(false);
   });
@@ -479,7 +484,39 @@ describe("computeCanCompleteAction", () => {
         action: makeAction({ preventCompletion: true }),
         user: makeUser(),
         inCohort: true,
+        now: NOW,
       }),
     ).toBe(false);
+  });
+
+  const pastDeadlineEvents = () =>
+    makeEvents({
+      start: new Date(NOW.getTime() - 8 * millisecondsInDay),
+      deadline: new Date(NOW.getTime() - millisecondsInDay),
+    });
+
+  it("closes completion once the deadline passes", () => {
+    expect(
+      computeCanCompleteAction({
+        action: makeAction({ events: pastDeadlineEvents() }),
+        user: makeUser(),
+        inCohort: true,
+        now: NOW,
+      }),
+    ).toBe(false);
+  });
+
+  it("keeps completion open past the deadline with shouldCompleteAfterDeadline", () => {
+    expect(
+      computeCanCompleteAction({
+        action: makeAction({
+          events: pastDeadlineEvents(),
+          shouldCompleteAfterDeadline: true,
+        }),
+        user: makeUser(),
+        inCohort: true,
+        now: NOW,
+      }),
+    ).toBe(true);
   });
 });

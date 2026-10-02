@@ -85,7 +85,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { isNull, omitBy } from "es-toolkit";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
 import { ActionsService } from "src/actions/actions.service";
-import { Action } from "src/actions/entities/action.entity";
+import { Action, parseAction } from "src/actions/entities/action.entity";
 import {
   FollowUpForm,
   parseFollowUpForm,
@@ -923,8 +923,17 @@ export class TasksService {
       where: { id: submitFormDto.actionId },
       relations: { events: true },
     });
+    // One instant for both completion checks, so a deadline passing
+    // mid-submission cannot reject the completion after the answers applied.
+    const submittedAt = new Date();
     if (action) {
       assertNotInStaffPreview(action);
+      // Before any answer side effects (contract signing, profile updates).
+      await this.actionsService.ensureCompletionAllowed({
+        action: parseAction(action),
+        userId,
+        now: submittedAt,
+      });
     }
     const variants = await this.actionFormVariantService.listForAction(
       submitFormDto.actionId,
@@ -1081,6 +1090,7 @@ export class TasksService {
 
     await this.actionsService.completeAction(submitFormDto.actionId, userId, {
       taskFormResponse: savedForm,
+      now: submittedAt,
     });
     if (contractIdsSigned.length > 0) {
       this.contractService.announceSigned(user.id);

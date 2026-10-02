@@ -68,14 +68,13 @@ enum CoreAssignment {
 }
 
 /**
- * Shared assignment rule behind every variant: dismissal, cohort membership,
- * and the contract requirement — onboarding actions need the first contract
- * signed at/after the phase start; all others need an active contract across
- * the whole member-action window (`deadlineDate: null` = open-ended).
+ * Shared assignment rule behind every variant: cohort membership and the
+ * contract requirement — onboarding actions need the first contract signed
+ * at/after the phase start; all others need an active contract across the
+ * whole member-action window (`deadlineDate: null` = open-ended).
  *
- * NOTE: the dismissal exclusion still lives here for now; the target model
- * treats dismissal as an overlay, not part of assignment. It moves out when
- * `viewer.status` lands.
+ * `dismissed` serves only the legacy `shouldParticipate` field, which folds
+ * home-page dismissal into assignment; every other caller passes false.
  */
 function computeAssignmentCore(params: {
   /** Member-action phase start; also the onboarding join-timing reference. */
@@ -90,7 +89,6 @@ function computeAssignmentCore(params: {
    * set and handles contract state itself).
    */
   includeSuspended?: boolean;
-  includeDismissed?: boolean;
 }): CoreAssignment {
   const {
     eventDate,
@@ -100,10 +98,9 @@ function computeAssignmentCore(params: {
     onboarding,
     user,
     includeSuspended = false,
-    includeDismissed = false,
   } = params;
 
-  if (!includeDismissed && dismissed) {
+  if (dismissed) {
     return CoreAssignment.Unassigned;
   }
   if (!inCohort) {
@@ -433,9 +430,10 @@ export function computeIsTaggedOrInManualCohort(params: {
 /**
  * Roster variant of the assignment predicate: is this user *required* to do
  * this action, given a precomputed cohort-member id set? Same rule as
- * {@link computeActionAssignment} (cohort membership, dismissal, onboarding
- * rules, contract dates) but shaped for bulk evaluation over many users.
- * Runs per member-action event, so `eventDate` is the phase start.
+ * {@link computeActionAssignment} (cohort membership, onboarding rules,
+ * contract dates) but shaped for bulk evaluation over many users. Runs per
+ * member-action event, so `eventDate` is the phase start. Dismissal never
+ * enters it: hiding a card from the home page leaves its work required.
  *
  * Deliberately narrower than `computeActionAssignment`: this roster drives
  * reminders, suspension accounting and the participant counter, none of which
@@ -446,20 +444,16 @@ export function computeIsAssignedFromCohortSet(params: {
   deadlineDate: Date | null;
   cohortMemberIds: Set<number>;
   user: User;
-  userDismissed: boolean;
   onboarding: boolean;
   includeSuspended?: boolean;
-  includeDismissed?: boolean;
 }): boolean {
   const {
     eventDate,
     deadlineDate,
     cohortMemberIds,
     user,
-    userDismissed,
     onboarding,
     includeSuspended,
-    includeDismissed,
   } = params;
 
   return (
@@ -467,11 +461,10 @@ export function computeIsAssignedFromCohortSet(params: {
       eventDate,
       deadlineDate,
       inCohort: cohortMemberIds.has(user.id),
-      dismissed: userDismissed,
+      dismissed: false,
       onboarding,
       user,
       includeSuspended,
-      includeDismissed,
     }) === CoreAssignment.Required
   );
 }

@@ -352,9 +352,9 @@ const MembershipPage: React.FC = () => {
                 What happens if I don&apos;t abide by the agreement?
               </h3>
               <p className="text-base">
-                If you miss all assigned non-optional actions for 3 weeks in a
-                row, your agreement will be suspended automatically. You can
-                re-sign the agreement to re-join the Alliance.
+                If you miss any assigned non-optional task for 3 weeks in a row,
+                your agreement will be suspended automatically. You can re-sign
+                the agreement to re-join the Alliance.
               </p>
             </div>
             <div className="flex flex-col gap-y-1">

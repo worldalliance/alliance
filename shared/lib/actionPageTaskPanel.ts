@@ -1,4 +1,4 @@
-import { ActionDto } from "../client/types.gen";
+import { ActionDto, type ViewerActionRelation } from "../client/types.gen";
 import { CardStyle } from "../styles/card";
 import {
   deadlineHasPassed,
@@ -19,6 +19,7 @@ export enum ActionPageTaskPanelState {
   Completed = "completed",
   Declined = "declined",
   MemberActionClosed = "member_action_closed",
+  DeadlineMissed = "deadline_missed",
   MissingDataOrNotActive = "missing_data_or_not_active",
   ShowTaskWithMissedDeadline = "show_task_with_missed_deadline",
   ShowTask = "show_task",
@@ -46,6 +47,8 @@ const stateIsDisabled = {
   [ActionPageTaskPanelState.Completed]: ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.Declined]: ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.MemberActionClosed]:
+    ActionPageTaskPanelEnabled.Disabled,
+  [ActionPageTaskPanelState.DeadlineMissed]:
     ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.MissingDataOrNotActive]:
     ActionPageTaskPanelEnabled.Disabled,
@@ -81,6 +84,7 @@ export const shouldLoadCompletedTaskFormByState = {
   [ActionPageTaskPanelState.Completed]: true,
   [ActionPageTaskPanelState.Declined]: true,
   [ActionPageTaskPanelState.MemberActionClosed]: false,
+  [ActionPageTaskPanelState.DeadlineMissed]: false,
   [ActionPageTaskPanelState.MissingDataOrNotActive]: false,
   [ActionPageTaskPanelState.ShowTaskWithMissedDeadline]: false,
   [ActionPageTaskPanelState.OnboardingSignContractFirst]: false,
@@ -138,6 +142,12 @@ const stateByViewerOnlyOptionalReason = {
     ActionPageTaskPanelState.OptionalForContractGap,
 } as const satisfies Record<ViewerOnlyOptionalReason, ActionPageTaskPanelState>;
 
+const relationKeepsPanel = {
+  completed: true,
+  withdrawn: true,
+  none: false,
+} as const satisfies Record<ViewerActionRelation, boolean>;
+
 /**
  * The auth/guest branches at the top are genuinely client-side; everything
  * after them reads server-computed status — `viewer` when present, the
@@ -184,7 +194,12 @@ export function getActionPageTaskPanelState(params: {
     ? action.viewer.canComplete
     : !!action.canParticipate;
 
-  if (!canComplete && !action.preventCompletion)
+  const { viewer } = action;
+  const keepsPanel =
+    !!viewer &&
+    (relationKeepsPanel[viewer.relation] ||
+      (viewer.assigned && viewer.deadlinePassed));
+  if (!canComplete && !action.preventCompletion && !keepsPanel)
     return ActionPageTaskPanelState.NotAssigned;
 
   if (mustSignContractFirst(action, contractSigned)) {
@@ -211,10 +226,12 @@ export function getActionPageTaskPanelState(params: {
       return ActionPageTaskPanelState.MissingDataOrNotActive;
   }
 
-  // Only reachable with preventCompletion (the NotAssigned check above
-  // caught every other cannot-complete case).
+  // Only reachable with preventCompletion or an assigned viewer past the
+  // deadline (the NotAssigned check above caught the rest).
   if (!canComplete) {
-    return ActionPageTaskPanelState.MemberActionClosed;
+    return action.preventCompletion
+      ? ActionPageTaskPanelState.MemberActionClosed
+      : ActionPageTaskPanelState.DeadlineMissed;
   }
 
   if (deadlineHasPassed(action)) {

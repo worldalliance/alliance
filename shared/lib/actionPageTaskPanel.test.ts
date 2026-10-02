@@ -88,6 +88,51 @@ describe("getActionPageTaskPanelState", () => {
     ).toBe(ActionPageTaskPanelState.MemberActionClosed);
   });
 
+  it("keeps a viewer's relation when completion closes", () => {
+    const closed = (params: {
+      relation: "none" | "completed" | "withdrawn";
+      assigned: boolean;
+      deadlinePassed: boolean;
+    }) =>
+      stateOf(
+        makeAction({
+          status: params.deadlinePassed ? "resolution" : "member_action",
+          viewer: makeViewer({ canComplete: false, ...params }),
+        }),
+      );
+    for (const [assigned, deadlinePassed] of [
+      [true, true],
+      [false, true],
+      [false, false],
+    ]) {
+      expect(closed({ relation: "completed", assigned, deadlinePassed })).toBe(
+        ActionPageTaskPanelState.Completed,
+      );
+      expect(closed({ relation: "withdrawn", assigned, deadlinePassed })).toBe(
+        ActionPageTaskPanelState.Declined,
+      );
+    }
+    expect(
+      closed({ relation: "none", assigned: true, deadlinePassed: true }),
+    ).toBe(ActionPageTaskPanelState.DeadlineMissed);
+    expect(
+      closed({ relation: "none", assigned: false, deadlinePassed: true }),
+    ).toBe(ActionPageTaskPanelState.NotAssigned);
+    expect(
+      stateOf(
+        makeAction({
+          status: "resolution",
+          preventCompletion: true,
+          viewer: makeViewer({
+            canComplete: false,
+            assigned: true,
+            deadlinePassed: true,
+          }),
+        }),
+      ),
+    ).toBe(ActionPageTaskPanelState.MemberActionClosed);
+  });
+
   it("locks onboarding actions until the contract is signed", () => {
     const onboarding = makeAction({ onboarding: true });
     expect(stateOf(onboarding, { contractSigned: false })).toBe(

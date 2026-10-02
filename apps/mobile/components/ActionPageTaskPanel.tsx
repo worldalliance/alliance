@@ -83,6 +83,9 @@ const taskPanelTopByState: Record<ActionPageTaskPanelState, ReactNode> = {
   [ActionPageTaskPanelState.MemberActionClosed]: (
     <Text>{taskHeaders.actionPage.memberActionClosed}</Text>
   ),
+  [ActionPageTaskPanelState.DeadlineMissed]: (
+    <Text>{taskHeaders.actionPage.deadlinePassed.title}</Text>
+  ),
   [ActionPageTaskPanelState.MissingDataOrNotActive]: null,
   [ActionPageTaskPanelState.ShowTaskWithMissedDeadline]: renderTitledHeader(
     taskHeaders.actionPage.deadlinePassed,
@@ -202,6 +205,7 @@ const ActionPageTaskPanel = ({
     case ActionPageTaskPanelState.NotAuthenticated:
     case ActionPageTaskPanelState.NotAssigned:
     case ActionPageTaskPanelState.MemberActionClosed:
+    case ActionPageTaskPanelState.DeadlineMissed:
     case ActionPageTaskPanelState.OnboardingSignContractFirst:
     // Guest-completion states never occur on mobile (hasRefCode/hasGuestResponse
     // pinned false); fall through to the disabled rendering just in case.

@@ -42,7 +42,6 @@ export function processKeywordReplacements(
     dateNow?: Date;
     uncompletedMembersInGroupCount?: number;
     isFirstAssignedSuite?: boolean;
-    consecutiveMissedSuiteCount?: number;
   },
 ): string {
   const names = context.user.name.split(" ");
@@ -76,12 +75,8 @@ export function processKeywordReplacements(
         ? 'The Alliance counts on every member. We plan precise actions based on the number of people we expect to participate.\n\nTo learn more about our model, you can watch <a href="https://www.youtube.com/watch?v=fR7Upo0DlYs&t=125s">this video</a>.\n\nPlease know that if you miss several actions in a row, we will suspend your contract and no longer assign you tasks.'
         : "Remember that we plan each action around the number of members we expect to participate.",
     )
-    .replaceAll(
-      "#{secondmisswarning}",
-      context.consecutiveMissedSuiteCount === 2
-        ? "\n\nIf you miss all of your assigned non-optional actions again next week, your contract will be suspended automatically."
-        : "",
-    )
+    // Only marks a missed-suite group; a second miss sends its own copy.
+    .replaceAll("#{secondmisswarning}", "")
     .replaceAll("#{s}", context.uncompletedTasksCount === 1 ? "" : "s")
     .replaceAll(
       "#{days}",

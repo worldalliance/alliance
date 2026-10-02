@@ -603,6 +603,75 @@ describe("Tasks (e2e)", () => {
       .expect(200);
   });
 
+  it("refuses a form submitted after the deadline without saving it", async () => {
+    const lateAction = await actionRepo.save(
+      actionRepo.create({
+        name: "Late Form Action",
+        category: [],
+        body: "Body copy",
+        shortDescription: "Short copy",
+        isForumParticipationAction: false,
+        shouldCompleteAfterDeadline: false,
+        visibilityMode: VisibilityMode.Public,
+        preventCompletion: false,
+        optional: false,
+        publicOnly: false,
+        onboarding: false,
+        isContractSigningAction: false,
+        cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+      } satisfies CreateActionDto),
+    );
+    await eventRepo.save([
+      eventRepo.create({
+        title: "Late Form Action",
+        description: "Member phase",
+        newStatus: ActionStatus.MemberAction,
+        date: new Date(Date.now() - milliseconds({ days: 7 })),
+        action: lateAction,
+      }),
+      eventRepo.create({
+        title: "Late Form Action deadline",
+        description: "Office phase",
+        newStatus: ActionStatus.OfficeAction,
+        date: new Date(Date.now() - milliseconds({ minutes: 1 })),
+        action: lateAction,
+      }),
+    ]);
+    const form = await request(ctx.app.getHttpServer())
+      .post("/tasks/createForm")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({
+        title: "Late Form",
+        schema: {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                { id: "note", type: "input", kind: "text", label: "Note" },
+              ],
+            },
+          ],
+          outputViews: [],
+          aggregateViews: [],
+        },
+      })
+      .expect(201);
+    await actionRepo.update(lateAction.id, { taskFormId: form.body.id });
+
+    await request(ctx.app.getHttpServer())
+      .post(`/tasks/submitForm/${form.body.id}`)
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .send({
+        answers: { note: "opened before the deadline" },
+        formSnapshotId: form.body.formSnapshotId as number,
+        actionId: lateAction.id,
+        deviceType: "desktop" as const,
+      })
+      .expect(403);
+
+    expect(await formResponseRepo.countBy({ formId: form.body.id })).toBe(0);
+  });
+
   it("sums number field answers into aggregate views", async () => {
     const aggregateSchema: FormSchema = {
       pages: [

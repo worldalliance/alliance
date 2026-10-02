@@ -9,8 +9,10 @@ import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { generateCIDForNotif } from "src/notifs/notif-utils";
 import { suspensionMessage } from "src/notifs/textnotifcontents";
+import { PushService } from "src/push/push.service";
 import {
   userActionNotifsEnabled_email,
+  userActionNotifsEnabled_push,
   userActionNotifsEnabled_text,
 } from "src/user/user.utils";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
@@ -31,6 +33,7 @@ export class ContractSuspenderWorker {
     private readonly actionsService: ActionsService,
     private readonly contractService: ContractService,
     private readonly eventLogService: EventLogService,
+    private readonly pushService: PushService,
   ) {}
 
   @Cron("*/10 * * * *")
@@ -95,6 +98,20 @@ export class ContractSuspenderWorker {
                   mediaUrls: [],
                   cid,
                 }),
+            );
+          }
+          if (userActionNotifsEnabled_push(user)) {
+            await this.sendBestEffort(
+              `suspension push to user ${user.id}`,
+              async () =>
+                this.pushService.sendMessages(
+                  await this.pushService.getPushForAllUserDevices(user.id, {
+                    userId: user.id,
+                    body: suspensionMessage.trim(),
+                    screen: "/membership",
+                    idempotencyKey: `suspension-${user.id}-${reasonKey}`,
+                  }),
+                ),
             );
           }
           if (userActionNotifsEnabled_email(user)) {

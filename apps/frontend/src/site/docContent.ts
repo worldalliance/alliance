@@ -315,7 +315,7 @@ If you have already spent 15 minutes completing tasks in a given week, you can w
 
 If you have a moral objection to a task, you can withdraw from that task without affecting your membership status.
 
-Otherwise, a member who misses all assigned non-optional actions for 3 weeks in a row will have their contract suspended and will be unable to participate in Alliance governance.
+Otherwise, a member who misses any assigned non-optional task for 3 weeks in a row will have their contract suspended and will be unable to participate in Alliance governance.
 
 Former members can rejoin the Alliance by re-signing the contract.
 `,

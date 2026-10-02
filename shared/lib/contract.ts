@@ -37,7 +37,7 @@ export const CONTRACT_TERMS: readonly ContractTerm[] = [
     ],
   },
   {
-    text: "I understand that if I miss all assigned non-optional actions for 3 weeks in a row, my agreement will be suspended automatically.",
+    text: "I understand that if I miss any assigned non-optional task for 3 weeks in a row, my agreement will be suspended automatically.",
   },
 ];
 
