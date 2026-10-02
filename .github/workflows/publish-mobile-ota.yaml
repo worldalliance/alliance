@@ -58,6 +58,7 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' }}
         with:
           working-directory: release
+          check: empty
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
