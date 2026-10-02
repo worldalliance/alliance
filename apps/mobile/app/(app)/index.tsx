@@ -1,3 +1,4 @@
+import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import type { FollowUpFormDto } from "@alliance/shared/client";
 import { actionsDismissAction } from "@alliance/shared/client";
 import {
@@ -24,6 +25,7 @@ import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   type LayoutChangeEvent,
   RefreshControl,
   type ScrollViewProps,
@@ -327,6 +329,13 @@ export default function HomeScreen() {
             action={currentItem.action}
             dismissProps={dismissProps}
             onUpdateActionState={() => {
+              refetch();
+            }}
+            onDeadlinePassed={() => {
+              Alert.alert(
+                currentItem.action.name,
+                MEMBER_ACTION_DEADLINE_PASSED,
+              );
               refetch();
             }}
             onCompleteAction={handleSubmitSuccess}

@@ -41,6 +41,7 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
   dismissProps,
   userRelation,
   onUpdateActionState,
+  onDeadlinePassed,
   onCompleteAction,
   showDetails = true,
   className = "",
@@ -161,11 +162,12 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
               </div>
             )}
             <ActionTaskPanel
+              key={action.id}
               action={action}
               userRelation={userRelation}
               onCompleteAction={handleCompleteAction}
               onOptOutAction={handleUpdateActionState}
-              onDeadlinePassed={onUpdateActionState}
+              onDeadlinePassed={onDeadlinePassed}
               scrollContainerRef={scrollContainerRef}
               disabled={showSignContractFirst}
               staticTaskFormSchema={staticTaskFormSchema}
