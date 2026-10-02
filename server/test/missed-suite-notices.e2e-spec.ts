@@ -31,6 +31,7 @@ import {
 } from "src/user/entities/contract-event.entity";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
+import request from "supertest";
 import type { Repository } from "typeorm";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import { createTestApp, stubExpoClient, TestContext } from "./e2e-test-utils";
@@ -338,13 +339,21 @@ describe("missed-suite notices (e2e)", () => {
     const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
       "Missed task",
     ]);
-    await createMissedSuiteGroup(closed);
+    const group = await createMissedSuiteGroup(closed);
 
     await dispatch();
 
     const [notice] = await findNotices();
     expect(notice).toMatchObject({ sent: true, mms: null });
     expect(notice.notification?.message).toBe("Control push");
+
+    const res = await request(ctx.app.getHttpServer())
+      .get(`/actions/sentNotifsForGroup/${group.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+    expect(res.body).toEqual([
+      expect.objectContaining({ notificationId: notice.notification?.id }),
+    ]);
   });
 
   it("links the push to the in-app entry", async () => {
