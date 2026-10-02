@@ -997,6 +997,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
           {createGroupExpanded && selectedEventId !== null && (
             <>
               <ActionReminderGroupForm
+                suiteId={suite.id}
                 memberEvents={memberEvents}
                 anchorCandidates={anchorCandidates}
                 users={users}
@@ -1050,6 +1051,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
             handleEditGroupSubmit={handleEditGroupSubmit}
             reminderPlans={reminderPlansByGroup[group.id]}
             sentReminders={sentRemindersByGroup[group.id]}
+            suiteId={suite.id}
             suiteTaskCount={suite.actions.length}
           />
         );

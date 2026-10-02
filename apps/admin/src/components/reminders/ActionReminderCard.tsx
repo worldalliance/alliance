@@ -51,6 +51,7 @@ interface ActionReminderCardProps {
   ) => (payload: ActionReminderGroupFormSubmitPayload) => Promise<void>;
   reminderPlans?: PreviewNotificationPlanDto[];
   sentReminders?: ActionEventNotifDto[];
+  suiteId: number;
   suiteTaskCount: number;
 }
 const ActionReminderCard = ({
@@ -77,6 +78,7 @@ const ActionReminderCard = ({
   handleEditGroupSubmit,
   reminderPlans,
   sentReminders,
+  suiteId,
   suiteTaskCount,
 }: ActionReminderCardProps) => {
   const [minified, setMinified] = useState(true);
@@ -286,6 +288,7 @@ const ActionReminderCard = ({
         <div className="flex flex-col gap-2 p-4">
           {editing && selectedEventId !== null ? (
             <ActionReminderGroupForm
+              suiteId={suiteId}
               memberEvents={memberEvents}
               anchorCandidates={anchorCandidates}
               users={users}

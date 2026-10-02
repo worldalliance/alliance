@@ -122,6 +122,7 @@ const COHORT_OPTIONS = Object.entries(COHORT_OPTION_OBJ).map(
 );
 
 interface ActionReminderFormProps {
+  suiteId: number;
   memberEvents: ActionEventDto[];
   anchorCandidates: ReminderAnchorCandidateDto[];
   users: UserSelectUser[];
@@ -144,6 +145,7 @@ interface ActionReminderFormProps {
 }
 
 const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
+  suiteId,
   memberEvents,
   anchorCandidates,
   users,
@@ -370,6 +372,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
         pushMessage,
         timingMode,
         useSuiteTaskCount,
+        suiteId,
         userTagId:
           cohortType === "tag" ? (selectedTagId ?? undefined) : undefined,
         userIds: cohortType === "custom" ? selectedUserIds : undefined,
@@ -409,6 +412,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       setTentativePlans(response.data ?? []);
     });
   }, [
+    suiteId,
     selectedEventId,
     name,
     cohortType,
