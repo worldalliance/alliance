@@ -51,6 +51,7 @@ let campaignPatchStatus = 200;
 let linkPatchStatus = 200;
 let uploadStatus = 200;
 let boltName = "Bolt";
+let createGate = Promise.resolve();
 
 const record =
   (response: unknown) =>
@@ -77,7 +78,11 @@ serveApi(
         { id: 21, name: "Free group" },
       ]),
     "GET /waitlist/admin/links": () => Response.json([link]),
-    "POST /campaigns": record(campaign(4)),
+    "POST /campaigns": async (input) => {
+      const response = await record(campaign(4))(input);
+      await createGate;
+      return response;
+    },
     "PATCH /campaigns/:id": async (input) =>
       campaignPatchStatus === 200
         ? record(campaign(2))(input)
@@ -106,6 +111,7 @@ beforeEach(() => {
   linkPatchStatus = 200;
   uploadStatus = 200;
   boltName = "Bolt";
+  createGate = Promise.resolve();
 });
 
 const renderPage = () =>
@@ -153,6 +159,24 @@ it("creates an organization and makes a campaign one", async () => {
       },
     ]),
   );
+});
+
+it("locks the new name while the create is pending", async () => {
+  renderPage();
+  await screen.findByDisplayValue("Acme");
+  let respond = () => {};
+  createGate = new Promise((resolve) => (respond = resolve));
+  const input = screen.getByPlaceholderText<HTMLInputElement>("Name");
+  input.focus();
+  fireEvent.change(input, { target: { value: "Coop" } });
+  fireEvent.submit(input);
+
+  await waitFor(() => expect(input.readOnly).toBe(true));
+  expect(document.activeElement).toBe(input);
+  respond();
+  await waitFor(() => expect(input.readOnly).toBe(false));
+  expect(input.value).toBe("");
+  expect(document.activeElement).toBe(input);
 });
 
 it("assigns a group, offering none another organization has", async () => {

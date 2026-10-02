@@ -1,7 +1,6 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { withCount } from "@alliance/common/plural";
 import {
-  campaignCreateAdmin,
   imagesUploadImage,
   shareUrlsCreateDuplicateAdmin,
   shareUrlsDeleteAdmin,
@@ -37,12 +36,13 @@ import { actionsLoadError } from "../lib/actionsLoadError";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
   useCampaignsAdmin,
-  useInvalidateCampaignsAdmin,
+  useCreateCampaignAdmin,
 } from "../lib/useCampaignsAdmin";
 import {
   externalShareTargetsLoadError,
   useExternalShareTargetsAdmin,
 } from "../lib/useExternalShareTargetsAdmin";
+import { useRefusalToast } from "../lib/useRefusalToast";
 
 type TargetKind = "action" | "external" | "invite";
 type PickableKind = Exclude<TargetKind, "invite">;
@@ -146,7 +146,6 @@ const ShareLinksPage: React.FC = () => {
   const selectedUser = users.find((u) => u.id === selectedUserId);
 
   const campaigns = useCampaignsAdmin();
-  const invalidateCampaigns = useInvalidateCampaignsAdmin();
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(
     null,
   );
@@ -187,7 +186,6 @@ const ShareLinksPage: React.FC = () => {
   const [newCampaignPicturePreview, setNewCampaignPicturePreview] = useState<
     string | null
   >(null);
-  const [creatingCampaign, setCreatingCampaign] = useState(false);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -198,6 +196,7 @@ const ShareLinksPage: React.FC = () => {
   }, [currentOwnerKey]);
 
   const { error, success, confirm } = useToast();
+  const refusalToast = useRefusalToast();
 
   const loadRows = useCallback(
     async (target: Owner) => {
@@ -257,36 +256,22 @@ const ShareLinksPage: React.FC = () => {
     [error],
   );
 
-  const handleCreateCampaign = useCallback(async () => {
+  const createCampaign = useCreateCampaignAdmin({
+    onSuccess: (created) => {
+      setSelectedCampaignId(created.id);
+      setNewCampaignName("");
+      setNewCampaignPicture(null);
+      setNewCampaignPicturePreview(null);
+      success("Campaign created");
+    },
+    onError: (err) => refusalToast(err, "Failed to create campaign."),
+  });
+
+  const handleCreateCampaign = () => {
     const name = newCampaignName.trim();
-    if (!name) return;
-    setCreatingCampaign(true);
-    try {
-      const res = await campaignCreateAdmin({
-        body: { name, picture: newCampaignPicture ?? undefined },
-      });
-      const created = res.data;
-      if (created) {
-        await invalidateCampaigns();
-        setSelectedCampaignId(created.id);
-        setNewCampaignName("");
-        setNewCampaignPicture(null);
-        setNewCampaignPicturePreview(null);
-        success("Campaign created");
-      }
-    } catch (err) {
-      console.error("Failed to create campaign", err);
-      error("Failed to create campaign.");
-    } finally {
-      setCreatingCampaign(false);
-    }
-  }, [
-    newCampaignName,
-    newCampaignPicture,
-    invalidateCampaigns,
-    success,
-    error,
-  ]);
+    if (name)
+      createCampaign.mutate({ name, picture: newCampaignPicture ?? undefined });
+  };
 
   const targetsForKind = useMemo((): Target[] => {
     switch (selectedKind) {
@@ -551,7 +536,7 @@ const ShareLinksPage: React.FC = () => {
                 newCampaignName={newCampaignName}
                 onNewCampaignNameChange={setNewCampaignName}
                 onCreateCampaign={handleCreateCampaign}
-                creatingCampaign={creatingCampaign}
+                creatingCampaign={createCampaign.isPending}
                 picturePreview={newCampaignPicturePreview}
                 onPictureChange={handleCampaignImageChange}
               />

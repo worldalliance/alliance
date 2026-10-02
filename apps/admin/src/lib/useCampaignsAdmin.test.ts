@@ -1,9 +1,11 @@
 import type { CampaignDto } from "@alliance/shared/client/types.gen";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import {
   useCampaignsAdmin,
+  useCreateCampaignAdmin,
   useInvalidateCampaignsAdmin,
   useUpdateCampaignAdmin,
 } from "./useCampaignsAdmin";
@@ -23,11 +25,19 @@ const campaign = (name: string) =>
   }) satisfies CampaignDto;
 
 let stored: CampaignDto = campaign("Spring drive");
+let createStatus = 200;
 let updateStatus = 200;
 
 serveApi(
   routes({
     "GET /campaigns": () => Response.json([stored]),
+    "POST /campaigns": async ({ request }) => {
+      if (createStatus !== 200)
+        return Response.json({}, { status: createStatus });
+      const { name }: { name: string } = await request.json();
+      stored = { ...campaign(name), id: 2 };
+      return Response.json(stored);
+    },
     "PATCH /campaigns/:id": async ({ request }) => {
       if (updateStatus !== 200) {
         stored = campaign("Changed elsewhere");
@@ -42,6 +52,7 @@ serveApi(
 
 afterEach(() => {
   stored = campaign("Spring drive");
+  createStatus = 200;
   updateStatus = 200;
 });
 
@@ -78,6 +89,48 @@ describe("useInvalidateCampaignsAdmin", () => {
         campaign("Fall drive"),
       ]),
     );
+  });
+});
+
+describe("useCreateCampaignAdmin", () => {
+  it("hands back the created campaign once the list includes it", async () => {
+    const query = queryWrapper();
+    const listed: unknown[] = [];
+    const view = renderHook(
+      () => ({
+        campaigns: useCampaignsAdmin(),
+        create: useCreateCampaignAdmin({
+          onSuccess: (created) =>
+            listed.push(
+              created,
+              query.client.getQueryData(queryKeys.campaignsAdmin()),
+            ),
+          onError: () => {},
+        }),
+      }),
+      query,
+    );
+    await waitFor(() =>
+      expect(view.result.current.campaigns.data).toBeTruthy(),
+    );
+
+    view.result.current.create.mutate({ name: "Fall drive" });
+
+    const created = { ...campaign("Fall drive"), id: 2 };
+    await waitFor(() => expect(listed).toEqual([created, [created]]));
+  });
+
+  it("reports a refused create", async () => {
+    createStatus = 500;
+    const onError = jest.fn();
+    const view = renderHook(
+      () => useCreateCampaignAdmin({ onSuccess: () => {}, onError }),
+      queryWrapper(),
+    );
+
+    view.result.current.mutate({ name: "Fall drive" });
+
+    await waitFor(() => expect(onError).toHaveBeenCalled());
   });
 });
 
