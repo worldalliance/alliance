@@ -1,6 +1,6 @@
 import { actionPartnershipsFindAllResponsesAdmin } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 export const outreachPartnershipResponsesQuery = queryOptions({
   queryKey: queryKeys.outreachPartnershipResponsesAdmin(),
@@ -9,3 +9,7 @@ export const outreachPartnershipResponsesQuery = queryOptions({
       (r) => r.data,
     ),
 });
+
+export function useOutreachPartnershipResponsesAdmin() {
+  return useQuery(outreachPartnershipResponsesQuery);
+}

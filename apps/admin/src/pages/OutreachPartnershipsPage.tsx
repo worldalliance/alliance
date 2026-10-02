@@ -12,10 +12,13 @@ import {
   thrownRefusalMessage,
 } from "@alliance/shared/lib/hey-api";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import React, { useMemo, useRef, useState } from "react";
-import { outreachPartnershipResponsesQuery } from "../lib/outreachPartnershipResponsesQuery";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import {
+  outreachPartnershipResponsesQuery,
+  useOutreachPartnershipResponsesAdmin,
+} from "../lib/useOutreachPartnershipResponsesAdmin";
 import { usePatchQueryData } from "../lib/usePatchQueryData";
 
 const formatDateTime = (value: string): string =>
@@ -37,7 +40,7 @@ const withoutId = (ids: Set<number>, id: number) => {
 };
 
 const OutreachPartnershipsPage: React.FC = () => {
-  const list = useQuery(outreachPartnershipResponsesQuery);
+  const list = useOutreachPartnershipResponsesAdmin();
   const responses = list.data ?? [];
   const loadError = list.isError
     ? thrownRefusalMessage({
