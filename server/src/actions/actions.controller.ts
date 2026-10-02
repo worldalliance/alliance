@@ -35,6 +35,7 @@ import type { JwtRequest } from "src/auth/tokens";
 import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
 import { PreviewNotificationPlanDto } from "src/notifs/dto/notification-plan.dto";
 import { ActionEventNotifDto } from "src/notifs/entities/action-event-notif.dto";
+import { MissedSuitePlanService } from "src/notifs/missed-suite-plans.service";
 import { PosthogService } from "src/posthog/posthog.service";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import {
@@ -137,6 +138,7 @@ export class ActionsController {
     private readonly actionsService: ActionsService,
     private readonly eventEmitter: EventEmitter2,
     private readonly actionEventReminderService: ActionEventReminderService,
+    private readonly missedSuitePlanService: MissedSuitePlanService,
     private readonly forumActionCompleterWorker: ForumActionCompleterWorker,
     private readonly actionFormVariantService: ActionFormVariantService,
     private readonly shareUrlsService: ShareUrlsService,
@@ -883,8 +885,10 @@ export class ActionsController {
   async plansForGroupAdmin(
     @Param("groupId", ParseIntPipe) groupId: number,
   ): Promise<PreviewNotificationPlanDto[]> {
-    return this.actionEventReminderService.findNotificationPlansForGroup(
-      groupId,
+    return this.missedSuitePlanService.toPreview(
+      await this.actionEventReminderService.findNotificationPlansForGroup(
+        groupId,
+      ),
     );
   }
 
@@ -1211,7 +1215,9 @@ export class ActionsController {
     @Param("eventId", ParseIntPipe) eventId: number,
     @Body() body: CreateReminderGroupDto,
   ): Promise<PreviewNotificationPlanDto[]> {
-    return this.actionsService.tentativePlansForGroup(eventId, body);
+    return this.missedSuitePlanService.toPreview(
+      await this.actionsService.tentativePlansForGroup(eventId, body),
+    );
   }
 
   @Post("previewEmailHtml/:eventId")

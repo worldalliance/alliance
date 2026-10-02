@@ -97,3 +97,7 @@ If something has changed on your end or isn’t functioning in the platform, con
 ## Second-miss email wording — 2026-10-01
 
 - ALL-1367 (agent-filed) noted that “Completing this week's task resets the count” implies one task resets the streak, though every required task must be done. The user: “we can just make it say `this week's tasks`.”
+
+## Admin preview of missed-suite groups — 2026-10-02
+
+- ALL-1373 (agent-filed) reported that the admin per-group reminder preview lists every cohort member with the group's own copy, while dispatch sends missed-suite groups at most one notice per member and suite, sends the fixed second-miss copy on a second miss, and sends nothing on a third. The agent explained the issue and recommended labelling missed-suite groups in the admin preview, with exact filtering once the suite has closed, since before then nobody has missed it. The user: "implement the fix for that."

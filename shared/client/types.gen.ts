@@ -3127,6 +3127,10 @@ export type PreviewNotificationPlanDto = {
     scheduledFor: string;
     user: UserDto;
     channels: Array<NotificationChannel>;
+    /**
+     * The member's run of consecutive missed suites, once a missed-suite group's suite has closed
+     */
+    missNumber: number | null;
 };
 
 export type CreateActionActivityDto = {

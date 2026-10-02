@@ -9,12 +9,7 @@ import {
   cohortNotifiesRecipientPersonally,
   ReminderCohortType,
 } from "src/actions/entities/reminder-group.entity";
-import {
-  findMissedSuiteStanding,
-  SUSPENSION_MISSED_SUITE_COUNT,
-  type MissedSuiteStanding,
-  type SuiteOutcome,
-} from "src/actions/missed-suite-streak";
+import { type MissedSuiteStanding } from "src/actions/missed-suite-streak";
 import { EmailStatus } from "src/mail/mail.entity";
 import { MailService, processKeywordReplacements } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
@@ -28,7 +23,7 @@ import {
 } from "src/user/user.utils";
 import { isUniqueViolation } from "src/utils/db-errors";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
-import { DataSource, In, QueryFailedError, type Repository } from "typeorm";
+import { DataSource, QueryFailedError, type Repository } from "typeorm";
 import {
   ActionEventReminderService,
   groupTaskScopeActionIds,
@@ -53,13 +48,15 @@ import {
 import { LOCK_KEYS } from "./lock-keys";
 import { withPgAdvisoryLock } from "./lock-utils";
 import {
-  closedNoticeSuite,
   FIRST_MISS_COPY,
-  isMissedSuiteReminderGroup,
+  getsMissedSuiteNotice,
   missedSuiteNoticeKey,
   missedSuiteNoticeTemplates,
+  MissedSuitePlanKind,
+  resolveMissedSuitePlan,
   type ChannelTemplates,
 } from "./missed-suite-notice";
+import { MissedSuitePlanService } from "./missed-suite-plans.service";
 import { generateCIDForNotif } from "./notif-utils";
 import { NotifsService } from "./notifs.service";
 
@@ -83,6 +80,7 @@ export class ActionEventNotifWorker {
     @InjectRepository(ActionEventNotif)
     private readonly actionEventNotifsRepository: Repository<ActionEventNotif>,
     private readonly reminderService: ActionEventReminderService,
+    private readonly missedSuitePlans: MissedSuitePlanService,
     private readonly pushService: PushService,
     private readonly notifsService: NotifsService,
     @InjectRepository(ExperimentAssignment)
@@ -105,32 +103,53 @@ export class ActionEventNotifWorker {
           now.getTime() - NOTIFICATION_LOOKBACK_WINDOW_MS,
         );
 
-        const duePlans = await this.dropClaimedMissedSuitePlans(
+        const duePlans = await this.missedSuitePlans.dropClaimedPlans(
           await this.reminderService.evaluateNotifications(windowStart, now),
         );
-        const closedSuites = duePlans.some((plan) =>
-          isMissedSuiteReminderGroup(plan.group),
-        )
-          ? await this.actionsService.findClosedSuiteOutcomes(now)
-          : [];
+        const closedSuites = await this.missedSuitePlans.findClosedSuitesFor(
+          duePlans,
+          now,
+        );
         const skippedByGroup = new Map<
           number,
           { problem: string; count: number }
         >();
+        const skip = (plan: NotificationPlan, problem: string) =>
+          skippedByGroup.set(plan.group.id, {
+            problem,
+            count: (skippedByGroup.get(plan.group.id)?.count ?? 0) + 1,
+          });
         for (const plan of duePlans) {
-          if (!isMissedSuiteReminderGroup(plan.group)) {
-            await this.processOne(plan);
-            continue;
+          const resolution = resolveMissedSuitePlan({
+            group: plan.group,
+            userId: plan.user.id,
+            closedSuites,
+          });
+          switch (resolution.kind) {
+            case MissedSuitePlanKind.Ordinary:
+              await this.processOne(plan);
+              break;
+            case MissedSuitePlanKind.NoSuite:
+              skip(plan, "has no suite");
+              break;
+            case MissedSuitePlanKind.SuiteOpen:
+              skip(
+                plan,
+                `suite ${resolution.suite.id} has not closed: a required action has a later deadline than this group, or none`,
+              );
+              break;
+            case MissedSuitePlanKind.Due:
+              await this.processMissedSuite(
+                plan,
+                resolution.suite,
+                resolution.standing,
+              );
+              break;
+            default:
+              throw new Error(
+                `unknown missed-suite plan kind: ${resolution satisfies never}`,
+              );
           }
-          const suite = closedNoticeSuite(plan.group, closedSuites);
-          if (!suite.ok) {
-            skippedByGroup.set(plan.group.id, {
-              problem: suite.error,
-              count: (skippedByGroup.get(plan.group.id)?.count ?? 0) + 1,
-            });
-            continue;
-          }
-          await this.processMissedSuite(plan, suite.value, closedSuites);
         }
         for (const [groupId, { problem, count }] of skippedByGroup) {
           this.logger.error(
@@ -288,24 +307,18 @@ export class ActionEventNotifWorker {
   private async processMissedSuite(
     plan: NotificationPlan,
     suite: ActionSuite,
-    closedSuites: SuiteOutcome[],
+    standing: MissedSuiteStanding | null,
   ) {
     const suiteId = suite.id;
-    const standing = findMissedSuiteStanding({
-      suites: closedSuites,
-      userId: plan.user.id,
-      suiteId,
-    });
-    const notice =
-      standing && standing.missNumber < SUSPENSION_MISSED_SUITE_COUNT
-        ? {
-            standing,
-            copy:
-              standing.missNumber === 1
-                ? FIRST_MISS_COPY[await this.assignFirstMissArm(plan.user.id)]
-                : MissedSuiteNoticeCopy.SecondMissReportV1,
-          }
-        : null;
+    const notice = getsMissedSuiteNotice(standing)
+      ? {
+          standing,
+          copy:
+            standing.missNumber === 1
+              ? FIRST_MISS_COPY[await this.assignFirstMissArm(plan.user.id)]
+              : MissedSuiteNoticeCopy.SecondMissReportV1,
+        }
+      : null;
 
     let notif: ActionEventNotif;
     try {
@@ -379,28 +392,6 @@ export class ActionEventNotifWorker {
       },
     });
     await this.actionEventNotifsRepository.save(notif);
-  }
-
-  // Plan-time dedupe sees only this group's sent notifs, so unsent claims and
-  // sibling groups on the suite re-plan the member every cycle of the window.
-  private async dropClaimedMissedSuitePlans(
-    plans: NotificationPlan[],
-  ): Promise<NotificationPlan[]> {
-    const keyOf = (plan: NotificationPlan) =>
-      isMissedSuiteReminderGroup(plan.group) && plan.group.actionSuite
-        ? missedSuiteNoticeKey(plan.group.actionSuite.id, plan.user.id)
-        : null;
-    const keys = plans.flatMap((plan) => keyOf(plan) ?? []);
-    if (keys.length === 0) return plans;
-    const claimed = new Set(
-      (
-        await this.actionEventNotifsRepository.find({
-          where: { idempotency_key: In(keys) },
-          select: { idempotency_key: true },
-        })
-      ).map((notif) => notif.idempotency_key),
-    );
-    return plans.filter((plan) => !claimed.has(keyOf(plan)));
   }
 
   private async assignFirstMissArm(userId: number): Promise<ExperimentArm> {

@@ -29,6 +29,7 @@ import {
 import { NotificationPlan } from "./dto/notification-plan.dto";
 import { ActionEventNotif } from "./entities/action-event-notif.entity";
 import { ExperimentAssignment } from "./entities/experiment-assignment.entity";
+import { MissedSuitePlanService } from "./missed-suite-plans.service";
 import { NotifsService } from "./notifs.service";
 
 describe("ActionEventNotifWorker.processCustomReminderText", () => {
@@ -57,6 +58,7 @@ describe("ActionEventNotifWorker.processCustomReminderText", () => {
       actionsService,
       {} as Repository<ActionEventNotif>,
       {} as ActionEventReminderService,
+      {} as MissedSuitePlanService,
       {} as PushService,
       {} as NotifsService,
       {} as Repository<ExperimentAssignment>,
@@ -195,6 +197,7 @@ describe("ActionEventNotifWorker.findUncompletedTasksForPlan", () => {
       actionsService,
       {} as Repository<ActionEventNotif>,
       {} as ActionEventReminderService,
+      {} as MissedSuitePlanService,
       {} as PushService,
       {} as NotifsService,
       {} as Repository<ExperimentAssignment>,

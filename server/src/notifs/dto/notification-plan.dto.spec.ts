@@ -24,9 +24,8 @@ function preview(overrides: Partial<User>): PreviewNotificationPlanDto {
     ...overrides,
   });
   return new PreviewNotificationPlanDto({
-    scheduledFor: new Date(0),
-    user,
-    group: new ReminderGroup(),
+    plan: { scheduledFor: new Date(0), user, group: new ReminderGroup() },
+    missNumber: null,
   });
 }
 
