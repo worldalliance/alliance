@@ -574,6 +574,139 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([]);
   });
 
+  it("allows a field to reference a later field on the same page", () => {
+    const schema = baseSchema({
+      pages: [
+        page("p1", [
+          textField("f1", {
+            visibleIfFormula: formula({
+              c1: { kind: "hasValue", when: "f2", hasValue: true },
+            }),
+          }),
+          textField("f2"),
+        ]),
+      ],
+    });
+    expect(validateFormSchema(schema)).toEqual([]);
+  });
+
+  it("flags a direct visibility cycle between two fields", () => {
+    const schema = baseSchema({
+      pages: [
+        page("p1", [
+          textField("f1", {
+            visibleIfFormula: formula({
+              c1: { kind: "hasValue", when: "f2", hasValue: true },
+            }),
+          }),
+          textField("f2", {
+            visibleIfFormula: formula({
+              c1: { kind: "hasValue", when: "f1", hasValue: true },
+            }),
+          }),
+        ]),
+      ],
+    });
+    expect(validateFormSchema(schema)).toEqual([
+      {
+        blockId: "f1",
+        message: "Visibility conditions form a cycle: f1 -> f2 -> f1",
+      },
+    ]);
+  });
+
+  it("flags a chained visibility cycle through a group child and a list sub-field", () => {
+    const list: ListField = {
+      id: "list",
+      type: "input",
+      kind: "list",
+      label: "list",
+      fields: [
+        textField("sub", {
+          visibleIfFormula: formula({
+            c1: { kind: "hasValue", when: "f1", hasValue: true },
+          }),
+        }),
+      ],
+    };
+    const group: FieldGroup = {
+      id: "g1",
+      type: "group",
+      kind: "group",
+      fields: [
+        textField("f1", {
+          visibleIfFormula: formula({
+            c1: { kind: "hasValue", when: "f2", hasValue: true },
+          }),
+        }),
+      ],
+    };
+    const schema = baseSchema({
+      pages: [
+        page("p1", [
+          group,
+          textField("f2", {
+            visibleIfFormula: formula({
+              c1: { kind: "hasValue", when: "sub", hasValue: true },
+            }),
+          }),
+          list,
+        ]),
+      ],
+    });
+    expect(validateFormSchema(schema)).toEqual([
+      {
+        blockId: "f1",
+        message: "Visibility conditions form a cycle: f1 -> f2 -> sub -> f1",
+      },
+    ]);
+  });
+
+  it("flags an element whose visibility reads its own field", () => {
+    const schema = baseSchema({
+      pages: [
+        page("p1", [
+          textField("f1", {
+            visibleIfFormula: formula({
+              c1: { kind: "hasValue", when: "f1", hasValue: true },
+            }),
+          }),
+        ]),
+      ],
+    });
+    expect(validateFormSchema(schema)).toEqual([
+      {
+        blockId: "f1",
+        message: "Visibility conditions form a cycle: f1 -> f1",
+      },
+    ]);
+  });
+
+  it("ignores cross-form references when looking for visibility cycles", () => {
+    const schema = baseSchema({
+      pages: [
+        page("p1", [
+          textField("f1", {
+            visibleIfFormula: formula({
+              c1: {
+                kind: "hasValue",
+                when: "f2",
+                hasValue: true,
+                sourceFormId: 7,
+              },
+            }),
+          }),
+          textField("f2", {
+            visibleIfFormula: formula({
+              c1: { kind: "hasValue", when: "f1", hasValue: true },
+            }),
+          }),
+        ]),
+      ],
+    });
+    expect(validateFormSchema(schema)).toEqual([]);
+  });
+
   it("reports multiple errors across pages and output views", () => {
     const schema = baseSchema({
       pages: [
