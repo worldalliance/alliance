@@ -1,18 +1,16 @@
 import { cn } from "@alliance/shared/styles/util";
 import { isProduction } from "@alliance/sharedweb/lib/config";
-import { useQuery } from "@tanstack/react-query";
 import { LogOut, PanelLeft } from "lucide-react";
 import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Outlet } from "react-router";
 import SidebarNav from "./components/SidebarNav";
 import { useAuth } from "./lib/AuthContext";
 import { useGroupAssignment } from "./lib/GroupAssignmentContext";
-import { outreachPartnershipResponsesQuery } from "./lib/outreachPartnershipResponsesQuery";
+import { useOutreachPartnershipResponsesAdmin } from "./lib/useOutreachPartnershipResponsesAdmin";
 
 const Sidebar: React.FC = () => {
-  const { data: partnershipResponses = [] } = useQuery(
-    outreachPartnershipResponsesQuery,
-  );
+  const { data: partnershipResponses = [] } =
+    useOutreachPartnershipResponsesAdmin();
   const pendingOutreachPartnershipCount = useMemo(
     () =>
       partnershipResponses.filter(
