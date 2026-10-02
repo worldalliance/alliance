@@ -1,7 +1,7 @@
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { countBy } from "es-toolkit";
+import { countBy, partition } from "es-toolkit";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import type { User } from "src/user/entities/user.entity";
@@ -12,11 +12,14 @@ import {
   belongsToBackfill,
   CohortEnrollmentState,
   computeCohortEnrollment,
+  findReadClosedEnrollments,
   heldContractDuringWindow,
   isCohortAdmissible,
   isInCatchUp,
   isSettled,
   openEnrollments,
+  orderByDecisionReads,
+  readsDecisionsOf,
   type CohortEnrollment,
 } from "./cohort-decision";
 import { logCohortPathDisagreements } from "./cohort-path-disagreements";
@@ -59,15 +62,15 @@ export class CohortDecisionService {
    * Launch processing, catch-up, and backfill: decide every admissible,
    * undecided member of every enrolling action, and every member who held a
    * contract during the window of a closed action launched before the
-   * resolver's first decision. One session serves the whole pass, so
-   * every action sees the same profile, tag, and answer snapshot. A failing
-   * action is logged and skipped so it cannot hold back the others.
+   * resolver's first decision. Closed actions in catch-up go first, so open
+   * ones read their decisions instead of their live cohorts. The open and
+   * backfill phases share one session, so their actions see the same
+   * profile, tag, and answer snapshot; each closed action in catch-up takes
+   * its own over the same users. A
+   * failing action is logged and skipped so it cannot hold back the others.
    */
   async resolveAll(now: Date): Promise<void> {
-    const [actions, cutover] = await Promise.all([
-      this.findResolvableActions(now),
-      this.findCutover(),
-    ]);
+    const actions = await this.findResolvableActions(now);
     const closed = actions.flatMap(({ action, enrollment }) => {
       switch (enrollment.state) {
         case CohortEnrollmentState.Closed:
@@ -81,16 +84,7 @@ export class CohortDecisionService {
           );
       }
     });
-    const withDecisions = await this.findActionIdsWithDecisions(
-      closed.map(({ action }) => action.id),
-    );
-    const backfill = closed.filter(({ action, enrollment }) =>
-      belongsToBackfill({
-        enrollment,
-        hasDecisions: withDecisions.has(action.id),
-        cutover,
-      }),
-    );
+    const [backfill] = await this.partitionBackfill(closed);
     const backfillIds = new Set(backfill.map(({ action }) => action.id));
     const catchUp = actions.filter(
       ({ action, enrollment }) =>
@@ -108,11 +102,23 @@ export class CohortDecisionService {
     );
 
     const settledUsers = users.filter((user) => isSettled(user, now));
+    const [closedCatchUp, openCatchUp] = partition(
+      catchUp,
+      ({ enrollment }) => enrollment.state === CohortEnrollmentState.Closed,
+    );
+    // The open phase's session has read no closed action's decisions yet.
+    const failedClosed = await this.decideClosedInOrder({
+      closed: orderByDecisionReads(closedCatchUp),
+      users: settledUsers,
+      population: users,
+      decidedByAction,
+      now,
+    });
 
     // Ordinary decisions first, so a backfill cannot delay this pass's
     // launches. It still holds the lock, so later passes skip until it ends.
     const work = [
-      ...catchUp.map(({ action, enrollment }) => {
+      ...openCatchUp.map(({ action, enrollment }) => {
         const decided = decidedByAction.get(action.id) ?? new Set<number>();
         return {
           action,
@@ -140,16 +146,92 @@ export class CohortDecisionService {
       })),
     ];
     for (const { action, resolve } of work) {
-      const result = await R.fromPromiseFn(async () =>
-        this.insert(await resolve()),
-      );
-      if (R.isFailure(result)) {
-        this.logger.error(
-          `Failed to decide cohort for action ${action.id}`,
-          result.error,
-        );
-      }
+      if (this.readsFailed(action, failedClosed)) continue;
+      await this.tryDecide(action, resolve);
     }
+  }
+
+  private async tryDecide(
+    action: ParsedAction,
+    resolve: () => Promise<DecisionRow[]>,
+  ): Promise<boolean> {
+    const result = await R.fromPromiseFn(async () =>
+      this.insert(await resolve()),
+    );
+    if (R.isFailure(result)) {
+      this.logger.error(
+        `Failed to decide cohort for action ${action.id}`,
+        result.error,
+      );
+    }
+    return R.isSuccess(result);
+  }
+
+  /**
+   * Decides `users` on each closed action in order, each with a fresh session
+   * over `population`: a session never invalidates, and actions that read
+   * each other cache each other's decisions before either is written.
+   * Returns the ids of those that failed or read one that failed.
+   */
+  private async decideClosedInOrder(params: {
+    closed: Array<{ action: ParsedAction; enrollment: CohortEnrollment }>;
+    users: User[];
+    population: User[];
+    decidedByAction: Map<number, Set<number>>;
+    now: Date;
+  }): Promise<Set<number>> {
+    const { closed, users, population, decidedByAction, now } = params;
+    const failed = new Set<number>();
+    for (const { action, enrollment } of closed) {
+      if (this.readsFailed(action, failed)) {
+        failed.add(action.id);
+        continue;
+      }
+      const decided = decidedByAction.get(action.id) ?? new Set<number>();
+      const decidedNow = await this.tryDecide(action, async () =>
+        this.resolveAction({
+          action,
+          enrollment,
+          users: users.filter((user) => !decided.has(user.id)),
+          session: await this.sessionFor(population),
+          now,
+        }),
+      );
+      if (!decidedNow) failed.add(action.id);
+    }
+    return failed;
+  }
+
+  /**
+   * A reader of a closed action that failed would take its live cohort and
+   * keep that reading, so it waits for a later pass or read.
+   */
+  private readsFailed(
+    action: ParsedAction,
+    failedClosed: ReadonlySet<number>,
+  ): boolean {
+    if (!readsDecisionsOf(action.cohortExpression, failedClosed)) return false;
+    this.logger.warn(
+      `Skipped deciding cohort for action ${action.id}: it reads an action that failed`,
+    );
+    return true;
+  }
+
+  /** Splits closed actions into those the pass backfills and the rest. */
+  private async partitionBackfill<
+    T extends { action: ParsedAction; enrollment: { start: Date } },
+  >(closed: T[]): Promise<[T[], T[]]> {
+    const [withDecisions, cutover] = await Promise.all([
+      this.findActionIdsWithDecisions(closed.map(({ action }) => action.id)),
+      this.findCutover(),
+    ]);
+    return partition(closed, ({ action, enrollment }) =>
+      belongsToBackfill({
+        enrollment,
+        hasDecisions: withDecisions.has(action.id),
+        cutover,
+      }),
+    );
   }
 
   private async resolveAction(params: {
@@ -331,17 +413,86 @@ export class CohortDecisionService {
       this.findDecidedUserIds([action.id]),
     ]);
     const decided = decidedByAction.get(action.id) ?? new Set<number>();
+    const settled = users.filter((user) => isSettled(user, now));
+    const failed = await this.decideReadClosedActions({
+      actions: [action],
+      users: settled,
+      now,
+    });
+    if (readsDecisionsOf(action.cohortExpression, failed)) {
+      throw new Error(
+        `Failed to decide the closed actions action ${action.id} reads`,
+      );
+    }
     await this.insert(
       await this.resolveAction({
         action,
         enrollment,
-        users: users.filter(
-          (user) => isSettled(user, now) && !decided.has(user.id),
-        ),
+        users: settled.filter((user) => !decided.has(user.id)),
         session,
         now,
       }),
     );
+  }
+
+  /**
+   * Decides `users` on the closed actions whose decisions `actions` read,
+   * directly or through each other, before `actions` are decided. Until a
+   * member is decided on a closed action, readers take its live cohort, which
+   * counts a member whose prerequisite resolved only as it closed, and a
+   * decision made now would keep that reading. Actions the pass would
+   * backfill are left to it. Returns the ids of those that failed, or that
+   * read one that failed.
+   */
+  private async decideReadClosedActions(params: {
+    actions: ParsedAction[];
+    users: User[];
+    now: Date;
+  }): Promise<Set<number>> {
+    const { actions, users, now } = params;
+    if (users.length === 0) return new Set();
+    const closed = await findReadClosedEnrollments({
+      actions,
+      load: async (ids) =>
+        (
+          await this.actionRepository.find({
+            where: { id: In(ids), publicOnly: false },
+            relations: { events: true },
+          })
+        ).map(parseAction),
+      now,
+    });
+    const admissible = closed.filter(({ action, enrollment }) =>
+      users.some((user) =>
+        isCohortAdmissible({ action, user, at: enrollment.deadline }),
+      ),
+    );
+    if (admissible.length === 0) return new Set();
+    const decidedByAction = await this.findDecidedUserIds(
+      admissible.map(({ action }) => action.id),
+      users.length === 1 ? users[0].id : undefined,
+    );
+    const pending = admissible.filter(({ action }) => {
+      const decided = decidedByAction.get(action.id);
+      return users.some((user) => !decided?.has(user.id));
+    });
+    if (pending.length === 0) return new Set();
+    const [, toDecide] = await this.partitionBackfill(pending);
+    return this.decideClosedInOrder({
+      closed: toDecide,
+      users,
+      population: users,
+      decidedByAction,
+      now,
+    });
+  }
+
+  private async sessionFor(users: User[]): Promise<CohortResolutionSession> {
+    const session = new CohortResolutionSession();
+    await this.actionEventRecipientService.primeActiveUsers(session, () =>
+      Promise.resolve(users),
+    );
+    return session;
   }
 
   /** Decide a member who just became admissible by signing. */
@@ -405,7 +556,8 @@ export class CohortDecisionService {
 
   /**
    * A failing action is logged and skipped so it cannot hold back the
-   * others; returns the ids of those that failed.
+   * others, as is one reading a closed action that failed; returns the ids
+   * of both.
    */
   private async decideForUser(params: {
     user: User;
@@ -416,16 +568,25 @@ export class CohortDecisionService {
     const open = openEnrollments(actions, now);
     if (open.length === 0) return new Set();
     const decided = await this.loadDecidedActionIds(user.id, open);
+    const undecided = open.filter(({ action }) => !decided.has(action.id));
+    if (undecided.length === 0) return new Set();
+    const admissible = undecided.filter(({ action }) =>
+      isCohortAdmissible({ action, user, at: now }),
+    );
+    const failedClosed = await this.decideReadClosedActions({
+      actions: admissible.map(({ action }) => action),
+      users: [user],
+      now,
+    });
+    const [blocked, decidable] = partition(admissible, ({ action }) =>
+      this.readsFailed(action, failedClosed),
+    );
     // The pass's population evaluator, over a population of one, so both
     // writers apply the same cohort rules.
-    const session = new CohortResolutionSession();
-    await this.actionEventRecipientService.primeActiveUsers(session, () =>
-      Promise.resolve([user]),
-    );
+    const session = await this.sessionFor([user]);
     const rows: DecisionRow[] = [];
-    const failed = new Set<number>();
-    for (const { action, enrollment } of open) {
-      if (decided.has(action.id)) continue;
+    const failed = new Set(blocked.map(({ action }) => action.id));
+    for (const { action, enrollment } of decidable) {
       const result = await R.fromPromiseFn(() =>
         this.resolveAction({
           action,
@@ -512,9 +673,13 @@ export class CohortDecisionService {
 
   private async findDecidedUserIds(
     actionIds: number[],
+    onlyUserId?: number,
   ): Promise<Map<number, Set<number>>> {
     const rows = await this.decisionRepository.find({
-      where: { actionId: In(actionIds) },
+      where: {
+        actionId: In(actionIds),
+        ...(onlyUserId === undefined ? {} : { userId: onlyUserId }),
+      },
       select: { actionId: true, userId: true },
     });
     const byAction = new Map<number, Set<number>>();
