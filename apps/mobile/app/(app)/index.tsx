@@ -32,7 +32,7 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import FollowUpFormPanel from "../../components/FollowUpFormPanel";
-import ForumCommentCard from "../../components/ForumCommentCard";
+import HomeFeedItem from "../../components/HomeFeedItem";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import LargeActionCard from "../../components/LargeActionCard";
 import LargeGeneralUpdateCard from "../../components/LargeGeneralUpdateCard";
@@ -43,7 +43,6 @@ import SuccessOverlay from "../../components/SuccessOverlay";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import { TaskNavigatorStepper } from "../../components/system/TaskNavigatorStepper";
 import Text from "../../components/system/Text";
-import UserActivityCard from "../../components/UserActivityCard";
 import { useAuth } from "../../lib/AuthContext";
 import {
   Anchor,
@@ -224,13 +223,6 @@ export default function HomeScreen() {
     homeBodyHeightRef.current = event.nativeEvent.layout.height;
   }, []);
 
-  const handleHomeFeedLike = useCallback(
-    (activityId: number) => {
-      return handleLikeHomeFeedActivity(activityId);
-    },
-    [handleLikeHomeFeedActivity],
-  );
-
   const onHomeFeedEndReached = useCallback(() => {
     if (homeFeedHasNextPage && !homeFeedFetchingNextPage) {
       void fetchNextHomeFeedPage();
@@ -238,50 +230,14 @@ export default function HomeScreen() {
   }, [homeFeedHasNextPage, homeFeedFetchingNextPage, fetchNextHomeFeedPage]);
 
   const renderHomeFeedItem = useCallback(
-    ({ item }: { item: ParsedHomeFeedItemDto }) => {
-      switch (item.type) {
-        case "activity": {
-          if (!item.activity) return null;
-          const activity = item.activity;
-          return (
-            <View
-              className={`border-b-3`}
-              style={{ borderColor: colors.grey[1] }}
-            >
-              <UserActivityCard
-                activity={activity}
-                handleLike={() => handleHomeFeedLike(activity.id)}
-              />
-            </View>
-          );
-        }
-        case "forum_comment": {
-          const fc = item.forumComment;
-          if (!fc) return null;
-          const { comment, postId, postTitle, likedByMe, likesCount } = fc;
-          return (
-            <View
-              className={`border-b-3`}
-              style={{ borderColor: colors.grey[1] }}
-            >
-              <ForumCommentCard
-                comment={comment}
-                postId={postId}
-                postTitle={postTitle}
-                likedByMe={likedByMe}
-                likesCount={likesCount}
-                handleLike={() => handleLikeForumComment(comment.id)}
-              />
-            </View>
-          );
-        }
-        default: {
-          item.type satisfies never;
-          return null;
-        }
-      }
-    },
-    [handleHomeFeedLike, handleLikeForumComment],
+    ({ item }: { item: ParsedHomeFeedItemDto }) => (
+      <HomeFeedItem
+        item={item}
+        onLikeActivity={handleLikeHomeFeedActivity}
+        onLikeForumComment={handleLikeForumComment}
+      />
+    ),
+    [handleLikeHomeFeedActivity, handleLikeForumComment],
   );
 
   useEffect(() => {
