@@ -38,6 +38,7 @@ import {
   UnreadContentType,
 } from "./entities/unread-content.entity";
 import {
+  type ContentTarget,
   type Destination,
   FORMATS_RENDERING_FROM_CONTENT,
   forumReplyContent,
@@ -59,6 +60,7 @@ export type CreateNotifParams = Required<
     /** Null when the location doesn't open a member or group. */
     destination: Destination | null;
     pluralMessage?: NotifMessage;
+    target?: ContentTarget;
   };
 
 type UnreadContentSource =
@@ -322,6 +324,7 @@ export class NotifsService {
     message,
     destination,
     pluralMessage,
+    target,
     ...notif
   }: CreateNotifParams) {
     return this.notifsRepository.create({
@@ -334,6 +337,7 @@ export class NotifsService {
         message: message.segments,
         ...(pluralMessage && { pluralMessage: pluralMessage.segments }),
         ...(destination && { destination }),
+        ...(target && { target }),
       } satisfies NotificationContent,
     });
   }

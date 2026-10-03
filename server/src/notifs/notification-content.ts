@@ -41,7 +41,9 @@ export enum ActionListStyle {
 }
 
 export enum ContentTargetType {
+  Post = "post",
   Comment = "comment",
+  Activity = "activity",
   ActionUpdate = "action_update",
 }
 
@@ -89,13 +91,19 @@ const destinationSchema = z.discriminatedUnion("type", [
 ]);
 export type Destination = z.infer<typeof destinationSchema>;
 
-export type ContentTarget = { type: ContentTargetType; id: number };
+const contentTargetSchema = z.object({
+  type: z.enum(ContentTargetType),
+  id,
+});
+export type ContentTarget = z.infer<typeof contentTargetSchema>;
 
 /**
- * Reads parse every referenced row with this and throw on a mismatch. A
- * segment type new to a table's rows ships with a new `NotificationFormat` (or,
- * for `unread_content`, came with its format column), so code rolled back to
- * before it renders those rows as legacy instead of failing to parse.
+ * Reads parse every referenced row with this and throw on a mismatch. A new
+ * value for a field older code parses (a segment type, a target type) ships
+ * with a new `NotificationFormat` (or, for `unread_content`, came with its
+ * format column), so code rolled back to before it renders those rows as
+ * legacy instead of failing to parse. A new optional field needs no format:
+ * older code drops keys it doesn't know.
  */
 const notificationContentSchema = z.object({
   message: z.array(segmentSchema),
@@ -103,6 +111,8 @@ const notificationContentSchema = z.object({
   pluralMessage: z.array(segmentSchema).optional(),
   /** The entity the row's location opens; once it's gone, the location is dropped. */
   destination: destinationSchema.optional(),
+  /** Content the row is about. */
+  target: contentTargetSchema.optional(),
 });
 export type NotificationContent = z.infer<typeof notificationContentSchema>;
 

@@ -10,6 +10,7 @@ import {
 } from "./entities/notification.entity";
 import {
   action,
+  ContentTargetType,
   joinMessage,
   NotificationFormat,
   parseNotificationContent,
@@ -37,6 +38,13 @@ const likedBy = (liker: string | Labeled, target: (string | Labeled)[]) =>
 
 const likedByCount = (count: string | Labeled, target: (string | Labeled)[]) =>
   joinMessage([count, " people liked your ", ...target]);
+
+const likeContentTargetType = {
+  post: ContentTargetType.Post,
+  comment: ContentTargetType.Comment,
+  "activity:user_completed": ContentTargetType.Activity,
+  "activity:user_submitted_follow_up_form": ContentTargetType.Activity,
+} satisfies Record<LikeNotificationTarget, ContentTargetType>;
 
 @Injectable()
 export class LikeNotificationService {
@@ -127,7 +135,7 @@ export class LikeNotificationService {
         return;
       }
 
-      const target = this.targetLabel({
+      const label = this.targetLabel({
         targetType,
         targetContent,
         targetAction,
@@ -141,12 +149,13 @@ export class LikeNotificationService {
             segment: { type: SegmentType.Participant },
             label: new ProfileDto(liker).displayName,
           },
-          target,
+          label,
         ),
         pluralMessage: likedByCount(
           { segment: { type: SegmentType.Count }, label: "1" },
-          target,
+          label,
         ),
+        target: { type: likeContentTargetType[targetType], id: targetId },
         destination: null,
         targetContent,
         webAppLocation,

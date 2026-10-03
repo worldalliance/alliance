@@ -30,6 +30,7 @@ import { LikeNotificationService } from "src/notifs/like-notification.service";
 import {
   action as actionRef,
   communityDestination,
+  ContentTargetType,
   DELETED_GROUP_LABEL,
   DELETED_MEMBER_LABEL,
   group,
@@ -457,6 +458,9 @@ describe("Notification content stability (e2e)", () => {
       await like(post, first);
       const [row] = await likeGroup(post.id);
       expect(row.format).toBe(NotificationFormat.Referenced);
+      expect(row.content).toMatchObject({
+        target: { type: ContentTargetType.Post, id: post.id },
+      });
 
       await userRepo.update(first.id, { name: "Lee Renamed" });
       expect(await shown(row.id)).toBe(
@@ -495,6 +499,33 @@ describe("Notification content stability (e2e)", () => {
       );
     });
 
+    it("records a liked comment as the group's target", async () => {
+      const post = await createPost("Comment Like Target");
+      const comment = await createReply({
+        parentObjectType: CommentParentObject.Post,
+        parentObjectId: post.id,
+      });
+
+      await likes.createOrUpdate({
+        owner: recipient,
+        liker: await createUser("Cam Liker"),
+        targetType: "comment",
+        targetId: comment.id,
+        webAppLocation: `/forum/post/${post.id}`,
+        targetContent: "Reply body",
+      });
+
+      const [row] = await notifRepo.find({
+        where: {
+          user: { id: recipient.id },
+          groupingKey: `like:comment:${comment.id}`,
+        },
+      });
+      expect(row.content).toMatchObject({
+        target: { type: ContentTargetType.Comment, id: comment.id },
+      });
+    });
+
     it("names an activity's current action, after later likes too", async () => {
       const activityAction = await createVisibleAction("Old Action Name");
       const activity = await ctx.dataSource.getRepository(ActionActivity).save({
@@ -519,6 +550,9 @@ describe("Notification content stability (e2e)", () => {
           user: { id: recipient.id },
           groupingKey: `like:activity:user_completed:${activity.id}`,
         },
+      });
+      expect(row.content).toMatchObject({
+        target: { type: ContentTargetType.Activity, id: activity.id },
       });
       await ctx.dataSource
         .getRepository(Action)
