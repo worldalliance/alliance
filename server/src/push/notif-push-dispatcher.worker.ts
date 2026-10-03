@@ -82,6 +82,7 @@ export class NotifPushDispatcherWorker {
     const toSend = await this.notificationRepository
       .createQueryBuilder("n")
       .leftJoinAndSelect("n.user", "u")
+      .leftJoinAndSelect("n.associatedUsers", "au")
       .where("n.id IN (:...ids)", { ids: claimed.map((c) => c.id) })
       .orderBy('n."sendTime"', "ASC")
       .getMany();
@@ -91,6 +92,7 @@ export class NotifPushDispatcherWorker {
     }
 
     console.log(`found ${toSend.length} notifs to send pushes for`);
+    const dtoById = await this.notifsService.renderNotificationsForPush(toSend);
 
     const messages: CreatePushMessage[] = [];
     for (const notif of toSend) {
@@ -125,6 +127,10 @@ export class NotifPushDispatcherWorker {
         });
         continue;
       }
+      const dto = dtoById.get(notif.id);
+      if (!dto) {
+        continue;
+      }
       messages.push(
         ...(await this.pushService.getPushForAllUserDevices(
           notif.user.id,
@@ -132,9 +138,9 @@ export class NotifPushDispatcherWorker {
             userId: notif.user.id,
             body:
               notif.category === NotificationCategory.ActionUpdate
-                ? actionUpdatePushBody(notif.message)
-                : notif.message,
-            screen: notif.mobileAppLocation || notif.webAppLocation,
+                ? actionUpdatePushBody(dto.message)
+                : dto.message,
+            screen: dto.mobileAppLocation || dto.webAppLocation || undefined,
             notification: notif,
             idempotencyKey: `${notif.id}-${notif.updatedAt.getTime()}`,
           },

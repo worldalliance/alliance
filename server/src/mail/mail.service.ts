@@ -5,6 +5,10 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
 import { Action } from "src/actions/entities/action.entity";
+import {
+  ActionListStyle,
+  formatActionList,
+} from "src/notifs/notification-content";
 import { getTimeLeftString } from "src/notifs/textnotifcontents";
 import {
   groupMembersListUrl,
@@ -61,7 +65,10 @@ export function processKeywordReplacements(
     .replaceAll("#{grouplink}", withCid(groupMembersListUrl(true), context.cid))
     .replaceAll("#{lastname}", lastname)
     .replaceAll("#{action}", context.action.name)
-    .replaceAll("#{tasknames}", context.uncompletedTasksNames.join(", "))
+    .replaceAll(
+      "#{tasknames}",
+      formatActionList(context.uncompletedTasksNames, ActionListStyle.Comma),
+    )
     .replaceAll("#{n}", context.uncompletedTasksCount.toString())
     .replaceAll("#{tasktime}", context.uncompletedTasksTime)
     .replaceAll(
@@ -94,11 +101,7 @@ export function processKeywordReplacements(
     .replaceAll("#{link}", withCid(tasksUrl(true), context.cid))
     .replaceAll(
       "#{formattedtasklist}",
-      context.uncompletedTasksCount === 1
-        ? context.uncompletedTasksNames.join(", ")
-        : context.uncompletedTasksNames
-            .map((name, index) => `${index + 1}. ${name}`)
-            .join("\n"),
+      formatActionList(context.uncompletedTasksNames, ActionListStyle.Numbered),
     );
 
   while (str.includes("|") && str.includes("#{") && str.includes("}")) {

@@ -3092,6 +3092,7 @@ export class ActionsService {
         liker: user,
         targetType: `activity:${activity.type}`,
         targetContent: updatedActivity.action.name,
+        targetAction: updatedActivity.action,
         targetId: updatedActivity.id,
         webAppLocation: actionActivityUrl(
           updatedActivity.action?.id ?? updatedActivity.actionId,

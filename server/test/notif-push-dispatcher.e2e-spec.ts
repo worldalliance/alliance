@@ -1,10 +1,12 @@
 import { milliseconds } from "date-fns";
 import { Expo } from "expo-server-sdk";
+import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import {
   Comment,
   CommentParentObject,
 } from "src/forum/entities/comment.entity";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
+import { Post } from "src/forum/entities/post.entity";
 import { MessagingModule } from "src/messaging/messaging.module";
 import {
   Notification,
@@ -14,6 +16,15 @@ import {
   UnreadContent,
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
+import { LikeNotificationService } from "src/notifs/like-notification.service";
+import {
+  action,
+  member,
+  NotificationFormat,
+  notifMessage,
+  userDestination,
+} from "src/notifs/notification-content";
+import { NotifsService } from "src/notifs/notifs.service";
 import { NotifPushDispatcherWorker } from "src/push/notif-push-dispatcher.worker";
 import { Push } from "src/push/push.entity";
 import { EXPO_CLIENT, PushService } from "src/push/push.service";
@@ -73,6 +84,7 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
     overrides: Partial<Notification> = {},
   ): Promise<Notification> => {
     const notif = notifRepo.create({
+      format: NotificationFormat.Legacy,
       user,
       message: "Test push notification",
       category: NotificationCategory.ActionEvent,
@@ -420,6 +432,101 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       );
 
       expect(messages).toHaveLength(1);
+    });
+
+    it("pushes a like with its sole liker's current name", async () => {
+      const owner = await createUser({ pushesForLikes: true });
+      const liker = await createUser({ name: "Lane Before" });
+      await createDevice(
+        owner,
+        new Date(Date.now() - milliseconds({ hours: 1 })),
+      );
+      const post = await ctx.dataSource.getRepository(Post).save({
+        title: "Pushed Post",
+        author: owner,
+        authors: [],
+        editableContent: { body: "Body", attachments: [] },
+        deleted: false,
+        visibleAt: new Date(),
+      });
+      await ctx.app.get(LikeNotificationService).createOrUpdate({
+        owner,
+        liker,
+        targetType: "post",
+        targetId: post.id,
+        webAppLocation: `/forum/post/${post.id}`,
+        targetContent: post.title,
+      });
+      await userRepo.update(liker.id, { name: "Lane After" });
+      await notifRepo.update(
+        { user: { id: owner.id } },
+        { sendTime: new Date(Date.now() - 1000) },
+      );
+
+      const messages =
+        await dispatcher.findNotificationPushes("test-dispatch-like");
+      expect(
+        messages
+          .filter((message) => message.userId === owner.id)
+          .map((message) => message.body),
+      ).toEqual(["Lane After liked your post: Pushed Post"]);
+    });
+
+    it("pushes a referenced notification with the member's current name", async () => {
+      const user = await createUser();
+      const friend = await createUser({ name: "Quinn Before" });
+      const oneHourAgo = new Date(Date.now() - milliseconds({ hours: 1 }));
+      await createDevice(user, oneHourAgo);
+      await ctx.app.get(NotifsService).sendNotif({
+        user,
+        category: NotificationCategory.FriendRequest,
+        message: notifMessage`${member(friend)} wants to be friends`,
+        destination: userDestination(friend.id),
+        webAppLocation: `/profile/${friend.id}`,
+        associatedUsers: [friend],
+        sendTime: new Date(Date.now() - 1000),
+      });
+
+      await userRepo.update(friend.id, { name: "Quinn After" });
+
+      const messages = await dispatcher.findNotificationPushes(
+        "test-dispatch-referenced",
+      );
+      expect(messages).toHaveLength(1);
+      expect(messages[0].body).toBe("Quinn After wants to be friends");
+    });
+
+    it("does not push a referenced notification whose action was deleted", async () => {
+      const user = await createUser();
+      await createDevice(
+        user,
+        new Date(Date.now() - milliseconds({ hours: 1 })),
+      );
+      const deleted = await ctx.dataSource.getRepository(Action).save({
+        name: "Deleted Action",
+        category: [],
+        body: "Body",
+        visibilityMode: VisibilityMode.Public,
+      });
+      const notif = await ctx.app.get(NotifsService).sendNotif({
+        user,
+        category: NotificationCategory.ActionEvent,
+        message: notifMessage`You missed tasks in ${action(deleted)}`,
+        destination: null,
+        webAppLocation: "/tasks",
+        associatedUsers: [],
+        shouldPush: true,
+        sendTime: new Date(Date.now() - 1000),
+      });
+
+      await ctx.dataSource.getRepository(Action).delete(deleted.id);
+
+      const messages = await dispatcher.findNotificationPushes(
+        "test-dispatch-deleted-action",
+      );
+      expect(
+        messages.filter((message) => message.notification?.id === notif.id),
+      ).toEqual([]);
     });
   });
 });

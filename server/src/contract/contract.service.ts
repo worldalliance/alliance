@@ -12,6 +12,12 @@ import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
+  group,
+  member,
+  notifMessage,
+  userDestination,
+} from "src/notifs/notification-content";
+import {
   NotifsService,
   type CreateNotifParams,
 } from "src/notifs/notifs.service";
@@ -223,7 +229,7 @@ export class ContractService {
                 leader,
                 user,
                 user.pendingCommunity!,
-                `${user.name} signed their contract and was re-added to your group (${user.pendingCommunity!.name})`,
+                notifMessage`${member(user)} signed their contract and was re-added to your group (${group(user.pendingCommunity!)})`,
               ),
           }),
         );
@@ -263,7 +269,7 @@ export class ContractService {
                   leader,
                   user,
                   community,
-                  `${user.name} joined the Alliance and your group (${community.name})`,
+                  notifMessage`${member(user)} joined the Alliance and your group (${group(community)})`,
                 ),
         });
       }
@@ -370,7 +376,8 @@ export class ContractService {
           notifForLeader: ({ leader }) => ({
             user: leader,
             category: NotificationCategory.MemberSuspendedRemovedFromCommunity,
-            message: `${user.name} ${automatic ? "was automatically suspended" : "suspended their contract"} and has been removed from your group (${community.name})`,
+            message: notifMessage`${member(user)} ${automatic ? "was automatically suspended" : "suspended their contract"} and has been removed from your group (${group(community)})`,
+            destination: userDestination(user.id),
             webAppLocation: profileUrl(user.id),
             associatedUsers: [user],
           }),

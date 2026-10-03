@@ -5,6 +5,14 @@ import {
 } from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import {
+  communityDestination,
+  group,
+  member,
+  type NotifMessage,
+  notifMessage,
+  userDestination,
+} from "src/notifs/notification-content";
 import type { CreateNotifParams } from "src/notifs/notifs.service";
 import { groupUrl, profileUrl } from "src/search/approutes";
 import { ReferralSource, User } from "src/user/entities/user.entity";
@@ -64,13 +72,14 @@ export function memberJoinedCommunityNotif(
   leader: User,
   user: User,
   community: Community,
-  message: string,
+  message: NotifMessage,
   associatedUsers: User[] = [user],
 ): CreateNotifParams {
   return {
     user: leader,
     category: NotificationCategory.MemberJoinedCommunity,
     message,
+    destination: communityDestination(community.id),
     webAppLocation: groupUrl({ tab: "members", communityId: community.id }),
     associatedUsers,
   };
@@ -89,14 +98,14 @@ export function buildNotifForLeaderWithReferrer(
         leader,
         user,
         community,
-        `${user.name} joined the Alliance and your group (${community.name})`,
+        notifMessage`${member(user)} joined the Alliance and your group (${group(community)})`,
       );
     }
     return memberJoinedCommunityNotif(
       leader,
       user,
       community,
-      `${user.name} (invited by ${referredBy.name}) joined the Alliance and your group (${community.name})`,
+      notifMessage`${member(user)} (invited by ${member(referredBy)}) joined the Alliance and your group (${group(community)})`,
       [user, referredBy],
     );
   };
@@ -109,7 +118,8 @@ export function newMemberReferredNotif(
   return {
     user: referredBy,
     category: NotificationCategory.NewMemberReferred,
-    message: `${user.name} joined the Alliance`,
+    message: notifMessage`${member(user)} joined the Alliance`,
+    destination: userDestination(user.id),
     webAppLocation: profileUrl(user.id),
     associatedUsers: [user],
   };

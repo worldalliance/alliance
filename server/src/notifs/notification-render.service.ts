@@ -10,14 +10,25 @@ import { actionUrl, commentUrl } from "src/search/approutes";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { In, type Repository } from "typeorm";
 import { NotificationDto } from "./dto/notification.dto";
-import { NotificationCategory } from "./entities/notification.entity";
+import {
+  Notification,
+  NotificationCategory,
+} from "./entities/notification.entity";
 import {
   UnreadContent,
   UnreadContentType,
 } from "./entities/unread-content.entity";
+import {
+  parseNotificationContent,
+  renderNotificationContent,
+  rendersFromContent,
+} from "./notification-content";
+import { NotificationReferencesService } from "./notification-references.service";
 import { getPreviewText } from "./preview-text";
 
-/** Renders unread-content inbox rows; rows it omits are hidden. */
+const withoutDestination = { webAppLocation: "", mobileAppLocation: null };
+
+/** Renders inbox rows; rows it omits are hidden. */
 @Injectable()
 export class NotificationRenderService {
   constructor(
@@ -27,7 +38,50 @@ export class NotificationRenderService {
     private readonly actionUpdateRepository: Repository<ActionUpdate>,
     @InjectRepository(ActionActivity)
     private readonly actionActivityRepository: Repository<ActionActivity>,
+    private readonly references: NotificationReferencesService,
   ) {}
+
+  async renderNotifications(
+    notifs: Notification[],
+  ): Promise<NotificationDto[]> {
+    const referenced = notifs
+      .filter((notif) => rendersFromContent[notif.format])
+      .map((notif) => ({
+        notif,
+        content: parseNotificationContent(notif.content),
+      }));
+    const references = await this.references.resolve(
+      referenced.map(({ content }) => content),
+    );
+    const renderedById = new Map(
+      referenced.flatMap(({ notif, content }) => {
+        const rendered = renderNotificationContent({
+          content,
+          references,
+          count: notif.groupingCount,
+          participant: notif.associatedUsers?.[0],
+        });
+        return rendered ? [[notif.id, rendered] as const] : [];
+      }),
+    );
+
+    return notifs.flatMap((notif) => {
+      if (!rendersFromContent[notif.format]) {
+        return [NotificationDto.fromNotification(notif)];
+      }
+      const rendered = renderedById.get(notif.id);
+      if (!rendered) {
+        return [];
+      }
+      return [
+        NotificationDto.fromNotification({
+          ...notif,
+          message: rendered.message,
+          ...(!rendered.destinationAvailable && withoutDestination),
+        }),
+      ];
+    });
+  }
 
   async renderUnreadContents(
     unreadContents: UnreadContent[],

@@ -16,6 +16,7 @@ import {
   In,
   IsNull,
   LessThan,
+  Not,
   type Repository,
 } from "typeorm";
 import { NotifClickDto } from "./dto/notifclick.dto";
@@ -29,22 +30,34 @@ import {
 } from "./dto/unread-content.dto";
 import { ActionEventNotif } from "./entities/action-event-notif.entity";
 import {
-  NOTIFICATION_CATEGORY_PRIORITIES,
   Notification,
+  NOTIFICATION_CATEGORY_PRIORITIES,
 } from "./entities/notification.entity";
 import {
   UnreadContent,
   UnreadContentType,
 } from "./entities/unread-content.entity";
+import {
+  type Destination,
+  FORMATS_RENDERING_FROM_CONTENT,
+  type NotificationContent,
+  NotificationFormat,
+  type NotifMessage,
+} from "./notification-content";
 import { NotificationRenderService } from "./notification-render.service";
 
 export type CreateNotifParams = Required<
   Pick<
     DeepPartial<Notification>,
-    "user" | "category" | "message" | "webAppLocation" | "associatedUsers"
+    "user" | "category" | "webAppLocation" | "associatedUsers"
   >
 > &
-  DeepPartial<Notification>;
+  Omit<DeepPartial<Notification>, "message" | "format" | "content"> & {
+    message: NotifMessage;
+    /** Null when the location doesn't open a member or group. */
+    destination: Destination | null;
+    pluralMessage?: NotifMessage;
+  };
 
 export type CreateUnreadContentParams = Required<
   Pick<DeepPartial<UnreadContent>, "user" | "contentType" | "contentId">
@@ -97,7 +110,7 @@ export class NotifsService {
     ]);
 
     const merged = [
-      ...notifs.map((notif) => NotificationDto.fromNotification(notif)),
+      ...(await this.renderService.renderNotifications(notifs)),
       ...(await this.renderService.renderUnreadContents(unreadContents)),
     ].sort(
       (a, b) =>
@@ -112,25 +125,36 @@ export class NotifsService {
   }
 
   async getUnreadCount(userId: number): Promise<number> {
-    const [notifCount, unreadContents] = await Promise.all([
-      this.notifsRepository.count({
-        where: {
-          user: { id: userId },
-          sendTime: LessThan(new Date()),
-          readAt: IsNull(),
-        },
-      }),
-      this.unreadContentRepository.find({
-        where: {
-          user: { id: userId },
-          sendTime: LessThan(new Date()),
-          readAt: IsNull(),
-        },
-      }),
-    ]);
+    const unread = {
+      user: { id: userId },
+      sendTime: LessThan(new Date()),
+      readAt: IsNull(),
+    };
+    const [legacyNotifCount, referencedNotifs, unreadContents] =
+      await Promise.all([
+        this.notifsRepository.count({
+          where: {
+            ...unread,
+            format: Not(In(FORMATS_RENDERING_FROM_CONTENT)),
+          },
+        }),
+        this.notifsRepository.find({
+          where: { ...unread, format: In(FORMATS_RENDERING_FROM_CONTENT) },
+          select: {
+            id: true,
+            format: true,
+            content: true,
+            groupingCount: true,
+          },
+        }),
+        this.unreadContentRepository.find({ where: unread }),
+      ]);
     // Counts only what findAll can show: rows whose content is gone never render.
-    const shown = await this.renderService.renderUnreadContents(unreadContents);
-    return notifCount + shown.length;
+    const [shownNotifs, shownContents] = await Promise.all([
+      this.renderService.renderNotifications(referencedNotifs),
+      this.renderService.renderUnreadContents(unreadContents),
+    ]);
+    return legacyNotifCount + shownNotifs.length + shownContents.length;
   }
 
   findOne(id: number) {
@@ -273,11 +297,24 @@ export class NotifsService {
     });
   }
 
-  createNotif(notif: CreateNotifParams) {
-    if (!notif.priority) {
-      notif.priority = NOTIFICATION_CATEGORY_PRIORITIES[notif.category];
-    }
-    return this.notifsRepository.create(notif);
+  createNotif({
+    message,
+    destination,
+    pluralMessage,
+    ...notif
+  }: CreateNotifParams) {
+    return this.notifsRepository.create({
+      ...notif,
+      priority:
+        notif.priority ?? NOTIFICATION_CATEGORY_PRIORITIES[notif.category],
+      format: NotificationFormat.Referenced,
+      message: message.text,
+      content: {
+        message: message.segments,
+        ...(pluralMessage && { pluralMessage: pluralMessage.segments }),
+        ...(destination && { destination }),
+      } satisfies NotificationContent,
+    });
   }
 
   async sendNotif(notif: CreateNotifParams) {
@@ -348,5 +385,12 @@ export class NotifsService {
         ): item is { unreadContent: UnreadContent; dto: NotificationDto } =>
           item !== null,
       );
+  }
+
+  async renderNotificationsForPush(
+    notifs: Notification[],
+  ): Promise<Map<number, NotificationDto>> {
+    const dtos = await this.renderService.renderNotifications(notifs);
+    return new Map(dtos.map((dto) => [dto.id, dto]));
   }
 }
