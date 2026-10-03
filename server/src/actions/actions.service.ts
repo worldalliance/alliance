@@ -3171,6 +3171,16 @@ export class ActionsService {
     return this.findOneActionUpdate(id);
   }
 
+  private async lockActionUpdate(
+    id: number,
+    em: EntityManager,
+  ): Promise<ActionUpdate> {
+    await em.query("SELECT id FROM action_update WHERE id = $1 FOR UPDATE", [
+      id,
+    ]);
+    return this.findOneActionUpdate(id, em);
+  }
+
   async findOneActionUpdate(
     id: number,
     em?: EntityManager,
@@ -3214,10 +3224,7 @@ export class ActionsService {
     // column that differs from the entity read here, so an unlocked
     // read-modify-write would revert a concurrent schema save.
     await this.actionUpdateRepository.manager.transaction(async (em) => {
-      await em.query("SELECT id FROM action_update WHERE id = $1 FOR UPDATE", [
-        id,
-      ]);
-      const actionUpdate = await this.findOneActionUpdate(id, em);
+      const actionUpdate = await this.lockActionUpdate(id, em);
 
       if (schemaWrite) {
         const written = await this.writeSchemaOrThrow({
@@ -3269,21 +3276,21 @@ export class ActionsService {
    * lets the `visibleAt <= now` gate republish it when that date arrives.
    */
   async unpublishActionUpdateUntilDate(id: number): Promise<ActionUpdate> {
-    const actionUpdate = await this.findOneActionUpdate(id);
-    const now = new Date();
-
-    if (actionUpdate.visibleAt === null) {
-      throw new BadRequestException("This update has not been published yet.");
-    }
-    if (actionUpdate.date <= now) {
-      throw new BadRequestException(
-        "The displayed date has already passed, so hiding the update until then would leave it visible.",
-      );
-    }
-
-    // A targeted column write rather than a `save` of the entity read above,
-    // so a concurrent schema save isn't written back over.
     await this.actionUpdateRepository.manager.transaction(async (em) => {
+      const actionUpdate = await this.lockActionUpdate(id, em);
+      const now = new Date();
+
+      if (actionUpdate.visibleAt === null) {
+        throw new BadRequestException(
+          "This update has not been published yet.",
+        );
+      }
+      if (actionUpdate.date <= now) {
+        throw new BadRequestException(
+          "The displayed date has already passed, so hiding the update until then would leave it visible.",
+        );
+      }
+
       await em.update(ActionUpdate, id, { visibleAt: actionUpdate.date });
       await this.notifsService.deferActionUpdateEntries({
         em,
