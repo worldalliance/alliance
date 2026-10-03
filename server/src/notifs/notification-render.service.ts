@@ -1,6 +1,9 @@
 import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { isEqual } from "es-toolkit";
 import { CommentParentObject } from "src/forum/entities/comment.entity";
 import { actionUrl, commentUrl } from "src/search/approutes";
+import { In, Raw, type Repository } from "typeorm";
 import { NotificationDto } from "./dto/notification.dto";
 import {
   Notification,
@@ -33,6 +36,12 @@ const unreadContentTarget = (row: UnreadContent) => {
   return type ? [{ type, id: row.contentId }] : [];
 };
 
+/** Matches rows whose action-update text still follows the update. */
+export const followsLiveActionUpdateText = () =>
+  Raw((column) => `${column} = CAST(:live AS jsonb)`, {
+    live: JSON.stringify(LIVE_ACTION_UPDATE_TEXT),
+  });
+
 /** What a legacy row renders, which matches what it rendered before formats existed. */
 const legacyUnreadContent = {
   [UnreadContentType.ForumReply]: {
@@ -51,7 +60,11 @@ const withoutDestination = { webAppLocation: "", mobileAppLocation: null };
 /** Renders inbox rows, keyed by recipient; rows it omits are hidden. */
 @Injectable()
 export class NotificationRenderService {
-  constructor(private readonly references: NotificationReferencesService) {}
+  constructor(
+    @InjectRepository(UnreadContent)
+    private readonly unreadContentRepository: Repository<UnreadContent>,
+    private readonly references: NotificationReferencesService,
+  ) {}
 
   async renderNotifications(
     byRecipient: ReadonlyMap<number, Notification[]>,
@@ -117,6 +130,7 @@ export class NotificationRenderService {
     });
   }
 
+  /** Rendering an action-update entry still following its update's text freezes the text it shows into the row. */
   async renderUnreadContents(
     byRecipient: ReadonlyMap<number, UnreadContent[]>,
   ): Promise<NotificationDto[]> {
@@ -145,7 +159,11 @@ export class NotificationRenderService {
         .flatMap(unreadContentTarget),
     });
 
-    return parsed.flatMap(({ recipientId, row, content }) => {
+    const delivered = new Map<
+      number,
+      { text: string; rows: { id: number; dto: NotificationDto }[] }
+    >();
+    const dtos = parsed.flatMap(({ recipientId, row, content }) => {
       const access = rendersFromContent[row.format]
         ? references.accessFor(recipientId)
         : references.legacyAccess;
@@ -193,27 +211,36 @@ export class NotificationRenderService {
         }
         case UnreadContentType.ActionUpdate: {
           const actionUpdate = access.actionUpdates.get(row.contentId);
-          const rendered =
-            actionUpdate &&
-            renderNotificationContent({
-              content,
-              references,
-              count: null,
-              actionUpdateText: getPreviewText(actionUpdate.shortNotifString),
-            });
-          if (!actionUpdate || !rendered) {
+          if (!actionUpdate) {
             return [];
           }
-          return [
-            NotificationDto.fromUnreadContent({
-              ...base,
-              category: NotificationCategory.ActionUpdate,
-              message: rendered.message,
-              webAppLocation: actionUrl(actionUpdate.actionId),
-              mobileAppLocation: actionUrl(actionUpdate.actionId),
-              associatedUsers: [],
-            }),
-          ];
+          const text = getPreviewText(actionUpdate.shortNotifString);
+          const rendered = renderNotificationContent({
+            content,
+            references,
+            count: null,
+            actionUpdateText: text,
+          });
+          if (!rendered) {
+            return [];
+          }
+          const dto = NotificationDto.fromUnreadContent({
+            ...base,
+            category: NotificationCategory.ActionUpdate,
+            message: rendered.message,
+            webAppLocation: actionUrl(actionUpdate.actionId),
+            mobileAppLocation: actionUrl(actionUpdate.actionId),
+            associatedUsers: [],
+          });
+          if (
+            rendersFromContent[row.format] &&
+            isEqual(content, LIVE_ACTION_UPDATE_TEXT)
+          ) {
+            const entry = delivered.get(actionUpdate.id) ?? { text, rows: [] };
+            entry.rows.push({ id: row.id, dto });
+            delivered.set(actionUpdate.id, entry);
+          }
+          return [dto];
         }
         case UnreadContentType.ActionEvent:
           return [];
@@ -223,5 +250,51 @@ export class NotificationRenderService {
           );
       }
     });
+
+    // An entry keeps the text it first rendered with for its recipient. One
+    // that something else froze first shows what it stored instead.
+    const deleted = new Set<NotificationDto>();
+    await Promise.all(
+      [...delivered.values()].map(async ({ text, rows }) => {
+        const frozen: { id: number }[] = (
+          await this.unreadContentRepository
+            .createQueryBuilder()
+            .update()
+            .set({ content: { message: [text] } satisfies NotificationContent })
+            .where({
+              id: In(rows.map((row) => row.id)),
+              content: followsLiveActionUpdateText(),
+            })
+            .returning("id")
+            .execute()
+        ).raw;
+        const frozenIds = new Set(frozen.map((row) => row.id));
+        const stale = rows.filter((row) => !frozenIds.has(row.id));
+        if (!stale.length) {
+          return;
+        }
+        const stored = await this.unreadContentRepository.find({
+          where: { id: In(stale.map((row) => row.id)) },
+          select: { id: true, content: true },
+        });
+        const contentById = new Map(stored.map((row) => [row.id, row.content]));
+        for (const { id, dto } of stale) {
+          if (!contentById.has(id)) {
+            deleted.add(dto);
+            continue;
+          }
+          const rendered = renderNotificationContent({
+            content: parseNotificationContent(contentById.get(id)),
+            references,
+            count: null,
+            actionUpdateText: text,
+          });
+          if (rendered) {
+            dto.message = rendered.message;
+          }
+        }
+      }),
+    );
+    return dtos.filter((dto) => !deleted.has(dto));
   }
 }

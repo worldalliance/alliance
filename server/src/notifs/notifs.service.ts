@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { addMilliseconds } from "date-fns";
+import { chunk } from "es-toolkit";
 import { actionUpdateEntrySendTime } from "src/actions/action-update-visibility";
 import { ActionUpdate } from "src/actions/entities/action-update.entity";
 import { Comment } from "src/forum/entities/comment.entity";
@@ -49,7 +50,10 @@ import {
   NotificationFormat,
   type NotifMessage,
 } from "./notification-content";
-import { NotificationRenderService } from "./notification-render.service";
+import {
+  followsLiveActionUpdateText,
+  NotificationRenderService,
+} from "./notification-render.service";
 
 export type CreateNotifParams = Required<
   Pick<
@@ -350,6 +354,41 @@ export class NotifsService {
       },
       { sendTime: until },
     );
+  }
+
+  /**
+   * Renders the update's due entries that still follow its text, which keeps
+   * that text in every one its recipient can see. Call before members stop
+   * seeing the text: before an edit replaces it or unpublishing hides it. It
+   * takes its own pool connections, so call it outside a transaction. An entry
+   * that never rendered and that its recipient can't see right now keeps
+   * following edits.
+   */
+  async freezeActionUpdateCopy(actionUpdateId: number) {
+    const due = await this.unreadContentRepository.find({
+      where: {
+        contentType: UnreadContentType.ActionUpdate,
+        contentId: actionUpdateId,
+        format: In(FORMATS_RENDERING_FROM_CONTENT),
+        sendTime: Raw((sendTime) => `${sendTime} <= clock_timestamp()`),
+        content: followsLiveActionUpdateText(),
+      },
+      relations: { user: true },
+      select: {
+        id: true,
+        format: true,
+        content: true,
+        contentType: true,
+        contentId: true,
+        readAt: true,
+        createdAt: true,
+        sendTime: true,
+        user: { id: true },
+      },
+    });
+    for (const rows of chunk(due, UNREAD_CONTENT_INSERT_CHUNK)) {
+      await this.renderService.renderUnreadContents(byRecipient(rows));
+    }
   }
 
   async createForumReplyNotif(comment: Comment, user: User) {

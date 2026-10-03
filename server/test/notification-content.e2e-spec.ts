@@ -41,6 +41,7 @@ import {
   SegmentType,
   UserNameForm,
 } from "src/notifs/notification-content";
+import { NotificationRenderService } from "src/notifs/notification-render.service";
 import { NotifsService } from "src/notifs/notifs.service";
 import { FormSnapshot } from "src/tasks/entities/formsnapshot.entity";
 import { User } from "src/user/entities/user.entity";
@@ -61,6 +62,7 @@ describe("Notification content stability (e2e)", () => {
   let ctx: TestContext;
   let notifsService: NotifsService;
   let likes: LikeNotificationService;
+  let actionsService: ActionsService;
   let userRepo: Repository<User>;
   let communityRepo: Repository<Community>;
   let notifRepo: Repository<Notification>;
@@ -164,6 +166,7 @@ describe("Notification content stability (e2e)", () => {
     ctx = await createTestApp([]);
     notifsService = ctx.app.get(NotifsService);
     likes = ctx.app.get(LikeNotificationService);
+    actionsService = ctx.app.get(ActionsService);
     userRepo = ctx.dataSource.getRepository(User);
     communityRepo = ctx.dataSource.getRepository(Community);
     notifRepo = ctx.dataSource.getRepository(Notification);
@@ -271,11 +274,281 @@ describe("Notification content stability (e2e)", () => {
       return row;
     };
 
+    const reachShowDate = async (update: ActionUpdate, row: UnreadContent) => {
+      const past = new Date(Date.now() - 1000);
+      await ctx.dataSource
+        .getRepository(ActionUpdate)
+        .update(update.id, { visibleAt: past });
+      await ctx.dataSource
+        .getRepository(UnreadContent)
+        .update(row.id, { sendTime: past });
+    };
+
     const shownText = async (row: UnreadContent) =>
       (await entry(row.id, NotificationSourceType.UnreadContent))?.message;
 
     beforeAll(async () => {
       action = await createVisibleAction("Copy Action");
+    });
+
+    it("keeps the copy an immediate send delivered", async () => {
+      const update = await createUpdate(new Date(), "Original copy");
+      const row = await send(update);
+
+      await actionsService.updateActionUpdate(update.id, {
+        shortNotifString: "Edited copy",
+      });
+
+      expect(await shownText(row)).toBe("Original copy");
+    });
+
+    it("keeps the copy a push carried", async () => {
+      const update = await createUpdate(new Date(), "Pushed copy");
+      const row = await send(update);
+      const [pushed] = await notifsService.getUnreadContentsForPush([row.id]);
+
+      await actionsService.updateActionUpdate(update.id, {
+        shortNotifString: "Edited copy",
+      });
+
+      expect(await shownText(row)).toBe(pushed.dto.message);
+    });
+
+    it("takes more concurrent edits than the pool has connections", async () => {
+      const sent = await Promise.all(
+        Array.from({ length: 12 }, async (_, i) => {
+          const update = await createUpdate(new Date(), `Busy copy ${i}`);
+          return { update, row: await send(update) };
+        }),
+      );
+
+      await Promise.all(
+        sent.map(({ update }) =>
+          actionsService.updateActionUpdate(update.id, {
+            shortNotifString: "Edited copy",
+          }),
+        ),
+      );
+
+      for (const [i, { row }] of sent.entries()) {
+        expect(await shownText(row)).toBe(`Busy copy ${i}`);
+      }
+    }, 20000);
+
+    it("lets a scheduled entry pick up edits until it reaches the inbox", async () => {
+      const sendTime = new Date(Date.now() + milliseconds({ hours: 1 }));
+      const update = await createUpdate(sendTime, "Draft copy");
+      const row = await send(update);
+
+      await actionsService.updateActionUpdate(update.id, {
+        shortNotifString: "Copy at availability",
+      });
+      await ctx.dataSource
+        .getRepository(UnreadContent)
+        .update(row.id, { sendTime: new Date(Date.now() - 1000) });
+      expect(await shownText(row)).toBe("Copy at availability");
+
+      await actionsService.updateActionUpdate(update.id, {
+        shortNotifString: "Copy after availability",
+      });
+      await actionsService.updateActionUpdate(update.id, {
+        shortNotifString: "Copy edited twice",
+      });
+      expect(await shownText(row)).toBe("Copy at availability");
+    });
+
+    it("lets an unpublished update's entries pick up edits until it is published", async () => {
+      const update = await createUpdate(new Date(), "Seen by nobody");
+      const row = await send(update);
+      const updates = ctx.dataSource.getRepository(ActionUpdate);
+      await updates.update(update.id, {
+        visibleAt: new Date(Date.now() + milliseconds({ hours: 1 })),
+      });
+
+      await actionsService.updateActionUpdate(update.id, {
+        shortNotifString: "Final copy",
+      });
+      await updates.update(update.id, {
+        visibleAt: new Date(Date.now() - 1000),
+      });
+
+      expect(await shownText(row)).toBe("Final copy");
+    });
+
+    it("keeps the copy members saw through edits made while the update is hidden", async () => {
+      const update = await createUpdate(new Date(), "Seen copy");
+      const row = await send(update);
+      expect(await shownText(row)).toBe("Seen copy");
+
+      await actionsService.updateActionUpdate(update.id, {
+        date: new Date(Date.now() + milliseconds({ hours: 1 })),
+      });
+      await actionsService.unpublishActionUpdateUntilDate(update.id);
+      await actionsService.updateActionUpdate(update.id, {
+        shortNotifString: "Edited while hidden",
+      });
+      await reachShowDate(update, row);
+
+      expect(await shownText(row)).toBe("Seen copy");
+    });
+
+    it("does not freeze copy when unpublishing an update that is already hidden", async () => {
+      const update = await createUpdate(
+        new Date(Date.now() + milliseconds({ hours: 1 })),
+        "Scheduled copy",
+      );
+      const row = await send(update);
+      await actionsService.unpublishActionUpdateUntilDate(update.id);
+      await ctx.dataSource
+        .getRepository(UnreadContent)
+        .update(row.id, { sendTime: new Date(Date.now() - 1000) });
+
+      await actionsService.updateActionUpdate(update.id, {
+        shortNotifString: "Hidden A",
+      });
+      await actionsService.unpublishActionUpdateUntilDate(update.id);
+      await actionsService.updateActionUpdate(update.id, {
+        shortNotifString: "Hidden B",
+      });
+      await reachShowDate(update, row);
+
+      expect(await shownText(row)).toBe("Hidden B");
+    });
+
+    it("keeps the copy a member saw through edits made while they can't see the action", async () => {
+      const gapAction = await createVisibleAction("Gap Action");
+      const update = await createUpdate(new Date(), "Seen copy", gapAction);
+      const row = await send(update);
+      expect(await shownText(row)).toBe("Seen copy");
+      const actions = ctx.dataSource.getRepository(Action);
+
+      await actions.update(gapAction.id, {
+        visibilityMode: VisibilityMode.ParticipatingGroups,
+      });
+      expect(await shownText(row)).toBeUndefined();
+      await actionsService.updateActionUpdate(update.id, {
+        shortNotifString: "Edited during gap",
+      });
+      await actions.update(gapAction.id, {
+        visibilityMode: VisibilityMode.Public,
+      });
+
+      expect(await shownText(row)).toBe("Seen copy");
+    });
+
+    it("freezes an available entry when unpublishing, even if it never rendered", async () => {
+      const update = await createUpdate(new Date(), "Available copy");
+      const row = await send(update);
+
+      await actionsService.updateActionUpdate(update.id, {
+        date: new Date(Date.now() + milliseconds({ hours: 1 })),
+      });
+      await actionsService.unpublishActionUpdateUntilDate(update.id);
+      await actionsService.updateActionUpdate(update.id, {
+        shortNotifString: "Edited while hidden",
+      });
+      await reachShowDate(update, row);
+
+      expect(await shownText(row)).toBe("Available copy");
+    });
+
+    it("lets an entry that never rendered follow edits made while its recipient can't see the action", async () => {
+      const gapAction = await createVisibleAction("Unrendered Gap Action");
+      const update = await createUpdate(
+        new Date(),
+        "Available copy",
+        gapAction,
+      );
+      const row = await send(update);
+      const actions = ctx.dataSource.getRepository(Action);
+
+      await actions.update(gapAction.id, {
+        visibilityMode: VisibilityMode.ParticipatingGroups,
+      });
+      await actionsService.updateActionUpdate(update.id, {
+        shortNotifString: "Edited during gap",
+      });
+      await actions.update(gapAction.id, {
+        visibilityMode: VisibilityMode.Public,
+      });
+
+      expect(await shownText(row)).toBe("Edited during gap");
+    });
+
+    describe("a row loaded before the copy changed", () => {
+      const loaded = async (row: UnreadContent) =>
+        ctx.dataSource
+          .getRepository(UnreadContent)
+          .findOneOrFail({ where: { id: row.id }, relations: { user: true } });
+
+      const render = (row: UnreadContent) =>
+        ctx.app
+          .get(NotificationRenderService)
+          .renderUnreadContents(new Map([[recipient.id, [row]]]));
+
+      it("shows the copy an edit froze first", async () => {
+        const update = await createUpdate(new Date(), "Old copy");
+        const stale = await loaded(await send(update));
+
+        await actionsService.updateActionUpdate(update.id, {
+          shortNotifString: "New copy",
+        });
+
+        expect((await render(stale)).map((dto) => dto.message)).toEqual([
+          "Old copy",
+        ]);
+      });
+
+      it("drops it once the row is gone", async () => {
+        const update = await createUpdate(new Date(), "Gone copy");
+        const row = await send(update);
+        const stale = await loaded(row);
+
+        await ctx.dataSource.getRepository(UnreadContent).delete(row.id);
+
+        expect(await render(stale)).toEqual([]);
+      });
+    });
+
+    it("lets entries of an action members can't see yet pick up edits", async () => {
+      const draft = await ctx.dataSource.getRepository(Action).save({
+        name: "Not Launched",
+        category: [],
+        body: "Body",
+        visibilityMode: VisibilityMode.Public,
+      });
+      const update = await createUpdate(new Date(), "Never seen", draft);
+      const row = await send(update);
+      expect(await shownText(row)).toBeUndefined();
+
+      await actionsService.updateActionUpdate(update.id, {
+        shortNotifString: "Launch copy",
+      });
+      await ctx.dataSource.getRepository(ActionEvent).save({
+        title: "Members act",
+        description: "Member phase",
+        newStatus: ActionStatus.MemberAction,
+        date: new Date(Date.now() - 1000),
+        action: draft,
+      });
+
+      expect(await shownText(row)).toBe("Launch copy");
+    });
+
+    it("gives entries the final copy when one edit publishes the update and changes its text", async () => {
+      const update = await createUpdate(new Date(), "Hidden draft");
+      const row = await send(update);
+      await ctx.dataSource
+        .getRepository(ActionUpdate)
+        .update(update.id, { visibleAt: null });
+
+      await actionsService.updateActionUpdate(update.id, {
+        shortNotifString: "Final copy",
+        schema: { blocks: [{ type: "display", kind: "text", text: "Body" }] },
+        expectedSchemaSnapshotId: update.schemaSnapshotId,
+      });
+
+      expect(await shownText(row)).toBe("Final copy");
     });
 
     it("keeps a name written into the copy as written", async () => {

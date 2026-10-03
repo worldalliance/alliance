@@ -3248,6 +3248,17 @@ export class ActionsService {
       return { schema, expectedSchemaSnapshotId };
     });
 
+    // The freeze takes its own pool connections, so it runs before the
+    // transaction rather than while holding one.
+    if (
+      rest.shortNotifString !== undefined &&
+      rest.shortNotifString !==
+        (await this.actionUpdateRepository.findOneByOrFail({ id }))
+          .shortNotifString
+    ) {
+      await this.notifsService.freezeActionUpdateCopy(id);
+    }
+
     // Same locking rationale as `updateGeneralUpdate`: `save` writes back every
     // column that differs from the entity read here, so an unlocked
     // read-modify-write would revert a concurrent schema save.
@@ -3304,6 +3315,8 @@ export class ActionsService {
    * lets the `visibleAt <= now` gate republish it when that date arrives.
    */
   async unpublishActionUpdateUntilDate(id: number): Promise<ActionUpdate> {
+    // Before the transaction, as in `updateActionUpdate`.
+    await this.notifsService.freezeActionUpdateCopy(id);
     await this.actionUpdateRepository.manager.transaction(async (em) => {
       const actionUpdate = await this.lockActionUpdate(id, em);
       const now = new Date();
