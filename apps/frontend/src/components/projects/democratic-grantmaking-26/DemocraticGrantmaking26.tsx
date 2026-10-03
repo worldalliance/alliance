@@ -117,7 +117,7 @@ export default function DemocraticGrantmaking26() {
           />
           <section className={cn(SITE_COL, "mt-10 lg:hidden")}>
             <BandHeading onDark size={BandHeadingSize.Section} className="mb-6">
-              Oversight
+              Experts
             </BandHeading>
             <FeaturedPeople />
           </section>
