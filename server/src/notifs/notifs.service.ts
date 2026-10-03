@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { addMilliseconds } from "date-fns";
+import { actionUpdateEntrySendTime } from "src/actions/action-update-visibility";
 import { ActionUpdate } from "src/actions/entities/action-update.entity";
 import { Comment } from "src/forum/entities/comment.entity";
 import { MailService } from "src/mail/mail.service";
@@ -17,6 +18,7 @@ import {
   IsNull,
   LessThan,
   Not,
+  Raw,
   type Repository,
 } from "typeorm";
 import { NotifClickDto } from "./dto/notifclick.dto";
@@ -299,14 +301,43 @@ export class NotifsService {
     em?: EntityManager;
   }) {
     const { actionUpdate, users, em } = params;
+    const sendTime = actionUpdateEntrySendTime(actionUpdate);
     return this.sendUnreadContents(
       users.map((user) => ({
         user,
         contentType: UnreadContentType.ActionUpdate,
         contentId: actionUpdate.id,
-        sendTime: actionUpdate.date,
+        sendTime,
       })),
       em,
+    );
+  }
+
+  /**
+   * Moves an update's entries that aren't due yet to `until`, so entries kept
+   * back while it is unpublished arrive, and push, when it shows. Entries
+   * already due were delivered and stay put.
+   */
+  async deferActionUpdateEntries(params: {
+    actionUpdateId: number;
+    until: Date;
+    em: EntityManager;
+  }) {
+    const { actionUpdateId, until, em } = params;
+    await em.update(
+      UnreadContent,
+      {
+        contentType: UnreadContentType.ActionUpdate,
+        contentId: actionUpdateId,
+        pushClaimedBy: IsNull(),
+        sendTime: Raw(
+          (sendTime) => `${sendTime} > now() AND ${sendTime} < :until`,
+          {
+            until,
+          },
+        ),
+      },
+      { sendTime: until },
     );
   }
 

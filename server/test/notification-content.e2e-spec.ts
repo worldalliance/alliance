@@ -1,5 +1,6 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { milliseconds } from "date-fns";
+import { ActionsService } from "src/actions/actions.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
@@ -43,6 +44,7 @@ import {
 import { NotifsService } from "src/notifs/notifs.service";
 import { FormSnapshot } from "src/tasks/entities/formsnapshot.entity";
 import { User } from "src/user/entities/user.entity";
+import { UserService } from "src/user/user.service";
 import type { Repository } from "typeorm";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
@@ -287,6 +289,118 @@ describe("Notification content stability (e2e)", () => {
       await userRepo.update(named.id, { name: "Jordan Changed" });
 
       expect(await shownText(row)).toBe("Jordan Literal will host the call");
+    });
+
+    it("moves a scheduled entry to the date an unpublished update shows", async () => {
+      const update = await createUpdate(
+        new Date(Date.now() + milliseconds({ hours: 1 })),
+        "Moved later",
+      );
+      const row = await send(update);
+      const shows = new Date(Date.now() + milliseconds({ hours: 2 }));
+      const actions = ctx.app.get(ActionsService);
+
+      await actions.updateActionUpdate(update.id, { date: shows });
+      await actions.unpublishActionUpdateUntilDate(update.id);
+
+      expect(
+        (
+          await ctx.dataSource
+            .getRepository(UnreadContent)
+            .findOneByOrFail({ id: row.id })
+        ).sendTime,
+      ).toEqual(shows);
+    });
+
+    it("leaves an entry already claimed for push where it is when unpublishing", async () => {
+      const update = await createUpdate(
+        new Date(Date.now() + milliseconds({ hours: 1 })),
+        "Already pushed",
+      );
+      const row = await send(update);
+      const rows = ctx.dataSource.getRepository(UnreadContent);
+      await rows.update(row.id, { pushClaimedBy: "dispatch" });
+      const actions = ctx.app.get(ActionsService);
+
+      await actions.updateActionUpdate(update.id, {
+        date: new Date(Date.now() + milliseconds({ hours: 2 })),
+      });
+      await actions.unpublishActionUpdateUntilDate(update.id);
+
+      expect((await rows.findOneByOrFail({ id: row.id })).sendTime).toEqual(
+        row.sendTime,
+      );
+    });
+
+    it("leaves an entry already due where it is when unpublishing", async () => {
+      const update = await createUpdate(
+        new Date(Date.now() + milliseconds({ hours: 1 })),
+        "Already due",
+      );
+      const row = await send(update);
+      const rows = ctx.dataSource.getRepository(UnreadContent);
+      const due = new Date(Date.now() - milliseconds({ minutes: 1 }));
+      await rows.update(row.id, { sendTime: due, readAt: new Date() });
+
+      await ctx.app
+        .get(ActionsService)
+        .unpublishActionUpdateUntilDate(update.id);
+
+      expect((await rows.findOneByOrFail({ id: row.id })).sendTime).toEqual(
+        due,
+      );
+    });
+
+    it("dates entries by an edit and unpublish that land while notify loads its audience", async () => {
+      const update = await createUpdate(
+        new Date(Date.now() + milliseconds({ hours: 1 })),
+        "Raced",
+      );
+      await ctx.dataSource
+        .getRepository(ActionUpdate)
+        .update(update.id, { notifyType: ActionUpdateNotifyType.AllMembers });
+      const actions = ctx.app.get(ActionsService);
+      const users = ctx.app.get(UserService);
+      const findAllUsers = users.findAllUsers.bind(users);
+      const shows = new Date(Date.now() + milliseconds({ hours: 2 }));
+      const audience = jest
+        .spyOn(users, "findAllUsers")
+        .mockImplementation(async () => {
+          await actions.updateActionUpdate(update.id, { date: shows });
+          await actions.unpublishActionUpdateUntilDate(update.id);
+          return findAllUsers();
+        });
+
+      try {
+        await actions.notifyActionUpdate(update.id);
+      } finally {
+        audience.mockRestore();
+      }
+
+      const row = await ctx.dataSource
+        .getRepository(UnreadContent)
+        .findOneByOrFail({
+          contentType: UnreadContentType.ActionUpdate,
+          contentId: update.id,
+          user: { id: recipient.id },
+        });
+      expect(row.sendTime).toEqual(shows);
+    });
+
+    it("starts an entry sent while its update is hidden when the update shows", async () => {
+      const shows = new Date(Date.now() + milliseconds({ hours: 3 }));
+      const update = await createUpdate(shows, "Sent while hidden");
+      const actions = ctx.app.get(ActionsService);
+      await actions.unpublishActionUpdateUntilDate(update.id);
+      await actions.updateActionUpdate(update.id, { date: new Date() });
+
+      const row = await send(
+        await ctx.dataSource
+          .getRepository(ActionUpdate)
+          .findOneByOrFail({ id: update.id }),
+      );
+
+      expect(row.sendTime).toEqual(shows);
     });
 
     it("hides the entry once the update is deleted", async () => {

@@ -17,3 +17,11 @@ export function isActionUpdatePublished(
 ): boolean {
   return update.visibleAt !== null && update.visibleAt <= now;
 }
+
+/** When an update's inbox entries come due: not before members can see it. */
+export function actionUpdateEntrySendTime(
+  update: Pick<ActionUpdate, "date" | "visibleAt">,
+): Date {
+  const { date, visibleAt } = update;
+  return visibleAt && visibleAt > date ? visibleAt : date;
+}

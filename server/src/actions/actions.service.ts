@@ -3159,8 +3159,10 @@ export class ActionsService {
         );
       }
 
+      // The claim holds the row lock, so this reads the update as of any
+      // edit or unpublish that committed first.
       await this.notifsService.createActionUpdateNotifs({
-        actionUpdate,
+        actionUpdate: await em.findOneByOrFail(ActionUpdate, { id }),
         users: recipients,
         em,
       });
@@ -3281,14 +3283,22 @@ export class ActionsService {
 
     // A targeted column write rather than a `save` of the entity read above,
     // so a concurrent schema save isn't written back over.
-    await this.actionUpdateRepository.update(id, {
-      visibleAt: actionUpdate.date,
+    await this.actionUpdateRepository.manager.transaction(async (em) => {
+      await em.update(ActionUpdate, id, { visibleAt: actionUpdate.date });
+      await this.notifsService.deferActionUpdateEntries({
+        em,
+        actionUpdateId: id,
+        until: actionUpdate.date,
+      });
     });
 
     return this.findOneActionUpdate(id);
   }
 
-  /** Undoes `unpublishActionUpdateUntilDate` before the date it waits for. */
+  /**
+   * Undoes `unpublishActionUpdateUntilDate` before the date it waits for. The
+   * entries it moved to that date stay there.
+   */
   async publishActionUpdateNow(id: number): Promise<ActionUpdate> {
     const actionUpdate = await this.findOneActionUpdate(id);
     const now = new Date();
