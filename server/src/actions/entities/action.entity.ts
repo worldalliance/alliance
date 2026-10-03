@@ -61,6 +61,19 @@ export enum VisibilityMode {
   ParticipatingGroups = "participating_groups",
 }
 
+/** The newest event before `at` sets the status; with none, it's Draft. */
+export function actionStatusAt(
+  events: Pick<ActionEvent, "date" | "newStatus">[],
+  at: Date,
+): ActionStatus {
+  const latestPastEvent = findLeast(
+    events,
+    (a, b) => b.date.getTime() - a.date.getTime(), // reverse order
+    (event) => event.date < at,
+  );
+  return latestPastEvent ? latestPastEvent.newStatus : ActionStatus.Draft;
+}
+
 @Entity()
 @Unique(["taskFormId"])
 export class Action {
@@ -417,14 +430,7 @@ export class Action {
       throw new Error("`events` relation is not loaded");
     }
     if (this._status === null) {
-      const latestPastEvent = findLeast(
-        this.events,
-        (a, b) => b.date.getTime() - a.date.getTime(), // reverse order
-        (event) => event.date < new Date(),
-      );
-      this._status = latestPastEvent
-        ? latestPastEvent.newStatus
-        : ActionStatus.Draft;
+      this._status = actionStatusAt(this.events, new Date());
     }
     return this._status;
   }

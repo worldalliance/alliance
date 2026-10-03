@@ -54,7 +54,7 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
-import { milliseconds } from "date-fns";
+import { addMilliseconds, max, milliseconds } from "date-fns";
 import { groupBy } from "es-toolkit";
 import { CommunityService } from "src/community/community.service";
 import { Community } from "src/community/entities/community.entity";
@@ -146,6 +146,7 @@ import {
 } from "./action-activity-status";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import {
+  actionUpdateEntrySendTime,
   isActionUpdatePublished,
   publishedActionUpdateWhere,
 } from "./action-update-visibility";
@@ -218,6 +219,7 @@ import {
 } from "./entities/action-update.entity";
 import {
   Action,
+  actionStatusAt,
   parseAction,
   type ParsedAction,
 } from "./entities/action.entity";
@@ -3134,6 +3136,7 @@ export class ActionsService {
         "This update has already been notified about.",
       );
     }
+    await this.assertActionShowsWhenEntriesArrive(actionUpdate);
 
     // Resolve the audience before claiming: a failure here (a deleted tag, say)
     // has sent nothing, and leaving the claim unset keeps the retry open.
@@ -3145,6 +3148,16 @@ export class ActionsService {
     // audience unnotified and unreachable: the retry would see the claim and
     // conflict.
     await this.actionUpdateRepository.manager.transaction(async (em) => {
+      // An archive of the action waits until the sends commit. Locking the
+      // action before the update matches the order deleting an action takes.
+      const lockedActions: unknown[] = await em.query(
+        "SELECT id FROM action WHERE id = $1 FOR SHARE",
+        [actionUpdate.actionId],
+      );
+      if (lockedActions.length === 0) {
+        throw new NotFoundException("This update's action has been deleted.");
+      }
+
       const claimed = await em
         .createQueryBuilder()
         .update(ActionUpdate)
@@ -3161,14 +3174,42 @@ export class ActionsService {
 
       // The claim holds the row lock, so this reads the update as of any
       // edit or unpublish that committed first.
+      const claimedUpdate = await em.findOneByOrFail(ActionUpdate, { id });
+      await this.assertActionShowsWhenEntriesArrive(claimedUpdate, em);
       await this.notifsService.createActionUpdateNotifs({
-        actionUpdate: await em.findOneByOrFail(ActionUpdate, { id }),
+        actionUpdate: claimedUpdate,
         users: recipients,
         em,
       });
     });
 
     return this.findOneActionUpdate(id);
+  }
+
+  private async assertActionShowsWhenEntriesArrive(
+    actionUpdate: ActionUpdate,
+    em: EntityManager = this.actionUpdateRepository.manager,
+  ) {
+    const action = await em.findOneOrFail(Action, {
+      where: { id: actionUpdate.actionId },
+      relations: { events: true },
+    });
+    if (action.archived) {
+      throw new BadRequestException(
+        "This action is archived, so members can't see it. Unarchive it before sending the notification.",
+      );
+    }
+    // Entries due in the past arrive now. An event dated at the arrival has
+    // taken effect by then.
+    const arrival = max([actionUpdateEntrySendTime(actionUpdate), new Date()]);
+    if (
+      actionStatusAt(action.events, addMilliseconds(arrival, 1)) ===
+      ActionStatus.Draft
+    ) {
+      throw new BadRequestException(
+        "This action is still a draft when the notification arrives. Date the update on or after the action's launch, or send it once the action has launched.",
+      );
+    }
   }
 
   private async lockActionUpdate(
