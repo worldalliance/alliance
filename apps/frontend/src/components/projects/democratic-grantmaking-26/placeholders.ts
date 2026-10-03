@@ -37,6 +37,6 @@ export const ABOUT_SECTIONS = [
   },
   {
     heading: "Why we're doing this",
-    body: "Charitable funding is usually decided by a few people, and it's difficult for smaller nonprofits to receive funding. We want to test a new democratic process that pairs what members care about with what experts know. After the project, we'll work with [Jan Maly](https://janmaly.de/) of [WU Vienna](https://www.wu.ac.at/en/dpkm) to publish research on the results.",
+    body: "Typical grantmaking has experts judge both what matters and what works. We're testing a split: members decide what they care about, and experts estimate what each nonprofit could do with the money. This process could become a regular, transparent way for donors to give and for members to direct real funding. After the project, we'll work with [Jan Maly](https://janmaly.de/) of [WU Vienna](https://www.wu.ac.at/en/dpkm) to publish research on the results.",
   },
 ];

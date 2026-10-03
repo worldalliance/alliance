@@ -65,7 +65,7 @@ export default function DemocraticGrantmaking26() {
             className={cn(
               SITE_COL,
               GRID,
-              "pt-16 lg:-translate-y-[2vh] lg:flex-1 lg:items-center lg:pt-[clamp(1.5rem,5vh,4rem)]",
+              "pt-16 lg:-translate-y-[2vh] lg:flex-1 lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-center lg:gap-x-[3.5%] lg:pt-[clamp(1.5rem,5vh,4rem)]",
             )}
           >
             <div className="flex flex-col gap-4 lg:gap-[clamp(1rem,2.5vh,2rem)]">

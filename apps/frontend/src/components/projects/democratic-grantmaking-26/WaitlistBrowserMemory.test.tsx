@@ -128,7 +128,7 @@ test("forgets a newly joined browser and hides its link", async () => {
     screen.queryByRole("button", { name: "Forget this browser" }),
   ).toBeNull();
 
-  fireEvent.change(screen.getByLabelText("Full Name"), {
+  fireEvent.change(screen.getByLabelText("Full name"), {
     target: { value: "Test Person" },
   });
   fireEvent.change(screen.getByLabelText("Email"), {
@@ -139,7 +139,7 @@ test("forgets a newly joined browser and hides its link", async () => {
     { target: { value: "To help" } },
   );
   fireEvent.click(screen.getByLabelText("I commit to join the Alliance."));
-  fireEvent.click(screen.getByRole("button", { name: /Join the Waitlist/ }));
+  fireEvent.click(screen.getByRole("button", { name: /Join the waitlist/ }));
   fireEvent.click(await forgetButton());
 
   await screen.findByLabelText("Email");
@@ -157,7 +157,7 @@ test("holds the form until the browser state answers", async () => {
   expect(screen.getByLabelText("Email").hasAttribute("disabled")).toBe(true);
   expect(
     screen
-      .getByRole("button", { name: /Join the Waitlist/ })
+      .getByRole("button", { name: /Join the waitlist/ })
       .hasAttribute("disabled"),
   ).toBe(true);
 

@@ -199,8 +199,8 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         name="name"
         type="text"
         autoComplete="name"
-        placeholder="Full Name"
-        aria-label="Full Name"
+        placeholder="Full name"
+        aria-label="Full name"
         required
         maxLength={200}
         disabled={restoring}
@@ -245,7 +245,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         disabled={restoring || submit.isPending || !referralKnown || linkFailed}
         className={ACCOUNT_BUTTON}
       >
-        {submit.isPending ? "Joining…" : "Join the Waitlist"}
+        {submit.isPending ? "Joining…" : "Join the waitlist"}
         <SiteArrow className="size-2.5" />
       </Button>
       {submit.isError && !linkFailed && (
