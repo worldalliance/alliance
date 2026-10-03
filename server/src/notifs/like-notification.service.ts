@@ -280,7 +280,11 @@ export class LikeNotificationService {
         const content = parseNotificationContent(notif.content);
         const rendered = renderNotificationContent({
           content,
-          references: await this.references.resolve([content], manager),
+          references: await this.references.resolve({
+            contents: [content],
+            targets: [],
+            manager,
+          }),
           count: users.length,
           participant: users[0],
         });

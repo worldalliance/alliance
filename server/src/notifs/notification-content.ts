@@ -37,6 +37,11 @@ export enum ActionListStyle {
   Numbered = "numbered",
 }
 
+export enum ContentTargetType {
+  Comment = "comment",
+  ActionUpdate = "action_update",
+}
+
 export const DELETED_MEMBER_LABEL = "Deleted member";
 export const DELETED_GROUP_LABEL = "Deleted group";
 
@@ -78,6 +83,8 @@ const destinationSchema = z.discriminatedUnion("type", [
   communityRefSchema,
 ]);
 export type Destination = z.infer<typeof destinationSchema>;
+
+export type ContentTarget = { type: ContentTargetType; id: number };
 
 /**
  * Reads parse every referenced row with this and throw on a mismatch. A new

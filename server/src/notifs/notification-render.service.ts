@@ -1,14 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { ActionActivity } from "src/actions/entities/action-activity.entity";
-import { ActionUpdate } from "src/actions/entities/action-update.entity";
-import {
-  Comment,
-  CommentParentObject,
-} from "src/forum/entities/comment.entity";
+import { CommentParentObject } from "src/forum/entities/comment.entity";
 import { actionUrl, commentUrl } from "src/search/approutes";
 import { ProfileDto } from "src/user/dto/user.dto";
-import { In, type Repository } from "typeorm";
 import { NotificationDto } from "./dto/notification.dto";
 import {
   Notification,
@@ -19,6 +12,7 @@ import {
   UnreadContentType,
 } from "./entities/unread-content.entity";
 import {
+  ContentTargetType,
   parseNotificationContent,
   renderNotificationContent,
   rendersFromContent,
@@ -26,20 +20,18 @@ import {
 import { NotificationReferencesService } from "./notification-references.service";
 import { getPreviewText } from "./preview-text";
 
+const unreadContentTargetType = {
+  [UnreadContentType.ForumReply]: ContentTargetType.Comment,
+  [UnreadContentType.ActionUpdate]: ContentTargetType.ActionUpdate,
+  [UnreadContentType.ActionEvent]: null,
+} satisfies Record<UnreadContentType, ContentTargetType | null>;
+
 const withoutDestination = { webAppLocation: "", mobileAppLocation: null };
 
 /** Renders inbox rows; rows it omits are hidden. */
 @Injectable()
 export class NotificationRenderService {
-  constructor(
-    @InjectRepository(Comment)
-    private readonly commentRepository: Repository<Comment>,
-    @InjectRepository(ActionUpdate)
-    private readonly actionUpdateRepository: Repository<ActionUpdate>,
-    @InjectRepository(ActionActivity)
-    private readonly actionActivityRepository: Repository<ActionActivity>,
-    private readonly references: NotificationReferencesService,
-  ) {}
+  constructor(private readonly references: NotificationReferencesService) {}
 
   async renderNotifications(
     notifs: Notification[],
@@ -50,9 +42,10 @@ export class NotificationRenderService {
         notif,
         content: parseNotificationContent(notif.content),
       }));
-    const references = await this.references.resolve(
-      referenced.map(({ content }) => content),
-    );
+    const references = await this.references.resolve({
+      contents: referenced.map(({ content }) => content),
+      targets: [],
+    });
     const renderedById = new Map(
       referenced.flatMap(({ notif, content }) => {
         const rendered = renderNotificationContent({
@@ -86,56 +79,17 @@ export class NotificationRenderService {
   async renderUnreadContents(
     unreadContents: UnreadContent[],
   ): Promise<NotificationDto[]> {
-    const forumReplyIds = unreadContents
-      .filter((content) => content.contentType === UnreadContentType.ForumReply)
-      .map((content) => content.contentId);
-    const actionUpdateIds = unreadContents
-      .filter(
-        (content) => content.contentType === UnreadContentType.ActionUpdate,
-      )
-      .map((content) => content.contentId);
-
-    const [comments, actionUpdates] = await Promise.all([
-      forumReplyIds.length
-        ? this.commentRepository.find({
-            where: { id: In(forumReplyIds), deleted: false },
-            relations: { author: true, editableContent: true },
-          })
-        : Promise.resolve([]),
-      actionUpdateIds.length
-        ? this.actionUpdateRepository.find({
-            where: { id: In(actionUpdateIds) },
-            relations: { action: true },
-          })
-        : Promise.resolve([]),
-    ]);
-
-    const activityActionMap = new Map<number, number>();
-    const activityIds = comments
-      .filter(
-        (comment) => comment.parentObjectType === CommentParentObject.Activity,
-      )
-      .map((comment) => comment.parentObjectId);
-    if (activityIds.length) {
-      const activities = await this.actionActivityRepository.find({
-        where: { id: In(activityIds) },
-        relations: { action: true },
-      });
-      for (const activity of activities) {
-        activityActionMap.set(activity.id, activity.action.id);
-      }
-    }
-
-    const commentById = new Map(
-      comments.map((comment) => [comment.id, comment]),
-    );
-    const actionUpdateById = new Map(
-      actionUpdates.map((update) => [update.id, update]),
-    );
+    const references = await this.references.resolve({
+      contents: [],
+      targets: unreadContents.flatMap((unreadContent) => {
+        const type = unreadContentTargetType[unreadContent.contentType];
+        return type ? [{ type, id: unreadContent.contentId }] : [];
+      }),
+    });
 
     return unreadContents.flatMap((unreadContent) => {
       if (unreadContent.contentType === UnreadContentType.ForumReply) {
-        const comment = commentById.get(unreadContent.contentId);
+        const comment = references.comments.get(unreadContent.contentId);
         if (!comment?.editableContent) {
           return [];
         }
@@ -150,13 +104,13 @@ export class NotificationRenderService {
             webAppLocation: commentUrl(
               comment,
               comment.parentObjectType === CommentParentObject.Activity
-                ? activityActionMap.get(comment.parentObjectId)
+                ? references.activityActionIds.get(comment.parentObjectId)
                 : undefined,
             ),
             mobileAppLocation: commentUrl(
               comment,
               comment.parentObjectType === CommentParentObject.Activity
-                ? activityActionMap.get(comment.parentObjectId)
+                ? references.activityActionIds.get(comment.parentObjectId)
                 : undefined,
             ),
             readAt: unreadContent.readAt,
@@ -171,7 +125,9 @@ export class NotificationRenderService {
       }
 
       if (unreadContent.contentType === UnreadContentType.ActionUpdate) {
-        const actionUpdate = actionUpdateById.get(unreadContent.contentId);
+        const actionUpdate = references.actionUpdates.get(
+          unreadContent.contentId,
+        );
         if (!actionUpdate) {
           return [];
         }
