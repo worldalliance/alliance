@@ -37,7 +37,7 @@ export function WaitlistConfirmation({
         <Check className="text-green size-6 shrink-0" aria-hidden />
         {mobilized ? "You’re invited to join" : "You’re on the waitlist"}
       </p>
-      <p className="text-zinc-600 lg:text-white/85">
+      <p className="text-white/85">
         {mobilized
           ? "We emailed you an invitation to join the Alliance."
           : "We’ll email you when you can join the Alliance."}
@@ -66,7 +66,7 @@ export function WaitlistConfirmation({
             </button>
           </div>
           {copied && copyFeedback[copied].error && (
-            <p className="text-sm text-red-600 lg:text-red-200" role="alert">
+            <p className="text-sm text-red-200" role="alert">
               Couldn’t copy the link. Select it and copy it yourself.
             </p>
           )}

@@ -52,6 +52,18 @@ function ProjectProgress() {
   );
 }
 
+function FeaturedPeople({ className }: { className?: string }) {
+  return (
+    <ul className={cn("flex flex-wrap gap-x-8 gap-y-3", className)}>
+      {FEATURED_PEOPLE.map((person) => (
+        <li key={person.name} className="first:basis-full lg:first:basis-auto">
+          <PersonRow person={person} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function DemocraticGrantmaking26() {
   return (
     <SiteRoot className="bg-white">
@@ -65,7 +77,7 @@ export default function DemocraticGrantmaking26() {
             className={cn(
               SITE_COL,
               GRID,
-              "pt-16 lg:-translate-y-[2vh] lg:flex-1 lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-center lg:gap-x-[3.5%] lg:pt-[clamp(1.5rem,5vh,4rem)]",
+              "pt-10 lg:-translate-y-[2vh] lg:flex-1 lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-center lg:gap-x-[3.5%] lg:pt-[clamp(1.5rem,5vh,4rem)]",
             )}
           >
             <div className="flex flex-col gap-4 lg:gap-[clamp(1rem,2.5vh,2rem)]">
@@ -92,15 +104,9 @@ export default function DemocraticGrantmaking26() {
               >
                 Join the Alliance to choose which nonprofit gets it.
               </SiteSubtitle>
-              <ul className="mt-4 hidden flex-wrap gap-x-8 gap-y-3 lg:flex">
-                {FEATURED_PEOPLE.map((person) => (
-                  <li key={person.name}>
-                    <PersonRow person={person} />
-                  </li>
-                ))}
-              </ul>
+              <FeaturedPeople className="mt-4 hidden lg:flex" />
             </div>
-            <WaitlistSignupForm className="w-full max-w-lg lg:max-w-none lg:gap-[clamp(0.75rem,1.5vh,1.25rem)]" />
+            <WaitlistSignupForm className="w-full lg:gap-[clamp(0.75rem,1.5vh,1.25rem)]" />
           </div>
           <div className={cn(SITE_COL, "mt-14 lg:mt-0")}>
             <ProjectProgress />
@@ -109,6 +115,12 @@ export default function DemocraticGrantmaking26() {
             currentIdx={0}
             className={cn(SITE_COL, "mt-10 lg:mt-0")}
           />
+          <section className={cn(SITE_COL, "mt-10 lg:hidden")}>
+            <BandHeading onDark size={BandHeadingSize.Section} className="mb-6">
+              Oversight
+            </BandHeading>
+            <FeaturedPeople />
+          </section>
         </div>
         <div className={cn(SITE_COL, GRID, "pt-10 pb-16 lg:pt-14 lg:pb-24")}>
           <div className="flex flex-col gap-10">

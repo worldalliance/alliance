@@ -39,7 +39,7 @@ function ReferralBanner({ referral }: { referral: WaitlistReferralDto }) {
     organization &&
     organization.entryCount >= SOCIAL_PROOF_THRESHOLD;
   return (
-    <p className="mb-3 flex items-center justify-center gap-x-2 text-base text-zinc-500 lg:text-white/85">
+    <p className="mb-3 flex items-center justify-center gap-x-2 text-base text-white/85">
       {!inviterName && organization?.picture && (
         <AvatarProfile
           pfp={organization.picture}
@@ -52,23 +52,18 @@ function ReferralBanner({ referral }: { referral: WaitlistReferralDto }) {
       {counted ? (
         <span>
           Join {organization.entryCount.toLocaleString("en-US")} others from{" "}
-          <span className="font-medium text-black lg:text-white">
-            {organization.name}
-          </span>
+          <span className="font-medium text-white">{organization.name}</span>
         </span>
       ) : (
         <span>
-          <span className="font-medium text-black lg:text-white">
-            {inviter}
-          </span>{" "}
-          invited you to the Alliance
+          <span className="font-medium text-white">{inviter}</span> invited you
+          to the Alliance
         </span>
       )}
     </p>
   );
 }
 
-/** A white card on narrow screens; from `lg` it sits straight on the primary band. */
 export function WaitlistSignupForm({ className }: { className?: string }) {
   const queryClient = useQueryClient();
   const {
@@ -125,11 +120,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
     });
   };
 
-  const card = cn(
-    "flex flex-col gap-3 bg-white p-5 text-[var(--site-ink)] sm:p-6 lg:bg-transparent lg:p-0 lg:text-white",
-    className,
-  );
-  const cardStyle = { borderRadius: "var(--site-radius-card)" };
+  const card = cn("flex flex-col gap-3 text-white", className);
 
   const confirmed = submit.isSuccess
     ? {
@@ -144,7 +135,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
       };
   if (confirmed) {
     return (
-      <div className={card} style={cardStyle}>
+      <div className={card}>
         <WaitlistConfirmation {...confirmed} mailEnabled={mailEnabled} />
         {browserMemory}
       </div>
@@ -152,7 +143,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
   }
 
   return (
-    <form className={card} style={cardStyle} onSubmit={onSubmit}>
+    <form className={card} onSubmit={onSubmit}>
       {browserMemory}
       {linkFailed ? (
         <div
@@ -190,7 +181,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         <ReferralBanner referral={referral.data} />
       ) : (
         hasCode && (
-          <p className="mb-3 text-center text-base text-zinc-500 lg:text-white/85">
+          <p className="mb-3 text-center text-base text-white/85">
             Checking your invitation link…
           </p>
         )
@@ -249,7 +240,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         <SiteArrow className="size-2.5" />
       </Button>
       {submit.isError && !linkFailed && (
-        <p className="text-sm text-red-600 lg:text-red-200" role="alert">
+        <p className="text-sm text-red-200" role="alert">
           {thrownRefusalMessage({
             error: submit.error,
             fallback: SUBMIT_FALLBACK,
@@ -257,7 +248,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
           })}
         </p>
       )}
-      <p className="text-center text-sm text-zinc-600 lg:text-white/85">
+      <p className="text-center text-sm text-white/85">
         By signing up you agree to get updates.
       </p>
     </form>

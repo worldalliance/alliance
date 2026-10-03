@@ -41,12 +41,12 @@ export function ForgetBrowser({ onForgotten }: { onForgotten: () => void }) {
         type="button"
         onClick={() => forget.mutate()}
         disabled={forget.isPending}
-        className="self-start text-sm text-zinc-600 underline underline-offset-2 lg:text-white/85"
+        className="self-start text-sm text-white/85 underline underline-offset-2"
       >
         {forget.isPending ? "Forgetting…" : "Forget this browser"}
       </button>
       {forget.isError && (
-        <p className="text-sm text-red-600 lg:text-red-200" role="alert">
+        <p className="text-sm text-red-200" role="alert">
           {thrownRefusalMessage({
             error: forget.error,
             fallback: FORGET_FALLBACK,

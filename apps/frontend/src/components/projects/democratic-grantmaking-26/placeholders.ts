@@ -7,10 +7,10 @@ export interface ProjectPerson {
 
 export const FEATURED_PEOPLE: ProjectPerson[] = [
   {
-    name: "Dustin Palmer",
-    imageSrc: "/assets/democratic-grantmaking-26/dustin-palmer.jpg",
-    role: "Expert",
-    href: "https://www.linkedin.com/in/dustin-palmer/",
+    name: "Jan Maly",
+    imageSrc: "/assets/democratic-grantmaking-26/jan-maly.jpg",
+    role: "Research Advisor",
+    href: "https://janmaly.de/",
   },
   {
     name: "Healy Hamilton",
@@ -19,10 +19,10 @@ export const FEATURED_PEOPLE: ProjectPerson[] = [
     href: "https://www.linkedin.com/in/healy-hamilton-a1a20942/",
   },
   {
-    name: "Jan Maly",
-    imageSrc: "/assets/democratic-grantmaking-26/jan-maly.jpg",
-    role: "Research Advisor",
-    href: "https://janmaly.de/",
+    name: "Dustin Palmer",
+    imageSrc: "/assets/democratic-grantmaking-26/dustin-palmer.jpg",
+    role: "Expert",
+    href: "https://www.linkedin.com/in/dustin-palmer/",
   },
 ];
 

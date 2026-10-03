@@ -15,7 +15,7 @@ export function WaitlistLinkRequest({ email }: { email: string }) {
 
   if (request.isSuccess) {
     return (
-      <p className="text-zinc-600 lg:text-white/85">
+      <p className="text-white/85">
         Check {email} for your personal link. We send it at most once a day.
       </p>
     );
@@ -34,7 +34,7 @@ export function WaitlistLinkRequest({ email }: { email: string }) {
         {request.isPending ? "Sending…" : "Email me my link"}
       </Button>
       {request.isError && (
-        <p className="text-sm text-red-600 lg:text-red-200" role="alert">
+        <p className="text-sm text-red-200" role="alert">
           {thrownRefusalMessage({
             error: request.error,
             fallback: REQUEST_FALLBACK,
