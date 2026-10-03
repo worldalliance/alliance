@@ -12,7 +12,6 @@ import {
 } from "@alliance/common/forms/device";
 import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
-  flattenPageItems,
   isQuestionField,
   type AnyField,
   type FormSchema,
@@ -534,7 +533,7 @@ const FormRenderer = ({
       let didUpdate = false;
 
       for (const page of schema.pages) {
-        for (const element of flattenPageItems(page.fields)) {
+        for (const element of page.fields) {
           if (!isQuestionField(element)) continue;
           if (element.kind !== "list") continue;
           const listField = element;
@@ -1214,7 +1213,7 @@ const FormRenderer = ({
           )}
         >
           {currentPage !== null &&
-            flattenPageItems(currentPage.fields).map((element, index) =>
+            currentPage.fields.map((element, index) =>
               renderElement(element, index),
             )}
         </div>

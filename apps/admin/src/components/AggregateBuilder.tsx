@@ -1,6 +1,5 @@
 import { fieldPickerLabel } from "@alliance/common/forms/element-descriptors";
 import {
-  flattenPageItems,
   isQuestionField,
   type AggregateViewDisplayType,
   type AggregateViewSchema,
@@ -21,7 +20,7 @@ const inputPad = cn(inputBase, "px-3 py-2");
 const collectFields = (schema: FormSchema): AnyField[] => {
   const result: AnyField[] = [];
   schema.pages.forEach((page) => {
-    flattenPageItems(page.fields).forEach((field) => {
+    page.fields.forEach((field) => {
       if (isQuestionField(field)) {
         result.push(field);
       }

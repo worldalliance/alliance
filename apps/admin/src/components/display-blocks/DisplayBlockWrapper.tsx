@@ -21,8 +21,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { withBlockVisibility } from "../../lib/blockVisibility";
 import type { AddressedWrite } from "../../lib/displayBlockById";
 import { ElementJsonButton } from "../FormJsonButton";
+import {
+  JoinVisibilityButtons,
+  SharedVisibilityNotice,
+  useVisibilityGroupMember,
+} from "../VisibilityGroupContext";
 import {
   ConditionalVisibility,
   type OutputBlockOption,
@@ -136,6 +142,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   const { success, error: toastError, confirm } = useToast();
   const perViewerOptionsAllowed = usePerViewerOptionsAllowed();
   const showConditional = Boolean(block && onUpdate && perViewerOptionsAllowed);
+  const groupMember = useVisibilityGroupMember(block?.id);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const optionsMenuRef = useRef<HTMLDivElement | null>(null);
   const hasAttemptedUserLoadRef = useRef(false);
@@ -387,7 +394,15 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
 
   const handleConditionalChange = (updates: {
     visibleIfFormula?: VisibleIfFormula;
-  }) => updateBlockWide(updates as Partial<T>);
+  }) => {
+    if (!onUpdate || !block) return;
+    const next = withBlockVisibility(block, updates.visibleIfFormula);
+    // Both keys exist on every display block kind, so they fit any `T`.
+    onUpdate({
+      visibleIfFormula: next.visibleIfFormula,
+      manualUserContent: next.manualUserContent,
+    } as Partial<T>);
+  };
 
   const handleConditionalVisibilityToggle = (checked: boolean) => {
     setShowConditionalVisibilityControl(checked);
@@ -586,7 +601,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   };
 
   const showConditionalControls =
-    showConditionalVisibilityControl && showConditional;
+    showConditionalVisibilityControl && showConditional && !groupMember;
 
   const renderContent =
     typeof children === "function"
@@ -650,8 +665,9 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
         </span>
       )}
       <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <JoinVisibilityButtons elementId={block?.id} />
         <ElementJsonButton />
-        {showConditional && (
+        {showConditional && (!groupMember || perUserContent) && (
           <div className="relative" ref={optionsMenuRef}>
             <button
               type="button"
@@ -675,17 +691,19 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
             </button>
             {isMenuOpen && (
               <div className="absolute right-0 mt-1 w-64 rounded-lg border border-gray-200 bg-white py-2 text-sm shadow-lg z-20">
-                <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
-                  <input
-                    type="checkbox"
-                    className="mr-2"
-                    checked={showConditionalVisibilityControl}
-                    onChange={(event) =>
-                      handleConditionalVisibilityToggle(event.target.checked)
-                    }
-                  />
-                  Use conditional visibility
-                </label>
+                {!groupMember && (
+                  <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
+                    <input
+                      type="checkbox"
+                      className="mr-2"
+                      checked={showConditionalVisibilityControl}
+                      onChange={(event) =>
+                        handleConditionalVisibilityToggle(event.target.checked)
+                      }
+                    />
+                    Use conditional visibility
+                  </label>
+                )}
                 {perUserContent && (
                   <div className="mt-2 border-t border-gray-100 pt-2">
                     <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
@@ -1046,6 +1064,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
             </div>
           </div>
         )}
+        {groupMember && <SharedVisibilityNotice detach={groupMember.detach} />}
         {showConditionalControls && (
           <div className="border-t border-gray-200 pt-4">
             <ConditionalVisibility

@@ -6,10 +6,8 @@ import {
 } from "@alliance/common/forms/display-blocks";
 import {
   anyFieldSchema,
-  fieldGroupSchema,
   fieldHasOptions,
   type AnyField,
-  type FieldGroup,
 } from "@alliance/common/forms/form-schema";
 import { fieldsWithSavedChoices } from "@alliance/common/forms/formula-options";
 import type {
@@ -84,7 +82,6 @@ const storedSchemaShape = z.looseObject({
 
 type SchemaElement =
   | { type: "question"; field: AnyField }
-  | { type: "group"; group: FieldGroup }
   | { type: "display"; block: DisplayBlock };
 
 type ParsedPage = {
@@ -98,8 +95,6 @@ type ParsedPage = {
 const parseElement = (raw: unknown): SchemaElement | null => {
   const field = anyFieldSchema.safeParse(raw);
   if (field.success) return { type: "question", field: field.data };
-  const group = fieldGroupSchema.safeParse(raw);
-  if (group.success) return { type: "group", group: group.data };
   const display = displayBlockSchema.safeParse(raw);
   if (display.success) return { type: "display", block: display.data };
   return null;
@@ -128,11 +123,6 @@ const questionFieldsOf = (pages: ParsedPage[]): AnyField[] => {
   for (const page of pages) {
     for (const element of page.elements) {
       if (element.type === "question") push(element.field);
-      if (element.type === "group") {
-        for (const child of element.group.fields) {
-          if (child.type === "input") push(child);
-        }
-      }
     }
   }
   return fields;
@@ -314,22 +304,6 @@ const renderSchemaElement = (element: SchemaElement): string | null => {
       return renderQuestion(element.field);
     case "display":
       return renderDisplay(element.block);
-    case "group":
-      return tag(
-        "group",
-        [
-          ["id", element.group.id],
-          ["label", element.group.label],
-        ],
-        element.group.fields
-          .map((child) =>
-            child.type === "input"
-              ? renderQuestion(child)
-              : renderDisplay(child),
-          )
-          .filter((rendered): rendered is string => rendered !== null)
-          .join(""),
-      );
     default:
       throw new Error(`unknown schema element: ${element satisfies never}`);
   }

@@ -344,28 +344,14 @@ export const anyFieldSchema = z.discriminatedUnion("kind", [
 export type AnyField = z.infer<typeof anyFieldSchema>;
 export type FieldKind = AnyField["kind"];
 
-export const fieldGroupSchema = z.strictObject({
-  type: z.literal("group"),
-  kind: z.literal("group"),
-  id: z.string(),
-  label: z.string().optional(),
-  required: z.boolean().optional(),
-  visibleIfFormula: visibleIfFormulaSchema.optional(),
-  requiredIfFormula: visibleIfFormulaSchema.optional(),
-  fields: z.array(z.union([anyFieldSchema, displayBlockSchema])),
-});
-export type FieldGroup = z.infer<typeof fieldGroupSchema>;
-
-export type PageItem = AnyField | DisplayBlock | FieldGroup;
+export type PageItem = AnyField | DisplayBlock;
 
 export const pageSchema = z.strictObject({
   id: z.string(),
   title: z.string().optional(),
   description: z.string().optional(),
   visibleIfFormula: visibleIfFormulaSchema.optional(),
-  fields: z.array(
-    z.union([anyFieldSchema, displayBlockSchema, fieldGroupSchema]),
-  ),
+  fields: z.array(z.union([anyFieldSchema, displayBlockSchema])),
 });
 
 export type Page = z.infer<typeof pageSchema>;
@@ -452,41 +438,10 @@ export function isDisplayBlock(field: PageItem): field is DisplayBlock {
   return field.type === "display";
 }
 
-export function isFieldGroup(field: object): field is FieldGroup {
-  return "type" in field && field.type === "group";
-}
-
-export function flattenPageItems(
-  items: PageItem[],
-): Array<AnyField | DisplayBlock> {
-  const out: Array<AnyField | DisplayBlock> = [];
-  for (const item of items) {
-    if (isFieldGroup(item)) {
-      out.push(...item.fields);
-    } else {
-      out.push(item);
-    }
-  }
-  return out;
-}
-
-export function collectGroupByFieldId(pages: Page[]): Map<string, FieldGroup> {
-  const map = new Map<string, FieldGroup>();
-  for (const page of pages) {
-    for (const item of page.fields ?? []) {
-      if (!isFieldGroup(item)) continue;
-      for (const child of item.fields) {
-        if (child.id) map.set(child.id, item);
-      }
-    }
-  }
-  return map;
-}
-
 export function collectPageByFieldId(pages: Page[]): Map<string, Page> {
   const map = new Map<string, Page>();
   for (const page of pages) {
-    for (const field of flattenPageItems(page.fields ?? [])) {
+    for (const field of page.fields ?? []) {
       if (isQuestionField(field)) map.set(field.id, page);
     }
   }
@@ -496,7 +451,7 @@ export function collectPageByFieldId(pages: Page[]): Map<string, Page> {
 export function collectFieldLookup(pages: Page[]): Map<string, AnyField> {
   const lookup = new Map<string, AnyField>();
   for (const page of pages) {
-    for (const element of flattenPageItems(page.fields)) {
+    for (const element of page.fields) {
       if (!isQuestionField(element)) continue;
       lookup.set(element.id, element);
       // List sub-fields are looked up too, so a condition can reference one.
@@ -508,18 +463,6 @@ export function collectFieldLookup(pages: Page[]): Map<string, AnyField> {
     }
   }
   return lookup;
-}
-
-export function mapPageItems(
-  items: PageItem[],
-  mapLeaf: (item: AnyField | DisplayBlock) => AnyField | DisplayBlock,
-): PageItem[] {
-  return items.map((item) => {
-    if (isFieldGroup(item)) {
-      return { ...item, fields: item.fields.map(mapLeaf) };
-    }
-    return mapLeaf(item);
-  });
 }
 
 const OPTION_FIELD_KINDS = {
@@ -564,7 +507,7 @@ export function collectVariableResolutionFields(
   schema: FormSchema,
 ): AnyField[] {
   return (schema.pages ?? []).flatMap((page) =>
-    flattenPageItems(page.fields ?? []).filter(isQuestionField),
+    (page.fields ?? []).filter(isQuestionField),
   );
 }
 
@@ -628,14 +571,6 @@ export function forEachCondition(
   for (const page of schema.pages ?? []) {
     if (visitFormula(page.visibleIfFormula)) return true;
     for (const element of page.fields ?? []) {
-      if (isFieldGroup(element)) {
-        if (visitFormula(element.visibleIfFormula)) return true;
-        if (visitFormula(element.requiredIfFormula)) return true;
-        for (const child of element.fields) {
-          if (visitElement(child)) return true;
-        }
-        continue;
-      }
       if (visitElement(element)) return true;
     }
   }

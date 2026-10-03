@@ -2,10 +2,8 @@ import type { DeviceVisibilityTarget } from "./device";
 import {
   asCards,
   collectFieldLookup,
-  collectGroupByFieldId,
   collectPageByFieldId,
   collectVariableResolutionFields,
-  flattenPageItems,
   isQuestionField,
   variableInputFieldsById,
   type AnyField,
@@ -87,7 +85,7 @@ export const collectOutputFieldMap = (
 ): Map<string, AnyField> => {
   const map = new Map<string, AnyField>();
   schema.pages.forEach((page) => {
-    flattenPageItems(page.fields).forEach((field) => {
+    page.fields.forEach((field) => {
       if (isQuestionField(field)) {
         map.set(field.id, field);
       }
@@ -147,7 +145,6 @@ export const savedOutputAnswers = ({
   const context = visibilityContext(validatorResults, deviceType);
   const conditionLookups = {
     fieldLookup: collectFieldLookup(schema.pages),
-    groupByFieldId: collectGroupByFieldId(schema.pages),
     pageByFieldId: collectPageByFieldId(schema.pages),
   };
   const savedResponse = {

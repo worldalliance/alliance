@@ -1,9 +1,6 @@
 import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import { ExceptionEvent } from "@alliance/common/analytics";
-import {
-  flattenPageItems,
-  FormSchema,
-} from "@alliance/common/forms/form-schema";
+import { FormSchema } from "@alliance/common/forms/form-schema";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
 import {
   FormResponseDto,
@@ -184,7 +181,7 @@ const ActionTaskPanelForm = ({
   const waitsForUser =
     authLoading &&
     !!schema?.pages.some((page) =>
-      flattenPageItems(page.fields).some((item) => item.kind === "timezone"),
+      page.fields.some((item) => item.kind === "timezone"),
     );
 
   if (!form || !schema || waitsForUser) {

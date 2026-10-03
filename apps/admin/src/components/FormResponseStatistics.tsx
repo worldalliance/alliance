@@ -5,10 +5,7 @@ import type {
   FieldKind,
   RangeField,
 } from "@alliance/common/forms/form-schema";
-import {
-  flattenPageItems,
-  isQuestionField,
-} from "@alliance/common/forms/form-schema";
+import { isQuestionField } from "@alliance/common/forms/form-schema";
 import { fieldWithSavedChoices } from "@alliance/common/forms/formula-options";
 import { getRangeValues } from "@alliance/common/forms/range";
 import { FormResponseDto } from "@alliance/shared/client";
@@ -528,7 +525,7 @@ const FormResponseStatistics: React.FC<FormResponseStatisticsProps> = ({
     const fields: AnyField[] = [];
     const seen = new Set<string>();
     form.schema.pages.forEach((page) => {
-      flattenPageItems(page.fields).forEach((field) => {
+      page.fields.forEach((field) => {
         if (
           isQuestionField(field) &&
           typeof field.id === "string" &&

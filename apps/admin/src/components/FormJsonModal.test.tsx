@@ -52,7 +52,6 @@ function Harness({ onApply }: { onApply: (next: FormSchema) => void }) {
           scope={{
             kind: JsonScopeKind.Element,
             pageIndex: 0,
-            parentId: null,
             index: 0,
           }}
           schema={schema}

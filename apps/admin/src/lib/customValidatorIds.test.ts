@@ -28,34 +28,27 @@ const schema: FormSchema = {
           requiredIfFormula: onValidator(-3),
         },
         {
-          type: "group",
-          kind: "group",
-          id: "g",
+          type: "display",
+          kind: "header",
+          id: "h",
+          text: "H",
+          visibleIfFormula: onValidator(-6),
+        },
+        {
+          type: "input",
+          kind: "text",
+          id: "b",
+          label: "B",
+          customValidatorId: -10,
           visibleIfFormula: onValidator(-4),
-          requiredIfFormula: onValidator(-5),
-          fields: [
-            {
-              type: "display",
-              kind: "header",
-              id: "h",
-              text: "H",
-              visibleIfFormula: onValidator(-6),
-            },
-            {
-              type: "input",
-              kind: "text",
-              id: "b",
-              label: "B",
-              customValidatorId: -10,
-              requiredIfFormula: onValidator(-11),
-            },
-          ],
+          requiredIfFormula: onValidator(-11),
         },
         {
           type: "input",
           kind: "list",
           id: "l",
           label: null,
+          requiredIfFormula: onValidator(-5),
           fields: [
             {
               type: "input",
@@ -98,7 +91,7 @@ describe("mapCustomValidatorIds", () => {
     expect(JSON.stringify(mapCustomValidatorIds(mapped, (id) => -id))).toEqual(
       JSON.stringify(schema),
     );
-    expect(mapped.pages[0].fields[3]).toEqual(schema.pages[0].fields[3]);
-    expect("visibleIfFormula" in mapped.pages[0].fields[3]).toBe(false);
+    expect(mapped.pages[0].fields[4]).toEqual(schema.pages[0].fields[4]);
+    expect("visibleIfFormula" in mapped.pages[0].fields[4]).toBe(false);
   });
 });

@@ -1503,42 +1503,6 @@ describe("Tasks (e2e)", () => {
       expect(saved.body.answers).toEqual({ "full-name": "Kept" });
     });
 
-    it("keeps answers for fields inside a group", async () => {
-      const groupedSchema: FormSchema = {
-        ...sampleSchema,
-        pages: [
-          {
-            id: "grouped-page",
-            fields: [
-              {
-                id: "a-group",
-                type: "group",
-                kind: "group",
-                label: "A group",
-                fields: [
-                  {
-                    id: "grouped-field",
-                    type: "input",
-                    kind: "text",
-                    label: "Inside the group",
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      };
-      const form = await formOnSchema("Grouped", groupedSchema);
-
-      const saved = await form
-        .save({ answers: { "grouped-field": "Typed inside a group" } })
-        .expect(200);
-
-      expect(saved.body.answers).toEqual({
-        "grouped-field": "Typed inside a group",
-      });
-    });
-
     it("turns away publicAnswers that aren't booleans", async () => {
       await saveDraft({ "full-name": "Typed" }).expect(200);
 

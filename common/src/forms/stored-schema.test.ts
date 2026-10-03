@@ -35,7 +35,7 @@ describe("storedQuestionFields", () => {
     ]);
   });
 
-  it("keeps the rest of a group around a question it cannot read", () => {
+  it("skips the questions inside a stored group", () => {
     const fields = storedQuestionFields({
       pages: [
         {
@@ -45,15 +45,16 @@ describe("storedQuestionFields", () => {
               id: "g",
               type: "group",
               kind: "group",
-              fields: [staleBlock, textField("a", "First")],
+              fields: [textField("a", "First")],
             },
+            textField("b", "Second"),
           ],
         },
       ],
     });
 
     expect(fields.ok && fields.value.map((field) => field.label)).toEqual([
-      "First",
+      "Second",
     ]);
   });
 
@@ -136,22 +137,6 @@ describe("submittedQuestionFields", () => {
     expect(
       labels(
         snapshotOf(colorField("radio", ["red", "red"]), textField("a", "Then")),
-      ),
-    ).toEqual([
-      ["a", "Then"],
-      ["color", "Color"],
-    ]);
-  });
-
-  it("reads the questions of a group that no longer parses", () => {
-    expect(
-      labels(
-        snapshotOf({
-          id: "g",
-          type: "group",
-          kind: "group",
-          fields: [colorField("radio", ["red", "red"]), textField("a", "Then")],
-        }),
       ),
     ).toEqual([
       ["a", "Then"],

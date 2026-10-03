@@ -14,11 +14,8 @@ import {
 } from "@alliance/common/forms/element-descriptors";
 import {
   fieldHasOptions,
-  flattenPageItems,
-  isFieldGroup,
   isQuestionField,
   type AnyField,
-  type FieldGroup,
   type FieldKind,
   type FormSchema,
   type ListField,
@@ -74,6 +71,12 @@ import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
 import { DropPosition } from "../lib/useDragReorder";
 import { useFormulaSourceForms } from "../lib/useFormulaSourceForms";
 import { useInputSources } from "../lib/useInputSources";
+import { useVisibilityGroupedSchema } from "../lib/useVisibilityGroupedSchema";
+import {
+  deriveVisibilityGroups,
+  type GroupedPages,
+  type VisibilityGroups,
+} from "../lib/visibilityGroups";
 import { AggregateBuilder } from "./AggregateBuilder";
 import ConfirmDialog from "./ConfirmDialog";
 import { createDisplayBlock, PerViewerOptions } from "./display-blocks";
@@ -85,7 +88,6 @@ import {
   CustomValidatorDraftsContext,
   isDraftValidatorId,
 } from "./form-fields/customValidatorDrafts";
-import { EditableFieldGroup } from "./form-fields/EditableFieldGroup";
 import { renderFieldEditor } from "./form-fields/fieldEditors";
 import { FormConflictModal } from "./FormConflictModal";
 import { ElementJsonContext, FormJsonButton } from "./FormJsonButton";
@@ -94,10 +96,15 @@ import { formFieldsErrorReason } from "./FormPickerError";
 import { FormulaSourcesProvider } from "./FormulaSourcesContext";
 import { FormVariablesProvider } from "./FormVariablesContext";
 import { OutputBuilder } from "./OutputBuilder";
+import { PageSegmentList } from "./PageSegmentList";
 import { PageVisibilityControl } from "./PageVisibilityControl";
 import { PreviewAsUserBar } from "./PreviewAsUserBar";
 import { ShareableTextBuilder } from "./ShareableTextBuilder";
 import { VariableBuilder } from "./VariableBuilder";
+import {
+  VisibilityGroupContext,
+  visibilityGroupRole,
+} from "./VisibilityGroupContext";
 
 type FormEditorTab =
   | "form"
@@ -124,11 +131,9 @@ function describeUnresolvedReferences(
 type AvailableElement =
   | { id: FieldKind; name: string; type: "field" }
   | { id: DisplayKind; name: string; type: "block"; kind: DisplayKind }
-  | { id: "copy-existing"; name: "Copy Existing Element"; type: "copy" }
-  | { id: "group"; name: "Group"; type: "group" };
+  | { id: "copy-existing"; name: "Copy Existing Element"; type: "copy" };
 
 const AVAILABLE_ELEMENTS: AvailableElement[] = [
-  { id: "group", name: "Group", type: "group" },
   ...ADDABLE_FIELD_KINDS.map((kind) => ({
     id: kind,
     name: FIELD_KIND_NAMES[kind],
@@ -154,7 +159,6 @@ const ELEMENT_TYPE_BADGES: Record<
   field: { label: "Field", className: "bg-blue-100 text-blue-800" },
   block: { label: "Block", className: "bg-green-100 text-green-800" },
   copy: { label: "Copy", className: "bg-purple-100 text-purple-800" },
-  group: { label: "Group", className: "bg-amber-100 text-amber-800" },
 };
 
 export type DisplayOnlySaveConflict = {
@@ -228,35 +232,6 @@ const applyOptionValueToConditionalVisibility = (
   let hasChanges = false;
 
   const nextFields = fields.map((candidate) => {
-    if (isFieldGroup(candidate)) {
-      const ownResult = getUpdatedVisibilityFormula(
-        candidate.visibleIfFormula,
-        controllerId,
-        previousValue,
-        nextValue,
-      );
-      const childFields = applyOptionValueToConditionalVisibility(
-        candidate.fields,
-        controllerId,
-        previousValue,
-        nextValue,
-      );
-      const childrenChanged = childFields !== candidate.fields;
-      if (!ownResult.changed && !childrenChanged) {
-        return candidate;
-      }
-      hasChanges = true;
-      return {
-        ...candidate,
-        ...(ownResult.visibleIfFormula != null
-          ? { visibleIfFormula: ownResult.visibleIfFormula }
-          : {}),
-        fields: childrenChanged
-          ? (childFields as FieldGroup["fields"])
-          : candidate.fields,
-      } as FieldGroup;
-    }
-
     const formulaResult = getUpdatedVisibilityFormula(
       candidate.visibleIfFormula,
       controllerId,
@@ -281,7 +256,7 @@ const applyOptionValueToConditionalVisibility = (
 };
 
 const createUniqueFormBuilderId = (
-  prefix: "block" | "field" | "page" | "group",
+  prefix: "block" | "field" | "page",
   usedIds: Set<string>,
 ) => {
   let id = "";
@@ -293,6 +268,14 @@ const createUniqueFormBuilderId = (
 };
 
 const collectSchemaIds = (schema: FormSchema) => new Set(formSchemaIds(schema));
+
+const NO_VISIBILITY_GROUPS: VisibilityGroups = new Map();
+
+const REGROUPS_ON_JSON_APPLY: Record<JsonScopeKind, boolean> = {
+  [JsonScopeKind.Form]: true,
+  [JsonScopeKind.Page]: false,
+  [JsonScopeKind.Element]: false,
+};
 
 const remapConditionFieldReferences = (
   condition: Condition,
@@ -426,29 +409,11 @@ const remapCopiedPageReferences = (
   idMap: ReadonlyMap<string, string>,
 ): Page => ({
   ...page,
-  fields: page.fields.map((element) => {
-    if (isFieldGroup(element)) {
-      return {
-        ...element,
-        visibleIfFormula: remapVisibleIfFormulaFieldReferences(
-          element.visibleIfFormula,
-          idMap,
-        ),
-        requiredIfFormula: remapVisibleIfFormulaFieldReferences(
-          element.requiredIfFormula,
-          idMap,
-        ),
-        fields: element.fields.map((child) =>
-          isQuestionField(child)
-            ? remapFieldReferences(child, idMap)
-            : remapDisplayBlockReferences(child, idMap),
-        ),
-      };
-    }
-    return isQuestionField(element)
+  fields: page.fields.map((element) =>
+    isQuestionField(element)
       ? remapFieldReferences(element, idMap)
-      : remapDisplayBlockReferences(element, idMap);
-  }),
+      : remapDisplayBlockReferences(element, idMap),
+  ),
 });
 
 const assignCopiedFieldIds = <T extends AnyField>(
@@ -481,17 +446,6 @@ const copyPageWithUniqueIds = (page: Page, schema: FormSchema): Page => {
 
   const assignCopiedElementIds = (elements: Page["fields"]): Page["fields"] =>
     elements.map((element) => {
-      if (isFieldGroup(element)) {
-        const nextId = createUniqueFormBuilderId("group", usedIds);
-        idMap.set(element.id, nextId);
-        return {
-          ...element,
-          id: nextId,
-          fields: assignCopiedElementIds(
-            element.fields,
-          ) as FieldGroup["fields"],
-        };
-      }
       if (isQuestionField(element)) {
         return assignCopiedFieldIds(element, usedIds, idMap);
       }
@@ -521,39 +475,6 @@ const copyElementWithUniqueIds = (
   const idMap = new Map<string, string>();
   const cloned = structuredClone(element);
 
-  if (isFieldGroup(cloned)) {
-    const nextId = createUniqueFormBuilderId("group", usedIds);
-    idMap.set(cloned.id, nextId);
-    const withIds: FieldGroup = {
-      ...cloned,
-      id: nextId,
-      fields: cloned.fields.map((child) => {
-        if (isQuestionField(child)) {
-          return assignCopiedFieldIds(child, usedIds, idMap);
-        }
-        const nextChildId = createUniqueFormBuilderId("block", usedIds);
-        if (child.id) idMap.set(child.id, nextChildId);
-        return copyNestedBlockIds({ ...child, id: nextChildId }, usedIds);
-      }),
-    };
-    return {
-      ...withIds,
-      visibleIfFormula: remapVisibleIfFormulaFieldReferences(
-        withIds.visibleIfFormula,
-        idMap,
-      ),
-      requiredIfFormula: remapVisibleIfFormulaFieldReferences(
-        withIds.requiredIfFormula,
-        idMap,
-      ),
-      fields: withIds.fields.map((child) =>
-        isQuestionField(child)
-          ? remapFieldReferences(child, idMap)
-          : remapDisplayBlockReferences(child, idMap),
-      ),
-    };
-  }
-
   if (isQuestionField(cloned)) {
     // Only ids inside the copied field (itself + list sub-fields) are
     // remapped; references to other fields keep pointing at the originals.
@@ -575,31 +496,11 @@ const describeCopyableElement = (element: PageItem): string =>
     maxTextLength: 40,
   });
 
-type InsertLoc = { groupId: string | null; index: number };
+/** `groupKey` marks an insert point inside a visibility group. */
+type InsertLoc = { groupKey: string | null; index: number };
 
 function sameInsertLoc(a: InsertLoc | null, b: InsertLoc): boolean {
-  return a != null && a.groupId === b.groupId && a.index === b.index;
-}
-
-function insertIntoPageItems(
-  items: PageItem[],
-  loc: InsertLoc,
-  item: PageItem,
-): PageItem[] {
-  if (loc.groupId == null) {
-    const next = [...items];
-    next.splice(loc.index, 0, item);
-    return next;
-  }
-  if (isFieldGroup(item)) {
-    return items;
-  }
-  return items.map((el) => {
-    if (!isFieldGroup(el) || el.id !== loc.groupId) return el;
-    const fields = [...el.fields];
-    fields.splice(loc.index, 0, item as AnyField | DisplayBlock);
-    return { ...el, fields };
-  });
+  return a != null && a.groupKey === b.groupKey && a.index === b.index;
 }
 
 export function FormBuilder(props: FormBuilderProps) {
@@ -636,7 +537,16 @@ export function FormBuilder(props: FormBuilderProps) {
           aggregateViews: [],
         };
 
-  const [schema, setSchema] = useState<FormSchema>(buildInitialSchema);
+  const {
+    schema,
+    groups: visibilityGroups,
+    setSchema,
+    loadSchema,
+    setGroups,
+  } = useVisibilityGroupedSchema(buildInitialSchema);
+  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [lastSavedSchemaJSON, setLastSavedSchemaJSON] = useState<string>(() =>
     JSON.stringify(buildInitialSchema()),
   );
@@ -695,10 +605,8 @@ export function FormBuilder(props: FormBuilderProps) {
   const [draggedItem, setDraggedItem] = useState<{
     index: number;
     pageIndex: number;
-    groupId: string | null;
   } | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<"before" | "after" | null>(
     null,
   );
@@ -767,17 +675,29 @@ export function FormBuilder(props: FormBuilderProps) {
     schema.pages?.[0] ?? { id: "page-1", title: "Page 1", fields: [] };
 
   const applyInsert = (item: PageItem, loc?: InsertLoc) => {
-    const target: InsertLoc = loc ?? {
-      groupId: null,
-      index: currentPage.fields.length,
-    };
-    const newFields = insertIntoPageItems(currentPage.fields, target, item);
-    updateSchema({
-      ...schema,
-      pages: schema.pages.map((page, idx) =>
-        idx === selectedPageIndex ? { ...page, fields: newFields } : page,
-      ),
-    });
+    const index = loc?.index ?? currentPage.fields.length;
+    const groupKey = loc?.groupKey ?? null;
+    const groupFormula =
+      groupKey == null
+        ? undefined
+        : currentPage.fields[index - 1]?.visibleIfFormula;
+    const inserted =
+      groupFormula && item.id
+        ? { ...item, visibleIfFormula: groupFormula }
+        : item;
+    const newFields = [...currentPage.fields];
+    newFields.splice(index, 0, inserted);
+    updateSchema(
+      {
+        ...schema,
+        pages: schema.pages.map((page, idx) =>
+          idx === selectedPageIndex ? { ...page, fields: newFields } : page,
+        ),
+      },
+      groupKey != null && inserted.id
+        ? new Map(visibilityGroups).set(inserted.id, groupKey)
+        : undefined,
+    );
   };
   const resolvedPreviewUser = useMemo(() => {
     if (previewUserId === "preview") {
@@ -822,8 +742,8 @@ export function FormBuilder(props: FormBuilderProps) {
   useEffect(() => {
     if (searchQuery.trim()) {
       const pool =
-        activeSearch?.groupId != null
-          ? availableElements.filter((element) => element.type !== "group")
+        activeSearch?.groupKey != null
+          ? availableElements.filter((element) => element.type !== "copy")
           : availableElements;
       const filtered = pool.filter((element) =>
         element.name.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -832,7 +752,7 @@ export function FormBuilder(props: FormBuilderProps) {
     } else {
       setSearchResults([]);
     }
-  }, [activeSearch?.groupId, availableElements, searchQuery]);
+  }, [activeSearch?.groupKey, availableElements, searchQuery]);
 
   const handleSearchSelect = (element: AvailableElement, loc: InsertLoc) => {
     switch (element.type) {
@@ -844,9 +764,6 @@ export function FormBuilder(props: FormBuilderProps) {
         break;
       case "copy":
         setCopyPicker(loc);
-        break;
-      case "group":
-        addGroup(loc);
         break;
       default:
         throw new Error(
@@ -887,9 +804,17 @@ export function FormBuilder(props: FormBuilderProps) {
     setCopyPicker(null);
   }, [selectedPageIndex]);
 
+  // A new form's first save already holds the saved schema; refetching it
+  // would regroup and drop the admin's manual group boundaries.
+  const createdFormIdRef = useRef<number | null>(null);
+
   // Load form data when formId changes
   useEffect(() => {
     if (displayOnly || !formId || initialSchema) return;
+    if (createdFormIdRef.current === formId) {
+      createdFormIdRef.current = null;
+      return;
+    }
     setIsLoading(true);
     setLoadError(null);
 
@@ -902,7 +827,7 @@ export function FormBuilder(props: FormBuilderProps) {
             const nextSchema = ensurePages(
               form.schema as unknown as FormSchema,
             );
-            setSchema(nextSchema);
+            loadSchema(nextSchema);
             setLastSavedSchemaJSON(JSON.stringify(nextSchema));
             setBaseFormSnapshotId(
               typeof form.formSnapshotId === "number"
@@ -922,7 +847,7 @@ export function FormBuilder(props: FormBuilderProps) {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [displayOnly, formId, initialSchema]);
+  }, [displayOnly, formId, initialSchema, loadSchema]);
 
   const addField = (kind: FieldKind, loc?: InsertLoc) => {
     const fieldId = `field-${Date.now()}`;
@@ -1137,33 +1062,18 @@ export function FormBuilder(props: FormBuilderProps) {
     applyInsert(newField, loc);
   };
 
-  const addGroup = (loc?: InsertLoc) => {
-    const newGroup: FieldGroup = {
-      id: createUniqueFormBuilderId("group", collectSchemaIds(schema)),
-      type: "group",
-      kind: "group",
-      fields: [],
-    };
-    applyInsert(newGroup, loc?.groupId != null ? undefined : loc);
-  };
-
   const addDisplayBlock = (kind: DisplayKind, loc?: InsertLoc) => {
     const newBlock = createDisplayBlock(kind, `block-${Date.now()}`);
     applyInsert(newBlock, loc);
   };
 
   const insertCopiedElement = (source: PageItem, loc: InsertLoc) => {
-    const copied = copyElementWithUniqueIds(source, schema);
-    const target =
-      loc.groupId != null && isFieldGroup(copied)
-        ? { groupId: null, index: currentPage.fields.length }
-        : loc;
-    applyInsert(copied, target);
+    applyInsert(copyElementWithUniqueIds(source, schema), loc);
     setCopyPicker(null);
   };
 
-  const updateSchema = (newSchema: FormSchema) => {
-    setSchema(ensureSchemaViews(newSchema));
+  const updateSchema = (newSchema: FormSchema, groups?: VisibilityGroups) => {
+    setSchema(ensureSchemaViews(newSchema), groups);
   };
 
   const updateBlockById = useDisplayBlockWrite(schema, updateSchema);
@@ -1308,7 +1218,7 @@ export function FormBuilder(props: FormBuilderProps) {
     () =>
       schema.pages
         .slice(0, selectedPageIndex)
-        .flatMap((page) => flattenPageItems(page.fields))
+        .flatMap((page) => page.fields)
         .filter(isQuestionField),
     [schema.pages, selectedPageIndex],
   );
@@ -1335,10 +1245,10 @@ export function FormBuilder(props: FormBuilderProps) {
     const copiedPageIndex = pageIndex + 1;
     nextPages.splice(copiedPageIndex, 0, copiedPage);
 
-    updateSchema({
-      ...schema,
-      pages: nextPages,
-    });
+    updateSchema(
+      { ...schema, pages: nextPages },
+      new Map([...visibilityGroups, ...deriveVisibilityGroups([copiedPage])]),
+    );
     setSelectedPageIndex(copiedPageIndex);
     setDraggedPageIndex(null);
     setDragOverPageIndex(null);
@@ -1346,7 +1256,11 @@ export function FormBuilder(props: FormBuilderProps) {
   };
 
   const applyJson = (next: FormSchema) => {
-    updateSchema(next);
+    if (jsonScope && REGROUPS_ON_JSON_APPLY[jsonScope.kind]) {
+      loadSchema(ensureSchemaViews(next));
+    } else {
+      updateSchema(next);
+    }
     setSchemaLoads((count) => count + 1);
     setSelectedPageIndex((index) => Math.min(index, next.pages.length - 1));
     setJsonScope(null);
@@ -1467,6 +1381,9 @@ export function FormBuilder(props: FormBuilderProps) {
         setBaseFormSnapshotId(response.data.formSnapshotId);
         setHasUnsavedChanges(false);
         skipNavigationBlockRef.current = true;
+        if (response.data.id !== formId) {
+          createdFormIdRef.current = response.data.id;
+        }
         setFormId(response.data.id);
         skipNavigationBlockRef.current = false;
         if (resolvedDraftIds.length > 0) {
@@ -1503,6 +1420,7 @@ export function FormBuilder(props: FormBuilderProps) {
     resolveCustomValidatorDrafts,
     schema,
     setFormId,
+    setSchema,
     showErrorToast,
     showSuccessToast,
     sourceForms,
@@ -1516,6 +1434,11 @@ export function FormBuilder(props: FormBuilderProps) {
   const unresolvedVariableReferences = useMemo(
     () => collectUnresolvedVariableReferences(schema),
     [schema],
+  );
+
+  const liveValidationErrors = useMemo(
+    () => validateFormSchema(schema, validation),
+    [schema, validation],
   );
 
   const handleSaveForm = useCallback(() => {
@@ -1620,6 +1543,7 @@ export function FormBuilder(props: FormBuilderProps) {
     displayOnlySave,
     formId,
     invalidateForms,
+    setSchema,
     showErrorToast,
     showSuccessToast,
   ]);
@@ -1633,13 +1557,13 @@ export function FormBuilder(props: FormBuilderProps) {
     ) {
       return;
     }
-    setSchema(conflict.theirs);
+    loadSchema(conflict.theirs);
     setSchemaLoads((count) => count + 1);
     setLastSavedSchemaJSON(JSON.stringify(conflict.theirs));
     setBaseFormSnapshotId(conflict.theirsSnapshotId);
     setHasUnsavedChanges(false);
     setConflict(null);
-  }, [conflict]);
+  }, [conflict, loadSchema]);
 
   const handleMerge = useCallback(() => {
     if (!conflict) return;
@@ -1653,13 +1577,13 @@ export function FormBuilder(props: FormBuilderProps) {
       showErrorToast("Can't auto-merge — there are conflicting edits");
       return;
     }
-    setSchema(result.value);
+    loadSchema(result.value);
     setSchemaLoads((count) => count + 1);
     setLastSavedSchemaJSON(JSON.stringify(conflict.theirs));
     setBaseFormSnapshotId(conflict.theirsSnapshotId);
     setConflict(null);
     showSuccessToast("Merged their changes with yours — review and save");
-  }, [conflict, showErrorToast, showSuccessToast, validation]);
+  }, [conflict, loadSchema, showErrorToast, showSuccessToast, validation]);
 
   const handleCopyMine = useCallback(async () => {
     if (!conflict) return;
@@ -1689,21 +1613,14 @@ export function FormBuilder(props: FormBuilderProps) {
     };
   }, [handleSaveForm, hasUnsavedChanges, isLoading, isSaving]);
 
-  const handleDragStart =
-    (index: number, groupId: string | null = null) =>
-    (e: React.DragEvent) => {
-      setDraggedItem({
-        index,
-        pageIndex: selectedPageIndex,
-        groupId,
-      });
-      e.dataTransfer.effectAllowed = "move";
-    };
+  const handleDragStart = (index: number) => (e: React.DragEvent) => {
+    setDraggedItem({ index, pageIndex: selectedPageIndex });
+    e.dataTransfer.effectAllowed = "move";
+  };
 
   const handleDragEnd = () => {
     setDraggedItem(null);
     setDragOverIndex(null);
-    setDragOverGroupId(null);
     setDropPosition(null);
   };
 
@@ -1736,122 +1653,56 @@ export function FormBuilder(props: FormBuilderProps) {
     setPageDropPosition(position);
   };
 
-  const handleDragOver =
-    (index: number, groupId: string | null = null) =>
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
+  const handleDragOver = (index: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
 
-      if (!draggedItem || draggedItem.pageIndex !== selectedPageIndex) {
-        return;
-      }
+    if (!draggedItem || draggedItem.pageIndex !== selectedPageIndex) {
+      return;
+    }
 
-      const rect = e.currentTarget.getBoundingClientRect();
-      const midpoint = rect.top + rect.height / 2;
-      const position = e.clientY < midpoint ? "before" : "after";
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    const position = e.clientY < midpoint ? "before" : "after";
 
-      setDragOverIndex(index);
-      setDragOverGroupId(groupId);
-      setDropPosition(position);
-    };
+    setDragOverIndex(index);
+    setDropPosition(position);
+  };
 
-  const handleDrop =
-    (dropIndex: number, groupId: string | null = null) =>
-    (e: React.DragEvent) => {
-      e.preventDefault();
+  const handleDrop = (dropIndex: number) => (e: React.DragEvent) => {
+    e.preventDefault();
 
-      if (
-        !draggedItem ||
-        draggedItem.pageIndex !== selectedPageIndex ||
-        !dropPosition
-      ) {
-        return;
-      }
+    if (
+      !draggedItem ||
+      draggedItem.pageIndex !== selectedPageIndex ||
+      !dropPosition
+    ) {
+      return;
+    }
 
-      const fromGroupId = draggedItem.groupId;
-      const dragIndex = draggedItem.index;
+    const dragIndex = draggedItem.index;
+    let insertionIndex = dropPosition === "after" ? dropIndex + 1 : dropIndex;
+    if (dragIndex < insertionIndex) {
+      insertionIndex -= 1;
+    }
 
-      let insertionIndex = dropIndex;
-      if (dropPosition === "after") {
-        insertionIndex = dropIndex + 1;
-      }
-
-      const sameParent = fromGroupId === groupId;
-      if (sameParent && dragIndex < insertionIndex) {
-        insertionIndex -= 1;
-      }
-
-      if (sameParent && dragIndex === insertionIndex) {
-        setDraggedItem(null);
-        setDragOverIndex(null);
-        setDragOverGroupId(null);
-        setDropPosition(null);
-        return;
-      }
-
-      const sourceItems =
-        fromGroupId == null
-          ? currentPage.fields
-          : currentPage.fields.find(
-              (item): item is FieldGroup =>
-                isFieldGroup(item) && item.id === fromGroupId,
-            )?.fields;
-      const draggedField = sourceItems?.[dragIndex];
-      if (!draggedField) {
-        setDraggedItem(null);
-        setDragOverIndex(null);
-        setDragOverGroupId(null);
-        setDropPosition(null);
-        return;
-      }
-
-      if (groupId != null && isFieldGroup(draggedField)) {
-        setDraggedItem(null);
-        setDragOverIndex(null);
-        setDragOverGroupId(null);
-        setDropPosition(null);
-        return;
-      }
-
-      let nextFields = [...currentPage.fields];
-      if (fromGroupId == null) {
-        nextFields.splice(dragIndex, 1);
-      } else {
-        nextFields = nextFields.map((item) => {
-          if (!isFieldGroup(item) || item.id !== fromGroupId) return item;
-          const fields = [...item.fields];
-          fields.splice(dragIndex, 1);
-          return { ...item, fields };
-        });
-      }
-
-      if (groupId == null) {
-        nextFields.splice(insertionIndex, 0, draggedField);
-      } else {
-        nextFields = nextFields.map((item) => {
-          if (!isFieldGroup(item) || item.id !== groupId) return item;
-          const fields = [...item.fields];
-          fields.splice(
-            insertionIndex,
-            0,
-            draggedField as AnyField | DisplayBlock,
-          );
-          return { ...item, fields };
-        });
-      }
-
+    const draggedField = currentPage.fields[dragIndex];
+    if (draggedField && dragIndex !== insertionIndex) {
+      const nextFields = [...currentPage.fields];
+      nextFields.splice(dragIndex, 1);
+      nextFields.splice(insertionIndex, 0, draggedField);
       updateSchema({
         ...schema,
         pages: schema.pages.map((page, idx) =>
           idx === selectedPageIndex ? { ...page, fields: nextFields } : page,
         ),
       });
+    }
 
-      setDraggedItem(null);
-      setDragOverIndex(null);
-      setDragOverGroupId(null);
-      setDropPosition(null);
-    };
+    setDraggedItem(null);
+    setDragOverIndex(null);
+    setDropPosition(null);
+  };
 
   // Inline search component - small hover target
   const InlineSearch = ({ loc }: { loc: InsertLoc }) => {
@@ -2007,25 +1858,7 @@ export function FormBuilder(props: FormBuilderProps) {
       <InlineSearch loc={loc} />
     );
 
-  const renderField = (
-    field: PageItem,
-    index: number,
-    parentId: string | null = null,
-  ) => {
-    const mapAtParent = (
-      items: PageItem[],
-      mapItem: (item: PageItem, i: number) => PageItem,
-    ): PageItem[] => {
-      if (parentId == null) return items.map(mapItem);
-      return items.map((item) => {
-        if (!isFieldGroup(item) || item.id !== parentId) return item;
-        return {
-          ...item,
-          fields: item.fields.map(mapItem) as FieldGroup["fields"],
-        };
-      });
-    };
-
+  const renderField = (field: PageItem, index: number) => {
     const updateField = (updates: Partial<PageItem>) => {
       const optionValueChange =
         isQuestionField(field) &&
@@ -2037,7 +1870,7 @@ export function FormBuilder(props: FormBuilderProps) {
 
       const nextPages = schema.pages.map((page, pageIndex) => {
         if (pageIndex === selectedPageIndex) {
-          const updatedFields = mapAtParent(page.fields, (f, i) =>
+          const updatedFields = page.fields.map((f, i) =>
             i === index ? ({ ...f, ...updates } as PageItem) : f,
           );
 
@@ -2097,42 +1930,23 @@ export function FormBuilder(props: FormBuilderProps) {
     const removeField = () => {
       updateSchema({
         ...schema,
-        pages: schema.pages.map((page, idx) => {
-          if (idx !== selectedPageIndex) return page;
-          if (parentId == null) {
-            return {
-              ...page,
-              fields: page.fields.filter((_, i) => i !== index),
-            };
-          }
-          return {
-            ...page,
-            fields: page.fields.map((item) => {
-              if (!isFieldGroup(item) || item.id !== parentId) return item;
-              return {
-                ...item,
-                fields: item.fields.filter((_, i) => i !== index),
-              };
-            }),
-          };
-        }),
+        pages: schema.pages.map((page, idx) =>
+          idx === selectedPageIndex
+            ? { ...page, fields: page.fields.filter((_, i) => i !== index) }
+            : page,
+        ),
       });
     };
 
     const isDragging =
       draggedItem?.index === index &&
-      draggedItem?.pageIndex === selectedPageIndex &&
-      draggedItem?.groupId === parentId;
+      draggedItem?.pageIndex === selectedPageIndex;
     const showInsertionBar =
-      dragOverIndex === index &&
-      dragOverGroupId === parentId &&
-      dropPosition &&
-      !isDragging;
+      dragOverIndex === index && dropPosition && !isDragging;
 
     const { previousFields, laterFields } = conditionSourceFields({
       pages: schema.pages,
       pageIndex: selectedPageIndex,
-      parentId,
       index,
     });
 
@@ -2140,7 +1954,7 @@ export function FormBuilder(props: FormBuilderProps) {
       onUpdate: updateField,
       updateCurrent: addressedWrite(field, updateBlockById),
       onRemove: removeField,
-      onDragStart: handleDragStart(index, parentId),
+      onDragStart: handleDragStart(index),
       onDragEnd: handleDragEnd,
       isDragging: isDragging,
       previousFields,
@@ -2157,75 +1971,12 @@ export function FormBuilder(props: FormBuilderProps) {
 
         <div
           className="transition-all"
-          onDragOver={handleDragOver(index, parentId)}
-          onDrop={handleDrop(index, parentId)}
+          onDragOver={handleDragOver(index)}
+          onDrop={handleDrop(index)}
         >
-          {isFieldGroup(field)
-            ? (() => {
-                const group = field;
-                const ungroup = () => {
-                  updateSchema({
-                    ...schema,
-                    pages: schema.pages.map((page, idx) => {
-                      if (idx !== selectedPageIndex) return page;
-                      const next: PageItem[] = [];
-                      for (const item of page.fields) {
-                        if (item.id === group.id && isFieldGroup(item)) {
-                          next.push(...item.fields);
-                        } else {
-                          next.push(item);
-                        }
-                      }
-                      return { ...page, fields: next };
-                    }),
-                  });
-                };
-                return (
-                  <EditableFieldGroup
-                    group={group}
-                    onUpdate={updateField}
-                    onRemove={removeField}
-                    onUngroup={ungroup}
-                    onDragStart={handleDragStart(index, parentId)}
-                    onDragEnd={handleDragEnd}
-                    isDragging={isDragging}
-                    previousFields={previousFields}
-                    laterFields={laterFields}
-                  >
-                    {group.fields.length === 0 && (
-                      <InsertPoint loc={{ groupId: group.id, index: 0 }} />
-                    )}
-                    {group.fields.map((child, childIndex) => (
-                      <div key={child.id || childIndex}>
-                        {childIndex > 0 && (
-                          <InsertPoint
-                            loc={{ groupId: group.id, index: childIndex }}
-                          />
-                        )}
-                        {childIndex === 0 && (
-                          <InsertPoint loc={{ groupId: group.id, index: 0 }} />
-                        )}
-                        {renderPageItem({
-                          field: child,
-                          index: childIndex,
-                          parentId: group.id,
-                        })}
-                        {childIndex === group.fields.length - 1 && (
-                          <InsertPoint
-                            loc={{
-                              groupId: group.id,
-                              index: childIndex + 1,
-                            }}
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </EditableFieldGroup>
-                );
-              })()
-            : isQuestionField(field)
-              ? renderFieldEditor({ field, ...commonProps })
-              : renderBlockEditor({ block: field, ...commonProps })}
+          {isQuestionField(field)
+            ? renderFieldEditor({ field, ...commonProps })
+            : renderBlockEditor({ block: field, ...commonProps })}
         </div>
 
         {/* Insertion bar after */}
@@ -2238,14 +1989,23 @@ export function FormBuilder(props: FormBuilderProps) {
     );
   };
 
+  const applyGrouped = ({ pages, groups }: GroupedPages) =>
+    updateSchema({ ...schema, pages }, groups);
+
+  const toggleGroupCollapsed = (key: string) =>
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
   const renderPageItem = ({
     field,
     index,
-    parentId = null,
   }: {
     field: PageItem;
     index: number;
-    parentId?: string | null;
   }) => (
     <ElementJsonContext.Provider
       value={{
@@ -2253,12 +2013,26 @@ export function FormBuilder(props: FormBuilderProps) {
           setJsonScope({
             kind: JsonScopeKind.Element,
             pageIndex: selectedPageIndex,
-            parentId,
             index,
           }),
       }}
     >
-      {renderField(field, index, parentId)}
+      <VisibilityGroupContext.Provider
+        value={
+          displayOnly
+            ? null
+            : visibilityGroupRole({
+                pages: schema.pages,
+                pageIndex: selectedPageIndex,
+                index,
+                groups: visibilityGroups,
+                setGroups,
+                applyGrouped,
+              })
+        }
+      >
+        {renderField(field, index)}
+      </VisibilityGroupContext.Provider>
     </ElementJsonContext.Provider>
   );
 
@@ -2307,13 +2081,12 @@ export function FormBuilder(props: FormBuilderProps) {
               <ElementSelect
                 onAddField={addField}
                 onAddDisplayBlock={addDisplayBlock}
-                onAddGroup={() => addGroup()}
                 onCopyExisting={() => {
                   setActiveSearch(null);
                   setSearchQuery("");
                   setSearchResults([]);
                   setCopyPicker({
-                    groupId: null,
+                    groupKey: null,
                     index: currentPage.fields.length,
                   });
                 }}
@@ -2685,27 +2458,25 @@ export function FormBuilder(props: FormBuilderProps) {
                     <PerViewerOptions allowed={!displayOnly}>
                       <div key={schemaLoads} className="space-y-4">
                         {currentPage.fields.length === 0 && (
-                          <InsertPoint loc={{ groupId: null, index: 0 }} />
+                          <InsertPoint loc={{ groupKey: null, index: 0 }} />
                         )}
 
-                        {currentPage.fields.map((field, index) => (
-                          <div key={field.id || index}>
-                            {index > 0 && (
-                              <InsertPoint loc={{ groupId: null, index }} />
-                            )}
-                            {index === 0 && (
-                              <InsertPoint loc={{ groupId: null, index: 0 }} />
-                            )}
-
-                            {renderPageItem({ field, index })}
-
-                            {index === currentPage.fields.length - 1 && (
-                              <InsertPoint
-                                loc={{ groupId: null, index: index + 1 }}
-                              />
-                            )}
-                          </div>
-                        ))}
+                        <PageSegmentList
+                          schema={schema}
+                          pageIndex={selectedPageIndex}
+                          groups={
+                            displayOnly
+                              ? NO_VISIBILITY_GROUPS
+                              : visibilityGroups
+                          }
+                          setGroups={setGroups}
+                          applyGrouped={applyGrouped}
+                          collapsedGroups={collapsedGroups}
+                          onToggleCollapsed={toggleGroupCollapsed}
+                          validationErrors={liveValidationErrors}
+                          renderInsertPoint={(loc) => <InsertPoint loc={loc} />}
+                          renderMember={renderPageItem}
+                        />
 
                         {draggedItem && currentPage.fields.length > 0 && (
                           <div
@@ -2714,10 +2485,9 @@ export function FormBuilder(props: FormBuilderProps) {
                               e.preventDefault();
                               e.dataTransfer.dropEffect = "move";
                               setDragOverIndex(currentPage.fields.length);
-                              setDragOverGroupId(null);
                               setDropPosition("before");
                             }}
-                            onDrop={handleDrop(currentPage.fields.length, null)}
+                            onDrop={handleDrop(currentPage.fields.length)}
                           />
                         )}
 

@@ -17,7 +17,6 @@ import type {
 } from "./form-schema";
 import {
   collectVariableInputFields,
-  isFieldGroup,
   isQuestionField,
   variableInputFieldsById,
 } from "./form-schema";
@@ -1007,16 +1006,6 @@ describe("everywhere the validator accepts a reference is interpolated", () => {
     pages: input.pages.map((currentPage) => ({
       ...currentPage,
       fields: currentPage.fields.map((element) => {
-        if (isFieldGroup(element)) {
-          return {
-            ...element,
-            fields: element.fields.map((child) =>
-              isQuestionField(child)
-                ? interpolateFieldText(child, values)
-                : interpolateDisplayBlock(child, values),
-            ),
-          };
-        }
         return isQuestionField(element)
           ? interpolateFieldText(element, values)
           : interpolateDisplayBlock(element, values);

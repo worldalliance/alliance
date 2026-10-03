@@ -18,7 +18,8 @@ export function FieldExtraMenu({
   showCustomValidatorControl: boolean;
   onCustomValidatorToggle: (checked: boolean) => void;
   showConditionalVisibilityControl: boolean;
-  onConditionalVisibilityToggle: (checked: boolean) => void;
+  /** Null while the field's visibility is edited through its group. */
+  onConditionalVisibilityToggle: ((checked: boolean) => void) | null;
   onExtractionToggle: (checked: boolean) => void;
   onCheckboxExtractionTargetChange: (
     target: CheckboxExtractionTarget | "",
@@ -86,17 +87,19 @@ export function FieldExtraMenu({
             />
             Use custom validator
           </label>
-          <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
-            <input
-              type="checkbox"
-              className="mr-2"
-              checked={showConditionalVisibilityControl}
-              onChange={(event) =>
-                onConditionalVisibilityToggle(event.target.checked)
-              }
-            />
-            Use conditional visibility
-          </label>
+          {onConditionalVisibilityToggle && (
+            <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
+              <input
+                type="checkbox"
+                className="mr-2"
+                checked={showConditionalVisibilityControl}
+                onChange={(event) =>
+                  onConditionalVisibilityToggle(event.target.checked)
+                }
+              />
+              Use conditional visibility
+            </label>
+          )}
           {supportsExtraction(field) && (
             <>
               <div className="border-t border-gray-100 my-1" />

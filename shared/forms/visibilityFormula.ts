@@ -147,24 +147,17 @@ export function parseVisibilityFormula(
 }
 
 /** Serialize a formula node back to display string (for editing). */
-export function serializeVisibilityFormula(node: FormulaNode): string {
-  if (typeof node === "string") return node;
-  if (node.op === "NOT") {
-    const inner =
-      typeof node.operand === "string"
-        ? node.operand
-        : `(${serializeVisibilityFormula(node.operand)})`;
-    return `NOT ${inner}`;
-  }
-  const left =
-    typeof node.left === "string"
-      ? node.left
-      : `(${serializeVisibilityFormula(node.left)})`;
-  const right =
-    typeof node.right === "string"
-      ? node.right
-      : `(${serializeVisibilityFormula(node.right)})`;
-  return `${left} ${node.op} ${right}`;
+export function serializeVisibilityFormula(
+  node: FormulaNode,
+  leaf: (name: string) => string = (name) => name,
+): string {
+  const operand = (child: FormulaNode) =>
+    typeof child === "string"
+      ? leaf(child)
+      : `(${serializeVisibilityFormula(child, leaf)})`;
+  if (typeof node === "string") return leaf(node);
+  if (node.op === "NOT") return `NOT ${operand(node.operand)}`;
+  return `${operand(node.left)} ${node.op} ${operand(node.right)}`;
 }
 
 /** Default AND formula for n named conditions (condition1 … conditionN). */

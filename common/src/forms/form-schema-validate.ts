@@ -1,12 +1,10 @@
 import type { DisplayBlock } from "./display-blocks";
 import {
   collectFieldLookup,
-  isFieldGroup,
   isQuestionField,
   MAX_RANGE_OPTION_COUNT,
   MIN_RANGE_OPTION_COUNT,
   type AnyField,
-  type FieldGroup,
   type FormSchema,
   type ListField,
   type OutputFieldBlock,
@@ -66,7 +64,7 @@ export function validateFormSchema(
       }
     }
     for (const item of page.fields ?? []) {
-      collectPageItemErrors(item, errors);
+      collectInputErrors(item, errors);
       collectDisplayContentErrors(item, undefined, errors);
       collectQuestionFieldIds(item, earlierFieldIds);
     }
@@ -146,7 +144,7 @@ function collectCycleErrors(
 }
 
 // Edges run from a field to each in-form field its own formula reads; loops
-// through a group's or page's formula are not followed.
+// through a page's formula are not followed.
 function collectVisibilityCycleErrors(
   schema: FormSchema,
   errors: FormSchemaValidationError[],
@@ -164,9 +162,12 @@ function collectVisibilityCycleErrors(
   for (const cycle of findCycles(deps)) {
     errors.push({
       blockId: cycle[0],
-      message: `Visibility conditions form a cycle: ${[...cycle, cycle[0]].join(
-        " -> ",
-      )}`,
+      message:
+        cycle.length === 1
+          ? `Visibility of "${cycle[0]}" depends on its own answer`
+          : `Visibility conditions form a cycle: ${[...cycle, cycle[0]].join(
+              " -> ",
+            )}`,
     });
   }
 }
@@ -235,12 +236,6 @@ function getLocalFieldReference(cond: Condition): string | null {
 }
 
 function collectQuestionFieldIds(item: PageItem, into: Set<string>): void {
-  if (isFieldGroup(item)) {
-    for (const child of item.fields) {
-      collectQuestionFieldIds(child, into);
-    }
-    return;
-  }
   if (!isQuestionField(item)) return;
   into.add(item.id);
   if (item.kind === "list") {
@@ -250,43 +245,13 @@ function collectQuestionFieldIds(item: PageItem, into: Set<string>): void {
   }
 }
 
-function collectPageItemErrors(
-  item: PageItem,
-  errors: FormSchemaValidationError[],
-): void {
-  if (isFieldGroup(item)) {
-    const blockId = item.id ?? "<unnamed>";
-    checkConditions(
-      item.visibleIfFormula,
-      { context: "input", blockId },
-      errors,
-    );
-    checkConditions(
-      item.requiredIfFormula,
-      { context: "input", blockId },
-      errors,
-    );
-    for (const child of item.fields) {
-      collectInputErrors(child, errors);
-    }
-    return;
-  }
-  collectInputErrors(item, errors);
-}
-
 // The schema permits an empty display block, so save-time validation is the
 // last chance to warn the author before the block renders nothing.
 function collectDisplayContentErrors(
-  item: AnyField | DisplayBlock | OutputFieldBlock | FieldGroup,
+  item: AnyField | DisplayBlock | OutputFieldBlock,
   viewId: string | undefined,
   errors: FormSchemaValidationError[],
 ): void {
-  if (isFieldGroup(item)) {
-    for (const child of item.fields) {
-      collectDisplayContentErrors(child, viewId, errors);
-    }
-    return;
-  }
   if (!("type" in item) || item.type !== "display") return;
   const blockId = item.id ?? "<unnamed>";
   if (item.kind === "images" && item.images.length === 0) {

@@ -1,6 +1,5 @@
 import type { HeaderBlock } from "@alliance/common/forms/display-blocks";
 import type {
-  FieldGroup,
   FormSchema,
   ListSubField,
   TextField,
@@ -29,18 +28,11 @@ const header = (id: string): HeaderBlock => ({
   text: id,
 });
 
-const group = (id: string, fields: FieldGroup["fields"]): FieldGroup => ({
-  type: "group",
-  kind: "group",
-  id,
-  fields,
-});
-
 const schema: FormSchema = {
   pages: [
     {
       id: "page-1",
-      fields: [text("a"), group("g", [text("b"), header("h")])],
+      fields: [text("a"), text("b"), header("h")],
     },
     { id: "page-2", fields: [text("c")] },
   ],
@@ -50,14 +42,6 @@ const schema: FormSchema = {
 const topLevel = (index: number): JsonScope => ({
   kind: JsonScopeKind.Element,
   pageIndex: 0,
-  parentId: null,
-  index,
-});
-
-const inGroup = (index: number): JsonScope => ({
-  kind: JsonScopeKind.Element,
-  pageIndex: 0,
-  parentId: "g",
   index,
 });
 
@@ -98,7 +82,7 @@ async function errors(params: Parameters<typeof prepare>[0]) {
 describe("jsonScopeValue", () => {
   it("returns the element, the page, or the whole form", () => {
     expect(jsonScopeValue(schema, topLevel(0))).toEqual(text("a"));
-    expect(jsonScopeValue(schema, inGroup(1))).toEqual(header("h"));
+    expect(jsonScopeValue(schema, topLevel(2))).toEqual(header("h"));
     expect(jsonScopeValue(schema, pageScope)).toBe(schema.pages[0]);
     expect(jsonScopeValue(schema, formScope)).toBe(schema);
   });
@@ -120,7 +104,6 @@ describe("formSchemaIds", () => {
           {
             id: "page-1",
             fields: [
-              group("g", [text("b")]),
               list("list", [text("sub")]),
               {
                 type: "display",
@@ -146,8 +129,6 @@ describe("formSchemaIds", () => {
       }),
     ).toEqual([
       "page-1",
-      "g",
-      "b",
       "list",
       "sub",
       "acc",
@@ -163,11 +144,11 @@ describe("formSchemaIds", () => {
 describe("prepareJsonApply", () => {
   it("replaces an element in place", async () => {
     const result = await applied({
-      scope: inGroup(0),
+      scope: topLevel(1),
       value: text("b", { label: "New" }),
     });
     expect(result.identityChanges).toEqual([]);
-    expect(jsonScopeValue(result.schema, inGroup(0))).toEqual(
+    expect(jsonScopeValue(result.schema, topLevel(1))).toEqual(
       text("b", { label: "New" }),
     );
     expect(result.schema.pages[1]).toBe(schema.pages[1]);
@@ -209,9 +190,12 @@ describe("prepareJsonApply", () => {
     ).toEqual(['fields.0: Unrecognized key: "extra"']);
   });
 
-  it("rejects a group nested in a group", async () => {
+  it("rejects a group", async () => {
     expect(
-      await errors({ scope: inGroup(0), value: group("b", []) }),
+      await errors({
+        scope: topLevel(1),
+        value: { type: "group", kind: "group", id: "g", fields: [text("b")] },
+      }),
     ).not.toEqual([]);
   });
 
@@ -274,7 +258,8 @@ describe("prepareJsonApply", () => {
       id: "page-1b",
       fields: [
         { type: "input", kind: "email", id: "a", label: "a" },
-        group("g", [text("h")]),
+        text("b"),
+        text("h"),
       ],
     };
     expect(
@@ -294,27 +279,33 @@ describe("prepareJsonApply", () => {
     ).toEqual([
       '"a" changes kind from text to email',
       '"h" changes kind from header to text',
-      'Removed "page-1", "b" and added "page-1b", which may be a rename',
+      'Removed "page-1" and added "page-1b", which may be a rename',
     ]);
   });
 
   it("warns about a likely rename below the edited level", async () => {
     const renamed = 'Removed "b" and added "b2", which may be a rename';
+    const base: FormSchema = {
+      ...schema,
+      pages: [{ id: "page-1", fields: [text("a"), list("l", [text("b")])] }],
+    };
     expect(
       (
         await applied({
+          base,
           scope: topLevel(1),
-          value: group("g", [text("b2"), header("h")]),
+          value: list("l", [text("b2")]),
         })
       ).identityChanges,
     ).toEqual([renamed]);
     expect(
       (
         await applied({
+          base,
           scope: pageScope,
           value: {
             id: "page-1",
-            fields: [text("a"), group("g", [text("b2"), header("h")])],
+            fields: [text("a"), list("l", [text("b2")])],
           },
         })
       ).identityChanges,
@@ -358,11 +349,7 @@ describe("prepareJsonApply", () => {
           scope: pageScope,
           value: {
             id: "page-1",
-            fields: [
-              text("a"),
-              text("new"),
-              group("g", [text("b"), header("h")]),
-            ],
+            fields: [text("a"), text("new"), text("b"), header("h")],
           },
         })
       ).identityChanges,

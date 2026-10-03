@@ -17,7 +17,6 @@ import {
   type ImagesItem,
 } from "@alliance/common/forms/display-blocks";
 import {
-  flattenPageItems,
   isQuestionField,
   type AnyField,
   type FormSchema,
@@ -1154,9 +1153,7 @@ const FormRenderer = ({
     visiblePageIndices.indexOf(currentPageIndex) + 1,
   );
 
-  const pageFields = currentPage
-    ? flattenPageItems(currentPage.fields)
-    : undefined;
+  const pageFields = currentPage ? currentPage.fields : undefined;
   const resolvedPageElements = useMemo(
     () =>
       (pageFields ?? []).map((element) =>

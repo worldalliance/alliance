@@ -1,6 +1,4 @@
 import {
-  flattenPageItems,
-  isFieldGroup,
   isQuestionField,
   type AnyField,
   type Page,
@@ -14,34 +12,24 @@ export type ConditionSourceFields = {
 /**
  * The fields a page item's visibility conditions can read: every field before
  * it in the form, and the fields after it on its own page. Neither holds the
- * item or anything nested in it.
+ * item itself unless `includeItem`, as for a visibility group's shared
+ * condition, which may read any member.
  */
 export function conditionSourceFields(params: {
   pages: Page[];
   pageIndex: number;
-  parentId: string | null | undefined;
   index: number;
+  includeItem?: boolean;
 }): ConditionSourceFields {
-  const { pages, pageIndex, parentId, index } = params;
+  const { pages, pageIndex, index, includeItem = false } = params;
   const items = pages[pageIndex]?.fields ?? [];
-  const groupIndex =
-    parentId == null
-      ? -1
-      : items.findIndex((item) => isFieldGroup(item) && item.id === parentId);
-  const group = items[groupIndex];
-  const siblings = group && isFieldGroup(group) ? group.fields : [];
-  const topLevelIndex = parentId == null ? index : groupIndex;
   return {
     previousFields: [
-      ...pages
-        .slice(0, pageIndex)
-        .flatMap((page) => flattenPageItems(page.fields)),
-      ...flattenPageItems(items.slice(0, topLevelIndex)),
-      ...siblings.slice(0, index),
+      ...pages.slice(0, pageIndex).flatMap((page) => page.fields),
+      ...items.slice(0, index),
     ].filter(isQuestionField),
-    laterFields: [
-      ...siblings.slice(index + 1),
-      ...flattenPageItems(items.slice(topLevelIndex + 1)),
-    ].filter(isQuestionField),
+    laterFields: items
+      .slice(includeItem ? index : index + 1)
+      .filter(isQuestionField),
   };
 }

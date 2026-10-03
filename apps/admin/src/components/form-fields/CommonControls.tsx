@@ -11,7 +11,6 @@ import {
   type ContractField,
   type CustomComponentField,
   type EmailField,
-  type FieldGroup,
   type MultiSelectField,
   type NumberField,
   type Page,
@@ -227,7 +226,7 @@ export function OutputPrivateByDefaultToggle({
 export type OutputBlockOption = { id: string; label: string };
 
 type ConditionalVisibilityProps = {
-  field: (AnyField | DisplayBlock | Page | FieldGroup) & {
+  field: (AnyField | DisplayBlock | Page) & {
     visibleIfFormula?: VisibleIfFormula;
   };
   previousFields: AnyField[];

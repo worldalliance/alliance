@@ -1,5 +1,4 @@
 import {
-  flattenPageItems,
   forEachCondition,
   forEachOutputViewCondition,
   isQuestionField,
@@ -22,7 +21,7 @@ export function mapCustomValidatorIds(
   forEachCondition(next, visit);
   forEachOutputViewCondition(next, visit);
   for (const page of next.pages) {
-    for (const element of flattenPageItems(page.fields)) {
+    for (const element of page.fields) {
       if (!isQuestionField(element)) continue;
       const subFields = element.kind === "list" ? element.fields : [];
       for (const field of [element, ...subFields]) {

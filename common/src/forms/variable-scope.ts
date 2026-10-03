@@ -10,7 +10,7 @@ import { syncFormulaListInputs, type VariableFieldScope } from "./variables";
 
 /**
  * Page-level question fields of each form a variable or options formula reads,
- * by form id, with groups flattened as `collectVariableResolutionFields` does.
+ * by form id.
  */
 export type SourceFormFields = ReadonlyMap<number, readonly AnyField[]>;
 

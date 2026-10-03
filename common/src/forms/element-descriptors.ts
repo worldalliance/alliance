@@ -1,10 +1,8 @@
 import { withCount } from "../plural";
 import type { DisplayBlock, DisplayKind } from "./display-blocks";
 import {
-  isFieldGroup,
   isQuestionField,
   type AnyField,
-  type FieldGroup,
   type FieldKind,
   type OutputBlock,
   type OutputFieldBlock,
@@ -118,17 +116,6 @@ export function displayBlockPreview(block: DisplayBlock): string {
   }
 }
 
-function fieldGroupDescriptor(
-  group: FieldGroup,
-  options?: { typeQualified?: boolean; maxTextLength?: number },
-): string {
-  const typeName = "Group";
-  const label = group.label?.trim();
-  if (!label) return options?.typeQualified ? typeName : group.id;
-  const text = truncate(label, options?.maxTextLength);
-  return options?.typeQualified ? `${typeName}: ${text}` : text;
-}
-
 function truncate(text: string, max: number | undefined): string {
   return max !== undefined && text.length > max
     ? `${text.slice(0, max - 1)}…`
@@ -145,9 +132,6 @@ export function elementInternalDescriptor(
   element: PageItem,
   options?: { typeQualified?: boolean; maxTextLength?: number },
 ): string {
-  if (isFieldGroup(element)) {
-    return fieldGroupDescriptor(element, options);
-  }
   if (isQuestionField(element)) {
     const typeName = FIELD_KIND_NAMES[element.kind];
     const label = element.label?.trim();
