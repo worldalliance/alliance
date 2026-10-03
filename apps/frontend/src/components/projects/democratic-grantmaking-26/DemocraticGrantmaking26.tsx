@@ -89,20 +89,9 @@ export default function DemocraticGrantmaking26() {
                 Help decide where to donate{" "}
                 <span className="site-display text-green">$100,000</span>
               </DisplayHeading>
-              <SiteSubtitle
-                size={SubtitleSize.Page}
-                onDark
-                className="lg:hidden"
-              >
-                Join the Alliance to nominate a nonprofit and help decide where
-                the money goes.
-              </SiteSubtitle>
-              <SiteSubtitle
-                size={SubtitleSize.Page}
-                onDark
-                className="hidden lg:block"
-              >
-                Join the Alliance to choose which nonprofit gets it.
+              <SiteSubtitle size={SubtitleSize.Page} onDark>
+                Join the Alliance to nominate a nonprofit and vote which one
+                gets the money.
               </SiteSubtitle>
               <FeaturedPeople className="mt-4 hidden lg:flex" />
             </div>
