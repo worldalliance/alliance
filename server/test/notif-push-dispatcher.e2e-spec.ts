@@ -528,6 +528,37 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       expect(
         messages.filter((message) => message.notification?.id === notif.id),
       ).toEqual([]);
+      expect(
+        (await notifRepo.findOneByOrFail({ id: notif.id })).shouldPush,
+      ).toBe(false);
+    });
+
+    it("drops the push of a reply whose comment was deleted", async () => {
+      const user = await createUser();
+      const now = new Date();
+      await createDevice(
+        user,
+        new Date(now.getTime() - milliseconds({ hours: 1 })),
+      );
+      const row = await createForumReplyUnreadContent(
+        user,
+        new Date(now.getTime() - milliseconds({ minutes: 5 })),
+        new Date(now.getTime() - milliseconds({ hours: 1 })),
+      );
+      await ctx.dataSource
+        .getRepository(Comment)
+        .update(row.contentId, { deleted: true });
+
+      const messages = await dispatcher.findUnreadContentPushes(
+        "test-dispatch-deleted-comment",
+      );
+
+      expect(messages.filter((message) => message.userId === user.id)).toEqual(
+        [],
+      );
+      expect(
+        (await unreadContentRepo.findOneByOrFail({ id: row.id })).shouldPush,
+      ).toBe(false);
     });
   });
 });

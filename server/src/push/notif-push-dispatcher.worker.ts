@@ -11,7 +11,7 @@ import {
 } from "src/notifs/entities/unread-content.entity";
 import { NotifsService } from "src/notifs/notifs.service";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
-import type { Repository } from "typeorm";
+import { In, type Repository } from "typeorm";
 import { v4 } from "uuid";
 import { CreatePushMessage, PushService } from "./push.service";
 
@@ -121,14 +121,11 @@ export class NotifPushDispatcherWorker {
         [NotificationCategory.CommunityInviteRequestCreated]: true,
         [NotificationCategory.CommunityInviteRequestRejected]: true,
       };
-      if (!notifTypeToSendable[notif.category]) {
+      const dto = dtoById.get(notif.id);
+      if (!notifTypeToSendable[notif.category] || !dto) {
         await this.notificationRepository.update(notif.id, {
           shouldPush: false,
         });
-        continue;
-      }
-      const dto = dtoById.get(notif.id);
-      if (!dto) {
         continue;
       }
       messages.push(
@@ -188,6 +185,16 @@ export class NotifPushDispatcherWorker {
     const hydrated = await this.notifsService.getUnreadContentsForPush(
       claimed.map((content) => content.id),
     );
+    const shown = new Set(
+      hydrated.map(({ unreadContent }) => unreadContent.id),
+    );
+    const hidden = claimed.filter((row) => !shown.has(row.id));
+    if (hidden.length) {
+      await this.unreadContentRepository.update(
+        { id: In(hidden.map((row) => row.id)) },
+        { shouldPush: false },
+      );
+    }
 
     if (hydrated.length === 0) {
       return [];
