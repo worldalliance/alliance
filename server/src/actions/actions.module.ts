@@ -31,10 +31,10 @@ import { User } from "../user/entities/user.entity";
 import { UserModule } from "../user/user.module";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionStatsService } from "./action-stats.service";
+import { ActionVisibilityModule } from "./action-visibility.module";
 import { ActionsController } from "./actions.controller";
 import { ActionsGateway } from "./actions.gateway";
 import { ActionsService } from "./actions.service";
-import { CohortAdmissionService } from "./cohort-admission.service";
 import { CohortDecisionStaffService } from "./cohort-decision-staff.service";
 import { CohortDecisionListener } from "./cohort-decision.listener";
 import { CohortDecisionService } from "./cohort-decision.service";
@@ -59,11 +59,9 @@ import { GeneralUpdate } from "./entities/general-update.entity";
 import { Project } from "./entities/project.entity";
 import { ReminderGroup } from "./entities/reminder-group.entity";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
-import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 import { ProjectsController } from "./projects.controller";
 import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
-import { SingleMemberCohortService } from "./single-member-cohort.service";
 
 @Module({
   imports: [
@@ -101,6 +99,7 @@ import { SingleMemberCohortService } from "./single-member-cohort.service";
     UserModule,
     CommunityModule,
     NotifsModule,
+    ActionVisibilityModule,
     MailModule,
     MmsModule,
     PushModule,
@@ -129,20 +128,17 @@ import { SingleMemberCohortService } from "./single-member-cohort.service";
     ContractSuspenderWorker,
     ForumActionCompleterWorker,
     ActionStatsService,
-    CohortAdmissionService,
     CohortDecisionListener,
     CohortDecisionService,
     CohortDecisionStaffService,
     CohortDecisionWorker,
     CohortDivergenceService,
-    PrerequisiteProgressService,
-    SingleMemberCohortService,
   ],
   exports: [
     ActionsService,
+    ActionVisibilityModule,
     ActionFormVariantService,
     ActionEventRecipientService,
-    SingleMemberCohortService,
   ],
 })
 export class ActionsModule {}
