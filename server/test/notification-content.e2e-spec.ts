@@ -105,10 +105,10 @@ describe("Notification content stability (e2e)", () => {
     return action;
   };
 
-  const createPost = (title: string) =>
+  const createPost = (title: string, author = recipient) =>
     ctx.dataSource.getRepository(Post).save({
       title,
-      author: recipient,
+      author,
       authors: [],
       editableContent: { body: "Body", attachments: [] },
       deleted: false,
@@ -291,6 +291,41 @@ describe("Notification content stability (e2e)", () => {
       expect(await shownText(row)).toBe("Jordan Literal will host the call");
     });
 
+    it("hides the entry once the member can no longer see the action", async () => {
+      const archived = await createVisibleAction("Soon Archived");
+      const update = await createUpdate(
+        new Date(),
+        "About an archived action",
+        archived,
+      );
+      const row = await send(update);
+      expect(await shownText(row)).toBe("About an archived action");
+      const before = await unreadCount();
+
+      await ctx.dataSource
+        .getRepository(Action)
+        .update(archived.id, { archived: true });
+
+      expect(await shownText(row)).toBeUndefined();
+      expect(await unreadCount()).toBe(before - 1);
+    });
+
+    it("hides the entry while the update is unpublished", async () => {
+      const update = await createUpdate(new Date(), "Held back");
+      const row = await send(update);
+      const updates = ctx.dataSource.getRepository(ActionUpdate);
+
+      await updates.update(update.id, {
+        visibleAt: new Date(Date.now() + milliseconds({ hours: 1 })),
+      });
+      expect(await shownText(row)).toBeUndefined();
+
+      await updates.update(update.id, {
+        visibleAt: new Date(Date.now() - 1000),
+      });
+      expect(await shownText(row)).toBe("Held back");
+    });
+
     it("moves a scheduled entry to the date an unpublished update shows", async () => {
       const update = await createUpdate(
         new Date(Date.now() + milliseconds({ hours: 1 })),
@@ -454,7 +489,7 @@ describe("Notification content stability (e2e)", () => {
     ).toBe("Legacy update text");
   });
 
-  it("shows a reply's current excerpt and author inside its pinned wording", async () => {
+  it("shows a reply's current excerpt and author inside its pinned wording, and hides it with its post", async () => {
     const post = await createPost("Reply Target");
     const comment = await createReply({
       parentObjectType: CommentParentObject.Post,
@@ -491,6 +526,36 @@ describe("Notification content stability (e2e)", () => {
     expect(
       (await entry(row.id, NotificationSourceType.UnreadContent))?.message,
     ).toBe("Riley Renamed replied: Edited body");
+
+    await ctx.dataSource.getRepository(Post).update(post.id, { deleted: true });
+    expect(
+      await entry(row.id, NotificationSourceType.UnreadContent),
+    ).toBeUndefined();
+  });
+
+  it("hides a reply while its post is rescheduled, unless the recipient can see it early", async () => {
+    const post = await createPost(
+      "Rescheduled Reply Target",
+      await createUser("Pat Poster"),
+    );
+    const comment = await createReply({
+      parentObjectType: CommentParentObject.Post,
+      parentObjectId: post.id,
+    });
+    const row = await notifsService.createForumReplyNotif(comment, recipient);
+    const postRepo = ctx.dataSource.getRepository(Post);
+
+    await postRepo.update(post.id, {
+      visibleAt: new Date(Date.now() + milliseconds({ days: 1 })),
+    });
+    expect(
+      await entry(row.id, NotificationSourceType.UnreadContent),
+    ).toBeUndefined();
+
+    await postRepo.save({ id: post.id, authors: [recipient] });
+    expect(
+      await entry(row.id, NotificationSourceType.UnreadContent),
+    ).toBeDefined();
   });
 
   it("hides a reply and its unread count once the comment is deleted", async () => {
@@ -510,6 +575,26 @@ describe("Notification content stability (e2e)", () => {
       await entry(row.id, NotificationSourceType.UnreadContent),
     ).toBeUndefined();
     expect(await unreadCount()).toBe(before - 1);
+  });
+
+  it("shows a reply on a public-only action anyone can open, even as a draft", async () => {
+    const publicOnly = await ctx.dataSource.getRepository(Action).save({
+      name: "Public Only Draft",
+      category: [],
+      body: "Body",
+      visibilityMode: VisibilityMode.Public,
+      publicOnly: true,
+    });
+    const comment = await createReply({
+      parentObjectType: CommentParentObject.Action,
+      parentObjectId: publicOnly.id,
+    });
+
+    const row = await notifsService.createForumReplyNotif(comment, recipient);
+
+    expect(
+      await entry(row.id, NotificationSourceType.UnreadContent),
+    ).toBeDefined();
   });
 
   it("links a reply on an activity to the activity under its action", async () => {
@@ -638,6 +723,89 @@ describe("Notification content stability (e2e)", () => {
       expect(row.content).toMatchObject({
         target: { type: ContentTargetType.Comment, id: comment.id },
       });
+    });
+
+    it("hides the group and its unread count once the post is deleted", async () => {
+      const post = await createPost("Deleted Post");
+      await like(post, await createUser("Cy Liker"));
+      const [row] = await likeGroup(post.id);
+      const before = await unreadCount();
+
+      await ctx.dataSource
+        .getRepository(Post)
+        .update(post.id, { deleted: true });
+
+      expect(await shown(row.id)).toBeUndefined();
+      expect(await unreadCount()).toBe(before - 1);
+    });
+
+    it("hides an activity's group once the member can no longer see its action", async () => {
+      const action = await createVisibleAction("Activity Action");
+      const activity = await ctx.dataSource.getRepository(ActionActivity).save({
+        userId: recipient.id,
+        actionId: action.id,
+        type: ActionActivityType.USER_COMPLETED,
+      });
+      await likes.createOrUpdate({
+        owner: recipient,
+        liker: await createUser("Fay Liker"),
+        targetType: "activity:user_completed",
+        targetId: activity.id,
+        webAppLocation: `/action/${action.id}`,
+        targetContent: action.name,
+        targetAction: action,
+      });
+      const [row] = await notifRepo.find({
+        where: {
+          user: { id: recipient.id },
+          groupingKey: `like:activity:user_completed:${activity.id}`,
+        },
+      });
+      expect(await shown(row.id)).toBe(
+        "Fay Liker liked your completion of: Activity Action",
+      );
+      const before = await unreadCount();
+
+      await ctx.dataSource
+        .getRepository(Action)
+        .update(action.id, { archived: true });
+
+      expect(await shown(row.id)).toBeUndefined();
+      expect(await unreadCount()).toBe(before - 1);
+    });
+
+    it("hides a comment's group and its unread count once its post is deleted", async () => {
+      const post = await createPost("Commented Post");
+      const comment = await createReply({
+        parentObjectType: CommentParentObject.Post,
+        parentObjectId: post.id,
+        body: "Liked comment",
+      });
+      await likes.createOrUpdate({
+        owner: recipient,
+        liker: await createUser("Gus Liker"),
+        targetType: "comment",
+        targetId: comment.id,
+        webAppLocation: `/forum/post/${post.id}`,
+        targetContent: "Liked comment",
+      });
+      const [row] = await notifRepo.find({
+        where: {
+          user: { id: recipient.id },
+          groupingKey: `like:comment:${comment.id}`,
+        },
+      });
+      expect(await shown(row.id)).toBe(
+        "Gus Liker liked your comment: Liked comment",
+      );
+      const before = await unreadCount();
+
+      await ctx.dataSource
+        .getRepository(Post)
+        .update(post.id, { deleted: true });
+
+      expect(await shown(row.id)).toBeUndefined();
+      expect(await unreadCount()).toBe(before - 1);
     });
 
     it("names an activity's current action, after later likes too", async () => {

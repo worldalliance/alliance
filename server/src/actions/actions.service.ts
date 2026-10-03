@@ -1201,14 +1201,10 @@ export class ActionsService {
       );
     }
 
-    if (action?.publicOnly) {
-      return action;
-    }
-
     if (
       !action ||
       !(
-        (await this.actionVisibility.userCanSeeAction({
+        (await this.actionVisibility.userCanOpenAction({
           action,
           user,
           session,

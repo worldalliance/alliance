@@ -28,6 +28,11 @@ const unreadContentTargetType = {
   [UnreadContentType.ActionEvent]: null,
 } satisfies Record<UnreadContentType, ContentTargetType | null>;
 
+const unreadContentTarget = (row: UnreadContent) => {
+  const type = unreadContentTargetType[row.contentType];
+  return type ? [{ type, id: row.contentId }] : [];
+};
+
 /** What a legacy row renders, which matches what it rendered before formats existed. */
 const legacyUnreadContent = {
   [UnreadContentType.ForumReply]: {
@@ -43,26 +48,47 @@ const legacyUnreadContent = {
 
 const withoutDestination = { webAppLocation: "", mobileAppLocation: null };
 
-/** Renders inbox rows; rows it omits are hidden. */
+/** Renders inbox rows, keyed by recipient; rows it omits are hidden. */
 @Injectable()
 export class NotificationRenderService {
   constructor(private readonly references: NotificationReferencesService) {}
 
   async renderNotifications(
-    notifs: Notification[],
+    byRecipient: ReadonlyMap<number, Notification[]>,
   ): Promise<NotificationDto[]> {
-    const referenced = notifs
-      .filter((notif) => rendersFromContent[notif.format])
-      .map((notif) => ({
-        notif,
-        content: parseNotificationContent(notif.content),
-      }));
+    const notifs = [...byRecipient.values()].flat();
+    const referenced = [...byRecipient].flatMap(([recipientId, rows]) =>
+      rows
+        .filter((notif) => rendersFromContent[notif.format])
+        .map((notif) => ({
+          recipientId,
+          notif,
+          content: parseNotificationContent(notif.content),
+        })),
+    );
+    const referencedByRecipient = Map.groupBy(
+      referenced,
+      (entry) => entry.recipientId,
+    );
     const references = await this.references.resolve({
       contents: referenced.map(({ content }) => content),
-      targets: [],
+      targetsByRecipient: new Map(
+        [...byRecipient.keys()].map((recipientId) => [
+          recipientId,
+          (referencedByRecipient.get(recipientId) ?? []).flatMap(
+            ({ content }) => content.target ?? [],
+          ),
+        ]),
+      ),
     });
     const renderedById = new Map(
-      referenced.flatMap(({ notif, content }) => {
+      referenced.flatMap(({ recipientId, notif, content }) => {
+        if (
+          content.target &&
+          !references.accessFor(recipientId).isAvailable(content.target)
+        ) {
+          return [];
+        }
         const rendered = renderNotificationContent({
           content,
           references,
@@ -92,23 +118,37 @@ export class NotificationRenderService {
   }
 
   async renderUnreadContents(
-    rows: UnreadContent[],
+    byRecipient: ReadonlyMap<number, UnreadContent[]>,
   ): Promise<NotificationDto[]> {
-    const parsed = rows.map((row) => ({
-      row,
-      content: rendersFromContent[row.format]
-        ? parseNotificationContent(row.content)
-        : legacyUnreadContent[row.contentType],
-    }));
+    const parsed = [...byRecipient].flatMap(([recipientId, rows]) =>
+      rows.map((row) => ({
+        recipientId,
+        row,
+        content: rendersFromContent[row.format]
+          ? parseNotificationContent(row.content)
+          : legacyUnreadContent[row.contentType],
+      })),
+    );
     const references = await this.references.resolve({
       contents: parsed.map(({ content }) => content),
-      targets: rows.flatMap((row) => {
-        const type = unreadContentTargetType[row.contentType];
-        return type ? [{ type, id: row.contentId }] : [];
-      }),
+      targetsByRecipient: new Map(
+        [...byRecipient].map(([recipientId, rows]) => [
+          recipientId,
+          rows
+            .filter((row) => rendersFromContent[row.format])
+            .flatMap(unreadContentTarget),
+        ]),
+      ),
+      legacyTargets: [...byRecipient.values()]
+        .flat()
+        .filter((row) => !rendersFromContent[row.format])
+        .flatMap(unreadContentTarget),
     });
 
-    return parsed.flatMap(({ row, content }) => {
+    return parsed.flatMap(({ recipientId, row, content }) => {
+      const access = rendersFromContent[row.format]
+        ? references.accessFor(recipientId)
+        : references.legacyAccess;
       const base = {
         id: row.id,
         readAt: row.readAt,
@@ -121,7 +161,7 @@ export class NotificationRenderService {
 
       switch (row.contentType) {
         case UnreadContentType.ForumReply: {
-          const comment = references.comments.get(row.contentId);
+          const comment = access.comments.get(row.contentId);
           const rendered =
             comment?.editableContent &&
             renderNotificationContent({
@@ -152,7 +192,7 @@ export class NotificationRenderService {
           ];
         }
         case UnreadContentType.ActionUpdate: {
-          const actionUpdate = references.actionUpdates.get(row.contentId);
+          const actionUpdate = access.actionUpdates.get(row.contentId);
           const rendered =
             actionUpdate &&
             renderNotificationContent({

@@ -1,6 +1,13 @@
 import { milliseconds } from "date-fns";
 import { Expo } from "expo-server-sdk";
+import { ActionCohortDecision } from "src/actions/entities/action-cohort-decision.entity";
+import {
+  ActionEvent,
+  ActionStatus,
+} from "src/actions/entities/action-event.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
+import { CohortDecisionReason } from "src/actions/entities/cohort-decision-reason";
+import { SingleMemberCohortService } from "src/actions/single-member-cohort.service";
 import {
   Comment,
   CommentParentObject,
@@ -95,6 +102,26 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       ...overrides,
     });
     return notifRepo.save(notif);
+  };
+
+  const createActionReply = async (params: {
+    action: Action;
+    author: User;
+    body: string;
+  }): Promise<Comment> => {
+    const editableContent = await ctx.dataSource
+      .getRepository(EditableContent)
+      .save({ body: params.body, attachments: [] });
+    return ctx.dataSource.getRepository(Comment).save({
+      author: params.author,
+      authorId: params.author.id,
+      editableContent,
+      parentObjectType: CommentParentObject.Action,
+      parentObjectId: params.action.id,
+      deleted: false,
+      pinned: false,
+      likesCount: 0,
+    });
   };
 
   const createForumReplyUnreadContent = async (
@@ -559,6 +586,240 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       expect(
         (await unreadContentRepo.findOneByOrFail({ id: row.id })).shouldPush,
       ).toBe(false);
+    });
+
+    it("judges an action's launch by the database clock when the server's clock runs behind", async () => {
+      const member = await createUser();
+      const now = new Date();
+      await createDevice(
+        member,
+        new Date(now.getTime() - milliseconds({ hours: 2 })),
+      );
+      const action = await ctx.dataSource.getRepository(Action).save({
+        name: "Just Launched",
+        category: [],
+        body: "Body",
+        visibilityMode: VisibilityMode.Public,
+      });
+      await ctx.dataSource.getRepository(ActionEvent).save({
+        title: "Launch",
+        description: "Members act",
+        newStatus: ActionStatus.MemberAction,
+        date: new Date(now.getTime() - milliseconds({ minutes: 1 })),
+        action,
+      });
+      const comment = await createActionReply({
+        action,
+        author: member,
+        body: "Reply at launch",
+      });
+      const row = await ctx.app
+        .get(NotifsService)
+        .createForumReplyNotif(comment, member);
+
+      jest.setSystemTime(new Date(now.getTime() - milliseconds({ hours: 1 })));
+      try {
+        const messages = await dispatcher.findUnreadContentPushes(
+          "test-dispatch-clock-skew",
+        );
+        expect(messages.map((message) => message.userId)).toContain(member.id);
+      } finally {
+        jest.setSystemTime();
+      }
+      expect(
+        (await unreadContentRepo.findOneByOrFail({ id: row.id })).shouldPush,
+      ).toBe(true);
+    });
+
+    it("pushes a reply on an archived action only to the recipient who can still see it", async () => {
+      const admin = await createUser({ admin: true });
+      const memberUser = await createUser();
+      const oneHourAgo = new Date(Date.now() - milliseconds({ hours: 1 }));
+      await createDevice(admin, oneHourAgo);
+      await createDevice(memberUser, oneHourAgo);
+      const action = await ctx.dataSource.getRepository(Action).save({
+        name: "Archived Action",
+        category: [],
+        body: "Body",
+        visibilityMode: VisibilityMode.Public,
+        archived: true,
+      });
+      const comment = await createActionReply({
+        action,
+        author: admin,
+        body: "Reply on an archived action",
+      });
+      const notifs = ctx.app.get(NotifsService);
+      await notifs.createForumReplyNotif(comment, admin);
+      await notifs.createForumReplyNotif(comment, memberUser);
+
+      const messages = await dispatcher.findUnreadContentPushes(
+        "test-dispatch-per-recipient",
+      );
+      expect(
+        messages
+          .map((message) => message.userId)
+          .filter((id) => id === admin.id || id === memberUser.id),
+      ).toEqual([admin.id]);
+      expect(
+        await unreadContentRepo.findOneByOrFail({
+          user: { id: memberUser.id },
+          contentId: comment.id,
+        }),
+      ).toMatchObject({ shouldPush: false });
+    });
+
+    it("pushes a reply on a cohort action only to the member its saved decision admits", async () => {
+      const admitted = await createUser();
+      const outsider = await createUser();
+      const oneHourAgo = new Date(Date.now() - milliseconds({ hours: 1 }));
+      await createDevice(admitted, oneHourAgo);
+      await createDevice(outsider, oneHourAgo);
+      const action = await ctx.dataSource.getRepository(Action).save({
+        name: "Cohort Action",
+        category: [],
+        body: "Body",
+        visibilityMode: VisibilityMode.ParticipatingGroups,
+        cohortExpression: { type: "Manual", userIds: [] },
+      });
+      await ctx.dataSource.getRepository(ActionEvent).save({
+        title: "Members act",
+        description: "Member phase",
+        newStatus: ActionStatus.MemberAction,
+        date: oneHourAgo,
+        action,
+      });
+      await ctx.dataSource.getRepository(ActionCohortDecision).save({
+        actionId: action.id,
+        userId: admitted.id,
+        included: true,
+        reason: CohortDecisionReason.Launch,
+        resolvedAt: oneHourAgo,
+      });
+      const comment = await createActionReply({
+        action,
+        author: admitted,
+        body: "Reply on a cohort action",
+      });
+      const notifs = ctx.app.get(NotifsService);
+      await notifs.createForumReplyNotif(comment, admitted);
+      await notifs.createForumReplyNotif(comment, outsider);
+
+      const messages = await dispatcher.findUnreadContentPushes(
+        "test-dispatch-cohort",
+      );
+      expect(
+        messages
+          .map((message) => message.userId)
+          .filter((id) => id === admitted.id || id === outsider.id),
+      ).toEqual([admitted.id]);
+    });
+
+    it("pushes a reply on a cohort action only to the member its live cohort admits", async () => {
+      const outsider = await createUser();
+      const inCohort = await createUser();
+      const oneHourAgo = new Date(Date.now() - milliseconds({ hours: 1 }));
+      await createDevice(outsider, oneHourAgo);
+      await createDevice(inCohort, oneHourAgo);
+      const action = await ctx.dataSource.getRepository(Action).save({
+        name: "Live Cohort Action",
+        category: [],
+        body: "Body",
+        visibilityMode: VisibilityMode.ParticipatingGroups,
+        cohortExpression: { type: "Manual", userIds: [inCohort.id] },
+      });
+      await ctx.dataSource.getRepository(ActionEvent).save({
+        title: "Members act",
+        description: "Member phase",
+        newStatus: ActionStatus.MemberAction,
+        date: oneHourAgo,
+        action,
+      });
+      const comment = await createActionReply({
+        action,
+        author: inCohort,
+        body: "Reply on a live cohort action",
+      });
+      const notifs = ctx.app.get(NotifsService);
+      await notifs.createForumReplyNotif(comment, outsider);
+      await notifs.createForumReplyNotif(comment, inCohort);
+
+      const messages = await dispatcher.findUnreadContentPushes(
+        "test-dispatch-live-cohort",
+      );
+      expect(
+        messages
+          .map((message) => message.userId)
+          .filter((id) => id === inCohort.id || id === outsider.id),
+      ).toEqual([inCohort.id]);
+    });
+
+    it("evaluates a live cohort only for recipients whose rows are about its action", async () => {
+      const cohortRecipient = await createUser();
+      const bystander = await createUser();
+      const oneHourAgo = new Date(Date.now() - milliseconds({ hours: 1 }));
+      await createDevice(cohortRecipient, oneHourAgo);
+      await createDevice(bystander, oneHourAgo);
+      const cohortAction = await ctx.dataSource.getRepository(Action).save({
+        name: "Scoped Cohort Action",
+        category: [],
+        body: "Body",
+        visibilityMode: VisibilityMode.ParticipatingGroups,
+        cohortExpression: { type: "Manual", userIds: [cohortRecipient.id] },
+      });
+      const publicAction = await ctx.dataSource.getRepository(Action).save({
+        name: "Scoped Public Action",
+        category: [],
+        body: "Body",
+        visibilityMode: VisibilityMode.Public,
+      });
+      await ctx.dataSource.getRepository(ActionEvent).save(
+        [cohortAction, publicAction].map((action) => ({
+          title: "Members act",
+          description: "Member phase",
+          newStatus: ActionStatus.MemberAction,
+          date: oneHourAgo,
+          action,
+        })),
+      );
+      const notifs = ctx.app.get(NotifsService);
+      await notifs.createForumReplyNotif(
+        await createActionReply({
+          action: cohortAction,
+          author: cohortRecipient,
+          body: "Reply on the cohort action",
+        }),
+        cohortRecipient,
+      );
+      await notifs.createForumReplyNotif(
+        await createActionReply({
+          action: publicAction,
+          author: bystander,
+          body: "Reply on the public action",
+        }),
+        bystander,
+      );
+      const liveCohort = jest.spyOn(
+        ctx.app.get(SingleMemberCohortService),
+        "computeIsInActionCohort",
+      );
+
+      try {
+        const messages = await dispatcher.findUnreadContentPushes(
+          "test-dispatch-scoped-cohort",
+        );
+        expect(
+          messages
+            .map((message) => message.userId)
+            .filter((id) => id === cohortRecipient.id || id === bystander.id)
+            .sort(),
+        ).toEqual([cohortRecipient.id, bystander.id].sort());
+        const evaluated = liveCohort.mock.calls.map(([call]) => call.user.id);
+        expect(evaluated).toContain(cohortRecipient.id);
+        expect(evaluated).not.toContain(bystander.id);
+      } finally {
+        liveCohort.mockRestore();
+      }
     });
   });
 });

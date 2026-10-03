@@ -111,7 +111,7 @@ const notificationContentSchema = z.object({
   pluralMessage: z.array(segmentSchema).optional(),
   /** The entity the row's location opens; once it's gone, the location is dropped. */
   destination: destinationSchema.optional(),
-  /** Content the row is about. */
+  /** Content the row is about; without access to it the row is hidden. */
   target: contentTargetSchema.optional(),
 });
 export type NotificationContent = z.infer<typeof notificationContentSchema>;

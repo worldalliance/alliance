@@ -94,6 +94,9 @@ function unreadContentFor(source: UnreadContentSource): NotificationContent {
 // somewhere around 5k recipients.
 const UNREAD_CONTENT_INSERT_CHUNK = 1000;
 
+const byRecipient = <T extends { user: User }>(rows: T[]) =>
+  Map.groupBy(rows, (row) => row.user.id);
+
 // Timestamps are stored to the microsecond but serialized to the
 // millisecond, so a bound covers its whole millisecond.
 const throughMillisecond = (date: Date): Date => addMilliseconds(date, 1);
@@ -134,8 +137,12 @@ export class NotifsService {
     ]);
 
     const merged = [
-      ...(await this.renderService.renderNotifications(notifs)),
-      ...(await this.renderService.renderUnreadContents(unreadContents)),
+      ...(await this.renderService.renderNotifications(
+        new Map([[userId, notifs]]),
+      )),
+      ...(await this.renderService.renderUnreadContents(
+        new Map([[userId, unreadContents]]),
+      )),
     ].sort(
       (a, b) =>
         new Date(b.sendTime || b.createdAt).getTime() -
@@ -173,10 +180,14 @@ export class NotifsService {
         }),
         this.unreadContentRepository.find({ where: unread }),
       ]);
-    // Counts only what findAll can show: rows whose content is gone never render.
+    // Counts only what findAll can show: rows the recipient can no longer open never render.
     const [shownNotifs, shownContents] = await Promise.all([
-      this.renderService.renderNotifications(referencedNotifs),
-      this.renderService.renderUnreadContents(unreadContents),
+      this.renderService.renderNotifications(
+        new Map([[userId, referencedNotifs]]),
+      ),
+      this.renderService.renderUnreadContents(
+        new Map([[userId, unreadContents]]),
+      ),
     ]);
     return legacyNotifCount + shownNotifs.length + shownContents.length;
   }
@@ -426,7 +437,9 @@ export class NotifsService {
       order: { sendTime: "ASC" },
     });
 
-    const dtos = await this.renderService.renderUnreadContents(unreadContents);
+    const dtos = await this.renderService.renderUnreadContents(
+      byRecipient(unreadContents),
+    );
     const dtoById = new Map(dtos.map((dto) => [dto.id, dto]));
 
     return unreadContents
@@ -448,7 +461,9 @@ export class NotifsService {
   async renderNotificationsForPush(
     notifs: Notification[],
   ): Promise<Map<number, NotificationDto>> {
-    const dtos = await this.renderService.renderNotifications(notifs);
+    const dtos = await this.renderService.renderNotifications(
+      byRecipient(notifs),
+    );
     return new Map(dtos.map((dto) => [dto.id, dto]));
   }
 }

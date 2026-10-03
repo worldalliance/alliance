@@ -291,7 +291,7 @@ export class LikeNotificationService {
           content,
           references: await this.references.resolve({
             contents: [content],
-            targets: [],
+            targetsByRecipient: new Map(),
             manager,
           }),
           count: users.length,

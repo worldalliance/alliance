@@ -12,8 +12,9 @@ export function filterVisiblePosts<T extends ObjectLiteral>(params: {
   qb: SelectQueryBuilder<T>;
   postAlias: string;
   viewerIdSql?: string;
+  now?: Date;
 }): SelectQueryBuilder<T> {
-  const { qb, postAlias, viewerIdSql } = params;
+  const { qb, postAlias, viewerIdSql, now = new Date() } = params;
   qb.andWhere(`${postAlias}.deleted = false`);
   const clauses = [
     `${postAlias}.visibleAt IS NULL`,
@@ -40,6 +41,6 @@ export function filterVisiblePosts<T extends ObjectLiteral>(params: {
     clauses.push(`EXISTS ${adminSubQuery}`);
   }
   return qb.andWhere(`(${clauses.join(" OR ")})`, {
-    postVisibility_now: new Date(),
+    postVisibility_now: now,
   });
 }

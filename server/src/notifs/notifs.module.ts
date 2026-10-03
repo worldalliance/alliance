@@ -1,10 +1,12 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { ActionVisibilityModule } from "src/actions/action-visibility.module";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ActionUpdate } from "src/actions/entities/action-update.entity";
 import { Action } from "src/actions/entities/action.entity";
 import { Community } from "src/community/entities/community.entity";
 import { Comment } from "src/forum/entities/comment.entity";
+import { Post } from "src/forum/entities/post.entity";
 import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
 import { User } from "src/user/entities/user.entity";
@@ -30,10 +32,12 @@ import { NotifsService } from "./notifs.service";
       User,
       Community,
       Action,
+      Post,
     ]),
     MailModule,
     forwardRef(() => MmsModule),
     forwardRef(() => UserModule),
+    ActionVisibilityModule,
   ],
   controllers: [NotifsController],
   providers: [
