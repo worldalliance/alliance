@@ -19,6 +19,7 @@ export const FORMATS_RENDERING_FROM_CONTENT = Object.values(
 
 export enum UserNameForm {
   Full = "full",
+  Public = "public",
   First = "first",
   Last = "last",
 }
@@ -30,6 +31,8 @@ export enum SegmentType {
   ActionList = "action_list",
   Count = "count",
   Participant = "participant",
+  CommentExcerpt = "comment_excerpt",
+  ActionUpdateText = "action_update_text",
 }
 
 export enum ActionListStyle {
@@ -74,6 +77,8 @@ const segmentSchema = z.union([
     }),
     z.object({ type: z.literal(SegmentType.Count) }),
     z.object({ type: z.literal(SegmentType.Participant) }),
+    z.object({ type: z.literal(SegmentType.CommentExcerpt) }),
+    z.object({ type: z.literal(SegmentType.ActionUpdateText) }),
   ]),
 ]);
 type Segment = z.infer<typeof segmentSchema>;
@@ -87,9 +92,10 @@ export type Destination = z.infer<typeof destinationSchema>;
 export type ContentTarget = { type: ContentTargetType; id: number };
 
 /**
- * Reads parse every referenced row with this and throw on a mismatch. A new
- * segment type ships with a new `NotificationFormat`, so code rolled back to
- * before it renders those rows from `message` instead of failing to parse.
+ * Reads parse every referenced row with this and throw on a mismatch. A
+ * segment type new to a table's rows ships with a new `NotificationFormat` (or,
+ * for `unread_content`, came with its format column), so code rolled back to
+ * before it renders those rows as legacy instead of failing to parse.
  */
 const notificationContentSchema = z.object({
   message: z.array(segmentSchema),
@@ -99,6 +105,18 @@ const notificationContentSchema = z.object({
   destination: destinationSchema.optional(),
 });
 export type NotificationContent = z.infer<typeof notificationContentSchema>;
+
+export const LIVE_ACTION_UPDATE_TEXT: NotificationContent = {
+  message: [{ type: SegmentType.ActionUpdateText }],
+};
+
+export const forumReplyContent = (authorId: number): NotificationContent => ({
+  message: [
+    { type: SegmentType.User, id: authorId, name: UserNameForm.Public },
+    ": ",
+    { type: SegmentType.CommentExcerpt },
+  ],
+});
 
 export function parseNotificationContent(raw: unknown): NotificationContent {
   return notificationContentSchema.parse(raw);
@@ -114,6 +132,8 @@ function userLabel(user: NamedUser, form: UserNameForm): string {
   switch (form) {
     case UserNameForm.Full:
       return user.name;
+    case UserNameForm.Public:
+      return publicDisplayName(user);
     case UserNameForm.First:
       return nameParts(user.name).firstname;
     case UserNameForm.Last:
@@ -216,6 +236,8 @@ type RenderInput = {
   references: ResolvedReferences;
   count: number | null;
   participant?: NamedUser;
+  commentExcerpt?: string;
+  actionUpdateText?: string;
 };
 
 /**
@@ -277,6 +299,16 @@ function renderSegment(segment: Segment, input: RenderInput): string | null {
       return input.participant
         ? publicDisplayName(input.participant)
         : DELETED_MEMBER_LABEL;
+    case SegmentType.CommentExcerpt:
+      if (input.commentExcerpt === undefined) {
+        throw new Error("comment excerpt segment without an excerpt");
+      }
+      return input.commentExcerpt;
+    case SegmentType.ActionUpdateText:
+      if (input.actionUpdateText === undefined) {
+        throw new Error("action update text segment without the text");
+      }
+      return input.actionUpdateText;
     default:
       throw new Error(`unknown segment: ${segment satisfies never}`);
   }
@@ -351,6 +383,8 @@ export function collectReferenceIds(
           break;
         case SegmentType.Count:
         case SegmentType.Participant:
+        case SegmentType.CommentExcerpt:
+        case SegmentType.ActionUpdateText:
           break;
         default:
           throw new Error(`unknown segment: ${segment satisfies never}`);

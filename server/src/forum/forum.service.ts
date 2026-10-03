@@ -805,6 +805,7 @@ export class ForumService {
             contentType: UnreadContentType.ForumReply,
             contentId: comment.id,
             sendTime: comment.createdAt,
+            authorId: comment.authorId,
           };
         }),
     );

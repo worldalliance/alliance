@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { CommentParentObject } from "src/forum/entities/comment.entity";
 import { actionUrl, commentUrl } from "src/search/approutes";
-import { ProfileDto } from "src/user/dto/user.dto";
 import { NotificationDto } from "./dto/notification.dto";
 import {
   Notification,
@@ -13,9 +12,12 @@ import {
 } from "./entities/unread-content.entity";
 import {
   ContentTargetType,
+  LIVE_ACTION_UPDATE_TEXT,
+  type NotificationContent,
   parseNotificationContent,
   renderNotificationContent,
   rendersFromContent,
+  SegmentType,
 } from "./notification-content";
 import { NotificationReferencesService } from "./notification-references.service";
 import { getPreviewText } from "./preview-text";
@@ -25,6 +27,19 @@ const unreadContentTargetType = {
   [UnreadContentType.ActionUpdate]: ContentTargetType.ActionUpdate,
   [UnreadContentType.ActionEvent]: null,
 } satisfies Record<UnreadContentType, ContentTargetType | null>;
+
+/** What a legacy row renders, which matches what it rendered before formats existed. */
+const legacyUnreadContent = {
+  [UnreadContentType.ForumReply]: {
+    message: [
+      { type: SegmentType.Participant },
+      ": ",
+      { type: SegmentType.CommentExcerpt },
+    ],
+  },
+  [UnreadContentType.ActionUpdate]: LIVE_ACTION_UPDATE_TEXT,
+  [UnreadContentType.ActionEvent]: { message: [] },
+} satisfies Record<UnreadContentType, NotificationContent>;
 
 const withoutDestination = { webAppLocation: "", mobileAppLocation: null };
 
@@ -77,80 +92,96 @@ export class NotificationRenderService {
   }
 
   async renderUnreadContents(
-    unreadContents: UnreadContent[],
+    rows: UnreadContent[],
   ): Promise<NotificationDto[]> {
+    const parsed = rows.map((row) => ({
+      row,
+      content: rendersFromContent[row.format]
+        ? parseNotificationContent(row.content)
+        : legacyUnreadContent[row.contentType],
+    }));
     const references = await this.references.resolve({
-      contents: [],
-      targets: unreadContents.flatMap((unreadContent) => {
-        const type = unreadContentTargetType[unreadContent.contentType];
-        return type ? [{ type, id: unreadContent.contentId }] : [];
+      contents: parsed.map(({ content }) => content),
+      targets: rows.flatMap((row) => {
+        const type = unreadContentTargetType[row.contentType];
+        return type ? [{ type, id: row.contentId }] : [];
       }),
     });
 
-    return unreadContents.flatMap((unreadContent) => {
-      if (unreadContent.contentType === UnreadContentType.ForumReply) {
-        const comment = references.comments.get(unreadContent.contentId);
-        if (!comment?.editableContent) {
-          return [];
+    return parsed.flatMap(({ row, content }) => {
+      const base = {
+        id: row.id,
+        readAt: row.readAt,
+        createdAt: row.createdAt,
+        updatedAt: row.readAt ?? row.createdAt,
+        sendTime: row.sendTime,
+        contentType: row.contentType,
+        contentId: row.contentId,
+      };
+
+      switch (row.contentType) {
+        case UnreadContentType.ForumReply: {
+          const comment = references.comments.get(row.contentId);
+          const rendered =
+            comment?.editableContent &&
+            renderNotificationContent({
+              content,
+              references,
+              count: null,
+              participant: comment.author,
+              commentExcerpt: getPreviewText(comment.editableContent.body),
+            });
+          if (!comment || !rendered) {
+            return [];
+          }
+          const location = commentUrl(
+            comment,
+            comment.parentObjectType === CommentParentObject.Activity
+              ? references.activityActionIds.get(comment.parentObjectId)
+              : undefined,
+          );
+          return [
+            NotificationDto.fromUnreadContent({
+              ...base,
+              category: NotificationCategory.ForumReply,
+              message: rendered.message,
+              webAppLocation: location,
+              mobileAppLocation: location,
+              associatedUsers: [comment.author],
+            }),
+          ];
         }
-
-        return [
-          NotificationDto.fromUnreadContent({
-            id: unreadContent.id,
-            category: NotificationCategory.ForumReply,
-            message: `${new ProfileDto(comment.author).displayName}: ${getPreviewText(
-              comment.editableContent.body,
-            )}`,
-            webAppLocation: commentUrl(
-              comment,
-              comment.parentObjectType === CommentParentObject.Activity
-                ? references.activityActionIds.get(comment.parentObjectId)
-                : undefined,
-            ),
-            mobileAppLocation: commentUrl(
-              comment,
-              comment.parentObjectType === CommentParentObject.Activity
-                ? references.activityActionIds.get(comment.parentObjectId)
-                : undefined,
-            ),
-            readAt: unreadContent.readAt,
-            createdAt: unreadContent.createdAt,
-            updatedAt: unreadContent.readAt ?? unreadContent.createdAt,
-            sendTime: unreadContent.sendTime,
-            associatedUsers: [comment.author],
-            contentType: unreadContent.contentType,
-            contentId: unreadContent.contentId,
-          }),
-        ];
-      }
-
-      if (unreadContent.contentType === UnreadContentType.ActionUpdate) {
-        const actionUpdate = references.actionUpdates.get(
-          unreadContent.contentId,
-        );
-        if (!actionUpdate) {
-          return [];
+        case UnreadContentType.ActionUpdate: {
+          const actionUpdate = references.actionUpdates.get(row.contentId);
+          const rendered =
+            actionUpdate &&
+            renderNotificationContent({
+              content,
+              references,
+              count: null,
+              actionUpdateText: getPreviewText(actionUpdate.shortNotifString),
+            });
+          if (!actionUpdate || !rendered) {
+            return [];
+          }
+          return [
+            NotificationDto.fromUnreadContent({
+              ...base,
+              category: NotificationCategory.ActionUpdate,
+              message: rendered.message,
+              webAppLocation: actionUrl(actionUpdate.actionId),
+              mobileAppLocation: actionUrl(actionUpdate.actionId),
+              associatedUsers: [],
+            }),
+          ];
         }
-
-        return [
-          NotificationDto.fromUnreadContent({
-            id: unreadContent.id,
-            category: NotificationCategory.ActionUpdate,
-            message: getPreviewText(actionUpdate.shortNotifString),
-            webAppLocation: actionUrl(actionUpdate.actionId),
-            mobileAppLocation: actionUrl(actionUpdate.actionId),
-            readAt: unreadContent.readAt,
-            createdAt: unreadContent.createdAt,
-            updatedAt: unreadContent.readAt ?? unreadContent.createdAt,
-            sendTime: unreadContent.sendTime,
-            associatedUsers: [],
-            contentType: unreadContent.contentType,
-            contentId: unreadContent.contentId,
-          }),
-        ];
+        case UnreadContentType.ActionEvent:
+          return [];
+        default:
+          throw new Error(
+            `unknown unread content type: ${row.contentType satisfies never}`,
+          );
       }
-
-      return [];
     });
   }
 }

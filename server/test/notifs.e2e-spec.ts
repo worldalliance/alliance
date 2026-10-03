@@ -89,6 +89,7 @@ describe("Notifications (e2e)", () => {
     unreadCommentId = comment.id;
 
     const unreadContent = unreadContentRepo.create({
+      format: NotificationFormat.Legacy,
       user: testUser,
       contentType: UnreadContentType.ForumReply,
       contentId: unreadCommentId,
@@ -184,6 +185,7 @@ describe("Notifications (e2e)", () => {
     );
     const futureContent = await unreadContentRepo.save(
       unreadContentRepo.create({
+        format: NotificationFormat.Legacy,
         user,
         contentType: UnreadContentType.ForumReply,
         contentId: unreadCommentId,
@@ -227,6 +229,7 @@ describe("Notifications (e2e)", () => {
     );
     const laterContent = await unreadContentRepo.save(
       unreadContentRepo.create({
+        format: NotificationFormat.Legacy,
         user,
         contentType: UnreadContentType.ForumReply,
         contentId: unreadCommentId,
@@ -291,6 +294,7 @@ describe("Notifications (e2e)", () => {
       .findOneByOrFail({ id: ctx.testUserId });
     const backdated = (): UnreadContent =>
       unreadContentRepo.create({
+        format: NotificationFormat.Legacy,
         user,
         contentType: UnreadContentType.ForumReply,
         contentId: unreadCommentId,
@@ -425,6 +429,7 @@ describe("Notifications (e2e)", () => {
     await new Promise((resolve) => setTimeout(resolve, 5));
     const hiddenContent = await unreadContentRepo.save(
       unreadContentRepo.create({
+        format: NotificationFormat.Legacy,
         user,
         contentType: UnreadContentType.ForumReply,
         contentId: reply.id,
@@ -501,6 +506,7 @@ describe("Notifications (e2e)", () => {
 
     const unreadContent = await unreadContentRepo.save(
       unreadContentRepo.create({
+        format: NotificationFormat.Legacy,
         user: testUser,
         contentType: UnreadContentType.ForumReply,
         contentId: comment.id,
@@ -564,6 +570,7 @@ describe("Notifications (e2e)", () => {
 
     const unreadContent = await unreadContentRepo.save(
       unreadContentRepo.create({
+        format: NotificationFormat.Legacy,
         user: testUser,
         contentType: UnreadContentType.ActionUpdate,
         contentId: actionUpdate.id,

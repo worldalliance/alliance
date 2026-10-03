@@ -4,6 +4,7 @@ import {
   communityDestination,
   DELETED_GROUP_LABEL,
   DELETED_MEMBER_LABEL,
+  forumReplyContent,
   group,
   joinMessage,
   member,
@@ -40,6 +41,7 @@ describe("notifMessage", () => {
   it("labels each name form", () => {
     expect(member(ada, UserNameForm.First).label).toBe("Ada");
     expect(member(ada, UserNameForm.Last).label).toBe("Lovelace");
+    expect(member(hidden, UserNameForm.Public).label).toBe("Someone");
   });
 });
 
@@ -87,6 +89,32 @@ describe("renderNotificationContent", () => {
         count: null,
       }),
     ).toBeNull();
+  });
+
+  it("keeps an anonymous reply author's name hidden", () => {
+    const rendered = renderNotificationContent({
+      content: forumReplyContent(hidden.id),
+      references: references({ users: new Map([[hidden.id, hidden]]) }),
+      count: null,
+      commentExcerpt: "Reply body",
+    });
+
+    expect(rendered?.message).toBe("Someone: Reply body");
+  });
+
+  it("throws on an excerpt or update text segment the caller has no text for", () => {
+    for (const type of [
+      SegmentType.CommentExcerpt,
+      SegmentType.ActionUpdateText,
+    ] as const) {
+      expect(() =>
+        renderNotificationContent({
+          content: { message: [{ type }] },
+          references: references(),
+          count: null,
+        }),
+      ).toThrow();
+    }
   });
 
   it("picks the like variant by count and names the sole participant", () => {

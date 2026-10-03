@@ -117,6 +117,7 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
     });
     return unreadContentRepo.save(
       unreadContentRepo.create({
+        format: NotificationFormat.Legacy,
         user,
         contentType: UnreadContentType.ForumReply,
         contentId: comment.id,

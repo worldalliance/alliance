@@ -5,14 +5,27 @@ import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
+import {
+  ActionUpdate,
+  ActionUpdateNotifyType,
+} from "src/actions/entities/action-update.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { Community } from "src/community/entities/community.entity";
+import {
+  Comment,
+  CommentParentObject,
+} from "src/forum/entities/comment.entity";
+import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { Post } from "src/forum/entities/post.entity";
 import { NotificationSourceType } from "src/notifs/dto/notification.dto";
 import {
   Notification,
   NotificationCategory,
 } from "src/notifs/entities/notification.entity";
+import {
+  UnreadContent,
+  UnreadContentType,
+} from "src/notifs/entities/unread-content.entity";
 import { LikeNotificationService } from "src/notifs/like-notification.service";
 import {
   action as actionRef,
@@ -23,8 +36,11 @@ import {
   member,
   NotificationFormat,
   notifMessage,
+  SegmentType,
+  UserNameForm,
 } from "src/notifs/notification-content";
 import { NotifsService } from "src/notifs/notifs.service";
+import { FormSnapshot } from "src/tasks/entities/formsnapshot.entity";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
 import { createTestApp, TestContext } from "./e2e-test-utils";
@@ -95,6 +111,51 @@ describe("Notification content stability (e2e)", () => {
       deleted: false,
       visibleAt: new Date(),
     });
+
+  const createReply = async (params: {
+    parentObjectType: CommentParentObject;
+    parentObjectId: number;
+    authorName?: string;
+    body?: string;
+  }) => {
+    const {
+      authorName = "Rowan Reply",
+      body = "Reply body",
+      ...parent
+    } = params;
+    const replier = await createUser(authorName);
+    const editableContent = await ctx.dataSource
+      .getRepository(EditableContent)
+      .save({ body, attachments: [] });
+    return ctx.dataSource.getRepository(Comment).save({
+      author: replier,
+      authorId: replier.id,
+      editableContent,
+      ...parent,
+      deleted: false,
+      pinned: false,
+      likesCount: 0,
+    });
+  };
+
+  let snapshotCount = 0;
+  const createActionUpdate = async (params: {
+    action: Action;
+    date: Date;
+    shortNotifString: string;
+  }) => {
+    const snapshot = await ctx.dataSource.getRepository(FormSnapshot).save({
+      schema: { blocks: [{ type: "display", kind: "text", text: "update" }] },
+      hash: `notification-content-${++snapshotCount}`,
+    });
+    return ctx.dataSource.getRepository(ActionUpdate).save({
+      ...params,
+      title: "Update",
+      visibleAt: new Date(Date.now() - milliseconds({ minutes: 1 })),
+      notifyType: ActionUpdateNotifyType.None,
+      schemaSnapshotId: snapshot.id,
+    });
+  };
 
   beforeAll(async () => {
     ctx = await createTestApp([]);
@@ -188,6 +249,173 @@ describe("Notification content stability (e2e)", () => {
       await entry(notif.id, NotificationSourceType.Notification),
     ).toBeUndefined();
     expect(await unreadCount()).toBe(before - 1);
+  });
+
+  describe("action update copy", () => {
+    let action: Action;
+
+    const createUpdate = (
+      date: Date,
+      shortNotifString: string,
+      forAction = action,
+    ) => createActionUpdate({ action: forAction, date, shortNotifString });
+
+    const send = async (actionUpdate: ActionUpdate) => {
+      const [row] = await notifsService.createActionUpdateNotifs({
+        actionUpdate,
+        users: [recipient],
+      });
+      return row;
+    };
+
+    const shownText = async (row: UnreadContent) =>
+      (await entry(row.id, NotificationSourceType.UnreadContent))?.message;
+
+    beforeAll(async () => {
+      action = await createVisibleAction("Copy Action");
+    });
+
+    it("keeps a name written into the copy as written", async () => {
+      const named = await createUser("Jordan Literal");
+      const update = await createUpdate(
+        new Date(),
+        "Jordan Literal will host the call",
+      );
+      const row = await send(update);
+
+      await userRepo.update(named.id, { name: "Jordan Changed" });
+
+      expect(await shownText(row)).toBe("Jordan Literal will host the call");
+    });
+
+    it("hides the entry once the update is deleted", async () => {
+      const update = await createUpdate(new Date(), "Soon deleted");
+      const row = await send(update);
+      const before = await unreadCount();
+
+      await ctx.dataSource.getRepository(ActionUpdate).delete(update.id);
+
+      expect(await shownText(row)).toBeUndefined();
+      expect(await unreadCount()).toBe(before - 1);
+    });
+  });
+
+  it("renders a legacy reply and update with the wording they had before formats", async () => {
+    const post = await createPost("Legacy Reply Target");
+    const comment = await createReply({
+      parentObjectType: CommentParentObject.Post,
+      parentObjectId: post.id,
+      authorName: "Lea Legacy",
+      body: "**Legacy** body",
+    });
+    const update = await createActionUpdate({
+      action: await createVisibleAction("Legacy Update Action"),
+      date: new Date(),
+      shortNotifString: "Legacy _update_ text",
+    });
+    const [reply, actionUpdate] = await ctx.dataSource
+      .getRepository(UnreadContent)
+      .save(
+        (
+          [
+            [UnreadContentType.ForumReply, comment.id],
+            [UnreadContentType.ActionUpdate, update.id],
+          ] as const
+        ).map(([contentType, contentId]) => ({
+          user: recipient,
+          format: NotificationFormat.Legacy,
+          contentType,
+          contentId,
+          sendTime: new Date(Date.now() - 1000),
+        })),
+      );
+
+    expect(
+      (await entry(reply.id, NotificationSourceType.UnreadContent))?.message,
+    ).toBe("Lea Legacy: Legacy body");
+    expect(
+      (await entry(actionUpdate.id, NotificationSourceType.UnreadContent))
+        ?.message,
+    ).toBe("Legacy update text");
+  });
+
+  it("shows a reply's current excerpt and author inside its pinned wording", async () => {
+    const post = await createPost("Reply Target");
+    const comment = await createReply({
+      parentObjectType: CommentParentObject.Post,
+      parentObjectId: post.id,
+      authorName: "Riley Reply",
+      body: "First body",
+    });
+    const row = await notifsService.createForumReplyNotif(comment, recipient);
+    expect(row.format).toBe(NotificationFormat.Referenced);
+
+    await ctx.dataSource
+      .getRepository(EditableContent)
+      .update(comment.editableContent.id, { body: "Edited body" });
+    await userRepo.update(comment.authorId, { name: "Riley Renamed" });
+    await markRead(row.id, NotificationSourceType.UnreadContent);
+
+    expect(
+      (await entry(row.id, NotificationSourceType.UnreadContent))?.message,
+    ).toBe("Riley Renamed: Edited body");
+
+    await ctx.dataSource.getRepository(UnreadContent).update(row.id, {
+      content: {
+        message: [
+          {
+            type: SegmentType.User,
+            id: comment.authorId,
+            name: UserNameForm.Public,
+          },
+          " replied: ",
+          { type: SegmentType.CommentExcerpt },
+        ],
+      },
+    });
+    expect(
+      (await entry(row.id, NotificationSourceType.UnreadContent))?.message,
+    ).toBe("Riley Renamed replied: Edited body");
+  });
+
+  it("hides a reply and its unread count once the comment is deleted", async () => {
+    const post = await createPost("Deleted Reply Target");
+    const comment = await createReply({
+      parentObjectType: CommentParentObject.Post,
+      parentObjectId: post.id,
+    });
+    const row = await notifsService.createForumReplyNotif(comment, recipient);
+    const before = await unreadCount();
+
+    await ctx.dataSource
+      .getRepository(Comment)
+      .update(comment.id, { deleted: true });
+
+    expect(
+      await entry(row.id, NotificationSourceType.UnreadContent),
+    ).toBeUndefined();
+    expect(await unreadCount()).toBe(before - 1);
+  });
+
+  it("links a reply on an activity to the activity under its action", async () => {
+    const action = await createVisibleAction("Reply Activity Action");
+    const activity = await ctx.dataSource.getRepository(ActionActivity).save({
+      userId: recipient.id,
+      actionId: action.id,
+      type: ActionActivityType.USER_COMPLETED,
+    });
+    const comment = await createReply({
+      parentObjectType: CommentParentObject.Activity,
+      parentObjectId: activity.id,
+    });
+    const row = await notifsService.createForumReplyNotif(comment, recipient);
+
+    expect(
+      (await entry(row.id, NotificationSourceType.UnreadContent))
+        ?.webAppLocation,
+    ).toBe(
+      `/actions/${action.id}/activity/${activity.id}?replyId=${comment.id}`,
+    );
   });
 
   describe("like groups", () => {

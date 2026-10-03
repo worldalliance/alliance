@@ -40,6 +40,8 @@ import {
 import {
   type Destination,
   FORMATS_RENDERING_FROM_CONTENT,
+  forumReplyContent,
+  LIVE_ACTION_UPDATE_TEXT,
   type NotificationContent,
   NotificationFormat,
   type NotifMessage,
@@ -59,15 +61,33 @@ export type CreateNotifParams = Required<
     pluralMessage?: NotifMessage;
   };
 
+type UnreadContentSource =
+  | { contentType: UnreadContentType.ForumReply; authorId: number }
+  | { contentType: UnreadContentType.ActionUpdate };
+
 export type CreateUnreadContentParams = Required<
-  Pick<DeepPartial<UnreadContent>, "user" | "contentType" | "contentId">
+  Pick<DeepPartial<UnreadContent>, "user" | "contentId">
 > &
-  DeepPartial<UnreadContent>;
+  Omit<DeepPartial<UnreadContent>, "format" | "content" | "contentType"> &
+  UnreadContentSource;
+
+function unreadContentFor(source: UnreadContentSource): NotificationContent {
+  switch (source.contentType) {
+    case UnreadContentType.ForumReply:
+      return forumReplyContent(source.authorId);
+    case UnreadContentType.ActionUpdate:
+      return LIVE_ACTION_UPDATE_TEXT;
+    default:
+      throw new Error(
+        `unknown unread content source: ${source satisfies never}`,
+      );
+  }
+}
 
 // TypeORM bulk-inserts a saved array as one statement, and Postgres caps a
-// statement at 65535 bind parameters. `UnreadContent` writes ~11 columns per
+// statement at 65535 bind parameters. `UnreadContent` writes ~13 columns per
 // row, so an unchunked "notify all members" send would start failing outright
-// somewhere under 6k recipients.
+// somewhere around 5k recipients.
 const UNREAD_CONTENT_INSERT_CHUNK = 1000;
 
 // Timestamps are stored to the microsecond but serialized to the
@@ -294,6 +314,7 @@ export class NotifsService {
       contentType: UnreadContentType.ForumReply,
       contentId: comment.id,
       sendTime: comment.createdAt,
+      authorId: comment.authorId,
     });
   }
 
@@ -339,6 +360,8 @@ export class NotifsService {
   createUnreadContent(unreadContent: CreateUnreadContentParams) {
     return this.unreadContentRepository.create({
       ...unreadContent,
+      format: NotificationFormat.Referenced,
+      content: unreadContentFor(unreadContent),
       sendTime: unreadContent.sendTime ?? new Date(),
     });
   }
