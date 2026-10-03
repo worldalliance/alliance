@@ -1,1 +1,0 @@
-home: add a homepage-only project banner above the header: "This fall: help decide where $100k goes." Link it to the grantmaking project and remove Project from the shared navigation.
