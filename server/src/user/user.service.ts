@@ -1,6 +1,10 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { ActionActivityType } from "@alliance/common/actionActivity";
-import { isAwayRangeActiveAt } from "@alliance/common/awayRange";
+import {
+  hasAwayRangeEnded,
+  isAwayRangeActiveAt,
+  isAwayRangeStartLocked,
+} from "@alliance/common/awayRange";
 import {
   emptyUserPropertyPresence,
   type UserPropertyPresence,
@@ -8,7 +12,7 @@ import {
 } from "@alliance/common/forms/user-properties";
 import type { AccountDerivedConditionKind } from "@alliance/common/forms/visible-if-formula";
 import { forCount } from "@alliance/common/plural";
-import type { Result } from "@alliance/common/result";
+import { R, type Result } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
 import {
   BadRequestException,
@@ -96,6 +100,13 @@ import {
   getAmbassadorGoalHalfwayNotificationMessage,
   getAmbassadorGoalHalfwayNotificationTime,
 } from "./ambassador-invite-goal-notification.utils";
+import {
+  applyMemberAwayRangeEdit,
+  AwayRangeEditor,
+  type AwayRangeSpan,
+  checkAwayRangeStart,
+  type StoredAwayRange,
+} from "./away-range-history";
 import { CreateAwayRangeDto, UpdateAwayRangeDto } from "./dto/away-range.dto";
 import { RegisterDeviceDto } from "./dto/device.dto";
 import { type FriendGraphEdge } from "./dto/friend-graph.dto";
@@ -1537,12 +1548,9 @@ export class UserService {
       throw new BadRequestException("End date must be after start date.");
     }
 
-    // buffer to let ranges start in the current day
-    if (
-      validateStartDate &&
-      startDate.getTime() + milliseconds({ hours: 36 }) < now.getTime()
-    ) {
-      throw new BadRequestException("Start date must be in the future.");
+    const start = checkAwayRangeStart(startDate, now);
+    if (validateStartDate && R.isFailure(start)) {
+      throw new BadRequestException(start.error);
     }
 
     if (reason === UserAwayRangeReason.OTHER && !note) {
@@ -1552,10 +1560,12 @@ export class UserService {
     }
   }
 
-  async createAwayRange(
-    userId: number,
-    data: CreateAwayRangeDto,
-  ): Promise<UserAwayRange> {
+  async createAwayRange(params: {
+    userId: number;
+    data: CreateAwayRangeDto;
+    editor: AwayRangeEditor;
+  }): Promise<UserAwayRange> {
+    const { userId, data, editor } = params;
     const reason = data.reason;
     const note = data.note ?? null;
     const startDay = Temporal.PlainDate.from(data.startDay);
@@ -1580,14 +1590,23 @@ export class UserService {
         .toInstant().epochMilliseconds,
     );
 
-    this.validateAwayRange(startDate, endDate, reason, note);
+    const now = new Date();
+    const span = this.resolveAwayRangeEdit({
+      editor,
+      before: null,
+      requested: { startDate, endDate },
+      now,
+    });
+    this.validateAwayRange(span.startDate, span.endDate, reason, note);
 
+    // Stamped here rather than by the database, so a start clamped to `now`
+    // doesn't read as starting before the range's creation.
     const awayRange = this.userAwayRangeRepository.create({
       userId,
-      startDate,
-      endDate,
+      ...span,
       reason,
       note,
+      createdAt: now,
     });
 
     return this.userAwayRangeRepository.save(awayRange);
@@ -1600,7 +1619,14 @@ export class UserService {
     });
   }
 
-  async deleteAwayRange(userId: number, awayRangeId: number): Promise<void> {
+  /** A member's delete of a range whose start has locked ends it now, or is
+   * rejected once it has ended. */
+  async deleteAwayRange(params: {
+    userId: number;
+    awayRangeId: number;
+    editor: AwayRangeEditor;
+  }): Promise<void> {
+    const { userId, awayRangeId, editor } = params;
     const awayRange = await this.userAwayRangeRepository.findOne({
       where: { id: awayRangeId, userId },
     });
@@ -1609,14 +1635,31 @@ export class UserService {
       throw new NotFoundException("Away range not found.");
     }
 
-    await this.userAwayRangeRepository.remove(awayRange);
+    const now = new Date();
+    const removes = {
+      [AwayRangeEditor.Admin]: true,
+      [AwayRangeEditor.Member]: !isAwayRangeStartLocked(awayRange, now),
+    } satisfies Record<AwayRangeEditor, boolean>;
+    if (removes[editor]) {
+      await this.userAwayRangeRepository.remove(awayRange);
+      return;
+    }
+    if (hasAwayRangeEnded(awayRange, now)) {
+      throw new BadRequestException(
+        "An away period that has ended can't be deleted.",
+      );
+    }
+    awayRange.endDate = now;
+    await this.userAwayRangeRepository.save(awayRange);
   }
 
-  async updateAwayRange(
-    userId: number,
-    awayRangeId: number,
-    data: UpdateAwayRangeDto,
-  ): Promise<UserAwayRange> {
+  async updateAwayRange(params: {
+    userId: number;
+    awayRangeId: number;
+    data: UpdateAwayRangeDto;
+    editor: AwayRangeEditor;
+  }): Promise<UserAwayRange> {
+    const { userId, awayRangeId, data, editor } = params;
     const awayRange = await this.userAwayRangeRepository.findOne({
       where: { id: awayRangeId, userId },
     });
@@ -1627,8 +1670,27 @@ export class UserService {
 
     const user = await this.findOneOrFail(userId);
     const tz = user.timeZone ?? DEFAULT_TIME_ZONE;
+    const before = {
+      startDate: awayRange.startDate,
+      endDate: awayRange.endDate,
+      createdAt: awayRange.createdAt,
+    };
+    // For a member, a day matching the stored one keeps the stored instant,
+    // which their create or early end may have set mid-day; an admin's day
+    // always means the whole day.
+    const keepsStoredInstant = {
+      [AwayRangeEditor.Member]: true,
+      [AwayRangeEditor.Admin]: false,
+    } satisfies Record<AwayRangeEditor, boolean>;
+    const isNewDay = (day: string, date: Date) =>
+      !keepsStoredInstant[editor] ||
+      !Temporal.PlainDate.from(day).equals(
+        Temporal.Instant.fromEpochMilliseconds(date.getTime())
+          .toZonedDateTimeISO(tz)
+          .toPlainDate(),
+      );
 
-    if (data.startDay) {
+    if (data.startDay && isNewDay(data.startDay, before.startDate)) {
       const startDay = Temporal.PlainDate.from(data.startDay);
       awayRange.startDate = new Date(
         startDay
@@ -1640,7 +1702,7 @@ export class UserService {
       );
     }
 
-    if (data.endDay) {
+    if (data.endDay && isNewDay(data.endDay, before.endDate)) {
       const endDay = Temporal.PlainDate.from(data.endDay);
       awayRange.endDate = new Date(
         endDay
@@ -1651,6 +1713,16 @@ export class UserService {
           .toInstant().epochMilliseconds,
       );
     }
+
+    Object.assign(
+      awayRange,
+      this.resolveAwayRangeEdit({
+        editor,
+        before,
+        requested: awayRange,
+        now: new Date(),
+      }),
+    );
 
     if (data.reason !== undefined) {
       awayRange.reason = data.reason;
@@ -1669,6 +1741,28 @@ export class UserService {
     );
 
     return this.userAwayRangeRepository.save(awayRange);
+  }
+
+  private resolveAwayRangeEdit(params: {
+    editor: AwayRangeEditor;
+    before: StoredAwayRange | null;
+    requested: AwayRangeSpan;
+    now: Date;
+  }): AwayRangeSpan {
+    const { editor, before, requested, now } = params;
+    switch (editor) {
+      case AwayRangeEditor.Admin:
+        return requested;
+      case AwayRangeEditor.Member:
+        return R.match(applyMemberAwayRangeEdit({ before, requested, now }), {
+          success: (span) => span,
+          failure: (message) => {
+            throw new BadRequestException(message);
+          },
+        });
+      default:
+        throw new Error(`unknown away range editor: ${editor satisfies never}`);
+    }
   }
 
   async isUserIdAway(

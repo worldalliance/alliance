@@ -1,4 +1,5 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { JwtService } from "@nestjs/jwt";
 import { millisecondsInDay } from "date-fns/constants";
 import request from "supertest";
 import type { Repository } from "typeorm";
@@ -12,10 +13,14 @@ import { ActionSuite } from "../src/actions/entities/action-suite.entity";
 import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
 import { ContractService } from "../src/contract/contract.service";
 import { ContractEventType } from "../src/user/entities/contract-event.entity";
+import {
+  UserAwayRange,
+  UserAwayRangeReason,
+} from "../src/user/entities/user-away-range.entity";
 import { User } from "../src/user/entities/user.entity";
 import { UserService } from "../src/user/user.service";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
 
 const addDays = (date: Date, days: number) =>
   new Date(date.getTime() + days * millisecondsInDay);
@@ -622,6 +627,35 @@ describe("findUsersToSuspend (e2e)", () => {
 
       await record(suiteActions[1][0], ActionActivityType.USER_COMPLETED);
       expect(await isSuspended()).toBe(false);
+    });
+
+    it("keeps a suite an ended away range excused unless an admin deletes the range", async () => {
+      await createMemberSuites(
+        "streak-away",
+        ["2023-03-13", "2023-03-16", "2023-03-19"],
+        1,
+      );
+      const range = await ctx.dataSource.getRepository(UserAwayRange).save({
+        userId: member.id,
+        startDate: new Date("2023-03-17T00:00:00Z"),
+        endDate: new Date("2023-03-18T00:00:00Z"),
+        createdAt: new Date("2023-03-01T00:00:00Z"),
+        reason: UserAwayRangeReason.VACATION,
+      });
+      expect(await isSuspended()).toBe(false);
+
+      const memberToken = signAccessToken(ctx.app.get(JwtService), member);
+      const memberDelete = await request(ctx.app.getHttpServer())
+        .delete(`/user/awayranges/${range.id}`)
+        .set("Authorization", `Bearer ${memberToken}`);
+      expect(memberDelete.status).toBe(400);
+      expect(await isSuspended()).toBe(false);
+
+      const adminDelete = await request(ctx.app.getHttpServer())
+        .delete(`/user/admin/${member.id}/awayranges/${range.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+      expect(adminDelete.status).toBe(200);
+      expect(await isSuspended()).toBe(true);
     });
   });
 
