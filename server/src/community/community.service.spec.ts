@@ -2,6 +2,7 @@ import { BadRequestException, Logger } from "@nestjs/common";
 import { ImagesService } from "src/images/images.service";
 import { ConversationService } from "src/messaging/conversation.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import { notifMessage, SegmentType } from "src/notifs/notification-content";
 import {
   NotifsService,
   type CreateNotifParams,
@@ -198,7 +199,8 @@ describe("CommunityService", () => {
       const notifFactory = jest.fn(({ leader }: { leader: User }) => ({
         user: { id: leader.id },
         category: "test" as NotificationCategory,
-        message: `${user.name} joined`,
+        message: notifMessage`${user.name} joined`,
+        destination: null,
         webAppLocation: "/community/1",
         associatedUsers: [],
       })) as (params: { leader: User }) => CreateNotifParams;
@@ -245,7 +247,8 @@ describe("CommunityService", () => {
           ? ({
               user: { id: leader.id },
               category: "test" as NotificationCategory,
-              message: "joined",
+              message: notifMessage`joined`,
+              destination: null,
               webAppLocation: "/",
               associatedUsers: [],
             } as CreateNotifParams)
@@ -290,7 +293,8 @@ describe("CommunityService", () => {
       const notifFactory = jest.fn(({ leader }: { leader: User }) => ({
         user: { id: leader.id },
         category: "test" as NotificationCategory,
-        message: `${user.name} left`,
+        message: notifMessage`${user.name} left`,
+        destination: null,
         webAppLocation: "/community/1",
         associatedUsers: [],
       })) as (params: { leader: User }) => CreateNotifParams;
@@ -448,7 +452,15 @@ describe("CommunityService", () => {
           expect.objectContaining({
             user,
             category: NotificationCategory.CommunityAssigned,
-            message: "Alliance staff moved you from Old Group to New Group",
+            message: {
+              text: "Alliance staff moved you from Old Group to New Group",
+              segments: [
+                "Alliance staff moved you from ",
+                { type: SegmentType.Community, id: sourceCommunity.id },
+                " to ",
+                { type: SegmentType.Community, id: destinationCommunity.id },
+              ],
+            },
           }),
         ]),
       );
@@ -534,7 +546,9 @@ describe("CommunityService", () => {
           expect.objectContaining({
             user,
             category: NotificationCategory.CommunityAssigned,
-            message: "Alliance staff assigned you to New Group",
+            message: expect.objectContaining({
+              text: "Alliance staff assigned you to New Group",
+            }),
           }),
         ]),
       );

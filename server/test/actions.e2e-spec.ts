@@ -57,6 +57,7 @@ import {
   ActionReviewer,
   ActionReviewerIcon,
 } from "../src/actions/entities/action-reviewer.entity";
+import { ActionUpdate } from "../src/actions/entities/action-update.entity";
 import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
 import { FollowUpForm } from "../src/actions/entities/follow-up-form.entity";
 import { Project } from "../src/actions/entities/project.entity";
@@ -74,6 +75,7 @@ import {
   createTestApp,
   signAccessToken,
   TestContext,
+  waitForLockWait,
 } from "./e2e-test-utils";
 
 describe("Actions (e2e)", () => {
@@ -3656,10 +3658,13 @@ describe("Actions (e2e)", () => {
       blocks: [{ type: "display", kind: "header", id: "b1", text }],
     });
 
-    const createUpdate = async (body: Record<string, unknown>) => {
+    const createUpdate = async (
+      body: Record<string, unknown>,
+      actionId = testAction.id,
+    ) => {
       const now = new Date().toISOString();
       const created = await request(ctx.app.getHttpServer())
-        .post(`/actions/createUpdate/${testAction.id}`)
+        .post(`/actions/createUpdate/${actionId}`)
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
           title: "Notify test",
@@ -3725,6 +3730,133 @@ describe("Actions (e2e)", () => {
 
       await notify(update.id).expect(409);
       expect(await unreadCountFor(update.id)).toBe(sent);
+    });
+
+    it("refuses to notify while members can't see the action yet", async () => {
+      const update = await createUpdate({}, testDraftAction.id);
+      await writeContent(update.id, update.schemaSnapshotId);
+
+      await notify(update.id).expect(400);
+      expect(await unreadCountFor(update.id)).toBe(0);
+    });
+
+    it("notifies an update dated at the action's launch", async () => {
+      const launching = await actionRepo.save({
+        name: "Launching",
+        category: [],
+        body: "Body",
+        visibilityMode: VisibilityMode.Public,
+      });
+      const launch = new Date(Date.now() + milliseconds({ hours: 1 }));
+      await eventRepo.save({
+        title: "Launch",
+        description: "Members act",
+        newStatus: ActionStatus.MemberAction,
+        date: launch,
+        action: launching,
+      });
+      const update = await createUpdate(
+        { date: launch.toISOString() },
+        launching.id,
+      );
+      await writeContent(update.id, update.schemaSnapshotId);
+
+      await notify(update.id).expect(200);
+    });
+
+    it("notifies an update written before a launch that has since happened", async () => {
+      const { action: launched } = await createPublishedAction("Launched");
+      const written = new Date(Date.now() - milliseconds({ hours: 2 }));
+      const update = await createUpdate(
+        { date: written.toISOString() },
+        launched.id,
+      );
+      await writeContent(update.id, update.schemaSnapshotId);
+      await ctx.dataSource
+        .getRepository(ActionUpdate)
+        .update(update.id, { visibleAt: written });
+
+      await notify(update.id).expect(200);
+    });
+
+    it("refuses to notify about an archived action", async () => {
+      const { action: archived } = await createPublishedAction("Archived", {
+        actionOverrides: { archived: true },
+      });
+      const update = await createUpdate({}, archived.id);
+      await writeContent(update.id, update.schemaSnapshotId);
+
+      await notify(update.id).expect(400);
+      expect(await unreadCountFor(update.id)).toBe(0);
+    });
+
+    it("refuses to notify when the action is archived while the audience loads", async () => {
+      const update = await createUpdate({});
+      await writeContent(update.id, update.schemaSnapshotId);
+      const findAllUsers = userService.findAllUsers.bind(userService);
+      const audience = jest
+        .spyOn(userService, "findAllUsers")
+        .mockImplementation(async () => {
+          await actionRepo.update(testAction.id, { archived: true });
+          return findAllUsers();
+        });
+
+      try {
+        await notify(update.id).expect(400);
+      } finally {
+        audience.mockRestore();
+        await actionRepo.update(testAction.id, { archived: false });
+      }
+      expect(await unreadCountFor(update.id)).toBe(0);
+    });
+
+    it("holds an archive of the action until the notification's sends commit", async () => {
+      const { action } = await createPublishedAction("Archived mid-notify");
+      const update = await createUpdate({}, action.id);
+      await writeContent(update.id, update.schemaSnapshotId);
+      const notifs = ctx.app.get(NotifsService);
+      const createNotifs = notifs.createActionUpdateNotifs.bind(notifs);
+      let archived: Promise<unknown> | undefined;
+      const sends = jest
+        .spyOn(notifs, "createActionUpdateNotifs")
+        .mockImplementation(async (params) => {
+          archived = ctx.app.get(ActionsService).archive(action.id);
+          await waitForLockWait(ctx.dataSource);
+          return createNotifs(params);
+        });
+
+      try {
+        await notify(update.id).expect(200);
+      } finally {
+        sends.mockRestore();
+      }
+      await archived;
+      expect(await unreadCountFor(update.id)).toBeGreaterThan(0);
+      expect(await actionRepo.findOneByOrFail({ id: action.id })).toMatchObject(
+        { archived: true },
+      );
+    });
+
+    it("lets an action be deleted while one of its updates is being notified", async () => {
+      const { action: doomed } =
+        await createPublishedAction("Deleted mid-notify");
+      const update = await createUpdate({}, doomed.id);
+      await writeContent(update.id, update.schemaSnapshotId);
+
+      const runner = ctx.dataSource.createQueryRunner();
+      await runner.startTransaction();
+      try {
+        await runner.query("SELECT id FROM action WHERE id = $1 FOR UPDATE", [
+          doomed.id,
+        ]);
+        const sent = notify(update.id).then((res) => res);
+        await waitForLockWait(ctx.dataSource);
+        await runner.query("DELETE FROM action WHERE id = $1", [doomed.id]);
+        await runner.commitTransaction();
+        expect((await sent).status).toBe(404);
+      } finally {
+        await runner.release();
+      }
     });
 
     it("refuses to notify an update with no audience", async () => {

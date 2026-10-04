@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import type { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
-import type { Repository } from "typeorm";
+import { In, type Repository } from "typeorm";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 
 /** Reads of who the saved cohort decisions admit. */
@@ -24,6 +24,34 @@ export class CohortAdmissionService {
       session.admittedActionIdsByUser.set(userId, pending);
     }
     return pending;
+  }
+
+  /** Fills `loadAdmittedActionIds` for every listed member with one query. */
+  async prefetchAdmittedActionIds(
+    userIds: number[],
+    session: CohortResolutionSession,
+  ): Promise<void> {
+    const missing = userIds.filter(
+      (userId) => !session.admittedActionIdsByUser.has(userId),
+    );
+    if (missing.length === 0) {
+      return;
+    }
+    const byUser = Map.groupBy(
+      await this.decisionRepository.find({
+        where: { userId: In(missing), included: true },
+        select: { userId: true, actionId: true },
+      }),
+      (row) => row.userId,
+    );
+    for (const userId of missing) {
+      session.admittedActionIdsByUser.set(
+        userId,
+        Promise.resolve(
+          new Set((byUser.get(userId) ?? []).map((row) => row.actionId)),
+        ),
+      );
+    }
   }
 
   /** Whether each action that decided the member includes them, by action id. */

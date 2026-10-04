@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import { NotificationFormat } from "src/notifs/notification-content";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
@@ -35,6 +36,17 @@ export class UnreadContent {
   @Column()
   @ApiProperty()
   contentId: number;
+
+  @Column({
+    type: "enum",
+    enum: NotificationFormat,
+    default: NotificationFormat.Legacy,
+  })
+  format: NotificationFormat;
+
+  /** `NotificationContent`; null on legacy rows. */
+  @Column({ type: "jsonb", nullable: true })
+  content: unknown | null;
 
   @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })

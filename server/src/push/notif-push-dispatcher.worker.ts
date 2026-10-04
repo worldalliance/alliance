@@ -11,7 +11,7 @@ import {
 } from "src/notifs/entities/unread-content.entity";
 import { NotifsService } from "src/notifs/notifs.service";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
-import type { Repository } from "typeorm";
+import { In, type Repository } from "typeorm";
 import { v4 } from "uuid";
 import { CreatePushMessage, PushService } from "./push.service";
 
@@ -82,6 +82,7 @@ export class NotifPushDispatcherWorker {
     const toSend = await this.notificationRepository
       .createQueryBuilder("n")
       .leftJoinAndSelect("n.user", "u")
+      .leftJoinAndSelect("n.associatedUsers", "au")
       .where("n.id IN (:...ids)", { ids: claimed.map((c) => c.id) })
       .orderBy('n."sendTime"', "ASC")
       .getMany();
@@ -91,6 +92,7 @@ export class NotifPushDispatcherWorker {
     }
 
     console.log(`found ${toSend.length} notifs to send pushes for`);
+    const dtoById = await this.notifsService.renderNotificationsForPush(toSend);
 
     const messages: CreatePushMessage[] = [];
     for (const notif of toSend) {
@@ -119,7 +121,8 @@ export class NotifPushDispatcherWorker {
         [NotificationCategory.CommunityInviteRequestCreated]: true,
         [NotificationCategory.CommunityInviteRequestRejected]: true,
       };
-      if (!notifTypeToSendable[notif.category]) {
+      const dto = dtoById.get(notif.id);
+      if (!notifTypeToSendable[notif.category] || !dto) {
         await this.notificationRepository.update(notif.id, {
           shouldPush: false,
         });
@@ -132,9 +135,9 @@ export class NotifPushDispatcherWorker {
             userId: notif.user.id,
             body:
               notif.category === NotificationCategory.ActionUpdate
-                ? actionUpdatePushBody(notif.message)
-                : notif.message,
-            screen: notif.mobileAppLocation || notif.webAppLocation,
+                ? actionUpdatePushBody(dto.message)
+                : dto.message,
+            screen: dto.mobileAppLocation || dto.webAppLocation || undefined,
             notification: notif,
             idempotencyKey: `${notif.id}-${notif.updatedAt.getTime()}`,
           },
@@ -182,6 +185,16 @@ export class NotifPushDispatcherWorker {
     const hydrated = await this.notifsService.getUnreadContentsForPush(
       claimed.map((content) => content.id),
     );
+    const shown = new Set(
+      hydrated.map(({ unreadContent }) => unreadContent.id),
+    );
+    const hidden = claimed.filter((row) => !shown.has(row.id));
+    if (hidden.length) {
+      await this.unreadContentRepository.update(
+        { id: In(hidden.map((row) => row.id)) },
+        { shouldPush: false },
+      );
+    }
 
     if (hydrated.length === 0) {
       return [];

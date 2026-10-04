@@ -59,6 +59,7 @@ import {
 import { MissedSuitePlanService } from "./missed-suite-plans.service";
 import { generateCIDForNotif } from "./notif-utils";
 import { NotifsService } from "./notifs.service";
+import { buildReminderMessage } from "./reminder-message";
 
 export type UncompletedTaskSummary = {
   id: number;
@@ -361,12 +362,19 @@ export class ActionEventNotifWorker {
         notice.standing,
       );
 
-    const inAppMessage = await render(templates.pushMessage);
-    if (inAppMessage.trim()) {
+    const inAppMessage = await buildReminderMessage({
+      template: templates.pushMessage,
+      renderText: render,
+      recipient: plan.user,
+      action: plan.group.memberActionEvent.action,
+      tasks: notice.standing.missedActions,
+    });
+    if (inAppMessage.text.trim()) {
       notif.notification = await this.notifsService.sendNotif({
         user: plan.user,
         category: NotificationCategory.ActionEvent,
         message: inAppMessage,
+        destination: null,
         webAppLocation: tasksUrl(),
         mobileAppLocation: tasksUrl(),
         associatedUsers: [],

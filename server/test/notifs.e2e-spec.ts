@@ -10,6 +10,7 @@ import {
   CommentParentObject,
 } from "src/forum/entities/comment.entity";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
+import { NotificationFormat } from "src/notifs/notification-content";
 import { NotifsModule } from "src/notifs/notifs.module";
 import { FormSnapshot } from "src/tasks/entities/formsnapshot.entity";
 import { User } from "src/user/entities/user.entity";
@@ -56,6 +57,7 @@ describe("Notifications (e2e)", () => {
     }
 
     const testNotif = notifRepo.create({
+      format: NotificationFormat.Legacy,
       user: testUser,
       message: "Test notification",
       category: NotificationCategory.FriendRequest,
@@ -87,6 +89,7 @@ describe("Notifications (e2e)", () => {
     unreadCommentId = comment.id;
 
     const unreadContent = unreadContentRepo.create({
+      format: NotificationFormat.Legacy,
       user: testUser,
       contentType: UnreadContentType.ForumReply,
       contentId: unreadCommentId,
@@ -171,6 +174,7 @@ describe("Notifications (e2e)", () => {
     const tomorrow = new Date(Date.now() + milliseconds({ days: 1 }));
     const futureNotif = await notifRepo.save(
       notifRepo.create({
+        format: NotificationFormat.Legacy,
         user,
         message: "Scheduled reminder",
         category: NotificationCategory.ActionEvent,
@@ -181,6 +185,7 @@ describe("Notifications (e2e)", () => {
     );
     const futureContent = await unreadContentRepo.save(
       unreadContentRepo.create({
+        format: NotificationFormat.Legacy,
         user,
         contentType: UnreadContentType.ForumReply,
         contentId: unreadCommentId,
@@ -212,6 +217,7 @@ describe("Notifications (e2e)", () => {
     const [shownNotif, laterNotif] = await notifRepo.save(
       [shownSendTime, laterSendTime].map((sendTime) =>
         notifRepo.create({
+          format: NotificationFormat.Legacy,
           user,
           message: "Reminder",
           category: NotificationCategory.ActionEvent,
@@ -223,6 +229,7 @@ describe("Notifications (e2e)", () => {
     );
     const laterContent = await unreadContentRepo.save(
       unreadContentRepo.create({
+        format: NotificationFormat.Legacy,
         user,
         contentType: UnreadContentType.ForumReply,
         contentId: unreadCommentId,
@@ -256,6 +263,7 @@ describe("Notifications (e2e)", () => {
       .findOneByOrFail({ id: ctx.testUserId });
     const notif = await notifRepo.save(
       notifRepo.create({
+        format: NotificationFormat.Legacy,
         user,
         message: "Default sendTime",
         category: NotificationCategory.FriendRequest,
@@ -286,6 +294,7 @@ describe("Notifications (e2e)", () => {
       .findOneByOrFail({ id: ctx.testUserId });
     const backdated = (): UnreadContent =>
       unreadContentRepo.create({
+        format: NotificationFormat.Legacy,
         user,
         contentType: UnreadContentType.ForumReply,
         contentId: unreadCommentId,
@@ -295,6 +304,7 @@ describe("Notifications (e2e)", () => {
     const pageNotifs = await notifRepo.save(
       [1, 2].map(() =>
         notifRepo.create({
+          format: NotificationFormat.Legacy,
           user,
           message: "Fresh",
           category: NotificationCategory.FriendRequest,
@@ -338,6 +348,7 @@ describe("Notifications (e2e)", () => {
       .findOneByOrFail({ id: ctx.testUserId });
     const futureNotif = await notifRepo.save(
       notifRepo.create({
+        format: NotificationFormat.Legacy,
         user,
         message: "Scheduled reminder",
         category: NotificationCategory.ActionEvent,
@@ -386,6 +397,7 @@ describe("Notifications (e2e)", () => {
       .findOneByOrFail({ id: ctx.testUserId });
     const shownNotif = await notifRepo.save(
       notifRepo.create({
+        format: NotificationFormat.Legacy,
         user,
         message: "Shown",
         category: NotificationCategory.FriendRequest,
@@ -417,6 +429,7 @@ describe("Notifications (e2e)", () => {
     await new Promise((resolve) => setTimeout(resolve, 5));
     const hiddenContent = await unreadContentRepo.save(
       unreadContentRepo.create({
+        format: NotificationFormat.Legacy,
         user,
         contentType: UnreadContentType.ForumReply,
         contentId: reply.id,
@@ -493,6 +506,7 @@ describe("Notifications (e2e)", () => {
 
     const unreadContent = await unreadContentRepo.save(
       unreadContentRepo.create({
+        format: NotificationFormat.Legacy,
         user: testUser,
         contentType: UnreadContentType.ForumReply,
         contentId: comment.id,
@@ -556,6 +570,7 @@ describe("Notifications (e2e)", () => {
 
     const unreadContent = await unreadContentRepo.save(
       unreadContentRepo.create({
+        format: NotificationFormat.Legacy,
         user: testUser,
         contentType: UnreadContentType.ActionUpdate,
         contentId: actionUpdate.id,

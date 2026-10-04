@@ -49,6 +49,13 @@ import { InviteFeedEvents } from "src/invite-feed.events";
 import { MailService } from "src/mail/mail.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
+  communityDestination,
+  group,
+  member,
+  notifMessage,
+  userDestination,
+} from "src/notifs/notification-content";
+import {
   type CreateNotifParams,
   NotifsService,
 } from "src/notifs/notifs.service";
@@ -841,7 +848,8 @@ export class UserService {
     return this.notifsService.createNotif({
       user: addressee,
       category: NotificationCategory.FriendRequest,
-      message: `${requester.name} wants to be friends`,
+      message: notifMessage`${member(requester)} wants to be friends`,
+      destination: userDestination(requester.id),
       webAppLocation: profileUrl(requester.id),
       associatedUsers: [requester],
     } satisfies CreateNotifParams);
@@ -872,7 +880,8 @@ export class UserService {
       rel.acceptedNotif = this.notifsService.createNotif({
         user: rel.requester,
         category: NotificationCategory.FriendRequestAccepted,
-        message: `${rel.addressee.name} accepted your friend request`,
+        message: notifMessage`${member(rel.addressee)} accepted your friend request`,
+        destination: userDestination(rel.addressee.id),
         webAppLocation: profileUrl(rel.addressee.id),
         associatedUsers: [rel.addressee],
       });
@@ -1159,7 +1168,8 @@ export class UserService {
     await this.notifsService.sendNotif({
       user: referrer,
       category: NotificationCategory.NewMemberReferred,
-      message: `${newMember.name} joined the Alliance`,
+      message: notifMessage`${member(newMember)} joined the Alliance`,
+      destination: userDestination(newMember.id),
       webAppLocation: profileUrl(newMember.id),
       associatedUsers: [newMember],
     });
@@ -2246,11 +2256,12 @@ export class UserService {
     await this.notifsService.sendNotif({
       user: goal.ambassador,
       category: NotificationCategory.NewMemberReferred,
-      message: getAmbassadorGoalHalfwayNotificationMessage(
+      message: notifMessage`${getAmbassadorGoalHalfwayNotificationMessage(
         goal,
         stats.goalSuccessfulRecruits,
         sendTime,
-      ),
+      )}`,
+      destination: null,
       webAppLocation: AMBASSADOR_INVITES_URL,
       mobileAppLocation: AMBASSADOR_INVITES_URL,
       associatedUsers: [],
@@ -2276,7 +2287,8 @@ export class UserService {
     await this.notifsService.sendNotif({
       user: goal.ambassador,
       category: NotificationCategory.NewMemberReferred,
-      message: this.getAmbassadorInviteGoalEndedMessage(goal, stats),
+      message: notifMessage`${this.getAmbassadorInviteGoalEndedMessage(goal, stats)}`,
+      destination: null,
       webAppLocation: AMBASSADOR_INVITES_URL,
       mobileAppLocation: AMBASSADOR_INVITES_URL,
       associatedUsers: [],
@@ -2594,7 +2606,8 @@ export class UserService {
         communityWithLeaders.leaders.map((leader) => ({
           user: leader,
           category: NotificationCategory.OnetimeInviteRequestCreated,
-          message: `${user.name} requested an invite for ${rest.invitee} (${community.name})`,
+          message: notifMessage`${member(user)} requested an invite for ${rest.invitee} (${group(community)})`,
+          destination: communityDestination(community.id),
           webAppLocation: groupUrl({
             tab: "invites",
             communityId: community.id,
@@ -2685,7 +2698,8 @@ export class UserService {
       await this.notifsService.sendNotif({
         user: invitingUser,
         category,
-        message: message.replace("[USER]", savedInvite.invitee),
+        message: notifMessage`${message.replace("[USER]", savedInvite.invitee)}`,
+        destination: communityDestination(communityId),
         webAppLocation: groupUrl({
           tab: "invites",
           communityId,
@@ -2972,7 +2986,8 @@ export class UserService {
                 notifForLeader: ({ leader }) => ({
                   user: leader,
                   category: NotificationCategory.MemberLeftCommunity,
-                  message: `${user.name} left your group (${oldCommunity.name})`,
+                  message: notifMessage`${member(user)} left your group (${group(oldCommunity)})`,
+                  destination: communityDestination(oldCommunity.id),
                   webAppLocation: groupUrl({
                     tab: "members",
                     communityId: oldCommunity.id,
@@ -2998,7 +3013,8 @@ export class UserService {
         notifForLeader: ({ leader }) => ({
           user: leader,
           category: NotificationCategory.CommunityAssigned,
-          message: `Alliance staff assigned ${user.name} to your group (${freshCommunity.name})`,
+          message: notifMessage`Alliance staff assigned ${member(user)} to your group (${group(freshCommunity)})`,
+          destination: communityDestination(freshCommunity.id),
           webAppLocation: groupUrl({
             tab: "members",
             communityId: freshCommunity.id,
@@ -3010,7 +3026,8 @@ export class UserService {
       userNotifs.push({
         user,
         category: NotificationCategory.CommunityAssigned,
-        message: `You were assigned to a new group (${freshCommunity.name})`,
+        message: notifMessage`You were assigned to a new group (${group(freshCommunity)})`,
+        destination: communityDestination(freshCommunity.id),
         webAppLocation: groupUrl({
           communityId: freshCommunity.id,
         }),

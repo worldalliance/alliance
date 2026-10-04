@@ -7,6 +7,7 @@ import {
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { Comment } from "src/forum/entities/comment.entity";
+import { NotificationFormat } from "src/notifs/notification-content";
 import type { Push } from "src/push/push.entity";
 import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
 import type { Relation } from "src/utils/Repository";
@@ -97,9 +98,21 @@ export class Notification {
   @ApiProperty({ enum: NotificationCategory, enumName: "NotificationCategory" })
   category: NotificationCategory;
 
+  /** On referenced rows, the text as of the last write; reads render `content`. */
   @Column()
   @ApiProperty()
   message: string;
+
+  @Column({
+    type: "enum",
+    enum: NotificationFormat,
+    default: NotificationFormat.Legacy,
+  })
+  format: NotificationFormat;
+
+  /** `NotificationContent`; null on legacy rows. */
+  @Column({ type: "jsonb", nullable: true })
+  content: unknown | null;
 
   @Column({ type: "enum", enum: NotifPriority, default: NotifPriority.Low })
   @ApiProperty({ enum: NotifPriority, enumName: "NotifPriority" })

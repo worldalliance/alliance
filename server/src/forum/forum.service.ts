@@ -55,6 +55,7 @@ import { Comment, CommentParentObject } from "./entities/comment.entity";
 import { EditableContent } from "./entities/editablecontent.entity";
 import { PostTag } from "./entities/post-tag.entity";
 import { parsePost, Post, type ParsedPost } from "./entities/post.entity";
+import { filterVisiblePosts } from "./post-visibility";
 
 export type ForumFeedComment = {
   comment: Comment;
@@ -129,37 +130,15 @@ export class ForumService {
     postAlias: string,
     userId?: number,
   ): SelectQueryBuilder<T> {
-    qb.andWhere(`${postAlias}.deleted = false`);
-    const clauses = [
-      `${postAlias}.visibleAt IS NULL`,
-      `${postAlias}.visibleAt < :postVisibility_now`,
-    ];
-    const params: Record<string, unknown> = {
-      postVisibility_now: new Date(),
-    };
-    if (userId !== undefined) {
-      const coAuthorSubQuery = qb
-        .subQuery()
-        .select("1")
-        .from(Post, "visPost")
-        .innerJoin("visPost.authors", "visAuthor")
-        .where(`visPost.id = ${postAlias}.id`)
-        .andWhere("visAuthor.id = :postVisibility_userId")
-        .getQuery();
-      const adminSubQuery = qb
-        .subQuery()
-        .select("1")
-        .from(User, "visViewer")
-        .where("visViewer.id = :postVisibility_userId")
-        .andWhere("visViewer.admin = true")
-        .getQuery();
-      clauses.push(`${postAlias}.authorId = :postVisibility_userId`);
-      clauses.push(`EXISTS ${coAuthorSubQuery}`);
-      clauses.push(`EXISTS ${adminSubQuery}`);
-      params.postVisibility_userId = userId;
+    if (userId === undefined) {
+      return filterVisiblePosts({ qb, postAlias });
     }
-    qb.andWhere(`(${clauses.join(" OR ")})`, params);
-    return qb;
+    qb.setParameter("postVisibility_userId", userId);
+    return filterVisiblePosts({
+      qb,
+      postAlias,
+      viewerIdSql: ":postVisibility_userId",
+    });
   }
 
   private async getLikedCommentIds(
@@ -805,6 +784,7 @@ export class ForumService {
             contentType: UnreadContentType.ForumReply,
             contentId: comment.id,
             sendTime: comment.createdAt,
+            authorId: comment.authorId,
           };
         }),
     );

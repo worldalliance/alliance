@@ -172,9 +172,7 @@ describe("ActionEventNotifWorker.processCustomReminderText", () => {
       expect(result).toBe(
         "Hello Cher! Deadline in [err] / [err]. Tasks left: 1. Visit https://app.example.org/tasks?cid=cid-456",
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "User name has less than 2 parts: Cher",
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith("User 9 has no last name");
     } finally {
       consoleErrorSpy.mockRestore();
     }

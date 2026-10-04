@@ -12,6 +12,7 @@ import {
 } from "src/actions/entities/action-event.entity";
 import { CreateCommentDto, UpdateCommentDto } from "src/forum/dto/comment.dto";
 import { CommentParentObject } from "src/forum/entities/comment.entity";
+import { Post } from "src/forum/entities/post.entity";
 import {
   Notification,
   NotificationCategory,
@@ -507,6 +508,31 @@ describe("Forum (e2e)", () => {
         .get(`/forum/posts/${createResponse.body.id}`)
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
+    });
+
+    it("should allow co-authors to see a future-scheduled post", async () => {
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "Future Post With Co-author",
+          editableContent: { body: "Scheduled by an admin", attachments: [] },
+          visibleAt: new Date(Date.now() + milliseconds({ hours: 1 })),
+        } satisfies CreatePostDto)
+        .expect(201);
+      const getAsTestUser = () =>
+        request(ctx.app.getHttpServer())
+          .get(`/forum/posts/${createResponse.body.id}`)
+          .set("Authorization", `Bearer ${ctx.accessToken}`);
+
+      await getAsTestUser().expect(404);
+
+      await ctx.dataSource.getRepository(Post).save({
+        id: createResponse.body.id,
+        authors: [{ id: ctx.testUserId }],
+      });
+
+      await getAsTestUser().expect(200);
     });
 
     it("should update a post", async () => {
