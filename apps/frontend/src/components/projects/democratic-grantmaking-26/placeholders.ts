@@ -46,6 +46,6 @@ export const ABOUT_SECTIONS = [
   },
   {
     heading: "How do I participate?",
-    body: "Join the waitlist on this page to be notified when the Alliance reaches 1,000 members. At that point, we'll invite you to join the Alliance, and this project will begin.",
+    body: "Join the waitlist on this page. We'll reach out soon with an invitation to the Alliance. Once the Alliance reaches 1,000 members, this project will begin.",
   },
 ];
