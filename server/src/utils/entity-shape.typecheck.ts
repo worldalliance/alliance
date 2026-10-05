@@ -17,6 +17,7 @@ import type { EventLog } from "src/eventlog/event-log.entity";
 import type { EditableContent } from "src/forum/entities/editablecontent.entity";
 import type { City } from "src/geo/city.entity";
 import type { Mail } from "src/mail/mail.entity";
+import type { Conversation } from "src/messaging/entities/conversation.entity";
 import type { Mms } from "src/mms/mms.entity";
 import type { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
 import type { UnreadContent } from "src/notifs/entities/unread-content.entity";
@@ -65,6 +66,7 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<Cluster>>
   | Assert<EntityShape<Contract>>
   | Assert<EntityShape<ContractEvent>>
+  | Assert<EntityShape<Conversation>>
   | Assert<EntityShape<CustomValidator>>
   | Assert<EntityShape<DailyStatsRecord>>
   | Assert<EntityShape<EditableContent>>

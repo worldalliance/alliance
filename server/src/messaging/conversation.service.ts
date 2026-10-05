@@ -35,7 +35,10 @@ import {
   UnreadMessageSummary,
   UpdateConversationDto,
 } from "./dto/messaging.dto";
-import { Conversation } from "./entities/conversation.entity";
+import {
+  Conversation,
+  loadedConversationParticipants,
+} from "./entities/conversation.entity";
 import { Message } from "./entities/message.entity";
 import { Participant, ParticipantState } from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
@@ -204,7 +207,7 @@ export class ConversationService {
       relations: this.conversationRelations,
     });
     if (
-      !conversation.participants.some(
+      !loadedConversationParticipants(conversation).some(
         (participant) => participant.user.id === userId,
       )
     ) {
@@ -544,9 +547,9 @@ export class ConversationService {
 
     this.ensureMembersEditable(adminParticipant.conversation);
 
-    const alreadyParticipant = adminParticipant.conversation.participants?.some(
-      (participant) => participant.user.id === dto.userId,
-    );
+    const alreadyParticipant = loadedConversationParticipants(
+      adminParticipant.conversation,
+    ).some((participant) => participant.user.id === dto.userId);
 
     if (alreadyParticipant) {
       return this.buildConversationDto(conversationId, actingUserId);
@@ -695,7 +698,7 @@ export class ConversationService {
     );
 
     const participantMap = new Map<number, Participant>(
-      (conversation.participants ?? []).map((participant) => [
+      loadedConversationParticipants(conversation).map((participant) => [
         participant.user.id,
         participant,
       ]),
@@ -734,7 +737,7 @@ export class ConversationService {
       }
     }
 
-    const removable = (conversation.participants ?? []).filter(
+    const removable = loadedConversationParticipants(conversation).filter(
       (participant) => !desiredUsers.has(participant.user.id),
     );
     if (removable.length) {
