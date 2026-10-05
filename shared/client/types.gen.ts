@@ -576,7 +576,7 @@ export type Comment = {
     parentId: number | null;
     children?: Array<Comment>;
     pinned: boolean;
-    likes: Array<User>;
+    likes?: Array<User>;
     likesCount: number;
     tag?: PostTag;
     tagId: number | null;

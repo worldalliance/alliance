@@ -94,11 +94,10 @@ export class Comment {
     onDelete: "CASCADE",
   })
   @JoinColumn()
-  @ApiProperty({ type: () => Comment, required: false })
+  @ApiPropertyOptional({ type: () => Comment })
   @Allow()
   @IsOptional()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  parent: Relation<Comment> | null;
+  parent?: Relation<Comment> | null;
 
   @Column({ type: "int", nullable: true })
   @IsOptional()
@@ -124,12 +123,11 @@ export class Comment {
   pinned: boolean;
 
   @ManyToMany(() => User, { onDelete: "CASCADE" })
-  @ApiProperty({ type: () => User, isArray: true })
+  @ApiPropertyOptional({ type: () => User, isArray: true })
   @JoinTable()
-  @Allow()
+  @IsOptional()
   @Type(() => User)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  likes: Relation<User>[];
+  likes?: Relation<User>[];
 
   @Column({ default: 0 })
   @ApiProperty()
