@@ -2,7 +2,8 @@
   "webcredentials": {
     "apps": [
       "com.alliancefoundation.alliancemobile",
-      "629G87T7R5.com.alliancefoundation.alliancemobile"
+      "629G87T7R5.com.alliancefoundation.alliancemobile",
+      "629G87T7R5.com.alliancefoundation.alliancemobile.staging"
     ]
   }
 }

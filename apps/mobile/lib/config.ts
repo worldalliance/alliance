@@ -1,6 +1,9 @@
 import { resolveUploadSrc, uploadSrc } from "@alliance/common/image-src";
+import { R } from "@alliance/common/result";
 import { ALLIANCE_DOMAIN } from "@alliance/common/url";
+import * as Application from "expo-application";
 import { NativeModules, Platform } from "react-native";
+import { type ReleaseTarget, releaseTargetFor } from "./releaseTarget";
 import { getVisualTestApiUrl } from "./visualTest";
 
 // Keep this out of app.config.js `extra`, which changes the EAS fingerprint and
@@ -28,6 +31,10 @@ const getDevHost = (): string => {
   return ip ?? process.env.EXPO_PUBLIC_DEV_API_URL ?? "localhost";
 };
 
+/** The deployment a release build talks to, fixed by its bundle ID or package. */
+export const releaseTarget = (): ReleaseTarget =>
+  R.unwrap(releaseTargetFor(Application.applicationId));
+
 export const getApiUrl = (): string => {
   const visualTestApiUrl = getVisualTestApiUrl();
   if (visualTestApiUrl) {
@@ -37,7 +44,7 @@ export const getApiUrl = (): string => {
   if (__DEV__) {
     return `http://${getDevHost()}:${devApiPort()}`;
   } else {
-    return "https://worldalliance.org/api";
+    return releaseTarget().apiUrl;
   }
 };
 

@@ -20,7 +20,7 @@ import { Linking, ScrollView, View } from "react-native";
 import Card from "../../components/system/Card";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../components/system/Text";
-import { getBaseUrl } from "../../lib/config";
+import { getBaseUrl, releaseTarget } from "../../lib/config";
 import { colors } from "../../lib/style/colors";
 
 type ResourceIcon = ComponentType<{
@@ -172,7 +172,7 @@ function ResourceCard({
 export default function InformationScreen() {
   const resources = isEnabled(
     Features.GeneralUpdatesLink,
-    __DEV__ ? "development" : "production",
+    __DEV__ ? "development" : releaseTarget().env,
   )
     ? [
         ...baseResources.slice(0, 7),

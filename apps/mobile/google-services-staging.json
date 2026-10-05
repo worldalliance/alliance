@@ -1,0 +1,121 @@
+{
+  "project_info": {
+    "project_number": "498109422267",
+    "project_id": "alliance-4bc01",
+    "storage_bucket": "alliance-4bc01.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:498109422267:android:ec1509b1496133fc6da79e",
+        "android_client_info": {
+          "package_name": "com.alliance.alliancemobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "498109422267-jla0nu3g91hpj838dj54di7hd09dmjgv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDCDcCg-CHvvA3sOG_SH2NnOzVDxmX0bzk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "498109422267-jla0nu3g91hpj838dj54di7hd09dmjgv.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "498109422267-a6im2d5qscd6g39nkbcvkaqp1miftvg6.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.alliancefoundation.alliancemobile",
+                "app_store_id": "6760088194"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:498109422267:android:32df719b2939a9d56da79e",
+        "android_client_info": {
+          "package_name": "com.alliance.alliancemobile.dev"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "498109422267-jla0nu3g91hpj838dj54di7hd09dmjgv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDCDcCg-CHvvA3sOG_SH2NnOzVDxmX0bzk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "498109422267-jla0nu3g91hpj838dj54di7hd09dmjgv.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "498109422267-a6im2d5qscd6g39nkbcvkaqp1miftvg6.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.alliancefoundation.alliancemobile",
+                "app_store_id": "6760088194"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:498109422267:android:88a6a0e7c45b75b36da79e",
+        "android_client_info": {
+          "package_name": "com.alliance.alliancemobile.staging"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "498109422267-jla0nu3g91hpj838dj54di7hd09dmjgv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDCDcCg-CHvvA3sOG_SH2NnOzVDxmX0bzk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "498109422267-jla0nu3g91hpj838dj54di7hd09dmjgv.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "498109422267-a6im2d5qscd6g39nkbcvkaqp1miftvg6.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.alliancefoundation.alliancemobile",
+                "app_store_id": "6760088194"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

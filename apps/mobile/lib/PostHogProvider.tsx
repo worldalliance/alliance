@@ -6,6 +6,7 @@ import {
   usePostHog,
 } from "posthog-react-native";
 import { type ReactNode, useEffect } from "react";
+import { releaseTarget } from "./config";
 
 const postHogProviderProps: Omit<PostHogProviderProps, "children"> = __DEV__
   ? {
@@ -17,10 +18,9 @@ const postHogProviderProps: Omit<PostHogProviderProps, "children"> = __DEV__
       autocapture: false,
     }
   : {
-      apiKey: "phc_4Bkir1Px9qIRnMQfMWQPcGIq6wjodf9jtme8fty3ZLt",
+      apiKey: releaseTarget().posthog.apiKey,
       options: {
-        host:
-          process.env.EXPO_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
+        host: releaseTarget().posthog.host,
         enableSessionReplay: true,
         captureAppLifecycleEvents: true,
         sessionReplayConfig: {
