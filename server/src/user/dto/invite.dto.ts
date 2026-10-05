@@ -26,6 +26,7 @@ import { AmbassadorProgramInteraction } from "../entities/ambassador-program-int
 import { AmbassadorProgramMember } from "../entities/ambassador-program-member.entity";
 import { OnetimeInvite } from "../entities/onetime-invite.entity";
 import { User } from "../entities/user.entity";
+import { isInviteAccepted } from "../invite-claim";
 import { ProfileDto, UserDto } from "./user.dto";
 
 export class CreateOnetimeInviteDto extends PickType(OnetimeInvite, [
@@ -137,6 +138,9 @@ export class OnetimeInviteDto extends PickType(OnetimeInvite, [
   @Type(() => ProfileDto)
   invitedUser?: ProfileDto;
 
+  @ApiProperty()
+  accepted: boolean;
+
   constructor(onetimeInvite: OnetimeInvite) {
     super();
     this.id = onetimeInvite.id;
@@ -150,6 +154,7 @@ export class OnetimeInviteDto extends PickType(OnetimeInvite, [
       ? new CommunityDto(onetimeInvite.community)
       : onetimeInvite.community;
     this.invitedUserId = onetimeInvite.invitedUserId;
+    this.accepted = isInviteAccepted(onetimeInvite);
     this.invitingUser = onetimeInvite.invitingUser
       ? new ProfileDto(onetimeInvite.invitingUser)
       : undefined;

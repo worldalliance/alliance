@@ -169,7 +169,7 @@ const InvitesPage = () => {
     );
 
   const acceptedInvites = useMemo(() => {
-    return invites.filter((invite) => invite.status === "link_used");
+    return invites.filter((invite) => invite.accepted);
   }, [invites]);
   const hasSingleUseInvites =
     actionable.length > 0 ||

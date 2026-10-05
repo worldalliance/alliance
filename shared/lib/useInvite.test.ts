@@ -54,6 +54,7 @@ serveApi(
         createdAt: new Date().toISOString(),
         status,
         invitedUserId: null,
+        accepted: false,
       } satisfies OnetimeInviteDto),
   }),
 );

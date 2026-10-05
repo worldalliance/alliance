@@ -18,6 +18,7 @@ const invite: OnetimeInviteDto = {
   createdAt: "2026-01-01T00:00:00.000Z",
   status: "link_unused",
   invitedUserId: null,
+  accepted: false,
 };
 
 it.each([

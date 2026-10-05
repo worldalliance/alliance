@@ -1,0 +1,6 @@
+- Only the SQL form `inviteAcceptedSql`, with no `FindOptionsWhere` twin like `CLAIMABLE_INVITE`. A second form would need its own "change together" pairing, which is what this change removes. Call sites that used `find`/`count` now use query builders.
+- Accepted no longer looks at `status`. An account referencing the invite is the claim, as in `inviteClaimedSql`. A `link_used` invite with no claimant is claimable again (see `invite-claim.ts`), so it isn't counted as accepted.
+- The funnel's "invites created" count and the daily "invites created" count are out of scope: they count sent invites, not accepted ones.
+- The existing ambassador window test gives each used fixture invite a claimant, so it keeps asserting the window logic under the new rule.
+- The web invites page's "accepted invites" count was a seventh copy, filtering on `status === "link_used"`. The server now states the rule on `OnetimeInviteDto.accepted` through `isInviteAccepted`, a TS twin of `inviteAcceptedSql` beside it in `invite-claim.ts`, and the page counts that flag. The client holds no copy of the rule, and the member's count matches what admin shows for them.
+- The `link_used` status label ("Accepted") on invite list items is left alone. It labels a status, not a stat count.

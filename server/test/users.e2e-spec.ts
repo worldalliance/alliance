@@ -1114,6 +1114,16 @@ describe("Users (e2e)", () => {
         createdAt: params.createdAt,
         deletedAt: params.deleted ? params.createdAt : null,
       });
+      if (!params.used) return;
+      await userRepo.save(
+        userRepo.create({
+          name: "Window Invitee",
+          email: `${params.code.toLowerCase()}@example.com`,
+          password: "Password123!",
+          referredByInvite: invite,
+          referralSource: ReferralSource.OnetimeInvite,
+        }),
+      );
     };
     await saveInvite({ code: "WINDOW-USED", createdAt: inside, used: true });
     await saveInvite({ code: "WINDOW-OPEN", createdAt: inside, used: false });
