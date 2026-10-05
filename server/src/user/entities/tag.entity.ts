@@ -1,6 +1,6 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsString, ValidateIf } from "class-validator";
+import { Allow, IsOptional, IsString, ValidateIf } from "class-validator";
 import { GeneralUpdate } from "src/actions/entities/general-update.entity";
 import {
   CreateDateColumnTz,
@@ -68,9 +68,8 @@ export class Tag {
   users: Relation<User>[];
 
   @ManyToMany(() => GeneralUpdate, (generalUpdate) => generalUpdate.tags)
-  @ApiProperty({ type: () => GeneralUpdate, isArray: true })
-  @Allow()
+  @ApiPropertyOptional({ type: () => GeneralUpdate, isArray: true })
+  @IsOptional()
   @Type(() => GeneralUpdate)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  generalUpdates: Relation<GeneralUpdate>[];
+  generalUpdates?: Relation<GeneralUpdate>[];
 }

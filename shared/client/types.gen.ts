@@ -767,7 +767,7 @@ export type Tag = {
     createdAt: string;
     updatedAt: string;
     users: Array<User>;
-    generalUpdates: Array<GeneralUpdate>;
+    generalUpdates?: Array<GeneralUpdate>;
 };
 
 export type ContractEventType = 'signed' | 'suspended';
