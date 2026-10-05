@@ -20,6 +20,7 @@ import type { RecentSearch } from "src/search/recentsearch.entity";
 import type { ExternalShareTarget } from "src/share-urls/entities/external-share-target.entity";
 import type { CustomValidator } from "src/tasks/entities/customvalidator.entity";
 import type { FormSnapshot } from "src/tasks/entities/formsnapshot.entity";
+import type { AmbassadorInviteGoal } from "src/user/entities/ambassador-invite-goal.entity";
 import type { AmbassadorProgramInteraction } from "src/user/entities/ambassador-program-interaction.entity";
 import type { ContractEvent } from "src/user/entities/contract-event.entity";
 import type { Friend } from "src/user/entities/friend.entity";
@@ -46,6 +47,7 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<ActionPartnershipResponse>>
   | Assert<EntityShape<ActionStatsRecord>>
   | Assert<EntityShape<AiDetectionResult>>
+  | Assert<EntityShape<AmbassadorInviteGoal>>
   | Assert<EntityShape<AmbassadorProgramInteraction>>
   | Assert<EntityShape<Campaign>>
   | Assert<EntityShape<City>>

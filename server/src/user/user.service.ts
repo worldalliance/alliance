@@ -78,6 +78,7 @@ import { PaginationQueryDto } from "src/utils/pagination.dto";
 import type {
   Relations,
   Repository as TypedRepository,
+  WithRelations,
 } from "src/utils/Repository";
 import {
   Brackets,
@@ -196,6 +197,11 @@ const EMPTY_AMBASSADOR_INVITE_STATS: AmbassadorInviteStats = {
   goalSuccessfulRecruits: 0,
 };
 
+type AmbassadorInviteGoalWithAmbassador = WithRelations<
+  AmbassadorInviteGoal,
+  { ambassador: true }
+>;
+
 function ambassadorGoalHalfwayGroupingKey(goalId: number) {
   return `ambassador-invite-goal:${goalId}:halfway`;
 }
@@ -249,7 +255,7 @@ export class UserService {
     @InjectRepository(OnetimeInvite)
     private readonly onetimeInviteRepository: Repository<OnetimeInvite>,
     @InjectRepository(AmbassadorInviteGoal)
-    private readonly ambassadorInviteGoalRepository: Repository<AmbassadorInviteGoal>,
+    private readonly ambassadorInviteGoalRepository: TypedRepository<AmbassadorInviteGoal>,
     @InjectRepository(AmbassadorProgramMember)
     private readonly ambassadorProgramMemberRepository: Repository<AmbassadorProgramMember>,
     @InjectRepository(AmbassadorProgramInteraction)
@@ -1778,7 +1784,7 @@ export class UserService {
   private getAmbassadorProgramInviteStatsByUserId(params: {
     userIds: number[];
     totalsByUserId: Map<number, AmbassadorInviteStats>;
-    goals: AmbassadorInviteGoal[];
+    goals: AmbassadorInviteGoalWithAmbassador[];
     statsByGoalId: Map<number, AmbassadorInviteStats>;
   }): Map<number, AmbassadorProgramInviteStats> {
     const { userIds, totalsByUserId, goals, statsByGoalId } = params;
@@ -2239,7 +2245,7 @@ export class UserService {
   }
 
   private async sendAmbassadorInviteGoalHalfwayNotif(
-    goal: AmbassadorInviteGoal,
+    goal: AmbassadorInviteGoalWithAmbassador,
     sendTime: Date,
   ): Promise<void> {
     const groupingKey = ambassadorGoalHalfwayGroupingKey(goal.id);
@@ -2271,7 +2277,7 @@ export class UserService {
   }
 
   private async sendAmbassadorInviteGoalEndedNotif(
-    goal: AmbassadorInviteGoal,
+    goal: AmbassadorInviteGoalWithAmbassador,
   ): Promise<void> {
     const groupingKey = ambassadorGoalEndedGroupingKey(goal.id);
     const alreadySent = await this.notifsService.hasNotifWithGroupingKey(
@@ -2325,7 +2331,7 @@ export class UserService {
   }
 
   private async getAmbassadorInviteStatsByGoalIds(
-    goals: AmbassadorInviteGoal[],
+    goals: AmbassadorInviteGoalWithAmbassador[],
   ): Promise<Map<number, AmbassadorInviteStats>> {
     const stats = await this.queryAmbassadorInviteStats(
       goals.map((goal) => ({ userId: goal.ambassador.id, goal })),
