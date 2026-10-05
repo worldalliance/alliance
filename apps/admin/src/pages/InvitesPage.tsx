@@ -1,4 +1,4 @@
-import { CreateOnetimeInviteDto, userListAdmin } from "@alliance/shared/client";
+import { CreateOnetimeInviteDto } from "@alliance/shared/client";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
@@ -9,9 +9,9 @@ import Card from "@alliance/sharedweb/ui/Card";
 import List from "@alliance/sharedweb/ui/List";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
+import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { Copy } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router";
 import { memberProfileUrl } from "../lib/config";
 import {
@@ -19,6 +19,7 @@ import {
   useOnetimeInviteMemberStatsAdmin,
   useOnetimeInvitesAdmin,
 } from "../lib/useOnetimeInvitesAdmin";
+import { useUsersAdmin } from "../lib/useUsersAdmin";
 
 const InvitesPage = () => {
   const { error: pushError, success: pushSuccess } = useToast();
@@ -53,13 +54,8 @@ const InvitesPage = () => {
     });
   };
 
-  const [users, setUsers] = useState<UserSelectUser[]>([]);
+  const { data: users = [] } = useUsersAdmin();
   const [selectedUser, setSelectedUser] = useState<number | null>(null);
-  useEffect(() => {
-    userListAdmin().then((response) => {
-      setUsers(response.data ?? []);
-    });
-  }, []);
 
   const {
     data: invitesPerMember = [],

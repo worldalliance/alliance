@@ -1,20 +1,20 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  userListAdmin,
-  userSendPushNotificationAdmin,
-} from "@alliance/shared/client";
+import { userSendPushNotificationAdmin } from "@alliance/shared/client";
 import type {
   PushDto,
   TestPushNotificationDto,
-  UserDto,
 } from "@alliance/shared/client/types.gen";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import { useUsersAdmin } from "../lib/useUsersAdmin";
 
 const TestPushNotification: React.FC = () => {
-  const [users, setUsers] = useState<UserDto[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
+  const {
+    data: users = [],
+    isLoading: usersLoading,
+    isError: isUsersError,
+  } = useUsersAdmin();
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [message, setMessage] = useState("hi");
   const [sending, setSending] = useState(false);
@@ -33,31 +33,6 @@ const TestPushNotification: React.FC = () => {
       })),
     [users],
   );
-
-  const loadUsers = useCallback(() => {
-    setUsersLoading(true);
-    userListAdmin()
-      .then((response) => {
-        if (response.error) {
-          throw new Error(
-            errorMessage({
-              error: response.error,
-              fallback: "Failed to load users.",
-            }),
-          );
-        }
-        setUsers(response.data ?? []);
-      })
-      .catch((err) => {
-        console.error("Failed to load users", err);
-        setError("Failed to load users.");
-      })
-      .finally(() => setUsersLoading(false));
-  }, []);
-
-  useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
 
   const handleSend = useCallback(async () => {
     const userId = selectedUserIds[0];
@@ -139,6 +114,9 @@ const TestPushNotification: React.FC = () => {
         </Button>
         {sending && (
           <p className="text-sm text-zinc-500">Sending push notification...</p>
+        )}
+        {isUsersError && (
+          <p className="text-red-500 text-[10pt] mt-1">Failed to load users.</p>
         )}
         {error && <p className="text-red-500 text-[10pt] mt-1">{error}</p>}
         {success && <p className="text-green text-[10pt] mt-1">{success}</p>}
