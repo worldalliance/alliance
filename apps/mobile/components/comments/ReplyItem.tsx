@@ -248,24 +248,29 @@ export const ReplyItem = memo(function ReplyItemView({
 
       {!isEditing && (
         <View className="mt-2">
-          <LikeSummary
-            likeTargetType="comment"
-            likeTargetId={reply.id}
-            liked={reply.likedByMe ?? false}
-            likesCount={reply.likesCount}
-            likers={reply.likes}
-            className="mb-1.5"
-          />
-          <View className="flex-row items-center gap-x-3">
-            <LikeActionButton
-              compact
+          {!reply.deleted && (
+            <LikeSummary
+              likeTargetType="comment"
+              likeTargetId={reply.id}
               liked={reply.likedByMe ?? false}
-              onLike={
-                shared.user
-                  ? () => shared.onLikeReply(reply.id, reply.likedByMe ?? false)
-                  : undefined
-              }
+              likesCount={reply.likesCount}
+              likers={reply.likes}
+              className="mb-1.5"
             />
+          )}
+          <View className="flex-row items-center gap-x-3">
+            {!reply.deleted && (
+              <LikeActionButton
+                compact
+                liked={reply.likedByMe ?? false}
+                onLike={
+                  shared.user
+                    ? () =>
+                        shared.onLikeReply(reply.id, reply.likedByMe ?? false)
+                    : undefined
+                }
+              />
+            )}
             {shared.user && canNest && (
               <TouchableOpacity
                 onPress={() =>
