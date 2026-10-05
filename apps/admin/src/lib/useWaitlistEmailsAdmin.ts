@@ -1,9 +1,15 @@
 import {
   waitlistEmailAdminFindEmailAdmin,
   waitlistEmailAdminFindEmailsAdmin,
+  waitlistEmailAdminPreviewEmailAdmin,
 } from "@alliance/shared/client";
+import type { PreviewWaitlistEmailDto } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useCallback } from "react";
 import { inProgress, SENDING_POLL_MS } from "./waitlistEmail";
 
@@ -31,6 +37,22 @@ export function useWaitlistEmailAdmin(id: number) {
       query.state.data && inProgress(query.state.data)
         ? SENDING_POLL_MS
         : false,
+  });
+}
+
+export function useWaitlistEmailPreviewAdmin(
+  preview: PreviewWaitlistEmailDto,
+  options: { enabled: boolean },
+) {
+  return useQuery({
+    queryKey: queryKeys.waitlistEmailPreviewAdmin(preview),
+    queryFn: () =>
+      waitlistEmailAdminPreviewEmailAdmin({
+        body: preview,
+        throwOnError: true,
+      }).then((r) => r.data),
+    enabled: options.enabled,
+    placeholderData: keepPreviousData,
   });
 }
 

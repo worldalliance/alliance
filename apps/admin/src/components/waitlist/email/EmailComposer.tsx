@@ -3,12 +3,10 @@ import {
   WaitlistEmailPlaceholder,
   waitlistEmailToken,
 } from "@alliance/common/waitlistEmail";
-import { waitlistEmailAdminPreviewEmailAdmin } from "@alliance/shared/client";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { adminRefusalMessage } from "../../../lib/adminRefusal";
+import { useWaitlistEmailPreviewAdmin } from "../../../lib/useWaitlistEmailsAdmin";
 import {
   blockingProblem,
   completeDraft,
@@ -61,15 +59,8 @@ const EmailComposer: React.FC<EmailComposerProps> = ({
     includeClaimed,
     sampleEntryId,
   };
-  const preview = useQuery({
-    queryKey: queryKeys.waitlistEmailPreviewAdmin(previewDto),
-    queryFn: () =>
-      waitlistEmailAdminPreviewEmailAdmin({
-        body: previewDto,
-        throwOnError: true,
-      }).then((r) => r.data),
+  const preview = useWaitlistEmailPreviewAdmin(previewDto, {
     enabled: entryIds.length > 0 && completeDraft(settledDraft),
-    placeholderData: keepPreviousData,
   });
   const current =
     preview.isSuccess &&
