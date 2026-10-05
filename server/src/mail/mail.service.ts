@@ -1,3 +1,4 @@
+import { nameParts } from "@alliance/common/nameParts";
 import { withCount } from "@alliance/common/plural";
 import { R } from "@alliance/common/result";
 import { ISendMailOptions, MailerService } from "@nestjs-modules/mailer";
@@ -17,9 +18,8 @@ import {
   withCid,
 } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
-import type { Repository } from "src/utils/Repository";
-import { nameParts } from "src/utils/name-parts";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
+import type { Repository } from "src/utils/Repository";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
 
 export function mailSendingEnabled(): boolean {

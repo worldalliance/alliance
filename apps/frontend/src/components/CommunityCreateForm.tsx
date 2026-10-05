@@ -4,6 +4,7 @@ import {
   isMaxCapacityRequired,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
+import { nameParts } from "@alliance/common/nameParts";
 import {
   CommunityDto,
   CreateCommunityDto,
@@ -49,7 +50,7 @@ const CommunityCreateForm = ({
   onSuccess,
 }: CommunityCreateFormProps) => {
   const initialFormValues = useMemo<CreateCommunityDto>(() => {
-    const firstName = name?.split(" ")[0];
+    const firstName = name && nameParts(name).firstname;
     return {
       name: firstName ? `${firstName}'s Group` : "",
       description: firstName

@@ -1,4 +1,4 @@
-import { nameParts } from "./name-parts";
+import { nameParts } from "./nameParts";
 
 describe("nameParts", () => {
   it.each([
@@ -6,7 +6,10 @@ describe("nameParts", () => {
     ["Jane Q Doe", "Jane", "Doe"],
     ["Jane", "Jane", ""],
     ["Jane ", "Jane", ""],
+    [" Jane  Doe ", "Jane", "Doe"],
+    ["Jane\tDoe", "Jane", "Doe"],
     ["", "", ""],
+    ["   ", "", ""],
   ])("splits %p", (name, firstname, lastname) => {
     expect(nameParts(name)).toEqual({ firstname, lastname });
   });
