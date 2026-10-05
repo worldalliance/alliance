@@ -178,8 +178,7 @@ export class Notification {
     nullable: false,
     onDelete: "CASCADE",
   })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  user: Relation<User>;
+  user?: Relation<User>;
 
   @ManyToMany(() => User)
   @JoinTable({ name: "notification_associated_users" })

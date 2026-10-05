@@ -24,7 +24,6 @@ import {
   LessThan,
   Not,
   Raw,
-  type Repository,
 } from "typeorm";
 import { NotifClickDto } from "./dto/notifclick.dto";
 import {
@@ -103,6 +102,7 @@ function unreadContentFor(source: UnreadContentSource): NotificationContent {
 const UNREAD_CONTENT_INSERT_CHUNK = 1000;
 
 type UnreadContentWithUser = WithRelations<UnreadContent, { user: true }>;
+export type NotificationWithUser = WithRelations<Notification, { user: true }>;
 
 const byRecipient = <T extends { user: User }>(rows: T[]) =>
   Map.groupBy(rows, (row) => row.user.id);
@@ -115,7 +115,7 @@ const throughMillisecond = (date: Date): Date => addMilliseconds(date, 1);
 export class NotifsService {
   constructor(
     @InjectRepository(Notification)
-    private readonly notifsRepository: Repository<Notification>,
+    private readonly notifsRepository: TypedRepository<Notification>,
     @InjectRepository(UnreadContent)
     private readonly unreadContentRepository: TypedRepository<UnreadContent>,
     @InjectRepository(ActionEventNotif)
@@ -214,10 +214,11 @@ export class NotifsService {
     sourceType?: NotificationSourceType,
   ) {
     if (sourceType !== NotificationSourceType.UnreadContent) {
-      const notif = await this.notifsRepository.findOne({
-        where: { id, user: { id: userId } },
-        relations: { user: true },
-      });
+      const notif: NotificationWithUser | null =
+        await this.notifsRepository.findOne({
+          where: { id, user: { id: userId } },
+          relations: { user: true },
+        });
       if (notif) {
         if (notif.user.id !== userId) {
           throw new BadRequestException();
@@ -496,7 +497,7 @@ export class NotifsService {
   }
 
   async renderNotificationsForPush(
-    notifs: Notification[],
+    notifs: NotificationWithUser[],
   ): Promise<Map<number, NotificationDto>> {
     const dtos = await this.renderService.renderNotifications(
       byRecipient(notifs),

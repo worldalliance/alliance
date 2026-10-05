@@ -9,8 +9,12 @@ import {
   UnreadContent,
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
-import { NotifsService } from "src/notifs/notifs.service";
+import {
+  type NotificationWithUser,
+  NotifsService,
+} from "src/notifs/notifs.service";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
+import type { Repository as TypedRepository } from "src/utils/Repository";
 import { In, type Repository } from "typeorm";
 import { v4 } from "uuid";
 import { CreatePushMessage, PushService } from "./push.service";
@@ -21,7 +25,7 @@ const actionUpdatePushBody = (message: string) => `Update: ${message}`;
 export class NotifPushDispatcherWorker {
   constructor(
     @InjectRepository(Notification)
-    private readonly notificationRepository: Repository<Notification>,
+    private readonly notificationRepository: TypedRepository<Notification>,
     @InjectRepository(UnreadContent)
     private readonly unreadContentRepository: Repository<UnreadContent>,
     private readonly notifsService: NotifsService,
@@ -79,13 +83,12 @@ export class NotifPushDispatcherWorker {
       return [];
     }
 
-    const toSend = await this.notificationRepository
-      .createQueryBuilder("n")
-      .leftJoinAndSelect("n.user", "u")
-      .leftJoinAndSelect("n.associatedUsers", "au")
-      .where("n.id IN (:...ids)", { ids: claimed.map((c) => c.id) })
-      .orderBy('n."sendTime"', "ASC")
-      .getMany();
+    const toSend: NotificationWithUser[] =
+      await this.notificationRepository.find({
+        where: { id: In(claimed.map((c) => c.id)) },
+        relations: { user: true, associatedUsers: true },
+        order: { sendTime: "ASC" },
+      });
 
     if (toSend.length === 0) {
       return [];
