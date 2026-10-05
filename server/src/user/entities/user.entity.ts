@@ -31,7 +31,6 @@ import { Mms } from "src/mms/mms.entity";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { StoredInviteAssignmentKind } from "src/share-urls/invite-assignment-kind";
-import { findLeast } from "src/utils/filter";
 import { phoneNumberTransformer } from "src/utils/phone";
 import { plainTimeTransformer } from "src/utils/plain-time";
 import type { Relation } from "src/utils/Repository";
@@ -52,10 +51,10 @@ import {
 } from "typeorm";
 import { Notification } from "../../notifs/entities/notification.entity";
 import {
-  compareContractEventsNewestFirst,
   ContractEvent,
   ContractEventType,
   getEffectiveContractEventsInRange,
+  isContractActiveAt,
 } from "./contract-event.entity";
 import { Friend, FriendStatus } from "./friend.entity";
 import { OnetimeInvite } from "./onetime-invite.entity";
@@ -601,15 +600,7 @@ export class User {
     let hasActiveContract = this._hasActiveContractAt.get(key);
 
     if (hasActiveContract === undefined) {
-      const latestContractEvent = this.contractEvents
-        ? findLeast(
-            this.contractEvents,
-            compareContractEventsNewestFirst,
-            (event) => event.date <= date,
-          )
-        : null;
-      hasActiveContract =
-        latestContractEvent?.type === ContractEventType.SIGNED;
+      hasActiveContract = isContractActiveAt(this.contractEvents ?? [], date);
 
       this._hasActiveContractAt.set(key, hasActiveContract);
     }
@@ -629,14 +620,10 @@ export class User {
     let hasActiveContract = this._hasActiveContractInFullRange.get(key);
 
     populateCache: if (hasActiveContract === undefined) {
-      const latestContractEventBeforeStart = this.contractEvents
-        ? findLeast(
-            this.contractEvents,
-            compareContractEventsNewestFirst,
-            (event) => event.date.getTime() <= startTime,
-          )
-        : null;
-      if (latestContractEventBeforeStart?.type !== ContractEventType.SIGNED) {
+      if (
+        !startDate ||
+        !isContractActiveAt(this.contractEvents ?? [], startDate)
+      ) {
         hasActiveContract = false;
         break populateCache;
       }
@@ -687,7 +674,7 @@ export class User {
 }
 
 /**
- * SQL equivalent of {@link User.hasActiveContractAt}; keep date/id ordering in sync.
+ * SQL equivalent of {@link isContractActiveAt}; keep date/id ordering in sync.
  *
  * @param userIdExpr User-id SQL, e.g. `'u.id'` or `'signed_event."userId"'`.
  * @param contractAtExpr Instant SQL, e.g. `':contractAt'`, `'$4'`, or `'NOW()'`.
