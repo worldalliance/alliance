@@ -54,6 +54,7 @@ interface CohortExpressionBuilderProps {
   tagsLoading: boolean;
   tagsError: boolean;
   availableActions: { id: number; name: string }[];
+  actionsLoading: boolean;
   availableUsers: UserSelectUser[];
   usersLoading?: boolean;
   activeContractUserIds?: Set<number>;
@@ -163,17 +164,21 @@ type ActionSelectCondition =
   | CompletedActionCondition
   | MissedActionDeadlineCondition;
 
-const ActionSelectEditor: React.FC<{
+export const ActionSelectEditor: React.FC<{
   value: ActionSelectCondition;
   onChange: (v: ActionSelectCondition) => void;
   availableActions: { id: number; name: string }[];
-}> = ({ value, onChange, availableActions }) => (
+  actionsLoading: boolean;
+}> = ({ value, onChange, availableActions, actionsLoading }) => (
   <select
     value={value.actionId || ""}
+    disabled={actionsLoading}
     onChange={(e) => onChange({ ...value, actionId: parseInt(e.target.value) })}
     className="w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
   >
-    <option value="">Select action...</option>
+    <option value="">
+      {actionsLoading ? "Loading actions…" : "Select action..."}
+    </option>
     {availableActions.map((a) => (
       <option key={a.id} value={a.id}>
         {a.name}
@@ -477,6 +482,7 @@ const LeafConditionEditor: React.FC<{
           value={expr}
           onChange={onChange}
           availableActions={props.availableActions}
+          actionsLoading={props.actionsLoading}
         />
       );
     case "FormFieldValue":
@@ -842,6 +848,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
         {compareEnabled && (
           <select
             value={compareActionId ?? ""}
+            disabled={props.actionsLoading}
             onChange={(e) => {
               setCompareActionId(
                 e.target.value ? parseInt(e.target.value) : null,
@@ -850,7 +857,11 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
             }}
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
           >
-            <option value="">Select action to compare...</option>
+            <option value="">
+              {props.actionsLoading
+                ? "Loading actions…"
+                : "Select action to compare..."}
+            </option>
             {props.availableActions.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}

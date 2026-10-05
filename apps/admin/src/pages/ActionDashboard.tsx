@@ -1645,6 +1645,7 @@ const ActionDashboard: React.FC = () => {
                 tagsLoading={tagsLoading}
                 tagsError={tagsError}
                 availableActions={allActions}
+                actionsLoading={allActionsLoading}
                 availableUsers={availableUsers}
               />
             )}
