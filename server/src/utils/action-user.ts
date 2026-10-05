@@ -303,6 +303,19 @@ export function canMissActionDeadline(
 }
 
 /**
+ * {@link computeMissedActionDeadline} for a member a roster already counts as
+ * required and present ({@link computeIsAssignedAndPresent}).
+ */
+export function computeMissedRequiredAction(params: {
+  action: Pick<Action, "optional" | "memberActionPhase">;
+  hasTerminalActivity: boolean;
+  now: Date;
+}): boolean {
+  const { action, hasTerminalActivity, now } = params;
+  return canMissActionDeadline(action, now) && !hasTerminalActivity;
+}
+
+/**
  * The `MissedActionDeadline` cohort leaf for one member, shared by the
  * single-user and population cohort paths: required and present for the
  * action, deadline passed, no completion or withdrawal. Dismissal does not
@@ -318,8 +331,7 @@ export function computeMissedActionDeadline(params: {
 }): boolean {
   const { action, user, inCohort, hasTerminalActivity, now } = params;
   return (
-    canMissActionDeadline(action, now) &&
-    !hasTerminalActivity &&
+    computeMissedRequiredAction({ action, hasTerminalActivity, now }) &&
     computeIsRequiredForAction({ action, user, inCohort, dismissed: false }) &&
     !computeIsAwayDuringWindow({ action, user })
   );
