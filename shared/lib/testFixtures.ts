@@ -1,6 +1,7 @@
 import { milliseconds } from "date-fns";
 import type {
   ActionEventDto,
+  CommunityDto,
   ConversationDto,
   ConversationType,
   FormResponseDto,
@@ -125,6 +126,24 @@ export function makeProfile(id: number): ProfileDto {
     displayName: `User ${id}`,
     hasActiveContract: true,
     isCommunityLeader: false,
+  };
+}
+
+export function makeCommunity(
+  overrides: Partial<CommunityDto> = {},
+): CommunityDto {
+  return {
+    id: 1,
+    name: "Ada's group",
+    description: "A group",
+    photo: null,
+    public: false,
+    allowMemberInvites: true,
+    allowStaffAssignments: true,
+    maxCapacity: 10,
+    users: [],
+    leaders: [],
+    ...overrides,
   };
 }
 

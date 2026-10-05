@@ -1,7 +1,4 @@
-import { communityGetCommunitiesAdmin } from "@alliance/shared/client";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useQuery } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
 import OrganizationCard from "../components/organizations/OrganizationCard";
 import { adminRefusalMessage } from "../lib/adminRefusal";
@@ -12,6 +9,7 @@ import {
   useCreateCampaignAdmin,
   useUpdateCampaignAdmin,
 } from "../lib/useCampaignsAdmin";
+import { useCommunitiesAdmin } from "../lib/useCommunitiesAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
 import {
   useWaitlistLinksAdmin,
@@ -21,11 +19,7 @@ import {
 const OrganizationsPage: React.FC = () => {
   const refusalToast = useRefusalToast();
   const campaigns = useCampaignsAdmin();
-  const communities = useQuery({
-    queryKey: queryKeys.communitiesAdmin(),
-    queryFn: () =>
-      communityGetCommunitiesAdmin({ throwOnError: true }).then((r) => r.data),
-  });
+  const communities = useCommunitiesAdmin();
   const links = useWaitlistLinksAdmin();
 
   const [newName, setNewName] = useState("");
