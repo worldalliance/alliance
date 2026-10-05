@@ -1,4 +1,5 @@
 /** @fileoverview Utils for relationships between actions and users */
+import { isAwayRangeActiveAt } from "@alliance/common/awayRange";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionStatus,
@@ -346,10 +347,10 @@ export function computeMemberActionAwayStatus(params: {
 
   for (const awayRange of user.awayRanges ?? []) {
     const { startDate: awayStartDate, endDate: awayEndDate } = awayRange;
-    if (awayStartDate <= now && now < awayEndDate) {
+    if (isAwayRangeActiveAt(awayRange, now)) {
       return TaskAwayStatus.AwayCurrently;
     }
-    if (startDate < awayEndDate && awayEndDate < now) {
+    if (startDate < awayEndDate && awayEndDate <= now) {
       return TaskAwayStatus.AwayPreviously;
     }
     if (now <= awayStartDate && (!endDate || awayStartDate < endDate)) {

@@ -1,3 +1,4 @@
+import { isAwayRangeActiveAt } from "@alliance/common/awayRange";
 import type { Assert, Equal } from "@alliance/common/types";
 import type { UserAwayRangeDto, UserAwayRangeReason } from "../client";
 import { formatShortDate } from "./dateFormatters";
@@ -28,9 +29,14 @@ export function awayRangeStatus(
   range: Pick<UserAwayRangeDto, "startDate" | "endDate">,
   now = new Date(),
 ): AwayRangeStatus {
-  if (new Date(range.startDate) > now) return AwayRangeStatus.Upcoming;
-  if (new Date(range.endDate) >= now) return AwayRangeStatus.Current;
-  return AwayRangeStatus.Past;
+  const startDate = new Date(range.startDate);
+  if (startDate > now) return AwayRangeStatus.Upcoming;
+  return isAwayRangeActiveAt(
+    { startDate, endDate: new Date(range.endDate) },
+    now,
+  )
+    ? AwayRangeStatus.Current
+    : AwayRangeStatus.Past;
 }
 
 export function formatAwayRange(range: UserAwayRangeDto): string {

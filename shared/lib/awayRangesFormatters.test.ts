@@ -29,8 +29,8 @@ describe("awayRangeStatus", () => {
   it.each([
     ["2026-02-28T23:59:59.999Z", AwayRangeStatus.Upcoming],
     ["2026-03-01T00:00:00.000Z", AwayRangeStatus.Current],
-    ["2026-03-07T23:59:00.000Z", AwayRangeStatus.Current],
-    ["2026-03-07T23:59:00.001Z", AwayRangeStatus.Past],
+    ["2026-03-07T23:58:59.999Z", AwayRangeStatus.Current],
+    ["2026-03-07T23:59:00.000Z", AwayRangeStatus.Past],
   ])("at %s is %s", (now, status) => {
     expect(awayRangeStatus(range, new Date(now))).toBe(status);
   });

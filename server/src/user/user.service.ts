@@ -1,5 +1,6 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { isAwayRangeActiveAt } from "@alliance/common/awayRange";
 import {
   emptyUserPropertyPresence,
   type UserPropertyPresence,
@@ -1672,9 +1673,7 @@ export class UserService {
       where: { userId },
     });
 
-    return awayRanges.some(
-      (range) => checkDate >= range.startDate && checkDate <= range.endDate,
-    );
+    return awayRanges.some((range) => isAwayRangeActiveAt(range, checkDate));
   }
 
   async createTag(body: CreateTagDto): Promise<Tag> {
