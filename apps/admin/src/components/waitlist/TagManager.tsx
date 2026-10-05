@@ -1,19 +1,17 @@
 import { withCount } from "@alliance/common/plural";
-import {
-  waitlistAdminDeleteTagAdmin,
-  waitlistAdminRenameTagAdmin,
-} from "@alliance/shared/client";
 import type { AdminWaitlistTagDto } from "@alliance/shared/client/types.gen";
 import Modal, {
   ModalBody,
   ModalHeader,
   ModalTitle,
 } from "@alliance/sharedweb/ui/Modal";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tags, Trash2 } from "lucide-react";
 import React, { useState } from "react";
 import { useRefusalToast } from "../../lib/useRefusalToast";
-import { invalidateTagQueries } from "../../lib/waitlistAdminQueries";
+import {
+  useDeleteWaitlistTagAdmin,
+  useRenameWaitlistTagAdmin,
+} from "../../lib/useWaitlistTagsAdmin";
 import ConfirmDialog from "../ConfirmDialog";
 import InlineTextInput from "../InlineTextInput";
 import {
@@ -56,32 +54,17 @@ const TagRow: React.FC<{
 const TagManager: React.FC<{ tags: AdminWaitlistTagDto[] | undefined }> = ({
   tags,
 }) => {
-  const queryClient = useQueryClient();
   const refusalToast = useRefusalToast();
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState<AdminWaitlistTagDto | null>(null);
 
-  const invalidate = () => invalidateTagQueries(queryClient);
-
-  const rename = useMutation({
-    mutationFn: (params: { id: number; name: string }) =>
-      waitlistAdminRenameTagAdmin({
-        path: { id: params.id },
-        body: { name: params.name },
-        throwOnError: true,
-      }),
+  const rename = useRenameWaitlistTagAdmin({
     onError: (err) => refusalToast(err, "Could not rename the tag."),
-    onSettled: invalidate,
   });
 
-  const remove = useMutation({
-    mutationFn: (id: number) =>
-      waitlistAdminDeleteTagAdmin({ path: { id }, throwOnError: true }),
+  const remove = useDeleteWaitlistTagAdmin({
     onError: (err) => refusalToast(err, "Could not delete the tag."),
-    onSettled: async () => {
-      setDeleting(null);
-      await invalidate();
-    },
+    onSettled: () => setDeleting(null),
   });
 
   return (
