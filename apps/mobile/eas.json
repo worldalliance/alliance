@@ -25,6 +25,14 @@
         "simulator": true
       }
     },
+    "staging": {
+      "extends": "base",
+      "distribution": "store",
+      "channel": "staging",
+      "env": {
+        "APP_VARIANT": "staging"
+      }
+    },
     "preview": {
       "extends": "base",
       "distribution": "internal",
@@ -37,6 +45,7 @@
     }
   },
   "submit": {
+    "staging": {},
     "production": {}
   }
 }

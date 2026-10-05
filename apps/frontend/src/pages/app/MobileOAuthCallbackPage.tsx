@@ -1,7 +1,7 @@
 import { MOBILE_OAUTH_RETURN_PATH } from "@alliance/common/oauth";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useLocation } from "react-router";
-import { ANDROID_PACKAGE } from "../../lib/mobileApp";
+import { oauthReturnAndroidPackage } from "../../lib/mobileApp";
 
 // The page renders when the browser kept the redirect instead of handing it to
 // the app. A plain link here would depend on the same App Link handling that
@@ -10,7 +10,7 @@ const MobileOAuthCallbackPage = () => {
   const { search } = useLocation();
 
   const returnToApp = () => {
-    window.location.href = `intent://${window.location.host}${MOBILE_OAUTH_RETURN_PATH}${search}#Intent;scheme=https;package=${ANDROID_PACKAGE};end`;
+    window.location.href = `intent://${window.location.host}${MOBILE_OAUTH_RETURN_PATH}${search}#Intent;scheme=https;package=${oauthReturnAndroidPackage(import.meta.env.MODE)};end`;
   };
 
   return (

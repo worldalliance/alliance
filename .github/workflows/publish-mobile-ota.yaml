@@ -1,8 +1,9 @@
 name: Publish Mobile OTA
 
-# Publishes an over-the-air JS/asset update to the production EAS Update
-# channel. Only JS/asset changes ship this way; native changes still require a
-# store build (the fingerprint runtimeVersion guards compatibility).
+# Publishes an over-the-air JS/asset update to the deploy environment's EAS
+# Update channel: production for store installs, staging for the staging app.
+# Only JS/asset changes ship this way; native changes still require a store
+# build (the fingerprint runtimeVersion guards compatibility).
 #
 # Dispatch with a commit to ship an older commit to the store-live runtime after
 # main has moved to a new fingerprint:
@@ -10,6 +11,11 @@ name: Publish Mobile OTA
 
 on:
   workflow_call:
+    inputs:
+      environment:
+        description: production or staging; names the EAS channel and the app variant
+        type: string
+        required: true
   workflow_dispatch:
     inputs:
       ref:
@@ -20,7 +26,9 @@ jobs:
   publish-mobile-ota:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: production
+    environment: ${{ inputs.environment || 'production' }}
+    env:
+      APP_VARIANT: ${{ inputs.environment || 'production' }}
     steps:
       # release/ is the commit that ships; on dispatch the root is main, for its
       # actions and live fingerprint baseline.
@@ -76,13 +84,33 @@ jobs:
           (cd release/apps/mobile && bun run fingerprint:check)
           git -C release checkout -- common/src/mobileFingerprints.gen.ts
 
-      - name: Publish EAS Update
-        run: bunx eas-cli@16.5.0 update --branch production --message "$(git log -1 --format=%B)" --non-interactive
+      # Staging builds are made by hand, so a native change on main strands the
+      # installed staging apps until someone rebuilds.
+      - name: Warn when no staging build runs this fingerprint
+        if: ${{ env.APP_VARIANT == 'staging' }}
         working-directory: ./release/apps/mobile
         env:
-          # `eas update` ignores eas.json build profiles, so pin the variant
-          # here. Must resolve the same app config as the production store build,
-          # or the fingerprint runtimeVersion won't match any installed build and
+          EXPO_TOKEN: ${{ secrets.EXPO_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          # @expo/fingerprint hashes a config it failed to load instead of failing.
+          bunx expo config --type public > /dev/null
+          hashes=$(node scripts/fingerprint.mjs)
+          for platform in ios android; do
+            fingerprint=$(awk -v p="$platform:" '$1 == p { print $2 }' <<<"$hashes")
+            builds=$(bunx eas-cli@16.5.0 build:list --platform "$platform" --build-profile staging \
+              --runtime-version "$fingerprint" --status finished --limit 1 --json --non-interactive)
+            if [ "$(jq length <<<"$builds")" = 0 ]; then
+              echo "::warning title=Staging app needs a rebuild::No $platform staging build runs fingerprint $fingerprint, so installed staging apps won't get this update. Run \`eas build --profile staging --platform $platform --auto-submit\` from apps/mobile."
+            fi
+          done
+
+      - name: Publish EAS Update
+        run: bunx eas-cli@16.5.0 update --branch "$APP_VARIANT" --message "$(git log -1 --format=%B)" --non-interactive
+        working-directory: ./release/apps/mobile
+        env:
+          # `eas update` ignores eas.json build profiles, so the job pins the
+          # variant. It must resolve the same app config as the store build, or
+          # the fingerprint runtimeVersion won't match any installed build and
           # the OTA never applies.
-          APP_VARIANT: production
           EXPO_TOKEN: ${{ secrets.EXPO_ACCESS_TOKEN }}

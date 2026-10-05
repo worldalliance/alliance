@@ -985,8 +985,6 @@ jobs:
         with:
           github-username: ${{ github.actor }}
 
-      # publish-mobile-ota is skipped on staging by design, so only a failure
-      # there is worth an alert. For the rest a skip means an upstream failed.
       - name: Post webhook if any upstream did not succeed
         if: >-
           ${{ always() && (needs.deploy-nest-backend.result != 'success'
@@ -994,8 +992,7 @@ jobs:
           || needs.verify-https.result != 'success'
           || needs.verify-api.result != 'success'
           || needs.mobile-fingerprint-check.result != 'success'
-          || needs.publish-mobile-ota.result == 'failure'
-          || needs.publish-mobile-ota.result == 'cancelled') }}
+          || needs.publish-mobile-ota.result != 'success') }}
         env:
           WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
           MENTION: ${{ steps.slack_mention.outputs.mention }}
@@ -1010,11 +1007,12 @@ jobs:
           slack_post "$WEBHOOK" \
             "${MENTION:+$MENTION }Deploy $env_name did not succeed for $SUBJECT${FAILED:+ ($FAILED)}. <$RUN_URL|Open run>"
 
-  # Runs only on the production branch, after the backend is live so the OTA
-  # bundle never talks to an API older than itself.
+  # Runs after the backend is live so the OTA bundle never talks to an API
+  # older than itself.
   publish-mobile-ota:
     needs:
       - deploy-nest-backend
-    if: ${{ github.ref_name == 'production' }}
     uses: ./.github/workflows/publish-mobile-ota.yaml
+    with:
+      environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
     secrets: inherit
