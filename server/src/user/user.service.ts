@@ -2273,7 +2273,7 @@ export class UserService {
   }
 
   private async sendAmbassadorInviteGoalNotif(params: {
-    goal: AmbassadorInviteGoal;
+    goal: AmbassadorInviteGoalWithAmbassador;
     groupingKey: string;
     sendTime: Date;
     message: (stats: AmbassadorInviteStats) => string;
