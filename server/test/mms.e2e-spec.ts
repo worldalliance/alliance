@@ -223,7 +223,7 @@ describe("Inbound MMS keywords (e2e)", () => {
       order: { createdAt: "DESC" },
       relations: { user: true },
     });
-    expect(logged.user.id).toBe(memberId);
+    expect(logged.user?.id).toBe(memberId);
     expect(logged.reason).toBe("stop_keyword");
     expect(logged.rawBody).toBe("stop");
   });
@@ -469,7 +469,7 @@ describe("Inbound MMS keywords for a shared number (e2e)", () => {
       where: { phoneNumber: SHARED },
       relations: { user: true },
     });
-    expect(logged.map((row) => row.user.id).sort(byId)).toEqual(
+    expect(logged.map((row) => row.user?.id).sort(byId)).toEqual(
       [...memberIds].sort(byId),
     );
   });
