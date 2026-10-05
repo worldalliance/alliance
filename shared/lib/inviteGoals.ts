@@ -95,6 +95,15 @@ export const inviteGoalIsUp = (
   new Date(goal.goal.dueAt) < now ||
   goal.stats.goalSuccessfulRecruits >= goal.goal.targetSuccessfulRecruits;
 
+export const inviteGoalProgressPercent = ({
+  goal,
+  stats,
+}: AmbassadorInviteGoalWithStatsDto) =>
+  Math.min(
+    100,
+    (stats.goalSuccessfulRecruits / goal.targetSuccessfulRecruits) * 100,
+  );
+
 export enum InviteGoalPhase {
   Upcoming = "upcoming",
   Completed = "completed",

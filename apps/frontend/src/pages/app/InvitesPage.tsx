@@ -9,6 +9,7 @@ import {
   roleBadges,
 } from "@alliance/shared/lib/copy";
 import {
+  inviteGoalProgressPercent,
   inviteGoalStatus,
   inviteGoalSummary,
   selectInviteGoals,
@@ -368,17 +369,9 @@ const InvitesPage = () => {
     [saveEditGoalTarget, setEditGoalTarget],
   );
 
-  const currentGoalProgressPercent = useMemo(() => {
-    if (!currentGoal) {
-      return 0;
-    }
-    return Math.min(
-      100,
-      (currentGoal.stats.goalSuccessfulRecruits /
-        currentGoal.goal.targetSuccessfulRecruits) *
-        100,
-    );
-  }, [currentGoal]);
+  const currentGoalProgressPercent = currentGoal
+    ? inviteGoalProgressPercent(currentGoal)
+    : 0;
   const currentGoalInvitesCreated = currentGoal?.stats.totalInvitesSent ?? 0;
 
   const { data: allianceMemberCount, isPending: allianceMemberCountPending } =
