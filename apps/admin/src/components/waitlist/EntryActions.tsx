@@ -3,24 +3,15 @@ import {
   WaitlistEmailPlaceholder,
   waitlistEmailToken,
 } from "@alliance/common/waitlistEmail";
-import {
-  waitlistAdminMobilizeEntriesAdmin,
-  waitlistAdminRevokeEntryInvitesAdmin,
-  waitlistAdminUnmobilizeEntriesAdmin,
-} from "@alliance/shared/client";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
 import { useRefusalToast } from "../../lib/useRefusalToast";
+import {
+  WaitlistEntryChange as EntryChange,
+  useChangeWaitlistEntriesAdmin,
+} from "../../lib/useWaitlistEntriesAdmin";
 import ConfirmDialog from "../ConfirmDialog";
-
-enum EntryChange {
-  Mark = "mark",
-  Undo = "undo",
-  RevokeInvites = "revoke_invites",
-}
 
 const MOBILIZED_FAILED = "Could not change mobilized status.";
 
@@ -33,7 +24,6 @@ const CHANGES: Record<
     changedNoun: string;
     done: (changed: string) => string;
     failed: string;
-    send: typeof waitlistAdminMobilizeEntriesAdmin;
   }
 > = {
   [EntryChange.Mark]: {
@@ -44,7 +34,6 @@ const CHANGES: Record<
     changedNoun: "entry",
     done: (changed) => `Marked ${changed} mobilized`,
     failed: MOBILIZED_FAILED,
-    send: waitlistAdminMobilizeEntriesAdmin,
   },
   [EntryChange.Undo]: {
     button: "Undo mobilized",
@@ -54,7 +43,6 @@ const CHANGES: Record<
     changedNoun: "entry",
     done: (changed) => `Returned ${changed} to waiting`,
     failed: MOBILIZED_FAILED,
-    send: waitlistAdminUnmobilizeEntriesAdmin,
   },
   [EntryChange.RevokeInvites]: {
     button: "Revoke invites",
@@ -64,7 +52,6 @@ const CHANGES: Record<
     changedNoun: "invite",
     done: (changed) => `Revoked ${changed}`,
     failed: "Could not revoke the invites.",
-    send: waitlistAdminRevokeEntryInvitesAdmin,
   },
 };
 
@@ -72,7 +59,6 @@ const EntryActions: React.FC<{
   selectedIds: ReadonlySet<number>;
   onChanged: () => void;
 }> = ({ selectedIds, onChanged }) => {
-  const queryClient = useQueryClient();
   const refusalToast = useRefusalToast();
   const { success } = useToast();
   const [confirming, setConfirming] = useState<{
@@ -80,24 +66,15 @@ const EntryActions: React.FC<{
     entryIds: number[];
   } | null>(null);
 
-  const change = useMutation({
-    mutationFn: (params: { kind: EntryChange; entryIds: number[] }) =>
-      CHANGES[params.kind]
-        .send({ body: { entryIds: params.entryIds }, throwOnError: true })
-        .then((r) => r.data.changed),
-    onSuccess: (changed, { kind }) => {
+  const change = useChangeWaitlistEntriesAdmin({
+    onSuccess: (changed, kind) => {
       onChanged();
       success(
         CHANGES[kind].done(withCount(changed, CHANGES[kind].changedNoun)),
       );
     },
-    onError: (err, { kind }) => refusalToast(err, CHANGES[kind].failed),
-    onSettled: async () => {
-      setConfirming(null);
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.waitlistEntriesAdminAll(),
-      });
-    },
+    onError: (err, kind) => refusalToast(err, CHANGES[kind].failed),
+    onSettled: () => setConfirming(null),
   });
 
   return (

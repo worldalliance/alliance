@@ -1,12 +1,10 @@
 import { pickForCount, withCount } from "@alliance/common/plural";
-import { waitlistAdminFindEntryIdsAdmin } from "@alliance/shared/client";
 import type {
   WaitlistEntryFilterDto,
   WaitlistEntrySort,
 } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
-import { useMutation } from "@tanstack/react-query";
 import { ChartColumn, Mail, X } from "lucide-react";
 import React, {
   useCallback,
@@ -36,7 +34,10 @@ import {
 } from "../lib/useCampaignsAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
 import { useWaitlistCohortsAdmin } from "../lib/useWaitlistCohortsAdmin";
-import { useWaitlistEntriesAdmin } from "../lib/useWaitlistEntriesAdmin";
+import {
+  useFindWaitlistEntryIdsAdmin,
+  useWaitlistEntriesAdmin,
+} from "../lib/useWaitlistEntriesAdmin";
 import {
   useWaitlistLinksAdmin,
   waitlistLinksLoadFailed,
@@ -103,18 +104,7 @@ const WaitlistPage: React.FC = () => {
     [campaigns.data],
   );
 
-  const selectAllMatching = useMutation({
-    mutationFn: (params: {
-      matching: WaitlistEntryFilterDto;
-      version: number;
-    }) =>
-      waitlistAdminFindEntryIdsAdmin({
-        body: { filter: params.matching },
-        throwOnError: true,
-      }).then((r) => r.data.ids),
-    onSuccess: (ids, { version }) => {
-      if (version === selectionVersion.current) changeSelection(new Set(ids));
-    },
+  const selectAllMatching = useFindWaitlistEntryIdsAdmin({
     onError: (err) => refusalToast(err, "Could not select every entry."),
   });
 
@@ -175,12 +165,16 @@ const WaitlistPage: React.FC = () => {
             type="button"
             className="text-blue-600 hover:underline disabled:opacity-50"
             disabled={selectAllMatching.isPending || entries.isPlaceholderData}
-            onClick={() =>
-              selectAllMatching.mutate({
-                matching: filter,
-                version: selectionVersion.current,
-              })
-            }
+            onClick={() => {
+              const version = selectionVersion.current;
+              selectAllMatching.mutate(filter, {
+                onSuccess: (ids) => {
+                  if (version === selectionVersion.current) {
+                    changeSelection(new Set(ids));
+                  }
+                },
+              });
+            }}
           >
             Select all {total} matching
           </button>
