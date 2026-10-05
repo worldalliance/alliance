@@ -328,8 +328,8 @@ export type ActionSuite = {
     createdAt: string;
     updatedAt: string;
     actions: Array<Action>;
-    generalUpdates: Array<GeneralUpdate>;
-    reminderGroups: Array<ReminderGroup>;
+    generalUpdates?: Array<GeneralUpdate>;
+    reminderGroups?: Array<ReminderGroup>;
     events: Array<ActionEvent>;
 };
 

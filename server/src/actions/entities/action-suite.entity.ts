@@ -1,6 +1,6 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
-import { Allow } from "class-validator";
+import { Allow, IsOptional } from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -54,18 +54,16 @@ export class ActionSuite {
   actions: Relation<Action>[];
 
   @ManyToMany(() => GeneralUpdate, (generalUpdate) => generalUpdate.suites)
-  @ApiProperty({ type: () => GeneralUpdate, isArray: true })
-  @Allow()
+  @ApiPropertyOptional({ type: () => GeneralUpdate, isArray: true })
+  @IsOptional()
   @Type(() => GeneralUpdate)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  generalUpdates: Relation<GeneralUpdate>[];
+  generalUpdates?: Relation<GeneralUpdate>[];
 
   @OneToMany(() => ReminderGroup, (reminderGroup) => reminderGroup.actionSuite)
-  @ApiProperty({ type: () => ReminderGroup, isArray: true })
-  @Allow()
+  @ApiPropertyOptional({ type: () => ReminderGroup, isArray: true })
+  @IsOptional()
   @Type(() => ReminderGroup)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  reminderGroups: Relation<ReminderGroup>[];
+  reminderGroups?: Relation<ReminderGroup>[];
 
   // Methods
 
