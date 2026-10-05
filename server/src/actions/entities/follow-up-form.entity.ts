@@ -69,9 +69,8 @@ export class FollowUpForm {
   })
   @JoinColumn({ name: "actionId" })
   @Type(() => Action)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  action: Relation<Action>;
+  @IsOptional()
+  action?: Relation<Action>;
 
   @Column()
   @ApiProperty()
