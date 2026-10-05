@@ -342,6 +342,7 @@ export function FieldWrapper<T extends AnyField>({
             <RenderField
               field={field}
               disabled
+              isPreview
               randomizationKey="preview"
               user={FORM_BUILDER_PREVIEW_USER}
               fieldContext={staticFieldContext}

@@ -13,6 +13,7 @@ import { useState } from "react";
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
 import { RenderField } from "./RenderField";
+import * as textareaMinRowsModule from "./textareaMinRows";
 
 afterEach(cleanup);
 serveApi(routes({}));
@@ -427,4 +428,31 @@ it("claims no options only where the member can answer", () => {
   );
 
   expect(screen.queryByText("No options available")).toBeNull();
+});
+
+describe("builder preview", () => {
+  const textarea = { ...base, kind: "textarea", rows: 8 } as const;
+  afterEach(() => jest.restoreAllMocks());
+
+  it.each<AnyField>([
+    textarea,
+    { ...base, id: "list", kind: "list", fields: [textarea], defaultNumber: 1 },
+  ])("keeps a $kind field's textarea at its configured rows", (field) => {
+    const minRows = jest.spyOn(textareaMinRowsModule, "textareaMinRows");
+    render(
+      <MemoryRouter>
+        <SiteAppProvider>
+          <RenderField
+            fieldContext={staticFieldContext}
+            field={field}
+            disabled
+            isPreview
+          />
+        </SiteAppProvider>
+      </MemoryRouter>,
+    );
+
+    expect(minRows).toHaveBeenCalled();
+    expect(minRows.mock.results.every((r) => r.value === 8)).toBe(true);
+  });
 });
