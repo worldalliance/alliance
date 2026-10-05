@@ -103,7 +103,7 @@ export type ActionEvent = {
      * The action associated with this event
      */
     action: Action;
-    updates: Array<ActionUpdate>;
+    updates?: Array<ActionUpdate>;
     suiteManaged: boolean;
 };
 
