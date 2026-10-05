@@ -73,6 +73,7 @@ import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { CheckboxSection } from "./optionPicker";
 import { RankingFieldInput } from "./RankingFieldInput";
 import SearchableSelect from "./SearchableSelect";
+import { textareaMinRows } from "./textareaMinRows";
 import TimeZoneSelect from "./TimeZoneSelect";
 
 export type RenderFieldProps = {
@@ -91,6 +92,7 @@ export type RenderFieldProps = {
   fieldErrors?: Record<string, string | null>;
   responseHiddenFromOthers?: boolean;
   isOutputView?: boolean;
+  isPreview?: boolean;
   hideLabel?: boolean;
 };
 
@@ -162,6 +164,7 @@ export function RenderField({
   fieldErrors,
   responseHiddenFromOthers,
   isOutputView,
+  isPreview,
   hideLabel,
 }: RenderFieldProps) {
   const instanceId = useId();
@@ -302,7 +305,11 @@ export function RenderField({
           />
           <TextareaAutosize
             aria-labelledby={labelId}
-            minRows={disabled ? 1 : field.rows || 3}
+            minRows={textareaMinRows({
+              rows: field.rows,
+              disabled,
+              isPreview,
+            })}
             translate="no"
             maxLength={field.maxLength}
             value={(value as string) ?? ""}
@@ -1089,6 +1096,7 @@ export function RenderField({
                               }
                               disabled={disabled}
                               isOutputView={isOutputView}
+                              isPreview={isPreview}
                               fileUpload={fileUpload}
                               fileUploadSlot={{
                                 kind: "listCard",
