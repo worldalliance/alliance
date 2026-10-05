@@ -504,7 +504,7 @@ export type ActionUpdateNotifyType = 'none' | 'action_cohort' | 'all_members' | 
 
 export type ActionUpdate = {
     id: number;
-    action: Action;
+    action?: Action;
     actionId: number;
     title: string;
     schemaSnapshotId: number;
