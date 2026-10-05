@@ -22,7 +22,10 @@ export const useCIDFromParams = (actionId?: number) => {
         if (response.data) {
           platform = response.data.mms ? "mms" : "email";
           searchParams.delete("cid");
-          setSearchParams(searchParams);
+          setSearchParams(searchParams, {
+            replace: true,
+            preventScrollReset: true,
+          });
         }
         captureEvent(AnalyticsEvent.NotifLinkClick, {
           cid,
