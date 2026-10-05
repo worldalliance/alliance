@@ -108,11 +108,10 @@ export class OnetimeInvite {
   invitingUser: Relation<User> | null;
 
   @OneToOne(() => User, (user) => user.referredByInvite)
-  @ApiProperty({ type: () => User, nullable: true })
+  @ApiPropertyOptional({ type: () => User, nullable: true })
   @Type(() => User)
   @IsOptional()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  invitedUser: Relation<User> | null;
+  invitedUser?: Relation<User> | null;
 
   @RelationId((invite: OnetimeInvite) => invite.invitedUser)
   @Type(() => Number)
@@ -164,8 +163,7 @@ export class OnetimeInvite {
 
   @OneToMany(() => Notification, (notif) => notif.onetimeInvite)
   @Type(() => Notification)
-  @ApiProperty({ type: () => Notification, isArray: true })
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  notifs: Relation<Notification>[];
+  @ApiPropertyOptional({ type: () => Notification, isArray: true })
+  @IsOptional()
+  notifs?: Relation<Notification>[];
 }

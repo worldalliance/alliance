@@ -646,11 +646,11 @@ export type OnetimeInvite = {
     deletedAt: string | null;
     usedAt: string | null;
     invitingUser: User | null;
-    invitedUser: User | null;
+    invitedUser?: User | null;
     invitedUserId: number | null;
     community?: Community | null;
     communityId: number | null;
-    notifs: Array<Notification>;
+    notifs?: Array<Notification>;
 };
 
 export type Campaign = {
