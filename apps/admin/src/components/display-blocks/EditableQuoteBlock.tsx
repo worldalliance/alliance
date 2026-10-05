@@ -1,7 +1,8 @@
 import type { QuoteBlock } from "@alliance/common/forms/display-blocks";
-import { userListAdmin, type UserDto } from "@alliance/shared/client";
+import { type UserDto } from "@alliance/shared/client";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
@@ -15,29 +16,8 @@ function QuoteBlockEditor({
   activeBlock: QuoteBlock;
   onUpdate: (updates: Partial<QuoteBlock>) => void;
 }) {
-  const [users, setUsers] = useState<UserDto[]>([]);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const { data: users = [], isLoading: isLoadingUsers } = useUsersAdmin();
   const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    setIsLoadingUsers(true);
-    userListAdmin()
-      .then((response) => {
-        if (cancelled) return;
-        setUsers(response.data ?? []);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setUsers([]);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingUsers(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const selectedUser = useMemo((): QuoteUser | null => {
     if (activeBlock.userId == null) return null;
