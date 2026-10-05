@@ -1,7 +1,9 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import { UserAwayRangeDto, UserAwayRangeReason } from "@alliance/shared/client";
+import { UserAwayRangeReason } from "@alliance/shared/client";
 import {
   AWAY_REASON_OPTIONS,
+  AwayRangeStatus,
+  awayRangeStatus,
   formatAwayReason,
 } from "@alliance/shared/lib/awayRangesFormatters";
 import { awayRangesDescription } from "@alliance/shared/lib/copy";
@@ -27,15 +29,6 @@ function formatDate(dateString: string): string {
     month: "long",
     day: "numeric",
   });
-}
-
-function isCurrentlyAway(range: UserAwayRangeDto): boolean {
-  const now = new Date();
-  return new Date(range.startDate) <= now && new Date(range.endDate) >= now;
-}
-
-function isFutureRange(range: UserAwayRangeDto): boolean {
-  return new Date(range.startDate) > new Date();
 }
 
 export default function AwayRangesSection() {
@@ -147,14 +140,14 @@ export default function AwayRangesSection() {
               key={range.id}
               className={cn(
                 "p-4 rounded-lg border",
-                isCurrentlyAway(range)
+                awayRangeStatus(range) === AwayRangeStatus.Current
                   ? "bg-yellow-50 border-yellow-200"
                   : "bg-gray-50 border-gray-200",
               )}
             >
               <View className="flex-row justify-between items-start">
                 <View className="flex-1">
-                  {isCurrentlyAway(range) && (
+                  {awayRangeStatus(range) === AwayRangeStatus.Current && (
                     <Text
                       className="text-xs text-yellow-800 mb-1"
                       weight={FontWeight.Semibold}
@@ -162,7 +155,7 @@ export default function AwayRangesSection() {
                       Currently away
                     </Text>
                   )}
-                  {isFutureRange(range) && (
+                  {awayRangeStatus(range) === AwayRangeStatus.Upcoming && (
                     <Text
                       className="text-xs text-green-700 mb-1"
                       weight={FontWeight.Semibold}

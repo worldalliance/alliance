@@ -2,6 +2,8 @@ import { errorMessage } from "@alliance/common/errorMessage";
 import { UserAwayRangeDto, UserAwayRangeReason } from "@alliance/shared/client";
 import {
   AWAY_REASON_LABELS,
+  AwayRangeStatus,
+  awayRangeStatus,
   formatAwayReason,
 } from "@alliance/shared/lib/awayRangesFormatters";
 import { awayRangesDescription } from "@alliance/shared/lib/copy";
@@ -164,15 +166,6 @@ const AwayRangesSection: React.FC = () => {
     }
   };
 
-  const isCurrentlyAway = (range: UserAwayRangeDto) => {
-    const now = new Date();
-    return new Date(range.startDate) <= now && new Date(range.endDate) >= now;
-  };
-
-  const isFutureRange = (range: UserAwayRangeDto) => {
-    return new Date(range.startDate) > new Date();
-  };
-
   if (loading) {
     return (
       <div>
@@ -194,7 +187,7 @@ const AwayRangesSection: React.FC = () => {
               key={range.id}
               className={cn(
                 "p-4 rounded-lg border",
-                isCurrentlyAway(range)
+                awayRangeStatus(range) === AwayRangeStatus.Current
                   ? "bg-yellow-50 border-yellow-200"
                   : "bg-gray-50 border-gray-200",
               )}
@@ -284,12 +277,12 @@ const AwayRangesSection: React.FC = () => {
               ) : (
                 <div className="flex justify-between items-center">
                   <div className="flex-1">
-                    {isCurrentlyAway(range) && (
+                    {awayRangeStatus(range) === AwayRangeStatus.Current && (
                       <p className="text-xs font-semibold text-yellow-800 mb-1">
                         Currently away
                       </p>
                     )}
-                    {isFutureRange(range) && (
+                    {awayRangeStatus(range) === AwayRangeStatus.Upcoming && (
                       <p className="text-xs font-semibold text-green mb-1">
                         Scheduled
                       </p>

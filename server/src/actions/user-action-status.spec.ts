@@ -322,6 +322,20 @@ describe("resolveUserActionStatus", () => {
     expect(status.display).toBe(UserActionRelationPillStatus.Away);
   });
 
+  it("counts an away period ending exactly now as previously away", () => {
+    const status = resolve({
+      user: makeUser({
+        awayRanges: [
+          Object.assign(new UserAwayRange(), {
+            startDate: new Date(NOW.getTime() - millisecondsInDay),
+            endDate: NOW,
+          }),
+        ],
+      }),
+    });
+    expect(status.away).toBe(TaskAwayStatus.AwayPreviously);
+  });
+
   it("shows completed over away (completions count regardless of absence)", () => {
     const status = resolve({
       user: makeUser({ awayRanges: AWAY_AROUND_NOW }),

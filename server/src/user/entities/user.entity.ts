@@ -662,22 +662,6 @@ export class User {
   }
 
   @Exclude()
-  private _isAwayAt = new Map<number, boolean>();
-  isAwayAt(date: Date): boolean {
-    const key = date.getTime();
-    let isAway = this._isAwayAt.get(key);
-
-    if (isAway === undefined) {
-      isAway = !!this.awayRanges?.some(
-        (awayRange) => awayRange.startDate <= date && date <= awayRange.endDate,
-      );
-
-      this._isAwayAt.set(key, isAway);
-    }
-    return isAway;
-  }
-
-  @Exclude()
   private _isAwayAtAnyPointInRange = new Map<string, boolean>();
   isAwayAtAnyPointInRange(range: {
     startDate?: Date | null;

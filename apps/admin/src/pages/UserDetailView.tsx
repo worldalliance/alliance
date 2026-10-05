@@ -40,9 +40,12 @@ import {
 } from "@alliance/shared/client/types.gen";
 import {
   AWAY_REASON_OPTIONS,
+  AwayRangeStatus,
+  awayRangeStatus,
   formatAwayReason,
 } from "@alliance/shared/lib/awayRangesFormatters";
 import { getMemberCount } from "@alliance/shared/lib/communityUtils";
+import { useAwayRanges } from "@alliance/shared/lib/useAwayRanges";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -282,23 +285,7 @@ const UserDetailView: React.FC = () => {
     return Math.round((opened / pushNotifs.length) * 100);
   }, [pushNotifs]);
 
-  const sortedAwayRanges = useMemo(() => {
-    return [...awayRangesState].sort(
-      (a, b) =>
-        new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
-    );
-  }, [awayRangesState]);
-
-  const currentAwayRange = useMemo(() => {
-    const now = new Date();
-    return (
-      sortedAwayRanges.find((range) => {
-        const start = new Date(range.startDate);
-        const end = new Date(range.endDate);
-        return start <= now && now <= end;
-      }) ?? null
-    );
-  }, [sortedAwayRanges]);
+  const { sortedAwayRanges, currentAwayRange } = useAwayRanges(awayRangesState);
 
   const latestEvent = user.contractEvents?.length
     ? [...user.contractEvents].sort(
@@ -1297,11 +1284,7 @@ const UserDetailView: React.FC = () => {
                       key={range.id}
                       className={cn(
                         "text-xs p-2 rounded",
-                        status === "current"
-                          ? "bg-amber-50 border border-amber-200"
-                          : status === "upcoming"
-                            ? "bg-blue-50 border border-blue-200"
-                            : "bg-zinc-50",
+                        AWAY_RANGE_ROW_CLASS[status],
                       )}
                     >
                       <div className="flex items-center justify-between">
@@ -1311,11 +1294,7 @@ const UserDetailView: React.FC = () => {
                         <span
                           className={cn(
                             "text-xs",
-                            status === "current"
-                              ? "text-amber-700"
-                              : status === "upcoming"
-                                ? "text-blue-700"
-                                : "text-zinc-400",
+                            AWAY_RANGE_STATUS_TEXT_CLASS[status],
                           )}
                         >
                           {status}
@@ -1882,7 +1861,17 @@ function humanize(value?: string) {
     .join(" ");
 }
 
-type AwayRangeStatus = "current" | "upcoming" | "past";
+const AWAY_RANGE_ROW_CLASS = {
+  [AwayRangeStatus.Current]: "bg-amber-50 border border-amber-200",
+  [AwayRangeStatus.Upcoming]: "bg-blue-50 border border-blue-200",
+  [AwayRangeStatus.Past]: "bg-zinc-50",
+} satisfies Record<AwayRangeStatus, string>;
+
+const AWAY_RANGE_STATUS_TEXT_CLASS = {
+  [AwayRangeStatus.Current]: "text-amber-700",
+  [AwayRangeStatus.Upcoming]: "text-blue-700",
+  [AwayRangeStatus.Past]: "text-zinc-400",
+} satisfies Record<AwayRangeStatus, string>;
 
 function formatAwayDate(date: string) {
   return new Date(date).toLocaleDateString(undefined, {
@@ -1908,19 +1897,6 @@ function formatAwayRange(range: UserAwayRangeDto) {
   return `${formatAwayDate(range.startDate)} to ${formatAwayDate(
     range.endDate,
   )}`;
-}
-
-function awayRangeStatus(range: UserAwayRangeDto): AwayRangeStatus {
-  const now = new Date();
-  const start = new Date(range.startDate);
-  const end = new Date(range.endDate);
-  if (start <= now && now <= end) {
-    return "current";
-  }
-  if (start > now) {
-    return "upcoming";
-  }
-  return "past";
 }
 
 function notifTimestamp(notif: ActionEventNotifDto): number {

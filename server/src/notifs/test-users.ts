@@ -105,8 +105,6 @@ export const testUser = new User({
   | "hasActiveContractAt"
   | "_hasActiveContractInFullRange"
   | "hasActiveContractInFullRange"
-  | "_isAwayAt"
-  | "isAwayAt"
   | "_isAwayAtAnyPointInRange"
   | "isAwayAtAnyPointInRange"
   | "_leaderOfIdSet"
