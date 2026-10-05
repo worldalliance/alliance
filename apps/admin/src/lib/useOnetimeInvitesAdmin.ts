@@ -1,10 +1,12 @@
 import {
+  userCreateOnetimeInvite,
   userGetOnetimeInviteMemberStatsAdmin,
   userGetOnetimeInvitesAdmin,
 } from "@alliance/shared/client";
+import type { CreateOnetimeInviteDto } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { usePaginatedQuery } from "@alliance/shared/lib/usePaginatedQuery";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 const INVITES_PER_PAGE = 50;
 
@@ -26,5 +28,24 @@ export function useOnetimeInviteMemberStatsAdmin() {
       userGetOnetimeInviteMemberStatsAdmin({ throwOnError: true }).then(
         (response) => response.data,
       ),
+  });
+}
+
+export function useCreateOnetimeInviteAdmin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateOnetimeInviteDto) =>
+      userCreateOnetimeInvite({ body, throwOnError: true }).then(
+        (response) => response.data,
+      ),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.onetimeInvitesAdminAll(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.onetimeInviteMemberStatsAdmin(),
+        }),
+      ]),
   });
 }

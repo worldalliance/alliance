@@ -15,9 +15,12 @@ import InvitesPage from "./InvitesPage";
 
 afterEach(cleanup);
 
+const created: unknown[] = [];
+let createReleased = Promise.resolve();
+
 serveApi(
   routes({
-    "GET /user/onetimeInvites": () =>
+    "GET /user/onetimeInvites": ({ request }) =>
       Response.json({
         items: [
           {
@@ -29,23 +32,28 @@ serveApi(
             invitedUserId: null,
           },
         ],
-        totalCount: 1,
-        page: 1,
+        totalCount: 51,
+        page: Number(new URL(request.url).searchParams.get("page")),
         limit: 50,
-        totalPages: 1,
+        totalPages: 2,
       } satisfies OnetimeInviteListDto),
     "GET /user/onetimeInvites/memberStats": () => Response.json([]),
-    "GET /user/list": () => Response.json([]),
+    "GET /user/list": () =>
+      Response.json([{ id: 3, name: "Jordan", profilePicture: null }]),
+    "POST /user/onetimeInvite/create": async ({ request }) => {
+      created.push(await request.json());
+      await createReleased;
+      return Response.json({});
+    },
   }),
 );
 
-it("copies an invite's signup link from a labelled button and confirms it", async () => {
-  jest
-    .spyOn(config, "getInviteBaseUrl")
-    .mockReturnValue("https://test.alliance/");
-  const writeText = jest
-    .spyOn(navigator.clipboard, "writeText")
-    .mockResolvedValue();
+afterEach(() => {
+  created.length = 0;
+  createReleased = Promise.resolve();
+});
+
+const renderPage = () =>
   render(
     <MemoryRouter>
       <ToastProvider>
@@ -54,6 +62,15 @@ it("copies an invite's signup link from a labelled button and confirms it", asyn
     </MemoryRouter>,
     queryWrapper(),
   );
+
+it("copies an invite's signup link from a labelled button and confirms it", async () => {
+  jest
+    .spyOn(config, "getInviteBaseUrl")
+    .mockReturnValue("https://test.alliance/");
+  const writeText = jest
+    .spyOn(navigator.clipboard, "writeText")
+    .mockResolvedValue();
+  renderPage();
 
   fireEvent.click(
     await screen.findByRole("button", { name: "Copy invite link abc123" }),
@@ -65,4 +82,40 @@ it("copies an invite's signup link from a labelled button and confirms it", asyn
     ),
   );
   expect(await screen.findByText("Invite link copied")).toBeTruthy();
+});
+
+it("creates one invite per submit, clears the inviting user, and returns to the first page", async () => {
+  let releaseCreate = () => {};
+  createReleased = new Promise((resolve) => {
+    releaseCreate = resolve;
+  });
+  renderPage();
+  fireEvent.click(await screen.findByRole("button", { name: "2" }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "2" }).getAttribute("aria-current"),
+    ).toBe("page"),
+  );
+
+  fireEvent.change(screen.getByPlaceholderText(/preferably a first name/), {
+    target: { value: "Alex" },
+  });
+  fireEvent.change(screen.getByPlaceholderText(/search/i), {
+    target: { value: "Jor" },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: "Jordan" }));
+  const createButton = screen.getByRole("button", { name: "Create Invite" });
+  fireEvent.click(createButton);
+  await waitFor(() => expect(createButton.hasAttribute("disabled")).toBe(true));
+  fireEvent.click(createButton);
+  releaseCreate();
+
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "1" }).getAttribute("aria-current"),
+    ).toBe("page"),
+  );
+  expect(created).toEqual([{ invitingUserId: 3, invitee: "Alex" }]);
+  expect(screen.queryByRole("button", { name: "Jordan" })).toBeNull();
+  expect(screen.queryByText("Jordan")).toBeNull();
 });
