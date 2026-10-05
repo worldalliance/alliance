@@ -1,22 +1,19 @@
-import {
-  waitlistEmailAdminCreateTemplateAdmin,
-  waitlistEmailAdminDeleteTemplateAdmin,
-  waitlistEmailAdminUpdateTemplateAdmin,
-} from "@alliance/shared/client";
 import type { WaitlistEmailTemplateDto } from "@alliance/shared/client/types.gen";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@alliance/sharedweb/ui/DropdownMenu";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Menu } from "@base-ui/react/menu";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BookmarkPlus, ChevronDown, Save, Trash2 } from "lucide-react";
 import React, { useState } from "react";
 import { adminRefusalMessage } from "../../../lib/adminRefusal";
 import { useRefusalToast } from "../../../lib/useRefusalToast";
-import { useWaitlistEmailTemplatesAdmin } from "../../../lib/useWaitlistEmailTemplatesAdmin";
+import {
+  useDeleteWaitlistEmailTemplateAdmin,
+  useSaveWaitlistEmailTemplateAdmin,
+  useWaitlistEmailTemplatesAdmin,
+} from "../../../lib/useWaitlistEmailTemplatesAdmin";
 import { completeDraft, type EmailDraft } from "../../../lib/waitlistEmail";
 import ConfirmDialog from "../../ConfirmDialog";
 import InlineNameForm from "../InlineNameForm";
@@ -35,7 +32,6 @@ const EmailTemplateControls: React.FC<EmailTemplateControlsProps> = ({
   draft,
   onLoad,
 }) => {
-  const queryClient = useQueryClient();
   const refusalToast = useRefusalToast();
   const { success } = useToast();
   const templates = useWaitlistEmailTemplatesAdmin();
@@ -58,32 +54,8 @@ const EmailTemplateControls: React.FC<EmailTemplateControlsProps> = ({
     onLoad({ subject: template.subject, body: template.body });
   };
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.waitlistEmailTemplatesAdmin(),
-    });
-
-  const save = useMutation({
-    mutationFn: (params: { id: number | null; name: string }) => {
-      const body = { name: params.name, ...draft };
-      return (
-        params.id === null
-          ? waitlistEmailAdminCreateTemplateAdmin({ body, throwOnError: true })
-          : waitlistEmailAdminUpdateTemplateAdmin({
-              path: { id: params.id },
-              body,
-              throwOnError: true,
-            })
-      ).then((r) => r.data);
-    },
-    onSuccess: (template, { id }) => {
-      queryClient.setQueryData<WaitlistEmailTemplateDto[]>(
-        queryKeys.waitlistEmailTemplatesAdmin(),
-        (old = []) =>
-          id === null
-            ? [...old, template]
-            : old.map((saved) => (saved.id === id ? template : saved)),
-      );
+  const save = useSaveWaitlistEmailTemplateAdmin({
+    onSuccess: (template, id) => {
       setNaming(false);
       if (id === null) setLoadedId(template.id);
       success(
@@ -93,31 +65,16 @@ const EmailTemplateControls: React.FC<EmailTemplateControlsProps> = ({
       );
     },
     onError: (err) => refusalToast(err, "Could not save the template."),
-    onSettled: async () => {
-      setUpdating(null);
-      await invalidate();
-    },
+    onSettled: () => setUpdating(null),
   });
 
-  const remove = useMutation({
-    mutationFn: (template: WaitlistEmailTemplateDto) =>
-      waitlistEmailAdminDeleteTemplateAdmin({
-        path: { id: template.id },
-        throwOnError: true,
-      }).then(() => template),
+  const remove = useDeleteWaitlistEmailTemplateAdmin({
     onSuccess: (template) => {
-      queryClient.setQueryData<WaitlistEmailTemplateDto[]>(
-        queryKeys.waitlistEmailTemplatesAdmin(),
-        (old = []) => old.filter((saved) => saved.id !== template.id),
-      );
       setLoadedId(null);
       success(`Deleted template “${template.name}”`);
     },
     onError: (err) => refusalToast(err, "Could not delete the template."),
-    onSettled: async () => {
-      setDeleting(null);
-      await invalidate();
-    },
+    onSettled: () => setDeleting(null),
   });
 
   const changedFromLoaded =
@@ -135,7 +92,7 @@ const EmailTemplateControls: React.FC<EmailTemplateControlsProps> = ({
         submitLabel="Save template"
         maxLength={100}
         disabled={save.isPending || !savable}
-        onSubmit={(name) => save.mutate({ id: null, name })}
+        onSubmit={(name) => save.mutate({ id: null, body: { name, ...draft } })}
         onCancel={() => setNaming(false)}
       />
     );
@@ -214,7 +171,11 @@ const EmailTemplateControls: React.FC<EmailTemplateControlsProps> = ({
         title={`Update template “${updating?.name}”?`}
         message="Replaces its subject and body with this draft."
         onConfirm={() =>
-          updating && save.mutate({ id: updating.id, name: updating.name })
+          updating &&
+          save.mutate({
+            id: updating.id,
+            body: { name: updating.name, ...draft },
+          })
         }
         onCancel={() => setUpdating(null)}
         isLoading={save.isPending}
