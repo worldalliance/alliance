@@ -20,6 +20,7 @@ import type { Mail } from "src/mail/mail.entity";
 import type { Conversation } from "src/messaging/entities/conversation.entity";
 import type { Mms } from "src/mms/mms.entity";
 import type { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
+import type { Notification } from "src/notifs/entities/notification.entity";
 import type { UnreadContent } from "src/notifs/entities/unread-content.entity";
 import type { Push } from "src/push/push.entity";
 import type { RecentSearch } from "src/search/recentsearch.entity";
@@ -79,6 +80,7 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<Guest>>
   | Assert<EntityShape<Mail>>
   | Assert<EntityShape<Mms>>
+  | Assert<EntityShape<Notification>>
   | Assert<EntityShape<Push>>
   | Assert<EntityShape<RecentSearch>>
   | Assert<EntityShape<Tag>>
