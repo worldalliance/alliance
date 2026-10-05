@@ -1,6 +1,8 @@
 import {
   waitlistAdminFindEntryIdsAdmin,
   waitlistAdminFindEntryMetricsAdmin,
+  waitlistAdminMarkEntriesNotSpamAdmin,
+  waitlistAdminMarkEntriesSpamAdmin,
   waitlistAdminMobilizeEntriesAdmin,
   waitlistAdminRevokeEntryInvitesAdmin,
   waitlistAdminSearchEntriesAdmin,
@@ -59,6 +61,8 @@ export enum WaitlistEntryChange {
   Mark = "mark",
   Undo = "undo",
   RevokeInvites = "revoke_invites",
+  MarkSpam = "mark_spam",
+  MarkNotSpam = "mark_not_spam",
 }
 
 const SEND_CHANGE: Record<
@@ -68,6 +72,8 @@ const SEND_CHANGE: Record<
   [WaitlistEntryChange.Mark]: waitlistAdminMobilizeEntriesAdmin,
   [WaitlistEntryChange.Undo]: waitlistAdminUnmobilizeEntriesAdmin,
   [WaitlistEntryChange.RevokeInvites]: waitlistAdminRevokeEntryInvitesAdmin,
+  [WaitlistEntryChange.MarkSpam]: waitlistAdminMarkEntriesSpamAdmin,
+  [WaitlistEntryChange.MarkNotSpam]: waitlistAdminMarkEntriesNotSpamAdmin,
 };
 
 export function useChangeWaitlistEntriesAdmin(params: {

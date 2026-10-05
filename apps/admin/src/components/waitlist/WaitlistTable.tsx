@@ -3,9 +3,11 @@ import type {
   WaitlistEntrySort,
 } from "@alliance/shared/client/types.gen";
 import { formatMediumDateEnUS } from "@alliance/shared/lib/dateFormatters";
+import { cn } from "@alliance/shared/styles/util";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import React from "react";
-import { INVITE_STATE_LABELS } from "../../lib/waitlistFilter";
+import { INVITE_STATE_LABELS, SPAM_STATUSES } from "../../lib/waitlistFilter";
+import SpamToggle from "./SpamToggle";
 
 enum SortColumn {
   Joined = "joined",
@@ -69,6 +71,7 @@ type WaitlistTableProps = {
   entries: AdminWaitlistEntryDto[];
   selectedIds: ReadonlySet<number>;
   onSelectedIdsChange: (ids: Set<number>) => void;
+  onDeselect: (id: number) => void;
   /** False while the rows shown belong to a previous search. */
   selectable: boolean;
   sort: WaitlistEntrySort;
@@ -80,6 +83,7 @@ const WaitlistTable: React.FC<WaitlistTableProps> = ({
   entries,
   selectedIds,
   onSelectedIdsChange,
+  onDeselect,
   selectable,
   sort,
   onSortChange,
@@ -140,11 +144,18 @@ const WaitlistTable: React.FC<WaitlistTableProps> = ({
             <th className="px-3 py-2 font-medium text-zinc-600">Tags</th>
             <th className="px-3 py-2 font-medium text-zinc-600">Mobilized</th>
             <th className="px-3 py-2 font-medium text-zinc-600">Invite</th>
+            <th className="px-3 py-2 font-medium text-zinc-600">Spam</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-100">
           {entries.map((entry) => (
-            <tr key={entry.id} className="hover:bg-zinc-50 align-top">
+            <tr
+              key={entry.id}
+              className={cn(
+                "hover:bg-zinc-50 align-top",
+                SPAM_STATUSES[entry.spamStatus].spamLike && "opacity-50",
+              )}
+            >
               <td className="px-3 py-2">
                 <input
                   type="checkbox"
@@ -207,6 +218,12 @@ const WaitlistTable: React.FC<WaitlistTableProps> = ({
               </td>
               <td className="px-3 py-2">
                 {INVITE_STATE_LABELS[entry.inviteState]}
+              </td>
+              <td className="px-3 py-2">
+                <SpamToggle
+                  entry={entry}
+                  onChanged={() => onDeselect(entry.id)}
+                />
               </td>
             </tr>
           ))}

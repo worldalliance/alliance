@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { INITIAL_WAITLIST_FILTER } from "../lib/waitlistFilter";
 import { api, renderPage, serveWaitlistApi } from "./WaitlistPage.testHarness";
 
 serveWaitlistApi();
@@ -79,7 +80,10 @@ it("saves the current filter as a cohort", async () => {
     expect(api.posts).toEqual([
       {
         path: "/waitlist/admin/cohorts",
-        body: { name: "Speakers", filter: { tagIds: [5] } },
+        body: {
+          name: "Speakers",
+          filter: { ...INITIAL_WAITLIST_FILTER, tagIds: [5] },
+        },
       },
     ]),
   );

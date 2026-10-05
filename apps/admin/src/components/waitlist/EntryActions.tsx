@@ -12,6 +12,7 @@ import {
   useChangeWaitlistEntriesAdmin,
 } from "../../lib/useWaitlistEntriesAdmin";
 import ConfirmDialog from "../ConfirmDialog";
+import { SPAM_CHANGE_FAILED } from "./SpamToggle";
 
 const MOBILIZED_FAILED = "Could not change mobilized status.";
 
@@ -52,6 +53,24 @@ const CHANGES: Record<
     changedNoun: "invite",
     done: (changed) => `Revoked ${changed}`,
     failed: "Could not revoke the invites.",
+  },
+  [EntryChange.MarkSpam]: {
+    button: "Mark as spam",
+    title: "Mark as spam?",
+    message: (selected) =>
+      `Mark ${selected} as spam. They get no more email, drop out of the public waitlist count, and are hidden by the default spam filter.`,
+    changedNoun: "entry",
+    done: (changed) => `Marked ${changed} as spam`,
+    failed: SPAM_CHANGE_FAILED,
+  },
+  [EntryChange.MarkNotSpam]: {
+    button: "Mark as not spam",
+    title: "Mark as not spam?",
+    message: (selected) =>
+      `Mark ${selected} as not spam, so they can get email again. The confirmation email they missed is not sent; include them in a waitlist email instead.`,
+    changedNoun: "entry",
+    done: (changed) => `Marked ${changed} as not spam`,
+    failed: SPAM_CHANGE_FAILED,
   },
 };
 

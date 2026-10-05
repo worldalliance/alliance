@@ -172,6 +172,7 @@ export const serveWaitlistApi = () => {
             entry(2, {
               referrer: { id: 1, name: "Person 1" },
               tags: [{ id: 5, name: "Speakers" }],
+              spamStatus: "suspected",
             }),
           ],
           total: api.searchTotal,
@@ -189,6 +190,8 @@ export const serveWaitlistApi = () => {
               { status: api.mobilizeStatus },
             ),
       "POST /waitlist/admin/entries/unmobilize": recordPost({ changed: 0 }),
+      "POST /waitlist/admin/entries/mark-spam": recordPost({ changed: 1 }),
+      "POST /waitlist/admin/entries/mark-not-spam": recordPost({ changed: 1 }),
       "POST /waitlist/admin/entries/metrics": recordPost({
         status: {
           entries: 2,

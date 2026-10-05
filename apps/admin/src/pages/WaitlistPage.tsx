@@ -44,13 +44,18 @@ import {
 } from "../lib/useWaitlistLinksAdmin";
 import { useWaitlistTagsAdmin } from "../lib/useWaitlistTagsAdmin";
 import { type EmailDraft, emailDraftFromState } from "../lib/waitlistEmail";
-import { withFilterField } from "../lib/waitlistFilter";
+import {
+  INITIAL_WAITLIST_FILTER,
+  withFilterField,
+} from "../lib/waitlistFilter";
 
 const PAGE_SIZE = 50;
 
 const WaitlistPage: React.FC = () => {
   const refusalToast = useRefusalToast();
-  const [filter, setFilter] = useState<WaitlistEntryFilterDto>({});
+  const [filter, setFilter] = useState<WaitlistEntryFilterDto>(
+    INITIAL_WAITLIST_FILTER,
+  );
   const [sort, setSort] = useState<WaitlistEntrySort>("joined_desc");
   const [page, setPage] = useState(1);
   // Remounting the filters on a cohort drops a search still being typed.
@@ -76,6 +81,15 @@ const WaitlistPage: React.FC = () => {
   const changeSelection = useCallback((next: Set<number>) => {
     selectionVersion.current += 1;
     setSelectedIds(next);
+  }, []);
+
+  const deselect = useCallback((id: number) => {
+    selectionVersion.current += 1;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   }, []);
 
   const changeFilter = useCallback(
@@ -257,6 +271,7 @@ const WaitlistPage: React.FC = () => {
               entries={entries.data.entries}
               selectedIds={selectedIds}
               onSelectedIdsChange={changeSelection}
+              onDeselect={deselect}
               selectable={!entries.isPlaceholderData}
               sort={sort}
               onSortChange={(next) => {
