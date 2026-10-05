@@ -1,5 +1,6 @@
 import { R } from "@alliance/common/result";
 import {
+  parseContributionFormula,
   parseFormulaChoices,
   parseVisibilityValidatorResults,
 } from "./parsed-dtos";
@@ -63,6 +64,33 @@ describe("parseFormulaChoices", () => {
       parseFormulaChoices({ pick: "red" }),
     );
     expect(value).toEqual({});
+    expect(logged).toBe(1);
+  });
+});
+
+describe("parseContributionFormula", () => {
+  it("reads an unwritten formula as null", () => {
+    expect(parseContributionFormula(null)).toEqual(R.success(null));
+  });
+
+  it("reads a formula over the member's own answers", () => {
+    const formula = {
+      inputs: { input1: { kind: "field", fieldId: "letters" } },
+      formula: 'input1 + " letters"',
+    };
+    expect(parseContributionFormula(formula)).toEqual(R.success(formula));
+  });
+
+  it("refuses a formula that reads another form", () => {
+    const { value, logged } = withSilencedErrors(() =>
+      parseContributionFormula({
+        inputs: {
+          input1: { kind: "sourceField", sourceFormId: 4, fieldId: "letters" },
+        },
+        formula: "input1",
+      }),
+    );
+    expect(value.ok).toBe(false);
     expect(logged).toBe(1);
   });
 });

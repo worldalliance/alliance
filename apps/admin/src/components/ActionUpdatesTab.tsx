@@ -14,10 +14,15 @@ import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import { EyeOff, SquarePen } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
+import type { RecognitionMode } from "../lib/actionUpdateDetails";
 import {
   ACTION_UPDATE_NOTIFY_TYPE_LABELS,
   ACTION_UPDATE_NOTIFY_TYPES,
 } from "../lib/actionUpdateNotifyTypes";
+import {
+  COLLECTIVE_RESULT_DESCRIPTIONS,
+  RecognitionModeSelect,
+} from "./ActionUpdateRecognition";
 
 interface ActionUpdatesTabProps {
   actionId: number;
@@ -27,11 +32,16 @@ interface ActionUpdatesTabProps {
   availableTags: TagDto[];
 }
 
-const defaultNewUpdate: CreateActionUpdateDto = {
+type NewActionUpdate = CreateActionUpdateDto & {
+  notificationMode: RecognitionMode;
+};
+
+const defaultNewUpdate: NewActionUpdate = {
   title: "",
   date: new Date().toISOString(),
   notifyType: "none",
   shortNotifString: "",
+  notificationMode: "normal",
 };
 
 const ActionUpdatesTab = ({
@@ -42,8 +52,7 @@ const ActionUpdatesTab = ({
   availableTags,
 }: ActionUpdatesTabProps) => {
   const navigate = useNavigate();
-  const [newUpdate, setNewUpdate] =
-    useState<CreateActionUpdateDto>(defaultNewUpdate);
+  const [newUpdate, setNewUpdate] = useState<NewActionUpdate>(defaultNewUpdate);
 
   const shortNotifString = newUpdate.shortNotifString ?? "";
   const isSubmitDisabled =
@@ -113,10 +122,12 @@ const ActionUpdatesTab = ({
             />
           </label>
           <label className="flex flex-col text-sm gap-1">
-            <span className="font-bold">Short notification text</span>
+            <span className="font-bold">Collective result</span>
             <span className="text-xs text-zinc-600">
-              An automatic &quot;Update: &quot; prefix will be added to this
-              text.
+              What the action achieved.{" "}
+              {COLLECTIVE_RESULT_DESCRIPTIONS[newUpdate.notificationMode]}{" "}
+              You&apos;ll write each member&apos;s contribution formula after
+              creating the update.
             </span>
             <input
               type="text"
@@ -159,6 +170,19 @@ const ActionUpdatesTab = ({
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="flex flex-col text-sm gap-1">
+              <span className="font-bold">Recognition copy</span>
+              <span className="text-xs text-zinc-600">
+                How completers&apos; own contributions are worded.
+              </span>
+              <RecognitionModeSelect
+                className="p-2 rounded-md bg-white text-base"
+                value={newUpdate.notificationMode}
+                onChange={(mode) =>
+                  setNewUpdate({ ...newUpdate, notificationMode: mode })
+                }
+              />
             </label>
             <label className="flex flex-col text-sm gap-1">
               <span className="font-bold">Date</span>
