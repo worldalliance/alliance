@@ -11,7 +11,9 @@ import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
 import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import { User } from "src/user/entities/user.entity";
 import { hasMemberActionStarted } from "src/utils/action-user";
+import type { Repository as TypedRepository } from "src/utils/Repository";
 import { EntityManager, In, QueryFailedError, Repository } from "typeorm";
+import { ActionEvent } from "./entities/action-event.entity";
 import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { Action } from "./entities/action.entity";
@@ -40,7 +42,7 @@ export interface VariantStats {
 export class ActionFormVariantService {
   constructor(
     @InjectRepository(ActionFormVariant)
-    private readonly variantRepo: Repository<ActionFormVariant>,
+    private readonly variantRepo: TypedRepository<ActionFormVariant>,
     @InjectRepository(ActionFormAssignment)
     private readonly assignmentRepo: Repository<ActionFormAssignment>,
     @InjectRepository(Action)
@@ -147,15 +149,17 @@ export class ActionFormVariantService {
   async deleteVariant(variantId: number): Promise<void> {
     const variant = await this.variantRepo.findOne({
       where: { id: variantId },
-      relations: { action: { events: true } },
     });
     if (!variant) throw new NotFoundException("Variant not found");
+    const events = await this.variantRepo.manager.findBy(ActionEvent, {
+      action: { id: variant.actionId },
+    });
 
     // Clients only submit once member_action starts, so a response means
     // members were assigned after a launch whose member_action event later
     // moved or was deleted.
     if (
-      !hasMemberActionStarted(variant.action.events, new Date()) &&
+      !hasMemberActionStarted(events, new Date()) &&
       !(await this.variantRepo.manager.existsBy(FormResponse, {
         formId: variant.formId,
       }))

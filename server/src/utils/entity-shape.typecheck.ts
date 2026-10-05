@@ -2,6 +2,7 @@ import type { Assert } from "@alliance/common/types";
 import type { ActionPartnershipNote } from "src/action-partnerships/entities/action-partnership-note.entity";
 import type { ActionPartnershipResponse } from "src/action-partnerships/entities/action-partnership-response.entity";
 import type { ActionFormAssignment } from "src/actions/entities/action-form-assignment.entity";
+import type { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
 import type { GeneralUpdateActivity } from "src/actions/entities/general-update-activity.entity";
 import type { AiDetectionResult } from "src/ai-detection/entities/ai-detection-result.entity";
 import type { ActionStatsRecord } from "src/analytics/actionstats.entity";
@@ -44,6 +45,7 @@ import type { EntityShape } from "./Repository";
  */
 type _typecheck_EntityShapes =
   | Assert<EntityShape<ActionFormAssignment>>
+  | Assert<EntityShape<ActionFormVariant>>
   | Assert<EntityShape<ActionPartnershipNote>>
   | Assert<EntityShape<ActionPartnershipResponse>>
   | Assert<EntityShape<ActionStatsRecord>>
