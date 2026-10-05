@@ -740,7 +740,7 @@ export type User = {
     remindAboutUncompletedGroupMembers: boolean;
     receiveReplyNotifications: boolean;
     referredById: number | null;
-    referredByInvite: OnetimeInvite | null;
+    referredByInvite?: OnetimeInvite | null;
     referralSource: ReferralSource;
     referredByCampaignId: number | null;
     referredByCampaign?: Campaign | null;
@@ -751,8 +751,8 @@ export type User = {
     pendingCommunity?: Community | null;
     communities: Array<Community>;
     leaderOfIds: Array<number>;
-    invitedCommunities: Array<CommunityInvite>;
-    participants: Array<Participant>;
+    invitedCommunities?: Array<CommunityInvite>;
+    participants?: Array<Participant>;
     authoredActions?: Array<Action>;
     cluster?: Cluster | null;
     clusterId: number | null;
