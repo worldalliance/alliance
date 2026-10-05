@@ -1,5 +1,16 @@
-import { CreateActionDto, UserDto } from "@alliance/shared/client";
+import {
+  ContractEventDto,
+  CreateActionDto,
+  UserDto,
+} from "@alliance/shared/client";
 import { milliseconds } from "date-fns";
+
+const previewSigning: ContractEventDto = {
+  type: "signed",
+  date: new Date(Date.now() - milliseconds({ days: 30 })).toISOString(),
+  automatic: false,
+  contractId: 1,
+};
 
 export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   id: 0,
@@ -35,14 +46,8 @@ export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   referralCode: "preview-referral-code",
   anonymous: false,
   email: "preview@example.com",
-  contractEvents: [
-    {
-      type: "signed",
-      date: new Date(Date.now() - milliseconds({ days: 30 })).toISOString(),
-      automatic: false,
-      contractId: 1,
-    },
-  ],
+  contractEvents: [previewSigning],
+  lastContractEvent: previewSigning,
   pushesForFriendRequests: false,
   undergoingGroupAssignment: false,
   remindAboutUncompletedGroupMembers: false,

@@ -1,4 +1,5 @@
-import type { ContractEventDto } from "../client";
+import type { ContractEventDto, ContractEventType } from "../client";
+import { formatShortDate } from "./dateFormatters";
 
 export type ContractEventState = Pick<
   ContractEventDto,
@@ -53,6 +54,19 @@ export function getSuspensionMessage(date: string, automatic: boolean): string {
 export function getSignedMessage(date: string): string {
   const formattedDate = formatContractDate(date);
   return `You entered into this agreement on ${formattedDate}.`;
+}
+
+const IS_SIGNING: Record<ContractEventType, boolean> = {
+  signed: true,
+  suspended: false,
+};
+
+export function formatCurrentSigningDate(
+  lastContractEvent: ContractEventDto | undefined,
+): string | null {
+  return lastContractEvent && IS_SIGNING[lastContractEvent.type]
+    ? formatShortDate(new Date(lastContractEvent.date))
+    : null;
 }
 
 const CONFIRMATION_LENGTH_TOLERANCE = 10;
