@@ -74,7 +74,11 @@ export type CreateNotifParams = Required<
 
 type UnreadContentSource =
   | { contentType: UnreadContentType.ForumReply; authorId: number }
-  | { contentType: UnreadContentType.ActionUpdate };
+  | {
+      contentType: UnreadContentType.ActionUpdate;
+      /** Unset to follow the update's live text. */
+      fixedText?: string;
+    };
 
 export type CreateUnreadContentParams = Required<
   Pick<DeepPartial<UnreadContent>, "user" | "contentId">
@@ -87,7 +91,9 @@ function unreadContentFor(source: UnreadContentSource): NotificationContent {
     case UnreadContentType.ForumReply:
       return forumReplyContent(source.authorId);
     case UnreadContentType.ActionUpdate:
-      return LIVE_ACTION_UPDATE_TEXT;
+      return source.fixedText === undefined
+        ? LIVE_ACTION_UPDATE_TEXT
+        : { message: [source.fixedText] };
     default:
       throw new Error(
         `unknown unread content source: ${source satisfies never}`,

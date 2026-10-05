@@ -31,6 +31,8 @@ import { User } from "../user/entities/user.entity";
 import { UserModule } from "../user/user.module";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionStatsService } from "./action-stats.service";
+import { ActionUpdateRecognitionService } from "./action-update-recognition.service";
+import { ActionUpdateRecognitionWorker } from "./action-update-recognition.worker";
 import { ActionVisibilityModule } from "./action-visibility.module";
 import { ActionsController } from "./actions.controller";
 import { ActionsGateway } from "./actions.gateway";
@@ -51,6 +53,7 @@ import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { ActionReviewer } from "./entities/action-reviewer.entity";
 import { ActionSuite } from "./entities/action-suite.entity";
+import { ActionUpdateExposure } from "./entities/action-update-exposure.entity";
 import { ActionUpdate } from "./entities/action-update.entity";
 import { Action } from "./entities/action.entity";
 import { FollowUpForm } from "./entities/follow-up-form.entity";
@@ -78,6 +81,7 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
       ActionReviewer,
       ActionSuite,
       ActionUpdate,
+      ActionUpdateExposure,
       Comment,
       ContractEvent,
       CustomValidator,
@@ -120,6 +124,8 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
     ActionFormVariantService,
     ActionsGateway,
     ActionEventNotifWorker,
+    ActionUpdateRecognitionService,
+    ActionUpdateRecognitionWorker,
     ActionEventRecipientService,
     ActionEventReminderService,
     MissedSuitePlanService,

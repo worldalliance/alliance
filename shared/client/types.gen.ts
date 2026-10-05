@@ -3182,6 +3182,8 @@ export type ReminderAnchorCandidateDto = {
     deadlineEventDate: string;
 };
 
+export type ActionUpdateRecognitionMode = 'normal' | 'retrospective';
+
 export type CreateActionUpdateDto = {
     title: string;
     /**
@@ -3192,6 +3194,49 @@ export type CreateActionUpdateDto = {
     notifyType: ActionUpdateNotifyType;
     associatedEventId?: number;
     tagId?: string;
+    notificationMode?: ActionUpdateRecognitionMode;
+    contributionFormula?: {
+        [key: string]: unknown;
+    } | null;
+    retrospectiveContributionFormula?: {
+        [key: string]: unknown;
+    } | null;
+};
+
+export type ActionUpdateNotificationMode = 'legacy' | 'normal' | 'retrospective';
+
+export type AdminActionUpdateDto = {
+    id: number;
+    actionId: number;
+    title: string;
+    schemaSnapshotId: number;
+    /**
+     * What the update is displayed and sorted by.
+     */
+    date: string;
+    /**
+     * When the update became visible to members; null while unpublished.
+     */
+    visibleAt: string | null;
+    shortNotifString: string;
+    associatedEvent?: ActionEvent | null;
+    associatedEventId: number | null;
+    notifyType: ActionUpdateNotifyType;
+    notifiedAt: string | null;
+    tag?: Tag | null;
+    schema: {
+        [key: string]: unknown;
+    };
+    actionName?: string;
+    notificationMode: ActionUpdateNotificationMode;
+    contributionFormula: {
+        [key: string]: unknown;
+    } | null;
+    retrospectiveContributionFormula: {
+        [key: string]: unknown;
+    } | null;
+    recognitionPreparedAt: string | null;
+    notificationHeldReason: string | null;
 };
 
 export type UpdateActionUpdateDto = {
@@ -3202,12 +3247,31 @@ export type UpdateActionUpdateDto = {
     date?: string;
     shortNotifString?: string;
     notifyType?: ActionUpdateNotifyType;
+    notificationMode?: ActionUpdateRecognitionMode;
+    contributionFormula?: {
+        [key: string]: unknown;
+    } | null;
+    retrospectiveContributionFormula?: {
+        [key: string]: unknown;
+    } | null;
     associatedEventId?: number | null;
     tagId?: string | null;
     schema?: {
         [key: string]: unknown;
     };
     expectedSchemaSnapshotId?: number;
+};
+
+export type RecognitionMemberIssueDto = {
+    userId: number;
+    name: string;
+    error: string;
+};
+
+export type RecognitionCheckDto = {
+    problems: Array<string>;
+    members: Array<RecognitionMemberIssueDto>;
+    collectiveSubject: string;
 };
 
 export type ActionSuiteDto = {
@@ -10876,7 +10940,7 @@ export type ActionsCreateUpdateAdminErrors = {
 export type ActionsCreateUpdateAdminError = ActionsCreateUpdateAdminErrors[keyof ActionsCreateUpdateAdminErrors];
 
 export type ActionsCreateUpdateAdminResponses = {
-    200: ActionUpdateDto;
+    200: AdminActionUpdateDto;
 };
 
 export type ActionsCreateUpdateAdminResponse = ActionsCreateUpdateAdminResponses[keyof ActionsCreateUpdateAdminResponses];
@@ -10900,7 +10964,7 @@ export type ActionsFindOneUpdateAdminErrors = {
 export type ActionsFindOneUpdateAdminError = ActionsFindOneUpdateAdminErrors[keyof ActionsFindOneUpdateAdminErrors];
 
 export type ActionsFindOneUpdateAdminResponses = {
-    200: ActionUpdateDto;
+    200: AdminActionUpdateDto;
 };
 
 export type ActionsFindOneUpdateAdminResponse = ActionsFindOneUpdateAdminResponses[keyof ActionsFindOneUpdateAdminResponses];
@@ -10924,7 +10988,7 @@ export type ActionsUpdateUpdateAdminErrors = {
 export type ActionsUpdateUpdateAdminError = ActionsUpdateUpdateAdminErrors[keyof ActionsUpdateUpdateAdminErrors];
 
 export type ActionsUpdateUpdateAdminResponses = {
-    200: ActionUpdateDto;
+    200: AdminActionUpdateDto;
 };
 
 export type ActionsUpdateUpdateAdminResponse = ActionsUpdateUpdateAdminResponses[keyof ActionsUpdateUpdateAdminResponses];
@@ -10948,10 +11012,34 @@ export type ActionsNotifyUpdateAdminErrors = {
 export type ActionsNotifyUpdateAdminError = ActionsNotifyUpdateAdminErrors[keyof ActionsNotifyUpdateAdminErrors];
 
 export type ActionsNotifyUpdateAdminResponses = {
-    200: ActionUpdateDto;
+    200: AdminActionUpdateDto;
 };
 
 export type ActionsNotifyUpdateAdminResponse = ActionsNotifyUpdateAdminResponses[keyof ActionsNotifyUpdateAdminResponses];
+
+export type ActionsCheckUpdateRecognitionAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/updates/{id}/recognition-check';
+};
+
+export type ActionsCheckUpdateRecognitionAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionsCheckUpdateRecognitionAdminError = ActionsCheckUpdateRecognitionAdminErrors[keyof ActionsCheckUpdateRecognitionAdminErrors];
+
+export type ActionsCheckUpdateRecognitionAdminResponses = {
+    200: RecognitionCheckDto;
+};
+
+export type ActionsCheckUpdateRecognitionAdminResponse = ActionsCheckUpdateRecognitionAdminResponses[keyof ActionsCheckUpdateRecognitionAdminResponses];
 
 export type ActionsUnpublishUpdateAdminData = {
     body?: never;
@@ -10972,7 +11060,7 @@ export type ActionsUnpublishUpdateAdminErrors = {
 export type ActionsUnpublishUpdateAdminError = ActionsUnpublishUpdateAdminErrors[keyof ActionsUnpublishUpdateAdminErrors];
 
 export type ActionsUnpublishUpdateAdminResponses = {
-    200: ActionUpdateDto;
+    200: AdminActionUpdateDto;
 };
 
 export type ActionsUnpublishUpdateAdminResponse = ActionsUnpublishUpdateAdminResponses[keyof ActionsUnpublishUpdateAdminResponses];
@@ -10996,7 +11084,7 @@ export type ActionsPublishUpdateNowAdminErrors = {
 export type ActionsPublishUpdateNowAdminError = ActionsPublishUpdateNowAdminErrors[keyof ActionsPublishUpdateNowAdminErrors];
 
 export type ActionsPublishUpdateNowAdminResponses = {
-    200: ActionUpdateDto;
+    200: AdminActionUpdateDto;
 };
 
 export type ActionsPublishUpdateNowAdminResponse = ActionsPublishUpdateNowAdminResponses[keyof ActionsPublishUpdateNowAdminResponses];

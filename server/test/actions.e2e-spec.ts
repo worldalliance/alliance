@@ -58,7 +58,10 @@ import {
   ActionReviewer,
   ActionReviewerIcon,
 } from "../src/actions/entities/action-reviewer.entity";
-import { ActionUpdate } from "../src/actions/entities/action-update.entity";
+import {
+  ActionUpdate,
+  ActionUpdateNotificationMode,
+} from "../src/actions/entities/action-update.entity";
 import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
 import { FollowUpForm } from "../src/actions/entities/follow-up-form.entity";
 import { Project } from "../src/actions/entities/project.entity";
@@ -2796,6 +2799,7 @@ describe("Actions (e2e)", () => {
           shortNotifString: "something happened",
           date: new Date().toISOString(),
           notifyType: "none",
+          notificationMode: "normal",
         })
         .expect(201);
 
@@ -3672,9 +3676,14 @@ describe("Actions (e2e)", () => {
           shortNotifString: "something happened",
           date: now,
           notifyType: "all_members",
+          notificationMode: "normal",
           ...body,
         })
         .expect(201);
+      // Covers the legacy path that updates from before recognition copy keep.
+      await ctx.dataSource.getRepository(ActionUpdate).update(created.body.id, {
+        notificationMode: ActionUpdateNotificationMode.Legacy,
+      });
       return created.body as {
         id: number;
         notifiedAt: string | null;
@@ -3908,6 +3917,7 @@ describe("Actions (e2e)", () => {
           shortNotifString: "something happened",
           date: new Date().toISOString(),
           notifyType: "none",
+          notificationMode: "normal",
         })
         .expect(201);
       return created.body as {
