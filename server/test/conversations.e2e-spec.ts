@@ -58,7 +58,7 @@ describe("ConversationController (e2e)", () => {
       .get(ConversationService)
       .syncCommunityConversationMembers(community.id);
 
-    return { conversation, leaderToken, member, memberToken };
+    return { community, conversation, leaderToken, member, memberToken };
   };
 
   beforeAll(async () => {
@@ -637,6 +637,28 @@ describe("ConversationController (e2e)", () => {
       )
         .map((participant) => participant.user.id)
         .sort((a, b) => a - b);
+
+    it("returns a community's chat to a member and refuses an outsider", async () => {
+      const { community, conversation, member, memberToken } =
+        await createCommunityChat();
+      const { token: outsiderToken } = await createUserAndToken();
+
+      const response = await request(ctx.app.getHttpServer())
+        .get(`/messaging/conversations/community/${community.id}`)
+        .set("Authorization", `Bearer ${memberToken}`)
+        .expect(200);
+      expect(response.body.id).toBe(conversation.id);
+      expect(
+        response.body.participants.map(
+          (participant: { user: { id: number } }) => participant.user.id,
+        ),
+      ).toContain(member.id);
+
+      await request(ctx.app.getHttpServer())
+        .get(`/messaging/conversations/community/${community.id}`)
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(400);
+    });
 
     it("refuses a leader adding someone from outside the community", async () => {
       const { conversation, leaderToken } = await createCommunityChat();
