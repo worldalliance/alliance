@@ -1272,6 +1272,47 @@ describe("Users (e2e)", () => {
     );
   });
 
+  it("sends an ambassador's halfway goal notification once, at its halfway time", async () => {
+    const now = Date.now();
+    const ambassador = await userRepo.save(
+      userRepo.create({
+        name: "Halfway Ambassador",
+        email: "halfway.ambassador@example.com",
+        password: "Password123!",
+        ambassador: true,
+        timeZone: "UTC",
+        // Outside the goal window, so the midpoint is the send time.
+        preferredReminderTime: Temporal.Instant.fromEpochMilliseconds(
+          now + milliseconds({ hours: 12 }),
+        )
+          .toZonedDateTimeISO("UTC")
+          .toPlainTime(),
+      }),
+    );
+    const goal = await ctx.dataSource.getRepository(AmbassadorInviteGoal).save({
+      ambassador,
+      targetSuccessfulRecruits: 4,
+      startAt: new Date(now - milliseconds({ minutes: 2 })),
+      dueAt: new Date(now + milliseconds({ minutes: 1 })),
+    });
+
+    await userService.sendDueAmbassadorInviteGoalNotifications();
+    await userService.sendDueAmbassadorInviteGoalNotifications();
+
+    const notifications = await ctx.dataSource
+      .getRepository(Notification)
+      .findBy({ groupingKey: `ambassador-invite-goal:${goal.id}:halfway` });
+    expect(
+      notifications.map(({ message, sendTime }) => ({ message, sendTime })),
+    ).toEqual([
+      {
+        message:
+          "You have 1 day left to successfully invite 4 more people and reach your goal of 4.",
+        sendTime: new Date(now - milliseconds({ seconds: 30 })),
+      },
+    ]);
+  });
+
   describe("signContract behavior", () => {
     /** Signs up through a reusable invite link the way production does, so the
      * invite assignment snapshot on the user is written by real code. */

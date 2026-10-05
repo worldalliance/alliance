@@ -2242,38 +2242,37 @@ export class UserService {
     goal: AmbassadorInviteGoal,
     sendTime: Date,
   ): Promise<void> {
-    const groupingKey = ambassadorGoalHalfwayGroupingKey(goal.id);
-    const alreadySent = await this.notifsService.hasNotifWithGroupingKey(
-      goal.ambassador.id,
-      groupingKey,
-    );
-    if (alreadySent) {
-      return;
-    }
-
-    const stats = await this.getAmbassadorInviteStats(goal.ambassador.id, goal);
-    await this.notifsService.sendNotif({
-      user: goal.ambassador,
-      category: NotificationCategory.NewMemberReferred,
-      message: notifMessage`${getAmbassadorGoalHalfwayNotificationMessage(
-        goal,
-        stats.goalSuccessfulRecruits,
-        sendTime,
-      )}`,
-      destination: null,
-      webAppLocation: AMBASSADOR_INVITES_URL,
-      mobileAppLocation: AMBASSADOR_INVITES_URL,
-      associatedUsers: [],
-      groupingKey,
+    await this.sendAmbassadorInviteGoalNotif({
+      goal,
+      groupingKey: ambassadorGoalHalfwayGroupingKey(goal.id),
       sendTime,
-      shouldPush: true,
+      message: (stats) =>
+        getAmbassadorGoalHalfwayNotificationMessage(
+          goal,
+          stats.goalSuccessfulRecruits,
+          sendTime,
+        ),
     });
   }
 
   private async sendAmbassadorInviteGoalEndedNotif(
     goal: AmbassadorInviteGoal,
   ): Promise<void> {
-    const groupingKey = ambassadorGoalEndedGroupingKey(goal.id);
+    await this.sendAmbassadorInviteGoalNotif({
+      goal,
+      groupingKey: ambassadorGoalEndedGroupingKey(goal.id),
+      sendTime: new Date(),
+      message: (stats) => this.getAmbassadorInviteGoalEndedMessage(goal, stats),
+    });
+  }
+
+  private async sendAmbassadorInviteGoalNotif(params: {
+    goal: AmbassadorInviteGoal;
+    groupingKey: string;
+    sendTime: Date;
+    message: (stats: AmbassadorInviteStats) => string;
+  }): Promise<void> {
+    const { goal, groupingKey, sendTime } = params;
     const alreadySent = await this.notifsService.hasNotifWithGroupingKey(
       goal.ambassador.id,
       groupingKey,
@@ -2286,13 +2285,13 @@ export class UserService {
     await this.notifsService.sendNotif({
       user: goal.ambassador,
       category: NotificationCategory.NewMemberReferred,
-      message: notifMessage`${this.getAmbassadorInviteGoalEndedMessage(goal, stats)}`,
+      message: notifMessage`${params.message(stats)}`,
       destination: null,
       webAppLocation: AMBASSADOR_INVITES_URL,
       mobileAppLocation: AMBASSADOR_INVITES_URL,
       associatedUsers: [],
       groupingKey,
-      sendTime: new Date(),
+      sendTime,
       shouldPush: true,
     });
   }
