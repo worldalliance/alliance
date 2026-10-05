@@ -13,7 +13,6 @@ import {
   PreviewNotificationPlanDto,
   ReminderAnchorCandidateDto,
   ReminderGroupDto,
-  userListAdmin,
 } from "@alliance/shared/client";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -24,7 +23,6 @@ import {
   ToastPlacement,
   useToast,
 } from "@alliance/sharedweb/ui/ToastProvider";
-import { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import {
   format,
   formatDistanceStrict,
@@ -40,6 +38,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import ActionReminderCard from "./ActionReminderCard";
 import ActionReminderGroupForm, {
   ActionReminderGroupFormInitialValues,
@@ -96,14 +95,17 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   const [selectedEventId, setSelectedEventId] = useState<number | null>(
     memberEvents.length > 0 ? memberEvents[0].id : null, //TODO: collate or move between events
   );
-  const [users, setUsers] = useState<UserSelectUser[]>([]);
   const {
     tags: userTags,
     isLoading: loadingUserTags,
     isError: userTagsLoadFailed,
   } = useTagsAdmin();
   const userTagsError = userTagsLoadFailed ? "Failed to load user tags." : null;
-  const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
+  const {
+    data: users = [],
+    isLoading: loadingUsers,
+    isLoadingError: usersLoadFailed,
+  } = useUsersAdmin();
 
   const [createGroupExpanded, setCreateGroupExpanded] =
     useState<boolean>(false);
@@ -172,27 +174,6 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       setSelectedEventId(memberEvents[0].id);
     }
   }, [memberEvents, selectedEventId]);
-
-  useEffect(() => {
-    setLoadingUsers(true);
-    userListAdmin()
-      .then((response) => {
-        const mappedUsers = (response.data ?? []).map<UserSelectUser>(
-          (user) => ({
-            id: user.id,
-            name: user.name ?? undefined,
-            displayName: user.name ?? undefined,
-            profilePicture: user.profilePicture ?? null,
-          }),
-        );
-        setUsers(mappedUsers);
-      })
-      .catch((err) => {
-        console.error(err);
-        setCreateError("Failed to load users.");
-      })
-      .finally(() => setLoadingUsers(false));
-  }, []);
 
   const refreshReminderGroups = useCallback(async (eventId: number) => {
     const response = await actionsReminderGroupsForEventAdmin({
@@ -1006,6 +987,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
                 anchorCandidates={anchorCandidates}
                 users={users}
                 loadingUsers={loadingUsers}
+                usersLoadFailed={usersLoadFailed}
                 userTags={userTags}
                 loadingUserTags={loadingUserTags}
                 userTagsError={userTagsError}
@@ -1046,6 +1028,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
             anchorCandidates={anchorCandidates}
             users={users}
             loadingUsers={loadingUsers}
+            usersLoadFailed={usersLoadFailed}
             userTags={userTags}
             loadingUserTags={loadingUserTags}
             userTagsError={userTagsError}

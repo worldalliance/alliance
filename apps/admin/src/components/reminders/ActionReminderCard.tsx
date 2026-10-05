@@ -41,6 +41,7 @@ interface ActionReminderCardProps {
   anchorCandidates: ReminderAnchorCandidateDto[];
   users: UserSelectUser[];
   loadingUsers: boolean;
+  usersLoadFailed: boolean;
   userTags: TagDto[];
   loadingUserTags: boolean;
   userTagsError: string | null;
@@ -70,6 +71,7 @@ const ActionReminderCard = ({
   anchorCandidates,
   users,
   loadingUsers,
+  usersLoadFailed,
   userTags,
   loadingUserTags,
   userTagsError,
@@ -295,6 +297,7 @@ const ActionReminderCard = ({
               anchorCandidates={anchorCandidates}
               users={users}
               loadingUsers={loadingUsers}
+              usersLoadFailed={usersLoadFailed}
               userTags={userTags}
               loadingUserTags={loadingUserTags}
               userTagsError={userTagsError}

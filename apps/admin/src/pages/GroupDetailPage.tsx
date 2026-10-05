@@ -16,7 +16,6 @@ import {
   communityRemoveLeaderAdmin,
   communityRemoveMemberAdmin,
   communityUpdate,
-  userListAdmin,
 } from "@alliance/shared/client";
 import type {
   CommunityDto,
@@ -41,11 +40,12 @@ import {
   useToast,
 } from "@alliance/sharedweb/ui/ToastProvider";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
-import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
+import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { keyBy } from "es-toolkit";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link, useNavigate, useParams } from "react-router";
 import { useCompletedAllActiveActions } from "../lib/useCompletedAllActiveActions";
+import { useUsersAdmin } from "../lib/useUsersAdmin";
 
 const CommunityDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -65,8 +65,11 @@ const CommunityDetailPage: React.FC = () => {
     allowMemberInvites: true,
     allowStaffAssignments: true,
   });
-  const [users, setUsers] = useState<UserSelectUser[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
+  const {
+    data: users = [],
+    isLoading: usersLoading,
+    isLoadingError: usersLoadFailed,
+  } = useUsersAdmin();
   const [memberSelection, setMemberSelection] = useState<number[]>([]);
   const [leaderSelection, setLeaderSelection] = useState<number[]>([]);
   const [addingMember, setAddingMember] = useState(false);
@@ -165,25 +168,6 @@ const CommunityDetailPage: React.FC = () => {
   }, [communityId]);
 
   useEffect(() => refreshUserActionRelations(), [refreshUserActionRelations]);
-
-  useEffect(() => {
-    setUsersLoading(true);
-    userListAdmin()
-      .then((response) => {
-        const rawUsers = response.data ?? [];
-        setUsers(
-          rawUsers.map((user) => ({
-            id: user.id,
-            name: user.name ?? `User #${user.id}`,
-            profilePicture: user.profilePicture ?? null,
-          })),
-        );
-      })
-      .catch((err) => {
-        console.error("Failed to load users", err);
-      })
-      .finally(() => setUsersLoading(false));
-  }, []);
 
   useEffect(() => {
     if (community) {
@@ -753,6 +737,7 @@ const CommunityDetailPage: React.FC = () => {
                   selectedUserIds={memberSelection}
                   onChange={setMemberSelection}
                   loading={usersLoading}
+                  loadFailed={usersLoadFailed}
                   label="Add member"
                   single
                 />
@@ -848,6 +833,7 @@ const CommunityDetailPage: React.FC = () => {
                   selectedUserIds={leaderSelection}
                   onChange={setLeaderSelection}
                   loading={usersLoading}
+                  loadFailed={usersLoadFailed}
                   label="Add leader"
                   single
                 />

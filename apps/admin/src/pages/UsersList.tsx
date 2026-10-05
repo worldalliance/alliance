@@ -6,7 +6,6 @@ import {
   analyticsGetTimeSpentPerUserAdmin,
   analyticsGetTimeSpentPerUserTotalAdmin,
   communityGetAllMemberContactInfoAdmin,
-  userListAdmin,
 } from "@alliance/shared/client";
 import {
   CommunityMemberContactInfoDto,
@@ -33,17 +32,14 @@ import {
   RoleFilter,
 } from "../lib/memberRoleFilter";
 import { useCompletedAllActiveActions } from "../lib/useCompletedAllActiveActions";
+import { useUsersAdmin } from "../lib/useUsersAdmin";
 
 type ViewMode = "cards" | "rows";
 
 const MEMBERS_PER_PAGE = 50;
 
 const UsersList: React.FC = () => {
-  const { data: users = [] } = useQuery({
-    queryKey: queryKeys.usersAdmin(),
-    queryFn: () =>
-      userListAdmin({ throwOnError: true }).then((response) => response.data),
-  });
+  const { data: users = [] } = useUsersAdmin();
   const { data: timeSpentPerUserLast7 = [] } = useQuery({
     queryKey: queryKeys.timeSpentPerUserAdmin(),
     queryFn: () =>

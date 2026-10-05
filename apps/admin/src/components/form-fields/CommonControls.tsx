@@ -39,8 +39,6 @@ import {
   tasksCustomValidatorsAdmin,
   tasksFindOneCustomValidatorAdmin,
   tasksTestCustomExpressionAdmin,
-  userListAdmin,
-  type UserDto,
 } from "@alliance/shared/client";
 import {
   conditionNameForIndex,
@@ -66,6 +64,7 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
+import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import {
   formFieldsErrorReason,
   FormPickerError,
@@ -2129,85 +2128,6 @@ function useCustomValidators(): {
   };
 }
 
-let cachedUsers: UserDto[] | null = null;
-let cachedUsersError: string | null = null;
-let pendingUsersRequest: Promise<UserDto[]> | null = null;
-
-async function fetchUsers(): Promise<UserDto[]> {
-  const response = await userListAdmin();
-  if (response.data) {
-    return response.data;
-  }
-
-  if (response.error) {
-    throw response.error;
-  }
-
-  throw new Error("Unknown error loading users");
-}
-
-function useUsers(enabled: boolean): {
-  users: UserDto[];
-  loading: boolean;
-  error: string | null;
-} {
-  const [users, setUsers] = useState<UserDto[]>(() => cachedUsers ?? []);
-  const [loading, setLoading] = useState<boolean>(
-    () => enabled && !cachedUsers && !cachedUsersError,
-  );
-  const [error, setError] = useState<string | null>(() => cachedUsersError);
-
-  useEffect(() => {
-    if (!enabled) {
-      return;
-    }
-
-    if (cachedUsers) {
-      setUsers(cachedUsers);
-      setLoading(false);
-      return;
-    }
-
-    let isCancelled = false;
-    if (!pendingUsersRequest) {
-      pendingUsersRequest = fetchUsers();
-    }
-
-    setLoading(true);
-
-    pendingUsersRequest
-      .then((data) => {
-        if (isCancelled) return;
-        cachedUsers = data;
-        cachedUsersError = null;
-        setUsers(data);
-        setError(null);
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        if (isCancelled) return;
-        const message =
-          err instanceof Error ? err.message : "Failed to load users";
-        cachedUsersError = message;
-        setError(message);
-        setLoading(false);
-      })
-      .finally(() => {
-        pendingUsersRequest = null;
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [enabled]);
-
-  return {
-    users,
-    loading,
-    error,
-  };
-}
-
 type CustomValidatorSelectProps = {
   type?: CustomValidatorType;
   idArgument: string | null;
@@ -2237,14 +2157,12 @@ export function CustomValidatorSelect({
   const { tags, isLoading: tagsLoading } = useTagsAdmin({
     enabled: isMemberTag,
   });
-  const {
-    users,
-    loading: usersLoading,
-    error: usersError,
-  } = useUsers(isCustomExpression);
+  const usersQuery = useUsersAdmin({ enabled: isCustomExpression });
+  const usersLoading = usersQuery.isLoading;
+  const usersError = usersQuery.isLoadingError ? "Failed to load users" : null;
   const activeUsers = useMemo(
-    () => users.filter((user) => user.hasActiveContract),
-    [users],
+    () => (usersQuery.data ?? []).filter((user) => user.hasActiveContract),
+    [usersQuery.data],
   );
   const [expressionTest, setExpressionTest] = useState<{
     result?: boolean;

@@ -1,4 +1,5 @@
 import type { VideoBlock } from "@alliance/common/forms/display-blocks";
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
@@ -37,6 +38,7 @@ const upload = async (
         />
       </ToastProvider>
     </MemoryRouter>,
+    queryWrapper(),
   );
   const input = document.querySelector<HTMLInputElement>("input[type=file]")!;
   beforePick(input);

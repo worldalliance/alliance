@@ -39,8 +39,6 @@ import {
   tasksCreateFormAdmin,
   tasksGetForm,
   tasksUpdateFormAdmin,
-  userListAdmin,
-  type UserDto,
 } from "@alliance/shared/client";
 import { useInvalidateFormsAdmin } from "@alliance/shared/lib/useFormsAdmin";
 import { FormFieldsStatus } from "@alliance/shared/lib/useFormSchema";
@@ -71,6 +69,7 @@ import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
 import { DropPosition } from "../lib/useDragReorder";
 import { useFormulaSourceForms } from "../lib/useFormulaSourceForms";
 import { useInputSources } from "../lib/useInputSources";
+import { useUsersAdmin } from "../lib/useUsersAdmin";
 import { useVisibilityGroupedSchema } from "../lib/useVisibilityGroupedSchema";
 import {
   deriveVisibilityGroups,
@@ -624,10 +623,16 @@ export function FormBuilder(props: FormBuilderProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
-  const [previewUsers, setPreviewUsers] = useState<UserDto[]>([]);
   const [previewUserId, setPreviewUserId] = useState<string>("preview");
-  const [isLoadingPreviewUsers, setIsLoadingPreviewUsers] = useState(false);
-  const [previewUserError, setPreviewUserError] = useState<string | null>(null);
+  const previewUsersQuery = useUsersAdmin({ enabled: isPreviewMode });
+  const previewUsers = useMemo(
+    () => previewUsersQuery.data ?? [],
+    [previewUsersQuery.data],
+  );
+  const isLoadingPreviewUsers = previewUsersQuery.isLoading;
+  const previewUserError = previewUsersQuery.isLoadingError
+    ? "Could not load users"
+    : null;
   const [activeSearch, setActiveSearch] = useState<InsertLoc | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Array<AvailableElement>>(
@@ -1166,31 +1171,6 @@ export function FormBuilder(props: FormBuilderProps) {
       setIsPreviewMode(false);
     }
   }, [activeEditor, isPreviewMode]);
-
-  const fetchPreviewUsers = useCallback(async () => {
-    if (isLoadingPreviewUsers) {
-      return;
-    }
-    setIsLoadingPreviewUsers(true);
-    setPreviewUserError(null);
-    try {
-      const response = await userListAdmin();
-      setPreviewUsers(response.data ?? []);
-    } catch (error) {
-      console.error("Failed to load users for preview", error);
-      setPreviewUserError(
-        error instanceof Error ? error.message : "Could not load users",
-      );
-    } finally {
-      setIsLoadingPreviewUsers(false);
-    }
-  }, [isLoadingPreviewUsers]);
-
-  useEffect(() => {
-    if (isPreviewMode && previewUsers.length === 0 && !previewUserError) {
-      void fetchPreviewUsers();
-    }
-  }, [fetchPreviewUsers, isPreviewMode, previewUserError, previewUsers.length]);
 
   useEffect(() => {
     const scrollContainer = contentScrollRef.current;

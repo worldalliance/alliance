@@ -131,6 +131,7 @@ interface ActionReminderFormProps {
   anchorCandidates: ReminderAnchorCandidateDto[];
   users: UserSelectUser[];
   loadingUsers: boolean;
+  usersLoadFailed: boolean;
   userTags: TagDto[];
   loadingUserTags: boolean;
   userTagsError?: string | null;
@@ -155,6 +156,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   anchorCandidates,
   users,
   loadingUsers,
+  usersLoadFailed,
   userTags,
   loadingUserTags,
   userTagsError = null,
@@ -1126,6 +1128,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           selectedUserIds={selectedUserIds}
           onChange={setSelectedUserIds}
           loading={loadingUsers}
+          loadFailed={usersLoadFailed}
         />
       )}
 

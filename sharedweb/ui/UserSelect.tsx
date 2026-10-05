@@ -13,6 +13,7 @@ interface UserSelectProps {
   selectedUserIds: number[];
   onChange: (userIds: number[]) => void;
   loading?: boolean;
+  loadFailed?: boolean;
   label?: string | null;
   single?: boolean;
 }
@@ -29,6 +30,7 @@ const UserSelect: React.FC<UserSelectProps> = ({
   selectedUserIds,
   onChange,
   loading = false,
+  loadFailed = false,
   label = "Recipients",
   single = false,
 }) => {
@@ -93,7 +95,10 @@ const UserSelect: React.FC<UserSelectProps> = ({
           ))}
         </div>
       )}
-      {query && !filteredUsers.length && !loading && (
+      {loadFailed && (
+        <p className="mt-2 text-xs text-red-600">Failed to load users.</p>
+      )}
+      {query && !filteredUsers.length && !loading && !loadFailed && (
         <p className="mt-2 text-xs text-zinc-500">
           No users match that search.
         </p>

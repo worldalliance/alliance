@@ -8,7 +8,7 @@ import {
 import { type AnyField } from "@alliance/common/forms/form-schema";
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { pickForCount, withCount } from "@alliance/common/plural";
-import { userListAdmin, type UserDto } from "@alliance/shared/client";
+import { type UserDto } from "@alliance/shared/client";
 import { resolveDisplayBlockForUser } from "@alliance/shared/formrenderer";
 import { cn } from "@alliance/shared/styles/util";
 import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
@@ -23,6 +23,7 @@ import {
 } from "react";
 import { withBlockVisibility } from "../../lib/blockVisibility";
 import type { AddressedWrite } from "../../lib/displayBlockById";
+import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import { ElementJsonButton } from "../FormJsonButton";
 import {
   JoinVisibilityButtons,
@@ -145,7 +146,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   const groupMember = useVisibilityGroupMember(block?.id);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const optionsMenuRef = useRef<HTMLDivElement | null>(null);
-  const hasAttemptedUserLoadRef = useRef(false);
   const [
     showConditionalVisibilityControl,
     setShowConditionalVisibilityControl,
@@ -165,9 +165,13 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     [manualUserContent],
   );
   const manualPerUserEnabled = Boolean(block?.manualPerUser);
-  const [manualUsers, setManualUsers] = useState<UserDto[]>([]);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [userLoadError, setUserLoadError] = useState<string | null>(null);
+  const usersQuery = useUsersAdmin({ enabled: manualPerUserEnabled });
+  const manualUsers = useMemo(() => usersQuery.data ?? [], [usersQuery.data]);
+  const isLoadingUsers = usersQuery.isLoading;
+  const userLoadError = usersQuery.isLoadingError
+    ? "Unable to load users"
+    : null;
+  const refetchUsers = () => void usersQuery.refetch({ cancelRefetch: false });
   const [activeManualUserId, setActiveManualUserId] = useState<string | null>(
     null,
   );
@@ -230,35 +234,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     },
     [],
   );
-
-  const loadUsers = useCallback(
-    async (force = false) => {
-      if (isLoadingUsers) return;
-      if (!force && manualUsers.length > 0) return;
-      setIsLoadingUsers(true);
-      setUserLoadError(null);
-      try {
-        const response = await userListAdmin();
-        setManualUsers(response.data ?? []);
-      } catch (error) {
-        console.error(
-          "Failed to load users for display block overrides",
-          error,
-        );
-        setUserLoadError("Unable to load users");
-      } finally {
-        hasAttemptedUserLoadRef.current = true;
-        setIsLoadingUsers(false);
-      }
-    },
-    [isLoadingUsers, manualUsers.length],
-  );
-
-  useEffect(() => {
-    if (manualPerUserEnabled && !hasAttemptedUserLoadRef.current) {
-      void loadUsers();
-    }
-  }, [loadUsers, manualPerUserEnabled]);
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -419,8 +394,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       selectManualTarget(null, false);
       setHasUserSelectedTarget(false);
       setIsUserListOpen(false);
-    } else if (manualUsers.length === 0) {
-      void loadUsers();
     }
     onUpdate({ manualPerUser: checked } as Partial<T>);
   };
@@ -796,7 +769,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
                               <button
                                 type="button"
                                 className="text-blue-600 hover:text-blue-700"
-                                onClick={() => void loadUsers(true)}
+                                onClick={refetchUsers}
                               >
                                 Retry
                               </button>
@@ -971,7 +944,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
                   <button
                     type="button"
                     className="text-blue-600 hover:text-blue-700"
-                    onClick={() => void loadUsers(true)}
+                    onClick={refetchUsers}
                   >
                     Load users
                   </button>
@@ -981,7 +954,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
                   className="text-gray-600 underline decoration-dotted underline-offset-2"
                   onClick={() => {
                     if (!isUserListOpen && manualUsers.length === 0) {
-                      void loadUsers(true);
+                      refetchUsers();
                     }
                     setIsUserListOpen((prev) => !prev);
                   }}
