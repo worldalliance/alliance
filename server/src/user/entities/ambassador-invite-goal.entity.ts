@@ -1,6 +1,6 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsInt, Min } from "class-validator";
+import { Allow, IsInt, IsOptional, Min } from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -55,9 +55,8 @@ export class AmbassadorInviteGoal {
   updatedAt: Date;
 
   @ManyToOne(() => User, { nullable: false, onDelete: "CASCADE" })
-  @ApiProperty({ type: () => User })
+  @ApiPropertyOptional({ type: () => User })
   @Type(() => User)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  ambassador: Relation<User>;
+  @IsOptional()
+  ambassador?: Relation<User>;
 }
