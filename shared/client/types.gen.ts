@@ -486,8 +486,11 @@ export type Action = {
      * Events associated with the action
      */
     events: Array<ActionEvent>;
-    activities: Array<Array<ActionActivity>>;
-    updates: Array<ActionUpdate>;
+    /**
+     * Activities associated with the action
+     */
+    activities?: Array<ActionActivity>;
+    updates?: Array<ActionUpdate>;
     followUpForms: Array<FollowUpForm>;
     formVariants: Array<ActionFormVariant>;
     suite?: ActionSuite;
@@ -3347,8 +3350,11 @@ export type ExportActionDto = {
      * Events associated with the action
      */
     events: Array<ActionEvent>;
-    activities: Array<Array<ActionActivity>>;
-    updates: Array<ActionUpdate>;
+    /**
+     * Activities associated with the action
+     */
+    activities?: Array<ActionActivity>;
+    updates?: Array<ActionUpdate>;
     followUpForms: Array<FollowUpForm>;
     suite?: ActionSuite;
     project?: Project;
