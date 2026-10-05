@@ -42,6 +42,7 @@ import {
   AWAY_REASON_OPTIONS,
   AwayRangeStatus,
   awayRangeStatus,
+  changedAwayRangeDays,
   formatAwayReason,
 } from "@alliance/shared/lib/awayRangesFormatters";
 import { getMemberCount } from "@alliance/shared/lib/communityUtils";
@@ -196,6 +197,10 @@ const UserDetailView: React.FC = () => {
   );
   const [editAwayStartDate, setEditAwayStartDate] = useState("");
   const [editAwayEndDate, setEditAwayEndDate] = useState("");
+  const [editAwayOpenedDays, setEditAwayOpenedDays] = useState({
+    start: "",
+    end: "",
+  });
   const [editAwayReason, setEditAwayReason] = useState<
     UserAwayRangeReason | ""
   >("");
@@ -489,9 +494,14 @@ const UserDetailView: React.FC = () => {
   }, []);
 
   const startAwayEdit = useCallback((range: UserAwayRangeDto) => {
+    const opened = {
+      start: formatDateForInput(range.startDate),
+      end: formatDateForInput(range.endDate),
+    };
     setEditingAwayRangeId(range.id);
-    setEditAwayStartDate(formatDateForInput(range.startDate));
-    setEditAwayEndDate(formatDateForInput(range.endDate));
+    setEditAwayStartDate(opened.start);
+    setEditAwayEndDate(opened.end);
+    setEditAwayOpenedDays(opened);
     setEditAwayReason(range.reason);
     setEditAwayNote(range.note ?? "");
     setAwayMutationError(null);
@@ -563,8 +573,10 @@ const UserDetailView: React.FC = () => {
       const response = await userUpdateAwayRangeAdmin({
         path: { userId: user.id, id: editingAwayRangeId },
         body: {
-          startDay: editAwayStartDate,
-          endDay: editAwayEndDate,
+          ...changedAwayRangeDays({
+            edited: { start: editAwayStartDate, end: editAwayEndDate },
+            opened: editAwayOpenedDays,
+          }),
           reason: editAwayReason,
           note: editAwayNote.trim() || null,
         },
@@ -588,6 +600,7 @@ const UserDetailView: React.FC = () => {
     cancelAwayEdit,
     editAwayEndDate,
     editAwayNote,
+    editAwayOpenedDays,
     editAwayReason,
     editAwayStartDate,
     editingAwayRangeId,

@@ -58,7 +58,8 @@ export function useMyAwayRanges(params?: { enabled?: boolean }) {
       userDeleteAwayRange({ path: { id }, throwOnError: true }).then(
         (r) => r.data,
       ),
-    onSuccess: invalidate,
+    // A refusal means the list on screen is out of date with the server's rule.
+    onSettled: invalidate,
   });
 
   const { sortedAwayRanges, currentAwayRange, upcomingOrCurrentAwayRanges } =

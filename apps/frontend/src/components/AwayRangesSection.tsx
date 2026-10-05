@@ -1,13 +1,25 @@
+import {
+  hasAwayRangeEnded,
+  isAwayRangeStartLocked,
+} from "@alliance/common/awayRange";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { UserAwayRangeDto, UserAwayRangeReason } from "@alliance/shared/client";
 import {
+  AWAY_RANGE_REMOVAL_CONFIRMS,
+  AWAY_RANGE_REMOVAL_ERRORS,
+  AWAY_RANGE_REMOVAL_LABELS,
+  AWAY_RANGE_REMOVAL_SESSION_EXPIRED,
   AWAY_REASON_LABELS,
+  AwayRangeRemoval,
+  awayRangeRemoval,
   AwayRangeStatus,
   awayRangeStatus,
+  changedAwayRangeDays,
   formatAwayReason,
 } from "@alliance/shared/lib/awayRangesFormatters";
 import { awayRangesDescription } from "@alliance/shared/lib/copy";
 import { formatLongDate } from "@alliance/shared/lib/dateFormatters";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useMyAwayRanges } from "@alliance/shared/lib/useMyAwayRanges";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -53,6 +65,7 @@ const AwayRangesSection: React.FC = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
+  const [editOpenedDays, setEditOpenedDays] = useState({ start: "", end: "" });
   const [editNote, setEditNote] = useState("");
   const [editReason, setEditReason] = useState<UserAwayRangeReason | null>(
     null,
@@ -104,19 +117,56 @@ const AwayRangesSection: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (range: UserAwayRangeDto) => {
+    // Decided again at click time: a range's start can lock while its row is
+    // on screen. When removal is refused, the server says why below.
+    const removal = awayRangeRemoval(range) ?? AwayRangeRemoval.Delete;
+    if (
+      removal === AwayRangeRemoval.EndNow &&
+      !confirm(AWAY_RANGE_REMOVAL_CONFIRMS[AwayRangeRemoval.EndNow])
+    ) {
+      return;
+    }
     try {
-      await deleteAwayRange.mutateAsync(id);
+      await deleteAwayRange.mutateAsync(range.id);
     } catch (error) {
-      console.error("Error deleting away range:", error);
-      alert("There was an error deleting your away period. Please try again.");
+      console.error("Error removing away range:", error);
+      const fallback = AWAY_RANGE_REMOVAL_ERRORS[removal];
+      alert(
+        thrownRefusalMessage({
+          error,
+          fallback,
+          sessionExpired: AWAY_RANGE_REMOVAL_SESSION_EXPIRED,
+        }),
+      );
     }
   };
 
+  const removeControl = (range: UserAwayRangeDto) => {
+    const removal = awayRangeRemoval(range);
+    return (
+      removal && (
+        <Button
+          onClick={() => handleDelete(range)}
+          color={ButtonColor.Transparent}
+          className="!py-2 !px-1 text-sm text-red-500"
+          title={AWAY_RANGE_REMOVAL_LABELS[removal]}
+        >
+          <X size="20" />
+        </Button>
+      )
+    );
+  };
+
   const startEditing = (range: UserAwayRangeDto) => {
+    const opened = {
+      start: formatDateForInput(range.startDate),
+      end: formatDateForInput(range.endDate),
+    };
     setEditingId(range.id);
-    setEditStartDate(formatDateForInput(range.startDate));
-    setEditEndDate(formatDateForInput(range.endDate));
+    setEditStartDate(opened.start);
+    setEditEndDate(opened.end);
+    setEditOpenedDays(opened);
     setEditNote(range.note ?? "");
     setEditReason(range.reason);
     setEditError(null);
@@ -126,6 +176,7 @@ const AwayRangesSection: React.FC = () => {
     setEditingId(null);
     setEditStartDate("");
     setEditEndDate("");
+    setEditOpenedDays({ start: "", end: "" });
     setEditNote("");
     setEditReason(null);
     setEditError(null);
@@ -149,8 +200,10 @@ const AwayRangesSection: React.FC = () => {
       await updateAwayRange.mutateAsync({
         id: editingId,
         body: {
-          startDay: editStartDate,
-          endDay: editEndDate,
+          ...changedAwayRangeDays({
+            edited: { start: editStartDate, end: editEndDate },
+            opened: editOpenedDays,
+          }),
           reason: editReason,
           note: editNote.trim() || null,
         },
@@ -207,6 +260,8 @@ const AwayRangesSection: React.FC = () => {
                         type="date"
                         value={editStartDate}
                         onChange={(e) => setEditStartDate(e.target.value)}
+                        min={formatDateForInput(new Date())}
+                        disabled={isAwayRangeStartLocked(range)}
                       />
                     </div>
                     <div className="flex-1">
@@ -218,10 +273,23 @@ const AwayRangesSection: React.FC = () => {
                         type="date"
                         value={editEndDate}
                         onChange={(e) => setEditEndDate(e.target.value)}
-                        min={editStartDate}
+                        min={
+                          isAwayRangeStartLocked(range)
+                            ? formatDateForInput(new Date())
+                            : editStartDate
+                        }
+                        disabled={
+                          isAwayRangeStartLocked(range) &&
+                          hasAwayRangeEnded(range)
+                        }
                       />
                     </div>
                   </div>
+                  {isAwayRangeStartLocked(range) && (
+                    <p className="text-sm text-zinc-500">
+                      {"Days that have already begun can't be changed."}
+                    </p>
+                  )}
                   <div className="flex flex-col gap-1">
                     <label className="text-sm font-medium">Reason</label>
                     <DropdownSelect
@@ -305,13 +373,7 @@ const AwayRangesSection: React.FC = () => {
                     >
                       <Pencil size="17" />
                     </Button>
-                    <Button
-                      onClick={() => handleDelete(range.id)}
-                      color={ButtonColor.Transparent}
-                      className="!py-2 !px-1 text-sm text-red-500"
-                    >
-                      <X size="20" />
-                    </Button>
+                    {removeControl(range)}
                   </div>
                 </div>
               )}

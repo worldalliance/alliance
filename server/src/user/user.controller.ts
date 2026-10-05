@@ -36,6 +36,7 @@ import { PushDto } from "src/push/dto/push.dto";
 import { PaginationQueryDto } from "src/utils/pagination.dto";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { Public } from "../auth/public.decorator";
+import { AwayRangeEditor } from "./away-range-history";
 import {
   CreateAwayRangeDto,
   UpdateAwayRangeDto,
@@ -126,7 +127,11 @@ export class UserController {
     @Body() body: CreateAwayRangeDto,
   ): Promise<UserAwayRangeDto> {
     return new UserAwayRangeDto(
-      await this.userService.createAwayRange(req.user.sub, body),
+      await this.userService.createAwayRange({
+        userId: req.user.sub,
+        data: body,
+        editor: AwayRangeEditor.Member,
+      }),
     );
   }
 
@@ -148,7 +153,11 @@ export class UserController {
     @Request() req: JwtRequest,
     @Param("id", ParseIntPipe) id: number,
   ): Promise<void> {
-    await this.userService.deleteAwayRange(req.user.sub, id);
+    await this.userService.deleteAwayRange({
+      userId: req.user.sub,
+      awayRangeId: id,
+      editor: AwayRangeEditor.Member,
+    });
   }
 
   @Patch("awayranges/:id")
@@ -161,7 +170,12 @@ export class UserController {
     @Body() body: UpdateAwayRangeDto,
   ): Promise<UserAwayRangeDto> {
     return new UserAwayRangeDto(
-      await this.userService.updateAwayRange(req.user.sub, id, body),
+      await this.userService.updateAwayRange({
+        userId: req.user.sub,
+        awayRangeId: id,
+        data: body,
+        editor: AwayRangeEditor.Member,
+      }),
     );
   }
 
@@ -186,7 +200,11 @@ export class UserController {
     @Body() body: CreateAwayRangeDto,
   ): Promise<UserAwayRangeDto> {
     return new UserAwayRangeDto(
-      await this.userService.createAwayRange(userId, body),
+      await this.userService.createAwayRange({
+        userId,
+        data: body,
+        editor: AwayRangeEditor.Admin,
+      }),
     );
   }
 
@@ -200,7 +218,12 @@ export class UserController {
     @Body() body: UpdateAwayRangeDto,
   ): Promise<UserAwayRangeDto> {
     return new UserAwayRangeDto(
-      await this.userService.updateAwayRange(userId, id, body),
+      await this.userService.updateAwayRange({
+        userId,
+        awayRangeId: id,
+        data: body,
+        editor: AwayRangeEditor.Admin,
+      }),
     );
   }
 
@@ -212,7 +235,11 @@ export class UserController {
     @Param("userId", ParseIntPipe) userId: number,
     @Param("id", ParseIntPipe) id: number,
   ): Promise<void> {
-    await this.userService.deleteAwayRange(userId, id);
+    await this.userService.deleteAwayRange({
+      userId,
+      awayRangeId: id,
+      editor: AwayRangeEditor.Admin,
+    });
   }
 
   @Post("update")
