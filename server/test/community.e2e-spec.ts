@@ -1429,6 +1429,34 @@ describe("Community (e2e)", () => {
     expect(found.deletedAt).not.toBeNull();
   });
 
+  it("DELETE /community/communityInvites/:inviteId deletes another member's invite when authenticated as leader", async () => {
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP DeleteInvite LeaderNotInviter",
+        leaders: [testUser],
+        users: [testUser, secondUser],
+      }),
+    );
+    const invite = await communityInviteRepo.save(
+      communityInviteRepo.create({
+        status: CommunityInviteStatus.InviteePending,
+        invitingUser: secondUser,
+        invitedUser: { id: ctx.testUserId },
+        community,
+      }),
+    );
+
+    const res = await request(ctx.app.getHttpServer())
+      .delete(`/community/communityInvites/${invite.id}`)
+      .set("Authorization", `Bearer ${testUserToken}`);
+
+    expect(res.status).toBe(200);
+    const found = await communityInviteRepo.findOneOrFail({
+      where: { id: invite.id },
+    });
+    expect(found.deletedAt).not.toBeNull();
+  });
+
   it("DELETE /community/communityInvites/:inviteId returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({

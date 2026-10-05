@@ -704,6 +704,15 @@ export function sqlUserHasActiveContractAt(
   ) = '${ContractEventType.SIGNED}'`;
 }
 
+export function canManageCommunity(
+  user: Pick<User, "admin" | "leaderOfIdSet">,
+  communityId: number | null,
+): boolean {
+  return (
+    user.admin || (communityId !== null && user.leaderOfIdSet.has(communityId))
+  );
+}
+
 export function hasPassword(user: Pick<User, "password">): boolean {
   return Boolean(user.password);
 }

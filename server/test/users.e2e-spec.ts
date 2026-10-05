@@ -2721,6 +2721,47 @@ describe("Users (e2e)", () => {
           });
           expect(deleted.deletedAt).not.toBeNull();
         });
+
+        const saveMemberInviteToCommunityA = (code: string) =>
+          onetimeInviteRepo.save(
+            onetimeInviteRepo.create({
+              invitee: "Member's invitee",
+              code,
+              status: OnetimeInviteStatus.LINK_UNUSED,
+              invitingUser: { id: communityMemberId },
+              community: communityLedByUserA,
+            }),
+          );
+
+        it("lets the community's leader delete a member's invite", async () => {
+          const invite = await saveMemberInviteToCommunityA("LEADER-DELETE");
+
+          await request(ctx.app.getHttpServer())
+            .delete(`/user/onetimeInvites/${invite.id}`)
+            .set("Authorization", `Bearer ${userAToken}`)
+            .expect(200);
+
+          const deleted = await onetimeInviteRepo.findOneByOrFail({
+            id: invite.id,
+          });
+          expect(deleted.deletedAt).not.toBeNull();
+        });
+
+        it("refuses a leader of another community", async () => {
+          const invite = await saveMemberInviteToCommunityA(
+            "OTHER-LEADER-DELETE",
+          );
+
+          await request(ctx.app.getHttpServer())
+            .delete(`/user/onetimeInvites/${invite.id}`)
+            .set("Authorization", `Bearer ${userBToken}`)
+            .expect(400);
+
+          const kept = await onetimeInviteRepo.findOneByOrFail({
+            id: invite.id,
+          });
+          expect(kept.deletedAt).toBeNull();
+        });
       });
 
       describe("requestOnetimeInvite", () => {
