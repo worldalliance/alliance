@@ -37,7 +37,7 @@ const seed = (user: { id: number }) => {
     ({ user }) => useSeedSettingsForm({ user, setSavedProfile, setLocation }),
     { initialProps: { user }, wrapper: queryWrapper().wrapper },
   );
-  return { setSavedProfile, view };
+  return { setSavedProfile, setLocation, view };
 };
 
 describe("useSeedSettingsForm", () => {
@@ -82,4 +82,29 @@ describe("useSeedSettingsForm", () => {
       expect(logged).toHaveBeenCalledTimes(1);
     },
   );
+
+  const locationRefused = {
+    "GET /user/mylocation": () =>
+      Response.json({ message: "unavailable" }, { status: 503 }),
+  };
+
+  it.each([
+    ["returns the refusal", () => api.alsoServing(locationRefused)],
+    [
+      "throws the refusal",
+      () => api.throwingOnRefusal({ ...table, ...locationRefused }),
+    ],
+  ])("logs a refused location request when the client %s", async (_, serve) => {
+    serve();
+    const logged = jest.spyOn(console, "error").mockImplementation(() => {});
+    const { setLocation } = seed({ id: 7 });
+
+    await waitFor(() =>
+      expect(logged).toHaveBeenCalledWith(
+        "failed to load the settings location",
+        expect.anything(),
+      ),
+    );
+    expect(setLocation).not.toHaveBeenCalled();
+  });
 });

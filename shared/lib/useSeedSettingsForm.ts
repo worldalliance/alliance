@@ -39,16 +39,20 @@ export function useSeedSettingsForm(params: {
         setLoading(false);
       });
 
-    userMyLocation().then((locationResponse) => {
-      const city = locationResponse.data?.city;
-      if (city) {
-        setLocation(city);
-        const cityId = city.id;
-        setSavedProfile((prev) =>
-          prev ? { ...prev, cityId } : { ...user, cityId },
-        );
-      }
-    });
+    userMyLocation({ throwOnError: true })
+      .then((locationResponse) => {
+        const city = locationResponse.data?.city;
+        if (city) {
+          setLocation(city);
+          const cityId = city.id;
+          setSavedProfile((prev) =>
+            prev ? { ...prev, cityId } : { ...user, cityId },
+          );
+        }
+      })
+      .catch((error: unknown) => {
+        console.error("failed to load the settings location", error);
+      });
   }, [user, setSavedProfile, setLocation, queryClient]);
 
   return loading;
