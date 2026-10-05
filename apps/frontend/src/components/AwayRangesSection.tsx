@@ -53,6 +53,7 @@ const AwayRangesSection: React.FC = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
+  const [editOpenedDays, setEditOpenedDays] = useState({ start: "", end: "" });
   const [editNote, setEditNote] = useState("");
   const [editReason, setEditReason] = useState<UserAwayRangeReason | null>(
     null,
@@ -114,9 +115,14 @@ const AwayRangesSection: React.FC = () => {
   };
 
   const startEditing = (range: UserAwayRangeDto) => {
+    const opened = {
+      start: formatDateForInput(range.startDate),
+      end: formatDateForInput(range.endDate),
+    };
     setEditingId(range.id);
-    setEditStartDate(formatDateForInput(range.startDate));
-    setEditEndDate(formatDateForInput(range.endDate));
+    setEditStartDate(opened.start);
+    setEditEndDate(opened.end);
+    setEditOpenedDays(opened);
     setEditNote(range.note ?? "");
     setEditReason(range.reason);
     setEditError(null);
@@ -126,6 +132,7 @@ const AwayRangesSection: React.FC = () => {
     setEditingId(null);
     setEditStartDate("");
     setEditEndDate("");
+    setEditOpenedDays({ start: "", end: "" });
     setEditNote("");
     setEditReason(null);
     setEditError(null);
@@ -149,8 +156,12 @@ const AwayRangesSection: React.FC = () => {
       await updateAwayRange.mutateAsync({
         id: editingId,
         body: {
-          startDay: editStartDate,
-          endDay: editEndDate,
+          // An untouched day stays out of the request: the browser formatted
+          // it in its own time zone, the server reads it in the account's, and
+          // the two can name different days.
+          startDay:
+            editStartDate === editOpenedDays.start ? undefined : editStartDate,
+          endDay: editEndDate === editOpenedDays.end ? undefined : editEndDate,
           reason: editReason,
           note: editNote.trim() || null,
         },
