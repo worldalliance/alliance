@@ -1,14 +1,14 @@
 import type { PreviousAnswerBlock } from "@alliance/common/forms/display-blocks";
 import type {
   FormSchema,
-  FormValue,
   ListField,
   ListFieldValue,
 } from "@alliance/common/forms/form-schema";
 import {
-  findFieldInSchema,
   getVisiblePreviousAnswerSubFields,
-  isPreviousAnswerValueEmpty,
+  previousAnswerEmptyText,
+  PreviousAnswerShape,
+  resolvePreviousAnswer,
 } from "@alliance/shared/lib/previousAnswers";
 import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import RenderField from "./RenderField";
@@ -22,7 +22,7 @@ function EmptyPlaceholder({ block }: { block: PreviousAnswerBlock }) {
         </h3>
       )}
       <p className="text-sm text-gray-400 italic">
-        {block.emptyText || "No previous answer available"}
+        {previousAnswerEmptyText(block)}
       </p>
     </div>
   );
@@ -30,8 +30,8 @@ function EmptyPlaceholder({ block }: { block: PreviousAnswerBlock }) {
 
 type Props = {
   block: PreviousAnswerBlock;
-  schema: FormSchema;
-  answers: Record<string, unknown>;
+  schema?: FormSchema;
+  answers?: Record<string, unknown>;
 };
 
 export default function RenderPreviousAnswer({
@@ -39,43 +39,39 @@ export default function RenderPreviousAnswer({
   schema,
   answers,
 }: Props) {
-  const field = findFieldInSchema(schema, block.sourceFieldId);
-  if (!field) {
+  const answer = resolvePreviousAnswer({ block, schema, answers });
+  if (!answer) {
     return <EmptyPlaceholder block={block} />;
   }
-
-  const value = answers[block.sourceFieldId] as FormValue | undefined;
-
-  if (isPreviousAnswerValueEmpty(value)) {
-    return <EmptyPlaceholder block={block} />;
+  switch (answer.shape) {
+    case PreviousAnswerShape.List:
+      return (
+        <RenderPreviousAnswerList
+          block={block}
+          field={answer.field}
+          value={answer.rows}
+        />
+      );
+    case PreviousAnswerShape.Single:
+      return (
+        <div>
+          {block.title && (
+            <h3 className="text-base font-medium text-zinc-900 mb-2">
+              {block.title}
+            </h3>
+          )}
+          <RenderField
+            field={answer.field}
+            value={answer.value}
+            disabled={true}
+            hideLabel={block.showLabel === false}
+            fieldContext={staticFieldContext}
+          />
+        </div>
+      );
+    default:
+      throw new Error(`unknown shape: ${answer satisfies never}`);
   }
-
-  if (field.kind === "list") {
-    return (
-      <RenderPreviousAnswerList
-        block={block}
-        field={field as ListField}
-        value={value as ListFieldValue}
-      />
-    );
-  }
-
-  return (
-    <div>
-      {block.title && (
-        <h3 className="text-base font-medium text-zinc-900 mb-2">
-          {block.title}
-        </h3>
-      )}
-      <RenderField
-        field={field}
-        value={value}
-        disabled={true}
-        hideLabel={block.showLabel === false}
-        fieldContext={staticFieldContext}
-      />
-    </div>
-  );
 }
 
 function RenderPreviousAnswerList({
@@ -88,10 +84,6 @@ function RenderPreviousAnswerList({
   value: ListFieldValue;
 }) {
   const visibleSubFields = getVisiblePreviousAnswerSubFields(field, block);
-
-  if (!Array.isArray(value) || value.length === 0) {
-    return <EmptyPlaceholder block={block} />;
-  }
 
   return (
     <div>
