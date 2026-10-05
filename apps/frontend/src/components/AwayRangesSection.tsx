@@ -1,3 +1,7 @@
+import {
+  hasAwayRangeEnded,
+  isAwayRangeStartLocked,
+} from "@alliance/common/awayRange";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { UserAwayRangeDto, UserAwayRangeReason } from "@alliance/shared/client";
 import {
@@ -218,6 +222,8 @@ const AwayRangesSection: React.FC = () => {
                         type="date"
                         value={editStartDate}
                         onChange={(e) => setEditStartDate(e.target.value)}
+                        min={formatDateForInput(new Date())}
+                        disabled={isAwayRangeStartLocked(range)}
                       />
                     </div>
                     <div className="flex-1">
@@ -229,10 +235,23 @@ const AwayRangesSection: React.FC = () => {
                         type="date"
                         value={editEndDate}
                         onChange={(e) => setEditEndDate(e.target.value)}
-                        min={editStartDate}
+                        min={
+                          isAwayRangeStartLocked(range)
+                            ? formatDateForInput(new Date())
+                            : editStartDate
+                        }
+                        disabled={
+                          isAwayRangeStartLocked(range) &&
+                          hasAwayRangeEnded(range)
+                        }
                       />
                     </div>
                   </div>
+                  {isAwayRangeStartLocked(range) && (
+                    <p className="text-sm text-zinc-500">
+                      {"Days that have already begun can't be changed."}
+                    </p>
+                  )}
                   <div className="flex flex-col gap-1">
                     <label className="text-sm font-medium">Reason</label>
                     <DropdownSelect
