@@ -39,6 +39,7 @@ import {
   type OutputAnswer,
 } from "@alliance/common/forms/output-resolution";
 import { echoesStoredKey } from "@alliance/common/image-src";
+import { nameParts } from "@alliance/common/nameParts";
 import { run } from "@alliance/common/run";
 import { Assert } from "@alliance/common/types";
 import { describeSchemaIssues } from "@alliance/common/zod-issues";
@@ -1372,7 +1373,7 @@ export class ActionsService {
   ): string {
     return user.anonymous
       ? ANONYMOUS_DISPLAY_NAME
-      : user.name.trim().split(/\s+/)[0] || ANONYMOUS_DISPLAY_NAME;
+      : nameParts(user.name).firstname || ANONYMOUS_DISPLAY_NAME;
   }
 
   async findAllGeneralUpdates(): Promise<GeneralUpdate[]> {

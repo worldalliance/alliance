@@ -1,3 +1,4 @@
+import { nameParts } from "@alliance/common/nameParts";
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -63,10 +64,9 @@ export class ContractReminderWorker {
 
         for (const user of users) {
           try {
-            const firstName = user.name.split(" ")[0];
             await this.mailService.sendContractReminderEmail(
               user.email,
-              firstName,
+              nameParts(user.name).firstname,
             );
           } catch (err) {
             this.logger.error(
