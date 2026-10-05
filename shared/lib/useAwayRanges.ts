@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { UserAwayRangeDto } from "../client";
+import { AwayRangeStatus, awayRangeStatus } from "./awayRangesFormatters";
 
 export function useAwayRanges(awayRanges: UserAwayRangeDto[] | undefined) {
   const sortedAwayRanges = useMemo(() => {
@@ -13,17 +14,17 @@ export function useAwayRanges(awayRanges: UserAwayRangeDto[] | undefined) {
   const currentAwayRange = useMemo(() => {
     const now = new Date();
     return (
-      sortedAwayRanges.find((range) => {
-        const start = new Date(range.startDate);
-        const end = new Date(range.endDate);
-        return start <= now && now <= end;
-      }) ?? null
+      sortedAwayRanges.find(
+        (range) => awayRangeStatus(range, now) === AwayRangeStatus.Current,
+      ) ?? null
     );
   }, [sortedAwayRanges]);
 
   const upcomingOrCurrentAwayRanges = useMemo(() => {
     const now = new Date();
-    return sortedAwayRanges.filter((range) => new Date(range.endDate) >= now);
+    return sortedAwayRanges.filter(
+      (range) => awayRangeStatus(range, now) !== AwayRangeStatus.Past,
+    );
   }, [sortedAwayRanges]);
 
   return {

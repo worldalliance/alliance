@@ -18,6 +18,21 @@ export const AWAY_REASON_OPTIONS = AWAY_REASONS.map((value) => ({
   label: AWAY_REASON_LABELS[value],
 }));
 
+export enum AwayRangeStatus {
+  Current = "current",
+  Upcoming = "upcoming",
+  Past = "past",
+}
+
+export function awayRangeStatus(
+  range: Pick<UserAwayRangeDto, "startDate" | "endDate">,
+  now = new Date(),
+): AwayRangeStatus {
+  if (new Date(range.startDate) > now) return AwayRangeStatus.Upcoming;
+  if (new Date(range.endDate) >= now) return AwayRangeStatus.Current;
+  return AwayRangeStatus.Past;
+}
+
 export function formatAwayRange(range: UserAwayRangeDto): string {
   const start = new Date(range.startDate);
   const end = new Date(range.endDate);
