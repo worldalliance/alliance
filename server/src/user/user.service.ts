@@ -118,6 +118,7 @@ import {
   AmbassadorProgramDashboard,
   AmbassadorProgramInviteStats,
   type AmbassadorProgramMemberWithInviteStats,
+  type AmbassadorProgramMemberWithUser,
   CreateAmbassadorInviteGoalDto,
   CreateAmbassadorProgramInteractionDto,
   CreateOnetimeInviteDto,
@@ -269,7 +270,7 @@ export class UserService {
     @InjectRepository(AmbassadorInviteGoal)
     private readonly ambassadorInviteGoalRepository: TypedRepository<AmbassadorInviteGoal>,
     @InjectRepository(AmbassadorProgramMember)
-    private readonly ambassadorProgramMemberRepository: Repository<AmbassadorProgramMember>,
+    private readonly ambassadorProgramMemberRepository: TypedRepository<AmbassadorProgramMember>,
     @InjectRepository(AmbassadorProgramInteraction)
     private readonly ambassadorProgramInteractionRepository: Repository<AmbassadorProgramInteraction>,
     @InjectRepository(UserAwayRange)
@@ -1926,7 +1927,7 @@ export class UserService {
 
   private async findAmbassadorProgramMemberOrFail(
     userId: number,
-  ): Promise<AmbassadorProgramMember> {
+  ): Promise<AmbassadorProgramMemberWithUser> {
     const member = await this.ambassadorProgramMemberRepository.findOne({
       where: { user: { id: userId } },
       relations: {
@@ -1945,7 +1946,7 @@ export class UserService {
 
   async upsertAmbassadorProgramMember(
     body: UpsertAmbassadorProgramMemberDto,
-  ): Promise<AmbassadorProgramMember> {
+  ): Promise<AmbassadorProgramMemberWithUser> {
     const userP = this.findOneOrFail(body.userId, {
       contractEvents: true,
       tags: true,
@@ -1980,7 +1981,7 @@ export class UserService {
   async updateAmbassadorProgramMember(
     userId: number,
     body: UpdateAmbassadorProgramMemberDto,
-  ): Promise<AmbassadorProgramMember> {
+  ): Promise<AmbassadorProgramMemberWithUser> {
     const member = await this.findAmbassadorProgramMemberOrFail(userId);
 
     if (body.invited !== undefined) {
@@ -1997,7 +1998,7 @@ export class UserService {
   async createAmbassadorProgramInteraction(
     body: CreateAmbassadorProgramInteractionDto,
     createdByUserId: number,
-  ): Promise<AmbassadorProgramMember> {
+  ): Promise<AmbassadorProgramMemberWithUser> {
     const [member, createdBy] = await Promise.all([
       this.upsertAmbassadorProgramMember({
         userId: body.userId,
