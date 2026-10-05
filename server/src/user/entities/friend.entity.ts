@@ -77,8 +77,7 @@ export class Friend {
     onDelete: "SET NULL",
   })
   @JoinColumn()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  sentNotif: Relation<Notification> | null;
+  sentNotif?: Relation<Notification> | null;
 
   @OneToOne(() => Notification, {
     cascade: true,
@@ -86,6 +85,5 @@ export class Friend {
     onDelete: "SET NULL",
   })
   @JoinColumn()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  acceptedNotif: Relation<Notification> | null;
+  acceptedNotif?: Relation<Notification> | null;
 }
