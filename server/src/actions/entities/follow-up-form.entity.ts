@@ -80,9 +80,8 @@ export class FollowUpForm {
   @ManyToOne(() => Form, { onDelete: "CASCADE" })
   @JoinColumn({ name: "formId" })
   @Type(() => Form)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  form: Relation<Form>;
+  @IsOptional()
+  form?: Relation<Form>;
 }
 
 /**
