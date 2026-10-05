@@ -1,6 +1,7 @@
 import type { ImagesBlock } from "@alliance/common/forms/display-blocks";
 import { R, type Result } from "@alliance/common/result";
 import { pending, type Pending } from "@alliance/shared/lib/testing/pending";
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as uploadModule from "@alliance/shared/lib/uploadImageDataUri";
 import * as readFileDataUriModule from "@alliance/sharedweb/lib/readFileDataUri";
@@ -263,7 +264,7 @@ afterEach(() => {
 
 describe("EditableImagesBlock", () => {
   it("keeps the edits made while the upload was in flight", async () => {
-    render(<Form />);
+    render(<Form />, queryWrapper());
     await pick(["a.png"]);
 
     const title = screen.getByLabelText<HTMLInputElement>("Form title");
@@ -279,7 +280,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("lands the pictures on the user they were picked for", async () => {
-    render(<PerUserForm />);
+    render(<PerUserForm />, queryWrapper());
     await act(async () => {});
     await pick(["a.png"]);
     await editDefault();
@@ -297,7 +298,7 @@ describe("EditableImagesBlock", () => {
   for (const { name, addressed } of wirings) {
     it(`names the target by the name the user list answers with, through ${name}`, async () => {
       users = [{ id: 1, name: "Alice", hasActiveContract: true }];
-      render(<PerUserForm addressed={addressed} />);
+      render(<PerUserForm addressed={addressed} />, queryWrapper());
       await pick(["a.png"]);
       await act(async () => {});
       await editDefault();
@@ -311,7 +312,7 @@ describe("EditableImagesBlock", () => {
 
   it("falls back to the id for a target the list gives no name", async () => {
     users = [{ id: 1, name: "", hasActiveContract: true }];
-    render(<PerUserForm />);
+    render(<PerUserForm />, queryWrapper());
     await pick(["a.png"]);
     await act(async () => {});
     await editDefault();
@@ -323,7 +324,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("names the target of a part-failed batch that landed off screen", async () => {
-    render(<PerUserForm />);
+    render(<PerUserForm />, queryWrapper());
     await act(async () => {});
     await pick(["a.png", "b.png"]);
     await editDefault();
@@ -341,7 +342,7 @@ describe("EditableImagesBlock", () => {
 
   it("names the target of a wholly failed batch once the admin pages", async () => {
     users = [{ id: 1, name: "Alice", hasActiveContract: true }];
-    render(<PerUserForm />);
+    render(<PerUserForm />, queryWrapper());
     await act(async () => {});
     await editDefault();
     await pick(["a.png"]);
@@ -358,7 +359,7 @@ describe("EditableImagesBlock", () => {
 
   it("names the user a wholly failed batch was picked for", async () => {
     users = [{ id: 1, name: "Alice", hasActiveContract: true }];
-    render(<PerUserForm />);
+    render(<PerUserForm />, queryWrapper());
     await act(async () => {});
     await pick(["a.png"]);
     await editDefault();
@@ -373,7 +374,7 @@ describe("EditableImagesBlock", () => {
 
   it("keeps the failure when the admin pages back to its target", async () => {
     users = [{ id: 1, name: "Alice", hasActiveContract: true }];
-    render(<PerUserForm />);
+    render(<PerUserForm />, queryWrapper());
     await act(async () => {});
     await pick(["a.png", "b.png"]);
     await editDefault();
@@ -393,7 +394,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("says nothing when the pictures land in view", async () => {
-    render(<PerUserForm />);
+    render(<PerUserForm />, queryWrapper());
     await act(async () => {});
     await pick(["a.png"]);
 
@@ -408,7 +409,7 @@ describe("EditableImagesBlock", () => {
 
   it("keeps quiet when per-user content goes away under a batch", async () => {
     users = [{ id: 1, name: "Alice", hasActiveContract: true }];
-    render(<PerUserForm />);
+    render(<PerUserForm />, queryWrapper());
     await act(async () => {});
     await pick(["a.png"]);
     await settle(reads, R.success("data:image/png;base64,aaa"));
@@ -426,7 +427,7 @@ describe("EditableImagesBlock", () => {
   for (const { name, addressed } of wirings) {
     it(`names the default a batch fell back to, not the user it was picked for, through ${name}`, async () => {
       users = [{ id: 1, name: "Alice", hasActiveContract: true }];
-      render(<PerUserForm addressed={addressed} />);
+      render(<PerUserForm addressed={addressed} />, queryWrapper());
       await act(async () => {});
       await pick(["a.png", "b.png"]);
 
@@ -445,7 +446,7 @@ describe("EditableImagesBlock", () => {
 
   it("stops naming a user a wholly failed batch would no longer have reached", async () => {
     users = [{ id: 1, name: "Alice", hasActiveContract: true }];
-    render(<PerUserForm />);
+    render(<PerUserForm />, queryWrapper());
     await act(async () => {});
     await pick(["a.png"]);
     await settle(reads, R.success("data:image/png;base64,aaa"));
@@ -459,7 +460,7 @@ describe("EditableImagesBlock", () => {
 
   it("lands the pictures on the default they were picked for", async () => {
     users = [{ id: 1, name: "Alice", hasActiveContract: true }];
-    render(<PerUserForm />);
+    render(<PerUserForm />, queryWrapper());
     await act(async () => {});
     await editDefault();
     await pick(["a.png"]);
@@ -478,7 +479,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("keeps an override written after the row left the screen", async () => {
-    render(<PerUserForm addressed />);
+    render(<PerUserForm addressed />, queryWrapper());
     await act(async () => {});
     await pick(["a.png"]);
     await settle(reads, R.success("data:image/png;base64,aaa"));
@@ -501,8 +502,8 @@ describe("EditableImagesBlock", () => {
 
   it("starts a user's first override from the default", async () => {
     users = [{ id: 1, name: "Alice", hasActiveContract: true }];
-    render(<PerUserForm initial={noOverrideBlock} />);
-    await act(async () => {});
+    render(<PerUserForm initial={noOverrideBlock} />, queryWrapper());
+    await screen.findByText("0 set / 1 total");
     await pick(["a.png"]);
     await editDefault();
 
@@ -516,7 +517,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("cancels the batch and keeps the pictures that landed", async () => {
-    render(<Form />);
+    render(<Form />, queryWrapper());
     await pick(["a.png", "b.png"]);
 
     await settle(reads, R.success("data:image/png;base64,aaa"));
@@ -535,7 +536,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("drops a picture that lands after the click", async () => {
-    render(<Form />);
+    render(<Form />, queryWrapper());
     await pick(["a.png"]);
     await settle(reads, R.success("data:image/png;base64,aaa"));
 
@@ -546,7 +547,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("counts a dropped batch against the files it tried", async () => {
-    render(<Form />);
+    render(<Form />, queryWrapper());
     await pick(["a.png", "b.png", "c.png"]);
 
     await settle(reads, R.success("data:image/png;base64,aaa"));
@@ -563,7 +564,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("clears what the dropped batch said when the admin picks again", async () => {
-    render(<Form />);
+    render(<Form />, queryWrapper());
     await pick(["a.png", "b.png"]);
 
     await settle(reads, R.success("data:image/png;base64,aaa"));
@@ -579,7 +580,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("frees the block on the click, before the read it is waiting on", async () => {
-    render(<Form />);
+    render(<Form />, queryWrapper());
     await pick(["a.png"]);
 
     await cancel();
@@ -590,7 +591,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("lands the pictures after the row leaves the screen", async () => {
-    render(<Form />);
+    render(<Form />, queryWrapper());
     await pick(["a.png"]);
     await settle(reads, R.success("data:image/png;base64,aaa"));
 
@@ -607,7 +608,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("leaves the form alone when the block is removed mid-upload", async () => {
-    render(<Form />);
+    render(<Form />, queryWrapper());
     await pick(["a.png"]);
     await settle(reads, R.success("data:image/png;base64,aaa"));
 
@@ -625,7 +626,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("says the pictures were dropped when the block is gone", async () => {
-    render(<Form />);
+    render(<Form />, queryWrapper());
     await pick(["a.png", "b.png"]);
     await settle(reads, R.success("data:image/png;base64,aaa"));
     await settle(uploads, R.success("uploads/a.webp"));
@@ -640,7 +641,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("counts what a dropped batch got as far as the server", async () => {
-    render(<Form />);
+    render(<Form />, queryWrapper());
     await pick(["a.png", "b.png"]);
     await settle(reads, R.success("data:image/png;base64,aaa"));
     await settle(uploads, R.success("uploads/a.webp"));
@@ -655,7 +656,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("says nothing when the block only left the screen", async () => {
-    render(<Form />);
+    render(<Form />, queryWrapper());
     await pick(["a.png"]);
     await settle(reads, R.success("data:image/png;base64,aaa"));
 
@@ -667,7 +668,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("drops a file the cancel beat, read and all", async () => {
-    render(<Form />);
+    render(<Form />, queryWrapper());
     await pick(["a.png", "b.png"]);
 
     await cancel();
@@ -680,7 +681,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("cuts the read the cancel could otherwise not reach", async () => {
-    render(<Form />);
+    render(<Form />, queryWrapper());
     await pick(["a.png"]);
 
     const read = reads[0];
@@ -690,7 +691,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("frees the block and says so when an upload throws", async () => {
-    render(<Form />);
+    render(<Form />, queryWrapper());
     await pick(["a.png"]);
     await settle(reads, R.success("data:image/png;base64,aaa"));
 
@@ -702,7 +703,7 @@ describe("EditableImagesBlock", () => {
   });
 
   it("leaves the batch picked after the cancel alone when the dropped one unwinds", async () => {
-    render(<Form />);
+    render(<Form />, queryWrapper());
     await pick(["a.png", "b.png"]);
     await cancel();
 
