@@ -1,6 +1,14 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsInt, IsNumber, IsString, Max, Min } from "class-validator";
+import {
+  Allow,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -47,9 +55,8 @@ export class ActionFormVariant {
   @ManyToOne(() => Form, { onDelete: "RESTRICT" })
   @JoinColumn({ name: "formId" })
   @Type(() => Form)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  form: Relation<Form>;
+  @IsOptional()
+  form?: Relation<Form>;
 
   @Column({ type: "text" })
   @ApiProperty()
