@@ -4,15 +4,11 @@ import {
   AmbassadorInviteProjectionDto,
   AmbassadorProgramMemberDto,
   UserDto,
-  userCreateAmbassadorProgramInteractionAdmin,
   userListForGraphAdmin,
-  userUpdateAmbassadorProgramMemberAdmin,
-  userUpsertAmbassadorProgramMemberAdmin,
 } from "@alliance/shared/client";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   CalendarDays,
   Plus,
@@ -22,7 +18,12 @@ import {
 } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { useAmbassadorProgramAdmin } from "../lib/useAmbassadorProgramAdmin";
+import {
+  useAmbassadorProgramAdmin,
+  useCreateAmbassadorProgramInteractionAdmin,
+  useUpdateAmbassadorProgramMemberAdmin,
+  useUpsertAmbassadorProgramMemberAdmin,
+} from "../lib/useAmbassadorProgramAdmin";
 
 type ProgramSection = "invited" | "active";
 
@@ -596,7 +597,6 @@ const ProgramSectionPanel: React.FC<{
 };
 
 const AmbassadorProgramPage: React.FC = () => {
-  const queryClient = useQueryClient();
   const [filter, setFilter] = useState("");
 
   const dashboardQuery = useAmbassadorProgramAdmin();
@@ -609,49 +609,9 @@ const AmbassadorProgramPage: React.FC = () => {
       ),
   });
 
-  const invalidateDashboard = () =>
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.ambassadorProgramAdmin(),
-    });
-
-  const upsertMember = useMutation({
-    mutationFn: (body: {
-      userId: number;
-      invited?: boolean;
-      activeParticipant?: boolean;
-    }) =>
-      userUpsertAmbassadorProgramMemberAdmin({
-        body,
-        throwOnError: true,
-      }).then((response) => response.data),
-    onSuccess: invalidateDashboard,
-  });
-
-  const updateMember = useMutation({
-    mutationFn: (params: {
-      userId: number;
-      body: { invited?: boolean; activeParticipant?: boolean };
-    }) =>
-      userUpdateAmbassadorProgramMemberAdmin({
-        path: { userId: params.userId },
-        body: params.body,
-        throwOnError: true,
-      }).then((response) => response.data),
-    onSuccess: invalidateDashboard,
-  });
-
-  const createInteraction = useMutation({
-    mutationFn: (body: {
-      userId: number;
-      text: string;
-      interactionDate: string;
-    }) =>
-      userCreateAmbassadorProgramInteractionAdmin({
-        body,
-        throwOnError: true,
-      }).then((response) => response.data),
-    onSuccess: invalidateDashboard,
-  });
+  const upsertMember = useUpsertAmbassadorProgramMemberAdmin();
+  const updateMember = useUpdateAmbassadorProgramMemberAdmin();
+  const createInteraction = useCreateAmbassadorProgramInteractionAdmin();
 
   const records = useMemo(
     () => dashboardQuery.data?.members ?? [],
