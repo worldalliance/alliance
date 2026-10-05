@@ -66,6 +66,7 @@ interface ActionFormProps {
   actionId?: number;
   allActions?: (ReferencedAction & { name: string; usersCompleted: number })[];
   allActionsLoading?: boolean;
+  allActionsLoadFailed: boolean;
   memberActionStart: Date | null;
   memberActionDeadline: Date | null;
 }
@@ -143,6 +144,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
   actionId,
   allActions = [],
   allActionsLoading = false,
+  allActionsLoadFailed,
   memberActionStart,
   memberActionDeadline,
 }) => {
@@ -800,6 +802,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
           tagsError={tagsError}
           availableActions={allActions}
           actionsLoading={allActionsLoading}
+          actionsError={allActionsLoadFailed}
           availableUsers={availableUsers}
           usersLoading={usersLoading}
           activeContractUserIds={activeContractUserIds}

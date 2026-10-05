@@ -1026,6 +1026,7 @@ const ActionDashboard: React.FC = () => {
             onReviewersChange={setReviewerRows}
             allActions={allActions}
             allActionsLoading={allActionsLoading}
+            allActionsLoadFailed={allActionsLoadFailed}
             memberActionStart={memberActionStart}
             memberActionDeadline={memberActionDeadline}
           />
@@ -1603,6 +1604,7 @@ const ActionDashboard: React.FC = () => {
                   onReviewersChange={setReviewerRows}
                   allActions={allActions}
                   allActionsLoading={allActionsLoading}
+                  allActionsLoadFailed={allActionsLoadFailed}
                   memberActionStart={memberActionStart}
                   memberActionDeadline={memberActionDeadline}
                 />
@@ -1646,6 +1648,7 @@ const ActionDashboard: React.FC = () => {
                 tagsError={tagsError}
                 availableActions={allActions}
                 actionsLoading={allActionsLoading}
+                actionsError={allActionsLoadFailed}
                 availableUsers={availableUsers}
               />
             )}

@@ -55,6 +55,7 @@ interface CohortExpressionBuilderProps {
   tagsError: boolean;
   availableActions: { id: number; name: string }[];
   actionsLoading: boolean;
+  actionsError: boolean;
   availableUsers: UserSelectUser[];
   usersLoading?: boolean;
   activeContractUserIds?: Set<number>;
@@ -115,6 +116,21 @@ function createDefaultLeaf(type: LeafCondition["type"]): LeafCondition {
 
 // --- Leaf Editors ---
 
+const UnmatchedOption: React.FC<{
+  value: string | number;
+  loading: boolean;
+  error: boolean;
+  noun: string;
+}> = ({ value, loading, error, noun }) => (
+  <option value={value} disabled>
+    {loading
+      ? `Loading ${noun}s…`
+      : error
+        ? `Couldn't load ${noun}s`
+        : `Deleted ${noun}`}
+  </option>
+);
+
 export const TagEditor: React.FC<{
   value: TagCondition;
   onChange: (v: TagCondition) => void;
@@ -129,13 +145,12 @@ export const TagEditor: React.FC<{
   >
     <option value="">Select tag...</option>
     {value.tagId && !availableTags.some((tag) => tag.id === value.tagId) && (
-      <option value={value.tagId} disabled>
-        {tagsLoading
-          ? "Loading tags..."
-          : tagsError
-            ? "Couldn't load tags"
-            : "Deleted tag"}
-      </option>
+      <UnmatchedOption
+        value={value.tagId}
+        loading={tagsLoading}
+        error={tagsError}
+        noun="tag"
+      />
     )}
     {availableTags.map((tag) => (
       <option key={tag.id} value={tag.id}>
@@ -169,7 +184,8 @@ export const ActionSelectEditor: React.FC<{
   onChange: (v: ActionSelectCondition) => void;
   availableActions: { id: number; name: string }[];
   actionsLoading: boolean;
-}> = ({ value, onChange, availableActions, actionsLoading }) => (
+  actionsError: boolean;
+}> = ({ value, onChange, availableActions, actionsLoading, actionsError }) => (
   <select
     value={value.actionId || ""}
     disabled={actionsLoading}
@@ -177,8 +193,21 @@ export const ActionSelectEditor: React.FC<{
     className="w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
   >
     <option value="">
-      {actionsLoading ? "Loading actions…" : "Select action..."}
+      {actionsLoading
+        ? "Loading actions…"
+        : actionsError
+          ? "Couldn't load actions"
+          : "Select action..."}
     </option>
+    {!!value.actionId &&
+      !availableActions.some((a) => a.id === value.actionId) && (
+        <UnmatchedOption
+          value={value.actionId}
+          loading={actionsLoading}
+          error={actionsError}
+          noun="action"
+        />
+      )}
     {availableActions.map((a) => (
       <option key={a.id} value={a.id}>
         {a.name}
@@ -483,6 +512,7 @@ const LeafConditionEditor: React.FC<{
           onChange={onChange}
           availableActions={props.availableActions}
           actionsLoading={props.actionsLoading}
+          actionsError={props.actionsError}
         />
       );
     case "FormFieldValue":
@@ -860,7 +890,9 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
             <option value="">
               {props.actionsLoading
                 ? "Loading actions…"
-                : "Select action to compare..."}
+                : props.actionsError
+                  ? "Couldn't load actions"
+                  : "Select action to compare..."}
             </option>
             {props.availableActions.map((a) => (
               <option key={a.id} value={a.id}>
