@@ -3,7 +3,10 @@ import type { Repository } from "typeorm";
 import { EventLog, EventType } from "../src/eventlog/event-log.entity";
 import { EmailType } from "../src/mail/mail.entity";
 import { MailService } from "../src/mail/mail.service";
-import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
+import {
+  WaitlistEntry,
+  WaitlistSpamStatus,
+} from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistMailAllowance } from "../src/waitlist/entities/waitlist-mail-allowance.entity";
 import { WaitlistMailService } from "../src/waitlist/waitlist-mail.service";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
@@ -177,6 +180,36 @@ describe("Waitlist mail (e2e)", () => {
 
     expect(sendShareLink).toHaveBeenCalledTimes(2);
     expect(sendLink).not.toHaveBeenCalled();
+  });
+
+  it("mails no spam-like entry, confirming or answering a link request", async () => {
+    const suspected = uniqueEmail();
+    await submit(suspected)
+      .send({ reason: "biJrcBSgyHNPuKeQHjlts" })
+      .expect(200);
+    const spam = uniqueEmail();
+    await entryRepo.update(
+      { id: (await enter(spam)).id },
+      { spamStatus: WaitlistSpamStatus.Spam },
+    );
+
+    await requestLink(suspected).expect(204);
+    await requestLink(spam).expect(204);
+    await settled();
+
+    expect(sendShareLink).toHaveBeenCalledTimes(3);
+    expect(sendLink).not.toHaveBeenCalled();
+  });
+
+  it("mails an entry staff marked not spam", async () => {
+    const email = uniqueEmail();
+    await entryRepo.update(
+      { id: (await enter(email)).id },
+      { spamStatus: WaitlistSpamStatus.NotSpam },
+    );
+    await requestLink(email).expect(204);
+    await settled();
+    expect(sentTo(email)).toHaveLength(1);
   });
 
   it("mails an address once a day across entry and link requests", async () => {

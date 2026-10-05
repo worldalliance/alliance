@@ -13,6 +13,14 @@ import {
 } from "typeorm";
 import { WaitlistLink } from "./waitlist-link.entity";
 
+/** The heuristic sets `Clean` or `Suspected`; staff set `Spam` or `NotSpam`. */
+export enum WaitlistSpamStatus {
+  Clean = "clean",
+  Suspected = "suspected",
+  Spam = "spam",
+  NotSpam = "not_spam",
+}
+
 /** A person waiting to join, separate from any account. */
 @Entity()
 // migration:generate drops backslashes from CHECK expressions, so match
@@ -78,6 +86,13 @@ export class WaitlistEntry {
 
   @Column({ type: "timestamptz", nullable: true })
   unsubscribedAt: Date | null;
+
+  @Column({
+    type: "enum",
+    enum: WaitlistSpamStatus,
+    default: WaitlistSpamStatus.Clean,
+  })
+  spamStatus: WaitlistSpamStatus;
 
   /** Carried by the unsubscribe link, since the personal code is public. */
   @Index({ unique: true })

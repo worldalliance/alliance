@@ -24,7 +24,10 @@ import {
   WaitlistEntryAction,
   WaitlistEntryActionKind,
 } from "../src/waitlist/entities/waitlist-entry-action.entity";
-import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
+import {
+  WaitlistEntry,
+  WaitlistSpamStatus,
+} from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistLink } from "../src/waitlist/entities/waitlist-link.entity";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
 import { createTestApp, TestContext, waitForLockWait } from "./e2e-test-utils";
@@ -93,6 +96,17 @@ describe("Waitlist entry admin (e2e)", () => {
     const res = await search(filter).expect(200);
     return res.body.entries.map((entry: { id: number }) => entry.id);
   };
+
+  const post = (path: string, entryIds: number[]) =>
+    request(server())
+      .post(`/waitlist/admin/entries/${path}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({ entryIds });
+
+  const actionsOf = (entryId: number) =>
+    ctx.dataSource
+      .getRepository(WaitlistEntryAction)
+      .find({ where: { entryId }, order: { id: "ASC" } });
 
   beforeAll(async () => {
     ctx = await createTestApp([WaitlistModule]);
@@ -434,17 +448,6 @@ describe("Waitlist entry admin (e2e)", () => {
   });
 
   describe("mobilizing", () => {
-    const post = (path: string, entryIds: number[]) =>
-      request(server())
-        .post(`/waitlist/admin/entries/${path}`)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-        .send({ entryIds });
-
-    const actionsOf = (entryId: number) =>
-      ctx.dataSource
-        .getRepository(WaitlistEntryAction)
-        .find({ where: { entryId }, order: { id: "ASC" } });
-
     it("marks and unmarks only entries whose status changes, recording who", async () => {
       const waiting = await saveEntry({ reason: "Waiting" });
       const earlier = new Date("2026-01-01T00:00:00Z");
@@ -516,6 +519,82 @@ describe("Waitlist entry admin (e2e)", () => {
     it("rejects non-admins", async () => {
       await request(server())
         .post("/waitlist/admin/entries/mobilize")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ entryIds: [] })
+        .expect(401);
+    });
+  });
+
+  describe("spam", () => {
+    it("filters by spam status, applying no default", async () => {
+      const organization = await saveOrganization("Spam Org");
+      const organizationIds = [organization.id];
+      const clean = await saveEntry({ organizationId: organization.id });
+      const suspected = await saveEntry({
+        organizationId: organization.id,
+        spamStatus: WaitlistSpamStatus.Suspected,
+      });
+      const notSpam = await saveEntry({
+        organizationId: organization.id,
+        spamStatus: WaitlistSpamStatus.NotSpam,
+      });
+
+      expect(await searchIds({ organizationIds })).toEqual([
+        clean.id,
+        suspected.id,
+        notSpam.id,
+      ]);
+      expect(
+        await searchIds({
+          organizationIds,
+          spamStatuses: [WaitlistSpamStatus.Clean, WaitlistSpamStatus.NotSpam],
+        }),
+      ).toEqual([clean.id, notSpam.id]);
+      const res = await search({
+        organizationIds,
+        spamStatuses: [WaitlistSpamStatus.Suspected],
+      }).expect(200);
+      expect(res.body.entries).toMatchObject([
+        { id: suspected.id, spamStatus: WaitlistSpamStatus.Suspected },
+      ]);
+    });
+
+    it("marks only entries whose status changes, recording who", async () => {
+      const suspected = await saveEntry({
+        reason: "Suspected",
+        spamStatus: WaitlistSpamStatus.Suspected,
+      });
+      const spam = await saveEntry({
+        reason: "Spam",
+        spamStatus: WaitlistSpamStatus.Spam,
+      });
+
+      const marked = await post("mark-spam", [suspected.id, spam.id]).expect(
+        200,
+      );
+      expect(marked.body.changed).toBe(1);
+      expect(await actionsOf(spam.id)).toEqual([]);
+
+      const unmarked = await post("mark-not-spam", [suspected.id]).expect(200);
+      expect(unmarked.body.changed).toBe(1);
+      expect(
+        (await entryRepo.findOneByOrFail({ id: suspected.id })).spamStatus,
+      ).toBe(WaitlistSpamStatus.NotSpam);
+      expect(await actionsOf(suspected.id)).toMatchObject([
+        {
+          kind: WaitlistEntryActionKind.MarkSpam,
+          staffUserId: ctx.adminUserId,
+        },
+        {
+          kind: WaitlistEntryActionKind.MarkNotSpam,
+          staffUserId: ctx.adminUserId,
+        },
+      ]);
+    });
+
+    it("rejects non-admins", async () => {
+      await request(server())
+        .post("/waitlist/admin/entries/mark-spam")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({ entryIds: [] })
         .expect(401);

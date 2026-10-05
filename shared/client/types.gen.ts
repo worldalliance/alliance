@@ -4447,6 +4447,8 @@ export type WaitlistCountDto = {
 
 export type WaitlistInviteState = 'none' | 'unused' | 'claimed' | 'revoked';
 
+export type WaitlistSpamStatus = 'clean' | 'suspected' | 'spam' | 'not_spam';
+
 export type WaitlistEntryFilterDto = {
     /**
      * Matches part of a name or email
@@ -4465,6 +4467,7 @@ export type WaitlistEntryFilterDto = {
      */
     tagIds?: Array<number>;
     inviteStates?: Array<WaitlistInviteState>;
+    spamStatuses?: Array<WaitlistSpamStatus>;
 };
 
 export type WaitlistEntrySort = 'joined_desc' | 'joined_asc' | 'organization_asc' | 'organization_desc';
@@ -4502,6 +4505,7 @@ export type AdminWaitlistEntryDto = {
     createdAt: string;
     mobilizedAt: string | null;
     unsubscribedAt: string | null;
+    spamStatus: WaitlistSpamStatus;
     inviteState: WaitlistInviteState;
     tags: Array<WaitlistTagDto>;
 };
@@ -4716,7 +4720,11 @@ export type WaitlistEmailPreviewDto = {
      */
     unsubscribed: number;
     /**
-     * Subscribed selected entries whose invite an account claimed, skipped unless included
+     * Subscribed selected entries skipped as spam or suspected spam
+     */
+    spam: number;
+    /**
+     * Subscribed, non-spam selected entries whose invite an account claimed, skipped unless included
      */
     claimed: number;
     recipientIds: Array<number>;
@@ -4798,7 +4806,7 @@ export type WaitlistEmailBatchDto = {
 
 export type WaitlistEmailRecipientStatus = 'pending' | 'sending' | 'sent' | 'failed' | 'uncertain' | 'skipped';
 
-export type WaitlistEmailSkipReason = 'unsubscribed' | 'invite_claimed';
+export type WaitlistEmailSkipReason = 'unsubscribed' | 'invite_claimed' | 'spam';
 
 export type WaitlistEmailRecipientDto = {
     id: number;
@@ -14068,6 +14076,50 @@ export type WaitlistAdminUnmobilizeEntriesAdminResponses = {
 };
 
 export type WaitlistAdminUnmobilizeEntriesAdminResponse = WaitlistAdminUnmobilizeEntriesAdminResponses[keyof WaitlistAdminUnmobilizeEntriesAdminResponses];
+
+export type WaitlistAdminMarkEntriesSpamAdminData = {
+    body: WaitlistEntryIdsBodyDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/entries/mark-spam';
+};
+
+export type WaitlistAdminMarkEntriesSpamAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminMarkEntriesSpamAdminError = WaitlistAdminMarkEntriesSpamAdminErrors[keyof WaitlistAdminMarkEntriesSpamAdminErrors];
+
+export type WaitlistAdminMarkEntriesSpamAdminResponses = {
+    200: WaitlistChangeCountDto;
+};
+
+export type WaitlistAdminMarkEntriesSpamAdminResponse = WaitlistAdminMarkEntriesSpamAdminResponses[keyof WaitlistAdminMarkEntriesSpamAdminResponses];
+
+export type WaitlistAdminMarkEntriesNotSpamAdminData = {
+    body: WaitlistEntryIdsBodyDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/entries/mark-not-spam';
+};
+
+export type WaitlistAdminMarkEntriesNotSpamAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminMarkEntriesNotSpamAdminError = WaitlistAdminMarkEntriesNotSpamAdminErrors[keyof WaitlistAdminMarkEntriesNotSpamAdminErrors];
+
+export type WaitlistAdminMarkEntriesNotSpamAdminResponses = {
+    200: WaitlistChangeCountDto;
+};
+
+export type WaitlistAdminMarkEntriesNotSpamAdminResponse = WaitlistAdminMarkEntriesNotSpamAdminResponses[keyof WaitlistAdminMarkEntriesNotSpamAdminResponses];
 
 export type WaitlistAdminRevokeEntryInvitesAdminData = {
     body: WaitlistEntryIdsBodyDto;

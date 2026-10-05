@@ -20,7 +20,10 @@ import {
   WaitlistEntryAction,
   WaitlistEntryActionKind,
 } from "../src/waitlist/entities/waitlist-entry-action.entity";
-import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
+import {
+  WaitlistEntry,
+  WaitlistSpamStatus,
+} from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistEmailSkipReason } from "../src/waitlist/waitlist-email-audience";
 import { WaitlistEmailSender } from "../src/waitlist/waitlist-email-sender.service";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
@@ -277,6 +280,9 @@ describe("Waitlist email admin (e2e)", () => {
       });
       const unaffiliated = await saveEntry();
       const unsubscribed = await saveEntry({ unsubscribedAt: new Date() });
+      const spam = await saveEntry({
+        spamStatus: WaitlistSpamStatus.Suspected,
+      });
       const claimed = await saveEntry({ organizationId: grouped.id });
       await claimInvite(claimed);
       const entryIds = [
@@ -284,14 +290,16 @@ describe("Waitlist email admin (e2e)", () => {
         mobilized.id,
         unaffiliated.id,
         unsubscribed.id,
+        spam.id,
         claimed.id,
         999_999_999,
       ];
 
       const res = await preview({ entryIds }).expect(200);
       expect(res.body).toMatchObject({
-        selected: 5,
+        selected: 6,
         unsubscribed: 1,
+        spam: 1,
         claimed: 1,
         recipientIds: [waiting.id, mobilized.id, unaffiliated.id],
         waiting: 2,
@@ -590,15 +598,17 @@ describe("Waitlist email admin (e2e)", () => {
     it("rechecks suppression when sending, and skips claimed invites unless included", async () => {
       const organization = await saveOrganization("Claimed Org", false);
       const unsubscribed = await saveEntry();
+      const spam = await saveEntry();
       const claimed = await saveEntry({ organizationId: organization.id });
       await claimInvite(claimed);
       run.mockImplementationOnce(async () => {});
 
       const batch = await send({
-        entryIds: [unsubscribed.id, claimed.id],
+        entryIds: [unsubscribed.id, spam.id, claimed.id],
         body: "#{signupLink}",
       });
       await entryRepo.update(unsubscribed.id, { unsubscribedAt: new Date() });
+      await entryRepo.update(spam.id, { spamStatus: WaitlistSpamStatus.Spam });
       await ctx.app.get(WaitlistEmailSender).run();
 
       expect(
@@ -608,6 +618,7 @@ describe("Waitlist email admin (e2e)", () => {
           WaitlistEmailRecipientStatus.Skipped,
           WaitlistEmailSkipReason.Unsubscribed,
         ],
+        [WaitlistEmailRecipientStatus.Skipped, WaitlistEmailSkipReason.Spam],
         [
           WaitlistEmailRecipientStatus.Skipped,
           WaitlistEmailSkipReason.InviteClaimed,

@@ -104,6 +104,7 @@ export function skippedGroups(params: {
   const { preview, includeClaimed } = params;
   return [
     preview.unsubscribed ? `${preview.unsubscribed} unsubscribed` : null,
+    preview.spam ? `${preview.spam} marked or suspected as spam` : null,
     !includeClaimed && preview.claimed
       ? `${preview.claimed} who already claimed an invite`
       : null,
@@ -122,7 +123,9 @@ export function sendConfirmation(params: {
   const skipped = skippedGroups({ preview, includeClaimed });
   const lines = [
     `Email “${subject}” to ${withCount(recipients, "recipient")} now.`,
-    skipped.length ? `Skips ${skipped.join(" and ")}.` : null,
+    skipped.length
+      ? `Skips ${new Intl.ListFormat("en").format(skipped)}.`
+      : null,
     !mobilize
       ? "Mobilized status stays as it is."
       : preview.waiting

@@ -7,7 +7,7 @@ import {
 } from "src/campaign/entities/campaign.entity";
 import { randomToken } from "src/utils/random";
 import type { Repository } from "src/utils/Repository";
-import { IsNull } from "typeorm";
+import { In, IsNull, Not } from "typeorm";
 import {
   CreateWaitlistEntryDto,
   WaitlistReferral,
@@ -15,6 +15,7 @@ import {
 } from "./dto/waitlist.dto";
 import { WaitlistEntry } from "./entities/waitlist-entry.entity";
 import { WaitlistLink } from "./entities/waitlist-link.entity";
+import { detectSpamStatus, SPAM_LIKE_STATUSES } from "./waitlist-spam";
 
 export enum WaitlistEntryError {
   BothCodes = "both_codes",
@@ -23,6 +24,8 @@ export enum WaitlistEntryError {
 }
 
 export type NewWaitlistEntry = { id: number; code: string };
+
+const NOT_SPAM_LIKE = { spamStatus: Not(In(SPAM_LIKE_STATUSES)) };
 
 type ResolvedReferral = {
   organization: Campaign | null;
@@ -95,7 +98,10 @@ export class WaitlistService {
     }
     const { organization, referrer } = resolved.value;
     const entryCount = organization
-      ? await this.entryRepository.countBy({ organizationId: organization.id })
+      ? await this.entryRepository.countBy({
+          organizationId: organization.id,
+          ...NOT_SPAM_LIKE,
+        })
       : 0;
     return R.success({
       organization: organization && {
@@ -136,6 +142,7 @@ export class WaitlistService {
         organizationId: organization?.id ?? null,
         sourceLinkId,
         referrerId: referrer?.id ?? null,
+        spamStatus: detectSpamStatus(reason),
       })
       .orIgnore()
       .returning("id")
@@ -167,6 +174,9 @@ export class WaitlistService {
   }
 
   countWaiting(): Promise<number> {
-    return this.entryRepository.countBy({ mobilizedAt: IsNull() });
+    return this.entryRepository.countBy({
+      mobilizedAt: IsNull(),
+      ...NOT_SPAM_LIKE,
+    });
   }
 }

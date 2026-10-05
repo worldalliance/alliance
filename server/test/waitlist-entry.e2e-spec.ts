@@ -9,7 +9,10 @@ import {
   CreateWaitlistEntryDto,
   WaitlistReferralCodesDto,
 } from "../src/waitlist/dto/waitlist.dto";
-import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
+import {
+  WaitlistEntry,
+  WaitlistSpamStatus,
+} from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistLink } from "../src/waitlist/entities/waitlist-link.entity";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
 import { createTestApp, TestContext } from "./e2e-test-utils";
@@ -208,6 +211,19 @@ describe("Waitlist entry (e2e)", () => {
     ])("rejects %s", async (_label, fields) => {
       await submit({ linkCode: link.code, ...fields }).expect(400);
     });
+
+    it("suspects a random-string reason, answering as for any entry", async () => {
+      const email = `spam-${Math.random()}@example.com`;
+      const res = await submit({
+        email,
+        reason: "biJrcBSgyHNPuKeQHjlts",
+      }).expect(200);
+      expect(res.body.shareCode).toEqual(expect.any(String));
+      expect(res.headers["set-cookie"]).toBeDefined();
+      expect((await entryRepo.findOneByOrFail({ email })).spamStatus).toBe(
+        WaitlistSpamStatus.Suspected,
+      );
+    });
   });
 
   describe("GET /waitlist/referral", () => {
@@ -222,6 +238,10 @@ describe("Waitlist entry (e2e)", () => {
       const countedLink = await saveLink({ organizationId: counted.id });
       const first = await submit({ linkCode: countedLink.code }).expect(200);
       await submit({ referrerCode: first.body.shareCode }).expect(200);
+      await submit({
+        linkCode: countedLink.code,
+        reason: "biJrcBSgyHNPuKeQHjlts",
+      }).expect(200);
 
       const res = await referral({ linkCode: countedLink.code }).expect(200);
       expect(res.body).toEqual({
@@ -285,12 +305,16 @@ describe("Waitlist entry (e2e)", () => {
   });
 
   describe("GET /waitlist/count", () => {
-    it("counts only entries not yet mobilized", async () => {
+    it("counts only entries not yet mobilized and not spam-like", async () => {
       const before = await request(ctx.app.getHttpServer())
         .get("/waitlist/count")
         .expect(200);
       const waiting = await submit({ linkCode: link.code }).expect(200);
       const mobilized = await submit({ linkCode: link.code }).expect(200);
+      await submit({
+        linkCode: link.code,
+        reason: "biJrcBSgyHNPuKeQHjlts",
+      }).expect(200);
       await entryRepo.update(
         { code: mobilized.body.shareCode },
         { mobilizedAt: new Date() },

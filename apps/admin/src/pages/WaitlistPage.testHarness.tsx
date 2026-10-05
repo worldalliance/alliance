@@ -28,6 +28,7 @@ const entry = (
   createdAt: "2026-09-01T00:00:00.000Z",
   mobilizedAt: null,
   unsubscribedAt: null,
+  spamStatus: "clean",
   inviteState: "none",
   tags: [],
   ...fields,
@@ -81,6 +82,7 @@ export const emailPreview = (
 ): WaitlistEmailPreviewDto => ({
   selected: 2,
   unsubscribed: 0,
+  spam: 0,
   claimed: 0,
   recipientIds: [1, 2],
   waiting: 2,

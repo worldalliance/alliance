@@ -116,6 +116,38 @@ export class WaitlistAdminController {
     );
   }
 
+  @Post("entries/mark-spam")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: WaitlistChangeCountDto })
+  async markEntriesSpamAdmin(
+    @ReqUser() user: JwtPayload,
+    @Body() dto: WaitlistEntryIdsBodyDto,
+  ): Promise<WaitlistChangeCountDto> {
+    return new WaitlistChangeCountDto(
+      await this.entryService.setSpam({
+        entryIds: dto.entryIds,
+        spam: true,
+        staffUserId: user.sub,
+      }),
+    );
+  }
+
+  @Post("entries/mark-not-spam")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: WaitlistChangeCountDto })
+  async markEntriesNotSpamAdmin(
+    @ReqUser() user: JwtPayload,
+    @Body() dto: WaitlistEntryIdsBodyDto,
+  ): Promise<WaitlistChangeCountDto> {
+    return new WaitlistChangeCountDto(
+      await this.entryService.setSpam({
+        entryIds: dto.entryIds,
+        spam: false,
+        staffUserId: user.sub,
+      }),
+    );
+  }
+
   /** Leaves mobilization alone; the next email with a signup link issues a new invite. */
   @Post("entries/revoke-invites")
   @HttpCode(HttpStatus.OK)

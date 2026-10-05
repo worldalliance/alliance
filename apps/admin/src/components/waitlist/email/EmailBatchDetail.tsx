@@ -19,6 +19,7 @@ import EmailRetryActions from "./EmailRetryActions";
 const SKIP_LABELS: Record<WaitlistEmailSkipReason, string> = {
   unsubscribed: "Unsubscribed",
   invite_claimed: "Already claimed an invite",
+  spam: "Marked or suspected as spam",
 };
 
 const EmailBatchDetail: React.FC<{ batch: WaitlistEmailBatchDto }> = ({

@@ -15,6 +15,8 @@ export enum WaitlistEntryActionKind {
   ManualMobilize = "manual_mobilize",
   UndoMobilize = "undo_mobilize",
   EmailMobilize = "email_mobilize",
+  MarkSpam = "mark_spam",
+  MarkNotSpam = "mark_not_spam",
 }
 
 /** A staff change to an entry's status, recorded only when it changed. */

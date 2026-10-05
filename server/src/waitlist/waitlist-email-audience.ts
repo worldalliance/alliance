@@ -2,10 +2,12 @@ import { WaitlistEmailPlaceholder } from "@alliance/common/waitlistEmail";
 import { waitlistShareLink } from "src/search/approutes";
 import type { WaitlistEntry } from "./entities/waitlist-entry.entity";
 import type { WaitlistEmailValues } from "./waitlist-email-render";
+import { SPAM_LIKE } from "./waitlist-spam";
 
 export enum WaitlistEmailSkipReason {
   Unsubscribed = "unsubscribed",
   InviteClaimed = "invite_claimed",
+  Spam = "spam",
 }
 
 /** An entry staff selected, with whether an account claimed its invite. */
@@ -19,6 +21,9 @@ export function skipReason(params: {
   const { candidate, includeClaimed } = params;
   if (candidate.entry.unsubscribedAt) {
     return WaitlistEmailSkipReason.Unsubscribed;
+  }
+  if (SPAM_LIKE[candidate.entry.spamStatus]) {
+    return WaitlistEmailSkipReason.Spam;
   }
   if (candidate.claimed && !includeClaimed) {
     return WaitlistEmailSkipReason.InviteClaimed;

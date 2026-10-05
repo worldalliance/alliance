@@ -12,6 +12,7 @@ import type { Repository } from "src/utils/Repository";
 import { DataSource } from "typeorm";
 import { z } from "zod";
 import { WaitlistEntry } from "./entities/waitlist-entry.entity";
+import { SPAM_LIKE } from "./waitlist-spam";
 
 /** Null, and public sending off, until the cap is set. */
 export function publicMailDailyCap(): number | null {
@@ -78,7 +79,8 @@ export class WaitlistMailService {
 
   /**
    * Mails an entry its personal link, unless there is no subscribed entry for
-   * the address or the address or the day is out of allowance. Never rejects.
+   * the address, the entry is spam-like, or the address or the day is out of
+   * allowance. Never rejects.
    * A failed send keeps its claim, so failures cannot retry past the limits.
    */
   async sendShareLink(params: {
@@ -103,7 +105,7 @@ export class WaitlistMailService {
       return;
     }
     const entry = await this.entryRepository.findOneBy({ email });
-    if (!entry || entry.unsubscribedAt) {
+    if (!entry || entry.unsubscribedAt || SPAM_LIKE[entry.spamStatus]) {
       return;
     }
     const claim = await this.claim(entry.email, dailyCap);

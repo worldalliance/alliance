@@ -31,7 +31,9 @@ const EmailPreviewPanel: React.FC<EmailPreviewPanelProps> = ({
       <p className="text-zinc-700">
         {recipientIds.length} of {preview.selected} selected would get this
         email
-        {skipped.length > 0 && `, skipping ${skipped.join(" and ")}`}.
+        {skipped.length > 0 &&
+          `, skipping ${new Intl.ListFormat("en").format(skipped)}`}
+        .
       </p>
       {problem && <p className="text-red-600">{problem}</p>}
       {warnings.length > 0 && (

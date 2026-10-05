@@ -242,6 +242,7 @@ export class WaitlistEmailService {
     return {
       selected: candidates.length,
       unsubscribed: countSkipped(WaitlistEmailSkipReason.Unsubscribed),
+      spam: countSkipped(WaitlistEmailSkipReason.Spam),
       claimed: countSkipped(WaitlistEmailSkipReason.InviteClaimed),
       recipientIds,
       waiting: recipients.filter((entry) => !entry.mobilizedAt).length,
