@@ -1,4 +1,4 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -62,11 +62,9 @@ export class Message {
     onDelete: "SET NULL",
   })
   @JoinColumn({ name: "replyToId" })
-  @ApiProperty({ type: () => Message, required: false })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  replyTo: Relation<Message>;
+  @ApiPropertyOptional({ type: () => Message, nullable: true })
+  replyTo?: Relation<Message> | null;
 
   @OneToMany(() => Message, (message) => message.replyTo)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  replies: Relation<Message>[];
+  replies?: Relation<Message>[];
 }

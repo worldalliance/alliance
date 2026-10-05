@@ -686,7 +686,7 @@ export type Message = {
     author: User;
     createdAt: string;
     deletedAt: string | null;
-    replyTo?: Message;
+    replyTo?: Message | null;
 };
 
 export type ParticipantState = 'invited' | 'joined';
