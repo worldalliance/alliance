@@ -21,6 +21,10 @@ import { StoredInviteAssignmentKind } from "src/share-urls/invite-assignment";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import { AmbassadorInviteGoal } from "src/user/entities/ambassador-invite-goal.entity";
 import {
+  ContractEvent,
+  ContractEventType,
+} from "src/user/entities/contract-event.entity";
+import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "src/user/entities/onetime-invite.entity";
@@ -2472,6 +2476,40 @@ describe("Users (e2e)", () => {
 
     expect(Array.isArray(list.body)).toBe(true);
     expect(list.body.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("lists a same-instant suspension over a signing as the latest event", async () => {
+    const member = await userRepo.save(
+      userRepo.create({
+        name: "Tied Member",
+        email: `tied.member.${Date.now()}@example.com`,
+        password: "Password123!",
+      }),
+    );
+    const date = new Date();
+    const contractEventRepo = ctx.dataSource.getRepository(ContractEvent);
+    await contractEventRepo.save({
+      user: { id: member.id },
+      type: ContractEventType.SIGNED,
+      date,
+      contract: { id: ctx.defaultContractId },
+    });
+    await contractEventRepo.save({
+      user: { id: member.id },
+      type: ContractEventType.SUSPENDED,
+      date,
+    });
+
+    const list = await request(ctx.app.getHttpServer())
+      .get("/user/list")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+
+    const listed = list.body.find((u: { id: number }) => u.id === member.id);
+    expect(listed.hasActiveContract).toBe(false);
+    expect(listed.contractEvents).toEqual([
+      expect.objectContaining({ type: ContractEventType.SUSPENDED }),
+    ]);
   });
 
   it("verifies email tokens via the public endpoint", async () => {
