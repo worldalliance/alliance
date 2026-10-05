@@ -37,9 +37,8 @@ export class ActionFormAssignment {
   @ManyToOne(() => Action, { onDelete: "CASCADE" })
   @JoinColumn({ name: "actionId" })
   @Type(() => Action)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  action: Relation<Action>;
+  @IsOptional()
+  action?: Relation<Action>;
 
   @Column()
   @ApiProperty()
@@ -49,9 +48,8 @@ export class ActionFormAssignment {
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn({ name: "userId" })
   @Type(() => User)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  user: Relation<User>;
+  @IsOptional()
+  user?: Relation<User>;
 
   @Column({ type: "int", nullable: true })
   @ApiProperty({ nullable: true, type: Number })
@@ -62,8 +60,7 @@ export class ActionFormAssignment {
   @JoinColumn({ name: "variantId" })
   @Type(() => ActionFormVariant)
   @IsOptional()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  variant: Relation<ActionFormVariant> | null;
+  variant?: Relation<ActionFormVariant> | null;
 
   @CreateDateColumnTz()
   @ApiProperty()
