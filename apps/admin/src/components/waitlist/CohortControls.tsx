@@ -13,7 +13,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BookmarkPlus, RotateCcw, Save, Trash2 } from "lucide-react";
 import React, { useState } from "react";
 import { useRefusalToast } from "../../lib/useRefusalToast";
-import { waitlistCohortsQuery } from "../../lib/waitlistAdminQueries";
 import { compactFilter, sameFilter } from "../../lib/waitlistFilter";
 import ConfirmDialog from "../ConfirmDialog";
 import {
@@ -55,10 +54,10 @@ const CohortControls: React.FC<CohortControlsProps> = ({
         throwOnError: true,
       }).then((r) => r.data),
     onSuccess: (created) => {
-      queryClient.setQueryData(waitlistCohortsQuery.queryKey, (old = []) => [
-        ...old,
-        created,
-      ]);
+      queryClient.setQueryData<WaitlistCohortDto[]>(
+        queryKeys.waitlistCohortsAdmin(),
+        (old = []) => [...old, created],
+      );
       setNaming(false);
       setCohortId(created.id);
       success(`Saved cohort “${created.name}”`);
@@ -75,8 +74,9 @@ const CohortControls: React.FC<CohortControlsProps> = ({
         throwOnError: true,
       }).then((r) => r.data),
     onSuccess: (updated) => {
-      queryClient.setQueryData(waitlistCohortsQuery.queryKey, (old = []) =>
-        old.map((c) => (c.id === updated.id ? updated : c)),
+      queryClient.setQueryData<WaitlistCohortDto[]>(
+        queryKeys.waitlistCohortsAdmin(),
+        (old = []) => old.map((c) => (c.id === updated.id ? updated : c)),
       );
       success(`Updated cohort “${updated.name}”`);
     },
@@ -91,8 +91,9 @@ const CohortControls: React.FC<CohortControlsProps> = ({
     mutationFn: (id: number) =>
       waitlistAdminDeleteCohortAdmin({ path: { id }, throwOnError: true }),
     onSuccess: (_, id) => {
-      queryClient.setQueryData(waitlistCohortsQuery.queryKey, (old = []) =>
-        old.filter((c) => c.id !== id),
+      queryClient.setQueryData<WaitlistCohortDto[]>(
+        queryKeys.waitlistCohortsAdmin(),
+        (old = []) => old.filter((c) => c.id !== id),
       );
       setCohortId(null);
     },
