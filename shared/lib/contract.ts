@@ -5,17 +5,6 @@ export type ContractEventState = Pick<
   "type" | "date" | "automatic" | "contractId"
 > | null;
 
-export function getLastContractEvent(
-  contractEvents: ContractEventDto[] | undefined,
-): ContractEventState {
-  if (!contractEvents?.length) {
-    return null;
-  }
-  return contractEvents.sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-  )[0];
-}
-
 const LETTERS = "abcdefghijklmnopqrstuvwxyz";
 
 export type ContractTerm = {

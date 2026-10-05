@@ -5,7 +5,6 @@ import {
 } from "@alliance/shared/client";
 import {
   ContractEventState,
-  getLastContractEvent,
   getSignedMessage,
   getSuspensionMessage,
   isConfirmationCloseEnough,
@@ -154,17 +153,15 @@ export default function MembershipScreen() {
 
   useEffect(() => {
     if (user) {
-      setLastContractEvent(getLastContractEvent(user.contractEvents));
+      setLastContractEvent(user.lastContractEvent ?? null);
     }
   }, [user]);
 
   const refreshContractState = useCallback(async () => {
     try {
       const response = await authMe();
-      if (response.data?.user?.contractEvents) {
-        setLastContractEvent(
-          getLastContractEvent(response.data.user.contractEvents),
-        );
+      if (response.data?.user) {
+        setLastContractEvent(response.data.user.lastContractEvent ?? null);
       }
     } catch (error) {
       console.error("Error refreshing contract state:", error);

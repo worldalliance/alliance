@@ -66,11 +66,7 @@ const UserCard = ({
 
   const tagIds = useMemo(() => new Set(tags.map((tag) => tag.id)), [tags]);
 
-  const latestEvent = user.contractEvents?.length
-    ? [...user.contractEvents].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      )[0]
-    : null;
+  const latestEvent = user.lastContractEvent ?? null;
 
   const contractStatusColor =
     latestEvent === null
