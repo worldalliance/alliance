@@ -8,6 +8,7 @@ import {
   inviteGoalErrorMessage,
   inviteGoalIsUp,
   InviteGoalPhase,
+  inviteGoalProgressPercent,
   inviteGoalStatus,
   inviteGoalSummary,
   oneMonthFromTodayDateInputValue,
@@ -98,6 +99,16 @@ describe("inviteGoalIsUp", () => {
       ),
     ).toBe(true);
     expect(inviteGoalIsUp(active, now)).toBe(false);
+  });
+});
+
+describe("inviteGoalProgressPercent", () => {
+  test("is the share of the target recruited, capped at 100", () => {
+    const withRecruits = (recruits: number) =>
+      goal(7, "2026-06-01T00:00:00Z", "2026-07-01T00:00:00Z", recruits);
+    expect(inviteGoalProgressPercent(withRecruits(0))).toBe(0);
+    expect(inviteGoalProgressPercent(withRecruits(2))).toBe(40);
+    expect(inviteGoalProgressPercent(withRecruits(8))).toBe(100);
   });
 });
 

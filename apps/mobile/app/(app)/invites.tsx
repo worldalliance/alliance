@@ -9,6 +9,7 @@ import {
 } from "@alliance/shared/lib/copy";
 import {
   dateToInputValue,
+  inviteGoalProgressPercent,
   inviteGoalStatus,
   inviteGoalSummary,
   selectInviteGoals,
@@ -491,17 +492,9 @@ export default function InvitesScreen() {
     }
   }, [submitNewGoal]);
 
-  const currentGoalProgressPercent = useMemo(() => {
-    if (!currentGoal) {
-      return 0;
-    }
-    return Math.min(
-      100,
-      (currentGoal.stats.goalSuccessfulRecruits /
-        currentGoal.goal.targetSuccessfulRecruits) *
-        100,
-    );
-  }, [currentGoal]);
+  const currentGoalProgressPercent = currentGoal
+    ? inviteGoalProgressPercent(currentGoal)
+    : 0;
   const currentGoalInvitesCreated = currentGoal?.stats.totalInvitesSent ?? 0;
 
   const currentGoalSummary = useMemo(
