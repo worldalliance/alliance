@@ -115,6 +115,7 @@ import {
   computeIsAwayDuringWindow,
   computeIsTaggedOrInManualCohort,
   computeMemberActionAwayStatus,
+  computeMissedRequiredAction,
   hasMemberActionDeadlinePassed,
 } from "src/utils/action-user";
 import { CachedFilter } from "src/utils/cached-filter";
@@ -4269,7 +4270,13 @@ export class ActionsService {
             continue;
           }
           const missed = missedActionIdsByUser.get(user.id) ?? [];
-          if (!satisfied.has(`${user.id}:${action.id}`)) {
+          if (
+            computeMissedRequiredAction({
+              action,
+              hasTerminalActivity: satisfied.has(`${user.id}:${action.id}`),
+              now: maxPastDate,
+            })
+          ) {
             missed.push(action.id);
           }
           missedActionIdsByUser.set(user.id, missed);

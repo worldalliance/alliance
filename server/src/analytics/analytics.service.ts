@@ -8,6 +8,7 @@ import {
   millisecondsInHour,
   millisecondsInWeek,
 } from "date-fns/constants";
+import { TERMINAL_ACTIVITY_TYPES } from "src/actions/action-activity-status";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
@@ -37,6 +38,8 @@ import { User } from "src/user/entities/user.entity";
 import { inviteAcceptedSql } from "src/user/invite-claim";
 import { UserService } from "src/user/user.service";
 import {
+  canMissActionDeadline,
+  computeMissedRequiredAction,
   findStartedMemberActionEvent,
   hasMemberActionDeadlinePassed,
 } from "src/utils/action-user";
@@ -1075,25 +1078,14 @@ ORDER BY pp.total_session_duration_seconds DESC
       })
       .then((rows) => rows.map(parseAction));
     const completedActions = actions
-      .filter(
-        (action) =>
-          !action.onboarding && !action.optional && !action.publicOnly,
-      )
       .flatMap((action) => {
-        const events = action.events.toSorted(
-          (a, b) => a.date.getTime() - b.date.getTime(),
-        );
-        const memberActionEvent = events.find(
-          (event) => event.newStatus === ActionStatus.MemberAction,
-        );
-        if (!memberActionEvent) return [];
-
-        const deadlineEvent = events.find(
-          (event) => event.date > memberActionEvent.date,
-        );
-        if (!hasMemberActionDeadlinePassed(deadlineEvent?.date, now)) return [];
-
-        return [{ action, memberActionEvent }];
+        const memberActionEvent = action.memberActionPhase.event;
+        return memberActionEvent &&
+          !action.onboarding &&
+          !action.publicOnly &&
+          canMissActionDeadline(action, now)
+          ? [{ action, memberActionEvent }]
+          : [];
       })
       .sort(
         (a, b) =>
@@ -1127,19 +1119,28 @@ ORDER BY pp.total_session_duration_seconds DESC
       }
     }
 
-    const completionActivities = await this.actionActivityRepository.find({
+    const terminalActivities = await this.actionActivityRepository.find({
       where: {
         userId: In(Array.from(activeUsers.keys())),
         actionId: In(completedActions.map(({ action }) => action.id)),
-        type: ActionActivityType.USER_COMPLETED,
+        type: In(TERMINAL_ACTIVITY_TYPES),
       },
       select: { userId: true, actionId: true },
     });
-    const completedByUserAction = new Set(
-      completionActivities.map(
+    const terminalByUserAction = new Set(
+      terminalActivities.map(
         (activity) => `${activity.userId}:${activity.actionId}`,
       ),
     );
+
+    const missed = (user: User, action: ParsedAction) =>
+      computeMissedRequiredAction({
+        action,
+        hasTerminalActivity: terminalByUserAction.has(
+          `${user.id}:${action.id}`,
+        ),
+        now,
+      });
 
     const missedLastAction: MissedActions["missedLastAction"] = [];
     const missedLastTwoActions: MissedActions["missedLastTwoActions"] = [];
@@ -1148,10 +1149,7 @@ ORDER BY pp.total_session_duration_seconds DESC
         participantsByAction.get(action.id)?.has(user.id),
       );
       const [lastAction, previousAction] = assignedActions;
-      const missedLast =
-        lastAction &&
-        !completedByUserAction.has(`${user.id}:${lastAction.action.id}`);
-      if (!missedLast) continue;
+      if (!lastAction || !missed(user, lastAction.action)) continue;
 
       const member = {
         userId: user.id,
@@ -1159,10 +1157,7 @@ ORDER BY pp.total_session_duration_seconds DESC
         lastActionName: lastAction.action.name,
       };
       missedLastAction.push(member);
-      if (
-        previousAction &&
-        !completedByUserAction.has(`${user.id}:${previousAction.action.id}`)
-      ) {
+      if (previousAction && missed(user, previousAction.action)) {
         missedLastTwoActions.push(member);
       }
     }
