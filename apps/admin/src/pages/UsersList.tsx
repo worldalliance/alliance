@@ -261,9 +261,6 @@ const UsersList: React.FC = () => {
 
   const usersAsProfiles = useMemo((): ProfileDto[] => {
     return filteredBySearch.map((user) => {
-      const lastEvent = [...(user.contractEvents ?? [])].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      )[0];
       return {
         id: user.id,
         admin: user.admin,
@@ -272,9 +269,9 @@ const UsersList: React.FC = () => {
         profilePicture: user.profilePicture,
         profileDescription: user.profileDescription,
         displayName: user.name,
-        hasActiveContract: lastEvent?.type === "signed",
+        hasActiveContract: user.hasActiveContract,
         isCommunityLeader: false,
-        lastContractEvent: lastEvent,
+        lastContractEvent: user.lastContractEvent,
         anonymous: user.anonymous,
       };
     });

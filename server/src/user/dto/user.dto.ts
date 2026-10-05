@@ -31,9 +31,9 @@ import { Cluster } from "../../cluster/entities/cluster.entity";
 import { City } from "../../geo/city.entity";
 import { ShareUrl } from "../../share-urls/entities/share-url.entity";
 import {
-  compareContractEventsNewestFirst,
   ContractEvent,
   ContractEventType,
+  findLastContractEvent,
 } from "../entities/contract-event.entity";
 import { FriendStatus } from "../entities/friend.entity";
 import { OnetimeInvite } from "../entities/onetime-invite.entity";
@@ -79,6 +79,13 @@ export class ContractEventDto {
     this.automatic = input.automatic;
     this.contractId = input.contractId;
   }
+}
+
+function toLastContractEventDto(
+  events: ContractEvent[] | undefined,
+): ContractEventDto | undefined {
+  const last = findLastContractEvent(events ?? []);
+  return last ? new ContractEventDto(last) : undefined;
 }
 
 export class ProfileDto extends PickType(User, [
@@ -131,12 +138,7 @@ export class ProfileDto extends PickType(User, [
     this.hasActiveContract = user.hasActiveContract;
     this.isCommunityLeader = user.isCommunityLeader;
     this.anonymous = user.anonymous;
-    const lastContractEvent = user.contractEvents?.length
-      ? user.contractEvents.sort(compareContractEventsNewestFirst)[0]
-      : undefined;
-    this.lastContractEvent = lastContractEvent
-      ? new ContractEventDto(lastContractEvent)
-      : undefined;
+    this.lastContractEvent = toLastContractEventDto(user.contractEvents);
     this.displayName = publicDisplayName(user);
 
     this.profilePicture = user.profilePicture
@@ -275,6 +277,11 @@ export class UserDto extends PickType(User, [
   @Type(() => ContractEventDto)
   contractEvents?: ContractEventDto[];
 
+  @ApiPropertyOptional({ type: ContractEventDto })
+  @IsOptional()
+  @Type(() => ContractEventDto)
+  lastContractEvent?: ContractEventDto;
+
   @ApiPropertyOptional({ type: () => OAuthAccountDto, isArray: true })
   @IsOptional()
   @Type(() => OAuthAccountDto)
@@ -323,6 +330,7 @@ export class UserDto extends PickType(User, [
     this.contractEvents = user.contractEvents?.map(
       (event) => new ContractEventDto(event),
     );
+    this.lastContractEvent = toLastContractEventDto(user.contractEvents);
     this.activities = user.activities;
     this.tags = user.tags;
     this.communities = user.communities;

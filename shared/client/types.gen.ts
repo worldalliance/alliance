@@ -831,6 +831,7 @@ export type UserDto = {
     email: string;
     hasActiveContract: boolean;
     contractEvents?: Array<ContractEventDto>;
+    lastContractEvent?: ContractEventDto;
     oauthAccounts?: Array<OAuthAccountDto>;
     hasPassword: boolean;
 };
@@ -1122,6 +1123,7 @@ export type UserAdminDetailDto = {
     email: string;
     hasActiveContract: boolean;
     contractEvents?: Array<ContractEventDto>;
+    lastContractEvent?: ContractEventDto;
     oauthAccounts?: Array<OAuthAccountDto>;
     hasPassword: boolean;
     location: UserAdminLocationDto;

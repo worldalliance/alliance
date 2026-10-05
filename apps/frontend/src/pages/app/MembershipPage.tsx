@@ -4,7 +4,6 @@ import {
 } from "@alliance/shared/client";
 import {
   ContractEventState,
-  getLastContractEvent,
   getSignedMessage,
   getSuspensionMessage,
   isConfirmationCloseEnough,
@@ -147,7 +146,7 @@ const MembershipPage: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      setLastContractEvent(getLastContractEvent(user.contractEvents));
+      setLastContractEvent(user.lastContractEvent ?? null);
     }
   }, [user]);
 

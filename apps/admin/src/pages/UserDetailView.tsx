@@ -292,11 +292,7 @@ const UserDetailView: React.FC = () => {
 
   const { sortedAwayRanges, currentAwayRange } = useAwayRanges(awayRangesState);
 
-  const latestEvent = user.contractEvents?.length
-    ? [...user.contractEvents].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      )[0]
-    : null;
+  const latestEvent = user.lastContractEvent ?? null;
 
   const sortedFormResponses = useMemo(() => {
     return [...formResponses].sort(

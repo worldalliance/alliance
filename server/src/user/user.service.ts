@@ -418,6 +418,7 @@ export class UserService {
         .distinctOn(['event."userId"'])
         .orderBy('event."userId"')
         .addOrderBy("event.date", "DESC")
+        .addOrderBy("event.id", "DESC")
         .getRawAndEntities(),
     ]);
 
