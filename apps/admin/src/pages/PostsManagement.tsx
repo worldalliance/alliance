@@ -3,7 +3,6 @@ import {
   forumExportPostAdmin,
   forumGetPostsForAdmin,
   forumUpdatePostSettingsAdmin,
-  userListAdmin,
 } from "@alliance/shared/client";
 import type { PostDto } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -11,10 +10,11 @@ import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
+import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { Download, Plus, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { href, useNavigate, useParams } from "react-router";
+import { useUsersAdmin } from "../lib/useUsersAdmin";
 
 type TagDraft = { id?: number; name: string };
 
@@ -49,8 +49,11 @@ const PostsManagementPage: React.FC = () => {
   const [selectedPost, setSelectedPost] = useState<PostDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [users, setUsers] = useState<UserSelectUser[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
+  const {
+    data: users = [],
+    isLoading: usersLoading,
+    isLoadingError: usersLoadFailed,
+  } = useUsersAdmin();
   const [expertSelection, setExpertSelection] = useState<number[]>([]);
   const [authorSelection, setAuthorSelection] = useState<number[]>([]);
   const [qaMode, setQaMode] = useState(false);
@@ -94,25 +97,6 @@ const PostsManagementPage: React.FC = () => {
       }
     }
   }, [postId, posts, selectedPost?.id]);
-
-  useEffect(() => {
-    setUsersLoading(true);
-    userListAdmin()
-      .then((response) => {
-        const rawUsers = response.data ?? [];
-        setUsers(
-          rawUsers.map((user) => ({
-            id: user.id,
-            name: user.name ?? `User #${user.id}`,
-            profilePicture: user.profilePicture ?? null,
-          })),
-        );
-      })
-      .catch((err) => {
-        console.error("Failed to load users", err);
-      })
-      .finally(() => setUsersLoading(false));
-  }, []);
 
   const handleDownload = async (post: PostDto) => {
     setDownloadingPostId(post.id);
@@ -324,6 +308,7 @@ const PostsManagementPage: React.FC = () => {
                     selectedUserIds={authorSelection}
                     onChange={setAuthorSelection}
                     loading={usersLoading}
+                    loadFailed={usersLoadFailed}
                     label="Authors"
                   />
                   <p className="text-xs text-zinc-500 -mt-2">
@@ -363,6 +348,7 @@ const PostsManagementPage: React.FC = () => {
                         selectedUserIds={expertSelection}
                         onChange={setExpertSelection}
                         loading={usersLoading}
+                        loadFailed={usersLoadFailed}
                         label="Designated Experts"
                       />
                     </div>
