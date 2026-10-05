@@ -3,6 +3,7 @@ import type { ActionPartnershipNote } from "src/action-partnerships/entities/act
 import type { ActionPartnershipResponse } from "src/action-partnerships/entities/action-partnership-response.entity";
 import type { ActionFormAssignment } from "src/actions/entities/action-form-assignment.entity";
 import type { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
+import type { FollowUpForm } from "src/actions/entities/follow-up-form.entity";
 import type { GeneralUpdateActivity } from "src/actions/entities/general-update-activity.entity";
 import type { AiDetectionResult } from "src/ai-detection/entities/ai-detection-result.entity";
 import type { ActionStatsRecord } from "src/analytics/actionstats.entity";
@@ -62,6 +63,7 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<EditableContent>>
   | Assert<EntityShape<EventLog>>
   | Assert<EntityShape<ExternalShareTarget>>
+  | Assert<EntityShape<FollowUpForm>>
   | Assert<EntityShape<FormSnapshot>>
   | Assert<EntityShape<Friend>>
   | Assert<EntityShape<GeneralUpdateActivity>>

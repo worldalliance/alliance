@@ -108,6 +108,7 @@ import { UpdateProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { toPlainTime } from "src/utils/plain-time";
+import type { Repository as TypedRepository } from "src/utils/Repository";
 import { getVideoSource } from "src/videos/videos.service";
 import { In, IsNull, type Repository } from "typeorm";
 import {
@@ -276,7 +277,7 @@ export class TasksService {
     @InjectRepository(Action)
     private actionRepository: Repository<Action>,
     @InjectRepository(FollowUpForm)
-    private followUpFormRepository: Repository<FollowUpForm>,
+    private followUpFormRepository: TypedRepository<FollowUpForm>,
     private userService: UserService,
     private forumService: ForumService,
     private actionsService: ActionsService,
@@ -1119,9 +1120,10 @@ export class TasksService {
         form: { formSnapshot: true },
       },
     });
-    if (!fetchedFollowUpForm?.form) {
+    if (!fetchedFollowUpForm) {
       throw new NotFoundException("Follow-up form not found");
     }
+    const { form } = fetchedFollowUpForm;
     const followUpForm = parseFollowUpForm(fetchedFollowUpForm);
     if (!isFollowUpFormActive(followUpForm)) {
       throw new BadRequestException("Follow-up form is not active");
@@ -1141,7 +1143,6 @@ export class TasksService {
         "User is not in the target cohort for this follow-up form",
       );
     }
-    const form = followUpForm.form;
     const user = await this.userService.findOneOrFail(userId);
 
     const submittedSnapshot = await this.resolveSubmissionSnapshot(
