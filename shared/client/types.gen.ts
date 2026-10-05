@@ -307,7 +307,7 @@ export type ReminderGroup = {
     emailSubject: string;
     textMessage: string;
     pushMessage: string;
-    notifications: Array<ActionEventNotif>;
+    notifications?: Array<ActionEventNotif>;
     send_range_start?: string;
     send_range_end?: string;
     sendAtAbsolute?: string;

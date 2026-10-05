@@ -152,15 +152,14 @@ export class ReminderGroup {
   @IsDefined()
   pushMessage: string;
 
-  @ApiProperty({ type: () => ActionEventNotif, isArray: true })
+  @ApiPropertyOptional({ type: () => ActionEventNotif, isArray: true })
   @OneToMany(
     () => ActionEventNotif,
     (notification) => notification.reminderGroup,
   )
-  @Allow()
+  @IsOptional()
   @Type(() => ActionEventNotif)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  notifications: Relation<ActionEventNotif>[];
+  notifications?: Relation<ActionEventNotif>[];
 
   @ApiPropertyOptional({ type: Date })
   @Column({ type: "timestamptz", nullable: true })
