@@ -189,8 +189,7 @@ export class Notification {
     nullable: true,
     onDelete: "CASCADE",
   })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  pushes: Relation<Push>[];
+  pushes?: Relation<Push>[];
 
   @ApiPropertyOptional({ type: () => ActionUpdate })
   @ManyToOne(() => ActionUpdate, (actionUpdate) => actionUpdate.notifs, {

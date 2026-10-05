@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow } from "class-validator";
+import { Allow, IsOptional } from "class-validator";
 import { CreateDateColumnTz } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -45,10 +45,9 @@ export class GeneralUpdateActivity {
 
   @ManyToOne(() => GeneralUpdate, { onDelete: "CASCADE" })
   @JoinColumn({ name: "generalUpdateId" })
-  @Allow()
+  @IsOptional()
   @Type(() => GeneralUpdate)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  generalUpdate: Relation<GeneralUpdate>;
+  generalUpdate?: Relation<GeneralUpdate>;
 
   @Column()
   @ApiProperty()
@@ -57,10 +56,9 @@ export class GeneralUpdateActivity {
 
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn({ name: "userId" })
-  @Allow()
+  @IsOptional()
   @Type(() => User)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  user: Relation<User>;
+  user?: Relation<User>;
 
   @Column()
   @Allow()

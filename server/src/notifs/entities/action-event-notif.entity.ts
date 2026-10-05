@@ -56,17 +56,15 @@ export class ActionEventNotif {
   @ApiProperty({ enum: ActionEventNotifType, enumName: "ActionEventNotifType" })
   type: ActionEventNotifType;
 
-  @ApiProperty({ type: Mail, nullable: true })
+  @ApiPropertyOptional({ type: Mail, nullable: true })
   @OneToOne(() => Mail, { nullable: true })
   @JoinColumn({ name: "mailId" })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  mail: Relation<Mail> | null;
+  mail?: Relation<Mail> | null;
 
-  @ApiProperty({ type: Mms, nullable: true })
+  @ApiPropertyOptional({ type: Mms, nullable: true })
   @OneToOne(() => Mms, { nullable: true })
   @JoinColumn({ name: "mmsId" })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  mms: Relation<Mms> | null;
+  mms?: Relation<Mms> | null;
 
   @ApiPropertyOptional({ type: () => Push, isArray: true })
   @OneToMany(() => Push, (push) => push.actionEventNotif)

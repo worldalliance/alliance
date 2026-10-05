@@ -7,7 +7,6 @@ import bcrypt from "bcryptjs";
 import { Exclude, Expose, Type } from "class-transformer";
 import {
   Allow,
-  IsDefined,
   IsEmail,
   IsEnum,
   IsNotEmpty,
@@ -367,8 +366,7 @@ export class User {
   receivedFriendRequests?: Relation<Friend>[];
 
   @OneToMany(() => Notification, (notification) => notification.user)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  notifications: Relation<Notification>[];
+  notifications?: Relation<Notification>[];
 
   @Column({ nullable: true })
   @ApiProperty({ type: Number, nullable: true })
@@ -382,14 +380,13 @@ export class User {
   referredBy?: Relation<User> | null;
 
   @OneToOne(() => OnetimeInvite, (invite) => invite.invitedUser)
-  @ApiProperty({
+  @ApiPropertyOptional({
     type: () => OnetimeInvite,
     nullable: true,
   })
   @JoinColumn()
   @Type(() => OnetimeInvite)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  referredByInvite: Relation<OnetimeInvite> | null;
+  referredByInvite?: Relation<OnetimeInvite> | null;
 
   @ManyToOne(() => ShareUrl, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: "referredByShareUrlId" })
@@ -446,17 +443,14 @@ export class User {
   city?: Relation<City> | null;
 
   @OneToMany(() => ActionEventNotif, (notif) => notif.user)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  actionEventNotifs: Relation<ActionEventNotif>[];
+  actionEventNotifs?: Relation<ActionEventNotif>[];
 
   @OneToMany(() => UserAwayRange, (awayRange) => awayRange.user)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  awayRanges: Relation<UserAwayRange>[];
+  awayRanges?: Relation<UserAwayRange>[];
 
   @OneToOne(() => Mail, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: "welcomeMailId" })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  welcomeMail: Relation<Mail> | null;
+  welcomeMail?: Relation<Mail> | null;
 
   @ManyToMany(() => Tag, (tag) => tag.users, { onDelete: "CASCADE" })
   @ApiProperty({ type: () => Tag, isArray: true })
@@ -495,17 +489,15 @@ export class User {
   leaderOfIds: number[];
 
   @OneToMany(() => CommunityInvite, (invite) => invite.invitedUser)
-  @ApiProperty({ type: () => CommunityInvite, isArray: true })
+  @ApiPropertyOptional({ type: () => CommunityInvite, isArray: true })
   @Type(() => CommunityInvite)
-  @IsDefined()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  invitedCommunities: Relation<CommunityInvite>[];
+  @IsOptional()
+  invitedCommunities?: Relation<CommunityInvite>[];
 
   @OneToMany(() => Participant, (participant) => participant.user)
-  @ApiProperty({ type: () => Participant, isArray: true })
+  @ApiPropertyOptional({ type: () => Participant, isArray: true })
   @Type(() => Participant)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  participants: Relation<Participant>[];
+  participants?: Relation<Participant>[];
 
   @ManyToMany(() => Action, (action) => action.authors, {
     onDelete: "CASCADE",
@@ -515,8 +507,7 @@ export class User {
   authoredActions?: Relation<Action>[];
 
   @OneToMany(() => UserDevice, (device) => device.user)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  devices: Relation<UserDevice>[];
+  devices?: Relation<UserDevice>[];
 
   @ManyToOne(() => Cluster, (cluster) => cluster.members, {
     nullable: true,

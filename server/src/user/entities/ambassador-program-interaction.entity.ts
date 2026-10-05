@@ -43,11 +43,10 @@ export class AmbassadorProgramInteraction {
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "programMemberId" })
-  @ApiProperty({ type: () => AmbassadorProgramMember })
+  @ApiPropertyOptional({ type: () => AmbassadorProgramMember })
   @Type(() => AmbassadorProgramMember)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  programMember: Relation<AmbassadorProgramMember>;
+  @IsOptional()
+  programMember?: Relation<AmbassadorProgramMember>;
 
   @ManyToOne(() => User, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: "createdById" })

@@ -103,7 +103,7 @@ export type ActionEvent = {
      * The action associated with this event
      */
     action: Action;
-    updates: Array<ActionUpdate>;
+    updates?: Array<ActionUpdate>;
     suiteManaged: boolean;
 };
 
@@ -279,8 +279,8 @@ export type Push = {
 export type ActionEventNotif = {
     id: number;
     type: ActionEventNotifType;
-    mail: Mail | null;
-    mms: Mms | null;
+    mail?: Mail | null;
+    mms?: Mms | null;
     pushes?: Array<Push>;
     reminderGroup?: ReminderGroup;
     memberActionEvent?: ActionEvent;
@@ -307,7 +307,7 @@ export type ReminderGroup = {
     emailSubject: string;
     textMessage: string;
     pushMessage: string;
-    notifications: Array<ActionEventNotif>;
+    notifications?: Array<ActionEventNotif>;
     send_range_start?: string;
     send_range_end?: string;
     sendAtAbsolute?: string;
@@ -328,8 +328,8 @@ export type ActionSuite = {
     createdAt: string;
     updatedAt: string;
     actions: Array<Action>;
-    generalUpdates: Array<GeneralUpdate>;
-    reminderGroups: Array<ReminderGroup>;
+    generalUpdates?: Array<GeneralUpdate>;
+    reminderGroups?: Array<ReminderGroup>;
     events: Array<ActionEvent>;
 };
 
@@ -486,8 +486,11 @@ export type Action = {
      * Events associated with the action
      */
     events: Array<ActionEvent>;
-    activities: Array<Array<ActionActivity>>;
-    updates: Array<ActionUpdate>;
+    /**
+     * Activities associated with the action
+     */
+    activities?: Array<ActionActivity>;
+    updates?: Array<ActionUpdate>;
     followUpForms: Array<FollowUpForm>;
     formVariants: Array<ActionFormVariant>;
     suite?: ActionSuite;
@@ -518,7 +521,7 @@ export type ActionUpdate = {
     associatedEventId: number | null;
     notifyType: ActionUpdateNotifyType;
     notifiedAt: string | null;
-    notifs: Array<Notification>;
+    notifs?: Array<Notification>;
     tag?: Tag | null;
 };
 
@@ -576,7 +579,7 @@ export type Comment = {
     parentId: number | null;
     children?: Array<Comment>;
     pinned: boolean;
-    likes: Array<User>;
+    likes?: Array<User>;
     likesCount: number;
     tag?: PostTag;
     tagId: number | null;
@@ -632,7 +635,7 @@ export type Community = {
     leaders?: Array<User>;
     pendingUsers?: Array<User>;
     invites?: Array<OnetimeInvite>;
-    internalInvites: Array<CommunityInvite>;
+    internalInvites?: Array<CommunityInvite>;
 };
 
 export type OnetimeInvite = {
@@ -646,11 +649,11 @@ export type OnetimeInvite = {
     deletedAt: string | null;
     usedAt: string | null;
     invitingUser: User | null;
-    invitedUser: User | null;
+    invitedUser?: User | null;
     invitedUserId: number | null;
     community?: Community | null;
     communityId: number | null;
-    notifs: Array<Notification>;
+    notifs?: Array<Notification>;
 };
 
 export type Campaign = {
@@ -683,7 +686,7 @@ export type Message = {
     author: User;
     createdAt: string;
     deletedAt: string | null;
-    replyTo?: Message;
+    replyTo?: Message | null;
 };
 
 export type ParticipantState = 'invited' | 'joined';
@@ -740,7 +743,7 @@ export type User = {
     remindAboutUncompletedGroupMembers: boolean;
     receiveReplyNotifications: boolean;
     referredById: number | null;
-    referredByInvite: OnetimeInvite | null;
+    referredByInvite?: OnetimeInvite | null;
     referralSource: ReferralSource;
     referredByCampaignId: number | null;
     referredByCampaign?: Campaign | null;
@@ -751,8 +754,8 @@ export type User = {
     pendingCommunity?: Community | null;
     communities: Array<Community>;
     leaderOfIds: Array<number>;
-    invitedCommunities: Array<CommunityInvite>;
-    participants: Array<Participant>;
+    invitedCommunities?: Array<CommunityInvite>;
+    participants?: Array<Participant>;
     authoredActions?: Array<Action>;
     cluster?: Cluster | null;
     clusterId: number | null;
@@ -767,7 +770,7 @@ export type Tag = {
     createdAt: string;
     updatedAt: string;
     users: Array<User>;
-    generalUpdates: Array<GeneralUpdate>;
+    generalUpdates?: Array<GeneralUpdate>;
 };
 
 export type ContractEventType = 'signed' | 'suspended';
@@ -1673,8 +1676,8 @@ export type MarkUnreadContentReadDto = {
 export type ActionEventNotifDto = {
     id: number;
     type: ActionEventNotifType;
-    mail: Mail | null;
-    mms: Mms | null;
+    mail?: Mail | null;
+    mms?: Mms | null;
     pushes?: Array<Push>;
     reminderGroup?: ReminderGroup;
     notificationId: number | null;
@@ -3347,8 +3350,11 @@ export type ExportActionDto = {
      * Events associated with the action
      */
     events: Array<ActionEvent>;
-    activities: Array<Array<ActionActivity>>;
-    updates: Array<ActionUpdate>;
+    /**
+     * Activities associated with the action
+     */
+    activities?: Array<ActionActivity>;
+    updates?: Array<ActionUpdate>;
     followUpForms: Array<FollowUpForm>;
     suite?: ActionSuite;
     project?: Project;

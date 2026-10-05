@@ -16,7 +16,6 @@ export const community = (id: number, name: string): Community => ({
   allowStaffAssignments: true,
   maxCapacity: null,
   users: [],
-  internalInvites: [],
 });
 
 export const tag = (id: string, name: string): Tag => ({

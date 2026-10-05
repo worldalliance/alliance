@@ -143,10 +143,9 @@ export class ActionUpdate {
 
   @OneToMany(() => Notification, (notif) => notif.actionUpdate)
   @Type(() => Notification)
-  @ApiProperty({ type: () => Notification, isArray: true })
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  notifs: Relation<Notification>[];
+  @ApiPropertyOptional({ type: () => Notification, isArray: true })
+  @IsOptional()
+  notifs?: Relation<Notification>[];
 
   @ManyToOne(() => Tag, { nullable: true })
   @JoinColumn({ name: "tagId" })

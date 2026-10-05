@@ -1,6 +1,6 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsDefined, IsNotEmpty } from "class-validator";
+import { Allow, IsDefined, IsNotEmpty, IsOptional } from "class-validator";
 import { UpdateDateColumnTz } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -104,11 +104,10 @@ export class ActionEvent {
   action: Relation<Action>;
 
   @OneToMany(() => ActionUpdate, (update) => update.associatedEvent)
-  @ApiProperty({ type: () => ActionUpdate, isArray: true })
+  @ApiPropertyOptional({ type: () => ActionUpdate, isArray: true })
   @Type(() => ActionUpdate)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  updates: Relation<ActionUpdate>[];
+  @IsOptional()
+  updates?: Relation<ActionUpdate>[];
 
   @ApiProperty()
   @Column({ default: false })

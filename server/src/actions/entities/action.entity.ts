@@ -344,26 +344,24 @@ export class Action {
   events: Relation<ActionEvent>[];
 
   @OneToMany(() => ActionActivity, (activity) => activity.action)
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: "Activities associated with the action",
-    type: () => [ActionActivity],
+    type: () => ActionActivity,
     isArray: true,
   })
-  @Allow()
+  @IsOptional()
   @IsArray()
   @Type(() => ActionActivity)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  activities: Relation<ActionActivity>[];
+  activities?: Relation<ActionActivity>[];
 
   @OneToMany(() => ActionUpdate, (update) => update.action)
-  @ApiProperty({
+  @ApiPropertyOptional({
     type: () => ActionUpdate,
     isArray: true,
   })
-  @Allow()
+  @IsOptional()
   @Type(() => ActionUpdate)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  updates: Relation<ActionUpdate>[];
+  updates?: Relation<ActionUpdate>[];
 
   @OneToMany(() => FollowUpForm, (followUpForm) => followUpForm.action)
   @ApiProperty({
