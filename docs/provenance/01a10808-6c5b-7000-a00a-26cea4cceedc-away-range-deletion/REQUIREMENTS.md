@@ -1,6 +1,6 @@
 ---
 user: Charles Lien
-task: 
+task: Stop a member's deleted or edited away range from bringing back suites it already excused
 ---
 
 - A member returning from an away range appears to have had their contract suspended after deleting the range instead of letting it expire, following a recent logic change.
