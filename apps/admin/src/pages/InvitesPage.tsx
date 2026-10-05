@@ -1,13 +1,10 @@
 import {
   CreateOnetimeInviteDto,
   userCreateOnetimeInvite,
-  userGetOnetimeInviteMemberStatsAdmin,
-  userGetOnetimeInvitesAdmin,
   userListAdmin,
 } from "@alliance/shared/client";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { usePaginatedQuery } from "@alliance/shared/lib/usePaginatedQuery";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
@@ -18,13 +15,15 @@ import List from "@alliance/sharedweb/ui/List";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { memberProfileUrl } from "../lib/config";
-
-const INVITES_PER_PAGE = 50;
+import {
+  useOnetimeInviteMemberStatsAdmin,
+  useOnetimeInvitesAdmin,
+} from "../lib/useOnetimeInvitesAdmin";
 
 const InvitesPage = () => {
   const queryClient = useQueryClient();
@@ -38,14 +37,7 @@ const InvitesPage = () => {
     isError,
     isPlaceholderData,
     refetch,
-  } = usePaginatedQuery({
-    queryKey: (page) => queryKeys.onetimeInvitesAdmin(page, INVITES_PER_PAGE),
-    queryFn: (page) =>
-      userGetOnetimeInvitesAdmin({
-        query: { page, limit: INVITES_PER_PAGE },
-        throwOnError: true,
-      }).then((response) => response.data),
-  });
+  } = useOnetimeInvitesAdmin();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -84,13 +76,7 @@ const InvitesPage = () => {
     data: invitesPerMember = [],
     isError: isStatsError,
     refetch: refetchStats,
-  } = useQuery({
-    queryKey: queryKeys.onetimeInviteMemberStatsAdmin(),
-    queryFn: () =>
-      userGetOnetimeInviteMemberStatsAdmin({ throwOnError: true }).then(
-        (response) => response.data,
-      ),
-  });
+  } = useOnetimeInviteMemberStatsAdmin();
 
   const copyInviteLink = async (code: string) => {
     if (
