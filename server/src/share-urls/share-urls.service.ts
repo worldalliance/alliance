@@ -48,6 +48,20 @@ const NOT_FOUND_MESSAGE: Record<ShareUrlKind, string> = {
   [ShareUrlKind.Invite]: "invite share link could not be created",
 } as const;
 
+async function lockExternalTarget(
+  manager: EntityManager,
+  id: number,
+): Promise<ExternalShareTarget> {
+  const target = await manager.findOne(ExternalShareTarget, {
+    where: { id },
+    lock: { mode: "pessimistic_read" },
+  });
+  if (!target) {
+    throw new NotFoundException(NOT_FOUND_MESSAGE[ShareUrlKind.ExternalTarget]);
+  }
+  return target;
+}
+
 const INVITE_MESSAGE_TEMPLATE_ID = "default";
 
 export type ShareUrlOwner =
@@ -268,13 +282,7 @@ export class ShareUrlsService {
     label: string | null,
   ): Promise<ShareUrl> {
     return this.shareUrlRepository.manager.transaction(async (m) => {
-      const target = await m.findOne(ExternalShareTarget, {
-        where: { id: externalTargetId },
-        lock: { mode: "pessimistic_read" },
-      });
-      if (!target) {
-        throw new NotFoundException("specified share target not found");
-      }
+      const target = await lockExternalTarget(m, externalTargetId);
       return this.buildAndSaveRow(m, {
         kind: ShareUrlKind.ExternalTarget,
         externalTarget: target,
@@ -535,13 +543,7 @@ export class ShareUrlsService {
     owner: ShareUrlOwner,
   ): Promise<ShareUrl> {
     return this.shareUrlRepository.manager.transaction(async (m) => {
-      const target = await m.findOne(ExternalShareTarget, {
-        where: { id: externalTargetId },
-        lock: { mode: "pessimistic_read" },
-      });
-      if (!target) {
-        throw new NotFoundException("specified share target not found");
-      }
+      const target = await lockExternalTarget(m, externalTargetId);
       return this.getOrCreate(m, {
         kind: ShareUrlKind.ExternalTarget,
         externalTarget: target,
