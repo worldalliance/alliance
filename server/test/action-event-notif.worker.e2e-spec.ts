@@ -1,5 +1,6 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { Temporal } from "@js-temporal/polyfill";
+import { getRepositoryToken } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { millisecondsInSecond, secondsInHour } from "date-fns/constants";
 import { ActionsService } from "src/actions/actions.service";
@@ -33,6 +34,10 @@ import {
   UserAwayRangeReason,
 } from "src/user/entities/user-away-range.entity";
 import { User } from "src/user/entities/user.entity";
+import type {
+  Repository as TypedRepository,
+  WithRelations,
+} from "src/utils/Repository";
 import type { Repository } from "typeorm";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
@@ -47,7 +52,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
   let actionRepo: Repository<Action>;
   let eventRepo: Repository<ActionEvent>;
   let reminderGroupRepo: Repository<ReminderGroup>;
-  let notifRepo: Repository<ActionEventNotif>;
+  let notifRepo: TypedRepository<ActionEventNotif>;
   let userRepo: Repository<User>;
   let activityRepo: Repository<ActionActivity>;
   let tagRepo: Repository<Tag>;
@@ -79,7 +84,9 @@ describe("ActionEventNotifWorker (e2e)", () => {
     actionRepo = ctx.dataSource.getRepository(Action);
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
     reminderGroupRepo = ctx.dataSource.getRepository(ReminderGroup);
-    notifRepo = ctx.dataSource.getRepository(ActionEventNotif);
+    notifRepo = ctx.app.get<TypedRepository<ActionEventNotif>>(
+      getRepositoryToken(ActionEventNotif),
+    );
     userRepo = ctx.dataSource.getRepository(User);
     activityRepo = ctx.dataSource.getRepository(ActionActivity);
     tagRepo = ctx.dataSource.getRepository(Tag);
@@ -218,7 +225,9 @@ describe("ActionEventNotifWorker (e2e)", () => {
     );
   };
 
-  const fetchNotifsForGroup = async (group: ReminderGroup) =>
+  const fetchNotifsForGroup = async (
+    group: ReminderGroup,
+  ): Promise<WithRelations<ActionEventNotif, { user: true }>[]> =>
     notifRepo.find({
       where: { reminderGroup: { id: group.id } },
       relations: {
@@ -1429,7 +1438,10 @@ describe("ActionEventNotifWorker (e2e)", () => {
     await dispatch();
 
     // the leader got the nudge, but it carries no event stamp...
-    const nudgeNotif = await notifRepo.findOneOrFail({
+    const nudgeNotif: WithRelations<
+      ActionEventNotif,
+      { user: true; memberActionEvent: true }
+    > = await notifRepo.findOneOrFail({
       where: { reminderGroup: { id: groupLeadsGroup.id } },
       relations: { user: true, memberActionEvent: true },
     });
