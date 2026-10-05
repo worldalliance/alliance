@@ -15,8 +15,8 @@ export const VARIANTS = {
     name: "Alliance (Staging)",
     bundleIdentifier: "com.alliancefoundation.alliancemobile.staging",
     androidPackage: "com.alliance.alliancemobile.staging",
-    // TODO: the iOS OAuth client for the staging bundle ID, from Google Cloud.
-    googleIosClientId: undefined,
+    googleIosClientId:
+      "498109422267-r8pnromvm0ns58i5dtpppu937q5s85ns.apps.googleusercontent.com",
     googleServicesFile: "./google-services-staging.json",
     hosts: ["staging.worldalliance.org", "staging.thealliance.org"],
     androidAppLinks: true,
