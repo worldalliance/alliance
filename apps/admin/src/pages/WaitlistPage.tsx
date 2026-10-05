@@ -40,9 +40,11 @@ import {
 } from "../lib/useCampaignsAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
 import {
-  waitlistCohortsQuery,
+  useWaitlistLinksAdmin,
   waitlistLinksLoadFailed,
-  waitlistLinksQuery,
+} from "../lib/useWaitlistLinksAdmin";
+import {
+  waitlistCohortsQuery,
   waitlistTagsQuery,
 } from "../lib/waitlistAdminQueries";
 import { type EmailDraft, emailDraftFromState } from "../lib/waitlistEmail";
@@ -105,7 +107,7 @@ const WaitlistPage: React.FC = () => {
     placeholderData: keepPreviousData,
   });
   const campaigns = useCampaignsAdmin();
-  const links = useQuery(waitlistLinksQuery);
+  const links = useWaitlistLinksAdmin();
   const tags = useQuery(waitlistTagsQuery);
   const cohorts = useQuery(waitlistCohortsQuery);
 

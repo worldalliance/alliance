@@ -14,9 +14,9 @@ import {
 } from "../lib/useCampaignsAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
 import {
+  useWaitlistLinksAdmin,
   waitlistLinksLoadFailed,
-  waitlistLinksQuery,
-} from "../lib/waitlistAdminQueries";
+} from "../lib/useWaitlistLinksAdmin";
 
 const OrganizationsPage: React.FC = () => {
   const refusalToast = useRefusalToast();
@@ -26,7 +26,7 @@ const OrganizationsPage: React.FC = () => {
     queryFn: () =>
       communityGetCommunitiesAdmin({ throwOnError: true }).then((r) => r.data),
   });
-  const links = useQuery(waitlistLinksQuery);
+  const links = useWaitlistLinksAdmin();
 
   const [newName, setNewName] = useState("");
   const [designateId, setDesignateId] = useState("");

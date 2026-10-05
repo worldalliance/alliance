@@ -1,23 +1,21 @@
 import { waitlistLinkUrl } from "@alliance/common/waitlist";
-import {
-  waitlistAdminCreateLinkAdmin,
-  waitlistAdminUpdateLinkAdmin,
-} from "@alliance/shared/client";
 import type {
   AdminWaitlistLinkDto,
   UpdateWaitlistLinkDto,
 } from "@alliance/shared/client/types.gen";
 import { formatMediumDateEnUS } from "@alliance/shared/lib/dateFormatters";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Copy } from "lucide-react";
 import React, { useState } from "react";
 import { fromDateInput, toDateInput } from "../../lib/dateInput";
 import { useRefusalToast } from "../../lib/useRefusalToast";
+import {
+  useCreateWaitlistLinkAdmin,
+  useUpdateWaitlistLinkAdmin,
+} from "../../lib/useWaitlistLinksAdmin";
 import ConfirmDialog from "../ConfirmDialog";
 import InlineTextInput from "../InlineTextInput";
 
@@ -30,37 +28,22 @@ const OrganizationLinks: React.FC<OrganizationLinksProps> = ({
   organizationId,
   links,
 }) => {
-  const queryClient = useQueryClient();
   const refusalToast = useRefusalToast();
   const { success, error: toastError } = useToast();
   const [channel, setChannel] = useState("");
   const [publishedOn, setPublishedOn] = useState("");
   const [archiving, setArchiving] = useState<AdminWaitlistLinkDto | null>(null);
 
-  const invalidateLinks = () =>
-    queryClient.invalidateQueries({ queryKey: queryKeys.waitlistLinksAdmin() });
-
-  const create = useMutation({
-    mutationFn: (publishedAt: string | null) =>
-      waitlistAdminCreateLinkAdmin({
-        body: { organizationId, channel: channel.trim(), publishedAt },
-        throwOnError: true,
-      }),
-    onSuccess: async () => {
+  const create = useCreateWaitlistLinkAdmin({
+    onSuccess: () => {
       setChannel("");
       setPublishedOn("");
-      await invalidateLinks();
     },
     onError: (err) => refusalToast(err, "Could not create the link."),
   });
 
-  const update = useMutation({
-    mutationFn: ({ id, body }: { id: number; body: UpdateWaitlistLinkDto }) =>
-      waitlistAdminUpdateLinkAdmin({ path: { id }, body, throwOnError: true }),
-    onSettled: async () => {
-      setArchiving(null);
-      await invalidateLinks();
-    },
+  const update = useUpdateWaitlistLinkAdmin({
+    onSettled: () => setArchiving(null),
     onError: (err) => refusalToast(err, "Could not update the link."),
   });
 
@@ -113,7 +96,12 @@ const OrganizationLinks: React.FC<OrganizationLinksProps> = ({
           e.preventDefault();
           const publishedAt = fromDateInput(publishedOn);
           if (!publishedAt.ok) toastError(publishedAt.error);
-          else if (channel.trim()) create.mutate(publishedAt.value);
+          else if (channel.trim())
+            create.mutate({
+              organizationId,
+              channel: channel.trim(),
+              publishedAt: publishedAt.value,
+            });
         }}
       >
         <input
