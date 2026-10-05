@@ -207,7 +207,7 @@ const ActionDashboard: React.FC = () => {
     (actionLoadFailed
       ? "Failed to load action"
       : allActionsLoadFailed
-        ? "Failed to load the other actions, so prerequisites can't be picked and open-reference warnings are missing"
+        ? "Failed to load the other actions, so prerequisites and cohort action conditions can't be picked and open-reference warnings are missing"
         : null);
   const errorRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
