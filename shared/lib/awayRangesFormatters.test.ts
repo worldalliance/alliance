@@ -1,5 +1,7 @@
 import {
   AWAY_REASON_OPTIONS,
+  AwayRangeRemoval,
+  awayRangeRemoval,
   AwayRangeStatus,
   awayRangeStatus,
   changedAwayRangeDays,
@@ -60,5 +62,46 @@ describe("changedAwayRangeDays", () => {
         opened,
       }),
     ).toEqual({ startDay: undefined, endDay: "2030-01-20" });
+  });
+});
+
+describe("awayRangeRemoval", () => {
+  const now = new Date("2026-10-05T12:00:00Z");
+  const createdAt = "2026-09-01T00:00:00Z";
+  const later = "2026-10-06T00:00:00Z";
+  const earlier = "2026-10-05T11:45:00Z";
+
+  it("deletes a range whose start has not locked, even once it has ended", () => {
+    expect(
+      awayRangeRemoval(
+        { startDate: "2026-10-05T12:00:01Z", endDate: later, createdAt },
+        now,
+      ),
+    ).toBe(AwayRangeRemoval.Delete);
+    expect(
+      awayRangeRemoval(
+        {
+          startDate: "2026-10-05T11:30:00Z",
+          endDate: earlier,
+          createdAt: "2026-10-05T11:30:00Z",
+        },
+        now,
+      ),
+    ).toBe(AwayRangeRemoval.Delete);
+  });
+
+  it("ends a locked range in progress and refuses a locked one that has ended", () => {
+    expect(
+      awayRangeRemoval(
+        { startDate: "2026-10-05T12:00:00Z", endDate: later, createdAt },
+        now,
+      ),
+    ).toBe(AwayRangeRemoval.EndNow);
+    expect(
+      awayRangeRemoval(
+        { startDate: "2026-10-01T00:00:00Z", endDate: earlier, createdAt },
+        now,
+      ),
+    ).toBeNull();
   });
 });

@@ -1,12 +1,19 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import { UserAwayRangeReason } from "@alliance/shared/client";
+import { UserAwayRangeDto, UserAwayRangeReason } from "@alliance/shared/client";
 import {
+  AWAY_RANGE_REMOVAL_CONFIRMS,
+  AWAY_RANGE_REMOVAL_ERRORS,
+  AWAY_RANGE_REMOVAL_LABELS,
+  AWAY_RANGE_REMOVAL_SESSION_EXPIRED,
   AWAY_REASON_OPTIONS,
+  AwayRangeRemoval,
+  awayRangeRemoval,
   AwayRangeStatus,
   awayRangeStatus,
   formatAwayReason,
 } from "@alliance/shared/lib/awayRangesFormatters";
 import { awayRangesDescription } from "@alliance/shared/lib/copy";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useMyAwayRanges } from "@alliance/shared/lib/useMyAwayRanges";
 import { cn } from "@alliance/shared/styles/util";
 import { ChevronDown, X } from "lucide-react-native";
@@ -30,6 +37,11 @@ function formatDate(dateString: string): string {
     day: "numeric",
   });
 }
+
+const REMOVAL_CONFIRM_BUTTONS = {
+  [AwayRangeRemoval.Delete]: "Delete",
+  [AwayRangeRemoval.EndNow]: "End now",
+} satisfies Record<AwayRangeRemoval, string>;
 
 export default function AwayRangesSection() {
   const {
@@ -85,28 +97,65 @@ export default function AwayRangesSection() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const remove = async (range: UserAwayRangeDto, removal: AwayRangeRemoval) => {
+    try {
+      await deleteAwayRange.mutateAsync(range.id);
+    } catch (err) {
+      console.error("Error removing away range:", err);
+      const fallback = AWAY_RANGE_REMOVAL_ERRORS[removal];
+      Alert.alert(
+        "Error",
+        thrownRefusalMessage({
+          error: err,
+          fallback,
+          sessionExpired: AWAY_RANGE_REMOVAL_SESSION_EXPIRED,
+        }),
+      );
+    }
+  };
+
+  const handleDelete = async (range: UserAwayRangeDto) => {
+    // Decided again at each press, including the confirmation's: a range's
+    // start can lock while its row or this dialog is on screen. A refused
+    // removal skips the dialog, and the server says why.
+    const shown = awayRangeRemoval(range);
+    if (!shown) {
+      await remove(range, AwayRangeRemoval.Delete);
+      return;
+    }
     Alert.alert(
-      "Delete Away Period",
-      "Are you sure you want to delete this away period?",
+      AWAY_RANGE_REMOVAL_LABELS[shown],
+      AWAY_RANGE_REMOVAL_CONFIRMS[shown],
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Delete",
+          text: REMOVAL_CONFIRM_BUTTONS[shown],
           style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteAwayRange.mutateAsync(id);
-            } catch (err) {
-              console.error("Error deleting away range:", err);
-              Alert.alert(
-                "Error",
-                "There was an error deleting your away period. Please try again.",
-              );
+          onPress: () => {
+            if (awayRangeRemoval(range) !== shown) {
+              void handleDelete(range);
+              return;
             }
+            void remove(range, shown);
           },
         },
       ],
+    );
+  };
+
+  const removeControl = (range: UserAwayRangeDto) => {
+    const removal = awayRangeRemoval(range);
+    return (
+      removal && (
+        <TouchableOpacity
+          onPress={() => handleDelete(range)}
+          className="ml-3 p-2"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityLabel={AWAY_RANGE_REMOVAL_LABELS[removal]}
+        >
+          <X size={20} color="#ef4444" />
+        </TouchableOpacity>
+      )
     );
   };
 
@@ -171,13 +220,7 @@ export default function AwayRangesSection() {
                     {range.note && `: ${range.note}`}
                   </Text>
                 </View>
-                <TouchableOpacity
-                  onPress={() => handleDelete(range.id)}
-                  className="ml-3 p-2"
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <X size={20} color="#ef4444" />
-                </TouchableOpacity>
+                {removeControl(range)}
               </View>
             </View>
           ))}

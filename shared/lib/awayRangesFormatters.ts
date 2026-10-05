@@ -1,4 +1,8 @@
-import { isAwayRangeActiveAt } from "@alliance/common/awayRange";
+import {
+  hasAwayRangeEnded,
+  isAwayRangeActiveAt,
+  isAwayRangeStartLocked,
+} from "@alliance/common/awayRange";
 import type { Assert, Equal } from "@alliance/common/types";
 import type { UserAwayRangeDto, UserAwayRangeReason } from "../client";
 import { formatShortDate } from "./dateFormatters";
@@ -66,3 +70,41 @@ export function changedAwayRangeDays(params: {
     endDay: edited.end === opened.end ? undefined : edited.end,
   };
 }
+
+export enum AwayRangeRemoval {
+  Delete = "delete",
+  EndNow = "end_now",
+}
+
+/**
+ * How the server treats a member removing the range: it ends one whose start
+ * has locked rather than deleting it, and refuses (null) once that one has
+ * ended.
+ */
+export function awayRangeRemoval(
+  range: Pick<UserAwayRangeDto, "startDate" | "endDate" | "createdAt">,
+  now: Date = new Date(),
+): AwayRangeRemoval | null {
+  if (!isAwayRangeStartLocked(range, now)) return AwayRangeRemoval.Delete;
+  return hasAwayRangeEnded(range, now) ? null : AwayRangeRemoval.EndNow;
+}
+
+export const AWAY_RANGE_REMOVAL_LABELS = {
+  [AwayRangeRemoval.Delete]: "Delete away period",
+  [AwayRangeRemoval.EndNow]: "End away period now",
+} satisfies Record<AwayRangeRemoval, string>;
+
+export const AWAY_RANGE_REMOVAL_CONFIRMS = {
+  [AwayRangeRemoval.Delete]: "Delete this away period?",
+  [AwayRangeRemoval.EndNow]: "End this away period now?",
+} satisfies Record<AwayRangeRemoval, string>;
+
+export const AWAY_RANGE_REMOVAL_ERRORS = {
+  [AwayRangeRemoval.Delete]:
+    "There was an error deleting your away period. Please try again.",
+  [AwayRangeRemoval.EndNow]:
+    "There was an error ending your away period. Please try again.",
+} satisfies Record<AwayRangeRemoval, string>;
+
+export const AWAY_RANGE_REMOVAL_SESSION_EXPIRED =
+  "Your session has expired. Sign in again to remove this away period.";

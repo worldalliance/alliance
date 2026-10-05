@@ -8,6 +8,15 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+  setSystemTime,
+} from "bun:test";
 import AwayRangesSection from "./AwayRangesSection";
 
 afterEach(cleanup);
@@ -22,15 +31,28 @@ const range: UserAwayRangeDto = {
 };
 
 let shown = [range];
+let loads = 0;
 let patches: unknown[] = [];
+let deletes: string[] = [];
+let deleteResponse = () => new Response(null, { status: 200 });
 afterEach(() => {
   shown = [range];
+  loads = 0;
   patches = [];
+  deletes = [];
+  deleteResponse = () => new Response(null, { status: 200 });
 });
 
 serveApi(
   routes({
-    "GET /user/awayranges": () => Response.json(shown),
+    "GET /user/awayranges": () => {
+      loads++;
+      return Response.json(shown);
+    },
+    "DELETE /user/awayranges/:id": ({ params }) => {
+      deletes.push(params.id);
+      return deleteResponse();
+    },
     "PATCH /user/awayranges/:id": async ({ request }) => {
       patches.push(await request.json());
       return Response.json(range);
@@ -65,6 +87,12 @@ const today = () => {
     String(now.getMonth() + 1).padStart(2, "0"),
     String(now.getDate()).padStart(2, "0"),
   ].join("-");
+};
+
+const removeButton = (container: HTMLElement) => {
+  const button = container.querySelector(".lucide-x")?.closest("button");
+  if (!button) throw new Error("no remove button");
+  return button;
 };
 
 const dateInput = (container: HTMLElement, name: string) => {
@@ -121,10 +149,12 @@ describe("a range whose start has locked", () => {
     screen.getByText("Days that have already begun can't be changed.");
   });
 
-  it("fixes both dates once it has ended but saves a new note", async () => {
+  it("offers no delete and fixes both dates once it has ended but saves a new note", async () => {
     shown = [locked(hoursFromNow(-96), hoursFromNow(-48))];
-    const container = await openEditor();
+    const { container, pencil } = await renderList();
 
+    expect(container.querySelector(".lucide-x")).toBeNull();
+    fireEvent.click(pencil);
     expect(dateInput(container, "editStartDate").disabled).toBe(true);
     expect(dateInput(container, "editEndDate").disabled).toBe(true);
     const note = container.querySelector<HTMLInputElement>(
@@ -161,4 +191,134 @@ it("leaves both dates editable for a range that ended within its undo hour", asy
 
   expect(dateInput(container, "editStartDate").disabled).toBe(false);
   expect(dateInput(container, "editEndDate").disabled).toBe(false);
+});
+
+describe("removing a range", () => {
+  const prompts: string[] = [];
+  let answer = false;
+  beforeEach(() => {
+    prompts.length = 0;
+    jest.spyOn(globalThis, "confirm").mockImplementation((message) => {
+      prompts.push(String(message));
+      return answer;
+    });
+  });
+
+  it("deletes a range whose start has not locked without asking", async () => {
+    const { container } = await renderList();
+
+    fireEvent.click(removeButton(container));
+
+    await waitFor(() => expect(deletes).toEqual(["1"]));
+    expect(prompts).toEqual([]);
+  });
+
+  it("deletes a range that ended within its undo hour", async () => {
+    const createdAt = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    shown = [
+      {
+        ...range,
+        startDate: createdAt,
+        endDate: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+        createdAt,
+      },
+    ];
+    const { container } = await renderList();
+
+    fireEvent.click(removeButton(container));
+
+    await waitFor(() => expect(deletes).toEqual(["1"]));
+    expect(prompts).toEqual([]);
+  });
+
+  it("asks before ending a range whose start locked after it rendered", async () => {
+    const start = Date.now() + 60 * 60 * 1000;
+    shown = [
+      {
+        ...range,
+        startDate: new Date(start).toISOString(),
+        endDate: new Date(start + 48 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date(start - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ];
+    const { container } = await renderList();
+
+    setSystemTime(new Date(start + 60 * 1000));
+    try {
+      answer = false;
+      fireEvent.click(removeButton(container));
+    } finally {
+      setSystemTime();
+    }
+
+    expect(prompts).toEqual(["End this away period now?"]);
+    expect(deletes).toEqual([]);
+  });
+
+  it("asks before ending a range whose start has locked", async () => {
+    const now = Date.now();
+    shown = [
+      {
+        ...range,
+        startDate: new Date(now - 48 * 60 * 60 * 1000).toISOString(),
+        endDate: new Date(now + 48 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ];
+    const { container } = await renderList();
+
+    answer = false;
+    fireEvent.click(removeButton(container));
+    expect(prompts).toEqual(["End this away period now?"]);
+    expect(deletes).toEqual([]);
+
+    answer = true;
+    fireEvent.click(removeButton(container));
+    await waitFor(() => expect(deletes).toEqual(["1"]));
+  });
+});
+
+describe("a failed removal", () => {
+  const alerts: string[] = [];
+  beforeEach(() => {
+    alerts.length = 0;
+    jest.spyOn(globalThis, "alert").mockImplementation((message) => {
+      alerts.push(String(message));
+    });
+  });
+
+  const removeAndRead = async () => {
+    const { container } = await renderList();
+    fireEvent.click(removeButton(container));
+    await waitFor(() => expect(alerts).toHaveLength(1));
+    return alerts[0];
+  };
+
+  it("shows the server's reason for a refusal", async () => {
+    deleteResponse = () =>
+      Response.json(
+        {
+          statusCode: 400,
+          message: "An away period that has ended can't be deleted.",
+        },
+        { status: 400 },
+      );
+
+    expect(await removeAndRead()).toBe(
+      "An away period that has ended can't be deleted.",
+    );
+    await waitFor(() => expect(loads).toBe(2));
+  });
+
+  it("shows its own copy for a server failure", async () => {
+    deleteResponse = () =>
+      Response.json(
+        { statusCode: 500, message: "Internal server error" },
+        { status: 500 },
+      );
+
+    expect(await removeAndRead()).toBe(
+      "There was an error deleting your away period. Please try again.",
+    );
+  });
 });

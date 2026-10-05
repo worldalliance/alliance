@@ -5,7 +5,13 @@ import {
 import { errorMessage } from "@alliance/common/errorMessage";
 import { UserAwayRangeDto, UserAwayRangeReason } from "@alliance/shared/client";
 import {
+  AWAY_RANGE_REMOVAL_CONFIRMS,
+  AWAY_RANGE_REMOVAL_ERRORS,
+  AWAY_RANGE_REMOVAL_LABELS,
+  AWAY_RANGE_REMOVAL_SESSION_EXPIRED,
   AWAY_REASON_LABELS,
+  AwayRangeRemoval,
+  awayRangeRemoval,
   AwayRangeStatus,
   awayRangeStatus,
   changedAwayRangeDays,
@@ -13,6 +19,7 @@ import {
 } from "@alliance/shared/lib/awayRangesFormatters";
 import { awayRangesDescription } from "@alliance/shared/lib/copy";
 import { formatLongDate } from "@alliance/shared/lib/dateFormatters";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useMyAwayRanges } from "@alliance/shared/lib/useMyAwayRanges";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -110,13 +117,45 @@ const AwayRangesSection: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    try {
-      await deleteAwayRange.mutateAsync(id);
-    } catch (error) {
-      console.error("Error deleting away range:", error);
-      alert("There was an error deleting your away period. Please try again.");
+  const handleDelete = async (range: UserAwayRangeDto) => {
+    // Decided again at click time: a range's start can lock while its row is
+    // on screen. When removal is refused, the server says why below.
+    const removal = awayRangeRemoval(range) ?? AwayRangeRemoval.Delete;
+    if (
+      removal === AwayRangeRemoval.EndNow &&
+      !confirm(AWAY_RANGE_REMOVAL_CONFIRMS[AwayRangeRemoval.EndNow])
+    ) {
+      return;
     }
+    try {
+      await deleteAwayRange.mutateAsync(range.id);
+    } catch (error) {
+      console.error("Error removing away range:", error);
+      const fallback = AWAY_RANGE_REMOVAL_ERRORS[removal];
+      alert(
+        thrownRefusalMessage({
+          error,
+          fallback,
+          sessionExpired: AWAY_RANGE_REMOVAL_SESSION_EXPIRED,
+        }),
+      );
+    }
+  };
+
+  const removeControl = (range: UserAwayRangeDto) => {
+    const removal = awayRangeRemoval(range);
+    return (
+      removal && (
+        <Button
+          onClick={() => handleDelete(range)}
+          color={ButtonColor.Transparent}
+          className="!py-2 !px-1 text-sm text-red-500"
+          title={AWAY_RANGE_REMOVAL_LABELS[removal]}
+        >
+          <X size="20" />
+        </Button>
+      )
+    );
   };
 
   const startEditing = (range: UserAwayRangeDto) => {
@@ -334,13 +373,7 @@ const AwayRangesSection: React.FC = () => {
                     >
                       <Pencil size="17" />
                     </Button>
-                    <Button
-                      onClick={() => handleDelete(range.id)}
-                      color={ButtonColor.Transparent}
-                      className="!py-2 !px-1 text-sm text-red-500"
-                    >
-                      <X size="20" />
-                    </Button>
+                    {removeControl(range)}
                   </div>
                 </div>
               )}
