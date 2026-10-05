@@ -1780,7 +1780,7 @@ export class UserService {
   }
 
   async createTag(body: CreateTagDto): Promise<Tag> {
-    const tag = this.tagRepository.create(body);
+    const tag = this.tagRepository.create({ ...body, users: [] });
     return this.tagRepository.save(tag);
   }
 
@@ -1822,7 +1822,11 @@ export class UserService {
       where: { id: tagId },
     });
     Object.assign(tag, body);
-    return this.tagRepository.save(tag);
+    await this.tagRepository.save(tag);
+    return this.tagRepository.findOneOrFail({
+      where: { id: tagId },
+      relations: { users: true },
+    });
   }
 
   async deleteTag(tagId: string): Promise<void> {

@@ -67,6 +67,24 @@ describe("Admin tags (e2e)", () => {
     expect(userIds(removed)).toEqual([]);
   });
 
+  it("returns a tag's users after updating it", async () => {
+    const created = await post("/user/createTag", createBody("Helpers"));
+    expect(created.body.users).toEqual([]);
+    await post(`/user/tags/${created.body.id}/addUser`, {
+      userId: ctx.testUserId,
+    });
+
+    const updated = await post(
+      `/user/tags/${created.body.id}/update`,
+      createBody("Assistants"),
+    );
+
+    expect(updated.status).toBe(201);
+    expect(updated.body.users.map((user: { id: number }) => user.id)).toEqual([
+      ctx.testUserId,
+    ]);
+  });
+
   it.each([
     ["missing", undefined],
     ["not a string", 42],
