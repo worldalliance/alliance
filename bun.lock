@@ -366,7 +366,7 @@
         "@alliance/common": "workspace:*",
         "@aws-sdk/client-s3": "^3.842.0",
         "@aws-sdk/s3-request-presigner": "^3.842.0",
-        "@formatjs/intl-datetimeformat": "^7.8.0",
+        "@formatjs/intl-datetimeformat": "^7.8.1",
         "@js-temporal/polyfill": "^0.5.1",
         "@nestjs-modules/mailer": "^2.0.2",
         "@nestjs/common": "^11.0.1",
@@ -1028,7 +1028,7 @@
 
     "@formatjs/fast-memoize": ["@formatjs/fast-memoize@3.1.7", "", {}, "sha512-zXfhLpvA6T7+efdt9JLbBwZ00tT7NsBMDVnDu8rpHeNNv8KfRZAMo2gkG0k9lK/Nzc//3kJ9pImsfuJxk3KhUA=="],
 
-    "@formatjs/intl-datetimeformat": ["@formatjs/intl-datetimeformat@7.8.0", "", { "dependencies": { "@formatjs/bigdecimal": "0.2.7", "@formatjs/intl-localematcher": "0.9.0" } }, "sha512-SvEbCcvcGN4l4j/k59hXyCoamKWoSKuvSsTSqa85DX6xkHWvsI6hSDJXKSzADF8vdJvIT7v+2n0TXLG/pRbLJg=="],
+    "@formatjs/intl-datetimeformat": ["@formatjs/intl-datetimeformat@7.8.1", "", { "dependencies": { "@formatjs/bigdecimal": "0.2.7", "@formatjs/intl-localematcher": "0.9.0" } }, "sha512-tGVZ3KdbHQwmA8wBn7gEJeOE9zo0InoyrbJWsD4VYdHGJfXykflOpdNC69+QaZShxfEQ6dwUfXjDfNzxe4AO4A=="],
 
     "@formatjs/intl-localematcher": ["@formatjs/intl-localematcher@0.9.0", "", { "dependencies": { "@formatjs/fast-memoize": "3.1.7" } }, "sha512-Z7TD3ssNry1Av1dVDoq/mzpxGyxqWwU0ClWEo+BB3k0JQTeQvUGmeK9WZGYvlqStS0UqkaKXk3dfjsb6NaHAxw=="],
 
