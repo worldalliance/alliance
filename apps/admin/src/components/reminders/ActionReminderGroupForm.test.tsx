@@ -39,6 +39,7 @@ const formElement = (suiteId: number, waitForRecipientCount = true) => (
     anchorCandidates={[]}
     users={[]}
     loadingUsers={false}
+    usersLoadFailed={false}
     userTags={[]}
     loadingUserTags={false}
     initialValues={initialValues}
@@ -178,6 +179,7 @@ it("clears a fixed validation error once the preview succeeds", async () => {
       anchorCandidates={[]}
       users={[]}
       loadingUsers={false}
+      usersLoadFailed={false}
       userTags={[]}
       loadingUserTags={false}
       initialValues={{
