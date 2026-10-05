@@ -5,7 +5,6 @@ import {
   actionsActionRelationsForUserAdmin,
   analyticsGetTimeSpentPerUserAdmin,
   analyticsGetTimeSpentPerUserTotalAdmin,
-  communityGetCommunitiesAdmin,
   contractSuspendContractAdmin,
   notifsNotifsForUserAdmin,
   tasksGetFormsForUserSidAdmin,
@@ -22,7 +21,6 @@ import {
 } from "@alliance/shared/client";
 import {
   ActionEventNotifDto,
-  CommunityDto,
   ProfileDto,
   Push,
   TagDto,
@@ -97,7 +95,6 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
     notifRes,
     formResponsesRes,
     friendsRes,
-    communitiesRes,
   ] = await Promise.all([
     userUserDetailAdmin({ path: { id: userId } }),
     userGetAwayRangeForUserAdmin({ path: { id: userId } }),
@@ -110,7 +107,6 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
       data: [],
     })),
     userListFriends({ path: { id: userId } }),
-    communityGetCommunitiesAdmin(),
   ]);
 
   const user = userRes.data;
@@ -140,7 +136,6 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
     notifs: notifRes.data ?? [],
     formResponses: formResponsesRes.data ?? [],
     friends: friendsRes.data ?? [],
-    communities: communitiesRes.data ?? [],
   };
 }
 
@@ -156,9 +151,6 @@ const UserDetailView: React.FC = () => {
   } = loaderData;
 
   const [user, setUser] = useState<UserAdminDetailDto>(loaderData.user);
-  const [communities, setCommunities] = useState<CommunityDto[]>(
-    loaderData.communities,
-  );
   const [actionRelationsState, setActionRelationsState] =
     useState<UserActionRelationDetailDto[]>(actionRelations);
   const [allTags, setAllTags] = useState<TagSummaryDto[]>(loaderData.allTags);
@@ -1133,12 +1125,7 @@ const UserDetailView: React.FC = () => {
           </section>
 
           {/* Groups */}
-          <MemberGroupMoveSection
-            user={user}
-            communities={communities}
-            onUserUpdated={setUser}
-            onCommunitiesUpdated={setCommunities}
-          />
+          <MemberGroupMoveSection user={user} onUserUpdated={setUser} />
 
           {/* Friends */}
           <section className="border border-zinc-200 rounded p-3">

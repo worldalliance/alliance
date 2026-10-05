@@ -1,10 +1,4 @@
-import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  communityAddMemberAdmin,
-  communityGetCommunitiesAdmin,
-  communityMoveMemberAdmin,
-  userUserDetailAdmin,
-} from "@alliance/shared/client";
+import { userUserDetailAdmin } from "@alliance/shared/client";
 import type {
   CommunityDto,
   UserAdminDetailDto,
@@ -14,18 +8,31 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import {
+  MembershipChange,
+  useChangeCommunityMembershipAdmin,
+  useCommunitiesAdmin,
+  useMoveCommunityMemberAdmin,
+} from "../lib/useCommunitiesAdmin";
+
+const NO_COMMUNITIES: CommunityDto[] = [];
 
 export default function MemberGroupMoveSection({
   user,
-  communities,
   onUserUpdated,
-  onCommunitiesUpdated,
 }: {
   user: UserAdminDetailDto;
-  communities: CommunityDto[];
   onUserUpdated: (user: UserAdminDetailDto) => void;
-  onCommunitiesUpdated: (communities: CommunityDto[]) => void;
 }) {
+  const {
+    data: communities = NO_COMMUNITIES,
+    isLoading: loadingCommunities,
+    isLoadingError: communitiesLoadFailed,
+    error: communitiesError,
+  } = useCommunitiesAdmin();
+  const { mutateAsync: moveMember } = useMoveCommunityMemberAdmin();
+  const { mutateAsync: changeMembership } = useChangeCommunityMembershipAdmin();
   const [sourceCommunityId, setSourceCommunityId] = useState("");
   const [destinationCommunityId, setDestinationCommunityId] = useState("");
   const [isMoving, setIsMoving] = useState(false);
@@ -127,32 +134,25 @@ export default function MemberGroupMoveSection({
     let membershipUpdated = false;
     try {
       if (sourceCommunity) {
-        await communityMoveMemberAdmin({
-          path: { communityId: sourceCommunity.id },
-          body: {
-            userId: user.id,
-            destinationCommunityId: destinationCommunity.id,
-          },
-          throwOnError: true,
+        await moveMember({
+          userId: user.id,
+          sourceCommunityId: sourceCommunity.id,
+          destinationCommunityId: destinationCommunity.id,
         });
       } else {
-        await communityAddMemberAdmin({
-          path: { communityId: destinationCommunity.id },
-          body: { userId: user.id },
-          throwOnError: true,
+        await changeMembership({
+          communityId: destinationCommunity.id,
+          userId: user.id,
+          change: MembershipChange.AddMember,
         });
       }
       membershipUpdated = true;
 
-      const [refreshedUser, refreshedCommunities] = await Promise.all([
-        userUserDetailAdmin({
-          path: { id: user.id },
-          throwOnError: true,
-        }),
-        communityGetCommunitiesAdmin({ throwOnError: true }),
-      ]);
+      const refreshedUser = await userUserDetailAdmin({
+        path: { id: user.id },
+        throwOnError: true,
+      });
       onUserUpdated(refreshedUser.data);
-      onCommunitiesUpdated(refreshedCommunities.data);
       success(
         sourceCommunity ? "Member moved" : "Member assigned",
         destinationCommunity.name,
@@ -160,16 +160,16 @@ export default function MemberGroupMoveSection({
     } catch (error) {
       if (membershipUpdated) {
         setMutationError(
-          "Membership was updated, but the page could not refresh. Reload to see the latest group capacity.",
+          "Membership was updated, but the page could not refresh. Reload to see their latest groups.",
         );
       } else {
         setMutationError(
-          errorMessage({
+          adminRefusalMessage(
             error,
-            fallback: sourceCommunity
+            sourceCommunity
               ? "Could not move this member."
               : "Could not assign this member.",
-          }),
+          ),
         );
       }
     } finally {
@@ -177,10 +177,11 @@ export default function MemberGroupMoveSection({
     }
   }, [
     availableDestinations,
+    changeMembership,
     confirm,
     destinationCommunityId,
     memberCommunities,
-    onCommunitiesUpdated,
+    moveMember,
     onUserUpdated,
     sourceCommunityId,
     success,
@@ -259,7 +260,11 @@ export default function MemberGroupMoveSection({
             disabled={isMoving || !user.hasActiveContract}
             className="w-full border border-zinc-300 rounded bg-white px-2 py-2 text-sm text-zinc-900 disabled:bg-zinc-100"
           >
-            <option value="">Select destination group</option>
+            <option value="">
+              {loadingCommunities
+                ? "Loading groups..."
+                : "Select destination group"}
+            </option>
             {availableDestinations.map((community) => (
               <option key={community.id} value={community.id}>
                 {community.name}
@@ -273,11 +278,19 @@ export default function MemberGroupMoveSection({
             An active contract is required for group membership.
           </p>
         )}
-        {user.hasActiveContract && !availableDestinations.length && (
-          <p className="text-xs text-zinc-500">
-            No groups with staff assignments and available capacity.
+        {communitiesLoadFailed && (
+          <p className="text-xs text-red-500" role="alert">
+            {adminRefusalMessage(communitiesError, "Unable to load groups.")}
           </p>
         )}
+        {user.hasActiveContract &&
+          !loadingCommunities &&
+          !communitiesLoadFailed &&
+          !availableDestinations.length && (
+            <p className="text-xs text-zinc-500">
+              No groups with staff assignments and available capacity.
+            </p>
+          )}
         {leaderCommunities.length > 0 && (
           <p className="text-xs text-zinc-500">
             Moving a member does not change groups they lead.

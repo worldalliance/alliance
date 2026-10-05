@@ -6,6 +6,7 @@ import {
   communityDeleteAdmin,
   type CommunityDto,
   communityGetCommunitiesAdmin,
+  communityMoveMemberAdmin,
   communityRemoveLeaderAdmin,
   communityRemoveMemberAdmin,
   communityUpdate,
@@ -63,13 +64,18 @@ export function useCreateCommunityAdmin(params: {
   });
 }
 
-export function useAssignGroupsAdmin() {
+function useInvalidateCommunities() {
   const queryClient = useQueryClient();
+  return () =>
+    queryClient.invalidateQueries({ queryKey: communitiesQuery.queryKey });
+}
+
+export function useAssignGroupsAdmin() {
+  const invalidate = useInvalidateCommunities();
   return useMutation({
     mutationFn: (body: AssignGroupsDto) =>
       userAssignGroupsAdmin({ body, throwOnError: true }),
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: communitiesQuery.queryKey }),
+    onSettled: invalidate,
   });
 }
 
@@ -150,5 +156,26 @@ export function useDeleteCommunityAdmin(params: {
       await setCommunities((prev) => prev.filter((c) => c.id !== communityId));
     },
     onError,
+  });
+}
+
+export function useMoveCommunityMemberAdmin() {
+  const invalidate = useInvalidateCommunities();
+  return useMutation({
+    mutationFn: ({
+      userId,
+      sourceCommunityId,
+      destinationCommunityId,
+    }: {
+      userId: number;
+      sourceCommunityId: number;
+      destinationCommunityId: number;
+    }) =>
+      communityMoveMemberAdmin({
+        path: { communityId: sourceCommunityId },
+        body: { userId, destinationCommunityId },
+        throwOnError: true,
+      }),
+    onSettled: invalidate,
   });
 }
