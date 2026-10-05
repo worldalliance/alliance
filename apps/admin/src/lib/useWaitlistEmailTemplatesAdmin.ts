@@ -7,7 +7,8 @@ import {
   type WaitlistEmailTemplateDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useListCache } from "./useListCache";
 
 export function useWaitlistEmailTemplatesAdmin() {
   return useQuery({
@@ -19,20 +20,10 @@ export function useWaitlistEmailTemplatesAdmin() {
   });
 }
 
-function useTemplatesCache() {
-  const queryClient = useQueryClient();
-  const queryKey = queryKeys.waitlistEmailTemplatesAdmin();
-  return {
-    update: (
-      updater: (old: WaitlistEmailTemplateDto[]) => WaitlistEmailTemplateDto[],
-    ) =>
-      queryClient.setQueryData<WaitlistEmailTemplateDto[]>(
-        queryKey,
-        (old = []) => updater(old),
-      ),
-    invalidate: () => queryClient.invalidateQueries({ queryKey }),
-  };
-}
+const useTemplatesCache = () =>
+  useListCache<WaitlistEmailTemplateDto>(
+    queryKeys.waitlistEmailTemplatesAdmin(),
+  );
 
 export function useSaveWaitlistEmailTemplateAdmin(params: {
   onSuccess: (template: WaitlistEmailTemplateDto, id: number | null) => void;
