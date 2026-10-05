@@ -28,7 +28,7 @@ export default function PrelaunchLandingPage() {
             to={WAITLIST_HREF}
             className="flex h-12 items-center justify-center gap-3 bg-[var(--site-primary)] px-5 text-center text-sm font-medium text-white hover:bg-[var(--site-primary-hover)] sm:h-10"
           >
-            <span>This fall: help decide where $100k goes.</span>
+            <span>This fall: help decide where $100K goes.</span>
             <SiteArrow className="size-2.5 shrink-0" />
           </Link>
         }

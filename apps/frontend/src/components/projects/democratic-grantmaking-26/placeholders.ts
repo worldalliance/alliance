@@ -15,28 +15,37 @@ export const FEATURED_PEOPLE: ProjectPerson[] = [
   {
     name: "Healy Hamilton",
     imageSrc: "/assets/democratic-grantmaking-26/healy-hamilton.jpg",
-    role: "Expert",
+    role: "Expert Panel",
     href: "https://www.linkedin.com/in/healy-hamilton-a1a20942/",
   },
   {
     name: "Dustin Palmer",
     imageSrc: "/assets/democratic-grantmaking-26/dustin-palmer.jpg",
-    role: "Expert",
+    role: "Expert Panel",
     href: "https://www.linkedin.com/in/dustin-palmer/",
   },
 ];
 
 export const ABOUT_SECTIONS = [
   {
-    heading: "What this is",
-    body: "This is an Alliance project. Outside funders have put up $100,000 for a nonprofit, and Alliance members help decide which one gets it. Join the Alliance to take part.",
+    heading: "What is this?",
+    body: "This is an upcoming Alliance project. External funders have committed $100,000 to a pool that Alliance members and an expert panel will decide how to donate.",
   },
   {
-    heading: "How it works",
-    body: "Once the Alliance reaches 1,000 members, you can nominate a nonprofit, and experts will analyze how each nominee would use the $100,000. Using these analyses, you'll then vote to narrow the field. Our expert panel picks the winner from top choices, and the full $100,000 goes to that nonprofit.",
+    heading: "How will this work?",
+    body: `1,000 Alliance members and an expert panel will decide how to donate the $100,000. This will happen in a four-step process:
+
+1. Alliance members nominate nonprofits.
+2. Experts analyze how each nominee would use the $100,000.
+3. Alliance members use expert analyses to vote on nonprofits.
+4. The expert panel picks the final winner from members' top choices.`,
   },
   {
-    heading: "Why we're doing this",
-    body: "Grantmaking typically involves experts judging both what matters and what works. We're testing a split: members decide what they care about, and experts estimate what each nonprofit could do with the money. This process could become a regular, transparent way for donors to give and for members to direct real funding. After the project, we'll work with [Jan Maly](https://janmaly.de/) of [WU Vienna](https://www.wu.ac.at/en/dpkm) to publish research on the results.",
+    heading: "Why are we doing this?",
+    body: "We're learning how to effectively combine member values and expert analysis to donate money. This process could one day become a transparent giving service for large-scale donors. After the project, we'll work with [Jan Maly](https://janmaly.de/) of [WU Vienna](https://www.wu.ac.at/en/dpkm) to publish our findings.",
+  },
+  {
+    heading: "How do I participate?",
+    body: "Join the waitlist on this page to be notified when the Alliance reaches 1,000 members. At that point, we'll invite you to join the Alliance, and this project will begin.",
   },
 ];

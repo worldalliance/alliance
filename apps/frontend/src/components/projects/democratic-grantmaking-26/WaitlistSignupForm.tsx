@@ -249,7 +249,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         </p>
       )}
       <p className="text-center text-sm text-white/85">
-        By signing up you agree to get updates.
+        By signing up, you agree to receive updates.
       </p>
     </form>
   );
