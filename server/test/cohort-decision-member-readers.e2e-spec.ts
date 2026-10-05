@@ -263,7 +263,7 @@ describe("Member-facing reads of cohort decisions (e2e)", () => {
           },
           relations: { user: true },
         })
-      ).map((row) => row.user.id);
+      ).map((row) => row.user?.id);
     };
 
     afterEach(async () => {
