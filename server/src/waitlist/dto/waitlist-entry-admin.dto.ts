@@ -23,7 +23,10 @@ import {
   validateSync,
 } from "class-validator";
 import { toDateTime, trimToNull } from "src/utils/transforms";
-import type { WaitlistEntry } from "../entities/waitlist-entry.entity";
+import {
+  type WaitlistEntry,
+  WaitlistSpamStatus,
+} from "../entities/waitlist-entry.entity";
 import type { WaitlistLink } from "../entities/waitlist-link.entity";
 import type { WaitlistTag } from "../entities/waitlist-tag.entity";
 import { WaitlistTagDto } from "./waitlist-tag.dto";
@@ -130,6 +133,16 @@ export class WaitlistEntryFilterDto {
   @IsArray()
   @IsEnum(WaitlistInviteState, { each: true })
   inviteStates?: WaitlistInviteState[];
+
+  @ApiPropertyOptional({
+    enum: WaitlistSpamStatus,
+    enumName: "WaitlistSpamStatus",
+    isArray: true,
+  })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(WaitlistSpamStatus, { each: true })
+  spamStatuses?: WaitlistSpamStatus[];
 }
 
 /**
@@ -250,6 +263,9 @@ export class AdminWaitlistEntryDto {
   @ApiProperty({ type: Date, nullable: true })
   unsubscribedAt: Date | null;
 
+  @ApiProperty({ enum: WaitlistSpamStatus, enumName: "WaitlistSpamStatus" })
+  spamStatus: WaitlistSpamStatus;
+
   @ApiProperty({ enum: WaitlistInviteState, enumName: "WaitlistInviteState" })
   inviteState: WaitlistInviteState;
 
@@ -274,6 +290,7 @@ export class AdminWaitlistEntryDto {
     this.createdAt = entry.createdAt;
     this.mobilizedAt = entry.mobilizedAt;
     this.unsubscribedAt = entry.unsubscribedAt;
+    this.spamStatus = entry.spamStatus;
     this.inviteState = input.inviteState;
     this.tags = input.tags.map((tag) => new WaitlistTagDto(tag));
   }

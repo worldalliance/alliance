@@ -28,6 +28,7 @@ const entry = (
   createdAt: "2026-09-01T00:00:00.000Z",
   mobilizedAt: null,
   unsubscribedAt: null,
+  spamStatus: "clean",
   inviteState: "none",
   tags: [],
   ...fields,
@@ -81,6 +82,7 @@ export const emailPreview = (
 ): WaitlistEmailPreviewDto => ({
   selected: 2,
   unsubscribed: 0,
+  spam: 0,
   claimed: 0,
   recipientIds: [1, 2],
   waiting: 2,
@@ -170,6 +172,7 @@ export const serveWaitlistApi = () => {
             entry(2, {
               referrer: { id: 1, name: "Person 1" },
               tags: [{ id: 5, name: "Speakers" }],
+              spamStatus: "suspected",
             }),
           ],
           total: api.searchTotal,
@@ -187,6 +190,8 @@ export const serveWaitlistApi = () => {
               { status: api.mobilizeStatus },
             ),
       "POST /waitlist/admin/entries/unmobilize": recordPost({ changed: 0 }),
+      "POST /waitlist/admin/entries/mark-spam": recordPost({ changed: 1 }),
+      "POST /waitlist/admin/entries/mark-not-spam": recordPost({ changed: 1 }),
       "POST /waitlist/admin/entries/metrics": recordPost({
         status: {
           entries: 2,

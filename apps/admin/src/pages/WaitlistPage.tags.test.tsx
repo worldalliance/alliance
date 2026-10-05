@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { INITIAL_WAITLIST_FILTER } from "../lib/waitlistFilter";
 import {
   api,
   pickMenuItem,
@@ -90,7 +91,10 @@ it("filters by tag", async () => {
     await screen.findByRole("menuitemcheckbox", { name: "Hosts" }),
   );
   await waitFor(() =>
-    expect(api.searches.at(-1)?.filter).toEqual({ tagIds: [6] }),
+    expect(api.searches.at(-1)?.filter).toEqual({
+      ...INITIAL_WAITLIST_FILTER,
+      tagIds: [6],
+    }),
   );
 });
 
@@ -132,7 +136,10 @@ it("shows and removes a filtered tag that no longer exists", async () => {
     await screen.findByRole("menuitemcheckbox", { name: "Hosts" }),
   );
   await waitFor(() =>
-    expect(api.searches.at(-1)?.filter).toEqual({ tagIds: [6] }),
+    expect(api.searches.at(-1)?.filter).toEqual({
+      ...INITIAL_WAITLIST_FILTER,
+      tagIds: [6],
+    }),
   );
   api.tagsServed = api.tagsServed.slice(0, 1);
   fireEvent.click(screen.getByRole("button", { name: "Manage tags" }));
@@ -146,7 +153,9 @@ it("shows and removes a filtered tag that no longer exists", async () => {
   fireEvent.click(
     await screen.findByRole("menuitem", { name: "Remove 1 not found" }),
   );
-  await waitFor(() => expect(api.searches.at(-1)?.filter).toEqual({}));
+  await waitFor(() =>
+    expect(api.searches.at(-1)?.filter).toEqual(INITIAL_WAITLIST_FILTER),
+  );
 });
 
 it("keeps the typed name when a new tag's name is taken", async () => {

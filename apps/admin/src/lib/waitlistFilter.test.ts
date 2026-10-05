@@ -1,6 +1,5 @@
 import {
   compactFilter,
-  isFilterEmpty,
   linkOptions,
   sameFilter,
   withFilterField,
@@ -39,8 +38,6 @@ describe("withFilterField", () => {
       value: false,
     });
     expect(filter).toEqual({ mobilized: false });
-    expect(isFilterEmpty(filter)).toBe(false);
-    expect(isFilterEmpty({})).toBe(true);
   });
 });
 

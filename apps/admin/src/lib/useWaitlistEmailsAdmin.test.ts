@@ -19,6 +19,7 @@ const previewOf = (selected: number) =>
   ({
     selected,
     unsubscribed: 0,
+    spam: 0,
     claimed: 0,
     recipientIds: [],
     waiting: selected,

@@ -13,10 +13,13 @@ import {
   toEndDateInput,
 } from "../../lib/dateInput";
 import {
+  INITIAL_WAITLIST_FILTER,
   INVITE_STATE_LABELS,
   INVITE_STATES,
-  isFilterEmpty,
   linkOptions,
+  sameFilter,
+  SPAM_STATUS_VALUES,
+  SPAM_STATUSES,
   withFilterField,
 } from "../../lib/waitlistFilter";
 import MultiSelectFilter from "./MultiSelectFilter";
@@ -123,6 +126,15 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
         onChange={(states) => set("inviteStates", states)}
       />
       <MultiSelectFilter
+        label="Spam"
+        options={SPAM_STATUS_VALUES.map((status) => ({
+          value: status,
+          label: SPAM_STATUSES[status].label,
+        }))}
+        selected={filter.spamStatuses ?? []}
+        onChange={(statuses) => set("spamStatuses", statuses)}
+      />
+      <MultiSelectFilter
         label="Tag"
         options={tags?.map((tag) => ({ value: tag.id, label: tag.name }))}
         selected={filter.tagIds ?? []}
@@ -178,7 +190,7 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
           </button>
         </span>
       ) : null}
-      {!isFilterEmpty(filter) && (
+      {!sameFilter(filter, INITIAL_WAITLIST_FILTER) && (
         <button
           type="button"
           aria-label="Clear filters"
@@ -186,7 +198,7 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
           className={ICON_BUTTON_CLASS}
           onClick={() => {
             setSearch("");
-            onChange({});
+            onChange(INITIAL_WAITLIST_FILTER);
           }}
         >
           <FilterX size={16} />

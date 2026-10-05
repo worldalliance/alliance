@@ -74,6 +74,7 @@ export class WaitlistEmailSampleDto {
 export type WaitlistEmailPreview = {
   selected: number;
   unsubscribed: number;
+  spam: number;
   claimed: number;
   recipientIds: number[];
   waiting: number;
@@ -93,7 +94,13 @@ export class WaitlistEmailPreviewDto {
 
   @ApiProperty({
     description:
-      "Subscribed selected entries whose invite an account claimed, skipped unless included",
+      "Subscribed selected entries skipped as spam or suspected spam",
+  })
+  spam: number;
+
+  @ApiProperty({
+    description:
+      "Subscribed, non-spam selected entries whose invite an account claimed, skipped unless included",
   })
   claimed: number;
 
@@ -129,6 +136,7 @@ export class WaitlistEmailPreviewDto {
   constructor(input: WaitlistEmailPreview) {
     this.selected = input.selected;
     this.unsubscribed = input.unsubscribed;
+    this.spam = input.spam;
     this.claimed = input.claimed;
     this.recipientIds = input.recipientIds;
     this.waiting = input.waiting;

@@ -1,7 +1,12 @@
 import type { EntityManager } from "typeorm";
 import { WaitlistEntryActionKind } from "./entities/waitlist-entry-action.entity";
 
-const MOBILIZES: Record<WaitlistEntryActionKind, boolean> = {
+type MobilizationKind =
+  | WaitlistEntryActionKind.ManualMobilize
+  | WaitlistEntryActionKind.EmailMobilize
+  | WaitlistEntryActionKind.UndoMobilize;
+
+const MOBILIZES: Record<MobilizationKind, boolean> = {
   [WaitlistEntryActionKind.ManualMobilize]: true,
   [WaitlistEntryActionKind.EmailMobilize]: true,
   [WaitlistEntryActionKind.UndoMobilize]: false,
@@ -14,7 +19,7 @@ const MOBILIZES: Record<WaitlistEntryActionKind, boolean> = {
 export async function recordMobilization(params: {
   manager: EntityManager;
   entryIds: number[];
-  kind: WaitlistEntryActionKind;
+  kind: MobilizationKind;
   staffUserId: number | null;
 }): Promise<number> {
   if (!params.entryIds.length) return 0;

@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { INITIAL_WAITLIST_FILTER } from "../lib/waitlistFilter";
 import { api, renderPage, serveWaitlistApi } from "./WaitlistPage.testHarness";
 
 serveWaitlistApi();
@@ -9,7 +10,7 @@ it("lists entries newest first with their total", async () => {
   expect(screen.getByText("I care")).toBeTruthy();
   expect(screen.getByText("2 entries")).toBeTruthy();
   expect(api.searches[0]).toEqual({
-    filter: {},
+    filter: INITIAL_WAITLIST_FILTER,
     sort: "joined_desc",
     offset: 0,
     limit: 50,
@@ -20,7 +21,10 @@ it("filters by a referrer and by status", async () => {
   renderPage();
   fireEvent.click(await screen.findByRole("button", { name: "Person 1" }));
   await waitFor(() =>
-    expect(api.searches.at(-1)?.filter).toEqual({ referrerIds: [1] }),
+    expect(api.searches.at(-1)?.filter).toEqual({
+      ...INITIAL_WAITLIST_FILTER,
+      referrerIds: [1],
+    }),
   );
 
   fireEvent.change(screen.getByLabelText("Mobilized"), {
@@ -28,13 +32,17 @@ it("filters by a referrer and by status", async () => {
   });
   await waitFor(() =>
     expect(api.searches.at(-1)?.filter).toEqual({
+      ...INITIAL_WAITLIST_FILTER,
       referrerIds: [1],
       mobilized: false,
     }),
   );
 
   fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
-  await waitFor(() => expect(api.searches.at(-1)?.filter).toEqual({}));
+  await waitFor(() =>
+    expect(api.searches.at(-1)?.filter).toEqual(INITIAL_WAITLIST_FILTER),
+  );
+  expect(screen.queryByRole("button", { name: "Clear filters" })).toBeNull();
 });
 
 it("shows metrics for the current filter", async () => {
@@ -49,10 +57,13 @@ it("shows metrics for the current filter", async () => {
   });
   await waitFor(() =>
     expect(api.posts.filter((post) => post.path.endsWith("/metrics"))).toEqual([
-      { path: "/waitlist/admin/entries/metrics", body: { filter: {} } },
       {
         path: "/waitlist/admin/entries/metrics",
-        body: { filter: { mobilized: false } },
+        body: { filter: INITIAL_WAITLIST_FILTER },
+      },
+      {
+        path: "/waitlist/admin/entries/metrics",
+        body: { filter: { ...INITIAL_WAITLIST_FILTER, mobilized: false } },
       },
     ]),
   );
@@ -84,7 +95,9 @@ it("clears a referrer filter from its chip", async () => {
   fireEvent.click(
     await screen.findByRole("button", { name: "Clear referrer filter" }),
   );
-  await waitFor(() => expect(api.searches.at(-1)?.filter).toEqual({}));
+  await waitFor(() =>
+    expect(api.searches.at(-1)?.filter).toEqual(INITIAL_WAITLIST_FILTER),
+  );
 });
 
 it("pages through entries and returns to the first page on a new filter", async () => {
@@ -115,7 +128,7 @@ it("clears a search still being typed", async () => {
   fireEvent.change(box, { target: { value: "pat" } });
   fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
   await new Promise((resolve) => setTimeout(resolve, 400));
-  expect(api.searches.at(-1)?.filter).toEqual({});
+  expect(api.searches.at(-1)?.filter).toEqual(INITIAL_WAITLIST_FILTER);
   expect(box).toHaveProperty("value", "");
 });
 
@@ -126,7 +139,10 @@ it("searches after typing stops", async () => {
     target: { value: "  pat " },
   });
   await waitFor(() =>
-    expect(api.searches.at(-1)?.filter).toEqual({ search: "pat" }),
+    expect(api.searches.at(-1)?.filter).toEqual({
+      ...INITIAL_WAITLIST_FILTER,
+      search: "pat",
+    }),
   );
 });
 
@@ -163,10 +179,15 @@ it("toggles an invite state filter", async () => {
   });
   fireEvent.click(unused);
   await waitFor(() =>
-    expect(api.searches.at(-1)?.filter).toEqual({ inviteStates: ["unused"] }),
+    expect(api.searches.at(-1)?.filter).toEqual({
+      ...INITIAL_WAITLIST_FILTER,
+      inviteStates: ["unused"],
+    }),
   );
   fireEvent.click(unused);
-  await waitFor(() => expect(api.searches.at(-1)?.filter).toEqual({}));
+  await waitFor(() =>
+    expect(api.searches.at(-1)?.filter).toEqual(INITIAL_WAITLIST_FILTER),
+  );
 });
 
 it("filters by an inclusive join date range", async () => {
@@ -180,6 +201,7 @@ it("filters by an inclusive join date range", async () => {
   });
   await waitFor(() =>
     expect(api.searches.at(-1)?.filter).toEqual({
+      ...INITIAL_WAITLIST_FILTER,
       joinedFrom: new Date("2026-09-01T00:00").toISOString(),
       joinedBefore: new Date("2026-09-11T00:00").toISOString(),
     }),
@@ -197,7 +219,10 @@ it("filters by organization and by link", async () => {
     await screen.findByRole("menuitemcheckbox", { name: "Acme" }),
   );
   await waitFor(() =>
-    expect(api.searches.at(-1)?.filter).toEqual({ organizationIds: [7] }),
+    expect(api.searches.at(-1)?.filter).toEqual({
+      ...INITIAL_WAITLIST_FILTER,
+      organizationIds: [7],
+    }),
   );
 
   fireEvent.click(screen.getByRole("button", { name: /^Link\s*·/ }));
@@ -206,6 +231,7 @@ it("filters by organization and by link", async () => {
   );
   await waitFor(() =>
     expect(api.searches.at(-1)?.filter).toEqual({
+      ...INITIAL_WAITLIST_FILTER,
       organizationIds: [7],
       sourceLinkIds: [9],
     }),
@@ -238,7 +264,10 @@ it("selects every matching entry across pages, and undoes their mobilization", a
     target: { value: "true" },
   });
   await waitFor(() =>
-    expect(api.searches.at(-1)?.filter).toEqual({ mobilized: true }),
+    expect(api.searches.at(-1)?.filter).toEqual({
+      ...INITIAL_WAITLIST_FILTER,
+      mobilized: true,
+    }),
   );
   fireEvent.click(
     screen.getByRole("button", { name: "Select all 2 matching" }),
@@ -246,7 +275,7 @@ it("selects every matching entry across pages, and undoes their mobilization", a
   expect(await screen.findByText("3 entries are selected")).toBeTruthy();
   expect(api.posts[0]).toEqual({
     path: "/waitlist/admin/entries/ids",
-    body: { filter: { mobilized: true } },
+    body: { filter: { ...INITIAL_WAITLIST_FILTER, mobilized: true } },
   });
 
   fireEvent.click(screen.getByRole("button", { name: "Undo mobilized" }));
@@ -321,7 +350,10 @@ it("ignores a select-all answer for a filter since changed", async () => {
     target: { value: "true" },
   });
   await waitFor(() =>
-    expect(api.searches.at(-1)?.filter).toEqual({ hasReason: true }),
+    expect(api.searches.at(-1)?.filter).toEqual({
+      ...INITIAL_WAITLIST_FILTER,
+      hasReason: true,
+    }),
   );
   release();
   await waitFor(() => expect(api.posts).toHaveLength(1));

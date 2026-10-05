@@ -12,7 +12,10 @@ import {
 } from "./dto/waitlist-entry-admin.dto";
 import { WaitlistEmailRecipientStatus } from "./entities/waitlist-email-recipient.entity";
 import { WaitlistEntryActionKind } from "./entities/waitlist-entry-action.entity";
-import { WaitlistEntry } from "./entities/waitlist-entry.entity";
+import {
+  WaitlistEntry,
+  WaitlistSpamStatus,
+} from "./entities/waitlist-entry.entity";
 import { recordMobilization } from "./waitlist-mobilization";
 import { WaitlistTagService } from "./waitlist-tag.service";
 
@@ -106,6 +109,11 @@ export class WaitlistEntryAdminService {
     if (filter.inviteStates?.length) {
       query.andWhere(`(${INVITE_STATE_SQL}) IN (:...inviteStates)`, {
         inviteStates: filter.inviteStates,
+      });
+    }
+    if (filter.spamStatuses?.length) {
+      query.andWhere("entry.spamStatus IN (:...spamStatuses)", {
+        spamStatuses: filter.spamStatuses,
       });
     }
     return query;
@@ -225,5 +233,31 @@ export class WaitlistEntryAdminService {
         : WaitlistEntryActionKind.UndoMobilize,
       staffUserId: params.staffUserId,
     });
+  }
+
+  /**
+   * Sets the staff ruling on the entries whose status differs, recording each
+   * change. Resolves to how many changed.
+   */
+  async setSpam(params: {
+    entryIds: number[];
+    spam: boolean;
+    staffUserId: number;
+  }): Promise<number> {
+    const [status, kind] = params.spam
+      ? [WaitlistSpamStatus.Spam, WaitlistEntryActionKind.MarkSpam]
+      : [WaitlistSpamStatus.NotSpam, WaitlistEntryActionKind.MarkNotSpam];
+    const rows: unknown[] = await this.entryRepository.query(
+      `WITH changed AS (
+         UPDATE waitlist_entry SET "spamStatus" = $2
+         WHERE id = ANY($1) AND "spamStatus" <> $2
+         RETURNING id
+       )
+       INSERT INTO waitlist_entry_action ("entryId", kind, "staffUserId")
+       SELECT id, $3, $4 FROM changed
+       RETURNING "entryId"`,
+      [params.entryIds, status, kind, params.staffUserId],
+    );
+    return rows.length;
   }
 }

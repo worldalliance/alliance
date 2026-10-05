@@ -2,6 +2,7 @@ import type {
   AdminWaitlistLinkDto,
   WaitlistEntryFilterDto,
   WaitlistInviteState,
+  WaitlistSpamStatus,
 } from "@alliance/shared/client/types.gen";
 
 const isBlank = (value: unknown): boolean =>
@@ -28,9 +29,6 @@ export function withFilterField<K extends keyof WaitlistEntryFilterDto>({
   }
   return next;
 }
-
-export const isFilterEmpty = (filter: WaitlistEntryFilterDto): boolean =>
-  Object.keys(filter).length === 0;
 
 export const compactFilter = (
   filter: WaitlistEntryFilterDto,
@@ -85,3 +83,26 @@ const isInviteState = (value: string): value is WaitlistInviteState =>
 
 export const INVITE_STATES =
   Object.keys(INVITE_STATE_LABELS).filter(isInviteState);
+
+/** Spam-like entries get no email and start hidden. */
+export const SPAM_STATUSES: Record<
+  WaitlistSpamStatus,
+  { label: string; spamLike: boolean }
+> = {
+  clean: { label: "Clean", spamLike: false },
+  suspected: { label: "Suspected spam", spamLike: true },
+  spam: { label: "Spam", spamLike: true },
+  not_spam: { label: "Not spam", spamLike: false },
+};
+
+const isSpamStatus = (value: string): value is WaitlistSpamStatus =>
+  value in SPAM_STATUSES;
+
+export const SPAM_STATUS_VALUES =
+  Object.keys(SPAM_STATUSES).filter(isSpamStatus);
+
+export const INITIAL_WAITLIST_FILTER: WaitlistEntryFilterDto = {
+  spamStatuses: SPAM_STATUS_VALUES.filter(
+    (status) => !SPAM_STATUSES[status].spamLike,
+  ),
+};

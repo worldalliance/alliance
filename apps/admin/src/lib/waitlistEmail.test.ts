@@ -13,6 +13,7 @@ const preview = (
 ): WaitlistEmailPreviewDto => ({
   selected: 3,
   unsubscribed: 0,
+  spam: 0,
   claimed: 0,
   recipientIds: [1, 2, 3],
   waiting: 2,
@@ -116,14 +117,14 @@ describe("sendConfirmation", () => {
   it("says who is skipped and that statuses stay for a plain send", () => {
     expect(
       sendConfirmation({
-        preview: preview({ unsubscribed: 1, claimed: 2 }),
+        preview: preview({ unsubscribed: 1, spam: 3, claimed: 2 }),
         used: uses(),
         includeClaimed: false,
         subject: "News",
         mobilize: false,
       }),
     ).toBe(
-      "Email “News” to 3 recipients now.\n\nSkips 1 unsubscribed and 2 who already claimed an invite.\n\nMobilized status stays as it is.",
+      "Email “News” to 3 recipients now.\n\nSkips 1 unsubscribed, 3 marked or suspected as spam, and 2 who already claimed an invite.\n\nMobilized status stays as it is.",
     );
   });
 
