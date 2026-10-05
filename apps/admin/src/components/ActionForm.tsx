@@ -799,6 +799,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
           tagsLoading={tagsLoading}
           tagsError={tagsError}
           availableActions={allActions}
+          actionsLoading={allActionsLoading}
           availableUsers={availableUsers}
           usersLoading={usersLoading}
           activeContractUserIds={activeContractUserIds}
