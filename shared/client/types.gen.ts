@@ -518,7 +518,7 @@ export type ActionUpdate = {
     associatedEventId: number | null;
     notifyType: ActionUpdateNotifyType;
     notifiedAt: string | null;
-    notifs: Array<Notification>;
+    notifs?: Array<Notification>;
     tag?: Tag | null;
 };
 
