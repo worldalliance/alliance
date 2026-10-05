@@ -1,18 +1,16 @@
-import {
-  waitlistAdminCreateCohortAdmin,
-  waitlistAdminDeleteCohortAdmin,
-  waitlistAdminUpdateCohortAdmin,
-} from "@alliance/shared/client";
 import type {
   WaitlistCohortDto,
   WaitlistEntryFilterDto,
 } from "@alliance/shared/client/types.gen";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BookmarkPlus, RotateCcw, Save, Trash2 } from "lucide-react";
 import React, { useState } from "react";
 import { useRefusalToast } from "../../lib/useRefusalToast";
+import {
+  useCreateWaitlistCohortAdmin,
+  useDeleteWaitlistCohortAdmin,
+  useUpdateWaitlistCohortAdmin,
+} from "../../lib/useWaitlistCohortsAdmin";
 import { compactFilter, sameFilter } from "../../lib/waitlistFilter";
 import ConfirmDialog from "../ConfirmDialog";
 import {
@@ -33,7 +31,6 @@ const CohortControls: React.FC<CohortControlsProps> = ({
   filter,
   onApply,
 }) => {
-  const queryClient = useQueryClient();
   const refusalToast = useRefusalToast();
   const { success } = useToast();
   const [cohortId, setCohortId] = useState<number | null>(null);
@@ -42,66 +39,26 @@ const CohortControls: React.FC<CohortControlsProps> = ({
   const [deleting, setDeleting] = useState(false);
 
   const cohort = cohorts.find((c) => c.id === cohortId) ?? null;
-  const invalidate = () =>
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.waitlistCohortsAdmin(),
-    });
 
-  const create = useMutation({
-    mutationFn: (name: string) =>
-      waitlistAdminCreateCohortAdmin({
-        body: { name, filter },
-        throwOnError: true,
-      }).then((r) => r.data),
+  const create = useCreateWaitlistCohortAdmin({
     onSuccess: (created) => {
-      queryClient.setQueryData<WaitlistCohortDto[]>(
-        queryKeys.waitlistCohortsAdmin(),
-        (old = []) => [...old, created],
-      );
       setNaming(false);
       setCohortId(created.id);
       success(`Saved cohort “${created.name}”`);
     },
     onError: (err) => refusalToast(err, "Could not save the cohort."),
-    onSettled: invalidate,
   });
 
-  const update = useMutation({
-    mutationFn: (id: number) =>
-      waitlistAdminUpdateCohortAdmin({
-        path: { id },
-        body: { filter },
-        throwOnError: true,
-      }).then((r) => r.data),
-    onSuccess: (updated) => {
-      queryClient.setQueryData<WaitlistCohortDto[]>(
-        queryKeys.waitlistCohortsAdmin(),
-        (old = []) => old.map((c) => (c.id === updated.id ? updated : c)),
-      );
-      success(`Updated cohort “${updated.name}”`);
-    },
+  const update = useUpdateWaitlistCohortAdmin({
+    onSuccess: (updated) => success(`Updated cohort “${updated.name}”`),
     onError: (err) => refusalToast(err, "Could not update the cohort."),
-    onSettled: async () => {
-      setUpdating(false);
-      await invalidate();
-    },
+    onSettled: () => setUpdating(false),
   });
 
-  const remove = useMutation({
-    mutationFn: (id: number) =>
-      waitlistAdminDeleteCohortAdmin({ path: { id }, throwOnError: true }),
-    onSuccess: (_, id) => {
-      queryClient.setQueryData<WaitlistCohortDto[]>(
-        queryKeys.waitlistCohortsAdmin(),
-        (old = []) => old.filter((c) => c.id !== id),
-      );
-      setCohortId(null);
-    },
+  const remove = useDeleteWaitlistCohortAdmin({
+    onSuccess: () => setCohortId(null),
     onError: (err) => refusalToast(err, "Could not delete the cohort."),
-    onSettled: async () => {
-      setDeleting(false);
-      await invalidate();
-    },
+    onSettled: () => setDeleting(false),
   });
 
   if (naming) {
@@ -112,7 +69,7 @@ const CohortControls: React.FC<CohortControlsProps> = ({
         submitLabel="Save cohort"
         maxLength={100}
         disabled={create.isPending}
-        onSubmit={(name) => create.mutate(name)}
+        onSubmit={(name) => create.mutate({ name, filter })}
         onCancel={() => setNaming(false)}
       />
     );
@@ -183,7 +140,7 @@ const CohortControls: React.FC<CohortControlsProps> = ({
         isOpen={updating && cohort !== null}
         title={`Update cohort “${cohort?.name}”?`}
         message="This replaces its saved filter with the current one."
-        onConfirm={() => cohort && update.mutate(cohort.id)}
+        onConfirm={() => cohort && update.mutate({ id: cohort.id, filter })}
         onCancel={() => setUpdating(false)}
         isLoading={update.isPending}
       />
