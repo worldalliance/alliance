@@ -24,8 +24,10 @@ import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import {
+  compareContractEventsNewestFirst,
   ContractEvent,
   ContractEventType,
+  isContractActiveAt,
 } from "src/user/entities/contract-event.entity";
 import {
   OnetimeInvite,
@@ -38,6 +40,7 @@ import {
   hasMemberActionDeadlinePassed,
 } from "src/utils/action-user";
 import { yieldToEventLoop } from "src/utils/event-loop";
+import { findLeast } from "src/utils/filter";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { Between, In, IsNull, type Repository } from "typeorm";
 import { ActionCompletionCurve } from "./action-completion-curve.dto";
@@ -1342,16 +1345,15 @@ ORDER BY pp.total_session_duration_seconds DESC
   }
 
   private async contractEventsByUser(): Promise<
-    Map<number, { date: Date; type: ContractEventType }[]>
+    Map<number, Pick<ContractEvent, "id" | "date" | "type">[]>
   > {
     const allEvents = await this.contractEventRepository.find({
       relations: { user: true },
-      order: { date: "ASC" },
     });
 
     const userEvents = new Map<
       number,
-      { date: Date; type: ContractEventType }[]
+      Pick<ContractEvent, "id" | "date" | "type">[]
     >();
 
     for (const event of allEvents) {
@@ -1359,12 +1361,8 @@ ORDER BY pp.total_session_duration_seconds DESC
       if (!userId) continue;
 
       const events = userEvents.get(userId) ?? [];
-      events.push({ date: event.date, type: event.type });
+      events.push({ id: event.id, date: event.date, type: event.type });
       userEvents.set(userId, events);
-    }
-
-    for (const events of userEvents.values()) {
-      events.sort((a, b) => a.date.getTime() - b.date.getTime());
     }
 
     return userEvents;
@@ -1372,20 +1370,18 @@ ORDER BY pp.total_session_duration_seconds DESC
 
   async getTimeToChurnSamples(): Promise<number[]> {
     const userEvents = await this.contractEventsByUser();
+    const now = new Date();
 
     const churnedUsers = new Map<number, Date>();
     for (const [userId, events] of userEvents) {
-      const latestEvent = events[events.length - 1];
-      if (!latestEvent || latestEvent.type === ContractEventType.SIGNED) {
-        continue;
-      }
+      if (isContractActiveAt(events, now)) continue;
 
-      for (let index = events.length - 1; index >= 0; index -= 1) {
-        if (events[index].type === ContractEventType.SIGNED) {
-          churnedUsers.set(userId, events[index].date);
-          break;
-        }
-      }
+      const lastSigned = findLeast(
+        events,
+        compareContractEventsNewestFirst,
+        (event) => event.type === ContractEventType.SIGNED && event.date <= now,
+      );
+      if (lastSigned) churnedUsers.set(userId, lastSigned.date);
     }
 
     if (churnedUsers.size === 0) {
@@ -1475,24 +1471,15 @@ ORDER BY pp.total_session_duration_seconds DESC
       let totalEverSigned = 0;
 
       for (const [, events] of userEvents) {
-        // Find all events up to this date
-        const relevantEvents = events.filter((e) => e.date <= dateEnd);
-
-        if (relevantEvents.length === 0) continue;
-
-        // User has at least one event, so they signed at some point
-        const hasEverSigned = relevantEvents.some(
-          (e) => e.type === ContractEventType.SIGNED,
+        const hasEverSigned = events.some(
+          (e) => e.type === ContractEventType.SIGNED && e.date <= dateEnd,
         );
 
         if (!hasEverSigned) continue;
 
         totalEverSigned++;
 
-        // Get the most recent event to determine current status
-        const latestEvent = relevantEvents[relevantEvents.length - 1];
-
-        if (latestEvent.type === ContractEventType.SIGNED) {
+        if (isContractActiveAt(events, dateEnd)) {
           activeCount++;
         } else {
           churnedCount++;

@@ -3,6 +3,7 @@ import { Type } from "class-transformer";
 import { Allow, IsOptional } from "class-validator";
 import { Contract } from "src/contract/entities/contract.entity";
 import { UpdateDateColumnTz } from "src/datasources/basecolumns";
+import { findLeast } from "src/utils/filter";
 import type { Relation } from "src/utils/Repository";
 import {
   Check,
@@ -27,6 +28,19 @@ export function compareContractEventsNewestFirst<
   T extends ContractEventOrderFields,
 >(a: T, b: T): number {
   return b.date.getTime() - a.date.getTime() || b.id - a.id;
+}
+
+export function isContractActiveAt(
+  events: Pick<ContractEvent, "date" | "id" | "type">[],
+  at: Date,
+): boolean {
+  return (
+    findLeast(
+      events,
+      compareContractEventsNewestFirst,
+      (event) => event.date <= at,
+    )?.type === ContractEventType.SIGNED
+  );
 }
 
 export function getEffectiveContractEventsInRange<
