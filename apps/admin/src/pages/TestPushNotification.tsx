@@ -13,7 +13,7 @@ const TestPushNotification: React.FC = () => {
   const {
     data: users = [],
     isLoading: usersLoading,
-    isError: isUsersError,
+    isLoadingError: usersLoadFailed,
   } = useUsersAdmin();
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [message, setMessage] = useState("hi");
@@ -88,6 +88,7 @@ const TestPushNotification: React.FC = () => {
         selectedUserIds={selectedUserIds}
         onChange={setSelectedUserIds}
         loading={usersLoading}
+        loadFailed={usersLoadFailed}
         label="Recipient"
         single
       />
@@ -114,9 +115,6 @@ const TestPushNotification: React.FC = () => {
         </Button>
         {sending && (
           <p className="text-sm text-zinc-500">Sending push notification...</p>
-        )}
-        {isUsersError && (
-          <p className="text-red-500 text-[10pt] mt-1">Failed to load users.</p>
         )}
         {error && <p className="text-red-500 text-[10pt] mt-1">{error}</p>}
         {success && <p className="text-green text-[10pt] mt-1">{success}</p>}
