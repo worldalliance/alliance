@@ -21,7 +21,7 @@ import { CommunityService } from "src/community/community.service";
 import { Community } from "src/community/entities/community.entity";
 import { resolveUsMembership, UsMembership } from "src/geo/us-membership";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
-import { Tag } from "src/user/entities/tag.entity";
+import { loadedTagUsers, Tag } from "src/user/entities/tag.entity";
 import {
   canMissActionDeadline,
   computeIsAssignedAndPresent,
@@ -654,7 +654,7 @@ export class ActionEventRecipientService {
           throw new Error("Group cohort type requires user tag");
         }
         const userTag = await this.userService.findTagOrFail(group.userTag.id);
-        users = userTag.users;
+        users = loadedTagUsers(userTag);
         break;
       default:
         throw new Error(

@@ -150,7 +150,7 @@ import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "./entities/onetime-invite.entity";
-import { Tag } from "./entities/tag.entity";
+import { loadedTagUsers, Tag } from "./entities/tag.entity";
 import {
   UserAwayRange,
   UserAwayRangeReason,
@@ -1780,7 +1780,7 @@ export class UserService {
   }
 
   async createTag(body: CreateTagDto): Promise<Tag> {
-    const tag = this.tagRepository.create(body);
+    const tag = this.tagRepository.create({ ...body, users: [] });
     return this.tagRepository.save(tag);
   }
 
@@ -1804,7 +1804,7 @@ export class UserService {
       where: { id: tagId },
       relations: { users: true },
     });
-    tag.users.push(await this.findOneOrFail(userId));
+    tag.users = [...loadedTagUsers(tag), await this.findOneOrFail(userId)];
     return this.tagRepository.save(tag);
   }
 
@@ -1813,7 +1813,7 @@ export class UserService {
       where: { id: tagId },
       relations: { users: true },
     });
-    tag.users = tag.users.filter((user) => user.id !== userId);
+    tag.users = loadedTagUsers(tag).filter((user) => user.id !== userId);
     return this.tagRepository.save(tag);
   }
 
@@ -1822,7 +1822,11 @@ export class UserService {
       where: { id: tagId },
     });
     Object.assign(tag, body);
-    return this.tagRepository.save(tag);
+    await this.tagRepository.save(tag);
+    return this.tagRepository.findOneOrFail({
+      where: { id: tagId },
+      relations: { users: true },
+    });
   }
 
   async deleteTag(tagId: string): Promise<void> {

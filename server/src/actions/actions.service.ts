@@ -103,7 +103,7 @@ import {
 } from "src/user/dto/user-action-relations.dto";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { ContractEventType } from "src/user/entities/contract-event.entity";
-import { Tag } from "src/user/entities/tag.entity";
+import { loadedTagUsers, Tag } from "src/user/entities/tag.entity";
 import {
   sqlUserHasActiveContractAt,
   User,
@@ -3410,8 +3410,9 @@ export class ActionsService {
         if (!actionUpdate.tag) {
           throw new BadRequestException("Tag is required");
         }
-        return (await this.userService.findTagOrFail(actionUpdate.tag.id))
-          .users;
+        return loadedTagUsers(
+          await this.userService.findTagOrFail(actionUpdate.tag.id),
+        );
       }
       case ActionUpdateNotifyType.AllMembers:
         return this.userService.findAllUsers();
