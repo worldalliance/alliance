@@ -635,7 +635,7 @@ export type Community = {
     leaders?: Array<User>;
     pendingUsers?: Array<User>;
     invites?: Array<OnetimeInvite>;
-    internalInvites: Array<CommunityInvite>;
+    internalInvites?: Array<CommunityInvite>;
 };
 
 export type OnetimeInvite = {

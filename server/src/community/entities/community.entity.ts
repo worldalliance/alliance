@@ -7,7 +7,6 @@ import { Transform, Type } from "class-transformer";
 import {
   Allow,
   IsBoolean,
-  IsDefined,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -139,9 +138,8 @@ export class Community {
   invites?: Relation<OnetimeInvite>[];
 
   @OneToMany(() => CommunityInvite, (invite) => invite.community)
-  @ApiProperty({ type: () => CommunityInvite, isArray: true })
+  @ApiPropertyOptional({ type: () => CommunityInvite, isArray: true })
   @Type(() => CommunityInvite)
-  @IsDefined()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  internalInvites: Relation<CommunityInvite>[];
+  @IsOptional()
+  internalInvites?: Relation<CommunityInvite>[];
 }
