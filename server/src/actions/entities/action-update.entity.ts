@@ -42,10 +42,9 @@ export class ActionUpdate {
   })
   @JoinColumn({ name: "actionId" })
   @Type(() => Action)
-  @Allow()
-  @ApiProperty({ type: () => Action })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  action: Relation<Action>;
+  @IsOptional()
+  @ApiPropertyOptional({ type: () => Action })
+  action?: Relation<Action>;
 
   @RelationId((update: ActionUpdate) => update.action)
   @Type(() => Number)

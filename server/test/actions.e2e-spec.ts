@@ -47,6 +47,7 @@ import {
   CreateActionDto,
   CreateActionEventDto,
   GlobalFeedItemType,
+  TimelineFeedItemType,
   WelcomeQueueDto,
 } from "../src/actions/dto/action.dto";
 import {
@@ -4220,15 +4221,46 @@ describe("Actions (e2e)", () => {
           action: entity,
         }),
       ]);
+      const update = await request(ctx.app.getHttpServer())
+        .post(`/actions/createUpdate/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "Published",
+          shortNotifString: "Published",
+          date: new Date().toISOString(),
+          notifyType: "none",
+        })
+        .expect(201);
+      await request(ctx.app.getHttpServer())
+        .patch(`/actions/updateUpdate/${update.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          schema: {
+            blocks: [
+              { type: "display", kind: "header", id: "b1", text: "Body" },
+            ],
+          },
+          expectedSchemaSnapshotId: update.body.schemaSnapshotId,
+        })
+        .expect(200);
 
       const timelineRes = await request(ctx.app.getHttpServer())
         .get("/actions/timeline-feed")
         .expect(200);
+      const itemsForAction = timelineRes.body.filter(
+        (item: { action: ActionDto }) => item.action.id === action.id,
+      );
       expect(
-        timelineRes.body.find(
-          (item: { action: ActionDto }) => item.action.id === action.id,
-        )?.action.reviewers,
-      ).toEqual([{ name: "Jane" }]);
+        itemsForAction.map(
+          (item: { type: TimelineFeedItemType; action: ActionDto }) => [
+            item.type,
+            item.action.reviewers,
+          ],
+        ),
+      ).toEqual([
+        [TimelineFeedItemType.ActionUpdate, [{ name: "Jane" }]],
+        [TimelineFeedItemType.ActionEvent, [{ name: "Jane" }]],
+      ]);
     });
 
     it("loads reviewers for suite actions and for archive/unarchive", async () => {

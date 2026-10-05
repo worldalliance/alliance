@@ -5023,6 +5023,11 @@ export class ActionsService {
       if (!visibleActionIds.has(actionUpdate.actionId)) {
         continue;
       }
+      if (!actionUpdate.action) {
+        throw new Error(
+          `action of action update ${actionUpdate.id} not loaded`,
+        );
+      }
       feedItems.push(
         new TimelineFeedItemDto({
           type: TimelineFeedItemType.ActionUpdate,
