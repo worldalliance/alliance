@@ -449,19 +449,6 @@ export default function RenderDisplayBlock({
     case "previousAnswer": {
       const answers = previousAnswerData?.[block.sourceFormId];
       const schema = previousAnswerSchemas?.[block.sourceFormId];
-      if (!answers || !schema) {
-        const placeholder = block.emptyText || "No previous answer available";
-        return (
-          <div>
-            {block.title && (
-              <h3 className="text-base font-medium text-zinc-900 mb-2">
-                {block.title}
-              </h3>
-            )}
-            <p className="text-sm text-gray-400 italic">{placeholder}</p>
-          </div>
-        );
-      }
       return (
         <RenderPreviousAnswer block={block} schema={schema} answers={answers} />
       );
