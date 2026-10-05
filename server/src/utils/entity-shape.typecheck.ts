@@ -17,6 +17,7 @@ import type { EditableContent } from "src/forum/entities/editablecontent.entity"
 import type { City } from "src/geo/city.entity";
 import type { Mail } from "src/mail/mail.entity";
 import type { Mms } from "src/mms/mms.entity";
+import type { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
 import type { UnreadContent } from "src/notifs/entities/unread-content.entity";
 import type { Push } from "src/push/push.entity";
 import type { RecentSearch } from "src/search/recentsearch.entity";
@@ -45,6 +46,7 @@ import type { EntityShape } from "./Repository";
  * against whichever service calls it first.
  */
 type _typecheck_EntityShapes =
+  | Assert<EntityShape<ActionEventNotif>>
   | Assert<EntityShape<ActionFormAssignment>>
   | Assert<EntityShape<ActionFormVariant>>
   | Assert<EntityShape<ActionPartnershipNote>>

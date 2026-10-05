@@ -28,6 +28,7 @@ import { EmailType } from "src/mail/mail.entity";
 import { MailService, processKeywordReplacements } from "src/mail/mail.service";
 import { Tag } from "src/user/entities/tag.entity";
 import { UserService } from "src/user/user.service";
+import type { Repository as TypedRepository } from "src/utils/Repository";
 import { Brackets, In, type Repository } from "typeorm";
 import {
   ActionEvent,
@@ -66,7 +67,7 @@ export class ActionEventReminderService {
     @InjectRepository(ActionSuite)
     private readonly actionSuiteRepository: Repository<ActionSuite>,
     @InjectRepository(ActionEventNotif)
-    private readonly actionEventNotifRepository: Repository<ActionEventNotif>,
+    private readonly actionEventNotifRepository: TypedRepository<ActionEventNotif>,
     @InjectRepository(Action)
     private readonly actionRepository: Repository<Action>,
     @InjectRepository(FollowUpForm)

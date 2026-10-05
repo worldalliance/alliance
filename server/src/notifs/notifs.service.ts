@@ -119,7 +119,7 @@ export class NotifsService {
     @InjectRepository(UnreadContent)
     private readonly unreadContentRepository: TypedRepository<UnreadContent>,
     @InjectRepository(ActionEventNotif)
-    private readonly actionEventNotifsRepository: Repository<ActionEventNotif>,
+    private readonly actionEventNotifsRepository: TypedRepository<ActionEventNotif>,
     private readonly mailService: MailService,
     private readonly mmsService: MmsService,
     private readonly renderService: NotificationRenderService,
