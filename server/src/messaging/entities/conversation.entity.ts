@@ -30,9 +30,8 @@ export class Conversation {
   id: number;
 
   @OneToMany(() => Message, (message) => message.conversation)
-  @ApiProperty({ type: () => Message, isArray: true })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  messages: Relation<Message>[];
+  @ApiPropertyOptional({ type: () => Message, isArray: true })
+  messages?: Relation<Message>[];
 
   @CreateDateColumnTz()
   @ApiProperty({ type: Date })
