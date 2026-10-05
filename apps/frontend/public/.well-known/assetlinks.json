@@ -9,5 +9,15 @@
         "A3:ED:1A:B6:F6:4C:4F:7D:F7:F4:04:F6:AC:8D:B6:4C:3B:C0:10:6F:9A:D7:B0:FB:D6:A1:01:4A:30:C4:C2:7E"
       ]
     }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.alliance.alliancemobile.staging",
+      "sha256_cert_fingerprints": [
+        "33:12:59:F9:7B:91:0E:8C:80:53:74:21:C7:14:68:21:2F:79:E5:94:D8:67:4A:37:39:A0:A5:0A:0A:EC:B8:A9"
+      ]
+    }
   }
 ]
