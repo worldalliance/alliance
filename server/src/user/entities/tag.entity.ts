@@ -60,16 +60,20 @@ export class Tag {
   @ManyToMany(() => User, (user) => user.tags, {
     onDelete: "CASCADE",
   })
-  @ApiProperty({ type: () => User, isArray: true })
-  @Allow()
+  @ApiPropertyOptional({ type: () => User, isArray: true })
+  @IsOptional()
   @JoinTable()
   @Type(() => User)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  users: Relation<User>[];
+  users?: Relation<User>[];
 
   @ManyToMany(() => GeneralUpdate, (generalUpdate) => generalUpdate.tags)
   @ApiPropertyOptional({ type: () => GeneralUpdate, isArray: true })
   @IsOptional()
   @Type(() => GeneralUpdate)
   generalUpdates?: Relation<GeneralUpdate>[];
+}
+
+export function loadedTagUsers(tag: Tag): Relation<User>[] {
+  if (!tag.users) throw new Error(`users of tag ${tag.id} not loaded`);
+  return tag.users;
 }

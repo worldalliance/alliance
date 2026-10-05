@@ -30,6 +30,7 @@ import type { AmbassadorProgramInteraction } from "src/user/entities/ambassador-
 import type { AmbassadorProgramMember } from "src/user/entities/ambassador-program-member.entity";
 import type { ContractEvent } from "src/user/entities/contract-event.entity";
 import type { Friend } from "src/user/entities/friend.entity";
+import type { Tag } from "src/user/entities/tag.entity";
 import type { UserAwayRange } from "src/user/entities/user-away-range.entity";
 import type { UserDevice } from "src/user/entities/user-device.entity";
 import type { Video } from "src/videos/entities/video.entity";
@@ -78,6 +79,7 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<Mms>>
   | Assert<EntityShape<Push>>
   | Assert<EntityShape<RecentSearch>>
+  | Assert<EntityShape<Tag>>
   | Assert<EntityShape<UnreadContent>>
   | Assert<EntityShape<UserAwayRange>>
   | Assert<EntityShape<UserDevice>>

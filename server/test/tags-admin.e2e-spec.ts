@@ -2,7 +2,7 @@ import request from "supertest";
 import { Tag } from "../src/user/entities/tag.entity";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
-describe("Admin tag public display name (e2e)", () => {
+describe("Admin tags (e2e)", () => {
   let ctx: TestContext;
 
   beforeAll(async () => {
@@ -47,6 +47,24 @@ describe("Admin tag public display name (e2e)", () => {
       .getRepository(Tag)
       .findOneByOrFail({ id: created.body.id });
     expect(saved.publicDisplayName).toBeNull();
+  });
+
+  it("returns a tag's users after adding and removing one", async () => {
+    const created = await post("/user/createTag", createBody("Helpers"));
+    const userIds = (response: request.Response) =>
+      response.body.users.map((user: { id: number }) => user.id);
+
+    const added = await post(`/user/tags/${created.body.id}/addUser`, {
+      userId: ctx.testUserId,
+    });
+    expect(added.status).toBe(201);
+    expect(userIds(added)).toEqual([ctx.testUserId]);
+
+    const removed = await post(`/user/tags/${created.body.id}/removeUser`, {
+      userId: ctx.testUserId,
+    });
+    expect(removed.status).toBe(201);
+    expect(userIds(removed)).toEqual([]);
   });
 
   it.each([

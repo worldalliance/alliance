@@ -769,7 +769,7 @@ export type Tag = {
     publicDisplayName: string | null;
     createdAt: string;
     updatedAt: string;
-    users: Array<User>;
+    users?: Array<User>;
     generalUpdates?: Array<GeneralUpdate>;
 };
 

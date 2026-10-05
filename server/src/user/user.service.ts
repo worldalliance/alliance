@@ -150,7 +150,7 @@ import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "./entities/onetime-invite.entity";
-import { Tag } from "./entities/tag.entity";
+import { loadedTagUsers, Tag } from "./entities/tag.entity";
 import {
   UserAwayRange,
   UserAwayRangeReason,
@@ -1804,7 +1804,7 @@ export class UserService {
       where: { id: tagId },
       relations: { users: true },
     });
-    tag.users.push(await this.findOneOrFail(userId));
+    tag.users = [...loadedTagUsers(tag), await this.findOneOrFail(userId)];
     return this.tagRepository.save(tag);
   }
 
@@ -1813,7 +1813,7 @@ export class UserService {
       where: { id: tagId },
       relations: { users: true },
     });
-    tag.users = tag.users.filter((user) => user.id !== userId);
+    tag.users = loadedTagUsers(tag).filter((user) => user.id !== userId);
     return this.tagRepository.save(tag);
   }
 
