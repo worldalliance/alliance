@@ -46,10 +46,9 @@ export class FormResponse {
   formId: number;
 
   @ManyToOne(() => Form, (f) => f.responses, { onDelete: "CASCADE" })
-  @IsDefined()
+  @IsOptional()
   @Type(() => Form)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  form: Relation<Form>;
+  form?: Relation<Form>;
 
   @Column({ type: "jsonb" })
   @ApiProperty()
