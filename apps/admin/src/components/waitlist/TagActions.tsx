@@ -1,9 +1,4 @@
 import { withCount } from "@alliance/common/plural";
-import {
-  waitlistAdminCreateTagAdmin,
-  waitlistAdminTagEntriesAdmin,
-  waitlistAdminUntagEntriesAdmin,
-} from "@alliance/shared/client";
 import type { AdminWaitlistTagDto } from "@alliance/shared/client/types.gen";
 import {
   DropdownMenuContent,
@@ -11,11 +6,10 @@ import {
 } from "@alliance/sharedweb/ui/DropdownMenu";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Menu } from "@base-ui/react/menu";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
 import React, { useState } from "react";
 import { useRefusalToast } from "../../lib/useRefusalToast";
-import { invalidateTagQueries } from "../../lib/waitlistAdminQueries";
+import { useChangeWaitlistEntryTagsAdmin } from "../../lib/useWaitlistTagsAdmin";
 import ConfirmDialog from "../ConfirmDialog";
 import InlineNameForm from "./InlineNameForm";
 import { MENU_TRIGGER_CLASS } from "./controlClasses";
@@ -31,7 +25,6 @@ const TagActions: React.FC<TagActionsProps> = ({
   tags,
   onChanged,
 }) => {
-  const queryClient = useQueryClient();
   const refusalToast = useRefusalToast();
   const { success } = useToast();
   const [naming, setNaming] = useState(false);
@@ -40,34 +33,8 @@ const TagActions: React.FC<TagActionsProps> = ({
     entryIds: number[];
   } | null>(null);
 
-  const invalidate = () => invalidateTagQueries(queryClient);
-
-  const change = useMutation({
-    mutationFn: async (params: {
-      tag: { id: number; name: string } | { name: string };
-      add: boolean;
-      entryIds: number[];
-    }) => {
-      const tag =
-        "id" in params.tag
-          ? params.tag
-          : (
-              await waitlistAdminCreateTagAdmin({
-                body: { name: params.tag.name },
-                throwOnError: true,
-              })
-            ).data;
-      setNaming(false);
-      const send = params.add
-        ? waitlistAdminTagEntriesAdmin
-        : waitlistAdminUntagEntriesAdmin;
-      const { data } = await send({
-        path: { id: tag.id },
-        body: { entryIds: params.entryIds },
-        throwOnError: true,
-      });
-      return { tag, add: params.add, changed: data.changed };
-    },
+  const change = useChangeWaitlistEntryTagsAdmin({
+    onTagReady: () => setNaming(false),
     onSuccess: ({ tag, add, changed }) => {
       onChanged();
       success(
@@ -77,10 +44,7 @@ const TagActions: React.FC<TagActionsProps> = ({
       );
     },
     onError: (err) => refusalToast(err, "Could not change tags."),
-    onSettled: async () => {
-      setRemoving(null);
-      await invalidate();
-    },
+    onSettled: () => setRemoving(null),
   });
 
   const disabled = selectedIds.size === 0 || change.isPending;
