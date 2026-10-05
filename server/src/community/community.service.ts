@@ -29,6 +29,7 @@ import {
 } from "src/user/dto/invite.dto";
 import { CommunityMemberContactInfo } from "src/user/dto/user-action-relations.dto";
 import {
+  canManageCommunity,
   DEFAULT_TIME_ZONE,
   sqlUserHasActiveContractAt,
   User,
@@ -455,7 +456,7 @@ export class CommunityService {
     const user = await this.userRepository.findOneOrFail({
       where: { id: userId },
     });
-    if (!user.leaderOfIds.some((cid) => cid === communityId) && !user.admin) {
+    if (!canManageCommunity(user, communityId)) {
       throw new BadRequestException();
     }
 
@@ -987,7 +988,7 @@ export class CommunityService {
     const invitingUser = await this.userRepository.findOneOrFail({
       where: { id: userId },
     });
-    if (!invitingUser.admin && !invitingUser.leaderOfIdSet.has(communityId)) {
+    if (!canManageCommunity(invitingUser, communityId)) {
       throw new BadRequestException("User is not a leader of this community");
     }
 
@@ -1039,14 +1040,12 @@ export class CommunityService {
     });
     const user = await this.userRepository.findOneOrFail({
       where: { id: userId },
-      relations: { leaderOf: true },
     });
 
     if (
       !(
         invite.invitingUser?.id === userId ||
-        user.leaderOf.some((leader) => leader.id === invite.community?.id) ||
-        user.admin
+        canManageCommunity(user, invite.community.id)
       )
     ) {
       throw new BadRequestException();

@@ -156,6 +156,7 @@ import {
 } from "./entities/user-away-range.entity";
 import { UserDevice } from "./entities/user-device.entity";
 import {
+  canManageCommunity,
   DEFAULT_TIME_ZONE,
   ReferralSource,
   sqlUserHasActiveContractAt,
@@ -2046,7 +2047,7 @@ export class UserService {
       throw new BadRequestException("User not found");
     }
     const isAdmin = user.admin;
-    if (!isAdmin && communityId && !user.leaderOfIdSet.has(communityId)) {
+    if (communityId && !canManageCommunity(user, communityId)) {
       throw new BadRequestException(
         `User is not a leader of community ${communityId}`,
       );
@@ -2617,8 +2618,7 @@ export class UserService {
     if (
       communityId !== undefined &&
       communityId !== null &&
-      !user.admin &&
-      !user.leaderOfIdSet.has(communityId)
+      !canManageCommunity(user, communityId)
     ) {
       throw new BadRequestException(
         `User is not a leader of community ${communityId}`,
@@ -2651,8 +2651,7 @@ export class UserService {
     if (
       !(
         invite.invitingUser?.id === userId ||
-        user.leaderOfIds.some((cid) => cid === invite.communityId) ||
-        user.admin
+        canManageCommunity(user, invite.communityId)
       )
     ) {
       throw new BadRequestException();
