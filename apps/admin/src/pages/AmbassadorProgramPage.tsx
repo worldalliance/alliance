@@ -5,7 +5,6 @@ import {
   AmbassadorProgramMemberDto,
   UserDto,
   userCreateAmbassadorProgramInteractionAdmin,
-  userGetAmbassadorProgramAdmin,
   userListForGraphAdmin,
   userUpdateAmbassadorProgramMemberAdmin,
   userUpsertAmbassadorProgramMemberAdmin,
@@ -23,6 +22,7 @@ import {
 } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
+import { useAmbassadorProgramAdmin } from "../lib/useAmbassadorProgramAdmin";
 
 type ProgramSection = "invited" | "active";
 
@@ -599,13 +599,7 @@ const AmbassadorProgramPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState("");
 
-  const dashboardQuery = useQuery({
-    queryKey: queryKeys.ambassadorProgramAdmin(),
-    queryFn: () =>
-      userGetAmbassadorProgramAdmin({ throwOnError: true }).then(
-        (response) => response.data,
-      ),
-  });
+  const dashboardQuery = useAmbassadorProgramAdmin();
 
   const membersQuery = useQuery({
     queryKey: ["userListForGraphAdmin"],
