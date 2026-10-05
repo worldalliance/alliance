@@ -456,3 +456,39 @@ describe("builder preview", () => {
     expect(minRows.mock.results.every((r) => r.value === 8)).toBe(true);
   });
 });
+
+it("saves a typed time on blur and keeps the answer when it does not parse", () => {
+  function TimeField() {
+    const [value, setValue] = useState<FormValue | undefined>("09:00");
+    return (
+      <MemoryRouter>
+        <SiteAppProvider>
+          <RenderField
+            fieldContext={staticFieldContext}
+            field={{ ...base, kind: "time" }}
+            value={value}
+            onChange={(update) =>
+              setValue((previous) => resolveFormValue(update, previous))
+            }
+          />
+          <output data-testid="answer">{JSON.stringify(value)}</output>
+        </SiteAppProvider>
+      </MemoryRouter>
+    );
+  }
+  render(<TimeField />);
+  const input = screen.getByLabelText<HTMLInputElement>("Question");
+  const answer = () => screen.getByTestId("answer").textContent;
+
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: "noon-ish" } });
+  fireEvent.blur(input);
+  expect(answer()).toBe('"09:00"');
+  expect(screen.getByText("Enter a time such as 7:30 PM")).toBeTruthy();
+
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: "7:30 pm" } });
+  fireEvent.blur(input);
+  expect(answer()).toBe('"19:30"');
+  expect(input.value).toBe("7:30 PM");
+});

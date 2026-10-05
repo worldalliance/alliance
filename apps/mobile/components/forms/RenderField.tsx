@@ -30,6 +30,7 @@ import {
 } from "@alliance/shared/forms/listCards";
 import { markdownPlainText } from "@alliance/shared/forms/optionSearch";
 import {
+  commitTimeInput,
   formatTimeForDisplay,
   parseTimeInput,
 } from "@alliance/shared/forms/timeUtils";
@@ -1184,21 +1185,11 @@ export function TimeInputField({
   }, [normalizedValue]);
 
   const commitValue = () => {
-    const raw = inputValue.trim();
-    if (!raw) {
-      setLocalError(required ? "Enter a time such as 7:30 PM" : null);
-      onChange?.("");
-      return;
-    }
-    const parsed = parseTimeInput(raw);
-    if (!parsed) {
-      setLocalError("Enter a time such as 7:30 PM");
-      return;
-    }
-    setLocalError(null);
-    const normalized = parsed.normalized;
-    onChange?.(normalized);
-    setInputValue(formatTimeForDisplay(normalized));
+    const { answer, error } = commitTimeInput({ raw: inputValue, required });
+    setLocalError(error);
+    if (answer === null) return;
+    onChange?.(answer);
+    if (answer) setInputValue(formatTimeForDisplay(answer));
   };
 
   const effectiveError = localError ?? baseError ?? null;

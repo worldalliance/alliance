@@ -85,6 +85,23 @@ export function parseTimeInput(raw: string): ParsedTime | null {
   };
 }
 
+/**
+ * What committing a typed time does: `answer` is the normalized value to save,
+ * `""` to clear it, or null to leave the saved answer as it is.
+ */
+export function commitTimeInput(params: { raw: string; required: boolean }): {
+  answer: string | null;
+  error: string | null;
+} {
+  const hint = "Enter a time such as 7:30 PM";
+  const raw = params.raw.trim();
+  if (!raw) return { answer: "", error: params.required ? hint : null };
+  const parsed = parseTimeInput(raw);
+  return parsed
+    ? { answer: parsed.normalized, error: null }
+    : { answer: null, error: hint };
+}
+
 export function formatTimeForDisplay(value: string | undefined | null): string {
   if (!value) return "";
   const minutes = parseTimeToMinutes(value);
