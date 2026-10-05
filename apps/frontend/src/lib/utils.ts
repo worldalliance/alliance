@@ -12,6 +12,7 @@ export const useCIDFromParams = (actionId?: number) => {
   const cid = searchParams.get("cid");
 
   useEffect(() => {
+    let cancelled = false;
     if (cid) {
       posthog.register_for_session({ cid });
 
@@ -21,11 +22,13 @@ export const useCIDFromParams = (actionId?: number) => {
         let platform = "unknown";
         if (response.data) {
           platform = response.data.mms ? "mms" : "email";
-          searchParams.delete("cid");
-          setSearchParams(searchParams, {
-            replace: true,
-            preventScrollReset: true,
-          });
+          if (!cancelled) {
+            searchParams.delete("cid");
+            setSearchParams(searchParams, {
+              replace: true,
+              preventScrollReset: true,
+            });
+          }
         }
         captureEvent(AnalyticsEvent.NotifLinkClick, {
           cid,
@@ -35,6 +38,9 @@ export const useCIDFromParams = (actionId?: number) => {
         refreshNotifications({ limit: 20 });
       });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [cid, setSearchParams, searchParams, actionId, refreshNotifications]);
 
   const sid = searchParams.get("sid") ?? searchParams.get("ref");
