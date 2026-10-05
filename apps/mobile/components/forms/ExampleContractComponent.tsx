@@ -1,5 +1,5 @@
 import type { CustomComponentProps } from "@alliance/shared/forms/customComponents";
-import { formatShortDate } from "@alliance/shared/lib/dateFormatters";
+import { formatCurrentSigningDate } from "@alliance/shared/lib/contract";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { View } from "react-native";
 import Card from "../system/Card";
@@ -12,8 +12,7 @@ const ExampleContractComponent = ({
   value,
   disabled,
 }: CustomComponentProps) => {
-  const signedAt = user?.contractEvents?.[0]?.date;
-  const signedDate = signedAt ? formatShortDate(new Date(signedAt)) : null;
+  const signedDate = formatCurrentSigningDate(user?.lastContractEvent);
 
   return (
     <Card cardStyle={CardStyle.Grey}>
