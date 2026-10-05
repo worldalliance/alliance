@@ -11,12 +11,12 @@ import {
 } from "@alliance/sharedweb/ui/DropdownMenu";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Menu } from "@base-ui/react/menu";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BookmarkPlus, ChevronDown, Save, Trash2 } from "lucide-react";
 import React, { useState } from "react";
 import { adminRefusalMessage } from "../../../lib/adminRefusal";
 import { useRefusalToast } from "../../../lib/useRefusalToast";
-import { waitlistEmailTemplatesQuery } from "../../../lib/waitlistAdminQueries";
+import { useWaitlistEmailTemplatesAdmin } from "../../../lib/useWaitlistEmailTemplatesAdmin";
 import { completeDraft, type EmailDraft } from "../../../lib/waitlistEmail";
 import ConfirmDialog from "../../ConfirmDialog";
 import InlineNameForm from "../InlineNameForm";
@@ -38,7 +38,7 @@ const EmailTemplateControls: React.FC<EmailTemplateControlsProps> = ({
   const queryClient = useQueryClient();
   const refusalToast = useRefusalToast();
   const { success } = useToast();
-  const templates = useQuery(waitlistEmailTemplatesQuery);
+  const templates = useWaitlistEmailTemplatesAdmin();
   const [loadedId, setLoadedId] = useState<number | null>(null);
   const [naming, setNaming] = useState(false);
   const [replacing, setReplacing] = useState<WaitlistEmailTemplateDto | null>(
@@ -77,8 +77,8 @@ const EmailTemplateControls: React.FC<EmailTemplateControlsProps> = ({
       ).then((r) => r.data);
     },
     onSuccess: (template, { id }) => {
-      queryClient.setQueryData(
-        waitlistEmailTemplatesQuery.queryKey,
+      queryClient.setQueryData<WaitlistEmailTemplateDto[]>(
+        queryKeys.waitlistEmailTemplatesAdmin(),
         (old = []) =>
           id === null
             ? [...old, template]
@@ -106,8 +106,8 @@ const EmailTemplateControls: React.FC<EmailTemplateControlsProps> = ({
         throwOnError: true,
       }).then(() => template),
     onSuccess: (template) => {
-      queryClient.setQueryData(
-        waitlistEmailTemplatesQuery.queryKey,
+      queryClient.setQueryData<WaitlistEmailTemplateDto[]>(
+        queryKeys.waitlistEmailTemplatesAdmin(),
         (old = []) => old.filter((saved) => saved.id !== template.id),
       );
       setLoadedId(null);
