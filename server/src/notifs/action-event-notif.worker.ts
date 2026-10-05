@@ -2,7 +2,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
-import { randomInt } from "crypto";
 import { ActionsService } from "src/actions/actions.service";
 import type { ActionSuite } from "src/actions/entities/action-suite.entity";
 import {
@@ -45,6 +44,7 @@ import {
   NotificationCategory,
   type Notification,
 } from "./entities/notification.entity";
+import { assignExperimentArms } from "./experiment-assignment";
 import { LOCK_KEYS } from "./lock-keys";
 import { withPgAdvisoryLock } from "./lock-utils";
 import {
@@ -403,21 +403,15 @@ export class ActionEventNotifWorker {
   }
 
   private async assignFirstMissArm(userId: number): Promise<ExperimentArm> {
-    const experiment = Experiment.MissedSuiteFirstNotice;
-    await this.experimentAssignmentRepository
-      .createQueryBuilder()
-      .insert()
-      .values({
-        userId,
-        experiment,
-        arm: randomInt(2) === 0 ? ExperimentArm.Control : ExperimentArm.Variant,
+    const arm = (
+      await assignExperimentArms(this.experimentAssignmentRepository.manager, {
+        experiment: Experiment.MissedSuiteFirstNotice,
+        userIds: [userId],
       })
-      .orIgnore()
-      .execute();
-    const { arm } = await this.experimentAssignmentRepository.findOneByOrFail({
-      userId,
-      experiment,
-    });
+    ).get(userId);
+    if (arm === undefined) {
+      throw new Error(`no first-miss arm for user ${userId}`);
+    }
     return arm;
   }
 
