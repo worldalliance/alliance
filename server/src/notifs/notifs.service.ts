@@ -12,6 +12,10 @@ import { Comment } from "src/forum/entities/comment.entity";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { User } from "src/user/entities/user.entity";
+import type {
+  Repository as TypedRepository,
+  WithRelations,
+} from "src/utils/Repository";
 import {
   DeepPartial,
   EntityManager,
@@ -98,6 +102,8 @@ function unreadContentFor(source: UnreadContentSource): NotificationContent {
 // somewhere around 5k recipients.
 const UNREAD_CONTENT_INSERT_CHUNK = 1000;
 
+type UnreadContentWithUser = WithRelations<UnreadContent, { user: true }>;
+
 const byRecipient = <T extends { user: User }>(rows: T[]) =>
   Map.groupBy(rows, (row) => row.user.id);
 
@@ -111,7 +117,7 @@ export class NotifsService {
     @InjectRepository(Notification)
     private readonly notifsRepository: Repository<Notification>,
     @InjectRepository(UnreadContent)
-    private readonly unreadContentRepository: Repository<UnreadContent>,
+    private readonly unreadContentRepository: TypedRepository<UnreadContent>,
     @InjectRepository(ActionEventNotif)
     private readonly actionEventNotifsRepository: Repository<ActionEventNotif>,
     private readonly mailService: MailService,
@@ -227,10 +233,11 @@ export class NotifsService {
       throw new NotFoundException("Notif not found");
     }
 
-    const unreadContent = await this.unreadContentRepository.findOne({
-      where: { id, user: { id: userId } },
-      relations: { user: true },
-    });
+    const unreadContent: UnreadContentWithUser | null =
+      await this.unreadContentRepository.findOne({
+        where: { id, user: { id: userId } },
+        relations: { user: true },
+      });
     if (!unreadContent) {
       throw new NotFoundException("Notif not found");
     }
@@ -470,31 +477,22 @@ export class NotifsService {
   }
 
   async getUnreadContentsForPush(ids: number[]) {
-    const unreadContents = await this.unreadContentRepository.find({
-      where: { id: In(ids) },
-      relations: { user: true },
-      order: { sendTime: "ASC" },
-    });
+    const unreadContents: UnreadContentWithUser[] =
+      await this.unreadContentRepository.find({
+        where: { id: In(ids) },
+        relations: { user: true },
+        order: { sendTime: "ASC" },
+      });
 
     const dtos = await this.renderService.renderUnreadContents(
       byRecipient(unreadContents),
     );
     const dtoById = new Map(dtos.map((dto) => [dto.id, dto]));
 
-    return unreadContents
-      .map((unreadContent) => {
-        const dto = dtoById.get(unreadContent.id);
-        if (!dto) {
-          return null;
-        }
-        return { unreadContent, dto };
-      })
-      .filter(
-        (
-          item,
-        ): item is { unreadContent: UnreadContent; dto: NotificationDto } =>
-          item !== null,
-      );
+    return unreadContents.flatMap((unreadContent) => {
+      const dto = dtoById.get(unreadContent.id);
+      return dto ? [{ unreadContent, dto }] : [];
+    });
   }
 
   async renderNotificationsForPush(

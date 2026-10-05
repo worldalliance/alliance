@@ -15,6 +15,7 @@ import type { EditableContent } from "src/forum/entities/editablecontent.entity"
 import type { City } from "src/geo/city.entity";
 import type { Mail } from "src/mail/mail.entity";
 import type { Mms } from "src/mms/mms.entity";
+import type { UnreadContent } from "src/notifs/entities/unread-content.entity";
 import type { Push } from "src/push/push.entity";
 import type { RecentSearch } from "src/search/recentsearch.entity";
 import type { ExternalShareTarget } from "src/share-urls/entities/external-share-target.entity";
@@ -67,6 +68,7 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<Mms>>
   | Assert<EntityShape<Push>>
   | Assert<EntityShape<RecentSearch>>
+  | Assert<EntityShape<UnreadContent>>
   | Assert<EntityShape<UserAwayRange>>
   | Assert<EntityShape<UserDevice>>
   | Assert<EntityShape<Video>>;

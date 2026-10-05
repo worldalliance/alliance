@@ -26,8 +26,7 @@ export class UnreadContent {
 
   @ManyToOne(() => User, { nullable: false, onDelete: "CASCADE" })
   @JoinColumn({ name: "userId" })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  user: Relation<User>;
+  user?: Relation<User>;
 
   @Column({ type: "enum", enum: UnreadContentType })
   @ApiProperty({ enum: UnreadContentType, enumName: "UnreadContentType" })
