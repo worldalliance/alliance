@@ -1,16 +1,14 @@
 import { withCount } from "@alliance/common/plural";
 import { WaitlistEmailPlaceholder } from "@alliance/common/waitlistEmail";
-import {
-  waitlistEmailAdminSendEmailAdmin,
-  waitlistEmailAdminSendTestEmailAdmin,
-} from "@alliance/shared/client";
 import type { WaitlistEmailPreviewDto } from "@alliance/shared/client/types.gen";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useRef, useState } from "react";
 import { useRefusalToast } from "../../../lib/useRefusalToast";
+import {
+  useSendTestWaitlistEmailAdmin,
+  useSendWaitlistEmailAdmin,
+} from "../../../lib/useWaitlistEmailsAdmin";
 import { type EmailDraft, sendConfirmation } from "../../../lib/waitlistEmail";
 import ConfirmDialog from "../../ConfirmDialog";
 
@@ -42,7 +40,6 @@ const EmailSendActions: React.FC<EmailSendActionsProps> = ({
   blocked,
   onSent,
 }) => {
-  const queryClient = useQueryClient();
   const refusalToast = useRefusalToast();
   const { success } = useToast();
   const [testing, setTesting] = useState<{
@@ -54,53 +51,21 @@ const EmailSendActions: React.FC<EmailSendActionsProps> = ({
   // its answer was lost isn't made twice.
   const requestIds = useRef(new Map<string, string>());
 
-  const sendTest = useMutation({
-    mutationFn: (entryId: number) =>
-      waitlistEmailAdminSendTestEmailAdmin({
-        body: { ...draft, entryId },
-        throwOnError: true,
-      }),
+  const sendTest = useSendTestWaitlistEmailAdmin({
     onSuccess: () => success("Test email sent to you"),
     onError: (err) => refusalToast(err, "Could not send the test email."),
     onSettled: () => setTesting(null),
   });
 
-  const send = useMutation({
-    mutationFn: ({
-      mobilize,
-      requestId,
-      entryIds: confirmedIds,
-    }: ConfirmingSend) =>
-      waitlistEmailAdminSendEmailAdmin({
-        body: {
-          ...draft,
-          entryIds: confirmedIds,
-          includeClaimed,
-          mobilize,
-          requestId,
-        },
-        throwOnError: true,
-      }).then((r) => r.data),
-    onSuccess: (_batch, { recipients }) => {
+  const send = useSendWaitlistEmailAdmin({
+    onSuccess: (recipients) => {
       success(
         `Sending to ${withCount(recipients, "recipient")}. Follow it under Waitlist emails.`,
       );
       onSent();
     },
     onError: (err) => refusalToast(err, "Could not send the email."),
-    onSettled: async () => {
-      setSending(null);
-      // A failed send may still have created its batch, which the preview's
-      // repeat-send count has to include.
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.waitlistEntriesAdminAll(),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.waitlistEmailPreviewAdminAll(),
-        }),
-      ]);
-    },
+    onSettled: () => setSending(null),
   });
 
   const confirmSend = (mobilize: boolean) => {
@@ -163,7 +128,9 @@ const EmailSendActions: React.FC<EmailSendActionsProps> = ({
         isOpen={testing !== null}
         title="Send a test email to yourself?"
         message={`Sends this email to your own address, filled in with ${testing?.name}'s details${used.has(WaitlistEmailPlaceholder.SignupLink) ? ", a sample signup link," : ""} and a sample unsubscribe link.`}
-        onConfirm={() => testing && sendTest.mutate(testing.entryId)}
+        onConfirm={() =>
+          testing && sendTest.mutate({ ...draft, entryId: testing.entryId })
+        }
         onCancel={() => setTesting(null)}
         isLoading={sendTest.isPending}
       />
@@ -175,7 +142,19 @@ const EmailSendActions: React.FC<EmailSendActionsProps> = ({
             : "Send this email?"
         }
         message={sending?.message ?? ""}
-        onConfirm={() => sending && send.mutate(sending)}
+        onConfirm={() =>
+          sending &&
+          send.mutate({
+            email: {
+              ...draft,
+              entryIds: sending.entryIds,
+              includeClaimed,
+              mobilize: sending.mobilize,
+              requestId: sending.requestId,
+            },
+            recipients: sending.recipients,
+          })
+        }
         onCancel={() => setSending(null)}
         isLoading={send.isPending}
       />

@@ -1,37 +1,25 @@
 import { pickForCount, withCount } from "@alliance/common/plural";
-import { waitlistEmailAdminRetryEmailAdmin } from "@alliance/shared/client";
 import type { WaitlistEmailBatchDto } from "@alliance/shared/client/types.gen";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation } from "@tanstack/react-query";
 import React, { useState } from "react";
 import { useRefusalToast } from "../../../lib/useRefusalToast";
-import { useInvalidateWaitlistEmailAdmin } from "../../../lib/useWaitlistEmailsAdmin";
+import { useRetryWaitlistEmailAdmin } from "../../../lib/useWaitlistEmailsAdmin";
 import ConfirmDialog from "../../ConfirmDialog";
 
 const EmailRetryActions: React.FC<{ batch: WaitlistEmailBatchDto }> = ({
   batch,
 }) => {
-  const invalidate = useInvalidateWaitlistEmailAdmin(batch.id);
   const refusalToast = useRefusalToast();
   const { success } = useToast();
   const [retrying, setRetrying] = useState<{
     includeUncertain: boolean;
   } | null>(null);
 
-  const retry = useMutation({
-    mutationFn: (includeUncertain: boolean) =>
-      waitlistEmailAdminRetryEmailAdmin({
-        path: { id: batch.id },
-        body: { includeUncertain },
-        throwOnError: true,
-      }),
+  const retry = useRetryWaitlistEmailAdmin(batch.id, {
     onSuccess: () => success("Resending the email"),
     onError: (err) => refusalToast(err, "Could not resend the email."),
-    onSettled: async () => {
-      setRetrying(null);
-      await invalidate();
-    },
+    onSettled: () => setRetrying(null),
   });
 
   const { failed, uncertain } = batch.counts;
