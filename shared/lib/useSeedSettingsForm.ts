@@ -26,7 +26,7 @@ export function useSeedSettingsForm(params: {
     }
     seededForUserId.current = user.id;
 
-    fetchMe()
+    const seeded = fetchMe()
       .then((me) => {
         queryClient.setQueryData(meQuery.queryKey, me);
         setSavedProfile(me);
@@ -34,20 +34,27 @@ export function useSeedSettingsForm(params: {
       .catch((error: unknown) => {
         queryClient.removeQueries({ queryKey: meQuery.queryKey });
         console.error("failed to load the settings form", error);
-      })
-      .finally(() => {
-        setLoading(false);
       });
 
-    userMyLocation().then((locationResponse) => {
-      const city = locationResponse.data?.city;
-      if (city) {
-        setLocation(city);
-        const cityId = city.id;
-        setSavedProfile((prev) =>
-          prev ? { ...prev, cityId } : { ...user, cityId },
-        );
-      }
+    // A failed profile load still gets a form when the location arrives, so
+    // loading spans both requests.
+    const located = userMyLocation({ throwOnError: true })
+      .then((locationResponse) => {
+        const city = locationResponse.data?.city;
+        if (city) {
+          setLocation(city);
+          const cityId = city.id;
+          setSavedProfile((prev) =>
+            prev ? { ...prev, cityId } : { ...user, cityId },
+          );
+        }
+      })
+      .catch((error: unknown) => {
+        console.error("failed to load the settings location", error);
+      });
+
+    Promise.all([seeded, located]).finally(() => {
+      setLoading(false);
     });
   }, [user, setSavedProfile, setLocation, queryClient]);
 

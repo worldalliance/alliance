@@ -37,7 +37,7 @@ const seed = (user: { id: number }) => {
     ({ user }) => useSeedSettingsForm({ user, setSavedProfile, setLocation }),
     { initialProps: { user }, wrapper: queryWrapper().wrapper },
   );
-  return { setSavedProfile, view };
+  return { setSavedProfile, setLocation, view };
 };
 
 describe("useSeedSettingsForm", () => {
@@ -82,4 +82,51 @@ describe("useSeedSettingsForm", () => {
       expect(logged).toHaveBeenCalledTimes(1);
     },
   );
+
+  it("stays loading until a late location seeds the form a failed load left empty", async () => {
+    refusals = 1;
+    const logged = jest.spyOn(console, "error").mockImplementation(() => {});
+    const located = Promise.withResolvers<void>();
+    api.alsoServing({
+      "GET /user/mylocation": async () => {
+        await located.promise;
+        return Response.json({
+          city: { id: 1, name: "SF", countryCode: "US" },
+        });
+      },
+    });
+    const { setLocation, view } = seed({ id: 7 });
+    await waitFor(() => expect(logged).toHaveBeenCalledTimes(1));
+    expect(view.result.current).toBe(true);
+
+    located.resolve();
+
+    await waitFor(() => expect(view.result.current).toBe(false));
+    expect(setLocation).toHaveBeenCalledTimes(1);
+  });
+
+  const locationRefused = {
+    "GET /user/mylocation": () =>
+      Response.json({ message: "unavailable" }, { status: 503 }),
+  };
+
+  it.each([
+    ["returns the refusal", () => api.alsoServing(locationRefused)],
+    [
+      "throws the refusal",
+      () => api.throwingOnRefusal({ ...table, ...locationRefused }),
+    ],
+  ])("logs a refused location request when the client %s", async (_, serve) => {
+    serve();
+    const logged = jest.spyOn(console, "error").mockImplementation(() => {});
+    const { setLocation } = seed({ id: 7 });
+
+    await waitFor(() =>
+      expect(logged).toHaveBeenCalledWith(
+        "failed to load the settings location",
+        expect.anything(),
+      ),
+    );
+    expect(setLocation).not.toHaveBeenCalled();
+  });
 });
