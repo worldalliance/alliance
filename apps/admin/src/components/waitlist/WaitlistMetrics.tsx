@@ -1,15 +1,13 @@
 import { withCount } from "@alliance/common/plural";
-import { waitlistAdminFindEntryMetricsAdmin } from "@alliance/shared/client";
 import type {
   WaitlistEntryFilterDto,
   WaitlistNamedRefDto,
 } from "@alliance/shared/client/types.gen";
 import { formatMediumDateEnUS } from "@alliance/shared/lib/dateFormatters";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import React, { type ReactNode } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
+import { useWaitlistEntryMetricsAdmin } from "../../lib/useWaitlistEntriesAdmin";
 
 const share = (part: number, whole: number) =>
   `${part} of ${whole}${whole ? ` (${Math.round((part / whole) * 100)}%)` : ""}`;
@@ -82,15 +80,7 @@ const Stat: React.FC<{ label: string; value: ReactNode }> = ({
 type WaitlistMetricsProps = { filter: WaitlistEntryFilterDto };
 
 const WaitlistMetrics: React.FC<WaitlistMetricsProps> = ({ filter }) => {
-  const metrics = useQuery({
-    queryKey: queryKeys.waitlistEntryMetricsAdmin(filter),
-    queryFn: () =>
-      waitlistAdminFindEntryMetricsAdmin({
-        body: { filter },
-        throwOnError: true,
-      }).then((r) => r.data),
-    placeholderData: keepPreviousData,
-  });
+  const metrics = useWaitlistEntryMetricsAdmin(filter);
 
   if (metrics.error) {
     return (

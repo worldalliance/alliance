@@ -1,16 +1,10 @@
 import { pickForCount, withCount } from "@alliance/common/plural";
-import {
-  waitlistAdminFindEntryIdsAdmin,
-  waitlistAdminSearchEntriesAdmin,
-} from "@alliance/shared/client";
 import type {
   WaitlistEntryFilterDto,
   WaitlistEntrySort,
 } from "@alliance/shared/client/types.gen";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
-import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 import { ChartColumn, Mail, X } from "lucide-react";
 import React, {
   useCallback,
@@ -40,6 +34,10 @@ import {
 } from "../lib/useCampaignsAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
 import { useWaitlistCohortsAdmin } from "../lib/useWaitlistCohortsAdmin";
+import {
+  useFindWaitlistEntryIdsAdmin,
+  useWaitlistEntriesAdmin,
+} from "../lib/useWaitlistEntriesAdmin";
 import {
   useWaitlistLinksAdmin,
   waitlistLinksLoadFailed,
@@ -95,15 +93,7 @@ const WaitlistPage: React.FC = () => {
     offset: (page - 1) * PAGE_SIZE,
     limit: PAGE_SIZE,
   };
-  const entries = useQuery({
-    queryKey: queryKeys.waitlistEntriesAdmin(searchDto),
-    queryFn: () =>
-      waitlistAdminSearchEntriesAdmin({
-        body: searchDto,
-        throwOnError: true,
-      }).then((r) => r.data),
-    placeholderData: keepPreviousData,
-  });
+  const entries = useWaitlistEntriesAdmin(searchDto);
   const campaigns = useCampaignsAdmin();
   const links = useWaitlistLinksAdmin();
   const tags = useWaitlistTagsAdmin();
@@ -114,18 +104,7 @@ const WaitlistPage: React.FC = () => {
     [campaigns.data],
   );
 
-  const selectAllMatching = useMutation({
-    mutationFn: (params: {
-      matching: WaitlistEntryFilterDto;
-      version: number;
-    }) =>
-      waitlistAdminFindEntryIdsAdmin({
-        body: { filter: params.matching },
-        throwOnError: true,
-      }).then((r) => r.data.ids),
-    onSuccess: (ids, { version }) => {
-      if (version === selectionVersion.current) changeSelection(new Set(ids));
-    },
+  const selectAllMatching = useFindWaitlistEntryIdsAdmin({
     onError: (err) => refusalToast(err, "Could not select every entry."),
   });
 
@@ -186,12 +165,16 @@ const WaitlistPage: React.FC = () => {
             type="button"
             className="text-blue-600 hover:underline disabled:opacity-50"
             disabled={selectAllMatching.isPending || entries.isPlaceholderData}
-            onClick={() =>
-              selectAllMatching.mutate({
-                matching: filter,
-                version: selectionVersion.current,
-              })
-            }
+            onClick={() => {
+              const version = selectionVersion.current;
+              selectAllMatching.mutate(filter, {
+                onSuccess: (ids) => {
+                  if (version === selectionVersion.current) {
+                    changeSelection(new Set(ids));
+                  }
+                },
+              });
+            }}
           >
             Select all {total} matching
           </button>
