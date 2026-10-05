@@ -44,7 +44,7 @@ import {
   useWaitlistLinksAdmin,
   waitlistLinksLoadFailed,
 } from "../lib/useWaitlistLinksAdmin";
-import { waitlistTagsQuery } from "../lib/waitlistAdminQueries";
+import { useWaitlistTagsAdmin } from "../lib/useWaitlistTagsAdmin";
 import { type EmailDraft, emailDraftFromState } from "../lib/waitlistEmail";
 import { withFilterField } from "../lib/waitlistFilter";
 
@@ -106,7 +106,7 @@ const WaitlistPage: React.FC = () => {
   });
   const campaigns = useCampaignsAdmin();
   const links = useWaitlistLinksAdmin();
-  const tags = useQuery(waitlistTagsQuery);
+  const tags = useWaitlistTagsAdmin();
   const cohorts = useWaitlistCohortsAdmin();
 
   const organizations = useMemo(
