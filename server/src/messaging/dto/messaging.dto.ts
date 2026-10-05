@@ -24,7 +24,10 @@ import { CommunityDto } from "src/community/dto/community.dto";
 import { getImageSource } from "src/images/images.service";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { trim } from "src/utils/transforms";
-import { Conversation } from "../entities/conversation.entity";
+import {
+  Conversation,
+  loadedConversationParticipants,
+} from "../entities/conversation.entity";
 import { Message } from "../entities/message.entity";
 import { Participant, ParticipantState } from "../entities/participant.entity";
 
@@ -149,12 +152,13 @@ export class ConversationDto extends PickType(Conversation, [
   constructor(input: ConversationDtoArgs) {
     super();
     const { conversation, lastMessage, contextUserId, unreadCount } = input;
+    const participants = loadedConversationParticipants(conversation);
     this.id = conversation.id;
     this.createdAt = conversation.createdAt;
     this.updatedAt = conversation.updatedAt;
     this.type = conversation.type;
     this.title = conversation.title;
-    this.participants = (conversation.participants ?? []).map(
+    this.participants = participants.map(
       (participant) => new ParticipantDto(participant),
     );
     this.community = conversation.community
@@ -181,7 +185,7 @@ export class ConversationDto extends PickType(Conversation, [
         : undefined;
 
     if (contextUserId) {
-      const currentParticipant = conversation.participants?.find(
+      const currentParticipant = participants.find(
         (participant) => participant.user.id === contextUserId,
       );
       this.isMessageRequest =

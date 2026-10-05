@@ -42,9 +42,8 @@ export class Conversation {
   updatedAt: Date;
 
   @OneToMany(() => Participant, (participant) => participant.conversation)
-  @ApiProperty({ type: () => Participant, isArray: true })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  participants: Relation<Participant>[];
+  @ApiPropertyOptional({ type: () => Participant, isArray: true })
+  participants?: Relation<Participant>[];
 
   @Column({
     type: "enum",
@@ -66,4 +65,15 @@ export class Conversation {
   @JoinColumn({ name: "communityId" })
   @ApiPropertyOptional({ type: () => Community })
   community?: Relation<Community>;
+}
+
+export function loadedConversationParticipants(
+  conversation: Conversation,
+): Relation<Participant>[] {
+  if (!conversation.participants) {
+    throw new Error(
+      `participants of conversation ${conversation.id} not loaded`,
+    );
+  }
+  return conversation.participants;
 }
