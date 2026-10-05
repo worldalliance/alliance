@@ -26,6 +26,7 @@ import type { CustomValidator } from "src/tasks/entities/customvalidator.entity"
 import type { FormSnapshot } from "src/tasks/entities/formsnapshot.entity";
 import type { AmbassadorInviteGoal } from "src/user/entities/ambassador-invite-goal.entity";
 import type { AmbassadorProgramInteraction } from "src/user/entities/ambassador-program-interaction.entity";
+import type { AmbassadorProgramMember } from "src/user/entities/ambassador-program-member.entity";
 import type { ContractEvent } from "src/user/entities/contract-event.entity";
 import type { Friend } from "src/user/entities/friend.entity";
 import type { UserAwayRange } from "src/user/entities/user-away-range.entity";
@@ -55,6 +56,7 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<AiDetectionResult>>
   | Assert<EntityShape<AmbassadorInviteGoal>>
   | Assert<EntityShape<AmbassadorProgramInteraction>>
+  | Assert<EntityShape<AmbassadorProgramMember>>
   | Assert<EntityShape<Campaign>>
   | Assert<EntityShape<City>>
   | Assert<EntityShape<Cluster>>
