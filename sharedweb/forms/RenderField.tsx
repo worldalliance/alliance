@@ -26,11 +26,11 @@ import {
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
-import { optionSections } from "@alliance/shared/forms/optionSections";
 import {
   formatTimeForDisplay,
   parseTimeInput,
 } from "@alliance/shared/forms/timeUtils";
+import { useFieldOptionSections } from "@alliance/shared/forms/useFieldOptionSections";
 import {
   cancelImageUpload,
   noOptionsAvailable,
@@ -45,7 +45,6 @@ import {
   Fragment,
   useEffect,
   useId,
-  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -182,31 +181,11 @@ export function RenderField({
   const errorMessage =
     typeof error === "string" && error.trim().length > 0 ? error : null;
   const hasError = Boolean(errorMessage);
-  const randomizationSeedBase =
-    randomizationKey && randomizationKey.length > 0
-      ? `${randomizationKey}:${field.id}`
-      : field.id;
-  const sections = useMemo(() => {
-    if (
-      field.kind !== "radio" &&
-      field.kind !== "multiselect" &&
-      field.kind !== "select"
-    ) {
-      return null;
-    }
-    return optionSections({
-      options: field.options ?? [],
-      categories: field.kind === "radio" ? undefined : field.categories,
-      shuffleSeed:
-        disableOptionRandomization || !field.randomizeOptions
-          ? undefined
-          : randomizationSeedBase,
-    });
-  }, [field, randomizationSeedBase, disableOptionRandomization]);
-  const randomizedOptions = useMemo(
-    () => sections?.flatMap((section) => section.items),
-    [sections],
-  );
+  const { sections, randomizedOptions } = useFieldOptionSections({
+    field,
+    randomizationKey,
+    disableOptionRandomization,
+  });
 
   const composeClassName = (
     base: string,

@@ -29,11 +29,11 @@ import {
   resolveCards,
 } from "@alliance/shared/forms/listCards";
 import { markdownPlainText } from "@alliance/shared/forms/optionSearch";
-import { optionSections } from "@alliance/shared/forms/optionSections";
 import {
   formatTimeForDisplay,
   parseTimeInput,
 } from "@alliance/shared/forms/timeUtils";
+import { useFieldOptionSections } from "@alliance/shared/forms/useFieldOptionSections";
 import {
   cancelImageUpload,
   noOptionsAvailable,
@@ -157,31 +157,11 @@ export function RenderField({
     hasError ? "border-red-500" : "border-zinc-200"
   } ${disabled ? "opacity-60" : ""}`;
 
-  const randomizationSeedBase =
-    randomizationKey && randomizationKey.length > 0
-      ? `${randomizationKey}:${field.id}`
-      : field.id;
-  const sections = useMemo(() => {
-    if (
-      field.kind !== "radio" &&
-      field.kind !== "multiselect" &&
-      field.kind !== "select"
-    ) {
-      return null;
-    }
-    return optionSections({
-      options: field.options ?? [],
-      categories: field.kind === "radio" ? undefined : field.categories,
-      shuffleSeed:
-        disableOptionRandomization || !field.randomizeOptions
-          ? undefined
-          : randomizationSeedBase,
-    });
-  }, [field, randomizationSeedBase, disableOptionRandomization]);
-  const randomizedOptions = useMemo(
-    () => sections?.flatMap((section) => section.items),
-    [sections],
-  );
+  const { sections, randomizedOptions } = useFieldOptionSections({
+    field,
+    randomizationKey,
+    disableOptionRandomization,
+  });
 
   const [filePreview, setFilePreview] = useState<FilePick | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
