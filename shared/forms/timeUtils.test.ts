@@ -71,6 +71,12 @@ describe("buildTimeOfDayOptions", () => {
 
     expect([...values].sort()).toEqual(values);
   });
+
+  it("labels each slot the way the time input displays it, so the current slot highlights", () => {
+    for (const option of buildTimeOfDayOptions(30)) {
+      expect(option.label).toBe(formatTimeForDisplay(option.value));
+    }
+  });
 });
 
 describe("commitTimeInput", () => {

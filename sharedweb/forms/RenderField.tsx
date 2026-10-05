@@ -27,6 +27,7 @@ import {
   resolveCards,
 } from "@alliance/shared/forms/listCards";
 import {
+  buildTimeOfDayOptions,
   commitTimeInput,
   formatTimeForDisplay,
   parseTimeInput,
@@ -1369,14 +1370,7 @@ export function TimeInputField({
   const effectiveError = localError ?? baseError ?? null;
   const hasError = Boolean(effectiveError);
 
-  // --- Generate dropdown time options (every 30 minutes) ---
-  const timeOptions = Array.from({ length: 24 * 2 }, (_, i) => {
-    const hours = Math.floor(i / 2);
-    const minutes = i % 2 === 0 ? "00" : "30";
-    const ampm = hours < 12 ? "AM" : "PM";
-    const displayHours = hours % 12 === 0 ? 12 : hours % 12;
-    return `${displayHours}:${minutes} ${ampm}`;
-  });
+  const timeOptions = buildTimeOfDayOptions(30).map((option) => option.label);
 
   const handleSelectTime = (time: string) => {
     setInputValue(time);

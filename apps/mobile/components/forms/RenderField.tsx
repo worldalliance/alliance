@@ -30,6 +30,7 @@ import {
 } from "@alliance/shared/forms/listCards";
 import { markdownPlainText } from "@alliance/shared/forms/optionSearch";
 import {
+  buildTimeOfDayOptions,
   commitTimeInput,
   formatTimeForDisplay,
   parseTimeInput,
@@ -1196,14 +1197,7 @@ export function TimeInputField({
   const hasError = Boolean(effectiveError);
 
   const timeOptions = useMemo(
-    () =>
-      Array.from({ length: 24 * 2 }, (_, i) => {
-        const hours = Math.floor(i / 2);
-        const minutes = i % 2 === 0 ? "00" : "30";
-        const ampm = hours < 12 ? "AM" : "PM";
-        const displayHours = hours % 12 === 0 ? 12 : hours % 12;
-        return `${displayHours}:${minutes} ${ampm}`;
-      }),
+    () => buildTimeOfDayOptions(30).map((option) => option.label),
     [],
   );
 
