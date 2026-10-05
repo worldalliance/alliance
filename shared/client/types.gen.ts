@@ -1335,6 +1335,7 @@ export type OnetimeInviteDto = {
     community?: CommunityDto;
     invitingUser?: ProfileDto;
     invitedUser?: ProfileDto;
+    accepted: boolean;
 };
 
 export type RequestOnetimeInviteDto = {

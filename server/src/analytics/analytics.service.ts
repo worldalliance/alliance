@@ -34,6 +34,7 @@ import {
   OnetimeInviteStatus,
 } from "src/user/entities/onetime-invite.entity";
 import { User } from "src/user/entities/user.entity";
+import { inviteAcceptedSql } from "src/user/invite-claim";
 import { UserService } from "src/user/user.service";
 import {
   findStartedMemberActionEvent,
@@ -264,11 +265,10 @@ ORDER BY pp.total_session_duration_seconds DESC
     });
 
     const createdInvites = await this.onetimeInviteRepository.count();
-    const acceptedInvites = await this.onetimeInviteRepository.count({
-      where: {
-        status: OnetimeInviteStatus.LINK_USED,
-      },
-    });
+    const acceptedInvites = await this.onetimeInviteRepository
+      .createQueryBuilder("invite")
+      .where(inviteAcceptedSql("invite"))
+      .getCount();
 
     const record = await this.dailyStatsRepository.create({
       dayId,
@@ -1518,16 +1518,21 @@ ORDER BY pp.total_session_duration_seconds DESC
     });
 
     // 2. Invites used (signup)
-    const usedInvites = await this.onetimeInviteRepository.find({
-      where: { status: OnetimeInviteStatus.LINK_USED, ...dateFilter },
-      relations: { invitedUser: true },
-    });
-    const invitesUsed = usedInvites.length;
-
-    // Collect invited user IDs
-    const invitedUserIds = usedInvites
-      .map((invite) => invite.invitedUser?.id)
-      .filter((id): id is number => id !== undefined && id !== null);
+    const usedInvitesQuery = this.onetimeInviteRepository
+      .createQueryBuilder("invite")
+      .innerJoin("invite.invitedUser", "invitedUser")
+      .select("invitedUser.id", "invitedUserId")
+      .where(inviteAcceptedSql("invite"));
+    if (startDate && endDate) {
+      usedInvitesQuery.andWhere("invite.createdAt BETWEEN :start AND :end", {
+        start: new Date(startDate),
+        end: new Date(endDate),
+      });
+    }
+    const invitedUserIds = (
+      await usedInvitesQuery.getRawMany<{ invitedUserId: number }>()
+    ).map(({ invitedUserId }) => invitedUserId);
+    const invitesUsed = invitedUserIds.length;
 
     if (invitedUserIds.length === 0) {
       return {

@@ -30,6 +30,7 @@ serveApi(
             createdAt: "2026-01-02T00:00:00.000Z",
             status: "link_unused",
             invitedUserId: null,
+            accepted: false,
           },
         ],
         totalCount: 51,

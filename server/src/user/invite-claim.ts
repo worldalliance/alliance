@@ -37,3 +37,12 @@ export const inviteClaimedSql = (alias: string): string =>
 /** Whether signup could claim the `onetime_invite` row aliased `alias`. */
 export const inviteClaimableSql = (alias: string): string =>
   `${alias}."deletedAt" IS NULL AND ${alias}.status IN (${CLAIMABLE_INVITE_STATUSES.map((status) => `'${status}'`).join(", ")}) AND NOT ${inviteClaimedSql(alias)}`;
+
+/** Whether invite stats count `invite` as accepted. `inviteAcceptedSql` states the same rule; change them together. */
+export const isInviteAccepted = (
+  invite: Pick<OnetimeInvite, "deletedAt" | "invitedUserId">,
+): boolean => invite.deletedAt === null && invite.invitedUserId !== null;
+
+/** Whether invite stats count the `onetime_invite` row aliased `alias` as accepted. */
+export const inviteAcceptedSql = (alias: string): string =>
+  `(${alias}."deletedAt" IS NULL AND ${inviteClaimedSql(alias)})`;

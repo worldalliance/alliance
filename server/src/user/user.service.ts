@@ -163,7 +163,7 @@ import {
   sqlUserHasActiveContractAt,
   User,
 } from "./entities/user.entity";
-import { CLAIMABLE_INVITE } from "./invite-claim";
+import { CLAIMABLE_INVITE, inviteAcceptedSql } from "./invite-claim";
 import { type FriendsAcceptedPayload, UserEvents } from "./user.events";
 import { referralLabel } from "./user.utils";
 
@@ -2473,7 +2473,7 @@ export class UserService {
             selected_windows."ordinal",
             COUNT(invite."id")::int AS "totalInvitesSent",
             COUNT(invite."id") FILTER (
-              WHERE invite."status" = $4
+              WHERE ${inviteAcceptedSql("invite")}
             )::int AS "totalAcceptedInvites"
           FROM selected_windows
           LEFT JOIN "onetime_invite" invite
@@ -2494,12 +2494,12 @@ export class UserService {
           FROM selected_windows
           LEFT JOIN "user" invited_user
             ON invited_user."referredById" = selected_windows."userId"
-            AND invited_user."referralSource"::text = ANY($5::text[])
+            AND invited_user."referralSource"::text = ANY($4::text[])
           LEFT JOIN LATERAL (
             SELECT MIN(contract_event."date") AS "signedAt"
             FROM "contract_event" contract_event
             WHERE contract_event."userId" = invited_user."id"
-              AND contract_event."type" = $6
+              AND contract_event."type" = $5
           ) first_sign ON TRUE
           GROUP BY selected_windows."ordinal"
         ),
@@ -2510,7 +2510,7 @@ export class UserService {
           FROM selected_windows
           LEFT JOIN "share_url" share_invite
             ON share_invite."userId" = selected_windows."userId"
-            AND share_invite."kind" = $7
+            AND share_invite."kind" = $6
             AND share_invite."duplicate" = TRUE
             AND (selected_windows."startAt" IS NULL OR share_invite."createdAt" >= selected_windows."startAt")
             AND (selected_windows."dueAt" IS NULL OR share_invite."createdAt" <= selected_windows."dueAt")
@@ -2538,7 +2538,6 @@ export class UserService {
         entries.map((entry) => entry.userId),
         entries.map((entry) => entry.goal?.startAt ?? null),
         entries.map((entry) => entry.goal?.dueAt ?? null),
-        OnetimeInviteStatus.LINK_USED,
         AMBASSADOR_REFERRAL_SOURCES,
         ContractEventType.SIGNED,
         ShareUrlKind.Invite,
@@ -2863,16 +2862,14 @@ export class UserService {
   async getOnetimeInviteMemberStats(): Promise<OnetimeInviteMemberStats[]> {
     const rows = await this.onetimeInviteRepository
       .createQueryBuilder("invite")
-      .leftJoin("invite.invitedUser", "invitedUser")
       .select("invite.invitingUserId", "userId")
       .addSelect("COUNT(*)", "sent")
       .addSelect(
-        "COUNT(*) FILTER (WHERE invite.status = :linkUsed OR invitedUser.id IS NOT NULL)",
+        `COUNT(*) FILTER (WHERE ${inviteAcceptedSql("invite")})`,
         "accepted",
       )
       .where("invite.deletedAt IS NULL")
       .andWhere("invite.invitingUserId IS NOT NULL")
-      .setParameter("linkUsed", OnetimeInviteStatus.LINK_USED)
       .groupBy("invite.invitingUserId")
       // COUNT comes back as a bigint string from pg
       .getRawMany<{ userId: number; sent: string; accepted: string }>();
@@ -2903,10 +2900,7 @@ export class UserService {
       .innerJoin("invite.invitedUser", "invitedUser")
       .select("invite.invitingUserId", "invitingUserId")
       .addSelect("invitedUser.id", "invitedUserId")
-      .where("invite.deletedAt IS NULL")
-      .andWhere("invite.status = :status", {
-        status: OnetimeInviteStatus.LINK_USED,
-      })
+      .where(inviteAcceptedSql("invite"))
       .andWhere("invite.invitingUserId IS NOT NULL")
       .getRawMany<OnetimeInviteEdge>();
   }
