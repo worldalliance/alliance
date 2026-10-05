@@ -8,6 +8,7 @@ import {
   AWAY_REASON_LABELS,
   AwayRangeStatus,
   awayRangeStatus,
+  changedAwayRangeDays,
   formatAwayReason,
 } from "@alliance/shared/lib/awayRangesFormatters";
 import { awayRangesDescription } from "@alliance/shared/lib/copy";
@@ -160,12 +161,10 @@ const AwayRangesSection: React.FC = () => {
       await updateAwayRange.mutateAsync({
         id: editingId,
         body: {
-          // An untouched day stays out of the request: the browser formatted
-          // it in its own time zone, the server reads it in the account's, and
-          // the two can name different days.
-          startDay:
-            editStartDate === editOpenedDays.start ? undefined : editStartDate,
-          endDay: editEndDate === editOpenedDays.end ? undefined : editEndDate,
+          ...changedAwayRangeDays({
+            edited: { start: editStartDate, end: editEndDate },
+            opened: editOpenedDays,
+          }),
           reason: editReason,
           note: editNote.trim() || null,
         },

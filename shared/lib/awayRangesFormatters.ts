@@ -48,3 +48,21 @@ export function formatAwayRange(range: UserAwayRangeDto): string {
 export function formatAwayReason(reason: UserAwayRangeReason): string {
   return AWAY_REASON_LABELS[reason];
 }
+
+type AwayRangeDays = { start: string; end: string };
+
+/**
+ * The days an away-range edit sends. An untouched day stays out: the form
+ * formats days in the browser's time zone while the server reads them in the
+ * account's, so resending one can move it a day or reset its time of day.
+ */
+export function changedAwayRangeDays(params: {
+  edited: AwayRangeDays;
+  opened: AwayRangeDays;
+}): { startDay?: string; endDay?: string } {
+  const { edited, opened } = params;
+  return {
+    startDay: edited.start === opened.start ? undefined : edited.start,
+    endDay: edited.end === opened.end ? undefined : edited.end,
+  };
+}
