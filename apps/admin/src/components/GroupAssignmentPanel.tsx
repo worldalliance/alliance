@@ -1,9 +1,6 @@
 import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
-import {
-  communityGetCommunitiesAdmin,
-  userAssignGroupsAdmin,
-} from "@alliance/shared/client";
+import { communityGetCommunitiesAdmin } from "@alliance/shared/client";
 import type {
   AssignGroupsDto,
   CommunityDto,
@@ -17,6 +14,8 @@ import Card from "@alliance/sharedweb/ui/Card";
 import List from "@alliance/sharedweb/ui/List";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import { useAssignGroupsAdmin } from "../lib/useCommunitiesAdmin";
 import ConfirmDialog from "./ConfirmDialog";
 
 const storageKey = "admin.groupAssignmentSelections";
@@ -36,6 +35,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
   const [communities, setCommunities] = useState<CommunityDto[]>([]);
   const [loadingCommunities, setLoadingCommunities] = useState(true);
   const [communitiesError, setCommunitiesError] = useState<string | null>(null);
+  const { mutateAsync: assignGroups } = useAssignGroupsAdmin();
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -327,41 +327,42 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
           communityId: community.id,
         })),
       };
-      const response = await userAssignGroupsAdmin({ body });
-      if (response.data) {
-        assignMembers(body.assignments.map(({ userId }) => userId));
-        setAssignmentSelections((prev) => {
-          const next = { ...prev };
-          body.assignments.forEach((assignment) => {
-            delete next[assignment.userId];
-          });
-          return next;
+      await assignGroups(body);
+      assignMembers(body.assignments.map(({ userId }) => userId));
+      setAssignmentSelections((prev) => {
+        const next = { ...prev };
+        body.assignments.forEach((assignment) => {
+          delete next[assignment.userId];
         });
-        if (typeof window !== "undefined") {
-          try {
-            const stored = window.localStorage.getItem(storageKey);
-            if (stored) {
-              const parsed = JSON.parse(stored) as Record<string, string>;
-              body.assignments.forEach((assignment) => {
-                delete parsed[String(assignment.userId)];
-              });
-              window.localStorage.setItem(storageKey, JSON.stringify(parsed));
-            }
-          } catch (error) {
-            console.warn("Failed to update saved assignments", error);
+        return next;
+      });
+      if (typeof window !== "undefined") {
+        try {
+          const stored = window.localStorage.getItem(storageKey);
+          if (stored) {
+            const parsed = JSON.parse(stored) as Record<string, string>;
+            body.assignments.forEach((assignment) => {
+              delete parsed[String(assignment.userId)];
+            });
+            window.localStorage.setItem(storageKey, JSON.stringify(parsed));
           }
+        } catch (error) {
+          console.warn("Failed to update saved assignments", error);
         }
-      } else {
-        setSubmissionError("Failed to assign members");
       }
-      setIsConfirmOpen(false);
     } catch (error) {
       console.error("Failed to assign groups", error);
-      setSubmissionError("Unable to confirm assignments. Please try again.");
+      setSubmissionError(
+        adminRefusalMessage(
+          error,
+          "Unable to confirm assignments. Please try again.",
+        ),
+      );
     } finally {
+      setIsConfirmOpen(false);
       setIsSubmitting(false);
     }
-  }, [assignmentPreview, assignMembers]);
+  }, [assignmentPreview, assignGroups, assignMembers]);
 
   return (
     <Card className="w-full max-w-5xl" style={CardStyle.White}>
