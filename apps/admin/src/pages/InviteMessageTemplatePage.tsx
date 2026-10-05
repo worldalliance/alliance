@@ -2,18 +2,17 @@ import {
   INVITE_LINK_TOKEN,
   INVITE_MESSAGE_TEMPLATE_MAX_LENGTH,
 } from "@alliance/common/inviteMessage";
-import { shareUrlsUpdateInviteMessageTemplate } from "@alliance/shared/client";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useInviteMessageTemplate } from "@alliance/shared/lib/useInviteMessageTemplate";
+import {
+  useInviteMessageTemplate,
+  useUpdateInviteMessageTemplate,
+} from "@alliance/shared/lib/useInviteMessageTemplate";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import FormTextarea from "../components/FormTextarea";
 
 const InviteMessageTemplatePage = () => {
-  const queryClient = useQueryClient();
   const {
     data: savedTemplate,
     isLoading,
@@ -21,7 +20,11 @@ const InviteMessageTemplatePage = () => {
   } = useInviteMessageTemplate();
   const { success, error: errorToast } = useToast();
   const [template, setTemplate] = useState("");
-  const [saving, setSaving] = useState(false);
+  const { mutate: saveTemplate, isPending: saving } =
+    useUpdateInviteMessageTemplate({
+      onSuccess: () => success("Invitation message saved."),
+      onError: () => errorToast("Could not save the invitation message."),
+    });
 
   useEffect(() => {
     if (savedTemplate !== undefined) {
@@ -35,30 +38,12 @@ const InviteMessageTemplatePage = () => {
       ? "Keep the message under 5,000 characters."
       : null;
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (validationError) {
       return;
     }
-
-    setSaving(true);
-    try {
-      const response = await shareUrlsUpdateInviteMessageTemplate({
-        body: { template },
-      });
-      if (response.error || !response.data) {
-        throw response.error ?? new Error("Failed to save invitation message");
-      }
-      queryClient.setQueryData(
-        queryKeys.inviteMessageTemplate(),
-        response.data.template,
-      );
-      success("Invitation message saved.");
-    } catch {
-      errorToast("Could not save the invitation message.");
-    } finally {
-      setSaving(false);
-    }
+    saveTemplate(template);
   };
 
   return (
