@@ -20,6 +20,7 @@ import { CommunityDto } from "src/community/dto/community.dto";
 import { CommunityInvite } from "src/community/entities/community-invite.entity";
 import { getImageSource } from "src/images/images.service";
 import { type PaginatedList, PaginatedListDto } from "src/utils/pagination.dto";
+import type { WithRelations } from "src/utils/Repository";
 import { AmbassadorInviteGoal } from "../entities/ambassador-invite-goal.entity";
 import { AmbassadorProgramInteraction } from "../entities/ambassador-program-interaction.entity";
 import { AmbassadorProgramMember } from "../entities/ambassador-program-member.entity";
@@ -516,9 +517,15 @@ export class AmbassadorProgramInviteStatsDto {
   }
 }
 
-export type AmbassadorProgramMemberWithInviteStats = AmbassadorProgramMember & {
-  inviteStats?: AmbassadorProgramInviteStats;
-};
+export type AmbassadorProgramMemberWithUser = WithRelations<
+  AmbassadorProgramMember,
+  { user: true }
+>;
+
+export type AmbassadorProgramMemberWithInviteStats =
+  AmbassadorProgramMemberWithUser & {
+    inviteStats?: AmbassadorProgramInviteStats;
+  };
 
 export class AmbassadorProgramMemberDto extends PickType(
   AmbassadorProgramMember,

@@ -1,5 +1,5 @@
 import { publicDisplayName } from "@alliance/common/displayName";
-import { nameParts } from "src/utils/name-parts";
+import { nameParts } from "@alliance/common/nameParts";
 import { z } from "zod";
 
 /** Chooses how a row's message renders; read from the row, never inferred. */
