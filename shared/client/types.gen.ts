@@ -279,8 +279,8 @@ export type Push = {
 export type ActionEventNotif = {
     id: number;
     type: ActionEventNotifType;
-    mail: Mail | null;
-    mms: Mms | null;
+    mail?: Mail | null;
+    mms?: Mms | null;
     pushes?: Array<Push>;
     reminderGroup?: ReminderGroup;
     memberActionEvent?: ActionEvent;
@@ -1673,8 +1673,8 @@ export type MarkUnreadContentReadDto = {
 export type ActionEventNotifDto = {
     id: number;
     type: ActionEventNotifType;
-    mail: Mail | null;
-    mms: Mms | null;
+    mail?: Mail | null;
+    mms?: Mms | null;
     pushes?: Array<Push>;
     reminderGroup?: ReminderGroup;
     notificationId: number | null;
