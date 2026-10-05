@@ -30,6 +30,12 @@ export function compareContractEventsNewestFirst<
   return b.date.getTime() - a.date.getTime() || b.id - a.id;
 }
 
+export function findLastContractEvent<T extends ContractEventOrderFields>(
+  events: T[],
+): T | null {
+  return findLeast(events, compareContractEventsNewestFirst);
+}
+
 export function isContractActiveAt(
   events: Pick<ContractEvent, "date" | "id" | "type">[],
   at: Date,

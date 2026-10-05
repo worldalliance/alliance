@@ -1,4 +1,8 @@
-import { ContractEventType, isContractActiveAt } from "./contract-event.entity";
+import {
+  ContractEventType,
+  findLastContractEvent,
+  isContractActiveAt,
+} from "./contract-event.entity";
 
 const at = new Date("2026-03-01T00:00:00Z");
 const before = new Date("2026-02-01T00:00:00Z");
@@ -31,5 +35,24 @@ describe("isContractActiveAt", () => {
     const suspended = { id: 2, date: at, type: ContractEventType.SUSPENDED };
     expect(isContractActiveAt([signed, suspended], at)).toBe(false);
     expect(isContractActiveAt([suspended, signed], at)).toBe(false);
+  });
+});
+
+describe("findLastContractEvent", () => {
+  it("is null with no events", () => {
+    expect(findLastContractEvent([])).toBeNull();
+  });
+
+  it("picks the latest event, including ones after now", () => {
+    const signed = { id: 2, date: before, type: ContractEventType.SIGNED };
+    const suspended = { id: 1, date: after, type: ContractEventType.SUSPENDED };
+    expect(findLastContractEvent([signed, suspended])).toBe(suspended);
+  });
+
+  it("breaks a same-instant tie by the higher id", () => {
+    const signed = { id: 1, date: at, type: ContractEventType.SIGNED };
+    const suspended = { id: 2, date: at, type: ContractEventType.SUSPENDED };
+    expect(findLastContractEvent([signed, suspended])).toBe(suspended);
+    expect(findLastContractEvent([suspended, signed])).toBe(suspended);
   });
 });
