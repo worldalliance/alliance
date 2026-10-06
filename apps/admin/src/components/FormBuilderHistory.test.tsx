@@ -11,6 +11,11 @@ import {
   waitFor,
 } from "@testing-library/react";
 import z from "zod";
+import {
+  insertElement,
+  openSection,
+  selectElement,
+} from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 import { resetCustomValidatorsCache } from "./form-fields/CommonControls";
 
@@ -301,7 +306,7 @@ it("closes the copy picker on undo, since its position may no longer hold", asyn
   renderFormBuilder(twoPages, 1);
   fireEvent.change(pageTitle(), { target: { value: "First" } });
   await nextTask();
-  fireEvent.click(button("Copy Existing Element"));
+  insertElement(button("Add element"), "Copy Existing Element");
   expect(screen.queryByText("Choose an element to copy…")).not.toBeNull();
 
   fireEvent.click(button("Undo"));
@@ -338,9 +343,8 @@ it("starts a new history from their version after Take theirs", async () => {
 
 it("creates a draft validator once, whatever is undone and redone after", async () => {
   renderFormBuilder(twoPages, 1);
-  fireEvent.click(
-    screen.getAllByRole("button", { name: "Extra form options" })[0]!,
-  );
+  selectElement("Q");
+  openSection("Advanced");
   fireEvent.click(screen.getByLabelText("Use custom validator"));
   const option = await screen.findByRole("option", {
     name: "Has phone number",
@@ -354,6 +358,7 @@ it("creates a draft validator once, whatever is undone and redone after", async 
 
   fireEvent.click(button("Undo"));
   fireEvent.click(button("Redo"));
+  fireEvent.click(button("Page settings: One"));
   fireEvent.change(pageTitle(), { target: { value: "First" } });
   await save();
   await waitFor(() => expect(saved).toHaveLength(2));
@@ -418,8 +423,14 @@ it("reopens the Output View's expression editor when undo restores its text", as
   expect(expression()?.value).toBe("c1 AND");
 });
 
+const openConditionsOfA = () => {
+  selectElement("A");
+  openSection("Conditions");
+};
+
 it("keeps unsaved expression text across pages, and undoes it", async () => {
   renderFormBuilder(twoPages, 1);
+  openConditionsOfA();
   fireEvent.click(button("Edit as expression"));
   const expression = () =>
     screen.queryByRole<HTMLTextAreaElement>("textbox", { name: "Expression" });
@@ -428,6 +439,7 @@ it("keeps unsaved expression text across pages, and undoes it", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Two" }));
   fireEvent.click(screen.getByRole("button", { name: "One" }));
+  openConditionsOfA();
   expect(expression()?.value).toBe("c1 AND");
 
   fireEvent.click(button("Undo"));
@@ -436,6 +448,7 @@ it("keeps unsaved expression text across pages, and undoes it", async () => {
 
 it("drops expression text on returning to all/any rules", async () => {
   renderFormBuilder(twoPages, 1);
+  openConditionsOfA();
   fireEvent.click(button("Edit as expression"));
   const expression = () =>
     screen.queryByRole<HTMLTextAreaElement>("textbox", { name: "Expression" });
@@ -445,12 +458,13 @@ it("drops expression text on returning to all/any rules", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Two" }));
   fireEvent.click(screen.getByRole("button", { name: "One" }));
+  openConditionsOfA();
   expect(expression()).toBeNull();
 });
 
 it("undoes a contract question with the contract it defaults to", async () => {
   renderFormBuilder(twoPages, 1);
-  fireEvent.click(screen.getByRole("button", { name: "Contract Field" }));
+  insertElement(button("Add element"), "Contract Field");
   await screen.findByDisplayValue("Pledge");
   await nextTask();
 
@@ -489,9 +503,8 @@ it("keeps the page on screen when undo removes a page before it", async () => {
 
 it("restores a draft validator that was turned off, and creates it on Save", async () => {
   renderFormBuilder(twoPages, 1);
-  fireEvent.click(
-    screen.getAllByRole("button", { name: "Extra form options" })[0]!,
-  );
+  selectElement("Q");
+  openSection("Advanced");
   const toggle = () =>
     screen.getByLabelText<HTMLInputElement>("Use custom validator");
   fireEvent.click(toggle());
@@ -507,9 +520,6 @@ it("restores a draft validator that was turned off, and creates it on Save", asy
   expect(toggle().checked).toBe(false);
 
   fireEvent.click(button("Undo"));
-  fireEvent.click(
-    screen.getAllByRole("button", { name: "Extra form options" })[0]!,
-  );
   expect(toggle().checked).toBe(true);
   await save();
   await waitFor(() => expect(saved).toHaveLength(1));

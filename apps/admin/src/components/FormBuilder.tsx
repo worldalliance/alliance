@@ -4,14 +4,6 @@ import {
   type DisplayBlock,
   type DisplayKind,
 } from "@alliance/common/forms/display-blocks";
-import { isDisplayOnlyBlockKind } from "@alliance/common/forms/display-only-schema";
-import {
-  ADDABLE_FIELD_KINDS,
-  DISPLAY_KIND_NAMES,
-  DISPLAY_KINDS,
-  elementInternalDescriptor,
-  FIELD_KIND_NAMES,
-} from "@alliance/common/forms/element-descriptors";
 import {
   fieldHasOptions,
   isQuestionField,
@@ -66,7 +58,7 @@ import {
 import { reorderPages } from "../lib/reorderPages";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
-import { DropPosition } from "../lib/useDragReorder";
+import { DropPosition, moveItem } from "../lib/useDragReorder";
 import { useFormDraft, type CreatedValidator } from "../lib/useFormDraft";
 import { useFormulaSourceForms } from "../lib/useFormulaSourceForms";
 import { useInputSources } from "../lib/useInputSources";
@@ -74,32 +66,57 @@ import { useSelectedPage } from "../lib/useSelectedPage";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
 import {
   deriveVisibilityGroups,
+  NeighborDirection,
+  stepPast,
   type GroupedPages,
   type VisibilityGroups,
 } from "../lib/visibilityGroups";
+import { summarizeVisibility } from "../lib/visibilitySummary";
 import { AggregateBuilder } from "./AggregateBuilder";
 import ConfirmDialog from "./ConfirmDialog";
 import { createDisplayBlock, PerViewerOptions } from "./display-blocks";
 import { renderBlockEditor } from "./display-blocks/blockEditors";
 import { DisplayOnlyPreview } from "./DisplayOnlyPreview";
-import { ElementSelect } from "./ElementSelect";
 import {
-  ElementExpressionScope,
-  ExpressionScope,
-} from "./form-fields/conditions/expressionBuffers";
+  CanvasTargetKind,
+  elementTarget,
+  followElement,
+  resolveTarget,
+  targetKey,
+  type CanvasSelection,
+  type CanvasTarget,
+} from "./form-canvas/canvasSelection";
+import {
+  CanvasWorkspace,
+  useWideCanvasLayout,
+} from "./form-canvas/CanvasWorkspace";
+import { ElementSettings } from "./form-canvas/ElementSettings";
+import { FormCanvas, type ElementMove } from "./form-canvas/FormCanvas";
+import {
+  AVAILABLE_ELEMENTS,
+  DISPLAY_ONLY_ELEMENTS,
+  InsertMode,
+  InsertPoint,
+  sameInsertLoc,
+  type AvailableElement,
+  type InsertLoc,
+} from "./form-canvas/InsertPoint";
+import { PageSettings, PageSettingsSidebar } from "./form-canvas/PageSettings";
+import { SettingsSidebar } from "./form-canvas/SettingsSidebar";
+import { SidebarSection } from "./form-canvas/sidebarSections";
+import { VisibilityGroupSettings } from "./form-canvas/VisibilityGroupSettings";
+import { ElementExpressionScope } from "./form-fields/conditions/expressionBuffers";
 import { isDraftValidatorId } from "./form-fields/customValidatorDrafts";
 import { renderFieldEditor } from "./form-fields/fieldEditors";
 import { FormConflictModal } from "./FormConflictModal";
 import { FormDraftContexts } from "./FormDraftContexts";
-import { ElementJsonContext, FormJsonButton } from "./FormJsonButton";
+import { FormJsonButton } from "./FormJsonButton";
 import { FormJsonModal } from "./FormJsonModal";
 import { formFieldsErrorReason } from "./FormPickerError";
 import { FormulaSourcesProvider } from "./FormulaSourcesContext";
 import { FormVariablesProvider } from "./FormVariablesContext";
 import { HistoryControls } from "./HistoryControls";
 import { OutputBuilder } from "./OutputBuilder";
-import { PageSegmentList } from "./PageSegmentList";
-import { PageVisibilityControl } from "./PageVisibilityControl";
 import { PreviewAsUserBar } from "./PreviewAsUserBar";
 import { ShareableTextBuilder } from "./ShareableTextBuilder";
 import { VariableBuilder } from "./VariableBuilder";
@@ -129,39 +146,6 @@ function describeUnresolvedReferences(
     "Save anyway?",
   ].join("\n");
 }
-
-type AvailableElement =
-  | { id: FieldKind; name: string; type: "field" }
-  | { id: DisplayKind; name: string; type: "block"; kind: DisplayKind }
-  | { id: "copy-existing"; name: "Copy Existing Element"; type: "copy" };
-
-const AVAILABLE_ELEMENTS: AvailableElement[] = [
-  ...ADDABLE_FIELD_KINDS.map((kind) => ({
-    id: kind,
-    name: FIELD_KIND_NAMES[kind],
-    type: "field" as const,
-  })),
-  ...DISPLAY_KINDS.map((kind) => ({
-    id: kind,
-    name: DISPLAY_KIND_NAMES[kind],
-    type: "block" as const,
-    kind,
-  })),
-  { id: "copy-existing", name: "Copy Existing Element", type: "copy" },
-];
-
-const DISPLAY_ONLY_ELEMENTS = AVAILABLE_ELEMENTS.filter(
-  (element) => element.type === "block" && isDisplayOnlyBlockKind(element.kind),
-);
-
-const ELEMENT_TYPE_BADGES: Record<
-  AvailableElement["type"],
-  { label: string; className: string }
-> = {
-  field: { label: "Field", className: "bg-blue-100 text-blue-800" },
-  block: { label: "Block", className: "bg-green-100 text-green-800" },
-  copy: { label: "Copy", className: "bg-purple-100 text-purple-800" },
-};
 
 export type DisplayOnlySaveConflict = {
   theirs: FormSchema;
@@ -492,18 +476,7 @@ const copyElementWithUniqueIds = (
   );
 };
 
-const describeCopyableElement = (element: PageItem): string =>
-  elementInternalDescriptor(element, {
-    typeQualified: true,
-    maxTextLength: 40,
-  });
-
-/** `groupKey` marks an insert point inside a visibility group. */
-type InsertLoc = { groupKey: string | null; index: number };
-
-function sameInsertLoc(a: InsertLoc | null, b: InsertLoc): boolean {
-  return a != null && a.groupKey === b.groupKey && a.index === b.index;
-}
+const GROUP_SECTIONS = [SidebarSection.Content, SidebarSection.Conditions];
 
 export function FormBuilder(props: FormBuilderProps) {
   const { initialSchema, setFormId } = props;
@@ -556,9 +529,6 @@ export function FormBuilder(props: FormBuilderProps) {
     expressions,
     setExpression,
   } = formDraft;
-  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
   const [lastSavedSchemaJSON, setLastSavedSchemaJSON] = useState<string>(() =>
     JSON.stringify(buildInitialSchema()),
   );
@@ -615,14 +585,26 @@ export function FormBuilder(props: FormBuilderProps) {
   const { selectedPageIndex, setSelectedPageIndex, keepPage } = useSelectedPage(
     schema.pages,
   );
-  const [draggedItem, setDraggedItem] = useState<{
-    index: number;
-    pageIndex: number;
-  } | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [dropPosition, setDropPosition] = useState<"before" | "after" | null>(
-    null,
-  );
+  const [selection, setSelection] = useState<CanvasSelection>(() => ({
+    pageId: schema.pages[0]?.id ?? "",
+    target: { kind: CanvasTargetKind.Page },
+  }));
+  const [section, setSection] = useState(SidebarSection.Content);
+  // A schema from elsewhere can shift what sits at an id-less block's
+  // position, so its selection would land on another element.
+  const reloadEditors = useCallback(() => {
+    setSchemaLoads((count) => count + 1);
+    setSelection((current) =>
+      current.target.kind === CanvasTargetKind.Element &&
+      current.target.id === null
+        ? { ...current, target: { kind: CanvasTargetKind.Page } }
+        : current,
+    );
+  }, []);
+  const wideCanvas = useWideCanvasLayout();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [focusPending, setFocusPending] = useState(false);
+  const focused = useCallback(() => setFocusPending(false), []);
 
   // Page drag and drop state
   const [draggedPageIndex, setDraggedPageIndex] = useState<number | null>(null);
@@ -647,12 +629,11 @@ export function FormBuilder(props: FormBuilderProps) {
   const previewUserError = previewUsersQuery.isLoadingError
     ? "Could not load users"
     : null;
-  const [activeSearch, setActiveSearch] = useState<InsertLoc | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Array<AvailableElement>>(
-    [],
-  );
-  const [copyPicker, setCopyPicker] = useState<InsertLoc | null>(null);
+  const [insertion, setInsertion] = useState<{
+    loc: InsertLoc;
+    mode: InsertMode;
+  } | null>(null);
+  const closeInsertion = useCallback(() => setInsertion(null), []);
   const [jsonScope, setJsonScope] = useState<JsonScope | null>(null);
   const draftValidatorIdRef = useRef(-1);
   const createDraftId = useCallback(() => {
@@ -673,15 +654,19 @@ export function FormBuilder(props: FormBuilderProps) {
     () => ({ buffers: expressions, setBuffer: setExpression }),
     [expressions, setExpression],
   );
-  const contentScrollRef = useRef<HTMLDivElement | null>(null);
   const builderRef = useRef<HTMLDivElement | null>(null);
 
   const currentPage = schema.pages[selectedPageIndex] ??
     schema.pages?.[0] ?? { id: "page-1", title: "Page 1", fields: [] };
+  const canvasGroups = displayOnly ? NO_VISIBILITY_GROUPS : visibilityGroups;
+  const resolvedTarget = resolveTarget({
+    page: currentPage,
+    groups: canvasGroups,
+    selection,
+  });
 
-  const applyInsert = (item: PageItem, loc?: InsertLoc) => {
-    const index = loc?.index ?? currentPage.fields.length;
-    const groupKey = loc?.groupKey ?? null;
+  const applyInsert = (item: PageItem, loc: InsertLoc) => {
+    const { index, groupKey } = loc;
     const groupFormula =
       groupKey == null
         ? undefined
@@ -721,22 +706,29 @@ export function FormBuilder(props: FormBuilderProps) {
   const { success: showSuccessToast, error: showErrorToast } = useToast();
   const invalidateForms = useInvalidateFormsAdmin();
 
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      const pool =
-        activeSearch?.groupKey != null
-          ? availableElements.filter((element) => element.type !== "copy")
-          : availableElements;
-      const filtered = pool.filter((element) =>
-        element.name.toLowerCase().includes(searchQuery.toLowerCase()),
-      );
-      setSearchResults(filtered);
-    } else {
-      setSearchResults([]);
-    }
-  }, [activeSearch?.groupKey, availableElements, searchQuery]);
+  const select = (target: CanvasTarget, nextSection: SidebarSection) => {
+    setSelection({ pageId: currentPage.id, target });
+    setSection(nextSection);
+    if (!wideCanvas) setDrawerOpen(true);
+  };
 
-  const handleSearchSelect = (element: AvailableElement, loc: InsertLoc) => {
+  const openPage = (pageIndex: number) => {
+    setSelectedPageIndex(pageIndex);
+    setSelection({
+      pageId: schema.pages[pageIndex]?.id ?? "",
+      target: { kind: CanvasTargetKind.Page },
+    });
+    setSection(SidebarSection.Content);
+  };
+
+  const insertAndSelect = (item: PageItem, loc: InsertLoc) => {
+    applyInsert(item, loc);
+    setInsertion(null);
+    select(elementTarget(item, loc.index), SidebarSection.Content);
+    setFocusPending(true);
+  };
+
+  const pickElement = (element: AvailableElement, loc: InsertLoc) => {
     switch (element.type) {
       case "field":
         addField(element.id, loc);
@@ -745,45 +737,19 @@ export function FormBuilder(props: FormBuilderProps) {
         addDisplayBlock(element.kind, loc);
         break;
       case "copy":
-        setCopyPicker(loc);
+        setInsertion({ loc, mode: InsertMode.Copy });
         break;
       default:
         throw new Error(
           `Unknown element type: ${(element satisfies never as AvailableElement).type}`,
         );
     }
-    setActiveSearch(null);
-    setSearchQuery("");
-    setSearchResults([]);
   };
 
-  const handleSearchKeyDown = (e: React.KeyboardEvent, loc: InsertLoc) => {
-    if (e.key === "Escape") {
-      setActiveSearch(null);
-      setSearchQuery("");
-      setSearchResults([]);
-    } else if (e.key === "Enter" && searchResults.length > 0) {
-      e.preventDefault();
-      handleSearchSelect(searchResults[0], loc);
-    }
-  };
-
-  // Click outside handler
-  const handleClickOutside = () => {
-    if (activeSearch !== null) {
-      setActiveSearch(null);
-      setSearchQuery("");
-      setSearchResults([]);
-    }
-    if (copyPicker !== null) {
-      setCopyPicker(null);
-    }
-  };
-
-  // The copy picker's insert index is relative to the current page, so it
-  // can't survive a page switch.
+  // An insert position is relative to the current page, so it can't survive a
+  // page switch.
   useEffect(() => {
-    setCopyPicker(null);
+    setInsertion(null);
   }, [selectedPageIndex]);
 
   // A new form's first save already holds the saved schema; refetching it
@@ -831,7 +797,7 @@ export function FormBuilder(props: FormBuilderProps) {
       });
   }, [displayOnly, formId, initialSchema, loadSchema]);
 
-  const addField = (kind: FieldKind, loc?: InsertLoc) => {
+  const addField = (kind: FieldKind, loc: InsertLoc) => {
     const fieldId = `field-${Date.now()}`;
     let newField: AnyField;
 
@@ -1041,17 +1007,11 @@ export function FormBuilder(props: FormBuilderProps) {
         return;
     }
 
-    applyInsert(newField, loc);
+    insertAndSelect(newField, loc);
   };
 
-  const addDisplayBlock = (kind: DisplayKind, loc?: InsertLoc) => {
-    const newBlock = createDisplayBlock(kind, `block-${Date.now()}`);
-    applyInsert(newBlock, loc);
-  };
-
-  const insertCopiedElement = (source: PageItem, loc: InsertLoc) => {
-    applyInsert(copyElementWithUniqueIds(source, schema), loc);
-    setCopyPicker(null);
+  const addDisplayBlock = (kind: DisplayKind, loc: InsertLoc) => {
+    insertAndSelect(createDisplayBlock(kind, `block-${Date.now()}`), loc);
   };
 
   const updateSchema = (newSchema: FormSchema, groups?: VisibilityGroups) => {
@@ -1146,22 +1106,11 @@ export function FormBuilder(props: FormBuilderProps) {
     }
   }, [activeEditor, isPreviewMode]);
 
-  useEffect(() => {
-    const scrollContainer = contentScrollRef.current;
-    if (scrollContainer) {
-      scrollContainer.scrollTo({ top: 0, behavior: "auto" });
-    }
-  }, [selectedPageIndex]);
-
-  const updateCurrentPageVisibility = (updates: {
-    visibleIfFormula?: VisibleIfFormula;
-  }) => {
+  const updateCurrentPage = (updates: Partial<Page>) => {
     updateSchema({
       ...schema,
       pages: schema.pages.map((page, idx) =>
-        idx === selectedPageIndex
-          ? { ...page, visibleIfFormula: updates.visibleIfFormula }
-          : page,
+        idx === selectedPageIndex ? { ...page, ...updates } : page,
       ),
     });
   };
@@ -1215,7 +1164,17 @@ export function FormBuilder(props: FormBuilderProps) {
     } else {
       updateSchema(next);
     }
-    setSchemaLoads((count) => count + 1);
+    if (jsonScope?.kind === JsonScopeKind.Element) {
+      const page = next.pages[jsonScope.pageIndex];
+      const element = page?.fields[jsonScope.index];
+      if (page && element) {
+        setSelection({
+          pageId: page.id,
+          target: elementTarget(element, jsonScope.index),
+        });
+      }
+    }
+    reloadEditors();
     setJsonScope(null);
   };
 
@@ -1384,6 +1343,10 @@ export function FormBuilder(props: FormBuilderProps) {
     () => validateFormSchema(schema, validation),
     [schema, validation],
   );
+  const invalidIds = useMemo(
+    () => new Set(liveValidationErrors.map((error) => error.blockId)),
+    [liveValidationErrors],
+  );
 
   const handleSaveForm = useCallback(() => {
     if (unresolvedVariableReferences.length > 0) {
@@ -1502,12 +1465,12 @@ export function FormBuilder(props: FormBuilderProps) {
       return;
     }
     loadSchema(conflict.theirs);
-    setSchemaLoads((count) => count + 1);
+    reloadEditors();
     setLastSavedSchemaJSON(JSON.stringify(conflict.theirs));
     setBaseFormSnapshotId(conflict.theirsSnapshotId);
     setHasUnsavedChanges(false);
     setConflict(null);
-  }, [conflict, loadSchema]);
+  }, [conflict, loadSchema, reloadEditors]);
 
   const handleMerge = useCallback(() => {
     if (!conflict) return;
@@ -1522,12 +1485,19 @@ export function FormBuilder(props: FormBuilderProps) {
       return;
     }
     loadSchema(result.value);
-    setSchemaLoads((count) => count + 1);
+    reloadEditors();
     setLastSavedSchemaJSON(JSON.stringify(conflict.theirs));
     setBaseFormSnapshotId(conflict.theirsSnapshotId);
     setConflict(null);
     showSuccessToast("Merged their changes with yours — review and save");
-  }, [conflict, loadSchema, showErrorToast, showSuccessToast, validation]);
+  }, [
+    conflict,
+    loadSchema,
+    reloadEditors,
+    showErrorToast,
+    showSuccessToast,
+    validation,
+  ]);
 
   const handleCopyMine = useCallback(async () => {
     if (!conflict) return;
@@ -1546,13 +1516,10 @@ export function FormBuilder(props: FormBuilderProps) {
   const travel = useCallback(
     (move: () => void) => {
       keepPage(move);
-      setSchemaLoads((count) => count + 1);
-      setCopyPicker(null);
-      setActiveSearch(null);
-      setSearchQuery("");
-      setSearchResults([]);
+      reloadEditors();
+      setInsertion(null);
     },
-    [keepPage],
+    [keepPage, reloadEditors],
   );
   const undo = useCallback(() => travel(undoDraft), [travel, undoDraft]);
   const redo = useCallback(() => travel(redoDraft), [travel, redoDraft]);
@@ -1575,17 +1542,6 @@ export function FormBuilder(props: FormBuilderProps) {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [handleSaveForm, hasUnsavedChanges, isLoading, isSaving]);
-
-  const handleDragStart = (index: number) => (e: React.DragEvent) => {
-    setDraggedItem({ index, pageIndex: selectedPageIndex });
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleDragEnd = () => {
-    setDraggedItem(null);
-    setDragOverIndex(null);
-    setDropPosition(null);
-  };
 
   // Page drag handlers
   const handlePageDragStart = (pageIndex: number) => (e: React.DragEvent) => {
@@ -1616,212 +1572,62 @@ export function FormBuilder(props: FormBuilderProps) {
     setPageDropPosition(position);
   };
 
-  const handleDragOver = (index: number) => (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-
-    if (!draggedItem || draggedItem.pageIndex !== selectedPageIndex) {
-      return;
-    }
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const midpoint = rect.top + rect.height / 2;
-    const position = e.clientY < midpoint ? "before" : "after";
-
-    setDragOverIndex(index);
-    setDropPosition(position);
+  const replaceFields = (fields: PageItem[]) => {
+    updateSchema({
+      ...schema,
+      pages: schema.pages.map((page, idx) =>
+        idx === selectedPageIndex ? { ...page, fields } : page,
+      ),
+    });
+    setSelection((current) =>
+      current.pageId === currentPage.id
+        ? {
+            ...current,
+            target: followElement({
+              before: currentPage.fields,
+              after: fields,
+              target: current.target,
+            }),
+          }
+        : current,
+    );
   };
 
-  const handleDrop = (dropIndex: number) => (e: React.DragEvent) => {
-    e.preventDefault();
-
+  const removeElement = (index: number) => {
     if (
-      !draggedItem ||
-      draggedItem.pageIndex !== selectedPageIndex ||
-      !dropPosition
+      resolvedTarget.kind === CanvasTargetKind.Element &&
+      resolvedTarget.index === index
     ) {
-      return;
+      setSection(SidebarSection.Content);
     }
-
-    const dragIndex = draggedItem.index;
-    let insertionIndex = dropPosition === "after" ? dropIndex + 1 : dropIndex;
-    if (dragIndex < insertionIndex) {
-      insertionIndex -= 1;
-    }
-
-    const draggedField = currentPage.fields[dragIndex];
-    if (draggedField && dragIndex !== insertionIndex) {
-      const nextFields = [...currentPage.fields];
-      nextFields.splice(dragIndex, 1);
-      nextFields.splice(insertionIndex, 0, draggedField);
-      updateSchema({
-        ...schema,
-        pages: schema.pages.map((page, idx) =>
-          idx === selectedPageIndex ? { ...page, fields: nextFields } : page,
-        ),
-      });
-    }
-
-    setDraggedItem(null);
-    setDragOverIndex(null);
-    setDropPosition(null);
+    replaceFields(currentPage.fields.filter((_, i) => i !== index));
   };
 
-  // Inline search component - small hover target
-  const InlineSearch = ({ loc }: { loc: InsertLoc }) => {
-    const isActive = sameInsertLoc(activeSearch, loc);
-
-    if (isActive) {
-      return (
-        <div className="relative my-2">
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => handleSearchKeyDown(e, loc)}
-              placeholder="Type to search for elements (text, header, divider...)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-              autoFocus
-              onClick={(e) => e.stopPropagation()}
-            />
-            {searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto z-10">
-                {searchResults.map((element) => (
-                  <button
-                    key={`${element.type}-${element.id}`}
-                    onClick={() => handleSearchSelect(element, loc)}
-                    className="w-full text-left px-3 py-2 hover:bg-blue-50 focus:bg-blue-50 focus:outline-none first:rounded-t-md last:rounded-b-md"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-gray-900">
-                        {element.name}
-                      </span>
-                      <span
-                        className={cn(
-                          "text-xs px-2 py-1 rounded-full",
-                          ELEMENT_TYPE_BADGES[element.type].className,
-                        )}
-                      >
-                        {ELEMENT_TYPE_BADGES[element.type].label}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="relative group">
-        <div className="w-full h-6 absolute -top-3 left-0 z-10"></div>
-        <div className="absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none group-hover:pointer-events-auto pb-4">
-          <button
-            onClick={() => setActiveSearch(loc)}
-            className="pb-[1px] w-8 h-8 bg-white border border-blue-500 hover:bg-blue-200 text-blue-500 rounded-full shadow-lg flex items-center justify-center text-sm font-bold transition-colors"
-            title="Add element here"
-          >
-            +
-          </button>
-        </div>
-      </div>
-    );
+  const moveElement = ({ from, dropIndex, position }: ElementMove) => {
+    const moved = moveItem({
+      items: currentPage.fields,
+      draggedIndex: from,
+      dropIndex,
+      position,
+    });
+    if (moved) replaceFields(moved.items);
   };
 
-  // Inline picker for inserting a copy of an existing element. Kept as UI
-  // state (not a schema element) so an in-progress pick never gets saved.
-  const InlineCopyPicker = ({ loc }: { loc: InsertLoc }) => {
-    const selectRef = useRef<HTMLSelectElement | null>(null);
-    const [hasSelection, setHasSelection] = useState(false);
-    const hasCopyableElements = schema.pages.some(
-      (page) => page.fields.length > 0,
-    );
-
-    const commitSelection = () => {
-      const value = selectRef.current?.value;
-      if (!value) return;
-      const [pageIndex, elementIndex] = value.split(":").map(Number);
-      const source = schema.pages[pageIndex]?.fields[elementIndex];
-      if (source) {
-        insertCopiedElement(source, loc);
-      }
-    };
-
-    return (
-      <div className="my-2" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-2 rounded-md border border-purple-300 bg-purple-50 px-3 py-2">
-          <select
-            ref={selectRef}
-            autoFocus
-            defaultValue=""
-            onChange={() => setHasSelection(true)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setCopyPicker(null);
-              } else if (e.key === "Enter") {
-                e.preventDefault();
-                commitSelection();
-              }
-            }}
-            className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
-          >
-            <option value="" disabled>
-              {hasCopyableElements
-                ? "Choose an element to copy…"
-                : "No elements to copy yet"}
-            </option>
-            {schema.pages.map(
-              (page, pageIndex) =>
-                page.fields.length > 0 && (
-                  <optgroup
-                    key={page.id}
-                    label={page.title || `Page ${pageIndex + 1}`}
-                  >
-                    {page.fields.map((element, elementIndex) => (
-                      <option
-                        key={element.id || `${pageIndex}:${elementIndex}`}
-                        value={`${pageIndex}:${elementIndex}`}
-                      >
-                        {describeCopyableElement(element)}
-                      </option>
-                    ))}
-                  </optgroup>
-                ),
-            )}
-          </select>
-          <button
-            type="button"
-            onClick={commitSelection}
-            disabled={!hasSelection}
-            className="rounded-md bg-purple-600 px-3 py-1.5 text-sm text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-purple-300"
-          >
-            Insert
-          </button>
-          <button
-            type="button"
-            onClick={() => setCopyPicker(null)}
-            className="text-gray-400 hover:text-gray-600"
-            title="Cancel"
-            aria-label="Cancel copy"
-          >
-            ×
-          </button>
-        </div>
-      </div>
-    );
+  const duplicateElement = (index: number) => {
+    const element = currentPage.fields[index];
+    if (!element) return;
+    insertAndSelect(copyElementWithUniqueIds(element, schema), {
+      groupKey: (element.id && canvasGroups.get(element.id)) || null,
+      index: index + 1,
+    });
   };
 
-  const InsertPoint = ({ loc }: { loc: InsertLoc }) =>
-    copyPicker != null && sameInsertLoc(copyPicker, loc) ? (
-      <InlineCopyPicker loc={loc} />
-    ) : (
-      <InlineSearch loc={loc} />
-    );
+  const applyGrouped = ({ pages, groups }: GroupedPages) =>
+    updateSchema({ ...schema, pages }, groups);
 
-  const renderField = (field: PageItem, index: number) => {
+  const renderElementEditor = (index: number) => {
+    const field = currentPage.fields[index];
+    if (!field) return null;
     const updateField = (updates: Partial<PageItem>) => {
       const optionValueChange =
         isQuestionField(field) &&
@@ -1890,96 +1696,19 @@ export function FormBuilder(props: FormBuilderProps) {
       });
     };
 
-    const removeField = () => {
-      updateSchema({
-        ...schema,
-        pages: schema.pages.map((page, idx) =>
-          idx === selectedPageIndex
-            ? { ...page, fields: page.fields.filter((_, i) => i !== index) }
-            : page,
-        ),
-      });
-    };
-
-    const isDragging =
-      draggedItem?.index === index &&
-      draggedItem?.pageIndex === selectedPageIndex;
-    const showInsertionBar =
-      dragOverIndex === index && dropPosition && !isDragging;
-
     const { previousFields, laterFields } = conditionSourceFields({
       pages: schema.pages,
       pageIndex: selectedPageIndex,
       index,
     });
-
     const commonProps = {
       onUpdate: updateField,
       updateCurrent: addressedWrite(field, updateBlockById),
-      onRemove: removeField,
-      onDragStart: handleDragStart(index),
-      onDragEnd: handleDragEnd,
-      isDragging: isDragging,
+      onRemove: () => removeElement(index),
       previousFields,
       laterFields,
     };
-
     return (
-      <div key={field.id || index} className="relative">
-        {showInsertionBar && dropPosition === "before" && (
-          <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
-            <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-          </div>
-        )}
-
-        <div
-          className="transition-all"
-          onDragOver={handleDragOver(index)}
-          onDrop={handleDrop(index)}
-        >
-          {isQuestionField(field)
-            ? renderFieldEditor({ field, ...commonProps })
-            : renderBlockEditor({ block: field, ...commonProps })}
-        </div>
-
-        {/* Insertion bar after */}
-        {showInsertionBar && dropPosition === "after" && (
-          <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
-            <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const applyGrouped = ({ pages, groups }: GroupedPages) =>
-    updateSchema({ ...schema, pages }, groups);
-
-  const toggleGroupCollapsed = (key: string) =>
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-
-  const renderPageItem = ({
-    field,
-    index,
-  }: {
-    field: PageItem;
-    index: number;
-  }) => (
-    <ElementJsonContext.Provider
-      value={{
-        open: () =>
-          setJsonScope({
-            kind: JsonScopeKind.Element,
-            pageIndex: selectedPageIndex,
-            index,
-          }),
-      }}
-    >
       <ElementExpressionScope
         parent={`element:${currentPage.id}`}
         id={field.id}
@@ -1998,11 +1727,165 @@ export function FormBuilder(props: FormBuilderProps) {
                 })
           }
         >
-          {renderField(field, index)}
+          <PerViewerOptions allowed={!displayOnly}>
+            {isQuestionField(field)
+              ? renderFieldEditor({ field, ...commonProps })
+              : renderBlockEditor({ block: field, ...commonProps })}
+          </PerViewerOptions>
         </VisibilityGroupContext.Provider>
       </ElementExpressionScope>
-    </ElementJsonContext.Provider>
+    );
+  };
+
+  const fieldLabels = useMemo(
+    () =>
+      new Map(
+        schema.pages
+          .flatMap((page) => page.fields)
+          .filter(isQuestionField)
+          .map((field) => [field.id, field.label || field.id]),
+      ),
+    [schema.pages],
   );
+  const summarize = (formula: VisibleIfFormula) =>
+    summarizeVisibility(
+      formula,
+      (fieldId) => fieldLabels.get(fieldId) ?? fieldId,
+    );
+
+  const renderInsertPoint = (loc: InsertLoc, options?: { prominent: true }) => (
+    <InsertPoint
+      loc={loc}
+      mode={
+        insertion && sameInsertLoc(insertion.loc, loc) ? insertion.mode : null
+      }
+      onOpen={() => setInsertion({ loc, mode: InsertMode.Search })}
+      onClose={closeInsertion}
+      elements={availableElements}
+      onPick={(element) => pickElement(element, loc)}
+      pages={schema.pages}
+      onCopy={(source) =>
+        insertAndSelect(copyElementWithUniqueIds(source, schema), loc)
+      }
+      prominent={options?.prominent}
+    />
+  );
+
+  const renderSettings = () => {
+    switch (resolvedTarget.kind) {
+      case CanvasTargetKind.Page:
+        return displayOnly ? (
+          <p className="p-4 text-sm text-gray-500">
+            Select a block on the canvas to edit it.
+          </p>
+        ) : (
+          <PageSettingsSidebar
+            pageId={currentPage.id}
+            section={section}
+            onSection={setSection}
+            focusPending={focusPending}
+            onFocused={focused}
+            onEditJson={() =>
+              setJsonScope({
+                kind: JsonScopeKind.Page,
+                pageIndex: selectedPageIndex,
+              })
+            }
+            onCopy={() => copyPage(selectedPageIndex)}
+            onDelete={
+              schema.pages.length > 1
+                ? () => removePage(selectedPageIndex)
+                : null
+            }
+          >
+            <PageSettings
+              key={`${currentPage.id}-${schemaLoads}`}
+              page={currentPage}
+              isFirstPage={selectedPageIndex === 0}
+              previousFields={pagePreviousFields}
+              onUpdate={updateCurrentPage}
+            />
+          </PageSettingsSidebar>
+        );
+      case CanvasTargetKind.Element: {
+        const { index } = resolvedTarget;
+        const element = currentPage.fields[index]!;
+        const stepTo = (direction: NeighborDirection) => {
+          const step = stepPast({
+            fields: currentPage.fields,
+            groups: canvasGroups,
+            index,
+            direction,
+          });
+          return step && (() => moveElement({ from: index, ...step }));
+        };
+        return (
+          <ElementSettings
+            element={element}
+            displayOnly={displayOnly}
+            section={section}
+            onSection={setSection}
+            focusPending={focusPending}
+            onFocused={focused}
+            onMoveUp={stepTo(NeighborDirection.Previous)}
+            onMoveDown={stepTo(NeighborDirection.Next)}
+            onEditJson={() =>
+              setJsonScope({
+                kind: JsonScopeKind.Element,
+                pageIndex: selectedPageIndex,
+                index,
+              })
+            }
+            onDuplicate={() => duplicateElement(index)}
+            onDelete={() => removeElement(index)}
+          >
+            <div key={`${element.id || index}-${schemaLoads}`}>
+              {renderElementEditor(index)}
+            </div>
+          </ElementSettings>
+        );
+      }
+      case CanvasTargetKind.Group:
+        return (
+          <SettingsSidebar
+            heading="Shared visibility"
+            sections={GROUP_SECTIONS}
+            section={section}
+            onSection={setSection}
+            focusPending={focusPending}
+            onFocused={focused}
+          >
+            <VisibilityGroupSettings
+              key={`${resolvedTarget.key}-${schemaLoads}`}
+              schema={schema}
+              pageIndex={selectedPageIndex}
+              groupKey={resolvedTarget.key}
+              groups={visibilityGroups}
+              setGroups={setGroups}
+              applyGrouped={applyGrouped}
+              summarize={summarize}
+              validationErrors={liveValidationErrors}
+              onSelectMember={(memberIndex) =>
+                select(
+                  elementTarget(currentPage.fields[memberIndex]!, memberIndex),
+                  SidebarSection.Content,
+                )
+              }
+              onRekey={(key) =>
+                setSelection({
+                  pageId: currentPage.id,
+                  target: { kind: CanvasTargetKind.Group, key },
+                })
+              }
+            />
+          </SettingsSidebar>
+        );
+      default:
+        throw new Error(
+          `unknown target: ${JSON.stringify(resolvedTarget satisfies never)}`,
+        );
+    }
+  };
 
   return (
     <FormDraftContexts
@@ -2052,24 +1935,7 @@ export function FormBuilder(props: FormBuilderProps) {
             ref={builderRef}
             className="flex h-[calc(100vh-40px)] bg-zinc-50"
           >
-            {!isPreviewMode && activeEditor === "form" && (
-              <ElementSelect
-                onAddField={addField}
-                onAddDisplayBlock={addDisplayBlock}
-                onCopyExisting={() => {
-                  setActiveSearch(null);
-                  setSearchQuery("");
-                  setSearchResults([]);
-                  setCopyPicker({
-                    groupKey: null,
-                    index: currentPage.fields.length,
-                  });
-                }}
-                displayOnly={displayOnly}
-              />
-            )}
-
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col min-w-0">
               <div className="bg-white border-b border-gray-200 p-4">
                 <div className="flex items-center justify-end gap-4 flex-wrap xl:flex-nowrap">
                   <div className="flex items-center space-x-2">
@@ -2256,7 +2122,7 @@ export function FormBuilder(props: FormBuilderProps) {
 
                             <button
                               type="button"
-                              onClick={() => setSelectedPageIndex(index)}
+                              onClick={() => openPage(index)}
                               className="py-2 flex-1 text-left pr-2"
                             >
                               {page.title}
@@ -2346,8 +2212,12 @@ export function FormBuilder(props: FormBuilderProps) {
               </div>
 
               <div
-                ref={contentScrollRef}
-                className="flex-1 p-6 overflow-y-auto min-h-0"
+                className={cn(
+                  "flex-1 min-h-0",
+                  activeEditor === "form" && !isPreviewMode
+                    ? "flex"
+                    : "p-6 overflow-y-auto",
+                )}
               >
                 {activeEditor === "shareable" ? (
                   <ShareableTextBuilder
@@ -2404,118 +2274,27 @@ export function FormBuilder(props: FormBuilderProps) {
                     />
                   </div>
                 ) : (
-                  <div
-                    className="max-w-2xl mx-auto bg-white rounded-lg border border-gray-200 p-6 mb-8"
-                    onClick={handleClickOutside}
-                  >
-                    {!displayOnly && (
-                      <div className="mb-6">
-                        <input
-                          type="text"
-                          value={currentPage.title || ""}
-                          onChange={(e) =>
-                            updateSchema({
-                              ...schema,
-                              pages: schema.pages.map((page, idx) =>
-                                idx === selectedPageIndex
-                                  ? { ...page, title: e.target.value }
-                                  : page,
-                              ),
-                            })
-                          }
-                          className="text-lg font-medium w-full border-none outline-none"
-                          placeholder="Page title"
-                        />
-                        {currentPage.description && (
-                          <p className="text-gray-600 mt-1">
-                            {currentPage.description}
-                          </p>
-                        )}
-                        <ExpressionScope.Provider
-                          value={`page:${currentPage.id}`}
-                        >
-                          <PageVisibilityControl
-                            key={`${currentPage.id}-${schemaLoads}`}
-                            page={currentPage}
-                            isFirstPage={selectedPageIndex === 0}
-                            previousFields={pagePreviousFields}
-                            onChange={updateCurrentPageVisibility}
-                          />
-                        </ExpressionScope.Provider>
-                      </div>
-                    )}
-                    <PerViewerOptions allowed={!displayOnly}>
-                      <div key={schemaLoads} className="space-y-4">
-                        {currentPage.fields.length === 0 && (
-                          <InsertPoint loc={{ groupKey: null, index: 0 }} />
-                        )}
-
-                        <PageSegmentList
-                          schema={schema}
-                          pageIndex={selectedPageIndex}
-                          groups={
-                            displayOnly
-                              ? NO_VISIBILITY_GROUPS
-                              : visibilityGroups
-                          }
-                          setGroups={setGroups}
-                          applyGrouped={applyGrouped}
-                          collapsedGroups={collapsedGroups}
-                          onToggleCollapsed={toggleGroupCollapsed}
-                          validationErrors={liveValidationErrors}
-                          renderInsertPoint={(loc) => <InsertPoint loc={loc} />}
-                          renderMember={renderPageItem}
-                        />
-
-                        {draggedItem && currentPage.fields.length > 0 && (
-                          <div
-                            className="relative h-4 -mt-2"
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              e.dataTransfer.dropEffect = "move";
-                              setDragOverIndex(currentPage.fields.length);
-                              setDropPosition("before");
-                            }}
-                            onDrop={handleDrop(currentPage.fields.length)}
-                          />
-                        )}
-
-                        {currentPage.fields.length === 0 && (
-                          <div
-                            className="text-center py-12 text-gray-500 relative"
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              e.dataTransfer.dropEffect = "move";
-                              setDragOverIndex(0);
-                              setDropPosition("before");
-                            }}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              if (
-                                !draggedItem ||
-                                draggedItem.pageIndex !== selectedPageIndex
-                              )
-                                return;
-
-                              setDraggedItem(null);
-                              setDragOverIndex(null);
-                              setDropPosition(null);
-                            }}
-                          >
-                            {draggedItem && dragOverIndex === 0 && (
-                              <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
-                                <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                              </div>
-                            )}
-                            <p>
-                              No fields added yet. Use the sidebar to add fields
-                              and display blocks.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </PerViewerOptions>
-                  </div>
+                  <CanvasWorkspace
+                    wide={wideCanvas}
+                    drawerOpen={drawerOpen}
+                    onDrawerOpenChange={setDrawerOpen}
+                    canvasKey={currentPage.id}
+                    settingsKey={targetKey(currentPage, resolvedTarget)}
+                    canvas={
+                      <FormCanvas
+                        page={currentPage}
+                        groups={canvasGroups}
+                        displayOnly={displayOnly}
+                        selected={resolvedTarget}
+                        onSelect={select}
+                        summarize={summarize}
+                        invalidIds={invalidIds}
+                        renderInsertPoint={renderInsertPoint}
+                        onMove={moveElement}
+                      />
+                    }
+                    settings={renderSettings()}
+                  />
                 )}
               </div>
             </div>

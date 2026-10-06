@@ -12,7 +12,6 @@ import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
 import type { ConditionSourceFields } from "../../lib/conditionSourceFields";
 import { updateListSubField } from "../../lib/updateListSubField";
-import { ElementJsonContext } from "../FormJsonButton";
 import {
   formFieldsErrorReason,
   FormPickerError,
@@ -125,13 +124,7 @@ function renderSubFieldEditor<K extends ListSubFieldKind>(
   props: BaseFieldProps<FieldOfKind[K]>,
 ) {
   const Editor: FieldEditor<K> | null = LIST_SUB_FIELD_EDITORS[kind];
-  return (
-    Editor && (
-      <ElementJsonContext.Provider value={null}>
-        <Editor {...props} />
-      </ElementJsonContext.Provider>
-    )
-  );
+  return Editor && <Editor {...props} />;
 }
 
 function renderEditableSubField(

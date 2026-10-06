@@ -21,8 +21,7 @@ export function FieldExtraMenu({
   ...options
 }: FieldExtraOptionsProps & {
   showConditionalVisibilityControl: boolean;
-  /** Null while the field's visibility is edited through its group. */
-  onConditionalVisibilityToggle: ((checked: boolean) => void) | null;
+  onConditionalVisibilityToggle: (checked: boolean) => void;
 }) {
   const [isExtraMenuOpen, setIsExtraMenuOpen] = useState(false);
   const extraMenuRef = useRef<HTMLDivElement | null>(null);
@@ -52,7 +51,13 @@ export function FieldExtraMenu({
   }, [isExtraMenuOpen]);
 
   return (
-    <div className="relative" ref={extraMenuRef}>
+    <div
+      className="relative"
+      ref={extraMenuRef}
+      onKeyDown={(event) => {
+        if (isExtraMenuOpen && event.key === "Escape") event.preventDefault();
+      }}
+    >
       <button
         type="button"
         onClick={() => setIsExtraMenuOpen((prev) => !prev)}
@@ -76,19 +81,17 @@ export function FieldExtraMenu({
       {isExtraMenuOpen && (
         <div className="absolute right-0 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-2 text-sm shadow-lg">
           <FieldExtraOptions {...options}>
-            {onConditionalVisibilityToggle && (
-              <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
-                <input
-                  type="checkbox"
-                  className="mr-2"
-                  checked={showConditionalVisibilityControl}
-                  onChange={(event) =>
-                    onConditionalVisibilityToggle(event.target.checked)
-                  }
-                />
-                Use conditional visibility
-              </label>
-            )}
+            <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
+              <input
+                type="checkbox"
+                className="mr-2"
+                checked={showConditionalVisibilityControl}
+                onChange={(event) =>
+                  onConditionalVisibilityToggle(event.target.checked)
+                }
+              />
+              Use conditional visibility
+            </label>
           </FieldExtraOptions>
         </div>
       )}

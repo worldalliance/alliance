@@ -2,6 +2,7 @@ import type { Page, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { withBlockVisibility } from "./blockVisibility";
 import { stableStringify } from "./schemaDiff";
+import { DropPosition } from "./useDragReorder";
 
 /**
  * Builder-only grouping of consecutive top-level page elements that share one
@@ -251,4 +252,46 @@ export function mergeGroups({
   const next = new Map(groups);
   for (const id of ids) next.set(id, previousKey);
   return { pages: withVisibility({ pages, ids, formula }), groups: next };
+}
+
+/**
+ * Where one step `direction` takes the element at `index`: past its neighbor,
+ * or past the whole of a group it doesn't belong to, so stepping never lands
+ * inside another group and splits it. Null at the page's edge.
+ */
+export function stepPast({
+  fields,
+  groups,
+  index,
+  direction,
+}: {
+  fields: PageItem[];
+  groups: VisibilityGroups;
+  index: number;
+  direction: NeighborDirection;
+}): { dropIndex: number; position: DropPosition } | null {
+  const forward = direction === NeighborDirection.Next;
+  const neighborIndex = index + (forward ? 1 : -1);
+  const neighbor = fields[neighborIndex];
+  if (!neighbor) return null;
+  const keyOf = (element: PageItem | undefined) =>
+    element?.id ? groups.get(element.id) : undefined;
+  const neighborKey = keyOf(neighbor);
+  const group =
+    neighborKey !== undefined && neighborKey !== keyOf(fields[index])
+      ? pageSegments(fields, groups).find(
+          (segment) =>
+            segment.kind === SegmentKind.Group && segment.key === neighborKey,
+        )
+      : undefined;
+  const dropIndex =
+    group?.kind === SegmentKind.Group
+      ? forward
+        ? group.end - 1
+        : group.start
+      : neighborIndex;
+  return {
+    dropIndex,
+    position: forward ? DropPosition.After : DropPosition.Before,
+  };
 }

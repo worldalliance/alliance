@@ -32,12 +32,6 @@ import { ConditionalVisibility } from "../form-fields/conditions/ConditionalVisi
 import type { OutputBlockOption } from "../form-fields/conditions/ContextRules";
 import { useTypedExpression } from "../form-fields/conditions/expressionBuffers";
 import { ElementConditions } from "../form-fields/conditions/VisibilityConditions";
-import { ElementJsonButton } from "../FormJsonButton";
-import {
-  JoinVisibilityButtons,
-  SharedVisibilityNotice,
-  useVisibilityGroupMember,
-} from "../VisibilityGroupContext";
 import { BlockPreviewAllowed } from "./BlockPreview";
 import { usePerViewerOptionsAllowed } from "./PerViewerOptionsContext";
 
@@ -149,7 +143,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   const perViewerOptionsAllowed = usePerViewerOptionsAllowed();
   const sidebar = useSidebarSections();
   const showConditional = Boolean(block && onUpdate && perViewerOptionsAllowed);
-  const groupMember = useVisibilityGroupMember(block?.id);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const optionsMenuRef = useRef<HTMLDivElement | null>(null);
   const expression = useTypedExpression(block ?? {});
@@ -585,7 +578,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   };
 
   const showConditionalControls =
-    showConditionalVisibilityControl && showConditional && !groupMember;
+    showConditionalVisibilityControl && showConditional;
 
   const editorContent =
     typeof children === "function"
@@ -1013,9 +1006,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
         </span>
       )}
       <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <JoinVisibilityButtons elementId={block?.id} />
-        <ElementJsonButton />
-        {showConditional && (!groupMember || perUserContent) && (
+        {showConditional && (
           <div className="relative" ref={optionsMenuRef}>
             <button
               type="button"
@@ -1039,19 +1030,17 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
             </button>
             {isMenuOpen && (
               <div className="absolute right-0 mt-1 w-64 rounded-lg border border-gray-200 bg-white py-2 text-sm shadow-lg z-20">
-                {!groupMember && (
-                  <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
-                    <input
-                      type="checkbox"
-                      className="mr-2"
-                      checked={showConditionalVisibilityControl}
-                      onChange={(event) =>
-                        handleConditionalVisibilityToggle(event.target.checked)
-                      }
-                    />
-                    Use conditional visibility
-                  </label>
-                )}
+                <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
+                  <input
+                    type="checkbox"
+                    className="mr-2"
+                    checked={showConditionalVisibilityControl}
+                    onChange={(event) =>
+                      handleConditionalVisibilityToggle(event.target.checked)
+                    }
+                  />
+                  Use conditional visibility
+                </label>
                 {perUserOptions && (
                   <div className="mt-2 border-t border-gray-100 pt-2">
                     {perUserOptions}
@@ -1071,7 +1060,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       </div>
       <div className={cn(showConditionalControls && "space-y-3")}>
         {contentBody}
-        {groupMember && <SharedVisibilityNotice detach={groupMember.detach} />}
         {showConditionalControls && (
           <div className="border-t border-gray-200 pt-4">
             <ConditionalVisibility

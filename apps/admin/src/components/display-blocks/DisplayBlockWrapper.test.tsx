@@ -1,6 +1,7 @@
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { openSection, selectElement } from "../../lib/testing/formCanvas";
 import { renderFormBuilder } from "../../lib/testing/renderFormBuilder";
 
 afterEach(cleanup);
@@ -35,11 +36,10 @@ describe("a display block's own visibility", () => {
       ],
       outputViews: [],
     });
+    selectElement("Copy Text Block");
+    openSection("Conditions");
     fireEvent.click(
-      screen.getByRole("button", { name: "Display block options" }),
-    );
-    fireEvent.click(
-      screen.getByRole("checkbox", { name: "Use conditional visibility" }),
+      screen.getByRole("button", { name: "Remove all conditions" }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Edit form JSON" }));
     const json = screen.getByRole<HTMLTextAreaElement>("textbox", {

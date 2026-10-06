@@ -15,12 +15,6 @@ import {
   SectionPanels,
   useSidebarSections,
 } from "../form-canvas/sidebarSections";
-import { ElementJsonButton } from "../FormJsonButton";
-import {
-  JoinVisibilityButtons,
-  SharedVisibilityNotice,
-  useVisibilityGroupMember,
-} from "../VisibilityGroupContext";
 import {
   CustomValidatorSelect,
   OutputFieldToggle,
@@ -60,7 +54,6 @@ export function FieldWrapper<T extends AnyField>({
 }: FieldWrapperProps<T>) {
   const isCurrentFormField = isFormField(field);
   const sidebar = useSidebarSections();
-  const groupMember = useVisibilityGroupMember(field.id);
   const { createDraftId, drafts, removeDraft, setDraft } =
     useCustomValidatorDrafts();
   const [showCustomValidatorControl, setShowCustomValidatorControl] = useState(
@@ -364,17 +357,13 @@ export function FieldWrapper<T extends AnyField>({
       </div>
 
       <div className="mb-1 flex items-center justify-end gap-1 absolute right-0 top-0 bg-white rounded-lg">
-        <JoinVisibilityButtons elementId={field.id} />
-        <ElementJsonButton />
         {isCurrentFormField && (
           <FieldExtraMenu
             field={field}
             showCustomValidatorControl={showCustomValidatorControl}
             onCustomValidatorToggle={handleCustomValidatorToggle}
             showConditionalVisibilityControl={showConditionalVisibilityControl}
-            onConditionalVisibilityToggle={
-              groupMember ? null : handleConditionalVisibilityToggle
-            }
+            onConditionalVisibilityToggle={handleConditionalVisibilityToggle}
             onExtractionToggle={handleExtractionToggle}
             onCheckboxExtractionTargetChange={
               handleCheckboxExtractionTargetChange
@@ -426,13 +415,11 @@ export function FieldWrapper<T extends AnyField>({
             )}
           </div>
         )}
-        {groupMember && <SharedVisibilityNotice detach={groupMember.detach} />}
         {isCurrentFormField &&
-          (showCustomValidatorControl ||
-            (showConditionalVisibilityControl && !groupMember)) && (
+          (showCustomValidatorControl || showConditionalVisibilityControl) && (
             <div className="space-y-2 border-t border-gray-200 p-4">
               {showCustomValidatorControl && customValidatorSelect}
-              {showConditionalVisibilityControl && !groupMember && (
+              {showConditionalVisibilityControl && (
                 <ConditionalVisibility
                   field={field}
                   previousFields={previousFields || []}
