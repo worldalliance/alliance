@@ -23,8 +23,12 @@ let myGroups = failed;
 let publicGroups: CommunityDto[] = [];
 let invitedTo: CommunityDto[] = [];
 
+let groupAssignment = async () => Response.json({});
+
 serveApi(
   routes({
+    "POST /user/groupAssignment/join": () => groupAssignment(),
+    "POST /user/groupAssignment/leave": () => groupAssignment(),
     "GET /community/list/my": () => myGroups(),
     "GET /community/list/public": () => Response.json(publicGroups),
     "GET /community/communityInvites": () =>
@@ -44,6 +48,7 @@ beforeEach(() => {
   myGroups = failed;
   publicGroups = [];
   invitedTo = [];
+  groupAssignment = async () => Response.json({});
 });
 
 afterEach(cleanup);
@@ -123,4 +128,46 @@ it("claims no kind of assignment while your groups won't load", async () => {
   await screen.findByText("Couldn't load your groups.");
   expect(screen.getByText("Cancel group assignment")).toBeTruthy();
   expect(screen.queryByText(/assigning/)).toBeNull();
+});
+
+const offline = async (): Promise<Response> => {
+  throw new TypeError("Failed to fetch");
+};
+
+const requesting = {
+  button: "Request assignment",
+  undergoingGroupAssignment: false,
+  message: "Unable to request group assignment right now.",
+};
+const cancelling = {
+  button: "Cancel assignment",
+  undergoingGroupAssignment: true,
+  message: "Unable to cancel group assignment right now.",
+};
+
+it.each([
+  { ...requesting, answer: offline },
+  { ...requesting, answer: failed },
+  { ...cancelling, answer: offline },
+  { ...cancelling, answer: failed },
+])(
+  "says when $button fails with $answer.name",
+  async ({ button, undergoingGroupAssignment, message, answer }) => {
+    myGroups = async () => Response.json([]);
+    groupAssignment = answer;
+    renderPage({ undergoingGroupAssignment });
+    fireEvent.click(await screen.findByText(button));
+    await screen.findByText(message);
+  },
+);
+
+it("closes the leave dialog and says when reassignment from it fails", async () => {
+  myGroups = async () => Response.json([group(1, "My group")]);
+  groupAssignment = offline;
+  renderPage();
+  fireEvent.click(await screen.findByText("Leave"));
+  const dialogButtons = screen.getAllByText("Request reassignment");
+  fireEvent.click(dialogButtons[dialogButtons.length - 1]);
+  await screen.findByText("Unable to request group assignment right now.");
+  expect(screen.queryByText(/Are you sure you want to leave/)).toBeNull();
 });

@@ -4,8 +4,6 @@ import {
   CommunityDto,
   communityJoinPublicCommunity,
   communityLeave,
-  userJoinGroupAssignment,
-  userLeaveGroupAssignment,
 } from "@alliance/shared/client";
 import {
   getMemberCount,
@@ -15,6 +13,7 @@ import {
   publicGroupJoinState,
 } from "@alliance/shared/lib/communityUtils";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
+import { useGroupAssignment } from "@alliance/shared/lib/useGroupAssignment";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { usePublicCommunities } from "@alliance/shared/lib/usePublicCommunities";
@@ -179,6 +178,17 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
     [onSelectCommunity, removeCommunity],
   );
 
+  const { join, leave } = useGroupAssignment({ onChanged: refreshUser });
+
+  const joinGroupAssignment = useCallback(() => {
+    join.mutate(undefined, {
+      onError: (err) => {
+        console.error("Failed to request group assignment", err);
+        showError("Unable to request group assignment right now.");
+      },
+    });
+  }, [join, showError]);
+
   const handleRequestAssignment = useCallback(
     async (anchor?: HTMLElement | null) => {
       const ok = !!nonLeaderCommunities.length
@@ -192,17 +202,20 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
           })
         : true;
       if (ok) {
-        await userJoinGroupAssignment();
-        await refreshUser();
+        joinGroupAssignment();
       }
     },
-    [confirm, nonLeaderCommunities.length, refreshUser],
+    [confirm, joinGroupAssignment, nonLeaderCommunities.length],
   );
 
-  const handleCancelAssignment = useCallback(async () => {
-    await userLeaveGroupAssignment();
-    await refreshUser();
-  }, [refreshUser]);
+  const handleCancelAssignment = useCallback(() => {
+    leave.mutate(undefined, {
+      onError: (err) => {
+        console.error("Failed to cancel group assignment", err);
+        showError("Unable to cancel group assignment right now.");
+      },
+    });
+  }, [leave, showError]);
 
   const handleJoinPublicCommunity = useCallback(
     async (community: CommunityDto, anchor?: HTMLElement | null) => {
@@ -460,11 +473,8 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
                             color={ButtonColor.Black}
                             size="small"
                             onClick={() => {
-                              void (async () => {
-                                setLeavingCommunityId(null);
-                                await userJoinGroupAssignment();
-                                await refreshUser();
-                              })();
+                              setLeavingCommunityId(null);
+                              joinGroupAssignment();
                             }}
                           >
                             Request reassignment
