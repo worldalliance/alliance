@@ -47,3 +47,10 @@ export function createRequestContext(
     }),
   };
 }
+
+export function adoptPosthogContext(
+  input: Parameters<typeof parsePosthogContext>[0],
+): void {
+  const store = requestContext.getStore();
+  if (store) store.posthog = parsePosthogContext(input);
+}

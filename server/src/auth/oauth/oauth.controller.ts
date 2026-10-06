@@ -36,6 +36,7 @@ import type { Request as ExpressRequest, Response } from "express";
 import { OAUTH_THROTTLE } from "src/auth/signup-throttle.config";
 import { PosthogService } from "src/posthog/posthog.service";
 import { User } from "src/user/entities/user.entity";
+import { adoptPosthogContext } from "src/utils/request-context";
 import { OnlyThrottle } from "src/utils/throttle";
 import { AuthService } from "../auth.service";
 import { AuthMeResponseDto } from "../dto/authtokens.dto";
@@ -173,6 +174,10 @@ export class OAuthController {
         );
     }
 
+    adoptPosthogContext({
+      sessionId: input.posthogSessionId,
+      distinctId: input.posthogDistinctId,
+    });
     const returnTo = resolveReturnTo(input.returnTo);
     const redirectUri = oauthRedirectUri({ req, provider, returnTo });
     const state = await this.oauth.signState({
@@ -348,6 +353,7 @@ export class OAuthController {
       );
       return;
     }
+    if (state.posthog) adoptPosthogContext(state.posthog);
 
     try {
       switch (state.origin) {

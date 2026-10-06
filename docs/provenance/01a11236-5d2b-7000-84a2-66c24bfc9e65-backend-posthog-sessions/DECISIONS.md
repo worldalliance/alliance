@@ -7,3 +7,4 @@
 - Install request context in configureApp before body parsing so production and HTTP tests exercise the same middleware.
 - A header-supplied distinct id is unauthenticated, so events attributed to it set `$process_person_profile: false`; anonymous web visitors otherwise get no person profile.
 - Web requests sent before posthog-js loads, such as the first `authMe` of a page load, carry no identifiers. Loading it earlier would move initialization out of the provider that keeps it off the mobile sign-in handoff page.
+- The web OAuth start is a top-level navigation, so it sends the identifiers as query params. They are validated softly: a malformed one is dropped rather than failing sign-in. The callback adopts them only after the state verifies and names the route's provider.

@@ -2,7 +2,12 @@ import {
   POSTHOG_DISTINCT_HEADER,
   POSTHOG_SESSION_HEADER,
 } from "@alliance/common/posthog";
-import { createRequestContext } from "./request-context";
+import {
+  adoptPosthogContext,
+  createRequestContext,
+  requestContext,
+  type RequestContext,
+} from "./request-context";
 
 describe("PostHog request headers", () => {
   const sessionId = "01900000-0000-7000-8000-000000000001";
@@ -49,5 +54,22 @@ describe("PostHog request headers", () => {
         [POSTHOG_DISTINCT_HEADER]: "x".repeat(201),
       }).posthog,
     ).toEqual({ sessionId });
+  });
+});
+
+describe("adoptPosthogContext", () => {
+  const sessionId = "01900000-0000-7000-8000-000000000001";
+
+  it("replaces the request's identifiers with valid ones", () => {
+    const context: RequestContext = {
+      requestId: "callback",
+      method: "GET",
+      url: "/auth/google/callback",
+      posthog: {},
+    };
+    requestContext.run(context, () =>
+      adoptPosthogContext({ sessionId, distinctId: "x".repeat(201) }),
+    );
+    expect(context.posthog).toEqual({ sessionId });
   });
 });

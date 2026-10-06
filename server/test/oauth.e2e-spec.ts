@@ -5,6 +5,10 @@ import {
   OAuthOutcome,
   OAuthProvider,
 } from "@alliance/common/oauth";
+import {
+  POSTHOG_DISTINCT_HEADER,
+  POSTHOG_SESSION_HEADER,
+} from "@alliance/common/posthog";
 import { R } from "@alliance/common/result";
 import { BadRequestException } from "@nestjs/common";
 import { AuthService } from "src/auth/auth.service";
@@ -15,11 +19,13 @@ import { mintProof, OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
 import type { OAuthProfile } from "src/auth/oauth/oauth-client";
 import { SpentTokenService } from "src/auth/spent-token.service";
 import { GUEST_COOKIE, JWTTokenType } from "src/auth/tokens";
+import { PosthogService } from "src/posthog/posthog.service";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "src/user/entities/onetime-invite.entity";
 import { ReferralSource, User } from "src/user/entities/user.entity";
+import { requestContext } from "src/utils/request-context";
 import request from "supertest";
 import TestAgent from "supertest/lib/agent";
 import {
@@ -176,6 +182,96 @@ describe("OAuth sign-in (e2e)", () => {
           timeZone,
         })
         .expect(400);
+    });
+  });
+
+  describe("PostHog session", () => {
+    const sessionId = "01900000-0000-7000-8000-000000000001";
+    const start = (params: { agent?: TestAgent; posthog: object }) =>
+      (params.agent ?? client())
+        .get(path("start"))
+        .query({
+          intent: OAuthIntent.Authenticate,
+          returnTo: RETURN_TO,
+          ...params.posthog,
+        })
+        .expect(302);
+
+    afterEach(() => jest.restoreAllMocks());
+
+    it("carries the session that started the flow in the state", async () => {
+      const started = await start({
+        posthog: {
+          posthogSessionId: sessionId,
+          posthogDistinctId: "anonymous",
+        },
+      });
+      expect(claimsOf(stateOf(started.headers.location))).toEqual(
+        expect.objectContaining({
+          posthog: { sessionId, distinctId: "anonymous" },
+        }),
+      );
+    });
+
+    it("drops a malformed id without failing sign-in", async () => {
+      const started = await start({
+        posthog: {
+          posthogSessionId: "not-a-uuid",
+          posthogDistinctId: "anonymous",
+        },
+      });
+      expect(claimsOf(stateOf(started.headers.location))).toEqual(
+        expect.objectContaining({ posthog: { distinctId: "anonymous" } }),
+      );
+    });
+
+    it("drops a repeated id without failing sign-in", async () => {
+      const started = await start({
+        posthog: {
+          posthogSessionId: [sessionId, sessionId],
+          posthogDistinctId: "anonymous",
+        },
+      });
+      expect(claimsOf(stateOf(started.headers.location))).toEqual(
+        expect.objectContaining({ posthog: { distinctId: "anonymous" } }),
+      );
+    });
+
+    it("links the callback's outcome event to that session", async () => {
+      const member = await freshMember();
+      profile = { ...profile, subject: "posthog-session", email: member.email };
+      const sessions: unknown[] = [];
+      jest
+        .spyOn(ctx.app.get(PosthogService), "capture")
+        .mockImplementation(() => {
+          sessions.push(requestContext.getStore()?.posthog);
+        });
+      const agent = client();
+      const started = await start({
+        agent,
+        posthog: {
+          posthogSessionId: sessionId,
+          posthogDistinctId: "anonymous",
+        },
+      });
+      const finished = await agent
+        .get(path("callback"))
+        .query({ code: "code", state: stateOf(started.headers.location) });
+      expect(outcomeOf(finished.headers.location)).not.toBeNull();
+      expect(sessions).toEqual([{ sessionId, distinctId: "anonymous" }]);
+    });
+
+    it("carries the app's session in a mobile browser flow's state", async () => {
+      const started = await client()
+        .post(path("native/browser"))
+        .set(POSTHOG_SESSION_HEADER, sessionId)
+        .set(POSTHOG_DISTINCT_HEADER, "anonymous")
+        .expect(200);
+      expect(claimsOf(stateOf(started.body.url))).toEqual(
+        expect.objectContaining({
+          posthog: { sessionId, distinctId: "anonymous" },
+        }),
+      );
     });
   });
 
