@@ -1,9 +1,12 @@
 import { actionActivityTransitiveVerb } from "@alliance/common/actionActivity";
-import { ActionActivityDto, actionsGetActivity } from "@alliance/shared/client";
-import { useLikeActivity } from "@alliance/shared/lib/useActivities";
+import { thrownStatus } from "@alliance/shared/lib/hey-api";
+import {
+  useActivity,
+  useLikeActivity,
+} from "@alliance/shared/lib/useActivities";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -30,50 +33,24 @@ export default function ActivityDetailScreen() {
     activityId: string;
   }>();
 
-  const [activity, setActivity] = useState<ActionActivityDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: activity,
+    isPending,
+    fetchStatus,
+    error,
+    refetch,
+  } = useActivity(parseInt(activityId));
 
   const [refreshing, setRefreshing] = useState(false);
-
-  const fetchActivity = useCallback(
-    async (options?: { silent?: boolean }) => {
-      if (!activityId) return;
-      const silent = options?.silent ?? false;
-      try {
-        if (!silent) {
-          setLoading(true);
-          setError(null);
-        }
-        const resp = await actionsGetActivity({
-          path: { id: parseInt(activityId) },
-        });
-        if (resp.data) {
-          setActivity(resp.data);
-        } else {
-          setError("Activity not found");
-        }
-      } catch {
-        if (!silent) setError("Failed to load activity");
-      } finally {
-        if (!silent) setLoading(false);
-      }
-    },
-    [activityId],
-  );
-
-  useEffect(() => {
-    fetchActivity();
-  }, [fetchActivity]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await fetchActivity({ silent: true });
+      await refetch();
     } finally {
       setRefreshing(false);
     }
-  }, [fetchActivity]);
+  }, [refetch]);
 
   const handleBack = useCallback(() => {
     router.dismissTo(`/actions/${id}`);
@@ -89,36 +66,15 @@ export default function ActivityDetailScreen() {
 
   const handleLike = useCallback(async () => {
     if (!activity) return;
-    const isLiked = activity.likedByMe ?? false;
-    setActivity({
-      ...activity,
-      likedByMe: !isLiked,
-      likesCount: isLiked ? activity.likesCount - 1 : activity.likesCount + 1,
+    await likeActivity.mutateAsync({
+      activityId: activity.id,
+      isLiked: activity.likedByMe ?? false,
     });
-    try {
-      const data = await likeActivity.mutateAsync({
-        activityId: activity.id,
-        isLiked,
-      });
-      setActivity((prev: ActionActivityDto | null) =>
-        prev
-          ? {
-              ...prev,
-              likes: data.likes,
-              likesCount: data.likesCount,
-              likedByMe: data.likedByMe,
-            }
-          : prev,
-      );
-    } catch (error) {
-      setActivity(activity);
-      throw error;
-    }
   }, [activity, likeActivity]);
 
   const verb = activity && actionActivityTransitiveVerb[activity.type];
 
-  if (loading) {
+  if (isPending && fetchStatus !== "idle") {
     return (
       <View className="flex-1 bg-white items-center justify-center">
         <ActivityIndicator size="large" color={colors.green} />
@@ -126,11 +82,13 @@ export default function ActivityDetailScreen() {
     );
   }
 
-  if (error || !activity) {
+  if (!activity) {
     return (
       <View className="flex-1 bg-white items-center justify-center p-4">
         <Text className="text-red-500 text-center">
-          {error || "Activity not found"}
+          {!error || thrownStatus(error) === 404
+            ? "Activity not found"
+            : "Failed to load activity"}
         </Text>
         <TouchableOpacity onPress={handleBack} className="mt-4">
           <Text className="text-green">Go back</Text>
