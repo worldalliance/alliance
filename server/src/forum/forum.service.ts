@@ -854,7 +854,7 @@ export class ForumService {
     userId: number,
   ): Promise<Comment> {
     const reply = await this.commentRepository.findOne({
-      where: { id },
+      where: { id, deleted: false },
       relations: { author: true, editableContent: true },
     });
 
@@ -913,7 +913,7 @@ export class ForumService {
     const object =
       type === "comment"
         ? await this.commentRepository.findOne({
-            where: { id },
+            where: { id, deleted: false },
             relations: { likes: true, author: true, editableContent: true },
           })
         : await this.postRepository.findOne({
@@ -1082,7 +1082,7 @@ export class ForumService {
 
     await this.notifRepository.delete({ comment: { id } });
 
-    await this.commentRepository.update(id, { deleted: true });
+    await this.commentRepository.update(id, { deleted: true, pinned: false });
   }
 
   async findPostsByUser(params: {
@@ -1351,12 +1351,15 @@ export class ForumService {
   }
 
   async togglePinComment(commentId: number): Promise<Comment> {
-    await this.commentRepository
+    const { affected } = await this.commentRepository
       .createQueryBuilder()
       .update(Comment)
       .set({ pinned: () => `NOT "pinned"` })
-      .where("id = :commentId", { commentId })
+      .where('id = :commentId AND NOT "deleted"', { commentId })
       .execute();
+    if (!affected) {
+      throw new NotFoundException(`Comment with ID "${commentId}" not found`);
+    }
 
     return this.commentRepository.findOneOrFail({
       where: { id: commentId },

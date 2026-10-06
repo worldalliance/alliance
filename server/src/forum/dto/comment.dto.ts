@@ -48,7 +48,7 @@ export class CommentDto extends PickType(Comment, [
   @ApiProperty()
   likesCount: number;
 
-  /** Undefined without both a requesting user and the full `likes` relation. */
+  /** Undefined for a deleted comment, or without both a requesting user and the full `likes` relation. */
   @ApiPropertyOptional({ type: Boolean })
   likedByMe?: boolean;
 
@@ -79,17 +79,25 @@ export class CommentDto extends PickType(Comment, [
           (child) => new CommentDto(child, { requestingUserId }),
         )
       : undefined;
-    this.likesCount = comment.likesCount;
+    this.likesCount = this.deleted ? 0 : comment.likesCount;
     // Only the full relation can answer this; a passed facepile is truncated.
     this.likedByMe =
-      requestingUserId !== undefined && comment.likes !== undefined
+      !this.deleted &&
+      requestingUserId !== undefined &&
+      comment.likes !== undefined
         ? comment.likes.some((like) => like.id === requestingUserId)
         : undefined;
-    this.likes = likers
-      .map((like) => new ProfileDto(like))
-      .sort(byLikeOrder(comment.id))
-      .slice(0, LIKE_FACEPILE_LIMIT);
-    this.editableContent = new EditableContentDto(comment.editableContent);
+    this.likes = this.deleted
+      ? []
+      : likers
+          .map((like) => new ProfileDto(like))
+          .sort(byLikeOrder(comment.id))
+          .slice(0, LIKE_FACEPILE_LIMIT);
+    this.editableContent = new EditableContentDto(
+      this.deleted
+        ? { ...comment.editableContent, body: "", attachments: [] }
+        : comment.editableContent,
+    );
   }
 }
 
