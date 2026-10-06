@@ -11,10 +11,11 @@ import {
   type EventSubscription,
   type NotificationResponse,
 } from "expo-notifications";
-import { RelativePathString, router } from "expo-router";
+import { router } from "expo-router";
 import { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import { useAuth } from "../lib/AuthContext";
+import { notificationRoute } from "../lib/notificationRoute";
 import { useNotificationsCache } from "../lib/useNotificationsCache";
 import { isVisualTestMode } from "../lib/visualTest";
 
@@ -31,15 +32,6 @@ type PendingNotificationAction = {
   notificationSourceType?: NotificationSourceType;
   screen?: string;
 };
-
-function getPushRoute(screen: string | undefined): RelativePathString | null {
-  if (typeof screen !== "string" || screen.length === 0) {
-    return null;
-  }
-
-  const normalized = screen.startsWith("/") ? screen : `/${screen}`;
-  return normalized as RelativePathString;
-}
 
 export default function PushNotificationResponseHandler() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -87,7 +79,7 @@ export default function PushNotificationResponseHandler() {
         });
       }
 
-      const route = getPushRoute(pendingAction.screen);
+      const route = notificationRoute(pendingAction.screen);
       if (route) {
         router.push(route);
       }

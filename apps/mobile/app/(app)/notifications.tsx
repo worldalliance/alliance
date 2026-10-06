@@ -8,7 +8,7 @@ import {
 } from "@alliance/shared/lib/notificationBucketing";
 import { getNotificationReadRequest } from "@alliance/shared/lib/notificationIdentity";
 import { LegendList } from "@legendapp/list";
-import { RelativePathString, router } from "expo-router";
+import { router } from "expo-router";
 import { Ellipsis } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -25,24 +25,12 @@ import SwipeableNotification from "../../components/SwipeableNotification";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
+import { notificationRoute } from "../../lib/notificationRoute";
 import { colors } from "../../lib/style/colors";
 import {
   useNotificationsCache,
   useNotificationsList,
 } from "../../lib/useNotificationsCache";
-
-const normalizeLocation = (location: string | null) => {
-  if (!location) return null;
-  const normalized = location.startsWith("/") ? location : `/${location}`;
-  const [path, query] = normalized.split("?");
-  const segments = path.split("/").filter(Boolean);
-
-  if (segments[0] === "tasks") {
-    return "/";
-  }
-
-  return query ? `${path}?${query}` : path;
-};
 
 export default function NotificationsScreen() {
   const { user } = useAuth();
@@ -160,7 +148,7 @@ export default function NotificationsScreen() {
         markNotificationsRead([notification]);
       }
 
-      const destination = normalizeLocation(
+      const destination = notificationRoute(
         notification.mobileAppLocation ?? notification.webAppLocation ?? null,
       );
 
@@ -172,7 +160,7 @@ export default function NotificationsScreen() {
       });
 
       if (destination) {
-        router.push(destination as RelativePathString);
+        router.push(destination);
       }
     },
     [markNotificationsRead],
