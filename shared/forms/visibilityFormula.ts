@@ -1,14 +1,18 @@
 import type { FormulaNode } from "@alliance/common/forms/visible-if-formula";
+import { R, type Result } from "@alliance/common/result";
 
-const CONDITION_NAME_REGEX = /^condition\d+$/;
+const CONDITION_NAME_REGEX = /^condition\d+$/i;
 
-function tokenize(
-  input: string,
-): { type: "id" | "AND" | "OR" | "NOT" | "(" | ")"; value: string }[] {
-  const tokens: {
-    type: "id" | "AND" | "OR" | "NOT" | "(" | ")";
-    value: string;
-  }[] = [];
+type Token = { type: "id" | "AND" | "OR" | "NOT" | "(" | ")"; value: string };
+
+const KEYWORDS = new Map<string, Token["type"]>([
+  ["and", "AND"],
+  ["or", "OR"],
+  ["not", "NOT"],
+]);
+
+function tokenize(input: string): Result<Token[], string> {
+  const tokens: Token[] = [];
   let i = 0;
   const s = input.trim();
   while (i < s.length) {
@@ -18,130 +22,101 @@ function tokenize(
       i += ws[0].length;
       continue;
     }
-    if (rest.startsWith("(")) {
-      tokens.push({ type: "(", value: "(" });
+    if (rest.startsWith("(") || rest.startsWith(")")) {
+      tokens.push({ type: rest[0] === "(" ? "(" : ")", value: rest[0] });
       i += 1;
       continue;
     }
-    if (rest.startsWith(")")) {
-      tokens.push({ type: ")", value: ")" });
-      i += 1;
-      continue;
+    const word = rest.match(/^[\p{L}\p{M}\p{N}_]+/u)?.[0];
+    if (!word) {
+      return R.failure(
+        "Invalid formula syntax. Use condition names with AND, OR, NOT and parentheses.",
+      );
     }
-    const idMatch = rest.match(/^(condition\d+)\b/i);
-    if (idMatch) {
-      tokens.push({ type: "id", value: idMatch[1].toLowerCase() });
-      i += idMatch[1].length;
-      continue;
+    const keyword = KEYWORDS.get(word.toLowerCase());
+    if (keyword) {
+      tokens.push({ type: keyword, value: keyword });
+    } else {
+      const name = isGeneratedConditionName(word) ? word.toLowerCase() : word;
+      tokens.push({ type: "id", value: name });
     }
-    if (rest.match(/^and\b/i)) {
-      tokens.push({ type: "AND", value: "AND" });
-      i += 3;
-      continue;
-    }
-    if (rest.match(/^or\b/i)) {
-      tokens.push({ type: "OR", value: "OR" });
-      i += 2;
-      continue;
-    }
-    if (rest.match(/^not\b/i)) {
-      tokens.push({ type: "NOT", value: "NOT" });
-      i += 3;
-      continue;
-    }
-    return []; // invalid character
+    i += word.length;
   }
-  return tokens;
+  return R.success(tokens);
 }
-
-type ParseResult = { node: FormulaNode } | { error: string };
 
 /**
  * Parse a visibility formula string into a FormulaNode.
- * Allowed: condition names (condition1, condition2, ...), AND, OR, NOT, parentheses.
- * Precedence: NOT > AND > OR.
- * @param text - e.g. "condition1 AND (condition2 OR NOT condition3)"
- * @param allowedNames - set of valid condition names (e.g. condition1, condition2)
+ * Allowed: condition names, AND, OR, NOT, parentheses.
+ * Precedence: NOT > AND > OR. Names are not checked against any condition list.
+ * A name is a run of letters, marks, digits, and underscores other than AND/OR/NOT,
+ * and `conditionN` reads in any case as lowercase; a saved name outside that
+ * (`shown-2`, `or`, `Condition1`) doesn't survive serializing and reparsing.
+ * @param text - e.g. "condition1 AND (c2 OR NOT condition3)"
  */
 export function parseVisibilityFormula(
   text: string,
-  allowedNames: Set<string>,
-): ParseResult {
-  const tokens = tokenize(text);
-  if (tokens.length === 0 && text.trim().length > 0) {
-    return {
-      error:
-        "Invalid formula syntax. Use condition1, condition2, ... with AND, OR, NOT and parentheses.",
-    };
-  }
+): Result<FormulaNode, string> {
+  const tokenized = tokenize(text);
+  if (!tokenized.ok) return tokenized;
+  const tokens = tokenized.value;
   let pos = 0;
-  function parseOr(): ParseResult {
-    const leftResult = parseAnd();
-    if ("error" in leftResult) return leftResult;
-    if (pos >= tokens.length) return { node: leftResult.node };
-    if (tokens[pos].type === "OR") {
+  function parseOr(): Result<FormulaNode, string> {
+    const left = parseAnd();
+    if (!left.ok) return left;
+    if (pos < tokens.length && tokens[pos].type === "OR") {
       pos++;
-      const rightResult = parseOr();
-      if ("error" in rightResult) return rightResult;
-      return {
-        node: { op: "OR", left: leftResult.node, right: rightResult.node },
-      };
+      const right = parseOr();
+      if (!right.ok) return right;
+      return R.success({ op: "OR", left: left.value, right: right.value });
     }
-    return { node: leftResult.node };
+    return left;
   }
-  function parseAnd(): ParseResult {
-    const leftResult = parseNot();
-    if ("error" in leftResult) return leftResult;
-    if (pos >= tokens.length) return { node: leftResult.node };
-    if (tokens[pos].type === "AND") {
+  function parseAnd(): Result<FormulaNode, string> {
+    const left = parseNot();
+    if (!left.ok) return left;
+    if (pos < tokens.length && tokens[pos].type === "AND") {
       pos++;
-      const rightResult = parseAnd();
-      if ("error" in rightResult) return rightResult;
-      return {
-        node: { op: "AND", left: leftResult.node, right: rightResult.node },
-      };
+      const right = parseAnd();
+      if (!right.ok) return right;
+      return R.success({ op: "AND", left: left.value, right: right.value });
     }
-    return { node: leftResult.node };
+    return left;
   }
-  function parseNot(): ParseResult {
+  function parseNot(): Result<FormulaNode, string> {
     if (pos < tokens.length && tokens[pos].type === "NOT") {
       pos++;
       const inner = parseNot();
-      if ("error" in inner) return inner;
-      return { node: { op: "NOT", operand: inner.node } };
+      if (!inner.ok) return inner;
+      return R.success({ op: "NOT", operand: inner.value });
     }
     return parsePrimary();
   }
-  function parsePrimary(): ParseResult {
+  function parsePrimary(): Result<FormulaNode, string> {
     if (pos >= tokens.length) {
-      return { error: "Unexpected end of formula." };
+      return R.failure("Unexpected end of formula.");
     }
-    if (tokens[pos].type === "(") {
+    const token = tokens[pos];
+    if (token.type === "(") {
       pos++;
       const inner = parseOr();
-      if ("error" in inner) return inner;
+      if (!inner.ok) return inner;
       if (pos >= tokens.length || tokens[pos].type !== ")") {
-        return { error: "Missing closing parenthesis." };
+        return R.failure("Missing closing parenthesis.");
       }
       pos++;
-      return { node: inner.node };
+      return inner;
     }
-    if (tokens[pos].type === "id") {
-      const name = tokens[pos].value;
+    if (token.type === "id") {
       pos++;
-      if (!allowedNames.has(name)) {
-        return {
-          error: `Unknown condition "${name}". Use only condition names that exist in your list (e.g. condition1, condition2).`,
-        };
-      }
-      return { node: name };
+      return R.success(token.value);
     }
-    return { error: "Expected a condition name or opening parenthesis." };
+    return R.failure("Expected a condition name or opening parenthesis.");
   }
   const result = parseOr();
-  if ("error" in result) return result;
+  if (!result.ok) return result;
   if (pos < tokens.length) {
-    return { error: "Unexpected token after formula." };
+    return R.failure("Unexpected token after formula.");
   }
   return result;
 }
@@ -157,21 +132,25 @@ export function serializeVisibilityFormula(
       : `(${serializeVisibilityFormula(child, leaf)})`;
   if (typeof node === "string") return leaf(node);
   if (node.op === "NOT") return `NOT ${operand(node.operand)}`;
-  return `${operand(node.left)} ${node.op} ${operand(node.right)}`;
+  // The parser nests a chain of one operator to the right, so a
+  // same-operator right child reads back unchanged without parentheses.
+  const right =
+    typeof node.right !== "string" && node.right.op === node.op
+      ? serializeVisibilityFormula(node.right, leaf)
+      : operand(node.right);
+  return `${operand(node.left)} ${node.op} ${right}`;
 }
 
-/** Default AND formula for n named conditions (condition1 … conditionN). */
-export function defaultFormulaForConditionCount(n: number): string {
-  if (n <= 0) return "";
-  if (n === 1) return "condition1";
-  return Array.from({ length: n }, (_, i) => `condition${i + 1}`).join(" AND ");
+/** Every condition name the formula references, in order, with repeats. */
+export function formulaConditionNames(node: FormulaNode): string[] {
+  if (typeof node === "string") return [node];
+  if (node.op === "NOT") return formulaConditionNames(node.operand);
+  return [
+    ...formulaConditionNames(node.left),
+    ...formulaConditionNames(node.right),
+  ];
 }
 
-/** Condition name for index (0-based): condition1, condition2, ... */
-export function conditionNameForIndex(index: number): string {
-  return `condition${index + 1}`;
-}
-
-export function isConditionName(s: string): boolean {
+function isGeneratedConditionName(s: string): boolean {
   return CONDITION_NAME_REGEX.test(s);
 }

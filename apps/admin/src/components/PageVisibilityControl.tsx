@@ -1,7 +1,7 @@
 import { type AnyField, type Page } from "@alliance/common/forms/form-schema";
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { useState } from "react";
-import { ConditionalVisibility } from "./form-fields/CommonControls";
+import { ConditionalVisibility } from "./form-fields/conditions/ConditionalVisibility";
 
 /** Key by page id: the toggle state belongs to one page. */
 export function PageVisibilityControl({

@@ -21,7 +21,7 @@ const CONTRACT_COMPARISON_TEXT: Record<
   onOrAfter: "on or after",
 };
 
-function describeCondition(
+export function describeCondition(
   condition: Condition,
   labelOf: (fieldId: string) => string,
 ): string {

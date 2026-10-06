@@ -94,11 +94,15 @@ describe("FormBuilder visibility groups", () => {
       formula: "condition1",
     };
     renderFormBuilder(schemaWith([text("a", named), text("b", named)]));
-    const formula = within(groupCards()[0]).getByPlaceholderText(
-      "e.g. condition1 AND condition2",
+    fireEvent.click(
+      within(groupCards()[0]).getByRole("button", {
+        name: "Edit as expression",
+      }),
     );
-    fireEvent.change(formula, { target: { value: "NOT condition1" } });
-    fireEvent.blur(formula);
+    fireEvent.change(
+      within(groupCards()[0]).getByRole("textbox", { name: "Expression" }),
+      { target: { value: "NOT condition1" } },
+    );
     const [card] = groupCards();
     expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
     expect(

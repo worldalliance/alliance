@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NeighborDirection, sameVisibility } from "../lib/visibilityGroups";
-import { ConditionalVisibility } from "./form-fields/CommonControls";
+import { ConditionalVisibility } from "./form-fields/conditions/ConditionalVisibility";
 
 type MergeCandidate = { formula: VisibleIfFormula; summary: string };
 

@@ -10,10 +10,8 @@ import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula
 import { cn } from "@alliance/shared/styles/util";
 import { useEffect, useState } from "react";
 import { VariableTextField } from "../VariableTextField";
-import {
-  ConditionalVisibility,
-  type OutputBlockOption,
-} from "../form-fields/CommonControls";
+import { ConditionalVisibility } from "../form-fields/conditions/ConditionalVisibility";
+import type { OutputBlockOption } from "../form-fields/conditions/ContextRules";
 
 interface EditableOutputFieldBlockProps {
   block: OutputFieldBlock;
@@ -206,7 +204,7 @@ export function EditableOutputFieldBlock({
       {showVisibilityControls && (
         <div className="border-t border-gray-200 p-4 pt-0">
           <ConditionalVisibility
-            field={block as unknown as AnyField}
+            field={block}
             previousFields={availableFields}
             outputBlocks={outputBlocks}
             onChange={handleVisibilityChange}

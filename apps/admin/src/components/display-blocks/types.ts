@@ -5,7 +5,7 @@ import type {
 import type { AnyField } from "@alliance/common/forms/form-schema";
 import type { ComponentType } from "react";
 import type { AddressedWrite } from "../../lib/displayBlockById";
-import type { OutputBlockOption } from "../form-fields/CommonControls";
+import type { OutputBlockOption } from "../form-fields/conditions/ContextRules";
 
 export interface BaseDisplayBlockProps<T extends DisplayBlock> {
   block: T;
