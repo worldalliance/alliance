@@ -76,12 +76,12 @@ describe("Videos (e2e)", () => {
       .get(`/videos/${video.id}/playlist.m3u8`)
       .expect(200)
       .expect("Content-Type", "application/vnd.apple.mpegurl")
-      .expect("Cache-Control", "public, max-age=60");
+      .expect("Cache-Control", "public, max-age=30");
     await request(ctx.app.getHttpServer())
       .get(`/videos/${video.id}/segment0.ts`)
       .expect(200)
       .expect("Content-Type", "video/MP2T")
-      .expect("Cache-Control", "public, max-age=60");
+      .expect("Cache-Control", "public, max-age=30");
     await request(ctx.app.getHttpServer())
       .get(`/videos/${video.id}/thumb.bin`)
       .expect(200)
