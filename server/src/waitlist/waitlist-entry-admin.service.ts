@@ -306,6 +306,24 @@ export class WaitlistEntryAdminService {
   }
 
   /**
+   * Unsubscribes the entries still subscribed, recording each change.
+   * Resolves to how many changed.
+   */
+  async markUnsubscribed(params: {
+    entryIds: number[];
+    staffUserId: number;
+  }): Promise<number> {
+    return recordEntryChange({
+      manager: this.entryRepository.manager,
+      entryIds: params.entryIds,
+      set: `"unsubscribedAt" = now()`,
+      differs: `"unsubscribedAt" IS NULL`,
+      kind: WaitlistEntryActionKind.MarkUnsubscribed,
+      staffUserId: params.staffUserId,
+    });
+  }
+
+  /**
    * Sets the staff ruling on the entries whose status differs, recording each
    * change. Resolves to how many changed.
    */

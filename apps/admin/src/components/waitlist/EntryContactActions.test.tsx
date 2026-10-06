@@ -44,6 +44,13 @@ serveApi(
       posts.push({ path: new URL(request.url).pathname, body: null });
       return Response.json(invite);
     },
+    "POST /waitlist/admin/entries/unsubscribe": async ({ request }) => {
+      posts.push({
+        path: new URL(request.url).pathname,
+        body: await request.json(),
+      });
+      return Response.json({ changed: 1 });
+    },
   }),
 );
 
@@ -158,4 +165,32 @@ it("refetches the entries once an invitation is issued", async () => {
 
   await screen.findByLabelText("Signup invitation link");
   await waitFor(() => expect(invalidate).toHaveBeenCalled());
+});
+
+it("marks a subscribed phone entry unsubscribed after confirming", async () => {
+  renderActions(phoneEntry);
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Mark unsubscribed: Phone Person" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+  await waitFor(() =>
+    expect(posts).toEqual([
+      { path: "/waitlist/admin/entries/unsubscribe", body: { entryIds: [7] } },
+    ]),
+  );
+});
+
+it("offers no unsubscribe for an email or already unsubscribed entry", () => {
+  renderActions({ ...phoneEntry, phoneNumber: null, email: "a@example.com" });
+  expect(
+    screen.queryByRole("button", { name: /Mark unsubscribed/ }),
+  ).toBeNull();
+  cleanup();
+  renderActions({ ...phoneEntry, unsubscribedAt: "2026-09-02T00:00:00Z" });
+
+  expect(
+    screen.queryByRole("button", { name: /Mark unsubscribed/ }),
+  ).toBeNull();
 });

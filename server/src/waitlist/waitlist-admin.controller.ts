@@ -151,6 +151,21 @@ export class WaitlistAdminController {
     );
   }
 
+  @Post("entries/unsubscribe")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: WaitlistChangeCountDto })
+  async unsubscribeEntriesAdmin(
+    @ReqUser() user: JwtPayload,
+    @Body() dto: WaitlistEntryIdsBodyDto,
+  ): Promise<WaitlistChangeCountDto> {
+    return new WaitlistChangeCountDto(
+      await this.entryService.markUnsubscribed({
+        entryIds: dto.entryIds,
+        staffUserId: user.sub,
+      }),
+    );
+  }
+
   /** Reuses the entry's unused invite, else issues one. Sends nothing. */
   @Post("entries/:id/invite")
   @HttpCode(HttpStatus.OK)

@@ -14311,6 +14311,28 @@ export type WaitlistAdminMarkEntriesNotSpamAdminResponses = {
 
 export type WaitlistAdminMarkEntriesNotSpamAdminResponse = WaitlistAdminMarkEntriesNotSpamAdminResponses[keyof WaitlistAdminMarkEntriesNotSpamAdminResponses];
 
+export type WaitlistAdminUnsubscribeEntriesAdminData = {
+    body: WaitlistEntryIdsBodyDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/admin/entries/unsubscribe';
+};
+
+export type WaitlistAdminUnsubscribeEntriesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminUnsubscribeEntriesAdminError = WaitlistAdminUnsubscribeEntriesAdminErrors[keyof WaitlistAdminUnsubscribeEntriesAdminErrors];
+
+export type WaitlistAdminUnsubscribeEntriesAdminResponses = {
+    200: WaitlistChangeCountDto;
+};
+
+export type WaitlistAdminUnsubscribeEntriesAdminResponse = WaitlistAdminUnsubscribeEntriesAdminResponses[keyof WaitlistAdminUnsubscribeEntriesAdminResponses];
+
 export type WaitlistAdminInviteEntryAdminData = {
     body?: never;
     path: {
