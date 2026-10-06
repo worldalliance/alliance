@@ -1,11 +1,11 @@
 import { refusalMessage } from "@alliance/common/errorMessage";
 import type { VideoBlock } from "@alliance/common/forms/display-blocks";
 import { videosUploadVideoAdmin } from "@alliance/shared/client";
-import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import React, { useState } from "react";
 import { Link, href } from "react-router";
 import { uploadSessionExpiredMessage } from "../../lib/sessionExpired";
 import { VariableTextField } from "../VariableTextField";
+import { BlockPreview } from "./BlockPreview";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
@@ -123,11 +123,7 @@ export function EditableVideoBlock({
             />
           </div>
 
-          {activeBlock.src && (
-            <div className="pt-2 border-t border-gray-200">
-              <RenderDisplayBlock block={activeBlock} />
-            </div>
-          )}
+          {activeBlock.src && <BlockPreview block={activeBlock} />}
         </div>
       )}
     </DisplayBlockWrapper>

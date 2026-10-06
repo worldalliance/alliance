@@ -1,13 +1,10 @@
 import type { TextBlock } from "@alliance/common/forms/display-blocks";
-import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
-import { useState } from "react";
 import { VariableTextField } from "../VariableTextField";
+import { BlockPreview } from "./BlockPreview";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
 export function EditableTextBlock(props: BaseDisplayBlockProps<TextBlock>) {
-  const [showPreview, setShowPreview] = useState(false);
-
   return (
     <DisplayBlockWrapper {...props}>
       {({ block: activeBlock, onUpdate: handleUpdate }) => (
@@ -21,26 +18,7 @@ export function EditableTextBlock(props: BaseDisplayBlockProps<TextBlock>) {
             style={{ resize: "vertical" }}
           />
 
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowPreview((prev) => !prev)}
-              className="text-xs font-medium text-green hover:text-emerald-700"
-            >
-              {showPreview ? "Hide preview" : "Show preview"}
-            </button>
-          </div>
-
-          {showPreview && (
-            <div className="border border-gray-200 rounded-md p-3 bg-white">
-              <RenderDisplayBlock
-                block={{
-                  ...activeBlock,
-                  kind: "text",
-                }}
-              />
-            </div>
-          )}
+          <BlockPreview block={activeBlock} toggleable />
         </div>
       )}
     </DisplayBlockWrapper>

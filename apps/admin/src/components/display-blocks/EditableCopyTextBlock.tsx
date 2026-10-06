@@ -4,10 +4,9 @@ import {
 } from "@alliance/common/forms/display-blocks";
 import { copyTextFormat } from "@alliance/shared/forms/copyText";
 import { cn } from "@alliance/shared/styles/util";
-import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { Type } from "lucide-react";
-import { useState } from "react";
 import { VariableTextField } from "../VariableTextField";
+import { BlockPreview } from "./BlockPreview";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
@@ -22,8 +21,6 @@ export function EditableCopyTextBlock({
   previousFields,
   laterFields,
 }: BaseDisplayBlockProps<CopyTextBlock>) {
-  const [showPreview, setShowPreview] = useState(false);
-
   return (
     <DisplayBlockWrapper
       onRemove={onRemove}
@@ -67,22 +64,7 @@ export function EditableCopyTextBlock({
               placeholder={rich ? "Text to copy (markdown)" : "Text to copy"}
               rows={1}
             />
-            {rich && (
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowPreview((prev) => !prev)}
-                  className="text-xs font-medium text-green hover:text-emerald-700"
-                >
-                  {showPreview ? "Hide preview" : "Show preview"}
-                </button>
-              </div>
-            )}
-            {rich && showPreview && (
-              <div className="border border-gray-200 rounded-md p-3 bg-white">
-                <RenderDisplayBlock block={activeBlock} />
-              </div>
-            )}
+            {rich && <BlockPreview block={activeBlock} toggleable />}
           </div>
         );
       }}

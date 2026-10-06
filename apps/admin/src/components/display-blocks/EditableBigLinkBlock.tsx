@@ -3,7 +3,6 @@ import type {
   BigLinkIcon,
 } from "@alliance/common/forms/display-blocks";
 import { cn } from "@alliance/shared/styles/util";
-import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import {
   File,
   FileCheck,
@@ -14,6 +13,7 @@ import {
 import { useState } from "react";
 import { ExternalShareTargetSelect } from "../ExternalShareTargetSelect";
 import { VariableTextField } from "../VariableTextField";
+import { BlockPreview } from "./BlockPreview";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
@@ -40,8 +40,6 @@ export function EditableBigLinkBlock({
   previousFields,
   laterFields,
 }: BaseDisplayBlockProps<BigLinkBlock>) {
-  const [showPreview, setShowPreview] = useState(false);
-
   return (
     <DisplayBlockWrapper
       onRemove={onRemove}
@@ -84,26 +82,7 @@ export function EditableBigLinkBlock({
             ))}
           </div>
 
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowPreview((prev) => !prev)}
-              className="text-xs font-medium text-green hover:text-emerald-700"
-            >
-              {showPreview ? "Hide preview" : "Show preview"}
-            </button>
-          </div>
-
-          {showPreview && (
-            <div className="border border-gray-200 rounded-md p-3 bg-white">
-              <RenderDisplayBlock
-                block={{
-                  ...activeBlock,
-                  kind: "biglink",
-                }}
-              />
-            </div>
-          )}
+          <BlockPreview block={activeBlock} toggleable />
         </div>
       )}
     </DisplayBlockWrapper>
