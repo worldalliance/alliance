@@ -47,11 +47,10 @@ export class ActionSuite {
   // Relations
 
   @OneToMany(() => Action, (action) => action.suite)
-  @ApiProperty({ type: () => Action, isArray: true })
-  @Allow()
+  @ApiPropertyOptional({ type: () => Action, isArray: true })
+  @IsOptional()
   @Type(() => Action)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  actions: Relation<Action>[];
+  actions?: Relation<Action>[];
 
   @ManyToMany(() => GeneralUpdate, (generalUpdate) => generalUpdate.suites)
   @ApiPropertyOptional({ type: () => GeneralUpdate, isArray: true })
@@ -87,6 +86,16 @@ export interface ParsedActionSuite extends ActionSuite {
 }
 
 export function parseActionSuite(suite: ActionSuite): ParsedActionSuite {
-  suite.actions = suite.actions?.map(parseAction);
-  return suite as ParsedActionSuite;
+  return Object.assign(suite, {
+    actions: loadedActionSuiteActions(suite).map(parseAction),
+  });
+}
+
+export function loadedActionSuiteActions(
+  suite: ActionSuite,
+): Relation<Action>[] {
+  if (!suite.actions) {
+    throw new Error(`actions of action suite ${suite.id} not loaded`);
+  }
+  return suite.actions;
 }

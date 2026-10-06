@@ -218,6 +218,7 @@ import { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { ActionReviewer } from "./entities/action-reviewer.entity";
 import {
   ActionSuite,
+  loadedActionSuiteActions,
   parseActionSuite,
   type ParsedActionSuite,
 } from "./entities/action-suite.entity";
@@ -1639,7 +1640,8 @@ export class ActionsService {
       next !== undefined && current?.getTime() !== next.getTime();
 
     const dateUpdates = generalUpdates.flatMap((generalUpdate) => {
-      const action = generalUpdate.suites![0]?.actions![0];
+      const suite = generalUpdate.suites![0];
+      const action = suite && loadedActionSuiteActions(suite)[0];
       if (!action) {
         return [];
       }
@@ -3480,9 +3482,8 @@ export class ActionsService {
     }
   }
 
-  async findSuites(): Promise<ParsedActionSuite[]> {
-    const suites = await this.actionSuiteRepository.find();
-    return suites.map(parseActionSuite);
+  async findSuites(): Promise<ActionSuite[]> {
+    return this.actionSuiteRepository.find();
   }
 
   async findSuite(id: number): Promise<ParsedActionSuite> {
@@ -3500,11 +3501,11 @@ export class ActionsService {
 
   async createSuite(
     createActionSuiteDto: CreateActionSuiteDto,
-  ): Promise<ParsedActionSuite> {
+  ): Promise<ActionSuite> {
     const suite = this.actionSuiteRepository.create(createActionSuiteDto);
     const saved = await this.actionSuiteRepository.save(suite);
     await this.syncGeneralUpdateDatesForSuites([suite.id]);
-    return parseActionSuite(saved);
+    return saved;
   }
 
   async batchUpdateSuiteEvents(params: {
@@ -3527,7 +3528,8 @@ export class ActionsService {
       .findIndex((event) => event.id === eventId);
     const eventsToUpdate = new Set<number>([eventId]);
 
-    for (const action of suite.actions) {
+    const suiteActions = loadedActionSuiteActions(suite);
+    for (const action of suiteActions) {
       if (action.events.length <= eventIdx) {
         throw new BadRequestException(
           "Events do not have equivalent events to edit",
@@ -3546,7 +3548,7 @@ export class ActionsService {
 
     const actionIds = [
       event.action.id,
-      ...suite.actions.map((action) => action.id),
+      ...suiteActions.map((action) => action.id),
     ];
     await this.cohortDecisionStaffService.guardDeadlineShortening({
       actionIds,
@@ -3574,7 +3576,7 @@ export class ActionsService {
     });
 
     await this.addEventToActions({
-      actions: suite.actions,
+      actions: loadedActionSuiteActions(suite),
       event,
       overrides: { suiteManaged: true },
       suiteIds: [suiteId],
@@ -3596,8 +3598,9 @@ export class ActionsService {
       .sort((a, b) => a.date.getTime() - b.date.getTime())
       .findIndex((event) => event.id === eventId);
 
+    const suiteActions = loadedActionSuiteActions(suite);
     await this.actionEventRepository.manager.transaction(async (em) => {
-      for (const action of suite.actions) {
+      for (const action of suiteActions) {
         if (action.events.length <= eventIdx) {
           throw new BadRequestException(
             "Events do not have equivalent events to delete",
@@ -3616,7 +3619,7 @@ export class ActionsService {
       }
       await assertPrerequisitesValid({
         em,
-        actionIds: suite.actions.map((action) => action.id),
+        actionIds: suiteActions.map((action) => action.id),
       });
     });
     await this.syncGeneralUpdateDatesForSuites([suiteId]);
@@ -3649,11 +3652,6 @@ export class ActionsService {
       users = await this.userService.findByIds(body.userIds);
     }
 
-    // Loaded with actions so the tentative group previews with the real suite
-    // scope: cohort selection and the excludePreviouslyNotified coverage check
-    // (groupTaskScopeActionIds) otherwise fall back to the single member
-    // action and over-exclude — showing no recipients for a suite catch-up
-    // group whose real send would notify.
     let actionSuite: ActionSuite | undefined = undefined;
     if (body.suiteId) {
       actionSuite = await this.actionSuiteRepository.findOneOrFail({
@@ -3750,8 +3748,9 @@ export class ActionsService {
       relations: { actions: true },
     });
 
+    const suiteActions = loadedActionSuiteActions(suite);
     return actions.filter((action) =>
-      suite.actions.some((a) => a.id === action.id),
+      suiteActions.some((a) => a.id === action.id),
     );
   }
 

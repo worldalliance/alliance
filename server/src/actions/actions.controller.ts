@@ -1143,7 +1143,7 @@ export class ActionsController {
     @Param("id", ParseIntPipe) id: number,
   ): Promise<ActionSuiteDto> {
     const suite = await this.actionsService.findSuite(id);
-    return new ActionSuiteDto(suite);
+    return new ActionSuiteDto(suite, suite.actions);
   }
 
   @Post("createSuite")
@@ -1173,7 +1173,7 @@ export class ActionsController {
       body,
       acknowledgeDeadlineShortening,
     });
-    return new ActionSuiteDto(suite);
+    return new ActionSuiteDto(suite, suite.actions);
   }
 
   @Post("suite/:suiteId/events")
@@ -1191,7 +1191,7 @@ export class ActionsController {
       event: actionEventDto,
       acknowledgeDeadlineShortening,
     });
-    return new ActionSuiteDto(suite);
+    return new ActionSuiteDto(suite, suite.actions);
   }
 
   @Delete("suite/:suiteId/events/:eventId")
@@ -1202,7 +1202,7 @@ export class ActionsController {
     @Param("eventId", ParseIntPipe) eventId: number,
   ): Promise<ActionSuiteDto> {
     const suite = await this.actionsService.deleteSuiteEvent(suiteId, eventId);
-    return new ActionSuiteDto(suite);
+    return new ActionSuiteDto(suite, suite.actions);
   }
 
   @Post("events/:eventId/checkTentativePlans")
