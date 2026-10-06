@@ -21,6 +21,7 @@ export const presetNames = [
   "Announcement",
   "Catch-up late joiners",
   "Two Day Range",
+  "Streak recognition",
   "One Day Range",
   "Three Hour",
   "Missed Deadline",
@@ -37,6 +38,21 @@ export type ReminderPresetName = (typeof presetNames)[number];
  */
 export type ReminderPreset = Omit<CreateReminderGroupDto, "suiteId"> & {
   anchorToDependencyDeadline?: boolean;
+};
+
+const twoDayRange: ReminderPreset = {
+  timingMode: "within_relative_range",
+  relative_range_start_seconds_from_deadline: 48 * secondsInHour,
+  relative_range_end_seconds_from_deadline: 24 * secondsInHour,
+  cohortType: "all_uncompleted",
+  textMessage: defaultTextMessage,
+  emailSubject: defaultEmailSubject,
+  emailMessage: defaultEmailContents,
+  name: "24-48h reminder",
+  pushMessage: defaultPushMessage,
+  useSuiteTaskCount: true,
+  excludeOptionalActions: false,
+  excludePreviouslyNotified: false,
 };
 
 export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
@@ -66,19 +82,11 @@ export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
     excludeOptionalActions: false,
     excludePreviouslyNotified: true,
   },
-  "Two Day Range": {
-    timingMode: "within_relative_range",
-    relative_range_start_seconds_from_deadline: 48 * secondsInHour,
-    relative_range_end_seconds_from_deadline: 24 * secondsInHour,
-    cohortType: "all_uncompleted",
-    textMessage: defaultTextMessage,
-    emailSubject: defaultEmailSubject,
-    emailMessage: defaultEmailContents,
-    name: "24-48h reminder",
-    pushMessage: defaultPushMessage,
-    useSuiteTaskCount: true,
-    excludeOptionalActions: false,
-    excludePreviouslyNotified: false,
+  "Two Day Range": twoDayRange,
+  "Streak recognition": {
+    ...twoDayRange,
+    name: "24-48h reminder with streak recognition",
+    streakRecognition: true,
   },
   "One Day Range": {
     timingMode: "within_relative_range",

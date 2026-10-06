@@ -595,7 +595,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
           path: { eventId: selectedEventId },
           body: {
             suiteId: suite.id,
-            ...reminderPresets["Two Day Range"],
+            ...reminderPresets["Streak recognition"],
           },
         }),
       );
