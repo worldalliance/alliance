@@ -338,6 +338,7 @@ describe("OAuth linking from the mobile app (e2e)", () => {
         provider: profile.provider,
         outcome: OAuthOutcome.SignedIn,
         proofHash,
+        sessionGeneration: 0,
       });
 
       expect(await redeem({ member, handoff, proof })).toEqual({

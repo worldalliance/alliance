@@ -33,12 +33,12 @@ import type { OAuthProfile } from "./oauth/oauth-client";
 import { SessionService } from "./session.service";
 import {
   ACCESS_COOKIE,
-  accessTokenPayload,
   GUEST_COOKIE,
   guestJwtPayloadSchema,
   JWTTokenType,
   REFRESH_COOKIE,
   sessionFromRequest,
+  sessionTokenPayload,
   verifyMailedToken,
   type GuestJwtPayload,
   type JwtPayload,
@@ -371,12 +371,11 @@ export class AuthService {
     user: User,
     isImpersonation = false,
   ): Promise<string> {
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
+    const payload = sessionTokenPayload({
+      user,
       tokenType: JWTTokenType.refresh,
-      ...(isImpersonation && { isImpersonation: true }),
-    };
+      isImpersonation,
+    });
     const token = await this.jwtService.signAsync(payload, {
       expiresIn: "14d",
       secret: process.env.JWT_REFRESH_SECRET,
@@ -388,7 +387,11 @@ export class AuthService {
     user: User,
     isImpersonation = false,
   ): Promise<string> {
-    const payload = accessTokenPayload({ user, isImpersonation });
+    const payload = sessionTokenPayload({
+      user,
+      tokenType: JWTTokenType.access,
+      isImpersonation,
+    });
     return this.jwtService.signAsync(payload, { expiresIn: "1d" });
   }
 

@@ -528,6 +528,7 @@ export class OAuthController {
           R.success(
             await this.oauth.signHandoff({
               userId: signedIn.value.user.id,
+              sessionGeneration: signedIn.value.user.sessionGeneration,
               provider,
               outcome: signedIn.value.outcome,
               proofHash: state.proofHash,

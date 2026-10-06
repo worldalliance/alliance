@@ -38,7 +38,14 @@ const jwtPayloadSchema = z.object({
   email: z.string(),
   tokenType: z.enum(JWTTokenType),
   isImpersonation: z.boolean().optional(),
+  /** Absent from credentials issued before generations existed; reads as 0.
+   * Drop once they expire. */
+  sessionGeneration: z.number().int().optional(),
 });
+
+export function generationOf(claims: { sessionGeneration?: number }): number {
+  return claims.sessionGeneration ?? 0;
+}
 
 /** Mails sent before the tokens carried a tokenType. Drop once they expire. */
 const LEGACY_MAILED_TOKEN_TYPE = {
@@ -175,17 +182,20 @@ export async function verifyMailedToken(
     : R.failure(new Error(`not a ${params.tokenType} token`));
 }
 
-export function accessTokenPayload({
+export function sessionTokenPayload({
   user,
+  tokenType,
   isImpersonation,
 }: {
-  user: { id: number; email: string };
+  user: { id: number; email: string; sessionGeneration: number };
+  tokenType: JWTTokenType.access | JWTTokenType.refresh;
   isImpersonation?: boolean;
 }): JwtPayload {
   return {
     sub: user.id,
     email: user.email,
-    tokenType: JWTTokenType.access,
+    sessionGeneration: user.sessionGeneration,
+    tokenType,
     ...(isImpersonation && { isImpersonation: true }),
   };
 }
