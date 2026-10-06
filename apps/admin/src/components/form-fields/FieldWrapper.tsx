@@ -6,7 +6,6 @@ import {
   CustomValidatorType,
   tasksFindOneCustomValidatorAdmin,
 } from "@alliance/shared/client";
-import { cn } from "@alliance/shared/styles/util";
 import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import RenderField from "@alliance/sharedweb/forms/RenderField";
 import { useEffect, useState } from "react";
@@ -48,9 +47,6 @@ export function FieldWrapper<T extends AnyField>({
   laterFields,
   onRemove,
   children,
-  onDragStart,
-  onDragEnd,
-  isDragging,
 }: FieldWrapperProps<T>) {
   const isCurrentFormField = isFormField(field);
   const sidebar = useSidebarSections();
@@ -328,34 +324,7 @@ export function FieldWrapper<T extends AnyField>({
   }
 
   return (
-    <div
-      className={cn(
-        "group relative border rounded-lg transition-all [&_input,&_textarea]:bg-white",
-        isDragging
-          ? "border-blue-400 shadow-lg opacity-50"
-          : "border-gray-200 hover:border-gray-300",
-      )}
-    >
-      {/* Drag handle */}
-      <div
-        className="absolute -left-3 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity"
-        draggable
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        title="Drag to reorder"
-      >
-        <div className="text-gray-400 hover:text-gray-600 p-2 pr-1 bg-white shadow-lg rounded-sm">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-            <circle cx="2" cy="2" r="1" />
-            <circle cx="6" cy="2" r="1" />
-            <circle cx="2" cy="6" r="1" />
-            <circle cx="6" cy="6" r="1" />
-            <circle cx="2" cy="10" r="1" />
-            <circle cx="6" cy="10" r="1" />
-          </svg>
-        </div>
-      </div>
-
+    <div className="relative border rounded-lg transition-all [&_input,&_textarea]:bg-white border-gray-200 hover:border-gray-300">
       <div className="mb-1 flex items-center justify-end gap-1 absolute right-0 top-0 bg-white rounded-lg">
         {isCurrentFormField && (
           <FieldExtraMenu

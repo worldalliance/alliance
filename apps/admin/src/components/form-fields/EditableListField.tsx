@@ -141,7 +141,6 @@ function renderEditableSubField(
         onUpdate: (updates) => updateSubField(index, updates),
         onRemove: () => removeSubField(index),
         ...sources,
-        isDragging: false,
       })}
     </ElementExpressionScope>
   );
@@ -151,9 +150,6 @@ export function EditableListField({
   field,
   onUpdate,
   onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
   previousFields,
   laterFields,
 }: BaseFieldProps<ListField>) {
@@ -202,9 +198,6 @@ export function EditableListField({
       previousFields={previousFields}
       laterFields={laterFields}
       onRemove={onRemove}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      isDragging={isDragging}
     >
       <FieldLabelEditor
         value={field.label}
