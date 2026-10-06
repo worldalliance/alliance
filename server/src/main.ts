@@ -7,7 +7,6 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 import { IoAdapter } from "@nestjs/platform-socket.io";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { useContainer } from "class-validator";
-import { randomUUID } from "node:crypto";
 import { PostHog } from "posthog-node";
 import type { ServerOptions } from "socket.io";
 import { AppModule } from "./app.module";
@@ -18,7 +17,6 @@ import { injectResponseSchemas } from "./openapi-errors";
 import { capturePosthogExceptions } from "./posthog.filter";
 import { configureApp } from "./utils/configure-app";
 import { socketCorsOrigins } from "./utils/cors-origins";
-import { requestContext } from "./utils/request-context";
 import { RouteContextGuard } from "./utils/request-context.guard";
 import { publicMailDailyCap } from "./waitlist/waitlist-mail.service";
 
@@ -114,16 +112,6 @@ async function bootstrap() {
   configureApp(app);
   app.useGlobalGuards(new RouteContextGuard());
   app.useGlobalInterceptors(new MetricsInterceptor());
-  app.use((req, _res, next) => {
-    requestContext.run(
-      {
-        requestId: randomUUID(),
-        method: req.method,
-        url: req.originalUrl,
-      },
-      () => next(),
-    );
-  });
   app.enableCors({
     origin: true,
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",

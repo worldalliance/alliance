@@ -1,0 +1,8 @@
+- Reuse the server's AsyncLocalStorage request context and existing capture wrapper so product events, exceptions, and slow queries share session attribution.
+- Forward current PostHog identifiers through the generated API client's request interceptor on web and mobile. This also works with mobile's custom refresh transport.
+- Treat incoming analytics identifiers as optional telemetry, validate them, and never use them for authentication. Authenticated identity takes precedence for errors; explicit event identities remain authoritative for events about another user.
+- Preserve session context through signed OAuth state because provider redirects cannot retain request headers.
+- Background work receives no invented session. Replay requires a retained recording in the same PostHog project.
+- Nest's global exception filter also catches body-parser errors, verified with HTTP requests and the real SDK's outgoing payload. Remove the separate Express handler so these errors use the same validated context and capture policy.
+- Install request context in configureApp before body parsing so production and HTTP tests exercise the same middleware.
+- A header-supplied distinct id is unauthenticated, so events attributed to it set `$process_person_profile: false`; anonymous web visitors otherwise get no person profile.

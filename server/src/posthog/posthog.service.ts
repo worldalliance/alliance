@@ -6,7 +6,7 @@ import {
 } from "@alliance/common/analytics";
 import { Injectable, OnModuleDestroy } from "@nestjs/common";
 import { PostHog } from "posthog-node";
-import { captureEvent } from "../utils/posthog";
+import { captureEvent, captureException } from "../utils/posthog";
 
 /**
  * Singleton PostHog client for the server. Captures typed analytics events and
@@ -43,10 +43,14 @@ export class PosthogService implements OnModuleDestroy {
     const { event, error, properties } = params;
 
     if (!this.client) return;
-    this.client.captureException(error, "server", {
-      event,
-      [SLACK_PROPERTY]: SEND_TO_SLACK[event],
-      properties: properties ?? {},
+    captureException({
+      client: this.client,
+      error,
+      properties: {
+        ...properties,
+        event,
+        [SLACK_PROPERTY]: SEND_TO_SLACK[event],
+      },
     });
   }
 
