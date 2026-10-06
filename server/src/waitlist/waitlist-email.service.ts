@@ -11,8 +11,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { isAtCapacity } from "src/community/community.utils";
-import { Community } from "src/community/entities/community.entity";
 import { MailService, type WaitlistStaffEmail } from "src/mail/mail.service";
 import {
   signupUrl,
@@ -21,7 +19,7 @@ import {
 } from "src/search/approutes";
 import { UserService } from "src/user/user.service";
 import type { Repository } from "src/utils/Repository";
-import { DataSource, In, IsNull, Not } from "typeorm";
+import { DataSource, In } from "typeorm";
 import type {
   SendWaitlistEmailDto,
   TestWaitlistEmailDto,
@@ -57,6 +55,7 @@ import {
   WaitlistEmailSender,
 } from "./waitlist-email-sender.service";
 import { ENTRY_INVITE_CLAIMED_SQL } from "./waitlist-entry-admin.service";
+import { findFullCommunityIds } from "./waitlist-invite.service";
 
 // Previews and test sends never issue an invite or carry a real entry's
 // unsubscribe link.
@@ -141,19 +140,9 @@ export class WaitlistEmailService {
     const communityIds = new Set(
       entries.flatMap((entry) => entry.organization?.communityId ?? []),
     );
-    if (!communityIds.size) return 0;
-    const communities = await this.dataSource.getRepository(Community).find({
-      select: {
-        id: true,
-        maxCapacity: true,
-        users: { id: true },
-        leaders: { id: true },
-      },
-      where: { id: In([...communityIds]), maxCapacity: Not(IsNull()) },
-      relations: { users: true, leaders: true },
-    });
-    const full = new Set(
-      communities.filter(isAtCapacity).map((community) => community.id),
+    const full = await findFullCommunityIds(
+      this.dataSource.manager,
+      communityIds,
     );
     return entries.filter((entry) =>
       full.has(entry.organization?.communityId ?? -1),
