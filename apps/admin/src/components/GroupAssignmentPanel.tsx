@@ -1,9 +1,5 @@
 import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
-import {
-  communityGetCommunitiesAdmin,
-  userAssignGroupsAdmin,
-} from "@alliance/shared/client";
 import type {
   AssignGroupsDto,
   CommunityDto,
@@ -17,9 +13,16 @@ import Card from "@alliance/sharedweb/ui/Card";
 import List from "@alliance/sharedweb/ui/List";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import {
+  useAssignGroupsAdmin,
+  useCommunitiesAdmin,
+} from "../lib/useCommunitiesAdmin";
 import ConfirmDialog from "./ConfirmDialog";
 
 const storageKey = "admin.groupAssignmentSelections";
+
+const NO_COMMUNITIES: CommunityDto[] = [];
 
 type GroupAssignmentPanelProps = {
   members: UserDto[];
@@ -33,9 +36,13 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
   onSelectionCountsChange,
 }) => {
   const navigate = useNavigate();
-  const [communities, setCommunities] = useState<CommunityDto[]>([]);
-  const [loadingCommunities, setLoadingCommunities] = useState(true);
-  const [communitiesError, setCommunitiesError] = useState<string | null>(null);
+  const {
+    data: communities = NO_COMMUNITIES,
+    isLoading: loadingCommunities,
+    isLoadingError: communitiesLoadFailed,
+    error: communitiesError,
+  } = useCommunitiesAdmin();
+  const { mutateAsync: assignGroups } = useAssignGroupsAdmin();
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -98,27 +105,6 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
       console.warn("Failed to save group assignment selections", error);
     }
   }, [assignmentSelections]);
-
-  useEffect(() => {
-    if (!members.length) {
-      return;
-    }
-    const loadCommunities = async () => {
-      setLoadingCommunities(true);
-      setCommunitiesError(null);
-      try {
-        const response = await communityGetCommunitiesAdmin();
-        setCommunities(response.data ?? []);
-      } catch (error) {
-        console.error("Failed to load communities", error);
-        setCommunitiesError("Unable to load groups. Please try again.");
-      } finally {
-        setLoadingCommunities(false);
-      }
-    };
-
-    void loadCommunities();
-  }, [members.length]);
 
   const membersCount = members.length;
   const sortedCommunities = useMemo(() => {
@@ -327,41 +313,42 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
           communityId: community.id,
         })),
       };
-      const response = await userAssignGroupsAdmin({ body });
-      if (response.data) {
-        assignMembers(body.assignments.map(({ userId }) => userId));
-        setAssignmentSelections((prev) => {
-          const next = { ...prev };
-          body.assignments.forEach((assignment) => {
-            delete next[assignment.userId];
-          });
-          return next;
+      await assignGroups(body);
+      assignMembers(body.assignments.map(({ userId }) => userId));
+      setAssignmentSelections((prev) => {
+        const next = { ...prev };
+        body.assignments.forEach((assignment) => {
+          delete next[assignment.userId];
         });
-        if (typeof window !== "undefined") {
-          try {
-            const stored = window.localStorage.getItem(storageKey);
-            if (stored) {
-              const parsed = JSON.parse(stored) as Record<string, string>;
-              body.assignments.forEach((assignment) => {
-                delete parsed[String(assignment.userId)];
-              });
-              window.localStorage.setItem(storageKey, JSON.stringify(parsed));
-            }
-          } catch (error) {
-            console.warn("Failed to update saved assignments", error);
+        return next;
+      });
+      if (typeof window !== "undefined") {
+        try {
+          const stored = window.localStorage.getItem(storageKey);
+          if (stored) {
+            const parsed = JSON.parse(stored) as Record<string, string>;
+            body.assignments.forEach((assignment) => {
+              delete parsed[String(assignment.userId)];
+            });
+            window.localStorage.setItem(storageKey, JSON.stringify(parsed));
           }
+        } catch (error) {
+          console.warn("Failed to update saved assignments", error);
         }
-      } else {
-        setSubmissionError("Failed to assign members");
       }
-      setIsConfirmOpen(false);
     } catch (error) {
       console.error("Failed to assign groups", error);
-      setSubmissionError("Unable to confirm assignments. Please try again.");
+      setSubmissionError(
+        adminRefusalMessage(
+          error,
+          "Unable to confirm assignments. Please try again.",
+        ),
+      );
     } finally {
+      setIsConfirmOpen(false);
       setIsSubmitting(false);
     }
-  }, [assignmentPreview, assignMembers]);
+  }, [assignmentPreview, assignGroups, assignMembers]);
 
   return (
     <Card className="w-full max-w-5xl" style={CardStyle.White}>
@@ -379,8 +366,13 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
           </Button>
         </div>
 
-        {communitiesError && (
-          <p className="text-sm text-red-500">{communitiesError}</p>
+        {communitiesLoadFailed && (
+          <p className="text-sm text-red-500">
+            {adminRefusalMessage(
+              communitiesError,
+              "Unable to load groups. Please try again.",
+            )}
+          </p>
         )}
         {submissionError && (
           <p className="text-sm text-red-500">{submissionError}</p>

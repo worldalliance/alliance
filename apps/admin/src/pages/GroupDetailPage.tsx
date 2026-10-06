@@ -4,24 +4,15 @@ import {
   COMMUNITY_NAME_MAX_LENGTH,
   isMaxCapacityRequired,
 } from "@alliance/common/community";
-import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
 import {
   actionsGetCommunityMemberInfoAdmin,
-  communityAddLeaderAdmin,
-  communityAddMemberAdmin,
-  communityDeleteAdmin,
-  communityGetCommunitiesAdmin,
   communityGetMemberContactInfoAdmin,
-  communityRemoveLeaderAdmin,
-  communityRemoveMemberAdmin,
-  communityUpdate,
 } from "@alliance/shared/client";
 import type {
   CommunityDto,
   CommunityMemberContactInfoDto,
   CreateCommunityDto,
-  HeyApiError,
   UpdateCommunityDto,
   UserActionRelationDetailDto,
   UserActionSummaryDto,
@@ -41,22 +32,51 @@ import {
 } from "@alliance/sharedweb/ui/ToastProvider";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
-import { keyBy } from "es-toolkit";
+import { isEqual, keyBy } from "es-toolkit";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link, useNavigate, useParams } from "react-router";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import {
+  MembershipChange,
+  useChangeCommunityMembershipAdmin,
+  useCommunitiesAdmin,
+  useDeleteCommunityAdmin,
+  useUpdateCommunityAdmin,
+} from "../lib/useCommunitiesAdmin";
 import { useCompletedAllActiveActions } from "../lib/useCompletedAllActiveActions";
+import { useRefusalToast } from "../lib/useRefusalToast";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
+
+const detailsOf = (community: CommunityDto): CreateCommunityDto => ({
+  name: community.name,
+  description: community.description,
+  public: community.public,
+  maxCapacity: community.maxCapacity,
+  allowMemberInvites: community.allowMemberInvites,
+  allowStaffAssignments: community.allowStaffAssignments,
+});
 
 const CommunityDetailPage: React.FC = () => {
   const { id } = useParams();
   const communityId = Number(id);
   const navigate = useNavigate();
 
-  const [community, setCommunity] = useState<CommunityDto | null>(null);
-  const [loading, setLoading] = useState(true);
+  const communities = useCommunitiesAdmin();
+  const community =
+    communities.data?.find((candidate) => candidate.id === communityId) ?? null;
+  const loading =
+    !Number.isNaN(communityId) &&
+    (communities.isPending ||
+      (!community && communities.fetchStatus !== "idle"));
+  const loadError = Number.isNaN(communityId)
+    ? "Invalid community id."
+    : communities.isError
+      ? adminRefusalMessage(
+          communities.error,
+          "Unable to load community. Please try again.",
+        )
+      : null;
   const [error, setError] = useState<string | null>(null);
-  const [savingDetails, setSavingDetails] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [formValues, setFormValues] = useState<CreateCommunityDto>({
     name: "",
     description: "",
@@ -80,47 +100,10 @@ const CommunityDetailPage: React.FC = () => {
   const [pendingLeaderIds, setPendingLeaderIds] = useState<Set<number>>(
     () => new Set<number>(),
   );
-  const { confirm, success, error: pushError } = useToast();
+  const { confirm, success } = useToast();
   const requiresMaxCapacity = isMaxCapacityRequired(formValues);
 
   const memberCount = community ? getMemberCount(community) : 0;
-
-  const loadCommunity = useCallback(async () => {
-    if (Number.isNaN(communityId)) {
-      setError("Invalid community id.");
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await communityGetCommunitiesAdmin();
-      if (!response.data) {
-        setError(
-          errorMessage({
-            error: response.error,
-            fallback: "Unable to load community. Please try again.",
-          }),
-        );
-        return;
-      }
-      const match =
-        response.data.find((candidate) => candidate.id === communityId) ?? null;
-      if (!match) {
-        setError("Community not found.");
-      }
-      setCommunity(match);
-    } catch (err) {
-      console.error("Failed to load community", err);
-      setError("Unable to load community. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [communityId]);
-
-  useEffect(() => {
-    void loadCommunity();
-  }, [loadCommunity]);
 
   const [userActionRelations, setUserActionRelations] = useState<Record<
     number,
@@ -169,26 +152,65 @@ const CommunityDetailPage: React.FC = () => {
 
   useEffect(() => refreshUserActionRelations(), [refreshUserActionRelations]);
 
-  useEffect(() => {
-    if (community) {
-      setFormValues({
-        name: community.name,
-        description: community.description,
-        public: community.public,
-        maxCapacity: community.maxCapacity,
-        allowMemberInvites: community.allowMemberInvites,
-        allowStaffAssignments: community.allowStaffAssignments,
-      });
-    }
-  }, [community]);
+  // A refetch reseeds the form only while it is untouched, so it brings in
+  // newer details without overwriting unsaved edits.
+  const [seeded, setSeeded] = useState<{
+    id: number;
+    details: CreateCommunityDto;
+  } | null>(null);
+  const seed = useCallback((group: CommunityDto) => {
+    const details = detailsOf(group);
+    setSeeded({ id: group.id, details });
+    setFormValues(details);
+  }, []);
+  if (
+    community &&
+    (community.id !== seeded?.id ||
+      (!isEqual(detailsOf(community), seeded.details) &&
+        isEqual(formValues, seeded.details)))
+  ) {
+    seed(community);
+  }
 
   const completedAllCurrentActions = useCompletedAllActiveActions({
     actionSummaries,
     userActionRelations,
   });
 
+  const refusalToast = useRefusalToast();
+  const reportError = useCallback(
+    (err: unknown, fallback: string) => {
+      setError(adminRefusalMessage(err, fallback));
+      refusalToast(err, fallback);
+    },
+    [refusalToast],
+  );
+
+  const { mutate: updateCommunity, isPending: savingDetails } =
+    useUpdateCommunityAdmin({
+      onSuccess: (updated) => {
+        seed(updated);
+        success("Group updated", updated.name);
+      },
+      onError: (err) =>
+        reportError(err, "Unable to update group. Please try again."),
+    });
+  const { mutateAsync: changeMembership } = useChangeCommunityMembershipAdmin();
+  const {
+    mutate: deleteCommunity,
+    isPending: deleting,
+    isSuccess: deleted,
+  } = useDeleteCommunityAdmin({
+    onSuccess: () => {
+      if (community) success("Community deleted", community.name);
+      navigate(href("/groups"));
+    },
+    onError: (err) =>
+      reportError(err, "Unable to delete community. Please try again."),
+  });
+
   const handleUpdateDetails = useCallback(
-    async (event: React.FormEvent<HTMLFormElement>) => {
+    (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       if (!community) {
         return;
@@ -213,40 +235,15 @@ const CommunityDetailPage: React.FC = () => {
         setError("Name and description are required.");
         return;
       }
-      setSavingDetails(true);
       setError(null);
-      try {
-        const response = await communityUpdate({
-          path: { communityId },
-          body: payload,
-        });
-        if (response.data) {
-          setCommunity(response.data);
-          success("Group updated", response.data.name);
-        } else {
-          const message = errorMessage({
-            error: response.error,
-            fallback: "Unable to update group. Please try again.",
-          });
-          setError(message);
-          pushError(message);
-        }
-      } catch (err) {
-        console.error("Failed to update group", err);
-        setError("Unable to update group. Please try again.");
-        pushError("Unable to update group. Please try again.");
-      } finally {
-        setSavingDetails(false);
-      }
+      updateCommunity({ communityId, body: payload });
     },
     [
       community,
       communityId,
       formValues,
       requiresMaxCapacity,
-      pushError,
-      setCommunity,
-      success,
+      updateCommunity,
       setError,
     ],
   );
@@ -264,152 +261,120 @@ const CommunityDetailPage: React.FC = () => {
       if (!community) {
         return;
       }
-      const applyCommunity = (
-        response: { data?: CommunityDto; error?: HeyApiError },
+      const applyChange = async (
+        change: MembershipChange,
+        memberId: number,
         fallback: string,
-      ): boolean => {
-        if (response.data) {
-          setCommunity(response.data);
+      ): Promise<boolean> => {
+        try {
+          await changeMembership({ communityId, userId: memberId, change });
           setError(null);
           return true;
+        } catch (err) {
+          reportError(err, fallback);
+          return false;
         }
-        const message = errorMessage({ error: response.error, fallback });
-        setError(message);
-        pushError(message);
-        return false;
       };
-      try {
-        switch (action) {
-          case "add": {
-            if (!memberSelection.length) return;
-            setAddingMember(true);
-            const response = await communityAddMemberAdmin({
-              path: { communityId },
-              body: { userId: memberSelection[0] },
-            });
-            if (
-              applyCommunity(
-                response,
-                "Unable to add member. Please try again.",
-              )
-            ) {
-              setMemberSelection([]);
-            }
-            setAddingMember(false);
-            break;
+      switch (action) {
+        case "add": {
+          if (!memberSelection.length) return;
+          setAddingMember(true);
+          if (
+            await applyChange(
+              MembershipChange.AddMember,
+              memberSelection[0],
+              "Unable to add member. Please try again.",
+            )
+          ) {
+            setMemberSelection([]);
           }
-          case "remove": {
-            if (!userId) return;
-            setPendingMemberIds((prev) => {
-              const next = new Set(prev);
-              next.add(userId);
-              return next;
-            });
-            const response = await communityRemoveMemberAdmin({
-              path: { communityId },
-              body: { userId },
-            });
-            applyCommunity(
-              response,
-              "Unable to remove member. Please try again.",
-            );
-            setPendingMemberIds((prev) => {
-              const next = new Set(prev);
-              next.delete(userId);
-              return next;
-            });
-            break;
-          }
-          case "add-leader": {
-            if (!leaderSelection.length) return;
-            setAddingLeader(true);
-            const response = await communityAddLeaderAdmin({
-              path: { communityId },
-              body: { userId: leaderSelection[0] },
-            });
-            if (
-              applyCommunity(
-                response,
-                "Unable to add leader. Please try again.",
-              )
-            ) {
-              setLeaderSelection([]);
-            }
-            setAddingLeader(false);
-            break;
-          }
-          case "promote-leader": {
-            if (!userId) return;
-            setPendingLeaderIds((prev) => {
-              const next = new Set(prev);
-              next.add(userId);
-              return next;
-            });
-            const response = await communityAddLeaderAdmin({
-              path: { communityId },
-              body: { userId },
-            });
-            applyCommunity(
-              response,
-              "Unable to promote leader. Please try again.",
-            );
-            setPendingLeaderIds((prev) => {
-              const next = new Set(prev);
-              next.delete(userId);
-              return next;
-            });
-            break;
-          }
-          case "remove-leader": {
-            if (!userId) return;
-            setPendingLeaderIds((prev) => {
-              const next = new Set(prev);
-              next.add(userId);
-              return next;
-            });
-            const response = await communityRemoveLeaderAdmin({
-              path: { communityId },
-              body: { userId },
-            });
-            applyCommunity(
-              response,
-              "Unable to remove leader. Please try again.",
-            );
-            setPendingLeaderIds((prev) => {
-              const next = new Set(prev);
-              next.delete(userId);
-              return next;
-            });
-            break;
-          }
+          setAddingMember(false);
+          break;
         }
-        void refreshUserActionRelations();
-      } catch (err) {
-        console.error("Community mutation failed", err);
-        setError("Operation failed. Please try again.");
-        setAddingMember(false);
-        setAddingLeader(false);
-        pushError("Community update failed. Please try again.");
-        if (userId) {
+        case "remove": {
+          if (!userId) return;
+          setPendingMemberIds((prev) => {
+            const next = new Set(prev);
+            next.add(userId);
+            return next;
+          });
+          await applyChange(
+            MembershipChange.RemoveMember,
+            userId,
+            "Unable to remove member. Please try again.",
+          );
           setPendingMemberIds((prev) => {
             const next = new Set(prev);
             next.delete(userId);
             return next;
           });
+          break;
+        }
+        case "add-leader": {
+          if (!leaderSelection.length) return;
+          setAddingLeader(true);
+          if (
+            await applyChange(
+              MembershipChange.AddLeader,
+              leaderSelection[0],
+              "Unable to add leader. Please try again.",
+            )
+          ) {
+            setLeaderSelection([]);
+          }
+          setAddingLeader(false);
+          break;
+        }
+        case "promote-leader": {
+          if (!userId) return;
+          setPendingLeaderIds((prev) => {
+            const next = new Set(prev);
+            next.add(userId);
+            return next;
+          });
+          await applyChange(
+            MembershipChange.AddLeader,
+            userId,
+            "Unable to promote leader. Please try again.",
+          );
           setPendingLeaderIds((prev) => {
             const next = new Set(prev);
             next.delete(userId);
             return next;
           });
+          break;
         }
+        case "remove-leader": {
+          if (!userId) return;
+          setPendingLeaderIds((prev) => {
+            const next = new Set(prev);
+            next.add(userId);
+            return next;
+          });
+          await applyChange(
+            MembershipChange.RemoveLeader,
+            userId,
+            "Unable to remove leader. Please try again.",
+          );
+          setPendingLeaderIds((prev) => {
+            const next = new Set(prev);
+            next.delete(userId);
+            return next;
+          });
+          break;
+        }
+        default:
+          throw new Error(`unknown action: ${action satisfies never}`);
       }
+      void refreshUserActionRelations();
     },
     [
+      changeMembership,
       communityId,
       leaderSelection,
       memberSelection,
       community,
-      pushError,
+      reportError,
       setAddingLeader,
       refreshUserActionRelations,
     ],
@@ -428,38 +393,9 @@ const CommunityDetailPage: React.FC = () => {
     if (!confirmed) {
       return;
     }
-    setDeleting(true);
     setError(null);
-    try {
-      const response = await communityDeleteAdmin({ path: { communityId } });
-      if (response.error) {
-        const message = errorMessage({
-          error: response.error,
-          fallback: "Unable to delete community. Please try again.",
-        });
-        setError(message);
-        pushError(message);
-        return;
-      }
-      success("Community deleted", community.name);
-      navigate(href("/groups"));
-    } catch (err) {
-      console.error("Failed to delete community", err);
-      setError("Unable to delete community. Please try again.");
-      pushError("Unable to delete community. Please try again.");
-    } finally {
-      setDeleting(false);
-    }
-  }, [
-    community,
-    communityId,
-    confirm,
-    success,
-    navigate,
-    pushError,
-    setError,
-    setDeleting,
-  ]);
+    deleteCommunity(communityId);
+  }, [community, communityId, confirm, deleteCommunity, setError]);
 
   const leaderIds = useMemo(() => {
     return new Set(community?.leaders.map((leader) => leader.id) ?? []);
@@ -508,6 +444,8 @@ const CommunityDetailPage: React.FC = () => {
     [community, confirm, mutateMembers],
   );
 
+  if (deleted) return null;
+
   if (loading) {
     return (
       <div className="p-6 pt-20">
@@ -525,8 +463,8 @@ const CommunityDetailPage: React.FC = () => {
   if (!community) {
     return (
       <div className="p-6 pt-20">
-        {error ? (
-          <p className="text-sm text-red-500">{error}</p>
+        {loadError ? (
+          <p className="text-sm text-red-500">{loadError}</p>
         ) : (
           <p className="text-sm text-zinc-500">Community not found.</p>
         )}

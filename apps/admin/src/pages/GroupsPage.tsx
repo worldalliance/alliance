@@ -3,12 +3,7 @@ import {
   COMMUNITY_NAME_MAX_LENGTH,
   isMaxCapacityRequired,
 } from "@alliance/common/community";
-import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
-import {
-  communityCreateCommunityAdmin,
-  communityGetCommunitiesAdmin,
-} from "@alliance/shared/client";
 import type {
   CommunityDto,
   CreateCommunityDto,
@@ -25,7 +20,12 @@ import List from "@alliance/sharedweb/ui/List";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link } from "react-router";
 import GroupAssignmentPanel from "../components/GroupAssignmentPanel";
+import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useGroupAssignment } from "../lib/GroupAssignmentContext";
+import {
+  useCommunitiesAdmin,
+  useCreateCommunityAdmin,
+} from "../lib/useCommunitiesAdmin";
 
 const INITIAL_COMMUNITY: CreateCommunityDto = {
   name: "",
@@ -41,42 +41,34 @@ const GroupsPage: React.FC = () => {
     useGroupAssignment();
   const [pendingAssignmentsByCommunityId, setPendingAssignmentsByCommunityId] =
     useState<Record<number, number>>({});
-  const [communities, setCommunities] = useState<CommunityDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const {
+    data: communities = [],
+    isPending: loading,
+    isLoadingError,
+    error,
+  } = useCommunitiesAdmin();
+  const loadError = isLoadingError
+    ? adminRefusalMessage(
+        error,
+        "Unable to load communities. Please try again.",
+      )
+    : null;
   const [createError, setCreateError] = useState<string | null>(null);
   const [newCommunity, setNewCommunity] =
     useState<CreateCommunityDto>(INITIAL_COMMUNITY);
-  const [creating, setCreating] = useState(false);
+  const { mutate: createCommunity, isPending: creating } =
+    useCreateCommunityAdmin({
+      onSuccess: () => setNewCommunity(INITIAL_COMMUNITY),
+      onError: (err) =>
+        setCreateError(
+          adminRefusalMessage(
+            err,
+            "Unable to create community. Please try again.",
+          ),
+        ),
+    });
 
   const requiresMaxCapacity = isMaxCapacityRequired(newCommunity);
-
-  const loadCommunities = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const response = await communityGetCommunitiesAdmin();
-      if (!response.data) {
-        setLoadError(
-          errorMessage({
-            error: response.error,
-            fallback: "Unable to load communities. Please try again.",
-          }),
-        );
-        return;
-      }
-      setCommunities(response.data);
-    } catch (err) {
-      console.error("Failed to load communities", err);
-      setLoadError("Unable to load communities. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadCommunities();
-  }, [loadCommunities]);
 
   useEffect(() => {
     if (membersUndergoingGroupAssignment.length === 0) {
@@ -107,7 +99,7 @@ const GroupsPage: React.FC = () => {
   }, [communities, membersUndergoingGroupAssignment.length]);
 
   const handleCreateCommunity = useCallback(
-    async (event: React.FormEvent<HTMLFormElement>) => {
+    (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       const name = newCommunity.name.trim();
       const description = newCommunity.description.trim();
@@ -123,38 +115,17 @@ const GroupsPage: React.FC = () => {
         setCreateError("Name and description are required.");
         return;
       }
-      setCreating(true);
       setCreateError(null);
-      try {
-        const response = await communityCreateCommunityAdmin({
-          body: {
-            name,
-            description,
-            public: newCommunity.public,
-            allowMemberInvites: newCommunity.allowMemberInvites,
-            allowStaffAssignments: newCommunity.allowStaffAssignments,
-            maxCapacity: normalizedMaxCapacity,
-          },
-        });
-        if (response.data) {
-          setCommunities((prev) => [...prev, response.data]);
-          setNewCommunity(INITIAL_COMMUNITY);
-        } else {
-          setCreateError(
-            errorMessage({
-              error: response.error,
-              fallback: "Unable to create community. Please try again.",
-            }),
-          );
-        }
-      } catch (err) {
-        console.error("Failed to create community", err);
-        setCreateError("Unable to create community. Please try again.");
-      } finally {
-        setCreating(false);
-      }
+      createCommunity({
+        name,
+        description,
+        public: newCommunity.public,
+        allowMemberInvites: newCommunity.allowMemberInvites,
+        allowStaffAssignments: newCommunity.allowStaffAssignments,
+        maxCapacity: normalizedMaxCapacity,
+      });
     },
-    [newCommunity, requiresMaxCapacity],
+    [createCommunity, newCommunity, requiresMaxCapacity],
   );
 
   return (
@@ -177,7 +148,7 @@ const GroupsPage: React.FC = () => {
           </div>
         </div>
 
-        {!loadError && (
+        {!loading && !loadError && (
           <Card style={CardStyle.White}>
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-zinc-700">
