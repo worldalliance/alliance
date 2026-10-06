@@ -177,6 +177,18 @@ it("offers start days from today on for a range that has not begun", async () =>
   ).toBeNull();
 });
 
+it("offers new-range days from today on, and end days from the chosen start", async () => {
+  const { container } = await renderList();
+
+  expect(dateInput(container, "startDate").min).toBe(today());
+  expect(dateInput(container, "endDate").min).toBe(today());
+
+  fireEvent.change(dateInput(container, "startDate"), {
+    target: { value: "2030-02-01" },
+  });
+  expect(dateInput(container, "endDate").min).toBe("2030-02-01");
+});
+
 it("leaves both dates editable for a range that ended within its undo hour", async () => {
   const createdAt = new Date(Date.now() - 30 * 60 * 1000).toISOString();
   shown = [
