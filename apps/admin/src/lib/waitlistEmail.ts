@@ -10,6 +10,7 @@ import type {
   WaitlistEmailBatchDto,
   WaitlistEmailPreviewDto,
   WaitlistEmailRecipientStatus,
+  WaitlistInvitePlacement,
 } from "@alliance/shared/client/types.gen";
 import { milliseconds } from "date-fns";
 import { z } from "zod";
@@ -55,6 +56,15 @@ export function blockingProblem(params: {
   return null;
 }
 
+/** Completes "… has" for an entrant signup won't place in an open group. */
+export const PLACEMENT_NOTES = {
+  no_organization: "no organization, so staff place them after they sign up",
+  no_group:
+    "an organization without a group, so staff place them after they sign up",
+  full_group:
+    "an organization whose group is full, so staff may need to place them after they sign up",
+} satisfies Record<Exclude<WaitlistInvitePlacement, "group">, string>;
+
 /** Things staff should know before sending, none of which stop it. */
 export function emailWarnings(params: {
   preview: WaitlistEmailPreviewDto;
@@ -69,17 +79,17 @@ export function emailWarnings(params: {
     !used.has(WaitlistEmailPlaceholder.OrganizationName)
   ) {
     warnings.push(
-      `${withCount(preview.withoutOrganization, "recipient")} ${have(preview.withoutOrganization)} no organization, so staff place them after they sign up.`,
+      `${withCount(preview.withoutOrganization, "recipient")} ${have(preview.withoutOrganization)} ${PLACEMENT_NOTES.no_organization}.`,
     );
   }
   if (preview.withoutGroup) {
     warnings.push(
-      `${withCount(preview.withoutGroup, "recipient")} ${have(preview.withoutGroup)} an organization without a group, so staff place them after they sign up.`,
+      `${withCount(preview.withoutGroup, "recipient")} ${have(preview.withoutGroup)} ${PLACEMENT_NOTES.no_group}.`,
     );
   }
   if (preview.inFullGroup) {
     warnings.push(
-      `${withCount(preview.inFullGroup, "recipient")} ${have(preview.inFullGroup)} an organization whose group is full, so staff may need to place them after they sign up.`,
+      `${withCount(preview.inFullGroup, "recipient")} ${have(preview.inFullGroup)} ${PLACEMENT_NOTES.full_group}.`,
     );
   }
   if (preview.alreadySent) {

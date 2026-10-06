@@ -33,6 +33,7 @@ import type {
   WaitlistEmailPreview,
   WaitlistEmailSample,
 } from "./dto/waitlist-email.dto";
+import { WaitlistInvitePlacement } from "./dto/waitlist-entry-admin.dto";
 import { WaitlistEmailBatch } from "./entities/waitlist-email-batch.entity";
 import {
   WaitlistEmailRecipient,
@@ -55,7 +56,10 @@ import {
   WaitlistEmailSender,
 } from "./waitlist-email-sender.service";
 import { ENTRY_INVITE_CLAIMED_SQL } from "./waitlist-entry-admin.service";
-import { findFullCommunityIds } from "./waitlist-invite.service";
+import {
+  findFullCommunityIds,
+  invitePlacement,
+} from "./waitlist-invite.service";
 
 // Previews and test sends never issue an invite or carry a real entry's
 // unsubscribe link.
@@ -136,7 +140,9 @@ export class WaitlistEmailService {
   }
 
   /** Needs the entries' organizations loaded. */
-  private async countInFullGroups(entries: WaitlistEntry[]): Promise<number> {
+  private async placements(
+    entries: WaitlistEntry[],
+  ): Promise<WaitlistInvitePlacement[]> {
     const communityIds = new Set(
       entries.flatMap((entry) => entry.organization?.communityId ?? []),
     );
@@ -144,9 +150,15 @@ export class WaitlistEmailService {
       this.dataSource.manager,
       communityIds,
     );
-    return entries.filter((entry) =>
-      full.has(entry.organization?.communityId ?? -1),
-    ).length;
+    return entries.map((entry) =>
+      invitePlacement(
+        {
+          organizationId: entry.organizationId,
+          communityId: entry.organization?.communityId ?? null,
+        },
+        full,
+      ),
+    );
   }
 
   private async countAlreadySent(params: {
@@ -217,10 +229,12 @@ export class WaitlistEmailService {
       ({ entry }) => entry,
     );
     const recipientIds = recipients.map((entry) => entry.id);
-    const [alreadySent, inFullGroup] = await Promise.all([
+    const [alreadySent, placements] = await Promise.all([
       this.countAlreadySent({ entryIds: recipientIds, subject: dto.subject }),
-      this.countInFullGroups(recipients),
+      this.placements(recipients),
     ]);
+    const countPlaced = (placement: WaitlistInvitePlacement) =>
+      placements.filter((placed) => placed === placement).length;
 
     const needsOrganization = usesOrganizationName(dto);
     const sampleEntry =
@@ -236,13 +250,9 @@ export class WaitlistEmailService {
       claimed: countSkipped(WaitlistEmailSkipReason.InviteClaimed),
       recipientIds,
       waiting: recipients.filter((entry) => !entry.mobilizedAt).length,
-      withoutOrganization: recipients.filter((entry) => !entry.organization)
-        .length,
-      withoutGroup: recipients.filter(
-        (entry) =>
-          entry.organization && entry.organization.communityId === null,
-      ).length,
-      inFullGroup,
+      withoutOrganization: countPlaced(WaitlistInvitePlacement.NoOrganization),
+      withoutGroup: countPlaced(WaitlistInvitePlacement.NoGroup),
+      inFullGroup: countPlaced(WaitlistInvitePlacement.FullGroup),
       alreadySent,
       sample: sampleEntry
         ? await this.renderSample({ content: dto, entry: sampleEntry })

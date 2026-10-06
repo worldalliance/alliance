@@ -4732,6 +4732,26 @@ export type WaitlistChangeCountDto = {
     changed: number;
 };
 
+/**
+ * Where signup places the entrant, by the invite's organization and group
+ */
+export type WaitlistInvitePlacement = 'group' | 'no_organization' | 'no_group' | 'full_group';
+
+export type WaitlistEntryInviteDto = {
+    /**
+     * The claimable signup invite's code
+     */
+    code: string;
+    /**
+     * False when an unused invite was reused
+     */
+    issued: boolean;
+    /**
+     * Where signup places the entrant, by the invite's organization and group
+     */
+    placement: WaitlistInvitePlacement;
+};
+
 export type AdminWaitlistLinkDto = {
     id: number;
     code: string;
@@ -14285,6 +14305,30 @@ export type WaitlistAdminMarkEntriesNotSpamAdminResponses = {
 };
 
 export type WaitlistAdminMarkEntriesNotSpamAdminResponse = WaitlistAdminMarkEntriesNotSpamAdminResponses[keyof WaitlistAdminMarkEntriesNotSpamAdminResponses];
+
+export type WaitlistAdminInviteEntryAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/waitlist/admin/entries/{id}/invite';
+};
+
+export type WaitlistAdminInviteEntryAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistAdminInviteEntryAdminError = WaitlistAdminInviteEntryAdminErrors[keyof WaitlistAdminInviteEntryAdminErrors];
+
+export type WaitlistAdminInviteEntryAdminResponses = {
+    200: WaitlistEntryInviteDto;
+};
+
+export type WaitlistAdminInviteEntryAdminResponse = WaitlistAdminInviteEntryAdminResponses[keyof WaitlistAdminInviteEntryAdminResponses];
 
 export type WaitlistAdminRevokeEntryInvitesAdminData = {
     body: WaitlistEntryIdsBodyDto;

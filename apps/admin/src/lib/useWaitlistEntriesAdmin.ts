@@ -1,6 +1,7 @@
 import {
   waitlistAdminFindEntryIdsAdmin,
   waitlistAdminFindEntryMetricsAdmin,
+  waitlistAdminInviteEntryAdmin,
   waitlistAdminMarkEntriesNotSpamAdmin,
   waitlistAdminMarkEntriesSpamAdmin,
   waitlistAdminMobilizeEntriesAdmin,
@@ -82,7 +83,7 @@ export function useChangeWaitlistEntriesAdmin(params: {
   onSettled: () => void;
 }) {
   const { onSuccess, onError, onSettled } = params;
-  const queryClient = useQueryClient();
+  const invalidateEntries = useInvalidateEntries();
   return useMutation({
     mutationFn: (change: { kind: WaitlistEntryChange; entryIds: number[] }) =>
       SEND_CHANGE[change.kind]({
@@ -93,9 +94,32 @@ export function useChangeWaitlistEntriesAdmin(params: {
     onError: (err, { kind }) => onError(err, kind),
     onSettled: async () => {
       onSettled();
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.waitlistEntriesAdminAll(),
-      });
+      await invalidateEntries();
+    },
+  });
+}
+
+function useInvalidateEntries() {
+  const queryClient = useQueryClient();
+  return () =>
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.waitlistEntriesAdminAll(),
+    });
+}
+
+export function useInviteWaitlistEntryAdmin(params: {
+  onError: (err: Error) => void;
+}) {
+  const invalidateEntries = useInvalidateEntries();
+  return useMutation({
+    mutationFn: (entryId: number) =>
+      waitlistAdminInviteEntryAdmin({
+        path: { id: entryId },
+        throwOnError: true,
+      }).then((r) => r.data),
+    onError: params.onError,
+    onSettled: () => {
+      void invalidateEntries();
     },
   });
 }

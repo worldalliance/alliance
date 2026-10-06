@@ -54,6 +54,7 @@ type WaitlistApiState = {
   searches: WaitlistEntrySearchDto[];
   searchStatus: number;
   searchTotal: number;
+  entriesServed: AdminWaitlistEntryDto[] | null;
   posts: { path: string; body: unknown }[];
   holdIds: Promise<void> | undefined;
   holdSearch: Promise<void> | undefined;
@@ -109,6 +110,7 @@ const initialState = (): WaitlistApiState => ({
   searches: [],
   searchStatus: 200,
   searchTotal: 2,
+  entriesServed: null,
   posts: [],
   holdIds: undefined,
   holdSearch: undefined,
@@ -171,7 +173,7 @@ export const serveWaitlistApi = () => {
           return Response.json({}, { status: api.searchStatus });
         }
         return Response.json({
-          entries: [
+          entries: api.entriesServed ?? [
             entry(1, { reason: "I care" }),
             entry(2, {
               referrer: { id: 1, name: "Person 1" },
@@ -194,6 +196,8 @@ export const serveWaitlistApi = () => {
               { status: api.mobilizeStatus },
             ),
       "POST /waitlist/admin/entries/unmobilize": recordPost({ changed: 0 }),
+      "POST /waitlist/admin/entries/:id/invite": () =>
+        Response.json({ code: "inv1", issued: true, placement: "group" }),
       "POST /waitlist/admin/entries/mark-spam": recordPost({ changed: 1 }),
       "POST /waitlist/admin/entries/mark-not-spam": recordPost({ changed: 1 }),
       "POST /waitlist/admin/entries/metrics": recordPost({

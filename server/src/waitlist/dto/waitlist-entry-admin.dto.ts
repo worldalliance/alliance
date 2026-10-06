@@ -374,3 +374,38 @@ export class WaitlistChangeCountDto {
     this.changed = changed;
   }
 }
+
+export enum WaitlistInvitePlacement {
+  Group = "group",
+  NoOrganization = "no_organization",
+  NoGroup = "no_group",
+  FullGroup = "full_group",
+}
+
+export type WaitlistEntryInvite = {
+  code: string;
+  issued: boolean;
+  placement: WaitlistInvitePlacement;
+};
+
+export class WaitlistEntryInviteDto {
+  @ApiProperty({ description: "The claimable signup invite's code" })
+  code: string;
+
+  @ApiProperty({ description: "False when an unused invite was reused" })
+  issued: boolean;
+
+  @ApiProperty({
+    enum: WaitlistInvitePlacement,
+    enumName: "WaitlistInvitePlacement",
+    description:
+      "Where signup places the entrant, by the invite's organization and group",
+  })
+  placement: WaitlistInvitePlacement;
+
+  constructor(input: WaitlistEntryInvite) {
+    this.code = input.code;
+    this.issued = input.issued;
+    this.placement = input.placement;
+  }
+}
