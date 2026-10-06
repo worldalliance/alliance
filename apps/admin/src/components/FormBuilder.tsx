@@ -57,6 +57,7 @@ import {
 } from "../lib/optionValueRename";
 import { reorderPages } from "../lib/reorderPages";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
+import { useConditionFieldLookup } from "../lib/useConditionFieldLookup";
 import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
 import { DropPosition, moveItem } from "../lib/useDragReorder";
 import { useFormDraft, type CreatedValidator } from "../lib/useFormDraft";
@@ -1737,21 +1738,9 @@ export function FormBuilder(props: FormBuilderProps) {
     );
   };
 
-  const fieldLabels = useMemo(
-    () =>
-      new Map(
-        schema.pages
-          .flatMap((page) => page.fields)
-          .filter(isQuestionField)
-          .map((field) => [field.id, field.label || field.id]),
-      ),
-    [schema.pages],
-  );
+  const conditionFieldOf = useConditionFieldLookup(schema, currentPage);
   const summarize = (formula: VisibleIfFormula) =>
-    summarizeVisibility(
-      formula,
-      (fieldId) => fieldLabels.get(fieldId) ?? fieldId,
-    );
+    summarizeVisibility(formula, conditionFieldOf);
 
   const renderInsertPoint = (loc: InsertLoc, options?: { prominent: true }) => (
     <InsertPoint

@@ -197,7 +197,7 @@ export function FieldRule({
               ? "This question isn't available to this rule: it was deleted, or it's on a later page."
               : "That form has no question with this id that a rule can use."}{" "}
             The rule still checks: {negated ? "NOT " : ""}
-            {describeCondition(condition, (id) => id)}.
+            {describeCondition(condition, () => undefined)}.
           </p>
         )}
       {isLater && (
