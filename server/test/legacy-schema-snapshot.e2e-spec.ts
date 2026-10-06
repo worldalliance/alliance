@@ -80,6 +80,140 @@ describe("Legacy schemaSnapshot submissions (e2e)", () => {
     return action;
   };
 
+  const videoSchema = (description: string): FormSchema => ({
+    description,
+    pages: [
+      {
+        id: "page-1",
+        fields: [
+          {
+            id: "uploaded",
+            type: "display",
+            kind: "video",
+            src: "https://dj92mxbdjuclo.cloudfront.net/videos/1777426220647",
+            videoId: 7,
+          },
+        ],
+      },
+    ],
+    outputViews: [],
+  });
+
+  const openForm = async (name: string, schema = videoSchema(name)) => {
+    const form = await request(ctx.app.getHttpServer())
+      .post("/tasks/createForm")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({ title: name, schema })
+      .expect(201);
+    const action = await createAction(name);
+    await actionRepo.update(action.id, { taskFormId: form.body.id });
+    const served = await request(ctx.app.getHttpServer())
+      .get(`/tasks/slug/${form.body.id}`)
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .expect(200);
+    const submit = (schemaSnapshot = served.body.schema) =>
+      request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${form.body.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {},
+          schemaSnapshot,
+          actionId: action.id,
+          deviceType: "desktop" as const,
+        });
+    return {
+      formId: form.body.id as number,
+      served: served.body.schema,
+      submit,
+    };
+  };
+
+  describe("a legacy submission echoing a served video saved as a storage url", () => {
+    it("is accepted", async () => {
+      const { submit } = await openForm("Legacy video form");
+
+      await submit().expect(201);
+    });
+
+    it("is accepted after the form is edited", async () => {
+      const { formId, submit } = await openForm("Edited legacy video form");
+      await request(ctx.app.getHttpServer())
+        .put(`/tasks/updateForm/${formId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "Edited legacy video form",
+          schema: videoSchema("Edited since it was opened"),
+        })
+        .expect(200);
+
+      await submit().expect(201);
+    });
+
+    it("is served by its key and accepted when it sits in an output view", async () => {
+      const { served, submit } = await openForm("Output view video form", {
+        pages: [{ id: "page-1", fields: [] }],
+        outputViews: [
+          {
+            type: "default",
+            id: "summary",
+            blocks: [
+              {
+                id: "outro",
+                type: "display",
+                kind: "video",
+                src: "https://dj92mxbdjuclo.cloudfront.net/videos/1777426220647",
+                videoId: 7,
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(served.outputViews[0].blocks[0].src).toBe("videos/1777426220647");
+      await submit().expect(201);
+    });
+  });
+
+  it("accepts a legacy submission echoing videos served as storage urls before the cutover", async () => {
+    const storageUrl =
+      "https://dj92mxbdjuclo.cloudfront.net/videos/1777426220647";
+    const { served, submit } = await openForm("Pre-cutover video form", {
+      pages: [
+        {
+          id: "page-1",
+          fields: [
+            {
+              id: "hero",
+              type: "display",
+              kind: "images",
+              images: [{ src: "legacy-image-key", alt: "Hero" }],
+            },
+            {
+              id: "by-key",
+              type: "display",
+              kind: "video",
+              src: "videos/1777426220647",
+              videoId: 7,
+            },
+            {
+              id: "by-url",
+              type: "display",
+              kind: "video",
+              src: storageUrl,
+              videoId: 7,
+            },
+          ],
+        },
+      ],
+      outputViews: [],
+    });
+    const echoed = structuredClone(served);
+    echoed.pages[0].fields[1].src = storageUrl;
+    echoed.pages[0].fields[2].src = storageUrl;
+
+    await submit(echoed).expect(201);
+  });
+
   it("accepts a legacy submission echoing the contract the form was served with", async () => {
     const form = await request(ctx.app.getHttpServer())
       .post("/tasks/createForm")

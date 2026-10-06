@@ -172,7 +172,7 @@ import {
   withdrawalFormulaSources,
   withdrawnFormulaChoices,
 } from "./formula-sources";
-import { servedSchema } from "./served-schema";
+import { servedSchema, withServedVideoSources } from "./served-schema";
 import {
   countVariableAggregates,
   type VariableAggregate,
@@ -1348,14 +1348,15 @@ export class TasksService {
         "Form submission missing both formSnapshotId and schemaSnapshot",
       );
     }
+    const echoed = withServedVideoSources(dto.schemaSnapshot);
     const served = loadedFormSnapshot(form);
     // getForm fills in contracts as well, which the history fallback does not rebuild.
-    if (hashFormSchema(dto.schemaSnapshot) === hashFormSchema(served.schema)) {
+    if (hashFormSchema(echoed) === hashFormSchema(served.schema)) {
       return served;
     }
     return this.formSnapshotService.findHistoricalBySchemaOrThrow(
       form.id,
-      dto.schemaSnapshot,
+      echoed,
     );
   }
 
