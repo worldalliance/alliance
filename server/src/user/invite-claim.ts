@@ -4,9 +4,9 @@ import {
   OnetimeInviteStatus,
 } from "./entities/onetime-invite.entity";
 
-// A `link_used` invite with no claimant stays claimable: signups before claims
-// became transactional could mark one used and then fail, and deleting an
-// account leaves its invite used.
+// A `link_used` invite with no live claimant stays claimable: signups before
+// claims became transactional could mark one used and then fail, and deleting
+// an account leaves its invite used.
 const INVITE_STATUS_CLAIMABLE: Record<OnetimeInviteStatus, boolean> = {
   [OnetimeInviteStatus.REQUEST_PENDING]: false,
   [OnetimeInviteStatus.REQUEST_REJECTED]: false,
@@ -30,9 +30,9 @@ export const inviteClaimantSql = (params: {
   claimant: string;
 }): string => `${params.claimant}."referredByInviteId" = ${params.invite}.id`;
 
-/** Whether an account references the `onetime_invite` row aliased `alias`. */
+/** Whether a live account references the `onetime_invite` row aliased `alias`. */
 export const inviteClaimedSql = (alias: string): string =>
-  `EXISTS (SELECT 1 FROM "user" claimant WHERE ${inviteClaimantSql({ invite: alias, claimant: "claimant" })})`;
+  `EXISTS (SELECT 1 FROM "user" claimant WHERE claimant."deletedAt" IS NULL AND ${inviteClaimantSql({ invite: alias, claimant: "claimant" })})`;
 
 /** Whether signup could claim the `onetime_invite` row aliased `alias`. */
 export const inviteClaimableSql = (alias: string): string =>

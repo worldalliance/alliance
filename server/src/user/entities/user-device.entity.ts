@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -39,4 +40,7 @@ export class UserDevice {
 
   @CreateDateColumnTz()
   createdAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

@@ -1,8 +1,9 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsEnum, IsOptional, IsString } from "class-validator";
+import { Allow, IsEmpty, IsEnum, IsOptional, IsString } from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -81,4 +82,9 @@ export class UserAwayRange {
   @IsOptional()
   @IsString()
   note: string | null;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

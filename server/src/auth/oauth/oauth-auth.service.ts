@@ -477,7 +477,10 @@ export class OAuthAuthService {
     const { provider, subject, email } = params.profile;
     await this.accountRepository.upsert(
       { userId: params.userId, provider, subject, email },
-      ["userId", "provider"],
+      {
+        conflictPaths: ["userId", "provider"],
+        indexPredicate: '"deletedAt" IS NULL',
+      },
     );
     return R.success(await this.usersService.findOneOrFail(params.userId));
   }

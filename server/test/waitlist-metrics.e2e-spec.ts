@@ -8,6 +8,7 @@ import {
   CampaignKind,
 } from "../src/campaign/entities/campaign.entity";
 import { Community } from "../src/community/entities/community.entity";
+import { ContractEvent } from "../src/user/entities/contract-event.entity";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
@@ -363,6 +364,90 @@ describe("Waitlist metrics (e2e)", () => {
     expect(res.body.status.entries).toBe(1);
     expect(res.body.sources).toEqual([
       expect.objectContaining({ entries: 1, claims: 0 }),
+    ]);
+  });
+
+  it("leaves out deleted claimants, invite emails, signatures, and completions", async () => {
+    const organization = await saveOrganization("Deleted Rows Org");
+    const link = await saveLink(organization, "Newsletter");
+    const entry = await saveEntry(link, { createdAt: after(-HOUR) });
+    const invite = await saveInvite(entry, null);
+    await emailInvite({
+      entry,
+      invite,
+      status: WaitlistEmailRecipientStatus.Sent,
+      acceptedAt: SENT_AT,
+    });
+    const claimant = await claim(invite, after(HOUR));
+    await giveActiveContract(ctx, claimant.id);
+    const actionRepo = ctx.dataSource.getRepository(Action);
+    const [first, second] = await actionRepo.save(
+      ["First", "Second"].map((name) =>
+        actionRepo.create({ name, category: [], body: "" }),
+      ),
+    );
+    const firstCompletion = await complete(claimant, first);
+    await complete(claimant, second);
+    const filter = { organizationIds: [organization.id] };
+    const conversion = async () =>
+      (await metrics(filter).expect(200)).body.conversions[0];
+
+    expect(await conversion()).toMatchObject({
+      claims: 1,
+      contractSigned: 1,
+      firstAction: 1,
+    });
+
+    await ctx.dataSource
+      .getRepository(ContractEvent)
+      .softDelete({ user: { id: claimant.id } });
+    await ctx.dataSource
+      .getRepository(ActionActivity)
+      .softDelete(firstCompletion.id);
+    expect(await conversion()).toMatchObject({
+      contractSigned: 0,
+      firstAction: 1,
+    });
+
+    await actionRepo.softDelete(second.id);
+    expect(await conversion()).toMatchObject({ claims: 1, firstAction: 0 });
+
+    await userRepo.softDelete(claimant.id);
+    const withoutClaimant = (await metrics(filter).expect(200)).body;
+    expect(withoutClaimant.status.inviteClaims).toBe(0);
+    expect(withoutClaimant.inviteEmails).toMatchObject({
+      emailed: 1,
+      claimed: 0,
+    });
+
+    await ctx.dataSource
+      .getRepository(WaitlistEmailRecipient)
+      .softDelete({ entryId: entry.id });
+    expect((await metrics(filter).expect(200)).body.inviteEmails.emailed).toBe(
+      0,
+    );
+  });
+
+  it("names no deleted organization or group", async () => {
+    const organization = await saveOrganization("Deleted Names Org");
+    const link = await saveLink(organization, "Newsletter");
+    const group = await ctx.dataSource
+      .getRepository(Community)
+      .save({ name: "Deleted Names Group", description: "Group" });
+    const entry = await saveEntry(link, { createdAt: after(-HOUR) });
+    await claim(await saveInvite(entry, group), after(HOUR));
+    const filter = { organizationIds: [organization.id] };
+
+    await ctx.dataSource.getRepository(Community).softDelete(group.id);
+    await campaignRepo.softDelete(organization.id);
+    await linkRepo.softDelete(link.id);
+
+    const res = await metrics(filter).expect(200);
+    expect(res.body.conversions).toEqual([
+      expect.objectContaining({ organization: null, group: null }),
+    ]);
+    expect(res.body.sources).toEqual([
+      expect.objectContaining({ organization: null, link: null }),
     ]);
   });
 

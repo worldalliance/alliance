@@ -25,6 +25,7 @@ export const testUser = new User({
       signedName: null,
       viaTaskForm: false,
       contractId: null,
+      deletedAt: null,
       user: { id: -1 } as User,
     },
   ],
@@ -97,6 +98,7 @@ export const testUser = new User({
   preferredReminderTime: null,
   timeZone: null,
   sessionGeneration: 0,
+  deletedAt: null,
 } satisfies Omit<
   User,
   | "friends"

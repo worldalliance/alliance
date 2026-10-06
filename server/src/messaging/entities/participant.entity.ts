@@ -2,6 +2,7 @@ import { ParticipantRole } from "@alliance/common/participantRole";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
@@ -52,6 +53,9 @@ export class Participant {
   @ApiPropertyOptional({ type: () => Message })
   lastReadMessage?: Relation<Message>;
 
+  @Column({ type: "uuid", nullable: true })
+  lastReadMessageId: string | null;
+
   @Column({
     type: "enum",
     enum: ParticipantState,
@@ -69,4 +73,7 @@ export class Participant {
 
   @UpdateDateColumnTz()
   updatedAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

@@ -42,6 +42,7 @@ import {
 import { Message } from "./entities/message.entity";
 import { Participant, ParticipantState } from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
+import { loadHiddenReadCursors, UNREAD_SQL } from "./read-cursor";
 
 type ParticipantLookup = {
   conversationId: number;
@@ -180,6 +181,14 @@ export class ConversationService {
       return [];
     }
 
+    await loadHiddenReadCursors(
+      this.messageRepository,
+      conversations.flatMap((conversation) =>
+        loadedConversationParticipants(conversation).filter(
+          (participant) => participant.user.id === userId,
+        ),
+      ),
+    );
     const conversationIds = conversations.map(
       (conversation) => conversation.id,
     );
@@ -911,10 +920,15 @@ export class ConversationService {
   }
 
   private async getConversationEntity(id: number): Promise<Conversation> {
-    return this.conversationRepository.findOneOrFail({
+    const conversation = await this.conversationRepository.findOneOrFail({
       where: { id },
       relations: this.conversationRelations,
     });
+    await loadHiddenReadCursors(
+      this.messageRepository,
+      loadedConversationParticipants(conversation),
+    );
+    return conversation;
   }
 
   async getParticipantOrFail({
@@ -1080,6 +1094,7 @@ export class ConversationService {
       },
       relations: { lastReadMessage: true },
     });
+    await loadHiddenReadCursors(this.messageRepository, [participant]);
 
     const since =
       participant.lastReadMessage?.createdAt ??
@@ -1108,7 +1123,6 @@ export class ConversationService {
   async getUnreadMessages(userId: number): Promise<number> {
     const result = await this.participantRepository
       .createQueryBuilder("participant")
-      .leftJoin("participant.lastReadMessage", "lastReadMessage")
       .where("participant.userId = :userId", { userId })
       .andWhere((qb) => {
         const unreadSubQuery = qb
@@ -1117,12 +1131,7 @@ export class ConversationService {
           .from(Message, "message")
           .where("message.conversationId = participant.conversationId")
           .andWhere("message.authorId != :userId", { userId })
-          .andWhere(
-            "message.createdAt > COALESCE(lastReadMessage.createdAt, participant.joinedAt)",
-          )
-          .andWhere(
-            "(message.id != lastReadMessage.id OR lastReadMessage.id IS NULL)",
-          )
+          .andWhere(UNREAD_SQL)
           .limit(1)
           .getQuery();
 
@@ -1161,12 +1170,7 @@ export class ConversationService {
       .select("COUNT(message.id)")
       .where("message.conversationId = participant.conversationId")
       .andWhere("message.authorId != :userId", { userId })
-      .andWhere(
-        "message.createdAt > COALESCE(lastReadMessage.createdAt, participant.joinedAt)",
-      )
-      .andWhere(
-        "(message.id != lastReadMessage.id OR lastReadMessage.id IS NULL)",
-      )
+      .andWhere(UNREAD_SQL)
       .getQuery();
     const unreadCountExpression =
       minimumPerConversation > 0
@@ -1174,7 +1178,6 @@ export class ConversationService {
         : `(${unreadCountSubquery})`;
     const result = await this.participantRepository
       .createQueryBuilder("participant")
-      .leftJoin("participant.lastReadMessage", "lastReadMessage")
       .select(`COALESCE(SUM(${unreadCountExpression}), 0)`, "total")
       .where("participant.userId = :userId", { userId })
       .andWhere("participant.state = :state", { state })

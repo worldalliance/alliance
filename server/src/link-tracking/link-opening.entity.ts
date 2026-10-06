@@ -1,5 +1,8 @@
 import { LinkOpeningPlatform } from "@alliance/common/linkOpening";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
@@ -44,4 +47,7 @@ export class LinkOpening {
 
   @CreateDateColumnTz()
   receivedAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

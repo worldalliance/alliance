@@ -12,9 +12,12 @@ import { R } from "@alliance/common/result";
 import { Logger } from "@nestjs/common";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsDefined, IsOptional } from "class-validator";
+import { Allow, IsDefined, IsEmpty, IsOptional } from "class-validator";
 import { Guest } from "src/auth/entities/guest.entity";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -126,6 +129,11 @@ export class FormResponse {
   @IsOptional()
   @Type(() => String)
   sid: string | null;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 /**

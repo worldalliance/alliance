@@ -57,7 +57,8 @@ export class ClusterService {
       const eligibleRows = await manager.query<{ id: number }[]>(`
         SELECT u.id
         FROM "user" u
-        WHERE ${sqlUserHasActiveContractAt("u.id", "NOW()")}
+        WHERE u."deletedAt" IS NULL
+          AND ${sqlUserHasActiveContractAt("u.id", "NOW()")}
       `);
       const eligibleIds = eligibleRows.map((r) => r.id);
 
@@ -117,7 +118,7 @@ async function loadClusterUsers(
     { requesterId: number; addresseeId: number }[]
   >(
     `SELECT "requesterId", "addresseeId" FROM friend
-     WHERE status = 'accepted'
+     WHERE status = 'accepted' AND "deletedAt" IS NULL
      AND "requesterId" = ANY($1::int[]) AND "addresseeId" = ANY($1::int[])`,
     [ids],
   );

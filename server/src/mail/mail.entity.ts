@@ -1,5 +1,8 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
 
 export enum EmailType {
@@ -67,4 +70,7 @@ export class Mail {
   @Column({ default: false })
   @ApiProperty({ type: Boolean })
   clickedLink: boolean;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

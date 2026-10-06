@@ -60,6 +60,11 @@ export class NotifPushDispatcherWorker {
           SELECT n.id
           FROM notification n
           WHERE n."sendTime" <= NOW()
+            AND n."deletedAt" IS NULL
+            AND EXISTS (
+              SELECT 1 FROM "user" u
+              WHERE u.id = n."userId" AND u."deletedAt" IS NULL
+            )
             AND n."shouldPush" = true
             AND n."pushClaimedBy" IS NULL
             AND n."pushDispatchedAt" IS NULL
@@ -161,6 +166,11 @@ export class NotifPushDispatcherWorker {
           SELECT uc.id
           FROM unread_content uc
           WHERE uc."sendTime" <= NOW()
+            AND uc."deletedAt" IS NULL
+            AND EXISTS (
+              SELECT 1 FROM "user" u
+              WHERE u.id = uc."userId" AND u."deletedAt" IS NULL
+            )
             AND uc."shouldPush" = true
             AND uc."pushClaimedBy" IS NULL
             AND uc."pushDispatchedAt" IS NULL

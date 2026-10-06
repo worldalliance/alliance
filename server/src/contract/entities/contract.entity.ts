@@ -8,10 +8,14 @@ import {
   Allow,
   IsArray,
   IsDefined,
+  IsEmpty,
   IsOptional,
   IsString,
 } from "class-validator";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { ContractEvent } from "src/user/entities/contract-event.entity";
 import type { Relation } from "src/utils/Repository";
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
@@ -72,6 +76,11 @@ export class Contract {
   @IsArray()
   @Type(() => ContractEvent)
   events?: Relation<ContractEvent>[];
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 export type ParsedContract = Omit<Contract, "description"> & {

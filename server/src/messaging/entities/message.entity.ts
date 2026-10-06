@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
@@ -54,7 +55,7 @@ export class Message {
   @UpdateDateColumnTz()
   updatedAt: Date;
 
-  @Column({ type: "timestamptz", nullable: true })
+  @DeleteDateColumnTz()
   @ApiProperty({ type: Date, nullable: true })
   deletedAt: Date | null;
 

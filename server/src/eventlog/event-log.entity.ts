@@ -1,5 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -78,4 +81,7 @@ export class EventLog {
   @Column({ type: "int", nullable: true })
   @ApiProperty({ nullable: true })
   userId: number | null;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

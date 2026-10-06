@@ -1,11 +1,6 @@
 import { CONVERSATION_TITLE_MAX_LENGTH } from "@alliance/common/conversation";
 import { ConversationType } from "@alliance/common/conversationType";
-import {
-  ApiProperty,
-  ApiPropertyOptional,
-  OmitType,
-  PickType,
-} from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
   ArrayNotEmpty,
@@ -88,10 +83,13 @@ export class MessageDto extends PickType(Message, [
   }
 }
 
-export class ParticipantDto extends OmitType(Participant, [
-  "conversation",
-  "user",
-  "lastReadMessage",
+export class ParticipantDto extends PickType(Participant, [
+  "id",
+  "role",
+  "state",
+  "joinedAt",
+  "createdAt",
+  "updatedAt",
 ]) {
   @ApiProperty({ type: () => ProfileDto })
   @Type(() => ProfileDto)
@@ -103,11 +101,17 @@ export class ParticipantDto extends OmitType(Participant, [
 
   constructor(participant: Participant) {
     super();
-    Object.assign(this, participant);
+    this.id = participant.id;
+    this.role = participant.role;
+    this.state = participant.state;
+    this.joinedAt = participant.joinedAt;
+    this.createdAt = participant.createdAt;
+    this.updatedAt = participant.updatedAt;
     this.user = new ProfileDto(participant.user);
-    this.lastReadMessage = participant.lastReadMessage
-      ? new MessageReferenceDto(participant.lastReadMessage)
-      : undefined;
+    this.lastReadMessage =
+      participant.lastReadMessage?.deletedAt === null
+        ? new MessageReferenceDto(participant.lastReadMessage)
+        : undefined;
   }
 }
 
@@ -193,11 +197,7 @@ export class ConversationDto extends PickType(Conversation, [
       this.hasUnread =
         this.unreadCount > 0 ||
         (this.lastMessage
-          ? this.isUnreadFromTimestamps(
-              currentParticipant
-                ? new ParticipantDto(currentParticipant)
-                : undefined,
-            )
+          ? this.isUnreadFromTimestamps(currentParticipant)
           : false);
     } else {
       this.isMessageRequest = false;
@@ -232,7 +232,7 @@ export class ConversationDto extends PickType(Conversation, [
     );
   }
 
-  private isUnreadFromTimestamps(currentParticipant?: ParticipantDto): boolean {
+  private isUnreadFromTimestamps(currentParticipant?: Participant): boolean {
     if (!this.lastMessage) {
       return false;
     }

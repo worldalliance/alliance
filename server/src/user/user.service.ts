@@ -78,6 +78,7 @@ import {
   type StoredInviteAssignment,
 } from "src/share-urls/invite-assignment";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { findReferredByInvite } from "src/user/user-soft-delete";
 import { isForeignKeyViolation, isUniqueViolation } from "src/utils/db-errors";
 import { PaginationQueryDto } from "src/utils/pagination.dto";
 import type {
@@ -336,6 +337,16 @@ export class UserService {
     if (await this.inviteHasClaimant(manager, inviteId)) {
       throw new BadRequestException("This invite code has already been used");
     }
+    // A deleted account keeps its claim until another signup needs the invite;
+    // referredByInviteId is unique, so only one account can hold it.
+    await manager
+      .createQueryBuilder()
+      .update(User)
+      .set({ referredByInvite: null })
+      .where('"referredByInviteId" = :inviteId AND "deletedAt" IS NOT NULL', {
+        inviteId,
+      })
+      .execute();
   }
 
   private inviteHasClaimant(
@@ -686,15 +697,28 @@ export class UserService {
     });
     await forwardAudit?.();
 
-    return this.findOneOrFail(id, {
+    const user = await this.findAdminDetail(id);
+    if (!user) throw new NotFoundException("User not found");
+    return user;
+  }
+
+  async findAdminDetail(id: number): Promise<User | null> {
+    const user = await this.findOne(id, {
       contractEvents: true,
       referredBy: true,
       referredByCampaign: true,
-      referredByInvite: { invitingUser: true },
       referredByShareUrl: true,
       city: true,
       tags: true,
+      communities: true,
+      leaderOf: true,
     });
+    if (!user) return null;
+    user.referredByInvite = await findReferredByInvite(
+      this.dataSource.manager,
+      { userId: id, relations: { invitingUser: true } },
+    );
+    return user;
   }
 
   /**
@@ -2271,7 +2295,8 @@ export class UserService {
         `
           SELECT goal."id"
           FROM "ambassador_invite_goal" goal
-          WHERE goal."startAt" <= $1::timestamptz
+          WHERE goal."deletedAt" IS NULL
+            AND goal."startAt" <= $1::timestamptz
             AND goal."dueAt" > $1::timestamptz
             AND (goal."startAt" + ((goal."dueAt" - goal."startAt") / 2)) <= $1::timestamptz
             AND NOT EXISTS (
@@ -2281,6 +2306,7 @@ export class UserService {
                 AND notif."groupingKey" = CONCAT(
                   'ambassador-invite-goal:', goal."id", ':halfway'
                 )
+                AND notif."deletedAt" IS NULL
             )
         `,
         [now],
@@ -2289,7 +2315,8 @@ export class UserService {
         `
           SELECT goal."id"
           FROM "ambassador_invite_goal" goal
-          WHERE goal."dueAt" <= $1::timestamptz
+          WHERE goal."deletedAt" IS NULL
+            AND goal."dueAt" <= $1::timestamptz
             AND goal."dueAt" > $2::timestamptz
         `,
         [now, lookbackAt],
@@ -2494,11 +2521,13 @@ export class UserService {
           FROM selected_windows
           LEFT JOIN "user" invited_user
             ON invited_user."referredById" = selected_windows."userId"
+            AND invited_user."deletedAt" IS NULL
             AND invited_user."referralSource"::text = ANY($4::text[])
           LEFT JOIN LATERAL (
             SELECT MIN(contract_event."date") AS "signedAt"
             FROM "contract_event" contract_event
             WHERE contract_event."userId" = invited_user."id"
+              AND contract_event."deletedAt" IS NULL
               AND contract_event."type" = $5
           ) first_sign ON TRUE
           GROUP BY selected_windows."ordinal"
@@ -2510,6 +2539,7 @@ export class UserService {
           FROM selected_windows
           LEFT JOIN "share_url" share_invite
             ON share_invite."userId" = selected_windows."userId"
+            AND share_invite."deletedAt" IS NULL
             AND share_invite."kind" = $6
             AND share_invite."duplicate" = TRUE
             AND (selected_windows."startAt" IS NULL OR share_invite."createdAt" >= selected_windows."startAt")
@@ -2571,6 +2601,7 @@ export class UserService {
         SELECT goal."id"
         FROM "ambassador_invite_goal" goal
         WHERE goal."ambassadorId" = $1
+          AND goal."deletedAt" IS NULL
           AND ($4::int IS NULL OR goal."id" <> $4::int)
           AND goal."startAt" < $3::timestamptz
           AND goal."dueAt" > $2::timestamptz

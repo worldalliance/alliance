@@ -28,14 +28,15 @@ const LINKS = `WITH links AS (
   UNION ALL
   SELECT 'share:' || link.id, '${InviteLinkKind.MultiUse}',
     coalesce(link.label, owner.name, campaign.name, 'Invite link'), link.sid, link.url, link."createdAt"
-  FROM share_url link LEFT JOIN "user" owner ON owner.id = link."userId"
-  LEFT JOIN campaign ON campaign.id = link."campaignId" WHERE link.kind = '${ShareUrlKind.Invite}'
+  FROM share_url link LEFT JOIN "user" owner ON owner.id = link."userId" AND owner."deletedAt" IS NULL
+  LEFT JOIN campaign ON campaign.id = link."campaignId" AND campaign."deletedAt" IS NULL
+  WHERE link.kind = '${ShareUrlKind.Invite}' AND link."deletedAt" IS NULL
   UNION ALL
   SELECT 'member:' || owner.id, '${InviteLinkKind.MultiUse}', coalesce(owner.name, 'Member referral'), owner."referralCode", NULL::text, owner."createdAt"
-  FROM "user" owner
+  FROM "user" owner WHERE owner."deletedAt" IS NULL
   UNION ALL
   SELECT 'campaign:' || campaign.id, '${InviteLinkKind.MultiUse}', campaign.name, campaign.code, NULL::text, campaign."createdAt"
-  FROM campaign
+  FROM campaign WHERE campaign."deletedAt" IS NULL
 ), claims AS (
   SELECT account.id AS "userId", CASE
     WHEN account."referredByInviteId" IS NOT NULL THEN 'individual:' || account."referredByInviteId"
@@ -43,13 +44,13 @@ const LINKS = `WITH links AS (
     WHEN account."referredByCampaignId" IS NOT NULL THEN 'campaign:' || account."referredByCampaignId"
     WHEN account."referredById" IS NOT NULL AND account."referralSource" = '${ReferralSource.ReferralLink}' THEN 'member:' || account."referredById"
   END AS "linkId"
-  FROM "user" account
+  FROM "user" account WHERE account."deletedAt" IS NULL
 ), metrics AS (
   SELECT claim."linkId", count(*)::int AS "accountsCreated",
     count(*) FILTER (WHERE EXISTS (SELECT 1 FROM contract_event event
-      WHERE event."userId" = claim."userId" AND event.type = '${ContractEventType.SIGNED}' AND event.date <= now()))::int AS "initialSigners",
+      WHERE event."userId" = claim."userId" AND event."deletedAt" IS NULL AND event.type = '${ContractEventType.SIGNED}' AND event.date <= now()))::int AS "initialSigners",
     count(*) FILTER (WHERE (SELECT event.type FROM contract_event event
-      WHERE event."userId" = claim."userId" AND event.date <= now()
+      WHERE event."userId" = claim."userId" AND event."deletedAt" IS NULL AND event.date <= now()
       ORDER BY event.date DESC, event.id DESC LIMIT 1) = '${ContractEventType.SIGNED}')::int AS "retainedSigners"
   FROM claims claim WHERE claim."linkId" IS NOT NULL GROUP BY claim."linkId"
 ), filtered AS (

@@ -1,8 +1,11 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsEnum, IsOptional } from "class-validator";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import { Allow, IsEmpty, IsEnum, IsOptional } from "class-validator";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import type { Relation } from "src/utils/Repository";
@@ -140,4 +143,9 @@ export class ActionActivity {
   })
   @Allow()
   source: ActivitySource;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

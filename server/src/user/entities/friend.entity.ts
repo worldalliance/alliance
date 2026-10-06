@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -86,4 +87,7 @@ export class Friend {
   })
   @JoinColumn()
   acceptedNotif?: Relation<Notification> | null;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

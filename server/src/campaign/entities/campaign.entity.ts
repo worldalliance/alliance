@@ -2,6 +2,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import { Community } from "src/community/entities/community.entity";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -87,4 +88,7 @@ export class Campaign {
   @UpdateDateColumnTz()
   @ApiProperty({ type: Date })
   updatedAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

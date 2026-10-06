@@ -5,6 +5,7 @@ import {
   ArrayMaxSize,
   ArrayNotEmpty,
   IsArray,
+  IsEmpty,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -14,6 +15,7 @@ import {
 } from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -122,4 +124,9 @@ export class ActionPartnershipResponse {
   @IsOptional()
   @Type(() => ActionPartnershipNote)
   notesHistory?: Relation<ActionPartnershipNote>[];
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
