@@ -21,6 +21,7 @@ import {
   WaitlistEntry,
   WaitlistSpamStatus,
 } from "./entities/waitlist-entry.entity";
+import { recordEntryChange } from "./waitlist-entry-change";
 import { recordMobilization } from "./waitlist-mobilization";
 import { WaitlistTagService } from "./waitlist-tag.service";
 
@@ -297,17 +298,14 @@ export class WaitlistEntryAdminService {
     const [status, kind] = params.spam
       ? [WaitlistSpamStatus.Spam, WaitlistEntryActionKind.MarkSpam]
       : [WaitlistSpamStatus.NotSpam, WaitlistEntryActionKind.MarkNotSpam];
-    const rows: unknown[] = await this.entryRepository.query(
-      `WITH changed AS (
-         UPDATE waitlist_entry SET "spamStatus" = $2
-         WHERE id = ANY($1) AND "spamStatus" <> $2
-         RETURNING id
-       )
-       INSERT INTO waitlist_entry_action ("entryId", kind, "staffUserId")
-       SELECT id, $3, $4 FROM changed
-       RETURNING "entryId"`,
-      [params.entryIds, status, kind, params.staffUserId],
-    );
-    return rows.length;
+    return recordEntryChange({
+      manager: this.entryRepository.manager,
+      entryIds: params.entryIds,
+      set: `"spamStatus" = $4`,
+      differs: `"spamStatus" <> $4`,
+      value: status,
+      kind,
+      staffUserId: params.staffUserId,
+    });
   }
 }

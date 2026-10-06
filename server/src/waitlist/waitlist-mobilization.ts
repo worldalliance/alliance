@@ -1,5 +1,6 @@
 import type { EntityManager } from "typeorm";
 import { WaitlistEntryActionKind } from "./entities/waitlist-entry-action.entity";
+import { recordEntryChange } from "./waitlist-entry-change";
 
 type MobilizationKind =
   | WaitlistEntryActionKind.ManualMobilize
@@ -22,20 +23,13 @@ export async function recordMobilization(params: {
   kind: MobilizationKind;
   staffUserId: number | null;
 }): Promise<number> {
-  if (!params.entryIds.length) return 0;
   const mobilizes = MOBILIZES[params.kind];
-  const rows: unknown[] = await params.manager.query(
-    `WITH changed AS (
-       UPDATE waitlist_entry
-       SET "mobilizedAt" = ${mobilizes ? "now()" : "NULL"}
-       WHERE id = ANY($1)
-         AND "mobilizedAt" IS ${mobilizes ? "NULL" : "NOT NULL"}
-       RETURNING id
-     )
-     INSERT INTO waitlist_entry_action ("entryId", kind, "staffUserId")
-     SELECT id, $2, $3 FROM changed
-     RETURNING "entryId"`,
-    [params.entryIds, params.kind, params.staffUserId],
-  );
-  return rows.length;
+  return recordEntryChange({
+    manager: params.manager,
+    entryIds: params.entryIds,
+    set: `"mobilizedAt" = ${mobilizes ? "now()" : "NULL"}`,
+    differs: `"mobilizedAt" IS ${mobilizes ? "NULL" : "NOT NULL"}`,
+    kind: params.kind,
+    staffUserId: params.staffUserId,
+  });
 }
