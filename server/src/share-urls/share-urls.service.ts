@@ -13,7 +13,10 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Action } from "src/actions/entities/action.entity";
 import { Community } from "src/community/entities/community.entity";
 import { InviteFeedEvents } from "src/invite-feed.events";
-import { generateCIDForShareUrl } from "src/notifs/notif-utils";
+import {
+  generateCIDForExternalTarget,
+  generateCIDForShareUrl,
+} from "src/notifs/notif-utils";
 import { actionUrl, signupUrl, withRef, withSid } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
 import {
@@ -690,9 +693,9 @@ export class ShareUrlsService {
     input: BuildRowInput,
   ): Promise<ShareUrl> {
     const repo = manager.getRepository(ShareUrl);
-    const sid = generateCIDForShareUrl();
     const built = await run(
       async (): Promise<{
+        sid: string;
         url: string;
         action: Action | null;
         externalTarget: ExternalShareTarget | null;
@@ -705,14 +708,18 @@ export class ShareUrlsService {
             if (!action) {
               throw new NotFoundException(NOT_FOUND_MESSAGE[input.kind]);
             }
+            const sid = generateCIDForShareUrl();
             return {
+              sid,
               url: withSid(actionUrl(input.actionId, true), sid),
               action,
               externalTarget: null,
             };
           }
-          case ShareUrlKind.ExternalTarget:
+          case ShareUrlKind.ExternalTarget: {
+            const sid = generateCIDForExternalTarget();
             return {
+              sid,
               url: appendQueryParam(
                 input.externalTarget.url,
                 input.externalTarget.paramName,
@@ -721,12 +728,16 @@ export class ShareUrlsService {
               action: null,
               externalTarget: input.externalTarget,
             };
-          case ShareUrlKind.Invite:
+          }
+          case ShareUrlKind.Invite: {
+            const sid = generateCIDForShareUrl();
             return {
+              sid,
               url: withRef(signupUrl(true), sid),
               action: null,
               externalTarget: null,
             };
+          }
           default:
             throw new Error(
               `buildAndSaveRow: unknown share url kind: ${input satisfies never}`,
@@ -741,7 +752,7 @@ export class ShareUrlsService {
       ...ownerColumns(input.owner),
       action: built.action,
       externalTarget: built.externalTarget,
-      sid,
+      sid: built.sid,
       ...inviteAssignmentColumns(
         input.kind === ShareUrlKind.Invite
           ? (input.inviteAssignment ?? null)
