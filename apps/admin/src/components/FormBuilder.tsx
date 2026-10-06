@@ -83,6 +83,10 @@ import { createDisplayBlock, PerViewerOptions } from "./display-blocks";
 import { renderBlockEditor } from "./display-blocks/blockEditors";
 import { DisplayOnlyPreview } from "./DisplayOnlyPreview";
 import { ElementSelect } from "./ElementSelect";
+import {
+  ElementExpressionScope,
+  ExpressionScope,
+} from "./form-fields/conditions/expressionBuffers";
 import { isDraftValidatorId } from "./form-fields/customValidatorDrafts";
 import { renderFieldEditor } from "./form-fields/fieldEditors";
 import { FormConflictModal } from "./FormConflictModal";
@@ -549,6 +553,8 @@ export function FormBuilder(props: FormBuilderProps) {
     setValidatorDraft,
     removeValidatorDraft,
     resolveValidatorDrafts,
+    expressions,
+    setExpression,
   } = formDraft;
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(
     () => new Set(),
@@ -662,6 +668,10 @@ export function FormBuilder(props: FormBuilderProps) {
       createDraftId,
     }),
     [createDraftId, removeValidatorDraft, setValidatorDraft, validatorDrafts],
+  );
+  const expressionBuffers = useMemo(
+    () => ({ buffers: expressions, setBuffer: setExpression }),
+    [expressions, setExpression],
   );
   const contentScrollRef = useRef<HTMLDivElement | null>(null);
   const builderRef = useRef<HTMLDivElement | null>(null);
@@ -1970,28 +1980,34 @@ export function FormBuilder(props: FormBuilderProps) {
           }),
       }}
     >
-      <VisibilityGroupContext.Provider
-        value={
-          displayOnly
-            ? null
-            : visibilityGroupRole({
-                pages: schema.pages,
-                pageIndex: selectedPageIndex,
-                index,
-                groups: visibilityGroups,
-                setGroups,
-                applyGrouped,
-              })
-        }
+      <ElementExpressionScope
+        parent={`element:${currentPage.id}`}
+        id={field.id}
       >
-        {renderField(field, index)}
-      </VisibilityGroupContext.Provider>
+        <VisibilityGroupContext.Provider
+          value={
+            displayOnly
+              ? null
+              : visibilityGroupRole({
+                  pages: schema.pages,
+                  pageIndex: selectedPageIndex,
+                  index,
+                  groups: visibilityGroups,
+                  setGroups,
+                  applyGrouped,
+                })
+          }
+        >
+          {renderField(field, index)}
+        </VisibilityGroupContext.Provider>
+      </ElementExpressionScope>
     </ElementJsonContext.Provider>
   );
 
   return (
     <FormDraftContexts
       validatorDrafts={customValidatorDraftContext}
+      expressionBuffers={expressionBuffers}
       derivedWrite={formDraft.withoutStep}
     >
       {conflict && (
@@ -2415,13 +2431,17 @@ export function FormBuilder(props: FormBuilderProps) {
                             {currentPage.description}
                           </p>
                         )}
-                        <PageVisibilityControl
-                          key={`${currentPage.id}-${schemaLoads}`}
-                          page={currentPage}
-                          isFirstPage={selectedPageIndex === 0}
-                          previousFields={pagePreviousFields}
-                          onChange={updateCurrentPageVisibility}
-                        />
+                        <ExpressionScope.Provider
+                          value={`page:${currentPage.id}`}
+                        >
+                          <PageVisibilityControl
+                            key={`${currentPage.id}-${schemaLoads}`}
+                            page={currentPage}
+                            isFirstPage={selectedPageIndex === 0}
+                            previousFields={pagePreviousFields}
+                            onChange={updateCurrentPageVisibility}
+                          />
+                        </ExpressionScope.Provider>
                       </div>
                     )}
                     <PerViewerOptions allowed={!displayOnly}>

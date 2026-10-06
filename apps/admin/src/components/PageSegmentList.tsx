@@ -8,6 +8,7 @@ import {
   type PageSegment,
   type VisibilityGroups,
 } from "../lib/visibilityGroups";
+import { ExpressionScope } from "./form-fields/conditions/expressionBuffers";
 import { VisibilityGroupSegment } from "./VisibilityGroupSegment";
 
 type PageSegmentListProps = {
@@ -69,20 +70,22 @@ export function PageSegmentList({
           start: segment.start,
           end: segment.end,
           body: (
-            <VisibilityGroupSegment
-              schema={schema}
-              pageIndex={pageIndex}
-              segments={segments}
-              segmentIndex={segmentIndex}
-              groups={groups}
-              setGroups={setGroups}
-              applyGrouped={applyGrouped}
-              collapsed={collapsedGroups.has(segment.key)}
-              onToggleCollapsed={() => onToggleCollapsed(segment.key)}
-              validationErrors={validationErrors}
-              renderInsertPoint={renderInsertPoint}
-              renderMember={renderMember}
-            />
+            <ExpressionScope.Provider value={`group:${segment.key}`}>
+              <VisibilityGroupSegment
+                schema={schema}
+                pageIndex={pageIndex}
+                segments={segments}
+                segmentIndex={segmentIndex}
+                groups={groups}
+                setGroups={setGroups}
+                applyGrouped={applyGrouped}
+                collapsed={collapsedGroups.has(segment.key)}
+                onToggleCollapsed={() => onToggleCollapsed(segment.key)}
+                validationErrors={validationErrors}
+                renderInsertPoint={renderInsertPoint}
+                renderMember={renderMember}
+              />
+            </ExpressionScope.Provider>
           ),
         };
       default:

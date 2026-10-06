@@ -2,6 +2,7 @@ import { type AnyField, type Page } from "@alliance/common/forms/form-schema";
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { useState } from "react";
 import { ConditionalVisibility } from "./form-fields/conditions/ConditionalVisibility";
+import { useTypedExpression } from "./form-fields/conditions/expressionBuffers";
 
 /** Key by page id: the toggle state belongs to one page. */
 export function PageVisibilityControl({
@@ -17,7 +18,8 @@ export function PageVisibilityControl({
 }) {
   const hasConditions =
     Object.keys(page.visibleIfFormula?.conditions ?? {}).length > 0;
-  const [opened, setOpened] = useState(hasConditions);
+  const expression = useTypedExpression(page);
+  const [opened, setOpened] = useState(hasConditions || expression.typed);
   if (hasConditions && !opened) {
     setOpened(true);
   }
@@ -26,6 +28,7 @@ export function PageVisibilityControl({
     setOpened(checked);
     if (!checked) {
       onChange({ visibleIfFormula: undefined });
+      expression.clear();
     }
   };
 

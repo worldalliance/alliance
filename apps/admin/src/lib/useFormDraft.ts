@@ -1,6 +1,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { isEqual } from "es-toolkit";
 import { useMemo } from "react";
+import type { ExpressionBuffer } from "../components/form-fields/conditions/expressionBuffers";
 import type { CustomValidatorDraft } from "../components/form-fields/customValidatorDrafts";
 import { mapCustomValidatorIds } from "./customValidatorIds";
 import { useDraftHistory } from "./useDraftHistory";
@@ -15,12 +16,15 @@ export type FormDraft = {
   schema: FormSchema;
   groups: VisibilityGroups;
   validatorDrafts: Readonly<Record<number, CustomValidatorDraft>>;
+  /** Expression text as typed, by editor key. */
+  expressions: Readonly<Record<string, ExpressionBuffer>>;
 };
 
 export const startFormDraft = (schema: FormSchema): FormDraft => ({
   schema,
   groups: deriveVisibilityGroups(schema.pages),
   validatorDrafts: {},
+  expressions: {},
 });
 
 const withSchema = (
@@ -97,6 +101,18 @@ export function useFormDraft(initialSchema: () => FormSchema) {
           const { [draftId]: _removed, ...validatorDrafts } =
             draft.validatorDrafts;
           return { ...draft, validatorDrafts };
+        }),
+      setExpression: (key: string, buffer: ExpressionBuffer | null) =>
+        commit((draft) => {
+          if (buffer === null) {
+            if (!(key in draft.expressions)) return draft;
+            const { [key]: _removed, ...expressions } = draft.expressions;
+            return { ...draft, expressions };
+          }
+          return {
+            ...draft,
+            expressions: { ...draft.expressions, [key]: buffer },
+          };
         }),
       /** Rewrites every step to the validators Save created. */
       resolveValidatorDrafts: (

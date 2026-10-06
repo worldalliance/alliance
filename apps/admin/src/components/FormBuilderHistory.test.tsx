@@ -364,7 +364,7 @@ it("creates a draft validator once, whatever is undone and redone after", async 
   expect(question?.type === "input" && question.customValidatorId).toBe(42);
 });
 
-it("remounts the Output View's editors on undo, dropping text typed against the undone formula", async () => {
+it("reopens the Output View's expression editor when undo restores its text", async () => {
   jest.spyOn(window, "confirm").mockReturnValue(true);
   renderFormBuilder(
     {
@@ -409,12 +409,42 @@ it("remounts the Output View's editors on undo, dropping text typed against the 
   fireEvent.click(button("Edit as expression"));
   const expression = () =>
     screen.queryByRole<HTMLTextAreaElement>("textbox", { name: "Expression" });
-  fireEvent.change(expression()!, { target: { value: "NOT c1" } });
-  await nextTask();
-  act(() => button("Undo").focus());
   fireEvent.change(expression()!, { target: { value: "c1 AND" } });
+  await nextTask();
+  fireEvent.click(button("All rules"));
+  expect(expression()).toBeNull();
 
   fireEvent.click(button("Undo"));
+  expect(expression()?.value).toBe("c1 AND");
+});
+
+it("keeps unsaved expression text across pages, and undoes it", async () => {
+  renderFormBuilder(twoPages, 1);
+  fireEvent.click(button("Edit as expression"));
+  const expression = () =>
+    screen.queryByRole<HTMLTextAreaElement>("textbox", { name: "Expression" });
+  fireEvent.change(expression()!, { target: { value: "c1 AND" } });
+  await nextTask();
+
+  fireEvent.click(screen.getByRole("button", { name: "Two" }));
+  fireEvent.click(screen.getByRole("button", { name: "One" }));
+  expect(expression()?.value).toBe("c1 AND");
+
+  fireEvent.click(button("Undo"));
+  expect(expression()).toBeNull();
+});
+
+it("drops expression text on returning to all/any rules", async () => {
+  renderFormBuilder(twoPages, 1);
+  fireEvent.click(button("Edit as expression"));
+  const expression = () =>
+    screen.queryByRole<HTMLTextAreaElement>("textbox", { name: "Expression" });
+  fireEvent.change(expression()!, { target: { value: "c1 AND" } });
+  fireEvent.change(expression()!, { target: { value: "c1" } });
+  fireEvent.click(button("Use all/any rules"));
+
+  fireEvent.click(screen.getByRole("button", { name: "Two" }));
+  fireEvent.click(screen.getByRole("button", { name: "One" }));
   expect(expression()).toBeNull();
 });
 
