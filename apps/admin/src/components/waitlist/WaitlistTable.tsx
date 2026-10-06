@@ -13,6 +13,7 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import React from "react";
 import { waitlistContactLabel } from "../../lib/waitlistContact";
 import { INVITE_STATE_LABELS, SPAM_STATUSES } from "../../lib/waitlistFilter";
+import EntryContactActions from "./EntryContactActions";
 import SpamToggle from "./SpamToggle";
 
 const CONTRACT_EVENT_LABELS: Record<ContractEventType, string> = {
@@ -197,6 +198,7 @@ const WaitlistTable: React.FC<WaitlistTableProps> = ({
                 {entry.unsubscribedAt && (
                   <p className="text-xs text-amber-700">Unsubscribed</p>
                 )}
+                <EntryContactActions entry={entry} />
               </td>
               <td className="px-3 py-2 max-w-xs">
                 <p

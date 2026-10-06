@@ -11,6 +11,7 @@ const entry: AdminWaitlistEntryDto = {
   name: "Test Person",
   email: "person@example.com",
   phoneNumber: null,
+  shareCode: "share1",
   reason: null,
   organization: null,
   sourceLink: null,
