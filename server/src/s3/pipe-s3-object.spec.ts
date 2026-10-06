@@ -9,11 +9,13 @@ function serve(params: {
   body: Readable | undefined;
   storedType?: string;
   contentType?: string;
+  maxAgeSeconds?: number;
 }) {
   const s3 = new S3Client({ region: "us-west-2" });
   jest.spyOn(s3, "send").mockImplementation(async () => ({
     Body: params.body,
     ContentType: params.storedType,
+    ETag: '"stored"',
     $metadata: {},
   }));
   const app = express();
@@ -24,6 +26,7 @@ function serve(params: {
       key: "dir/file.png",
       res,
       contentType: params.contentType,
+      maxAgeSeconds: params.maxAgeSeconds,
     }).catch((err) =>
       res.status(err instanceof NotFoundException ? 404 : 500).end(),
     );
@@ -43,6 +46,19 @@ describe("pipeS3Object", () => {
       'inline; filename="file.png"',
     );
     expect(res.body.toString()).toBe("png");
+    expect(res.headers["cache-control"]).toBe(
+      "public, max-age=31536000, immutable",
+    );
+    expect(res.headers.etag).toBeUndefined();
+  });
+
+  it("caches an object briefly when asked to", async () => {
+    const res = await serve({
+      body: Readable.from([Buffer.from("m3u8")]),
+      maxAgeSeconds: 60,
+    });
+    expect(res.headers["cache-control"]).toBe("public, max-age=60");
+    expect(res.headers.etag).toBeUndefined();
   });
 
   it("prefers the caller's content type over the stored one", async () => {

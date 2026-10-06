@@ -121,6 +121,9 @@ export class VideosController {
         : filename.endsWith(".ts")
           ? "video/MP2T"
           : undefined,
+      // Replacing a video rewrites its files under the same names, and a
+      // deleted video stops playing once this runs out.
+      maxAgeSeconds: 60,
     });
   }
 
