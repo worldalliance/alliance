@@ -16,25 +16,19 @@ import {
   waitlistUnsubscribeLink,
   withRef,
 } from "src/search/approutes";
-import {
-  OnetimeInvite,
-  OnetimeInviteStatus,
-} from "src/user/entities/onetime-invite.entity";
-import { inviteClaimableSql } from "src/user/invite-claim";
-import { randomToken } from "src/utils/random";
-import { DataSource, type EntityManager } from "typeorm";
+import { DataSource } from "typeorm";
 import {
   WaitlistEmailRecipient,
   WaitlistEmailRecipientStatus,
 } from "./entities/waitlist-email-recipient.entity";
 import { WaitlistEntryActionKind } from "./entities/waitlist-entry-action.entity";
-import type { WaitlistEntry } from "./entities/waitlist-entry.entity";
 import { skipReason, waitlistEmailValues } from "./waitlist-email-audience";
 import {
   missingValuesMessage,
   renderWaitlistEmail,
 } from "./waitlist-email-render";
 import { ENTRY_INVITE_CLAIMED_SQL } from "./waitlist-entry-admin.service";
+import { WaitlistInviteService } from "./waitlist-invite.service";
 import { recordMobilization } from "./waitlist-mobilization";
 
 type PreparedEmail = {
@@ -175,6 +169,7 @@ export class WaitlistEmailSender {
     private readonly dataSource: DataSource,
     private readonly mailService: MailService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly inviteService: WaitlistInviteService,
   ) {}
 
   /** Never rejects. Returns at once while another run holds the lock. */
@@ -325,7 +320,7 @@ export class WaitlistEmailSender {
         batch.subject,
         batch.body,
       ]).used.has(WaitlistEmailPlaceholder.SignupLink)
-        ? await this.inviteFor(manager, entry)
+        ? await this.inviteService.inviteFor(manager, entry)
         : null;
       issued = invite?.issued ?? false;
       const rendered = renderWaitlistEmail({
@@ -366,37 +361,6 @@ export class WaitlistEmailSender {
     });
     if (issued) this.eventEmitter.emit(InviteFeedEvents.Created);
     return prepared;
-  }
-
-  /** Reuses the entry's claimable invite, else issues one to its group. */
-  private async inviteFor(
-    manager: EntityManager,
-    entry: WaitlistEntry,
-  ): Promise<{ invite: OnetimeInvite; issued: boolean }> {
-    const reusable = await manager
-      .createQueryBuilder(OnetimeInvite, "invite")
-      .where('invite."waitlistEntryId" = :entryId', { entryId: entry.id })
-      .andWhere(inviteClaimableSql("invite"))
-      .orderBy("invite.id", "DESC")
-      .limit(1)
-      // Holds a revoke off until the recipient is recorded as sending it.
-      .setLock("pessimistic_read")
-      .getOne();
-    if (reusable) return { invite: reusable, issued: false };
-    const communityId = entry.organization?.communityId ?? null;
-    const community = communityId === null ? null : { id: communityId };
-    const invite = await manager.save(
-      manager.create(OnetimeInvite, {
-        invitee: entry.name,
-        code: randomToken(9),
-        status: OnetimeInviteStatus.LINK_UNUSED,
-        invitingUser: null,
-        organizationId: entry.organizationId,
-        waitlistEntryId: entry.id,
-        community,
-      }),
-    );
-    return { invite, issued: true };
   }
 
   private async record(params: {

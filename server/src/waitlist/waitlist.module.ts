@@ -23,6 +23,7 @@ import { WaitlistEmailSender } from "./waitlist-email-sender.service";
 import { WaitlistEmailTemplateService } from "./waitlist-email-template.service";
 import { WaitlistEmailService } from "./waitlist-email.service";
 import { WaitlistEntryAdminService } from "./waitlist-entry-admin.service";
+import { WaitlistInviteService } from "./waitlist-invite.service";
 import { WaitlistLinkService } from "./waitlist-link.service";
 import { WaitlistMailService } from "./waitlist-mail.service";
 import { WaitlistMetricsService } from "./waitlist-metrics.service";
@@ -66,6 +67,7 @@ import { WaitlistService } from "./waitlist.service";
     WaitlistEmailTemplateService,
     WaitlistEmailService,
     WaitlistEmailSender,
+    WaitlistInviteService,
     WaitlistMetricsService,
   ],
 })
