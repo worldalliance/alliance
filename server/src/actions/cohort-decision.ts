@@ -239,24 +239,62 @@ export function readsDecisionsOf(
 
 /**
  * Orders `items` so each follows the ones whose decisions its expression
- * reads. Within a cycle the order is arbitrary.
+ * reads. Within a cycle, the lowest id follows the others.
  */
 export function orderByDecisionReads<
   T extends { action: Pick<ParsedAction, "id" | "cohortExpression"> },
 >(items: T[]): T[] {
   const byId = new Map(items.map((item) => [item.action.id, item]));
-  const visited = new Set<number>();
-  const ordered: T[] = [];
-  const visit = (item: T) => {
-    if (visited.has(item.action.id)) return;
-    visited.add(item.action.id);
-    for (const id of decisionReadActionIds(item.action.cohortExpression)) {
+  const reads = (item: T) =>
+    decisionReadActionIds(item.action.cohortExpression).flatMap((id) => {
       const read = byId.get(id);
-      if (read) visit(read);
+      return read ? [read] : [];
+    });
+
+  // Tarjan's algorithm emits each strongly connected component after the
+  // components it reads. Breaking a cycle by its own lowest id, rather than
+  // where the search enters it, gives every caller that sees the cycle the
+  // same break, whichever other actions it sees.
+  const found = new Map<T, { index: number; lowLink: number }>();
+  const stack: T[] = [];
+  const components: T[][] = [];
+  const connect = (item: T) => {
+    const node = { index: found.size, lowLink: found.size };
+    found.set(item, node);
+    stack.push(item);
+    for (const read of reads(item)) {
+      const readNode = found.get(read);
+      if (!readNode) {
+        node.lowLink = Math.min(node.lowLink, connect(read).lowLink);
+      } else if (stack.includes(read)) {
+        node.lowLink = Math.min(node.lowLink, readNode.index);
+      }
     }
-    ordered.push(item);
+    if (node.lowLink === node.index) {
+      components.push(stack.splice(stack.indexOf(item)));
+    }
+    return node;
   };
-  items.forEach(visit);
+  items.forEach((item) => found.has(item) || connect(item));
+
+  const ordered: T[] = [];
+  for (const component of components) {
+    const members = new Set(component);
+    const visited = new Set<T>();
+    const visit = (item: T) => {
+      if (visited.has(item)) return;
+      visited.add(item);
+      reads(item)
+        .filter((read) => members.has(read))
+        .forEach(visit);
+      ordered.push(item);
+    };
+    visit(
+      component.reduce((lowest, item) =>
+        item.action.id < lowest.action.id ? item : lowest,
+      ),
+    );
+  }
   return ordered;
 }
 
@@ -284,7 +322,7 @@ export function closedEnrollmentsInCatchUp<
 
 /**
  * The closed actions in catch-up whose decisions `actions` read, directly or
- * through each other, each after the ones it reads.
+ * through each other.
  */
 export async function findReadClosedEnrollments<
   T extends Pick<
@@ -312,7 +350,7 @@ export async function findReadClosedEnrollments<
       decisionReadActionIds(action.cohortExpression),
     );
   }
-  return orderByDecisionReads(closed);
+  return closed;
 }
 
 /**
