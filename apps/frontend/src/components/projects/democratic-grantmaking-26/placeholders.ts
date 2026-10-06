@@ -7,23 +7,23 @@ export interface ProjectPerson {
 
 export const FEATURED_PEOPLE: ProjectPerson[] = [
   {
-    name: "Jan Maly",
+    name: "Advised by Jan Maly",
     imageSrc: "/assets/democratic-grantmaking-26/jan-maly.jpg",
-    role: "Research Advisor",
+    role: "Expert on group decision-making, WU Wien",
     href: "https://janmaly.de/",
   },
-  {
-    name: "Healy Hamilton",
-    imageSrc: "/assets/democratic-grantmaking-26/healy-hamilton.jpg",
-    role: "Expert Panel",
-    href: "https://www.linkedin.com/in/healy-hamilton-a1a20942/",
-  },
-  {
-    name: "Dustin Palmer",
-    imageSrc: "/assets/democratic-grantmaking-26/dustin-palmer.jpg",
-    role: "Expert Panel",
-    href: "https://www.linkedin.com/in/dustin-palmer/",
-  },
+  // {
+  //   name: "Healy Hamilton",
+  //   imageSrc: "/assets/democratic-grantmaking-26/healy-hamilton.jpg",
+  //   role: "Expert Panel",
+  //   href: "https://www.linkedin.com/in/healy-hamilton-a1a20942/",
+  // },
+  // {
+  //   name: "Dustin Palmer",
+  //   imageSrc: "/assets/democratic-grantmaking-26/dustin-palmer.jpg",
+  //   role: "Expert Panel",
+  //   href: "https://www.linkedin.com/in/dustin-palmer/",
+  // },
 ];
 
 export const ABOUT_SECTIONS = [
