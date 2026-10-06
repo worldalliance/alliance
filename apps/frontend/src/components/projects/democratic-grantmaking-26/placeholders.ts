@@ -36,9 +36,9 @@ export const ABOUT_SECTIONS = [
     body: `1,000 Alliance members and an expert panel will decide how to donate the $100,000. This will happen in a four-step process:
 
 1. Alliance members nominate nonprofits.
-2. Experts analyze how each nominee would use the $100,000.
+2. Experts analyze how each nonprofit would use the $100,000.
 3. Alliance members use expert analyses to vote on nonprofits.
-4. The expert panel picks the final winner from members' top choices.`,
+4. Experts select the final recipient from members' top choices.`,
   },
   {
     heading: "Why are we doing this?",
