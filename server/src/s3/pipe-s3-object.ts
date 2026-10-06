@@ -41,12 +41,21 @@ export async function pipeS3Object(params: {
         : `public, max-age=${params.maxAgeSeconds}`,
     );
 
-    body.on("error", () => {
+    // A shared cache stores a response that ends cleanly, so a failed stream
+    // must not end like a complete one or carry the cache header.
+    body.on("error", (err) => {
+      if (process.env.NODE_ENV !== "development") {
+        console.error("Error streaming %s:", JSON.stringify(key), err);
+      }
       try {
         body.destroy();
       } catch {}
-      if (!res.headersSent) res.status(500);
-      res.end();
+      if (res.headersSent) {
+        res.destroy();
+      } else {
+        res.removeHeader("Cache-Control");
+        res.status(500).end();
+      }
     });
 
     body.pipe(res);

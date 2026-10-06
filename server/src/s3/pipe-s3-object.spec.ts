@@ -82,14 +82,48 @@ describe("pipeS3Object", () => {
     log.mockRestore();
   });
 
-  it("ends the response when the body fails mid-stream", async () => {
+  it("aborts the response when the body fails mid-stream", async () => {
+    const log = jest.spyOn(console, "error").mockImplementation(() => {});
+    let sent = false;
+    // The second read comes once the first chunk is on its way out.
     const body = new Readable({
       read() {
-        this.push("par");
+        if (sent) {
+          this.destroy(new Error("reset"));
+        } else {
+          sent = true;
+          this.push("par");
+        }
+      },
+    });
+    const failure = await serve({ body, storedType: "image/png" }).then(
+      () => null,
+      (err: Error) => err,
+    );
+    expect(failure).toBeInstanceOf(Error);
+    expect(log).toHaveBeenCalledWith(
+      "Error streaming %s:",
+      '"dir/file.png"',
+      expect.any(Error),
+    );
+    log.mockRestore();
+  });
+
+  it("answers an uncacheable 500 when the body fails before any bytes", async () => {
+    const log = jest.spyOn(console, "error").mockImplementation(() => {});
+    const body = new Readable({
+      read() {
         this.destroy(new Error("reset"));
       },
     });
-    const res = await serve({ body, storedType: "image/png" });
-    expect(res.status).toBe(200);
+    const res = await serve({ body, maxAgeSeconds: 60 });
+    expect(res.status).toBe(500);
+    expect(res.headers["cache-control"]).toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      "Error streaming %s:",
+      '"dir/file.png"',
+      expect.any(Error),
+    );
+    log.mockRestore();
   });
 });
