@@ -342,6 +342,19 @@ describe("ConversationController (e2e)", () => {
         .post(`/messaging/conversations/${conversationId}/accept`)
         .set("Authorization", `Bearer ${outsiderToken}`)
         .expect(403);
+      await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversationId}/decline`)
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(403);
+      await request(ctx.app.getHttpServer())
+        .get(`/messaging/messages/${conversationId}`)
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .expect(403);
+      await request(ctx.app.getHttpServer())
+        .post("/messaging/messages")
+        .set("Authorization", `Bearer ${outsiderToken}`)
+        .send({ conversationId, body: "Let me in" })
+        .expect(403);
     });
 
     it("refuses a rename from a member who is not an admin", async () => {

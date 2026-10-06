@@ -1,13 +1,10 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-} from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ImagesService } from "src/images/images.service";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
+import { ConversationService } from "./conversation.service";
 import {
   ConversationMessagesQueryDto,
   CreateMessageDto,
@@ -29,23 +26,18 @@ export class MessageService {
     private readonly participantRepository: Repository<Participant>,
     private readonly eventEmitter: EventEmitter2,
     private readonly imagesService: ImagesService,
+    private readonly conversationService: ConversationService,
   ) {}
 
   async sendMessage(
     userId: number,
     dto: CreateMessageDto,
   ): Promise<MessageDto> {
-    const participant = await this.participantRepository.findOne({
-      where: {
-        conversation: { id: dto.conversationId },
-        user: { id: userId },
-      },
+    const participant = await this.conversationService.getParticipantOrFail({
+      conversationId: dto.conversationId,
+      userId,
       relations: { conversation: true },
     });
-
-    if (!participant) {
-      throw new ForbiddenException("You are not part of this conversation.");
-    }
 
     if (participant.state !== ParticipantState.Joined) {
       participant.state = ParticipantState.Joined;
@@ -118,7 +110,11 @@ export class MessageService {
     conversationId: number,
     query: ConversationMessagesQueryDto,
   ): Promise<MessageDto[]> {
-    await this.assertParticipant(conversationId, userId);
+    await this.conversationService.getParticipantOrFail({
+      conversationId,
+      userId,
+      relations: {},
+    });
     return this.findConversationMessages(conversationId, query);
   }
 
@@ -153,22 +149,6 @@ export class MessageService {
     return messages
       .reverse()
       .map((message) => new MessageDto({ message, conversationId }));
-  }
-
-  private async assertParticipant(
-    conversationId: number,
-    userId: number,
-  ): Promise<void> {
-    const count = await this.participantRepository.count({
-      where: {
-        conversation: { id: conversationId },
-        user: { id: userId },
-      },
-    });
-
-    if (!count) {
-      throw new ForbiddenException("You are not part of this conversation.");
-    }
   }
 
   private async saveAttachments(
