@@ -447,7 +447,7 @@ describe("Share URLs (e2e)", () => {
         .expect(201);
 
       expect(res.body.url).toMatch(
-        /^https:\/\/example\.com\/route\?code=share-[a-f0-9]{10}$/,
+        /^https:\/\/example\.com\/route\?code=[a-f0-9]{10}$/,
       );
     });
 
@@ -484,7 +484,7 @@ describe("Share URLs (e2e)", () => {
         .expect(201);
 
       expect(res.body.url).toMatch(
-        /^https:\/\/example\.com\/route\?existing=1&code=share-[a-f0-9]{10}$/,
+        /^https:\/\/example\.com\/route\?existing=1&code=[a-f0-9]{10}$/,
       );
     });
 
@@ -503,7 +503,7 @@ describe("Share URLs (e2e)", () => {
         .expect(201);
 
       expect(res.body.url).toMatch(
-        /^https:\/\/example\.com\/route\?my\+code=share-[a-f0-9]{10}$/,
+        /^https:\/\/example\.com\/route\?my\+code=[a-f0-9]{10}$/,
       );
     });
 
@@ -554,7 +554,7 @@ describe("Share URLs (e2e)", () => {
     };
 
     const sidOf = (url: string): string => {
-      const match = /share-[a-f0-9]{10}/.exec(url);
+      const match = /[a-f0-9]{10}$/.exec(url);
       if (!match) throw new Error(`No sid in url: ${url}`);
       return match[0];
     };
@@ -656,7 +656,7 @@ describe("Share URLs (e2e)", () => {
 
   describe("POST /share-urls/create-duplicate", () => {
     const sidOf = (url: string): string => {
-      const match = /share-[a-f0-9]{10}/.exec(url);
+      const match = /[a-f0-9]{10}$/.exec(url);
       if (!match) throw new Error(`No sid in url: ${url}`);
       return match[0];
     };
@@ -794,7 +794,7 @@ describe("Share URLs (e2e)", () => {
 
       expect(sidOf(dup.body.url)).not.toBe(sidOf(first.body.url));
       expect(dup.body.url).toMatch(
-        /^https:\/\/example\.com\/route\?code=share-[a-f0-9]{10}$/,
+        /^https:\/\/example\.com\/route\?code=[a-f0-9]{10}$/,
       );
     });
 

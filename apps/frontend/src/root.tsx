@@ -27,6 +27,7 @@ import { AuthProvider } from "./lib/AuthContext";
 import { getApiUrl, getPosthogHost } from "./lib/config";
 import PosthogBuildTag from "./lib/PosthogBuildTag";
 import { posthogRequestContext } from "./lib/posthogRequestContext";
+import { ShareLinkViewerFromAuth } from "./lib/ShareLinkViewerFromAuth";
 import { socialPreviewMeta } from "./lib/socialPreviewMeta";
 
 const queryClient = new QueryClient({
@@ -127,9 +128,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <SiteAppProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider queryClient={queryClient}>
-          <ToastProvider>
-            <HtmlBackgroundManager>{children}</HtmlBackgroundManager>
-          </ToastProvider>
+          <ShareLinkViewerFromAuth>
+            <ToastProvider>
+              <HtmlBackgroundManager>{children}</HtmlBackgroundManager>
+            </ToastProvider>
+          </ShareLinkViewerFromAuth>
         </AuthProvider>
       </QueryClientProvider>
     </SiteAppProvider>

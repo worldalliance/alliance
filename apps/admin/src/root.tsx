@@ -1,6 +1,10 @@
 import { client } from "@alliance/shared/client/client.gen";
 import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
+import {
+  ShareLinkViewer,
+  ShareLinkViewerProvider,
+} from "@alliance/sharedweb/forms/BigLinkDisplay";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -98,7 +102,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
               <GroupAssignmentProvider>
-                <ToastProvider>{children}</ToastProvider>
+                <ShareLinkViewerProvider value={ShareLinkViewer.Anonymous}>
+                  <ToastProvider>{children}</ToastProvider>
+                </ShareLinkViewerProvider>
               </GroupAssignmentProvider>
             </AuthProvider>
           </QueryClientProvider>

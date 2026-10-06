@@ -2,8 +2,6 @@ import {
   CHAT_TRANSCRIPT_SIZE_UNIT_PX,
   groupChatTranscriptMessages,
   type AccordionBlock,
-  type BigLinkBlock,
-  type BigLinkIcon,
   type DisplayBlock,
   type ImagesItem,
 } from "@alliance/common/forms/display-blocks";
@@ -15,35 +13,17 @@ import {
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { Accordion } from "@base-ui/react/accordion";
-import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  File,
-  FileCheck,
-  FileText,
-  MessagesSquare,
-  Signature,
-} from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import React, { useRef, useState } from "react";
-import { Link } from "react-router";
 import { resolveImageSrc } from "../lib/imageSrc";
 import { AvatarProfile } from "../ui/Avatar";
 import Card from "../ui/Card";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import ImageLightbox from "../ui/ImageLightbox";
-import { useSiteHref } from "../ui/SiteAppProvider";
+import BigLinkDisplay from "./BigLinkDisplay";
 import CopyTextDisplay from "./CopyTextDisplay";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
 import VideoPlayer from "./VideoPlayer";
-
-const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }>> = {
-  "messages-square": MessagesSquare,
-  file: File,
-  "file-text": FileText,
-  "file-check": FileCheck,
-  signature: Signature,
-};
 
 function ImageFigure({
   resolvedSrc,
@@ -190,34 +170,6 @@ function ImagesDisplay({ images }: { images: ImagesItem[] }) {
         </div>
       )}
     />
-  );
-}
-
-function BigLinkDisplay({ block }: { block: BigLinkBlock }) {
-  const siteHref = useSiteHref();
-  const IconComponent = bigLinkIcons[block.icon || "messages-square"];
-  const href = siteHref(block.url);
-
-  return (
-    <Link
-      to={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block group text-black "
-    >
-      <Card
-        className="flex flex-row items-center gap-3 hover:bg-zinc-100"
-        style={CardStyle.Grey}
-      >
-        <IconComponent size={20} />
-        <div>
-          <p className="text-base" style={{ fontWeight: 450 }}>
-            {block.text}
-          </p>
-          <p className="text-sm text-green">{href}</p>
-        </div>
-      </Card>
-    </Link>
   );
 }
 

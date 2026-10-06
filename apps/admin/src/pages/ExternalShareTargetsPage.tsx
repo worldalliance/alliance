@@ -256,7 +256,7 @@ const TargetCard: React.FC<TargetCardProps> = ({
   const trimmedParamName = values.paramName.trim();
   const previewUrl =
     isValidHttpUrl(values.url) && trimmedParamName
-      ? appendQueryParam(values.url, trimmedParamName, "share-12345")
+      ? appendQueryParam(values.url, trimmedParamName, "1a2b3c4d5e")
       : null;
 
   const canSave =

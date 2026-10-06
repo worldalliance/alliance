@@ -5,7 +5,11 @@ export function generateCIDForNotif() {
 }
 
 export function generateCIDForShareUrl() {
-  return "share-" + randomToken(5, "hex");
+  return "share-" + generateCIDForExternalTarget();
+}
+
+export function generateCIDForExternalTarget() {
+  return randomToken(5, "hex");
 }
 
 export enum NotificationChannel {

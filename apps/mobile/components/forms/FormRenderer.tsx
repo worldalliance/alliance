@@ -11,7 +11,6 @@ import {
   CHAT_TRANSCRIPT_SIZE_UNIT_PX,
   groupChatTranscriptMessages,
   type AccordionBlock,
-  type BigLinkIcon,
   type ChatTranscriptMessage,
   type DisplayBlock,
   type ImagesItem,
@@ -87,17 +86,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DeviceType, deviceType as expoDeviceType } from "expo-device";
 import { router } from "expo-router";
-import {
-  ChevronDown,
-  CircleCheck,
-  Ellipsis,
-  File,
-  FileCheck,
-  FileText,
-  MessagesSquare,
-  Signature,
-  X,
-} from "lucide-react-native";
+import { ChevronDown, CircleCheck, Ellipsis, X } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -111,13 +100,14 @@ import { resolveImageSource } from "../../lib/config";
 import { getImageLoadSize } from "../../lib/imageLoadSize";
 import { colors } from "../../lib/style/colors";
 import { getDeviceTimeZone } from "../../lib/timeZone";
-import AppMarkdownWrapper, { useHandleLinkPress } from "../AppMarkdownWrapper";
+import AppMarkdownWrapper from "../AppMarkdownWrapper";
 import { ImageGalleryModal } from "../ImageLightbox";
 import { MARKDOWN_HUG_WIDTH_STYLE, MarkdownTone } from "../markdownStyles";
 import ProfileImage from "../ProfileImage";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Checkbox from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
+import BigLinkDisplay from "./BigLinkDisplay";
 import CopyTextDisplay from "./CopyTextDisplay";
 import FormModal from "./FormModal";
 import HtmlBlock from "./HtmlBlock";
@@ -177,14 +167,6 @@ const detectDeviceType = (): DeviceVisibilityTarget => {
 };
 
 const DEVICE_TYPE: DeviceVisibilityTarget = detectDeviceType();
-
-const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }>> = {
-  "messages-square": MessagesSquare,
-  file: File,
-  "file-text": FileText,
-  "file-check": FileCheck,
-  signature: Signature,
-};
 
 const CHAT_BUBBLE_TONE: Record<ChatTranscriptMessage["side"], MarkdownTone> = {
   left: MarkdownTone.Default,
@@ -398,7 +380,6 @@ export function RenderDisplayBlockMobile({
   userLocation,
   userLocationLoading = false,
 }: RenderDisplayBlockMobileProps) {
-  const handleLinkPress = useHandleLinkPress();
   switch (block.kind) {
     case "header":
       const headerClass = {
@@ -462,27 +443,7 @@ export function RenderDisplayBlockMobile({
       if (block.images.length === 0) return null;
       return <ImagesDisplay images={block.images} />;
     case "biglink":
-      const IconComponent = bigLinkIcons[block.icon || "messages-square"];
-      return (
-        <TouchableOpacity
-          className="flex-row items-center gap-3 rounded-lg border border-zinc-200 bg-white px-5 py-4 mr-3"
-          onPress={() => handleLinkPress(block.url)}
-        >
-          <IconComponent size={20} />
-          <View className="flex-1">
-            <Text className="text-base text-black" weight={FontWeight.Medium}>
-              {block.text}
-            </Text>
-            <Text
-              className="mt-1 text-sm text-green"
-              weight={FontWeight.Medium}
-              numberOfLines={1}
-            >
-              {block.url}
-            </Text>
-          </View>
-        </TouchableOpacity>
-      );
+      return <BigLinkDisplay block={block} />;
     case "copytext":
       return <CopyTextDisplay block={block} />;
     case "accordion":

@@ -85,7 +85,7 @@ describe("the biglink display block", () => {
     ).toBe("/forum/post/22");
   });
 
-  it("shows the destination it links to", () => {
+  it("labels the link with its text and hides the URL", () => {
     render(
       <MemoryRouter>
         <SiteAppProvider>
@@ -93,8 +93,7 @@ describe("the biglink display block", () => {
         </SiteAppProvider>
       </MemoryRouter>,
     );
-    expect(screen.queryByText(biglink.url)).toBeNull();
-    expect(screen.getByText("/forum/post/22")).toBeTruthy();
+    expect(screen.getByRole("link").textContent).toBe(biglink.text);
   });
 
   it("aims the link at the given origin in an app that serves another domain", () => {

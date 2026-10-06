@@ -49,6 +49,24 @@ describe("page elements", () => {
       false,
     );
   });
+
+  it.each([
+    [7, true],
+    [0, false],
+    [1.5, false],
+    ["7", false],
+  ])("big link externalTargetId %p is valid: %p", (externalTargetId, valid) => {
+    const link = {
+      type: "display",
+      kind: "biglink",
+      text: "Take the survey",
+      url: "https://example.com/survey",
+      externalTargetId,
+    };
+    expect(pageSchema.safeParse({ id: "p1", fields: [link] }).success).toBe(
+      valid,
+    );
+  });
 });
 
 describe("searchable dropdowns", () => {
