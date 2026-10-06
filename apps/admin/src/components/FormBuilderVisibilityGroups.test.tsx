@@ -405,6 +405,33 @@ describe("FormBuilder visibility groups across loads", () => {
     ]);
   });
 
+  it("keeps a group's unsaved expression when its first member detaches", async () => {
+    renderFormBuilder(schemaWith([text("a", X), text("b", X), text("c", X)]));
+    const [card] = groupCards();
+    fireEvent.click(
+      within(card!).getByRole("button", { name: "Edit as expression" }),
+    );
+    fireEvent.change(
+      within(card!).getByRole("textbox", { name: "Expression" }),
+      {
+        target: { value: "c1 AND" },
+      },
+    );
+    await act(async () => {});
+
+    fireEvent.click(
+      within(card!).getAllByRole("button", {
+        name: "Edit visibility separately",
+      })[0]!,
+    );
+    const [remaining] = groupCards();
+    expect(
+      within(remaining!).getByRole<HTMLTextAreaElement>("textbox", {
+        name: "Expression",
+      }).value,
+    ).toBe("c1 AND");
+  });
+
   it("groups a saved form when it opens", async () => {
     renderStatefulFormBuilder(5);
     await waitFor(() =>

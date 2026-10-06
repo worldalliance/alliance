@@ -32,6 +32,7 @@ import {
 } from "../VisibilityGroupContext";
 import { ConditionalVisibility } from "../form-fields/conditions/ConditionalVisibility";
 import type { OutputBlockOption } from "../form-fields/conditions/ContextRules";
+import { useTypedExpression } from "../form-fields/conditions/expressionBuffers";
 import { usePerViewerOptionsAllowed } from "./PerViewerOptionsContext";
 
 type ManualUserListEntry = Pick<UserDto, "id" | "name" | "hasActiveContract">;
@@ -144,14 +145,18 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   const groupMember = useVisibilityGroupMember(block?.id);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const optionsMenuRef = useRef<HTMLDivElement | null>(null);
+  const expression = useTypedExpression(block ?? {});
   const [
     showConditionalVisibilityControl,
     setShowConditionalVisibilityControl,
   ] = useState<boolean>(() => {
     if (!block) return false;
-    return block.visibleIfFormula?.conditions
-      ? !!Object.keys(block.visibleIfFormula.conditions).length
-      : false;
+    return (
+      expression.typed ||
+      (block.visibleIfFormula?.conditions
+        ? !!Object.keys(block.visibleIfFormula.conditions).length
+        : false)
+    );
   });
 
   const manualUserContent = useMemo(
@@ -383,6 +388,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       handleConditionalChange({
         visibleIfFormula: undefined,
       });
+      expression.clear();
     }
   };
 

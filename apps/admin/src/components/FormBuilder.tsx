@@ -67,10 +67,11 @@ import { reorderPages } from "../lib/reorderPages";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
 import { DropPosition } from "../lib/useDragReorder";
+import { useFormDraft, type CreatedValidator } from "../lib/useFormDraft";
 import { useFormulaSourceForms } from "../lib/useFormulaSourceForms";
 import { useInputSources } from "../lib/useInputSources";
+import { useSelectedPage } from "../lib/useSelectedPage";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
-import { useVisibilityGroupedSchema } from "../lib/useVisibilityGroupedSchema";
 import {
   deriveVisibilityGroups,
   type GroupedPages,
@@ -83,17 +84,19 @@ import { renderBlockEditor } from "./display-blocks/blockEditors";
 import { DisplayOnlyPreview } from "./DisplayOnlyPreview";
 import { ElementSelect } from "./ElementSelect";
 import {
-  CustomValidatorDraft,
-  CustomValidatorDraftsContext,
-  isDraftValidatorId,
-} from "./form-fields/customValidatorDrafts";
+  ElementExpressionScope,
+  ExpressionScope,
+} from "./form-fields/conditions/expressionBuffers";
+import { isDraftValidatorId } from "./form-fields/customValidatorDrafts";
 import { renderFieldEditor } from "./form-fields/fieldEditors";
 import { FormConflictModal } from "./FormConflictModal";
+import { FormDraftContexts } from "./FormDraftContexts";
 import { ElementJsonContext, FormJsonButton } from "./FormJsonButton";
 import { FormJsonModal } from "./FormJsonModal";
 import { formFieldsErrorReason } from "./FormPickerError";
 import { FormulaSourcesProvider } from "./FormulaSourcesContext";
 import { FormVariablesProvider } from "./FormVariablesContext";
+import { HistoryControls } from "./HistoryControls";
 import { OutputBuilder } from "./OutputBuilder";
 import { PageSegmentList } from "./PageSegmentList";
 import { PageVisibilityControl } from "./PageVisibilityControl";
@@ -536,13 +539,23 @@ export function FormBuilder(props: FormBuilderProps) {
           aggregateViews: [],
         };
 
+  const formDraft = useFormDraft(buildInitialSchema);
   const {
     schema,
     groups: visibilityGroups,
     setSchema,
+    amendSchema,
+    endStep,
+    regroupSchema,
     loadSchema,
     setGroups,
-  } = useVisibilityGroupedSchema(buildInitialSchema);
+    validatorDrafts,
+    setValidatorDraft,
+    removeValidatorDraft,
+    resolveValidatorDrafts,
+    expressions,
+    setExpression,
+  } = formDraft;
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
@@ -560,10 +573,9 @@ export function FormBuilder(props: FormBuilderProps) {
     theirs: FormSchema;
     theirsSnapshotId: number;
   } | null>(null);
-  // Formula editors, in VariableBuilder's cards and in the page's choice
-  // fields, only follow their formulas through their own edits, so a schema
-  // loaded from a conflict or from pasted JSON remounts them with no sample
-  // answers.
+  // Editors that keep their own copy of a formula or its text only follow it
+  // through their own edits, so a schema loaded from a conflict or from
+  // pasted JSON, or restored by undo or redo, remounts them.
   const [schemaLoads, setSchemaLoads] = useState(0);
   const [confirmUnresolvedVariables, setConfirmUnresolvedVariables] =
     useState(false);
@@ -600,7 +612,9 @@ export function FormBuilder(props: FormBuilderProps) {
     [setSearchParams],
   );
 
-  const [selectedPageIndex, setSelectedPageIndex] = useState(0);
+  const { selectedPageIndex, setSelectedPageIndex, keepPage } = useSelectedPage(
+    schema.pages,
+  );
   const [draggedItem, setDraggedItem] = useState<{
     index: number;
     pageIndex: number;
@@ -640,41 +654,27 @@ export function FormBuilder(props: FormBuilderProps) {
   );
   const [copyPicker, setCopyPicker] = useState<InsertLoc | null>(null);
   const [jsonScope, setJsonScope] = useState<JsonScope | null>(null);
-  const [customValidatorDrafts, setCustomValidatorDrafts] = useState<
-    Record<number, CustomValidatorDraft>
-  >({});
   const draftValidatorIdRef = useRef(-1);
   const createDraftId = useCallback(() => {
     const nextId = draftValidatorIdRef.current;
     draftValidatorIdRef.current -= 1;
     return nextId;
   }, []);
-  const setDraft = useCallback(
-    (draftId: number, draft: CustomValidatorDraft) => {
-      setCustomValidatorDrafts((prev) => ({ ...prev, [draftId]: draft }));
-    },
-    [],
-  );
-  const removeDraft = useCallback((draftId: number) => {
-    setCustomValidatorDrafts((prev) => {
-      if (!(draftId in prev)) {
-        return prev;
-      }
-      const next = { ...prev };
-      delete next[draftId];
-      return next;
-    });
-  }, []);
   const customValidatorDraftContext = useMemo(
     () => ({
-      drafts: customValidatorDrafts,
-      setDraft,
-      removeDraft,
+      drafts: validatorDrafts,
+      setDraft: setValidatorDraft,
+      removeDraft: removeValidatorDraft,
       createDraftId,
     }),
-    [createDraftId, customValidatorDrafts, removeDraft, setDraft],
+    [createDraftId, removeValidatorDraft, setValidatorDraft, validatorDrafts],
+  );
+  const expressionBuffers = useMemo(
+    () => ({ buffers: expressions, setBuffer: setExpression }),
+    [expressions, setExpression],
   );
   const contentScrollRef = useRef<HTMLDivElement | null>(null);
+  const builderRef = useRef<HTMLDivElement | null>(null);
 
   const currentPage = schema.pages[selectedPageIndex] ??
     schema.pages?.[0] ?? { id: "page-1", title: "Page 1", fields: [] };
@@ -720,29 +720,6 @@ export function FormBuilder(props: FormBuilderProps) {
 
   const { success: showSuccessToast, error: showErrorToast } = useToast();
   const invalidateForms = useInvalidateFormsAdmin();
-
-  useEffect(() => {
-    if (Object.keys(customValidatorDrafts).length === 0) {
-      return;
-    }
-    const activeDraftIds = new Set(
-      [...customValidatorIds(schema)].filter(isDraftValidatorId),
-    );
-
-    setCustomValidatorDrafts((prev) => {
-      const next: Record<number, CustomValidatorDraft> = {};
-      let hasChanges = false;
-      Object.entries(prev).forEach(([id, draft]) => {
-        const numericId = Number(id);
-        if (activeDraftIds.has(numericId)) {
-          next[numericId] = draft;
-        } else {
-          hasChanges = true;
-        }
-      });
-      return hasChanges ? next : prev;
-    });
-  }, [customValidatorDrafts, schema]);
 
   useEffect(() => {
     if (searchQuery.trim()) {
@@ -1089,14 +1066,14 @@ export function FormBuilder(props: FormBuilderProps) {
         isDraftValidatorId,
       );
 
+      const created = new Map<number, CreatedValidator>();
       if (draftIds.length === 0) {
-        return { schema: schemaToSave, resolvedDraftIds: [] as number[] };
+        return { schema: schemaToSave, created };
       }
 
-      const resolvedIds = new Map<number, number>();
       await Promise.all(
         draftIds.map(async (draftId) => {
-          const draft = customValidatorDrafts[draftId];
+          const draft = validatorDrafts[draftId];
           if (!draft) {
             throw new Error("Missing custom validator draft configuration.");
           }
@@ -1110,21 +1087,18 @@ export function FormBuilder(props: FormBuilderProps) {
           if (!response.data) {
             throw new Error("createCustomValidator returned no data");
           }
-          resolvedIds.set(draftId, response.data.id);
+          created.set(draftId, { id: response.data.id, draft });
         }),
       );
 
       const nextSchema = mapCustomValidatorIds(
         schemaToSave,
-        (id) => resolvedIds.get(id) ?? id,
+        (id) => created.get(id)?.id ?? id,
       );
 
-      return {
-        schema: nextSchema,
-        resolvedDraftIds: [...resolvedIds.keys()],
-      };
+      return { schema: nextSchema, created };
     },
-    [customValidatorDrafts],
+    [validatorDrafts],
   );
 
   useEffect(() => {
@@ -1237,12 +1211,11 @@ export function FormBuilder(props: FormBuilderProps) {
 
   const applyJson = (next: FormSchema) => {
     if (jsonScope && REGROUPS_ON_JSON_APPLY[jsonScope.kind]) {
-      loadSchema(ensureSchemaViews(next));
+      regroupSchema(ensureSchemaViews(next));
     } else {
       updateSchema(next);
     }
     setSchemaLoads((count) => count + 1);
-    setSelectedPageIndex((index) => Math.min(index, next.pages.length - 1));
     setJsonScope(null);
   };
 
@@ -1252,9 +1225,6 @@ export function FormBuilder(props: FormBuilderProps) {
       ...schema,
       pages: schema.pages.filter((_, i) => i !== pageIndex),
     });
-    if (selectedPageIndex >= schema.pages.length - 1) {
-      setSelectedPageIndex(Math.max(0, selectedPageIndex - 1));
-    }
   };
 
   const saveForm = useCallback(async () => {
@@ -1272,7 +1242,8 @@ export function FormBuilder(props: FormBuilderProps) {
       // List inputs name sub-fields added since they were last saved, from
       // labels that are final by now.
       const syncedSchema = syncSchemaListInputs(schema, sourceForms);
-      if (syncedSchema !== schema) setSchema(syncedSchema);
+      amendSchema(syncedSchema);
+      endStep();
 
       const validationErrors = validateFormSchema(syncedSchema, validation);
       if (validationErrors.length > 0) {
@@ -1284,10 +1255,10 @@ export function FormBuilder(props: FormBuilderProps) {
         return;
       }
 
-      const { schema: schemaForSave, resolvedDraftIds } =
+      const { schema: schemaForSave, created } =
         await resolveCustomValidatorDrafts(syncedSchema);
-      if (resolvedDraftIds.length > 0) {
-        setSchema(schemaForSave);
+      if (created.size > 0) {
+        resolveValidatorDrafts(created);
       }
 
       if (displayOnlySave) {
@@ -1366,15 +1337,6 @@ export function FormBuilder(props: FormBuilderProps) {
         }
         setFormId(response.data.id);
         skipNavigationBlockRef.current = false;
-        if (resolvedDraftIds.length > 0) {
-          setCustomValidatorDrafts((prev) => {
-            const next = { ...prev };
-            resolvedDraftIds.forEach((draftId) => {
-              delete next[draftId];
-            });
-            return next;
-          });
-        }
         showSuccessToast("Form saved successfully");
       } else {
         const fallbackMessage = "Could not save form";
@@ -1397,10 +1359,12 @@ export function FormBuilder(props: FormBuilderProps) {
     invalidateForms,
     lastSavedSchemaJSON,
     newFormTitle,
+    amendSchema,
+    endStep,
     resolveCustomValidatorDrafts,
+    resolveValidatorDrafts,
     schema,
     setFormId,
-    setSchema,
     showErrorToast,
     showSuccessToast,
     sourceForms,
@@ -1452,7 +1416,7 @@ export function FormBuilder(props: FormBuilderProps) {
           showErrorToast("Someone saved again — review the latest changes");
           return;
         }
-        setSchema(conflict.mine);
+        amendSchema(conflict.mine);
         setLastSavedSchemaJSON(JSON.stringify(conflict.mine));
         setBaseFormSnapshotId(result.value.snapshotId);
         setHasUnsavedChanges(false);
@@ -1500,7 +1464,7 @@ export function FormBuilder(props: FormBuilderProps) {
       }
       if (response.response.ok && response.data) {
         void invalidateForms();
-        setSchema(conflict.mine);
+        amendSchema(conflict.mine);
         setLastSavedSchemaJSON(JSON.stringify(conflict.mine));
         setBaseFormSnapshotId(response.data.formSnapshotId);
         setHasUnsavedChanges(false);
@@ -1523,7 +1487,7 @@ export function FormBuilder(props: FormBuilderProps) {
     displayOnlySave,
     formId,
     invalidateForms,
-    setSchema,
+    amendSchema,
     showErrorToast,
     showSuccessToast,
   ]);
@@ -1573,6 +1537,25 @@ export function FormBuilder(props: FormBuilderProps) {
       showErrorToast("Could not copy your version to the clipboard");
     }
   }, [conflict, showErrorToast, showSuccessToast]);
+
+  const historyLocked =
+    isSaving || isLoading || isPreviewMode || conflict !== null;
+  const canUndo = formDraft.canUndo && !historyLocked;
+  const canRedo = formDraft.canRedo && !historyLocked;
+  const { undo: undoDraft, redo: redoDraft } = formDraft;
+  const travel = useCallback(
+    (move: () => void) => {
+      keepPage(move);
+      setSchemaLoads((count) => count + 1);
+      setCopyPicker(null);
+      setActiveSearch(null);
+      setSearchQuery("");
+      setSearchResults([]);
+    },
+    [keepPage],
+  );
+  const undo = useCallback(() => travel(undoDraft), [travel, undoDraft]);
+  const redo = useCallback(() => travel(redoDraft), [travel, redoDraft]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1997,27 +1980,36 @@ export function FormBuilder(props: FormBuilderProps) {
           }),
       }}
     >
-      <VisibilityGroupContext.Provider
-        value={
-          displayOnly
-            ? null
-            : visibilityGroupRole({
-                pages: schema.pages,
-                pageIndex: selectedPageIndex,
-                index,
-                groups: visibilityGroups,
-                setGroups,
-                applyGrouped,
-              })
-        }
+      <ElementExpressionScope
+        parent={`element:${currentPage.id}`}
+        id={field.id}
       >
-        {renderField(field, index)}
-      </VisibilityGroupContext.Provider>
+        <VisibilityGroupContext.Provider
+          value={
+            displayOnly
+              ? null
+              : visibilityGroupRole({
+                  pages: schema.pages,
+                  pageIndex: selectedPageIndex,
+                  index,
+                  groups: visibilityGroups,
+                  setGroups,
+                  applyGrouped,
+                })
+          }
+        >
+          {renderField(field, index)}
+        </VisibilityGroupContext.Provider>
+      </ElementExpressionScope>
     </ElementJsonContext.Provider>
   );
 
   return (
-    <CustomValidatorDraftsContext.Provider value={customValidatorDraftContext}>
+    <FormDraftContexts
+      validatorDrafts={customValidatorDraftContext}
+      expressionBuffers={expressionBuffers}
+      derivedWrite={formDraft.withoutStep}
+    >
       {conflict && (
         <FormConflictModal
           base={conflict.base}
@@ -2056,7 +2048,10 @@ export function FormBuilder(props: FormBuilderProps) {
       )}
       <FormVariablesProvider variables={schema.variables}>
         <FormulaSourcesProvider value={formulaSources}>
-          <div className="flex h-[calc(100vh-40px)] bg-zinc-50">
+          <div
+            ref={builderRef}
+            className="flex h-[calc(100vh-40px)] bg-zinc-50"
+          >
             {!isPreviewMode && activeEditor === "form" && (
               <ElementSelect
                 onAddField={addField}
@@ -2078,6 +2073,15 @@ export function FormBuilder(props: FormBuilderProps) {
               <div className="bg-white border-b border-gray-200 p-4">
                 <div className="flex items-center justify-end gap-4 flex-wrap xl:flex-nowrap">
                   <div className="flex items-center space-x-2">
+                    {!isPreviewMode && (
+                      <HistoryControls
+                        scope={builderRef}
+                        canUndo={canUndo}
+                        canRedo={canRedo}
+                        onUndo={undo}
+                        onRedo={redo}
+                      />
+                    )}
                     {!isPreviewMode && (
                       <FormJsonButton
                         label="Edit form JSON"
@@ -2355,6 +2359,7 @@ export function FormBuilder(props: FormBuilderProps) {
                     schema={schema}
                     onSchemaChange={updateSchema}
                     onUpdateBlockById={updateBlockById}
+                    editorsKey={schemaLoads}
                   />
                 ) : activeEditor === "aggregates" ? (
                   <AggregateBuilder
@@ -2426,13 +2431,17 @@ export function FormBuilder(props: FormBuilderProps) {
                             {currentPage.description}
                           </p>
                         )}
-                        <PageVisibilityControl
-                          key={currentPage.id}
-                          page={currentPage}
-                          isFirstPage={selectedPageIndex === 0}
-                          previousFields={pagePreviousFields}
-                          onChange={updateCurrentPageVisibility}
-                        />
+                        <ExpressionScope.Provider
+                          value={`page:${currentPage.id}`}
+                        >
+                          <PageVisibilityControl
+                            key={`${currentPage.id}-${schemaLoads}`}
+                            page={currentPage}
+                            isFirstPage={selectedPageIndex === 0}
+                            previousFields={pagePreviousFields}
+                            onChange={updateCurrentPageVisibility}
+                          />
+                        </ExpressionScope.Provider>
                       </div>
                     )}
                     <PerViewerOptions allowed={!displayOnly}>
@@ -2513,6 +2522,6 @@ export function FormBuilder(props: FormBuilderProps) {
           </div>
         </FormulaSourcesProvider>
       </FormVariablesProvider>
-    </CustomValidatorDraftsContext.Provider>
+    </FormDraftContexts>
   );
 }

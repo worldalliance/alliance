@@ -11,6 +11,7 @@ import type {
 import { parseVisibilityFormula } from "@alliance/shared/forms/visibilityFormula";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -24,6 +25,7 @@ import {
 } from "../customValidatorDrafts";
 import { ConditionalVisibility } from "./ConditionalVisibility";
 import type { OutputBlockOption } from "./ContextRules";
+import { LocalExpressionBuffers } from "./expressionBuffers";
 
 export const color: SelectField = {
   id: "color",
@@ -96,6 +98,18 @@ let latestVisibility: VisibleIfFormula | undefined;
 
 export const latest = () => latestVisibility;
 
+let outside: {
+  replace: (visibility: VisibleIfFormula | undefined) => void;
+  remount: () => void;
+} | null = null;
+
+/** Changes the formula as an edit elsewhere in the builder would. */
+export const replaceVisibility = (visibility: VisibleIfFormula | undefined) =>
+  act(() => outside?.replace(visibility));
+
+/** Remounts the editor, keeping its expression buffers. */
+export const remountEditor = () => act(() => outside?.remount());
+
 function Editor({
   initial,
   previous = [color, name],
@@ -108,9 +122,15 @@ function Editor({
   outputBlocks?: OutputBlockOption[];
 }) {
   const [visibleIfFormula, setVisibleIfFormula] = useState(initial);
+  const [mounts, setMounts] = useState(0);
   latestVisibility = visibleIfFormula;
+  outside = {
+    replace: setVisibleIfFormula,
+    remount: () => setMounts((count) => count + 1),
+  };
   return (
     <ConditionalVisibility
+      key={mounts}
       field={{ id: "self", visibleIfFormula }}
       previousFields={previous}
       laterFields={later}
@@ -136,7 +156,9 @@ export const renderEditor = (
       }
     >
       <CustomValidatorDraftsContext.Provider value={drafts}>
-        <Editor {...props} />
+        <LocalExpressionBuffers>
+          <Editor {...props} />
+        </LocalExpressionBuffers>
       </CustomValidatorDraftsContext.Provider>
     </QueryClientProvider>,
   );

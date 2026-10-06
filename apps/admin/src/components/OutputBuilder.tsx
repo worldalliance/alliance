@@ -21,11 +21,15 @@ import { cn } from "@alliance/shared/styles/util";
 import OutputRenderer from "@alliance/sharedweb/forms/OutputRenderer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { addressedWrite, type BlockWriteById } from "../lib/displayBlockById";
 import { createDisplayBlock } from "./display-blocks";
 import { renderBlockEditor } from "./display-blocks/blockEditors";
+import { ElementExpressionScope } from "./form-fields/conditions/expressionBuffers";
 import { EditableOutputFieldBlock } from "./output-builder/EditableOutputFieldBlock";
+
+const outputBlockKey = (block: OutputBlock, index: number) =>
+  "kind" in block ? (block.id ?? `${block.kind}-${index}`) : block.id;
 
 const OUTPUT_BY_KIND = {
   header: true,
@@ -151,12 +155,15 @@ interface OutputBuilderProps {
   onSchemaChange: (schema: FormSchema) => void;
   /** Owned by the builder above, which outlives a view switch. */
   onUpdateBlockById: BlockWriteById;
+  /** Remounts the block editors when it changes, as after undo. */
+  editorsKey: number;
 }
 
 export function OutputBuilder({
   schema,
   onSchemaChange,
   onUpdateBlockById,
+  editorsKey,
 }: OutputBuilderProps) {
   const [selectedViewId, setSelectedViewId] = useState<string | null>(
     () => schema.outputViews?.[0]?.id ?? null,
@@ -378,10 +385,6 @@ export function OutputBuilder({
     const showInsertionBar =
       dragOverIndex === index && dropPosition && draggedIndex !== null;
     const isDisplayBlock = (block as DisplayBlock).kind !== undefined;
-    const key =
-      "kind" in block
-        ? (block.id ?? `${block.kind}-${index}`)
-        : (block as OutputFieldBlock).id;
     const dragProps = {
       onDragStart: handleDragStart(index),
       onDragEnd: handleDragEnd,
@@ -392,7 +395,7 @@ export function OutputBuilder({
     const updateCurrent = addressedWrite(block, onUpdateBlockById);
 
     return (
-      <div key={key} className="relative">
+      <div className="relative">
         {showInsertionBar && dropPosition === "before" && (
           <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
             <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -596,9 +599,17 @@ export function OutputBuilder({
                       or output blocks.
                     </div>
                   )}
-                  {selectedView.blocks.map((block, index) =>
-                    renderBlock(block, index),
-                  )}
+                  <Fragment key={editorsKey}>
+                    {selectedView.blocks.map((block, index) => (
+                      <ElementExpressionScope
+                        key={outputBlockKey(block, index)}
+                        parent={`output:${selectedView.id}`}
+                        id={block.id}
+                      >
+                        {renderBlock(block, index)}
+                      </ElementExpressionScope>
+                    ))}
+                  </Fragment>
                   {draggedIndex !== null &&
                     selectedView &&
                     selectedView.blocks.length > 0 && (

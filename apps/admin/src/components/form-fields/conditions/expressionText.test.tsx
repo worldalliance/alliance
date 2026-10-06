@@ -11,8 +11,11 @@ import {
   isRed,
   latest,
   named,
+  remountEditor,
   renderEditor,
+  replaceVisibility,
 } from "./conditionEditorTesting";
+import { LocalExpressionBuffers } from "./expressionBuffers";
 
 afterEach(cleanup);
 serveApi(
@@ -33,11 +36,13 @@ const editorShowing = (visibleIfFormula: VisibleIfFormula) => (
         createDraftId: () => -1,
       }}
     >
-      <ConditionalVisibility
-        field={{ id: "self", visibleIfFormula }}
-        previousFields={[]}
-        onChange={() => {}}
-      />
+      <LocalExpressionBuffers>
+        <ConditionalVisibility
+          field={{ id: "self", visibleIfFormula }}
+          previousFields={[]}
+          onChange={() => {}}
+        />
+      </LocalExpressionBuffers>
     </CustomValidatorDraftsContext.Provider>
   </QueryClientProvider>
 );
@@ -58,13 +63,17 @@ it("keeps typed text while the saved formula still matches it, and follows a dif
   expect(expression().value).toBe("NOT (c1 OR c2)");
 });
 
-it("keeps unsaved text when the saved formula changes under it", () => {
+it("shows unsaved text only while the formula it was typed against stays", () => {
   const { rerender } = render(
     editorShowing({ conditions, formula: formulaOf("NOT (c1 AND c2)") }),
   );
   fireEvent.change(expression(), { target: { value: "c1 AND" } });
 
   rerender(editorShowing({ conditions, formula: formulaOf("NOT (c1 OR c2)") }));
+  expect(expression().value).toBe("NOT (c1 OR c2)");
+  rerender(
+    editorShowing({ conditions, formula: formulaOf("NOT (c1 AND c2)") }),
+  );
   expect(expression().value).toBe("c1 AND");
 });
 
@@ -94,6 +103,12 @@ it("binds a name typed before its rule exists once the rule is added", async () 
   expect(latest()?.formula).toEqual(formulaOf("NOT condition1"));
   expect(expression().value).toBe("NOT condition1");
   expect(screen.queryByRole("alert")).toBeNull();
+
+  replaceVisibility({
+    conditions: latest()?.conditions ?? {},
+    formula: "condition1",
+  });
+  expect(expression().value).toBe("condition1");
 });
 
 it("treats cleared text on an unconditional element as nothing to fix", () => {
@@ -107,4 +122,9 @@ it("treats cleared text on an unconditional element as nothing to fix", () => {
     screen.getByRole("button", { name: "Use all/any rules" }),
   ).toBeTruthy();
   expect(latest()).toBeUndefined();
+
+  remountEditor();
+  expect(
+    screen.getByRole("button", { name: "Edit as expression" }),
+  ).toBeTruthy();
 });

@@ -20,6 +20,7 @@ import {
 } from "../FormPickerError";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
+import { ElementExpressionScope } from "./conditions/expressionBuffers";
 import { SUB_FIELD_EDITORS } from "./subFieldEditors";
 import type { BaseFieldProps, FieldEditor, FieldOfKind } from "./types";
 
@@ -140,13 +141,17 @@ function renderEditableSubField(
   removeSubField: (index: number) => void,
   sources: ConditionSourceFields,
 ) {
-  return renderSubFieldEditor(sub.kind, {
-    field: sub,
-    onUpdate: (updates) => updateSubField(index, updates),
-    onRemove: () => removeSubField(index),
-    ...sources,
-    isDragging: false,
-  });
+  return (
+    <ElementExpressionScope id={sub.id}>
+      {renderSubFieldEditor(sub.kind, {
+        field: sub,
+        onUpdate: (updates) => updateSubField(index, updates),
+        onRemove: () => removeSubField(index),
+        ...sources,
+        isDragging: false,
+      })}
+    </ElementExpressionScope>
+  );
 }
 
 export function EditableListField({

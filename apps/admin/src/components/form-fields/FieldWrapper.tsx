@@ -23,6 +23,7 @@ import {
   OutputPrivateByDefaultToggle,
 } from "./CommonControls";
 import { ConditionalVisibility } from "./conditions/ConditionalVisibility";
+import { useTypedExpression } from "./conditions/expressionBuffers";
 import {
   isDraftValidatorId,
   useCustomValidatorDrafts,
@@ -63,10 +64,11 @@ export function FieldWrapper<T extends AnyField>({
     isCurrentFormField && field.visibleIfFormula?.conditions
       ? Object.keys(field.visibleIfFormula.conditions).length
       : 0;
+  const expression = useTypedExpression(field);
   const [
     showConditionalVisibilityControl,
     setShowConditionalVisibilityControl,
-  ] = useState(() => initialVisibilityCount > 0);
+  ] = useState(() => initialVisibilityCount > 0 || expression.typed);
 
   const [customValidatorType, setCustomValidatorType] = useState<
     CustomValidatorType | undefined
@@ -198,6 +200,7 @@ export function FieldWrapper<T extends AnyField>({
       handleVisibilityChange({
         visibleIfFormula: undefined,
       });
+      expression.clear();
     }
   };
 

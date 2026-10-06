@@ -6,7 +6,6 @@ import type {
 } from "@alliance/common/forms/visible-if-formula";
 import {
   formulaConditionNames,
-  parseVisibilityFormula,
   serializeVisibilityFormula,
 } from "@alliance/shared/forms/visibilityFormula";
 import { cn } from "@alliance/shared/styles/util";
@@ -28,6 +27,7 @@ import {
 } from "./conditionFormula";
 import { ConditionRule, type RuleSources } from "./ConditionRule";
 import type { OutputBlockOption } from "./ContextRules";
+import { useExpressionBuffer } from "./expressionBuffers";
 import { ExpressionEditor } from "./ExpressionEditor";
 import { isConditionalController, type RuleCondition } from "./fieldConditions";
 import { INPUT_CLASS } from "./styles";
@@ -95,33 +95,13 @@ export function ConditionalVisibility({
   );
 
   const simple = visibility ? simpleFormulaOf(visibility) : null;
+  const [typed, setBuffer] = useExpressionBuffer(field);
   const [expressionRequested, setExpressionRequested] = useState(
-    () => visibility !== undefined && simple === null,
+    () => (visibility !== undefined && simple === null) || typed !== null,
   );
   const advanced = expressionRequested || (!!visibility && simple === null);
   const conditions = visibility?.conditions ?? {};
 
-  // Null while the expression shows the saved formula. Typed text stays as
-  // typed while it matches the saved formula, and stays with its error while
-  // it doesn't parse or names a missing rule, instead of being saved.
-  const [typed, setTyped] = useState<string | null>(null);
-  const [syncedFormula, setSyncedFormula] = useState(visibility?.formula);
-  if (visibility?.formula !== syncedFormula) {
-    setSyncedFormula(visibility?.formula);
-    if (typed !== null) {
-      const parsed = parseVisibilityFormula(typed);
-      const wasSaved =
-        parsed.ok &&
-        !!syncedFormula &&
-        sameFormula(parsed.value, syncedFormula);
-      const checked = checkExpression(typed, conditions);
-      const isSaved =
-        checked.ok &&
-        !!visibility &&
-        sameFormula(checked.value, visibility.formula);
-      if (wasSaved && !isSaved) setTyped(null);
-    }
-  }
   const expressionText =
     typed ?? (visibility ? serializeVisibilityFormula(visibility.formula) : "");
   const checkedText = checkExpression(expressionText, conditions);
@@ -167,10 +147,11 @@ export function ConditionalVisibility({
     if (advanced) {
       const pending =
         typed === null ? null : checkExpression(typed, nextConditions);
-      write(
-        nextConditions,
-        pending?.ok ? pending.value : (visibility?.formula ?? name),
-      );
+      const formula = pending?.ok
+        ? pending.value
+        : (visibility?.formula ?? name);
+      if (typed !== null) setBuffer({ text: typed, formula });
+      write(nextConditions, formula);
     } else {
       writeSimple(nextConditions, {
         combinator,
@@ -223,7 +204,7 @@ export function ConditionalVisibility({
 
   const replaceExpression = (chosen: Combinator) => {
     setExpressionRequested(false);
-    setTyped(null);
+    setBuffer(null);
     writeSimple(conditions, {
       combinator: chosen,
       rules: sortedConditionNames(conditions).map((name) => ({
@@ -249,8 +230,17 @@ export function ConditionalVisibility({
                 : checkedText.error
           }
           onChange={(text) => {
-            setTyped(text);
             const checked = checkExpression(text, conditions);
+            setBuffer(
+              visibility === undefined && text.trim() === ""
+                ? null
+                : {
+                    text,
+                    formula: checked.ok
+                      ? checked.value
+                      : (visibility?.formula ?? null),
+                  },
+            );
             if (
               checked.ok &&
               !(visibility && sameFormula(checked.value, visibility.formula))
@@ -327,7 +317,7 @@ export function ConditionalVisibility({
             className={BUTTON_CLASS}
             onClick={() => {
               setExpressionRequested(false);
-              setTyped(null);
+              setBuffer(null);
             }}
           >
             Use all/any rules
