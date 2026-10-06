@@ -138,8 +138,14 @@ test("forgets a newly joined browser and hides its link", async () => {
     screen.getByLabelText("Why do you want to join the Alliance?"),
     { target: { value: "To help" } },
   );
-  fireEvent.click(screen.getByLabelText("I commit to join the Alliance."));
-  fireEvent.click(screen.getByRole("button", { name: /Join the waitlist/ }));
+  fireEvent.click(
+    screen.getByLabelText(
+      "I understand that I'm joining the Alliance, which means weekly 15-minute projects.",
+    ),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: /Join the Alliance waitlist/ }),
+  );
   fireEvent.click(await forgetButton());
 
   await screen.findByLabelText("Email");
@@ -157,7 +163,7 @@ test("holds the form until the browser state answers", async () => {
   expect(screen.getByLabelText("Email").hasAttribute("disabled")).toBe(true);
   expect(
     screen
-      .getByRole("button", { name: /Join the waitlist/ })
+      .getByRole("button", { name: /Join the Alliance waitlist/ })
       .hasAttribute("disabled"),
   ).toBe(true);
 

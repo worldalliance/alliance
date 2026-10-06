@@ -1,8 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import {
+  ContractEvent,
+  compareContractEventsNewestFirst,
+} from "src/user/entities/contract-event.entity";
+import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
 import { inviteClaimableSql, inviteClaimedSql } from "src/user/invite-claim";
 import type { Repository } from "src/utils/Repository";
-import { Brackets, type SelectQueryBuilder } from "typeorm";
+import { Brackets, In, type SelectQueryBuilder } from "typeorm";
 import {
   type WaitlistEntryFilterDto,
   type WaitlistEntryPage,
@@ -133,6 +138,45 @@ export class WaitlistEntryAdminService {
     return new Map(rows.map((row) => [row.id, row.inviteState]));
   }
 
+  private async findContractEvents(
+    ids: number[],
+  ): Promise<Map<number, ContractEvent[]>> {
+    const invites = ids.length
+      ? await this.entryRepository.manager.getRepository(OnetimeInvite).find({
+          select: {
+            id: true,
+            waitlistEntryId: true,
+            invitedUser: {
+              id: true,
+              contractEvents: {
+                id: true,
+                type: true,
+                date: true,
+                automatic: true,
+                contractId: true,
+              },
+            },
+          },
+          where: { waitlistEntryId: In(ids) },
+          relations: { invitedUser: { contractEvents: true } },
+        })
+      : [];
+    const eventsByEntry = new Map<number, ContractEvent[]>();
+    for (const invite of invites) {
+      if (invite.waitlistEntryId === null)
+        throw new Error("waitlist invite has no entry");
+      if (!invite.invitedUser) continue;
+      if (!invite.invitedUser.contractEvents)
+        throw new Error("contract events not loaded");
+      const events = eventsByEntry.get(invite.waitlistEntryId) ?? [];
+      events.push(...invite.invitedUser.contractEvents);
+      eventsByEntry.set(invite.waitlistEntryId, events);
+    }
+    for (const events of eventsByEntry.values())
+      events.sort(compareContractEventsNewestFirst);
+    return eventsByEntry;
+  }
+
   async search(dto: WaitlistEntrySearchDto): Promise<WaitlistEntryPage> {
     const query = this.filtered(dto.filter)
       .leftJoinAndSelect("entry.organization", "organization")
@@ -164,9 +208,10 @@ export class WaitlistEntryAdminService {
       .addOrderBy("entry.id")
       .getManyAndCount();
     const ids = entries.map((entry) => entry.id);
-    const [stateById, tagsByEntry] = await Promise.all([
+    const [stateById, tagsByEntry, eventsByEntry] = await Promise.all([
       this.findInviteStates(ids),
       this.tagService.findForEntries(ids),
+      this.findContractEvents(ids),
     ]);
 
     return {
@@ -175,7 +220,12 @@ export class WaitlistEntryAdminService {
         if (inviteState === undefined) {
           throw new Error(`no invite state for waitlist entry ${entry.id}`);
         }
-        return { entry, inviteState, tags: tagsByEntry.get(entry.id) ?? [] };
+        return {
+          entry,
+          inviteState,
+          tags: tagsByEntry.get(entry.id) ?? [],
+          contractEvents: eventsByEntry.get(entry.id) ?? [],
+        };
       }),
       total,
     };

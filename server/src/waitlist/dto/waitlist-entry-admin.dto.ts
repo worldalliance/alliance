@@ -22,6 +22,8 @@ import {
   ValidateNested,
   validateSync,
 } from "class-validator";
+import { ContractEventDto } from "src/user/dto/user.dto";
+import type { ContractEvent } from "src/user/entities/contract-event.entity";
 import { toDateTime, trimToNull } from "src/utils/transforms";
 import {
   type WaitlistEntry,
@@ -230,6 +232,7 @@ export type AdminWaitlistEntry = {
   entry: WaitlistEntry;
   inviteState: WaitlistInviteState;
   tags: WaitlistTag[];
+  contractEvents: ContractEvent[];
 };
 
 export class AdminWaitlistEntryDto {
@@ -272,6 +275,9 @@ export class AdminWaitlistEntryDto {
   @ApiProperty({ type: () => WaitlistTagDto, isArray: true })
   tags: WaitlistTagDto[];
 
+  @ApiProperty({ type: () => ContractEventDto, isArray: true })
+  contractEvents: ContractEventDto[];
+
   constructor(input: AdminWaitlistEntry) {
     const { entry } = input;
     this.id = entry.id;
@@ -292,6 +298,9 @@ export class AdminWaitlistEntryDto {
     this.unsubscribedAt = entry.unsubscribedAt;
     this.spamStatus = entry.spamStatus;
     this.inviteState = input.inviteState;
+    this.contractEvents = input.contractEvents.map(
+      (event) => new ContractEventDto(event),
+    );
     this.tags = input.tags.map((tag) => new WaitlistTagDto(tag));
   }
 }

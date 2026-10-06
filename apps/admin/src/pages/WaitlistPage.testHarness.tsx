@@ -31,6 +31,7 @@ const entry = (
   spamStatus: "clean",
   inviteState: "none",
   tags: [],
+  contractEvents: [],
   ...fields,
 });
 

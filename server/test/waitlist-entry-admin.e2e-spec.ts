@@ -5,6 +5,10 @@ import {
   CampaignKind,
 } from "../src/campaign/entities/campaign.entity";
 import {
+  ContractEvent,
+  ContractEventType,
+} from "../src/user/entities/contract-event.entity";
+import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "../src/user/entities/onetime-invite.entity";
@@ -175,6 +179,81 @@ describe("Waitlist entry admin (e2e)", () => {
     expect(
       await searchIds({ sourceLinkIds: [link.id], mobilized: true }),
     ).toEqual([referred.id]);
+  });
+
+  it("returns every contract event of linked accounts newest first", async () => {
+    const organization = await saveOrganization("Contract History Org");
+    const waiting = await saveEntry({ organizationId: organization.id });
+    const claimed = await saveEntry({ organizationId: organization.id });
+    const noEvents = await saveEntry({ organizationId: organization.id });
+    const userRepo = ctx.dataSource.getRepository(User);
+    const invite = await saveInvite(claimed, { deletedAt: new Date() });
+    const user = await userRepo.save(
+      userRepo.create({
+        email: `history-${Math.random()}@example.com`,
+        password: "password",
+        name: "History Test",
+        referralSource: ReferralSource.OnetimeInvite,
+        referredByInvite: invite,
+      }),
+    );
+    await userRepo.save(
+      userRepo.create({
+        email: `no-events-${Math.random()}@example.com`,
+        password: "password",
+        name: "No Events Test",
+        referralSource: ReferralSource.OnetimeInvite,
+        referredByInvite: await saveInvite(noEvents, {}),
+      }),
+    );
+    const dates = [
+      "2026-09-01T12:00:00.000Z",
+      "2026-09-02T12:00:00.000Z",
+      "2026-09-03T12:00:00.000Z",
+      "2026-09-04T12:00:00.000Z",
+    ];
+    const types = [
+      ContractEventType.SIGNED,
+      ContractEventType.SUSPENDED,
+      ContractEventType.SIGNED,
+      ContractEventType.SUSPENDED,
+    ];
+    const eventRepo = ctx.dataSource.getRepository(ContractEvent);
+    for (const [index, type] of types.entries()) {
+      await eventRepo.save({
+        user: { id: user.id },
+        type,
+        date: new Date(dates[index]),
+        contractId:
+          type === ContractEventType.SIGNED ? ctx.defaultContractId : null,
+      });
+    }
+    const res = await search({ organizationIds: [organization.id] }).expect(
+      200,
+    );
+    expect(res.body.entries).toEqual([
+      expect.objectContaining({
+        id: waiting.id,
+        inviteState: WaitlistInviteState.None,
+        contractEvents: [],
+      }),
+      expect.objectContaining({
+        id: claimed.id,
+        inviteState: WaitlistInviteState.Claimed,
+        contractEvents: [...types].reverse().map((type, index) => ({
+          type,
+          date: dates[3 - index],
+          automatic: false,
+          contractId:
+            type === ContractEventType.SIGNED ? ctx.defaultContractId : null,
+        })),
+      }),
+      expect.objectContaining({
+        id: noEvents.id,
+        inviteState: WaitlistInviteState.Claimed,
+        contractEvents: [],
+      }),
+    ]);
   });
 
   it("searches names and emails, treating wildcards literally", async () => {

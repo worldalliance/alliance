@@ -10,6 +10,7 @@ import {
   Film,
   Handshake,
   ImageUp,
+  Link as LinkIcon,
   ListChecks,
   ListOrdered,
   Mail,
@@ -123,6 +124,11 @@ const SidebarNav = ({
       folder: SidebarFolder.InvitesSharing,
       label: "Invites & Sharing",
       links: [
+        {
+          to: "/invite-links",
+          label: "Invite Links",
+          icon: <LinkIcon size={16} />,
+        },
         { to: "/invites", label: "User Invites", icon: <UserPlus size={16} /> },
         {
           to: "/invite-message-template",

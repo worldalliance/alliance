@@ -228,7 +228,8 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
           disabled={restoring}
           className="accent-green size-4 shrink-0"
         />
-        I commit to join the Alliance.
+        I understand that I&apos;m joining the Alliance, which means weekly
+        15-minute projects.
       </label>
       <Button
         type="submit"
@@ -236,7 +237,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         disabled={restoring || submit.isPending || !referralKnown || linkFailed}
         className={ACCOUNT_BUTTON}
       >
-        {submit.isPending ? "Joining…" : "Join the waitlist"}
+        {submit.isPending ? "Joining…" : "Join the Alliance waitlist"}
         <SiteArrow className="size-2.5" />
       </Button>
       {submit.isError && !linkFailed && (

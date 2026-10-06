@@ -1607,6 +1607,29 @@ export type UpdateExternalShareTargetDto = {
     paramName?: string;
 };
 
+export type InviteLinkKind = 'individual' | 'multi_use';
+
+export type InviteLinkSort = 'newest' | 'oldest' | 'most_used' | 'least_used';
+
+export type InviteLinkAdminDto = {
+    id: string;
+    kind: InviteLinkKind;
+    label: string;
+    url: string;
+    createdAt: string;
+    accountsCreated: number;
+    initialSigners: number;
+    retainedSigners: number;
+};
+
+export type InviteLinkPageDto = {
+    items: Array<InviteLinkAdminDto>;
+    totalCount: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+};
+
 export type CampaignKind = 'campaign' | 'organization';
 
 export type CampaignDto = {
@@ -4511,6 +4534,7 @@ export type AdminWaitlistEntryDto = {
     spamStatus: WaitlistSpamStatus;
     inviteState: WaitlistInviteState;
     tags: Array<WaitlistTagDto>;
+    contractEvents: Array<ContractEventDto>;
 };
 
 export type WaitlistEntryPageDto = {
@@ -7675,6 +7699,33 @@ export type ExternalShareTargetsUpdateAdminResponses = {
 };
 
 export type ExternalShareTargetsUpdateAdminResponse = ExternalShareTargetsUpdateAdminResponses[keyof ExternalShareTargetsUpdateAdminResponses];
+
+export type InviteLinkAdminSearchData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        limit?: number;
+        kind?: InviteLinkKind;
+        sort?: InviteLinkSort;
+    };
+    url: '/share-urls/admin/invite-links';
+};
+
+export type InviteLinkAdminSearchErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type InviteLinkAdminSearchError = InviteLinkAdminSearchErrors[keyof InviteLinkAdminSearchErrors];
+
+export type InviteLinkAdminSearchResponses = {
+    200: InviteLinkPageDto;
+};
+
+export type InviteLinkAdminSearchResponse = InviteLinkAdminSearchResponses[keyof InviteLinkAdminSearchResponses];
 
 export type CampaignFindAllAdminData = {
     body?: never;

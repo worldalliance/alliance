@@ -1,13 +1,30 @@
 import type {
   AdminWaitlistEntryDto,
+  ContractEventType,
   WaitlistEntrySort,
+  WaitlistInviteState,
 } from "@alliance/shared/client/types.gen";
-import { formatMediumDateEnUS } from "@alliance/shared/lib/dateFormatters";
+import {
+  formatDateTime,
+  formatMediumDateEnUS,
+} from "@alliance/shared/lib/dateFormatters";
 import { cn } from "@alliance/shared/styles/util";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import React from "react";
 import { INVITE_STATE_LABELS, SPAM_STATUSES } from "../../lib/waitlistFilter";
 import SpamToggle from "./SpamToggle";
+
+const CONTRACT_EVENT_LABELS: Record<ContractEventType, string> = {
+  signed: "Signed",
+  suspended: "Suspended",
+};
+
+const ACCOUNT_CREATED_LABELS: Record<WaitlistInviteState, string> = {
+  none: "No",
+  unused: "No",
+  revoked: "No",
+  claimed: "Yes",
+};
 
 enum SortColumn {
   Joined = "joined",
@@ -144,6 +161,12 @@ const WaitlistTable: React.FC<WaitlistTableProps> = ({
             <th className="px-3 py-2 font-medium text-zinc-600">Tags</th>
             <th className="px-3 py-2 font-medium text-zinc-600">Mobilized</th>
             <th className="px-3 py-2 font-medium text-zinc-600">Invite</th>
+            <th className="px-3 py-2 font-medium text-zinc-600">
+              Account created
+            </th>
+            <th className="px-3 py-2 font-medium text-zinc-600">
+              Contract history
+            </th>
             <th className="px-3 py-2 font-medium text-zinc-600">Spam</th>
           </tr>
         </thead>
@@ -218,6 +241,23 @@ const WaitlistTable: React.FC<WaitlistTableProps> = ({
               </td>
               <td className="px-3 py-2">
                 {INVITE_STATE_LABELS[entry.inviteState]}
+              </td>
+              <td className="px-3 py-2">
+                {ACCOUNT_CREATED_LABELS[entry.inviteState]}
+              </td>
+              <td className="px-3 py-2">
+                {entry.contractEvents.length ? (
+                  <ul className="space-y-1 whitespace-nowrap">
+                    {entry.contractEvents.map((event, index) => (
+                      <li key={index}>
+                        {CONTRACT_EVENT_LABELS[event.type]} ·{" "}
+                        {formatDateTime(new Date(event.date))}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  "No contract events"
+                )}
               </td>
               <td className="px-3 py-2">
                 <SpamToggle

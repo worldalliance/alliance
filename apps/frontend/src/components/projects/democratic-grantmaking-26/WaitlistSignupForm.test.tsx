@@ -82,8 +82,14 @@ const fill = ({ reason }: { reason?: string } = {}) => {
       { target: { value: reason } },
     );
   }
-  fireEvent.click(screen.getByLabelText("I commit to join the Alliance."));
-  fireEvent.click(screen.getByRole("button", { name: /Join the waitlist/ }));
+  fireEvent.click(
+    screen.getByLabelText(
+      "I understand that I'm joining the Alliance, which means weekly 15-minute projects.",
+    ),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: /Join the Alliance waitlist/ }),
+  );
 };
 
 test("asks a direct visitor why they want to join and shows their personal link", async () => {
@@ -209,7 +215,7 @@ test("stops at an inactive link until the visitor continues without it", async (
   await screen.findByText("This invitation link is not active.");
   expect(
     screen.getByRole<HTMLButtonElement>("button", {
-      name: /Join the waitlist/,
+      name: /Join the Alliance waitlist/,
     }).disabled,
   ).toBe(true);
 
@@ -239,7 +245,7 @@ test("tries a failed referral lookup again without dropping the link", async () 
   await screen.findByText("Acme Foundation");
   expect(
     screen.getByRole<HTMLButtonElement>("button", {
-      name: /Join the waitlist/,
+      name: /Join the Alliance waitlist/,
     }).disabled,
   ).toBe(false);
 });
@@ -265,7 +271,7 @@ test("keeps a checked link usable when a later refetch fails", async () => {
   ).toBeNull();
   expect(
     screen.getByRole<HTMLButtonElement>("button", {
-      name: /Join the waitlist/,
+      name: /Join the Alliance waitlist/,
     }).disabled,
   ).toBe(false);
 });
@@ -294,7 +300,7 @@ test("stops at a link that went inactive before the entry was sent", async () =>
   expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   expect(
     screen.getByRole<HTMLButtonElement>("button", {
-      name: /Join the waitlist/,
+      name: /Join the Alliance waitlist/,
     }).disabled,
   ).toBe(true);
 
@@ -305,7 +311,9 @@ test("stops at a link that went inactive before the entry was sent", async () =>
     await screen.findByLabelText("Why do you want to join the Alliance?"),
     { target: { value: "Still keen" } },
   );
-  fireEvent.click(screen.getByRole("button", { name: /Join the waitlist/ }));
+  fireEvent.click(
+    screen.getByRole("button", { name: /Join the Alliance waitlist/ }),
+  );
   await screen.findByText("You’re on the waitlist");
   expect(sent[1].linkCode).toBeUndefined();
 });

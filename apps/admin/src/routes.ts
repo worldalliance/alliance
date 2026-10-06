@@ -6,6 +6,7 @@ export default [
     layout("sidebar.tsx", [
       route("/actions", "pages/Actions.tsx"),
       route("/timeline", "pages/NewTimelinePage.tsx"),
+      route("/invite-links", "pages/InviteLinksPage.tsx"),
       route("/invites", "pages/InvitesPage.tsx"),
       route("/invites/graph", "pages/InviteGraphPage.tsx"),
       route("/friend-graph", "pages/FriendGraphPage.tsx"),

@@ -28,8 +28,8 @@ export const FEATURED_PEOPLE: ProjectPerson[] = [
 
 export const ABOUT_SECTIONS = [
   {
-    heading: "What is this?",
-    body: "This is an upcoming Alliance project. External funders have committed $100,000 to a pool that Alliance members and an expert panel will decide how to donate.",
+    heading: "What this is",
+    body: "This is an Alliance project that launches this fall when we reach 1,000 members. Outside funders have put up $100,000 for a nonprofit, and Alliance members help decide which one gets it. Join the Alliance to take part.",
   },
   {
     heading: "How will this work?",
