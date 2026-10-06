@@ -11,6 +11,7 @@ import {
 } from "../src/actions/entities/action-event.entity";
 import {
   ActionUpdate,
+  ActionUpdateNotificationMode,
   ActionUpdateNotifyType,
 } from "../src/actions/entities/action-update.entity";
 import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
@@ -252,6 +253,7 @@ describe("Member-facing reads of cohort decisions (e2e)", () => {
         date: now,
         shortNotifString: "Update",
         notifyType: ActionUpdateNotifyType.ActionCohort,
+        notificationMode: ActionUpdateNotificationMode.Legacy,
         schemaSnapshotId: snapshot.id,
       });
       await ctx.app.get(ActionsService).notifyActionUpdate(update.id);

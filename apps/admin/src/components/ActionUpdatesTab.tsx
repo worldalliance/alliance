@@ -1,3 +1,4 @@
+import { R } from "@alliance/common/result";
 import {
   ActionEventDto,
   actionsCreateUpdateAdmin,
@@ -18,6 +19,11 @@ import {
   ACTION_UPDATE_NOTIFY_TYPE_LABELS,
   ACTION_UPDATE_NOTIFY_TYPES,
 } from "../lib/actionUpdateNotifyTypes";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import {
+  COLLECTIVE_RESULT_DESCRIPTIONS,
+  RecognitionModeSelect,
+} from "./ActionUpdateRecognition";
 
 interface ActionUpdatesTabProps {
   actionId: number;
@@ -32,6 +38,7 @@ const defaultNewUpdate: CreateActionUpdateDto = {
   date: new Date().toISOString(),
   notifyType: "none",
   shortNotifString: "",
+  notificationMode: "normal",
 };
 
 const ActionUpdatesTab = ({
@@ -44,9 +51,12 @@ const ActionUpdatesTab = ({
   const navigate = useNavigate();
   const [newUpdate, setNewUpdate] =
     useState<CreateActionUpdateDto>(defaultNewUpdate);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const shortNotifString = newUpdate.shortNotifString ?? "";
   const isSubmitDisabled =
+    creating ||
     !newUpdate.title.trim() ||
     !shortNotifString.trim() ||
     (newUpdate.notifyType === "tag" && !newUpdate.tagId);
@@ -56,16 +66,27 @@ const ActionUpdatesTab = ({
       return;
     }
 
-    const response = await actionsCreateUpdateAdmin({
-      path: { id: actionId },
-      body: newUpdate,
-    });
-
-    if (response.response.ok && response.data) {
-      setUpdates([...updates, response.data]);
-      setNewUpdate(defaultNewUpdate);
-      navigate(`/actions/${actionId}/updates/${response.data.id}`);
+    setCreateError(null);
+    setCreating(true);
+    const created = await R.fromPromise(
+      actionsCreateUpdateAdmin({
+        path: { id: actionId },
+        body: newUpdate,
+        throwOnError: true,
+      }),
+      (thrown) => {
+        console.error(thrown);
+        return adminRefusalMessage(thrown, "Couldn't create the update.");
+      },
+    );
+    setCreating(false);
+    if (!created.ok) {
+      setCreateError(created.error);
+      return;
     }
+    setUpdates([...updates, created.value.data]);
+    setNewUpdate(defaultNewUpdate);
+    navigate(`/actions/${actionId}/updates/${created.value.data.id}`);
   };
 
   const handleDelete = async (id: number) => {
@@ -113,10 +134,12 @@ const ActionUpdatesTab = ({
             />
           </label>
           <label className="flex flex-col text-sm gap-1">
-            <span className="font-bold">Short notification text</span>
+            <span className="font-bold">Collective result</span>
             <span className="text-xs text-zinc-600">
-              An automatic &quot;Update: &quot; prefix will be added to this
-              text.
+              What the action achieved.{" "}
+              {COLLECTIVE_RESULT_DESCRIPTIONS[newUpdate.notificationMode]}{" "}
+              You&apos;ll write each member&apos;s contribution formula after
+              creating the update.
             </span>
             <input
               type="text"
@@ -159,6 +182,19 @@ const ActionUpdatesTab = ({
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="flex flex-col text-sm gap-1">
+              <span className="font-bold">Recognition copy</span>
+              <span className="text-xs text-zinc-600">
+                How completers&apos; own contributions are worded.
+              </span>
+              <RecognitionModeSelect
+                className="p-2 rounded-md bg-white text-base"
+                value={newUpdate.notificationMode}
+                onChange={(mode) =>
+                  setNewUpdate({ ...newUpdate, notificationMode: mode })
+                }
+              />
             </label>
             <label className="flex flex-col text-sm gap-1">
               <span className="font-bold">Date</span>
@@ -232,7 +268,12 @@ const ActionUpdatesTab = ({
           </div>
         </div>
       </Card>
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-3">
+        {createError && (
+          <p className="text-sm text-red-700" role="alert">
+            {createError}
+          </p>
+        )}
         <Button
           onClick={handleSubmit}
           color={ButtonColor.Black}

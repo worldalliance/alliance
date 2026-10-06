@@ -60,6 +60,10 @@ import {
   UpdateActionFormVariantDto,
 } from "./dto/action-form-variant.dto";
 import {
+  AdminActionUpdateDto,
+  RecognitionCheckDto,
+} from "./dto/action-update-recognition.dto";
+import {
   ActionActivityDto,
   ActionDto,
   ActionEventDto,
@@ -991,30 +995,30 @@ export class ActionsController {
 
   @Post("createUpdate/:id")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionUpdateDto })
+  @ApiOkResponse({ type: AdminActionUpdateDto })
   async createUpdateAdmin(
     @Param("id", ParseIntPipe) id: number,
     @Body() createActionUpdateDto: CreateActionUpdateDto,
-  ): Promise<ActionUpdateDto> {
-    return new ActionUpdateDto(
+  ): Promise<AdminActionUpdateDto> {
+    return new AdminActionUpdateDto(
       await this.actionsService.createActionUpdate(id, createActionUpdateDto),
     );
   }
 
   @Get("updates/admin/:id")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionUpdateDto })
+  @ApiOkResponse({ type: AdminActionUpdateDto })
   async findOneUpdateAdmin(
     @Param("id", ParseIntPipe) id: number,
-  ): Promise<ActionUpdateDto> {
-    return new ActionUpdateDto(
+  ): Promise<AdminActionUpdateDto> {
+    return new AdminActionUpdateDto(
       await this.actionsService.findOneActionUpdate(id),
     );
   }
 
   @Patch("updateUpdate/:id")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionUpdateDto })
+  @ApiOkResponse({ type: AdminActionUpdateDto })
   @ApiResponse({
     status: 409,
     description:
@@ -1023,8 +1027,8 @@ export class ActionsController {
   async updateUpdateAdmin(
     @Param("id", ParseIntPipe) id: number,
     @Body() updateActionUpdateDto: UpdateActionUpdateDto,
-  ): Promise<ActionUpdateDto> {
-    return new ActionUpdateDto(
+  ): Promise<AdminActionUpdateDto> {
+    return new AdminActionUpdateDto(
       await this.actionsService.updateActionUpdate(id, updateActionUpdateDto),
     );
   }
@@ -1032,23 +1036,35 @@ export class ActionsController {
   @Post("updates/:id/notify")
   @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ type: ActionUpdateDto })
+  @ApiOkResponse({ type: AdminActionUpdateDto })
   @ApiResponse({
     status: 409,
     description: "The update has already been notified about.",
   })
   async notifyUpdateAdmin(
     @Param("id", ParseIntPipe) id: number,
-  ): Promise<ActionUpdateDto> {
-    return new ActionUpdateDto(
+  ): Promise<AdminActionUpdateDto> {
+    return new AdminActionUpdateDto(
       await this.actionsService.notifyActionUpdate(id),
+    );
+  }
+
+  @Post("updates/:id/recognition-check")
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: RecognitionCheckDto })
+  async checkUpdateRecognitionAdmin(
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<RecognitionCheckDto> {
+    return new RecognitionCheckDto(
+      await this.actionsService.checkActionUpdateRecognition(id),
     );
   }
 
   @Post("updates/:id/unpublish")
   @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ type: ActionUpdateDto })
+  @ApiOkResponse({ type: AdminActionUpdateDto })
   @ApiResponse({
     status: 400,
     description:
@@ -1056,8 +1072,8 @@ export class ActionsController {
   })
   async unpublishUpdateAdmin(
     @Param("id", ParseIntPipe) id: number,
-  ): Promise<ActionUpdateDto> {
-    return new ActionUpdateDto(
+  ): Promise<AdminActionUpdateDto> {
+    return new AdminActionUpdateDto(
       await this.actionsService.unpublishActionUpdateUntilDate(id),
     );
   }
@@ -1065,15 +1081,15 @@ export class ActionsController {
   @Post("updates/:id/publish-now")
   @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ type: ActionUpdateDto })
+  @ApiOkResponse({ type: AdminActionUpdateDto })
   @ApiResponse({
     status: 400,
     description: "The update is not waiting on a future date.",
   })
   async publishUpdateNowAdmin(
     @Param("id", ParseIntPipe) id: number,
-  ): Promise<ActionUpdateDto> {
-    return new ActionUpdateDto(
+  ): Promise<AdminActionUpdateDto> {
+    return new AdminActionUpdateDto(
       await this.actionsService.publishActionUpdateNow(id),
     );
   }

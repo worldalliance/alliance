@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsNotEmpty, IsOptional } from "class-validator";
+import { Allow, IsEnum, IsNotEmpty, IsOptional } from "class-validator";
 import { Notification } from "src/notifs/entities/notification.entity";
 import {
   ACTION_UPDATE_SNAPSHOT_HISTORY_TABLE,
@@ -18,6 +18,7 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
   RelationId,
+  type EntityManager,
 } from "typeorm";
 import { ActionEvent } from "./action-event.entity";
 import { Action } from "./action.entity";
@@ -27,6 +28,13 @@ export enum ActionUpdateNotifyType {
   ActionCohort = "action_cohort",
   AllMembers = "all_members",
   Tag = "tag",
+}
+
+/** Legacy is only for updates that predate recognition copy. */
+export enum ActionUpdateNotificationMode {
+  Legacy = "legacy",
+  Normal = "normal",
+  Retrospective = "retrospective",
 }
 
 @Entity()
@@ -140,6 +148,36 @@ export class ActionUpdate {
   @IsOptional()
   notifiedAt: Date | null;
 
+  @Column({
+    type: "enum",
+    enum: ActionUpdateNotificationMode,
+    enumName: "ActionUpdateNotificationMode",
+    // Lets a server that predates the column keep inserting, mid-deploy or after a rollback.
+    default: ActionUpdateNotificationMode.Legacy,
+  })
+  @IsEnum(ActionUpdateNotificationMode)
+  notificationMode: ActionUpdateNotificationMode;
+
+  /** `ContributionFormula`, read in normal mode. */
+  @Column({ type: "jsonb", nullable: true })
+  @IsOptional()
+  contributionFormula: unknown | null;
+
+  /** `ContributionFormula`, read in retrospective mode. */
+  @Column({ type: "jsonb", nullable: true })
+  @IsOptional()
+  retrospectiveContributionFormula: unknown | null;
+
+  /** When recognition copy was frozen for every recipient. */
+  @Column({ type: "timestamptz", nullable: true })
+  @IsOptional()
+  recognitionPreparedAt: Date | null;
+
+  /** Why a due recognition send is waiting; cleared once it goes out. */
+  @Column({ type: "text", nullable: true })
+  @IsOptional()
+  notificationHeldReason: string | null;
+
   @OneToMany(() => Notification, (notif) => notif.actionUpdate)
   @Type(() => Notification)
   @ApiPropertyOptional({ type: () => Notification, isArray: true })
@@ -152,4 +190,9 @@ export class ActionUpdate {
   @ApiPropertyOptional({ type: () => Tag, nullable: true })
   @IsOptional()
   tag?: Relation<Tag> | null;
+}
+
+/** Edits, sends and the recognition freeze serialize on this row lock. */
+export async function lockActionUpdateRow(em: EntityManager, id: number) {
+  await em.query("SELECT id FROM action_update WHERE id = $1 FOR UPDATE", [id]);
 }

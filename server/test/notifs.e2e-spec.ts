@@ -2,6 +2,7 @@ import { NOTIFS_LOADED_AT_HEADER } from "@alliance/common/notifs";
 import { milliseconds } from "date-fns";
 import {
   ActionUpdate,
+  ActionUpdateNotificationMode,
   ActionUpdateNotifyType,
 } from "src/actions/entities/action-update.entity";
 import { Action } from "src/actions/entities/action.entity";
@@ -564,6 +565,7 @@ describe("Notifications (e2e)", () => {
         shortNotifString:
           "## Heading\n\nSome **bold** and *italic* text with a [link](https://example.com)",
         notifyType: ActionUpdateNotifyType.None,
+        notificationMode: ActionUpdateNotificationMode.Legacy,
         schemaSnapshotId: snapshot.id,
       }),
     );

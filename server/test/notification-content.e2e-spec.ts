@@ -8,6 +8,7 @@ import {
 } from "src/actions/entities/action-event.entity";
 import {
   ActionUpdate,
+  ActionUpdateNotificationMode,
   ActionUpdateNotifyType,
 } from "src/actions/entities/action-update.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
@@ -158,6 +159,7 @@ describe("Notification content stability (e2e)", () => {
       title: "Update",
       visibleAt: new Date(Date.now() - milliseconds({ minutes: 1 })),
       notifyType: ActionUpdateNotifyType.None,
+      notificationMode: ActionUpdateNotificationMode.Legacy,
       schemaSnapshotId: snapshot.id,
     });
   };

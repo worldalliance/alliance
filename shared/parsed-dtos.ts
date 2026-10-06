@@ -23,6 +23,10 @@ import {
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
 import {
+  contributionFormulaSchema,
+  type ContributionFormula,
+} from "@alliance/common/forms/contribution-formula";
+import {
   readFormulaChoices,
   type FormulaChoices,
 } from "@alliance/common/forms/formula-options";
@@ -129,4 +133,21 @@ export function parseFormulaChoices(value: unknown): FormulaChoices {
     return {};
   }
   return read.value;
+}
+
+/** An action update's saved contribution formula; null when none is written. */
+export function parseContributionFormula(
+  value: unknown,
+): Result<ContributionFormula | null, ZodError> {
+  if (value === null) return R.success(null);
+  const parsed = contributionFormulaSchema.safeParse(value);
+  if (!parsed.success) {
+    console.error(
+      "Saved contribution formula is unreadable",
+      parsed.error,
+      value,
+    );
+    return R.failure(parsed.error);
+  }
+  return R.success(parsed.data);
 }

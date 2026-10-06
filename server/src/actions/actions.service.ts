@@ -147,6 +147,12 @@ import {
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
 import { ActionFormVariantService } from "./action-form-variant.service";
+import { recognitionModeOf } from "./action-update-recognition";
+import {
+  ActionUpdateRecognitionService,
+  assertContributionFormulasWritable,
+  describeRecognitionCheck,
+} from "./action-update-recognition.service";
 import {
   checkActionShowsWhenEntriesArrive,
   isActionUpdatePublished,
@@ -218,6 +224,7 @@ import {
 import {
   ActionUpdate,
   ActionUpdateNotifyType,
+  lockActionUpdateRow,
 } from "./entities/action-update.entity";
 import {
   Action,
@@ -371,6 +378,7 @@ export class ActionsService {
     public eventEmitter: EventEmitter2,
     private readonly communityService: CommunityService,
     private readonly notifsService: NotifsService,
+    private readonly recognitionService: ActionUpdateRecognitionService,
     private readonly actionEventRecipientService: ActionEventRecipientService,
     private readonly actionEventReminderService: ActionEventReminderService,
     private readonly likeNotificationService: LikeNotificationService,
@@ -3060,6 +3068,7 @@ export class ActionsService {
     id: number,
     createActionUpdateDto: CreateActionUpdateDto,
   ): Promise<ActionUpdate> {
+    assertContributionFormulasWritable(createActionUpdateDto);
     const action = await this.actionRepository.findOneOrFail({
       where: { id },
     });
@@ -3138,6 +3147,17 @@ export class ActionsService {
     // Resolve the audience before claiming: a failure here (a deleted tag, say)
     // has sent nothing, and leaving the claim unset keeps the retry open.
     const recipients = await this.findActionUpdateNotifRecipients(actionUpdate);
+    const recognition =
+      recognitionModeOf(actionUpdate.notificationMode) !== null;
+    if (recognition) {
+      const check = await this.recognitionService.check({
+        update: actionUpdate,
+        userIds: recipients.map((user) => user.id),
+      });
+      if (check.problems.length || check.members.length) {
+        throw new BadRequestException(describeRecognitionCheck(check));
+      }
+    }
 
     // The claim and the sends commit together. The claim is the only thing
     // standing between a retry and a second notification, so committing it
@@ -3173,14 +3193,42 @@ export class ActionsService {
       // edit or unpublish that committed first.
       const claimedUpdate = await em.findOneByOrFail(ActionUpdate, { id });
       await this.assertActionShowsWhenEntriesArrive(claimedUpdate, em);
-      await this.notifsService.createActionUpdateNotifs({
-        actionUpdate: claimedUpdate,
-        users: recipients,
-        em,
-      });
+      if (recognition) {
+        await this.recognitionService.recordAudience({
+          em,
+          actionUpdateId: id,
+          userIds: recipients.map((user) => user.id),
+        });
+      } else {
+        await this.notifsService.createActionUpdateNotifs({
+          actionUpdate: claimedUpdate,
+          users: recipients,
+          em,
+        });
+      }
     });
 
+    if (recognition) {
+      // The send is already claimed and the cron retries preparing it, so a
+      // failure here mustn't report the send itself as failed.
+      await this.recognitionService
+        .prepare(id, new Date())
+        .catch((error: unknown) =>
+          this.logger.error(`preparing action update ${id} failed`, error),
+        );
+    }
     return this.findOneActionUpdate(id);
+  }
+
+  async checkActionUpdateRecognition(id: number) {
+    const actionUpdate = await this.findOneActionUpdate(id);
+    return this.recognitionService.checkForAdmin({
+      update: actionUpdate,
+      recipientIds: async () =>
+        (await this.findActionUpdateNotifRecipients(actionUpdate)).map(
+          (user) => user.id,
+        ),
+    });
   }
 
   private async assertActionShowsWhenEntriesArrive(
@@ -3205,9 +3253,7 @@ export class ActionsService {
     id: number,
     em: EntityManager,
   ): Promise<ActionUpdate> {
-    await em.query("SELECT id FROM action_update WHERE id = $1 FOR UPDATE", [
-      id,
-    ]);
+    await lockActionUpdateRow(em, id);
     return this.findOneActionUpdate(id, em);
   }
 
@@ -3249,6 +3295,7 @@ export class ActionsService {
       }
       return { schema, expectedSchemaSnapshotId };
     });
+    assertContributionFormulasWritable(rest);
 
     // The freeze takes its own pool connections, so it runs before the
     // transaction rather than while holding one.
@@ -3266,6 +3313,15 @@ export class ActionsService {
     // read-modify-write would revert a concurrent schema save.
     await this.actionUpdateRepository.manager.transaction(async (em) => {
       const actionUpdate = await this.lockActionUpdate(id, em);
+
+      if (
+        rest.notificationMode !== undefined &&
+        recognitionModeOf(actionUpdate.notificationMode) === null
+      ) {
+        throw new BadRequestException(
+          "This update predates recognition copy, so it keeps its original notification.",
+        );
+      }
 
       if (schemaWrite) {
         const written = await this.writeSchemaOrThrow({

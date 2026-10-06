@@ -56,6 +56,10 @@ import { ProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
 import { TaskAwayStatus } from "src/utils/action-user";
 import { UserActionRelation } from "../action-activity-status";
+import {
+  RECOGNITION_MODES,
+  type RecognitionMode,
+} from "../action-update-recognition";
 import { ActionActivity } from "../entities/action-activity.entity";
 import { ActionEvent, ActionStatus } from "../entities/action-event.entity";
 import {
@@ -1003,10 +1007,34 @@ export class CreateActionUpdateDto extends PickType(ActionUpdate, [
   @ApiPropertyOptional()
   @IsOptional()
   tagId?: string;
+
+  @ApiProperty({
+    enum: RECOGNITION_MODES,
+    enumName: "ActionUpdateRecognitionMode",
+  })
+  @IsEnum(RECOGNITION_MODES)
+  notificationMode: RecognitionMode;
+
+  @ApiPropertyOptional({ type: Object, nullable: true })
+  @IsOptional()
+  @IsObject()
+  contributionFormula?: Record<string, unknown> | null;
+
+  @ApiPropertyOptional({ type: Object, nullable: true })
+  @IsOptional()
+  @IsObject()
+  retrospectiveContributionFormula?: Record<string, unknown> | null;
 }
 
 export class UpdateActionUpdateDto extends PartialType(
-  PickType(ActionUpdate, ["title", "date", "notifyType", "shortNotifString"]),
+  IntersectionType(
+    PickType(ActionUpdate, ["title", "date", "notifyType", "shortNotifString"]),
+    PickType(CreateActionUpdateDto, [
+      "notificationMode",
+      "contributionFormula",
+      "retrospectiveContributionFormula",
+    ]),
+  ),
 ) {
   @ApiPropertyOptional({ type: Number, nullable: true })
   @IsOptional()
