@@ -2,8 +2,10 @@ import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { inviteClaimantSql } from "src/user/invite-claim";
 import type { Repository } from "src/utils/Repository";
 import { randomToken } from "src/utils/random";
+import type { EntityManager } from "typeorm";
 import {
   MessageChannel,
   type MessageContext,
@@ -76,4 +78,25 @@ export class MessageTrackingService {
     });
     return tracking?.actionEventNotif?.notificationId ?? null;
   }
+}
+
+/**
+ * Removes the waitlist emails' attribution for each entry whose invite the
+ * member claimed, with their openings. Call before deleting the member.
+ * Another claimant of the same entry doesn't keep it: a claim is the only
+ * stored link to the recipient, and a forwarded invite can't be told apart.
+ */
+export async function deleteClaimedWaitlistTracking(params: {
+  manager: EntityManager;
+  userId: number;
+}): Promise<void> {
+  await params.manager
+    .createQueryBuilder()
+    .delete()
+    .from(MessageTracking)
+    .where(
+      `"waitlistEntryId" IN (SELECT invite."waitlistEntryId" FROM onetime_invite invite JOIN "user" claimant ON ${inviteClaimantSql({ invite: "invite", claimant: "claimant" })} WHERE claimant.id = :userId)`,
+      { userId: params.userId },
+    )
+    .execute();
 }

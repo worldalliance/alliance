@@ -23,7 +23,12 @@ import {
   NotificationCategory,
 } from "src/notifs/entities/notification.entity";
 import { PosthogService } from "src/posthog/posthog.service";
+import {
+  OnetimeInvite,
+  OnetimeInviteStatus,
+} from "src/user/entities/onetime-invite.entity";
 import { ReferralSource, User } from "src/user/entities/user.entity";
+import { UserService } from "src/user/user.service";
 import { WaitlistEntry } from "src/waitlist/entities/waitlist-entry.entity";
 import supertest from "supertest";
 import { createTestApp, TestContext } from "./e2e-test-utils";
@@ -68,6 +73,30 @@ describe("Link openings (e2e)", () => {
       }),
     );
   };
+
+  const saveEntry = (name: string) =>
+    ctx.dataSource.getRepository(WaitlistEntry).save({
+      name,
+      email: `${name.toLowerCase()}@example.org`,
+      code: `${name.toLowerCase()}-code`,
+      reason: "To help",
+      committedAt: new Date(),
+    });
+
+  const sendWaitlistEmail = (
+    entry: Pick<WaitlistEntry, "id"> & { email: string },
+    context = {},
+  ) =>
+    mailService.sendWaitlistStaffEmail({
+      recipient: entry.email,
+      content: { subject: "Hi", bodyHtml: "<p>Hi</p>", unsubscribeUrl: "" },
+      tracking: {
+        owner: { waitlistEntryId: entry.id },
+        source: MessageSource.WaitlistCampaign,
+        context,
+        actionEventNotifId: null,
+      },
+    });
 
   const previousAppUrl = process.env.APP_URL;
 
@@ -272,22 +301,10 @@ describe("Link openings (e2e)", () => {
   });
 
   it("attributes a waitlist email to an entry with no account", async () => {
-    const entry = await ctx.dataSource.getRepository(WaitlistEntry).save({
-      name: "Entrant",
-      email: "entrant@example.org",
-      code: "entrant-code",
-      reason: "To help",
-      committedAt: new Date(),
-    });
-    const mail = await mailService.sendWaitlistStaffEmail({
-      recipient: entry.email,
-      content: { subject: "Hi", bodyHtml: "<p>Hi</p>", unsubscribeUrl: "" },
-      tracking: {
-        owner: { waitlistEntryId: entry.id },
-        source: MessageSource.WaitlistCampaign,
-        context: { waitlistEmailBatchId: 4, waitlistEmailRecipientId: 9 },
-        actionEventNotifId: null,
-      },
+    const entry = await saveEntry("Entrant");
+    const mail = await sendWaitlistEmail(entry, {
+      waitlistEmailBatchId: 4,
+      waitlistEmailRecipientId: 9,
     });
 
     const capture = jest.spyOn(ctx.app.get(PosthogService), "capture");
@@ -330,5 +347,53 @@ describe("Link openings (e2e)", () => {
       0,
     );
     await post(opening(mms!.cid!)).expect(404);
+  });
+
+  const saveConvert = async (name: string) => {
+    const entry = await saveEntry(name);
+    const invite = await ctx.dataSource.getRepository(OnetimeInvite).save({
+      invitee: name,
+      code: `${name.toLowerCase()}-invite`,
+      status: OnetimeInviteStatus.LINK_USED,
+      invitingUser: null,
+      waitlistEntryId: entry.id,
+    });
+    const users = ctx.dataSource.getRepository(User);
+    const member = await users.save(
+      users.create({
+        email: `${name.toLowerCase()}-member@example.org`,
+        password: "pass",
+        name: `${name} Example`,
+        referralSource: ReferralSource.OnetimeInvite,
+        referredByInvite: invite,
+      }),
+    );
+    return { entry, member };
+  };
+
+  it("deletes a converted waitlist entry's openings with the member's account", async () => {
+    const { entry, member: convert } = await saveConvert("Convert");
+    const mail = await sendWaitlistEmail(entry);
+    const converted = opening(mail.cid!, { destination: "/signup" });
+    await post(converted).expect(204);
+    const unclaimed = await saveEntry("Unclaimed");
+    const unclaimedMail = await sendWaitlistEmail(unclaimed);
+    const { entry: bystander } = await saveConvert("Bystander");
+    const bystanderMail = await sendWaitlistEmail(bystander);
+
+    await ctx.app.get(UserService).deleteUserAdmin({
+      userId: convert.id,
+      adminId: ctx.adminUserId,
+      reason: "Asked to be removed",
+      confirmationEmail: convert.email,
+    });
+
+    expect(await trackingFor(mail.cid!)).toBeNull();
+    expect(await openings().countBy({ openingId: converted.openingId })).toBe(
+      0,
+    );
+    expect(await trackingFor(unclaimedMail.cid!)).not.toBeNull();
+    expect(await trackingFor(bystanderMail.cid!)).not.toBeNull();
+    await post(opening(mail.cid!)).expect(404);
   });
 });

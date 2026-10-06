@@ -51,6 +51,7 @@ import { escapeSlackText } from "src/eventlog/slack-format";
 import { City } from "src/geo/city.entity";
 import { getImageSource, ImagesService } from "src/images/images.service";
 import { InviteFeedEvents } from "src/invite-feed.events";
+import { deleteClaimedWaitlistTracking } from "src/link-tracking/message-tracking.service";
 import { MailService } from "src/mail/mail.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
@@ -3219,7 +3220,9 @@ export class UserService {
   /**
    * Hard-deletes a member. Everything keyed to them goes with the row: forum
    * posts and comments, action activity (so completion counts drop), messages,
-   * notifications, and their own event-log history.
+   * notifications, and their own event-log history. The click history of a
+   * waitlist entry whose invite they claimed is deleted first, while the claim
+   * still links it to them.
    *
    * The record of the deletion is therefore written with a null `userId` —
    * `EventLog.user` cascades, so an entry attributed to the deleted member
@@ -3269,6 +3272,7 @@ export class UserService {
       : "";
 
     const forwardAudit = await this.dataSource.transaction(async (manager) => {
+      await deleteClaimedWaitlistTracking({ manager, userId: deleted.id });
       await manager.delete(User, deleted.id);
 
       return this.eventLogService.sendMessageInTransaction(manager, {
