@@ -2,6 +2,8 @@ import {
   asCountryCode,
   formatPhoneNumberForDisplay,
   formatPhoneNumberNational,
+  hasPhoneExtension,
+  internationalPhoneCountry,
   isCanonicalE164,
   looksLikePhoneNumber,
   normalizePhoneNumber,
@@ -180,6 +182,15 @@ describe("looksLikePhoneNumber on long input", () => {
   });
 });
 
+describe("hasPhoneExtension", () => {
+  it("tells a number with an extension from one without", () => {
+    expect(hasPhoneExtension("415-555-2671 ext. 12")).toBe(true);
+    expect(hasPhoneExtension("415-555-2671 x12")).toBe(true);
+    expect(hasPhoneExtension("415-555-2671")).toBe(false);
+    expect(hasPhoneExtension("#4155")).toBe(false);
+  });
+});
+
 describe("phoneSearchDigits on long input", () => {
   it("reads digits then separators then text without backtracking", () => {
     expect(phoneSearchDigits(`1${" ".repeat(100_000)}a`)).toBe("1");
@@ -278,6 +289,14 @@ describe("phoneNumberCountry", () => {
     expect(phoneNumberCountry("0751181445")).toBeNull();
     expect(phoneNumberCountry(null)).toBeNull();
     expect(phoneNumberCountry("")).toBeNull();
+  });
+});
+
+describe("internationalPhoneCountry", () => {
+  it("names the country of a +-prefixed number only", () => {
+    expect(internationalPhoneCountry(" +447578497969")).toBe("GB");
+    expect(internationalPhoneCountry("07578497969")).toBeNull();
+    expect(internationalPhoneCountry("4155552671")).toBeNull();
   });
 });
 

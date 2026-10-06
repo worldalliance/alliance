@@ -1,4 +1,10 @@
 import {
+  DEFAULT_PHONE_COUNTRY,
+  internationalPhoneCountry,
+  type CountryCode,
+} from "@alliance/common/phone";
+import { R } from "@alliance/common/result";
+import {
   waitlistCreate,
   type CreateWaitlistEntryDto,
   type WaitlistReferralDto,
@@ -14,7 +20,7 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { RotateCw } from "lucide-react";
-import type { FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { ACCOUNT_BUTTON } from "../../../onboarding/chrome";
 import { SiteArrow } from "../../../site/ui";
 import {
@@ -24,6 +30,10 @@ import {
 } from "./useWaitlist";
 import { ForgetBrowser, RememberedInvite } from "./WaitlistBrowserMemory";
 import { WaitlistConfirmation } from "./WaitlistConfirmation";
+import {
+  parseWaitlistContact,
+  WaitlistContactInput,
+} from "./WaitlistContactInput";
 import { WAITLIST_FIELD } from "./waitlistStyles";
 
 const SOCIAL_PROOF_THRESHOLD = 3;
@@ -74,6 +84,13 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
   } = useWaitlistReferral();
   const mailEnabled = useWaitlistMailEnabled();
   const browser = useWaitlistBrowser();
+  const [contact, setContact] = useState("");
+  const [country, setCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY);
+  const [contactError, setContactError] = useState<string | null>(null);
+  const blurError = (inCountry: CountryCode) => {
+    const parsed = parseWaitlistContact(contact, inCountry);
+    return contact.trim() && R.isFailure(parsed) ? parsed.error : null;
+  };
   const submit = useMutation({
     mutationFn: (body: CreateWaitlistEntryDto) =>
       waitlistCreate({ body, throwOnError: true }).then((res) => res.data),
@@ -95,7 +112,14 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
     <>
       {inviteCode && <RememberedInvite code={inviteCode} />}
       {(remembered || inviteCode) && (
-        <ForgetBrowser onForgotten={() => submit.reset()} />
+        <ForgetBrowser
+          onForgotten={() => {
+            submit.reset();
+            setContact("");
+            setCountry(DEFAULT_PHONE_COUNTRY);
+            setContactError(null);
+          }}
+        />
       )}
     </>
   );
@@ -111,9 +135,14 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const parsed = parseWaitlistContact(contact, country);
+    if (R.isFailure(parsed)) {
+      setContactError(parsed.error);
+      return;
+    }
     submit.mutate({
       name: String(form.get("name") ?? ""),
-      email: String(form.get("email") ?? ""),
+      ...parsed.value,
       reason: needsReason ? String(form.get("reason") ?? "") : undefined,
       committed: true,
       ...codes,
@@ -197,16 +226,22 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         disabled={restoring}
         className={WAITLIST_FIELD}
       />
-      <input
-        name="email"
-        type="email"
-        autoComplete="email"
-        placeholder="Email"
-        aria-label="Email"
-        required
-        maxLength={320}
+      <WaitlistContactInput
+        value={contact}
+        onChange={(next) => {
+          setContact(next);
+          setContactError(null);
+          const typed = internationalPhoneCountry(next);
+          if (typed) setCountry(typed);
+        }}
+        country={country}
+        onCountryChange={(next) => {
+          setCountry(next);
+          if (contactError) setContactError(blurError(next));
+        }}
+        error={contactError}
+        onBlur={() => setContactError(blurError(country))}
         disabled={restoring}
-        className={WAITLIST_FIELD}
       />
       {needsReason && (
         <textarea
@@ -250,7 +285,8 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         </p>
       )}
       <p className="text-center text-sm text-white/85">
-        By signing up, you agree to receive updates.
+        By joining, you agree to receive waitlist updates and your invitation by
+        email or text.
       </p>
     </form>
   );

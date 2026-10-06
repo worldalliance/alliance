@@ -76,6 +76,10 @@ export function looksLikePhoneNumber(input: string): boolean {
   return PHONE_LIKE.test(input.normalize("NFKC").trim());
 }
 
+export function hasPhoneExtension(input: string): boolean {
+  return NUMBER_BEFORE_EXTENSION.test(input.normalize("NFKC").trim());
+}
+
 /** Digits of the number alone, without any extension or bracketed trunk 0. */
 export function phoneSearchDigits(input: string | null | undefined): string {
   return (
@@ -150,6 +154,11 @@ export function phoneNumberCountry(
     return null;
   }
   return parsed.value.country ?? null;
+}
+
+/** A bare national number names no country without a region to read it in. */
+export function internationalPhoneCountry(input: string): CountryCode | null {
+  return input.trim().startsWith("+") ? phoneNumberCountry(input) : null;
 }
 
 /** Display-only national/international format; returns legacy input unchanged. */

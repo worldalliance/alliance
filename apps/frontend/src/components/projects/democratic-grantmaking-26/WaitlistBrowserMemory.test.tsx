@@ -64,8 +64,8 @@ test("restores a remembered entry's link instead of the form", async () => {
   renderForm();
 
   await screen.findByDisplayValue(/ref=abc123$/);
-  expect(screen.getByText("You’re on the waitlist")).toBeTruthy();
-  expect(screen.queryByLabelText("Email")).toBeNull();
+  expect(screen.getByText("You’re on the waitlist.")).toBeTruthy();
+  expect(screen.queryByLabelText("Email or mobile number")).toBeNull();
   expect(screen.queryByRole("button", { name: /Email me my link/ })).toBeNull();
 });
 
@@ -77,6 +77,7 @@ test("tells a remembered mobilized entry it was invited, without an invite link"
   renderForm();
 
   await screen.findByText("You’re invited to join");
+  screen.getByText("We sent you an invitation to join the Alliance.");
   expect(
     screen.queryByRole("link", { name: /Continue signing up/ }),
   ).toBeNull();
@@ -88,7 +89,7 @@ test("offers signup through a remembered invite", async () => {
 
   const link = await screen.findByRole("link", { name: /Continue signing up/ });
   expect(link.getAttribute("href")).toBe("/signup?ref=invite%2F1");
-  expect(screen.getByLabelText("Email")).toBeTruthy();
+  expect(screen.getByLabelText("Email or mobile number")).toBeTruthy();
 });
 
 test("forgets the browser and shows the form again", async () => {
@@ -100,7 +101,7 @@ test("forgets the browser and shows the form again", async () => {
 
   fireEvent.click(await forgetButton());
 
-  await screen.findByLabelText("Email");
+  await screen.findByLabelText("Email or mobile number");
   expect(forgotten).toBe(1);
   expect(
     screen.queryByRole("link", { name: /Continue signing up/ }),
@@ -123,7 +124,7 @@ test("keeps the remembered state and says so when forgetting fails", async () =>
 
 test("forgets a newly joined browser and hides its link", async () => {
   renderForm();
-  await screen.findByLabelText("Email");
+  await screen.findByLabelText("Email or mobile number");
   expect(
     screen.queryByRole("button", { name: "Forget this browser" }),
   ).toBeNull();
@@ -131,7 +132,7 @@ test("forgets a newly joined browser and hides its link", async () => {
   fireEvent.change(screen.getByLabelText("Full name"), {
     target: { value: "Test Person" },
   });
-  fireEvent.change(screen.getByLabelText("Email"), {
+  fireEvent.change(screen.getByLabelText("Email or mobile number"), {
     target: { value: "person@example.com" },
   });
   fireEvent.change(
@@ -148,7 +149,10 @@ test("forgets a newly joined browser and hides its link", async () => {
   );
   fireEvent.click(await forgetButton());
 
-  await screen.findByLabelText("Email");
+  const contact = await screen.findByLabelText<HTMLInputElement>(
+    "Email or mobile number",
+  );
+  expect(contact.value).toBe("");
   expect(screen.queryByLabelText("Your personal link")).toBeNull();
 });
 
@@ -160,7 +164,9 @@ test("holds the form until the browser state answers", async () => {
     });
   renderForm();
 
-  expect(screen.getByLabelText("Email").hasAttribute("disabled")).toBe(true);
+  expect(
+    screen.getByLabelText("Email or mobile number").hasAttribute("disabled"),
+  ).toBe(true);
   expect(
     screen
       .getByRole("button", { name: /Join the Alliance waitlist/ })
@@ -169,7 +175,9 @@ test("holds the form until the browser state answers", async () => {
 
   answer();
   await waitFor(() =>
-    expect(screen.getByLabelText("Email").hasAttribute("disabled")).toBe(false),
+    expect(
+      screen.getByLabelText("Email or mobile number").hasAttribute("disabled"),
+    ).toBe(false),
   );
 });
 
@@ -179,9 +187,11 @@ test("keeps the form usable when the browser state fails", async () => {
 
   await waitFor(
     () =>
-      expect(screen.getByLabelText("Email").hasAttribute("disabled")).toBe(
-        false,
-      ),
+      expect(
+        screen
+          .getByLabelText("Email or mobile number")
+          .hasAttribute("disabled"),
+      ).toBe(false),
     { timeout: 3000 },
   );
 });

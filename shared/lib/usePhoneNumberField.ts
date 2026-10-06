@@ -2,6 +2,7 @@ import {
   type CountryCode,
   DEFAULT_PHONE_COUNTRY,
   formatPhoneNumberNational,
+  internationalPhoneCountry,
   normalizePhoneNumber,
   phoneNumberCountry,
   phoneNumberForEditing,
@@ -24,10 +25,7 @@ export function usePhoneFieldCountry(
   value: string,
 ): [CountryCode, (country: CountryCode) => void] {
   const [picked, setPicked] = useState<CountryCode | null>(null);
-  const fromValue = useMemo(
-    () => (value.trim().startsWith("+") ? phoneNumberCountry(value) : null),
-    [value],
-  );
+  const fromValue = useMemo(() => internationalPhoneCountry(value), [value]);
   return [picked ?? fromValue ?? DEFAULT_PHONE_COUNTRY, setPicked];
 }
 
