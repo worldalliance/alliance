@@ -91,11 +91,20 @@ const bigLinkIconSchema = z.enum([
 ]);
 export type BigLinkIcon = z.infer<typeof bigLinkIconSchema>;
 
+/** Any icon this build does not know, e.g. one a newer admin saved, renders as the default. */
+export function bigLinkIconOrDefault(icon: string | undefined): BigLinkIcon {
+  const parsed = bigLinkIconSchema.safeParse(icon);
+  return parsed.success ? parsed.data : "messages-square";
+}
+
 const bigLinkContentSchema = z.strictObject({
   ...baseContentFields,
   text: z.string(),
+  /** With `externalTargetId`, the target's base URL: where viewers without a code go. */
   url: z.string(),
   icon: bigLinkIconSchema.optional(),
+  /** Links each signed-in member to this external share target with their own code appended. */
+  externalTargetId: z.number().int().positive().optional(),
 });
 
 export enum CopyTextFormat {
