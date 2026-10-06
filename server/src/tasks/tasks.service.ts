@@ -30,7 +30,6 @@ import {
   isQuestionField,
   type ListField,
   type ListFieldValue,
-  Page,
 } from "@alliance/common/forms/form-schema";
 import {
   type FormSchemaValidationError,
@@ -100,7 +99,6 @@ import { ContractDto } from "src/contract/dto/contract.dto";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { ForumService } from "src/forum/forum.service";
-import { getImageSource } from "src/images/images.service";
 import { MmsService } from "src/mms/mms.service";
 import { welcomeMessage } from "src/notifs/textnotifcontents";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
@@ -109,7 +107,6 @@ import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { toPlainTime } from "src/utils/plain-time";
 import type { Repository as TypedRepository } from "src/utils/Repository";
-import { getVideoSource } from "src/videos/videos.service";
 import { In, IsNull, type Repository } from "typeorm";
 import {
   CustomValidatorResponse,
@@ -154,7 +151,7 @@ import {
   SubmitFormDto,
   UpdateFormDto,
 } from "./form.dto";
-import { FormSnapshotService } from "./formsnapshot.service";
+import { FormSnapshotService, hashFormSchema } from "./formsnapshot.service";
 import {
   findFormsReadingForm,
   loadFormulaSourceForms,
@@ -167,6 +164,7 @@ import {
   withdrawalFormulaSources,
   withdrawnFormulaChoices,
 } from "./formula-sources";
+import { servedSchema } from "./served-schema";
 import {
   countVariableAggregates,
   type VariableAggregate,
@@ -456,30 +454,9 @@ export class TasksService {
   }
 
   async transformImageUrls(form: Form): Promise<Form> {
-    const schema = structuredClone(formSchemaOf(form.formSnapshot));
-    const pages = schema.pages;
-    const transformElement = (field: Page["fields"][number]): void => {
-      if (field.kind === "images") {
-        field.images = field.images.map((image) => ({
-          ...image,
-          src: getImageSource(image.src),
-        }));
-      }
-      if (field.kind === "video") {
-        field.src = getVideoSource(field.src);
-      }
-      if (field.kind === "accordion") {
-        for (const section of field.sections) {
-          section.blocks.forEach(transformElement);
-        }
-      }
-    };
-    for (const page of pages) {
-      page.fields.forEach(transformElement);
-    }
     form.formSnapshot = this.cloneFormSnapshotWithSchema(
       form.formSnapshot,
-      schema,
+      servedSchema(form.formSnapshot),
     );
     return form;
   }
@@ -1116,14 +1093,11 @@ export class TasksService {
           },
         },
       },
-      relations: {
-        form: { formSnapshot: true },
-      },
     });
     if (!fetchedFollowUpForm) {
       throw new NotFoundException("Follow-up form not found");
     }
-    const { form } = fetchedFollowUpForm;
+    const form = await this.getForm(fetchedFollowUpForm.formId);
     const followUpForm = parseFollowUpForm(fetchedFollowUpForm);
     if (!isFollowUpFormActive(followUpForm)) {
       throw new BadRequestException("Follow-up form is not active");
@@ -1365,6 +1339,13 @@ export class TasksService {
       throw new BadRequestException(
         "Form submission missing both formSnapshotId and schemaSnapshot",
       );
+    }
+    // getForm fills in contracts as well, which the history fallback does not rebuild.
+    if (
+      hashFormSchema(dto.schemaSnapshot) ===
+      hashFormSchema(form.formSnapshot.schema)
+    ) {
+      return form.formSnapshot;
     }
     return this.formSnapshotService.findHistoricalBySchemaOrThrow(
       form.id,
