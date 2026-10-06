@@ -1,7 +1,6 @@
 import { Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { JwtService } from "@nestjs/jwt";
-import { InjectRepository } from "@nestjs/typeorm";
 import {
   ConnectedSocket,
   OnGatewayConnection,
@@ -11,11 +10,14 @@ import {
   WebSocketServer,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
-import { Repository } from "typeorm";
+import { SessionService } from "../auth/session.service";
 import { verifyAccessToken } from "../auth/tokens";
 import { InviteFeedEvents } from "../invite-feed.events";
-import { extractTokenFromSocket } from "../messaging/gateway.utils";
-import { User } from "../user/entities/user.entity";
+import {
+  disconnectUserSockets,
+  extractTokenFromSocket,
+} from "../messaging/gateway.utils";
+import { type AccountDeletedPayload, UserEvents } from "../user/user.events";
 import type { EventLogDto } from "./dto/event-log.dto";
 import { EventLogEvents } from "./eventlog.events";
 
@@ -37,8 +39,7 @@ export class EventLogGateway
   constructor(
     private readonly eventEmitter: EventEmitter2,
     private readonly jwtService: JwtService,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly sessionService: SessionService,
   ) {
     this.eventEmitter.on(
       EventLogEvents.Created,
@@ -47,6 +48,10 @@ export class EventLogGateway
     this.eventEmitter.on(
       InviteFeedEvents.Created,
       this.handleInviteCreated.bind(this),
+    );
+    this.eventEmitter.on(
+      UserEvents.AccountDeleted,
+      this.handleAccountDeleted.bind(this),
     );
   }
 
@@ -61,12 +66,9 @@ export class EventLogGateway
 
       const payload = await verifyAccessToken(this.jwtService, token);
 
-      const user = await this.userRepository.findOne({
-        where: { id: payload.sub },
-        select: ["id", "admin"],
-      });
+      const user = await this.sessionService.currentUser(payload);
 
-      if (!user?.admin) {
+      if (!user.admin) {
         this.logger.warn(`Event log gateway: non-admin user ${payload.sub}`);
         client.disconnect(true);
         return;
@@ -103,5 +105,13 @@ export class EventLogGateway
 
   private handleInviteCreated() {
     this.server.to("event-log-feed").emit("invite-created");
+  }
+
+  private async handleAccountDeleted({ userId }: AccountDeletedPayload) {
+    await disconnectUserSockets({
+      server: this.server,
+      userId,
+      logger: this.logger,
+    });
   }
 }

@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
-import { UserService } from "../../user/user.service";
+import { SessionService } from "../session.service";
 import { sessionFromRequest } from "../tokens";
 import { attachSession } from "./attach-session";
 
@@ -14,7 +14,7 @@ import { attachSession } from "./attach-session";
 export class CommunityLeaderGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
-    private userService: UserService,
+    private sessionService: SessionService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -24,10 +24,8 @@ export class CommunityLeaderGuard implements CanActivate {
       const payload = await sessionFromRequest(this.jwtService, request);
       attachSession(request, payload);
 
-      const isLeader = await this.userService.isCommunityLeader(payload.email);
-      const isAdmin = await this.userService.isAdmin(payload.sub);
-
-      if (!isLeader && !isAdmin) {
+      const user = await this.sessionService.currentUser(payload);
+      if (!user.isCommunityLeader && !user.admin) {
         throw new UnauthorizedException();
       }
       return true;

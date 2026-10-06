@@ -579,7 +579,7 @@ export class OAuthController {
       );
     }
     return new AuthMeResponseDto({
-      user: await this.authService.getProfile(unlinked.value.email),
+      user: await this.authService.getProfile(unlinked.value.id),
     });
   }
 
