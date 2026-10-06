@@ -15,7 +15,6 @@ import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import { EyeOff, SquarePen } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import type { RecognitionMode } from "../lib/actionUpdateDetails";
 import {
   ACTION_UPDATE_NOTIFY_TYPE_LABELS,
   ACTION_UPDATE_NOTIFY_TYPES,
@@ -34,11 +33,7 @@ interface ActionUpdatesTabProps {
   availableTags: TagDto[];
 }
 
-type NewActionUpdate = CreateActionUpdateDto & {
-  notificationMode: RecognitionMode;
-};
-
-const defaultNewUpdate: NewActionUpdate = {
+const defaultNewUpdate: CreateActionUpdateDto = {
   title: "",
   date: new Date().toISOString(),
   notifyType: "none",
@@ -54,7 +49,8 @@ const ActionUpdatesTab = ({
   availableTags,
 }: ActionUpdatesTabProps) => {
   const navigate = useNavigate();
-  const [newUpdate, setNewUpdate] = useState<NewActionUpdate>(defaultNewUpdate);
+  const [newUpdate, setNewUpdate] =
+    useState<CreateActionUpdateDto>(defaultNewUpdate);
   const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 

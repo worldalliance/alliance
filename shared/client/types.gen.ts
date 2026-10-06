@@ -3194,7 +3194,7 @@ export type CreateActionUpdateDto = {
     notifyType: ActionUpdateNotifyType;
     associatedEventId?: number;
     tagId?: string;
-    notificationMode?: ActionUpdateRecognitionMode;
+    notificationMode: ActionUpdateRecognitionMode;
     contributionFormula?: {
         [key: string]: unknown;
     } | null;

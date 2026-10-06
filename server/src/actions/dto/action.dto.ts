@@ -1008,13 +1008,12 @@ export class CreateActionUpdateDto extends PickType(ActionUpdate, [
   @IsOptional()
   tagId?: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     enum: RECOGNITION_MODES,
     enumName: "ActionUpdateRecognitionMode",
   })
-  @IsOptional()
   @IsEnum(RECOGNITION_MODES)
-  notificationMode?: RecognitionMode;
+  notificationMode: RecognitionMode;
 
   @ApiPropertyOptional({ type: Object, nullable: true })
   @IsOptional()

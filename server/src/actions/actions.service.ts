@@ -223,7 +223,6 @@ import {
 } from "./entities/action-suite.entity";
 import {
   ActionUpdate,
-  ActionUpdateNotificationMode,
   ActionUpdateNotifyType,
   lockActionUpdateRow,
 } from "./entities/action-update.entity";
@@ -3094,9 +3093,6 @@ export class ActionsService {
     const actionUpdate = await this.actionUpdateRepository.save(
       this.actionUpdateRepository.create({
         ...createActionUpdateDto,
-        notificationMode:
-          createActionUpdateDto.notificationMode ??
-          ActionUpdateNotificationMode.Legacy,
         schemaSnapshotId: emptySnapshot.id,
         visibleAt: null,
         action,

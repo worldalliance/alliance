@@ -383,11 +383,17 @@ describe("action update recognition (e2e)", () => {
   });
 
   it("refuses legacy copy on new updates, and recognition copy on old ones", async () => {
-    await admin("post", `/actions/createUpdate/${action.id}`, {
+    const legacy = {
       title: "Legacy",
       shortNotifString: "x",
       date: new Date().toISOString(),
       notifyType: "none",
+    };
+    await admin("post", `/actions/createUpdate/${action.id}`, legacy).expect(
+      400,
+    );
+    await admin("post", `/actions/createUpdate/${action.id}`, {
+      ...legacy,
       notificationMode: "legacy",
     }).expect(400);
 

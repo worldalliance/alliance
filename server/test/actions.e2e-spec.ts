@@ -4239,6 +4239,7 @@ describe("Actions (e2e)", () => {
           shortNotifString: "Published",
           date: new Date().toISOString(),
           notifyType: "none",
+          notificationMode: "normal",
         })
         .expect(201);
       await request(ctx.app.getHttpServer())
