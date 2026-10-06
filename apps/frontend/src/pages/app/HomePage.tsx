@@ -24,6 +24,7 @@ import { useBoundedIndex } from "@alliance/shared/lib/useBoundedIndex";
 import useGlobalFeed from "@alliance/shared/lib/useGlobalFeed";
 import { resetHomeFeed } from "@alliance/shared/lib/useHomeFeed";
 import { runAsync } from "@alliance/shared/lib/utils";
+import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
 import AggregateProgressBarBlock from "@alliance/sharedweb/ui/AggregateProgressBarBlock";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import LargeGeneralUpdateCard from "@alliance/sharedweb/ui/LargeGeneralUpdateCard";
@@ -47,7 +48,6 @@ import {
   mapFormViewsToActionIds,
   sidebarProgressActionCandidates,
 } from "../../lib/fetchTaskFormProgressViews";
-import { useMediaQuery } from "../../lib/useMediaQuery";
 import { useTaskActionsData } from "../../lib/useTaskActionsData";
 import { useCIDFromParams } from "../../lib/utils";
 import { MOCK_TASK_FORMS, MOCK_TASKS } from "../../onboarding/mockTasks";

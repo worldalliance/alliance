@@ -1,9 +1,9 @@
 import { useSignupFaces } from "@alliance/shared/lib/useSignupFaces";
 import { cn } from "@alliance/shared/styles/util";
+import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
 import type { StyleWithVars } from "@alliance/sharedweb/ui/cssVars";
 import { useState } from "react";
 import { FitStage } from "../../components/FitStage";
-import { useMediaQuery } from "../../lib/useMediaQuery";
 import { MEMBER_FACES } from "../memberFaces";
 import {
   ActionExampleCard,
