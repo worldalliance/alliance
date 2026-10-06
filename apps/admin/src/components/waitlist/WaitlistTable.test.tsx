@@ -69,6 +69,7 @@ it("shows account creation and every dated signing and suspension", () => {
         sort="joined_desc"
         onSortChange={() => {}}
         onFilterReferrer={() => {}}
+        onInvite={() => {}}
       />
     </ToastProvider>,
     queryWrapper(),
@@ -120,6 +121,7 @@ it("shows a phone entry's number for display", () => {
         sort="joined_desc"
         onSortChange={() => {}}
         onFilterReferrer={() => {}}
+        onInvite={() => {}}
       />
     </ToastProvider>,
     queryWrapper(),

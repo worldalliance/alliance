@@ -96,6 +96,7 @@ type WaitlistTableProps = {
   sort: WaitlistEntrySort;
   onSortChange: (sort: WaitlistEntrySort) => void;
   onFilterReferrer: (entryId: number) => void;
+  onInvite: (entry: AdminWaitlistEntryDto) => void;
 };
 
 const WaitlistTable: React.FC<WaitlistTableProps> = ({
@@ -107,6 +108,7 @@ const WaitlistTable: React.FC<WaitlistTableProps> = ({
   sort,
   onSortChange,
   onFilterReferrer,
+  onInvite,
 }) => {
   const pageSelected =
     entries.length > 0 && entries.every((entry) => selectedIds.has(entry.id));
@@ -198,7 +200,10 @@ const WaitlistTable: React.FC<WaitlistTableProps> = ({
                 {entry.unsubscribedAt && (
                   <p className="text-xs text-amber-700">Unsubscribed</p>
                 )}
-                <EntryContactActions entry={entry} />
+                <EntryContactActions
+                  entry={entry}
+                  onInvite={() => onInvite(entry)}
+                />
               </td>
               <td className="px-3 py-2 max-w-xs">
                 <p

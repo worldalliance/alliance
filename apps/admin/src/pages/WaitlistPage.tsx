@@ -1,5 +1,6 @@
 import { pickForCount, withCount } from "@alliance/common/plural";
 import type {
+  AdminWaitlistEntryDto,
   WaitlistEntryFilterDto,
   WaitlistEntrySort,
 } from "@alliance/shared/client/types.gen";
@@ -21,6 +22,7 @@ import {
 } from "../components/waitlist/controlClasses";
 import EmailComposer from "../components/waitlist/email/EmailComposer";
 import EntryActions from "../components/waitlist/EntryActions";
+import { InvitationDialog } from "../components/waitlist/EntryContactActions";
 import TagActions from "../components/waitlist/TagActions";
 import TagManager from "../components/waitlist/TagManager";
 import WaitlistFilters from "../components/waitlist/WaitlistFilters";
@@ -62,6 +64,7 @@ const WaitlistPage: React.FC = () => {
   const [filtersKey, setFiltersKey] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showMetrics, setShowMetrics] = useState(false);
+  const [inviting, setInviting] = useState<AdminWaitlistEntryDto | null>(null);
   const selectionVersion = useRef(0);
   const location = useLocation();
   const navigate = useNavigate();
@@ -255,6 +258,10 @@ const WaitlistPage: React.FC = () => {
         />
       )}
 
+      {inviting && (
+        <InvitationDialog entry={inviting} onClose={() => setInviting(null)} />
+      )}
+
       {loadError && <p className="text-sm text-red-500">{loadError}</p>}
 
       {entries.data &&
@@ -283,6 +290,7 @@ const WaitlistPage: React.FC = () => {
                   withFilterField({ filter, key: "referrerIds", value: [id] }),
                 )
               }
+              onInvite={setInviting}
             />
           </div>
         ))}

@@ -25,6 +25,7 @@ import {
   WaitlistEntryFilterBodyDto,
   WaitlistEntryIdsBodyDto,
   WaitlistEntryIdsDto,
+  WaitlistEntryInviteDto,
   WaitlistEntryPageDto,
   WaitlistEntrySearchDto,
 } from "./dto/waitlist-entry-admin.dto";
@@ -41,6 +42,7 @@ import {
 } from "./dto/waitlist-tag.dto";
 import { WaitlistCohortService } from "./waitlist-cohort.service";
 import { WaitlistEntryAdminService } from "./waitlist-entry-admin.service";
+import { WaitlistInviteService } from "./waitlist-invite.service";
 import { WaitlistLinkService } from "./waitlist-link.service";
 import { WaitlistMetricsService } from "./waitlist-metrics.service";
 import { WaitlistTagService } from "./waitlist-tag.service";
@@ -54,6 +56,7 @@ export class WaitlistAdminController {
     private readonly tagService: WaitlistTagService,
     private readonly cohortService: WaitlistCohortService,
     private readonly metricsService: WaitlistMetricsService,
+    private readonly inviteService: WaitlistInviteService,
   ) {}
 
   @Post("entries/search")
@@ -145,6 +148,18 @@ export class WaitlistAdminController {
         spam: false,
         staffUserId: user.sub,
       }),
+    );
+  }
+
+  /** Reuses the entry's unused invite, else issues one. Sends nothing. */
+  @Post("entries/:id/invite")
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: WaitlistEntryInviteDto })
+  async inviteEntryAdmin(
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<WaitlistEntryInviteDto> {
+    return new WaitlistEntryInviteDto(
+      await this.inviteService.issueForEntry(id),
     );
   }
 

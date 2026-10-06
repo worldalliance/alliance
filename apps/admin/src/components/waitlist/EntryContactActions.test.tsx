@@ -1,8 +1,20 @@
-import type { AdminWaitlistEntryDto } from "@alliance/shared/client/types.gen";
+import type {
+  AdminWaitlistEntryDto,
+  WaitlistEntryInviteDto,
+} from "@alliance/shared/client/types.gen";
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
+import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as config from "@alliance/sharedweb/lib/config";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, jest } from "bun:test";
-import EntryContactActions from "./EntryContactActions";
+import EntryContactActions, { InvitationDialog } from "./EntryContactActions";
 
 const phoneEntry: AdminWaitlistEntryDto = {
   id: 7,
@@ -23,7 +35,21 @@ const phoneEntry: AdminWaitlistEntryDto = {
   contractEvents: [],
 };
 
+let posts: { path: string; body: unknown }[];
+let invite: WaitlistEntryInviteDto;
+
+serveApi(
+  routes({
+    "POST /waitlist/admin/entries/:id/invite": ({ request }) => {
+      posts.push({ path: new URL(request.url).pathname, body: null });
+      return Response.json(invite);
+    },
+  }),
+);
+
 beforeEach(() => {
+  posts = [];
+  invite = { code: "inv123", issued: true, placement: "no_organization" };
   jest.spyOn(config, "getInviteBaseUrl").mockReturnValue("https://site.test");
 });
 
@@ -32,11 +58,33 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
+const renderActions = (
+  entry: AdminWaitlistEntryDto,
+  onInvite: () => void = () => {},
+) =>
+  render(
+    <ToastProvider>
+      <EntryContactActions entry={entry} onInvite={onInvite} />
+    </ToastProvider>,
+    queryWrapper(),
+  );
+
+const renderInvitation = (entry: AdminWaitlistEntryDto) => {
+  const query = queryWrapper();
+  render(
+    <ToastProvider>
+      <InvitationDialog entry={entry} onClose={() => {}} />
+    </ToastProvider>,
+    query,
+  );
+  return query.client;
+};
+
 it("copies the referral link", async () => {
   const writeText = jest
     .spyOn(navigator.clipboard, "writeText")
     .mockResolvedValue();
-  render(<EntryContactActions entry={phoneEntry} />);
+  renderActions(phoneEntry);
 
   fireEvent.click(
     screen.getByRole("button", { name: "Referral link for Phone Person" }),
@@ -53,7 +101,7 @@ it("shows the referral link and says when copying fails", async () => {
   jest
     .spyOn(navigator.clipboard, "writeText")
     .mockRejectedValue(new DOMException("denied"));
-  render(<EntryContactActions entry={phoneEntry} />);
+  renderActions(phoneEntry);
 
   fireEvent.click(
     screen.getByRole("button", { name: "Referral link for Phone Person" }),
@@ -65,4 +113,49 @@ it("shows the referral link and says when copying fails", async () => {
   );
   fireEvent.click(screen.getByRole("button", { name: "Copy referral link" }));
   await screen.findByText(/Couldn’t copy/);
+  expect(posts).toEqual([]);
+});
+
+it("asks for the entry's invitation dialog", () => {
+  const onInvite = jest.fn();
+  renderActions(phoneEntry, onInvite);
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Signup invitation for Phone Person" }),
+  );
+
+  expect(onInvite).toHaveBeenCalledTimes(1);
+});
+
+it("shows the entry's state, then gets an invitation with its placement warning", async () => {
+  renderInvitation({ ...phoneEntry, unsubscribedAt: "2026-09-02T00:00:00Z" });
+
+  screen.getByText(/already claimed an invitation/);
+  screen.getByText("This entry is unsubscribed.");
+  expect(posts).toEqual([]);
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Get signup invitation" }),
+  );
+
+  const link = await screen.findByLabelText<HTMLInputElement>(
+    "Signup invitation link",
+  );
+  expect(link.value).toBe("https://site.test/signup?ref=inv123");
+  screen.getByText(/This invitation has no organization, so staff place/);
+  expect(posts).toEqual([
+    { path: "/waitlist/admin/entries/7/invite", body: null },
+  ]);
+});
+
+it("refetches the entries once an invitation is issued", async () => {
+  const client = renderInvitation(phoneEntry);
+  const invalidate = jest.spyOn(client, "invalidateQueries");
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Get signup invitation" }),
+  );
+
+  await screen.findByLabelText("Signup invitation link");
+  await waitFor(() => expect(invalidate).toHaveBeenCalled());
 });
