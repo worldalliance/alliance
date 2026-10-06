@@ -23,7 +23,7 @@ export function WaitlistConfirmation({
   mobilized,
 }: {
   shareCode: string | null;
-  /** Null when the browser remembered the entry rather than submitting it. */
+  /** Null unless this browser just submitted the entry with an email. */
   email: string | null;
   mailEnabled: boolean;
   mobilized: boolean;
@@ -35,12 +35,12 @@ export function WaitlistConfirmation({
     <div role="status" className="flex flex-col gap-3">
       <p className="flex items-center gap-2 text-2xl">
         <Check className="text-green size-6 shrink-0" aria-hidden />
-        {mobilized ? "You’re invited to join" : "You’re on the waitlist"}
+        {mobilized ? "You’re invited to join" : "You’re on the waitlist."}
       </p>
       <p className="text-white/85">
         {mobilized
-          ? "We emailed you an invitation to join the Alliance."
-          : "We’ll email you when you can join the Alliance."}
+          ? "We sent you an invitation to join the Alliance."
+          : "We’ll be in touch when you can join the Alliance."}
       </p>
       {url && (
         <>

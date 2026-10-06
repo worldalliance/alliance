@@ -69,13 +69,17 @@ const renderForm = (search = "", client = new QueryClient()) => {
   );
 };
 
-const fill = ({ reason }: { reason?: string } = {}) => {
+const contactInput = () =>
+  screen.getByLabelText<HTMLInputElement>("Email or mobile number");
+
+const fill = ({
+  reason,
+  contact = "person@example.com",
+}: { reason?: string; contact?: string } = {}) => {
   fireEvent.change(screen.getByLabelText("Full name"), {
     target: { value: "Test Person" },
   });
-  fireEvent.change(screen.getByLabelText("Email"), {
-    target: { value: "person@example.com" },
-  });
+  fireEvent.change(contactInput(), { target: { value: contact } });
   if (reason !== undefined) {
     fireEvent.change(
       screen.getByLabelText("Why do you want to join the Alliance?"),
@@ -97,7 +101,7 @@ test("asks a direct visitor why they want to join and shows their personal link"
 
   fill({ reason: "I want to help" });
 
-  await screen.findByText("You’re on the waitlist");
+  await screen.findByText("You’re on the waitlist.");
   expect(sent).toEqual([
     {
       name: "Test Person",
@@ -126,7 +130,7 @@ test("skips the reason for an organization link and names the organization", asy
   ).toBeNull();
 
   fill();
-  await screen.findByText("You’re on the waitlist");
+  await screen.findByText("You’re on the waitlist.");
   expect(sent[0]).toMatchObject({ linkCode: "acme-news" });
   expect(sent[0].reason).toBeUndefined();
 });
@@ -182,7 +186,7 @@ test("names the person behind a personal link and still asks an unaffiliated ref
 
   await screen.findByText("Pat Inviter");
   fill({ reason: "Pat told me" });
-  await screen.findByText("You’re on the waitlist");
+  await screen.findByText("You’re on the waitlist.");
   expect(sent[0]).toMatchObject({
     referrerCode: "friend",
     reason: "Pat told me",
@@ -202,7 +206,7 @@ test("skips the reason for a personal link whose inviter has an organization", a
     screen.queryByLabelText("Why do you want to join the Alliance?"),
   ).toBeNull();
   fill();
-  await screen.findByText("You’re on the waitlist");
+  await screen.findByText("You’re on the waitlist.");
   expect(sent[0]).toMatchObject({ referrerCode: "friend" });
   expect(sent[0].reason).toBeUndefined();
 });
@@ -223,7 +227,7 @@ test("stops at an inactive link until the visitor continues without it", async (
     screen.getByRole("button", { name: "Continue without this link" }),
   );
   fill({ reason: "Still interested" });
-  await screen.findByText("You’re on the waitlist");
+  await screen.findByText("You’re on the waitlist.");
   expect(sent[0].linkCode).toBeUndefined();
 });
 
@@ -314,7 +318,7 @@ test("stops at a link that went inactive before the entry was sent", async () =>
   fireEvent.click(
     screen.getByRole("button", { name: /Join the Alliance waitlist/ }),
   );
-  await screen.findByText("You’re on the waitlist");
+  await screen.findByText("You’re on the waitlist.");
   expect(sent[1].linkCode).toBeUndefined();
 });
 
@@ -324,7 +328,7 @@ test("confirms a known email without revealing a link", async () => {
 
   fill({ reason: "Again" });
 
-  await screen.findByText("You’re on the waitlist");
+  await screen.findByText("You’re on the waitlist.");
   expect(screen.queryByLabelText("Your personal link")).toBeNull();
 });
 
@@ -344,7 +348,7 @@ test("offers no emailed link while public email is off", async () => {
 
   fill({ reason: "Again" });
 
-  await screen.findByText("You’re on the waitlist");
+  await screen.findByText("You’re on the waitlist.");
   expect(screen.queryByRole("button", { name: /Email me my link/ })).toBeNull();
 });
 
@@ -381,7 +385,7 @@ test("sends one entry however often the button is pressed", async () => {
 
   await waitFor(() => expect(sent).toHaveLength(1));
   release();
-  await screen.findByText("You’re on the waitlist");
+  await screen.findByText("You’re on the waitlist.");
   expect(sent).toHaveLength(1);
 });
 
@@ -403,4 +407,108 @@ test.each([
   await waitFor(() =>
     expect(!!screen.queryByText(/Couldn’t copy the link/)).toBe(!landed),
   );
+});
+
+test("sends a national number under the default country as E.164", async () => {
+  entry = () => Response.json({ shareCode: null });
+  mailEnabled = true;
+  renderForm();
+
+  fill({ reason: "Texting", contact: "(415) 555-2671" });
+
+  await screen.findByText("You’re on the waitlist.");
+  screen.getByText("We’ll be in touch when you can join the Alliance.");
+  expect(sent[0]).toMatchObject({ phoneNumber: "+14155552671" });
+  expect(sent[0].email).toBeUndefined();
+  expect(screen.queryByRole("button", { name: /Email me my link/ })).toBeNull();
+});
+
+test("reads a national number under the country picked after typing it", async () => {
+  renderForm();
+  fireEvent.change(contactInput(), { target: { value: "020 7946 0958" } });
+  fireEvent.change(screen.getByLabelText("Country"), {
+    target: { value: "GB" },
+  });
+
+  fill({ reason: "Abroad", contact: "020 7946 0958" });
+
+  await screen.findByText("You’re on the waitlist.");
+  expect(sent[0]).toMatchObject({ phoneNumber: "+442079460958" });
+});
+
+test("lets an international prefix override the picked country", async () => {
+  renderForm();
+  fireEvent.change(contactInput(), { target: { value: "0" } });
+  fireEvent.change(screen.getByLabelText("Country"), {
+    target: { value: "FR" },
+  });
+  fireEvent.change(contactInput(), { target: { value: "+44 20 7946 0958" } });
+  expect(screen.getByLabelText<HTMLSelectElement>("Country").value).toBe("GB");
+
+  fill({ reason: "Pasted", contact: "+44 20 7946 0958" });
+
+  await screen.findByText("You’re on the waitlist.");
+  expect(sent[0]).toMatchObject({ phoneNumber: "+442079460958" });
+});
+
+test("drops a blur error once the picked country makes the number valid", () => {
+  renderForm();
+  fireEvent.change(contactInput(), { target: { value: "020 7946 0958" } });
+  fireEvent.blur(contactInput());
+  screen.getByText("Enter a valid email address or mobile number.");
+
+  fireEvent.change(screen.getByLabelText("Country"), {
+    target: { value: "DE" },
+  });
+  screen.getByText("Enter a valid email address or mobile number.");
+  fireEvent.change(screen.getByLabelText("Country"), {
+    target: { value: "GB" },
+  });
+
+  expect(
+    screen.queryByText("Enter a valid email address or mobile number."),
+  ).toBeNull();
+  expect(contactInput().getAttribute("aria-invalid")).toBe("false");
+});
+
+test("checks the contact once focus leaves the field, not when it moves to the country", () => {
+  renderForm();
+  fireEvent.change(contactInput(), { target: { value: "020 7946 0958" } });
+  const country = screen.getByLabelText("Country");
+
+  fireEvent.blur(contactInput(), { relatedTarget: country });
+  expect(
+    screen.queryByText("Enter a valid email address or mobile number."),
+  ).toBeNull();
+
+  fireEvent.blur(country);
+  screen.getByText("Enter a valid email address or mobile number.");
+});
+
+test("keeps every character and the focus as a number becomes an email", () => {
+  renderForm();
+  const input = contactInput();
+  input.focus();
+
+  fireEvent.change(input, { target: { value: "123" } });
+  expect(screen.getByLabelText("Country")).toBeTruthy();
+  fireEvent.change(input, { target: { value: "123@example.com" } });
+
+  expect(screen.queryByLabelText("Country")).toBeNull();
+  expect(contactInput()).toBe(input);
+  expect(document.activeElement).toBe(input);
+  expect(input.value).toBe("123@example.com");
+});
+
+test("refuses an invalid contact on blur and on submit, sending nothing", async () => {
+  renderForm();
+  fireEvent.change(contactInput(), { target: { value: "12345" } });
+  fireEvent.blur(contactInput());
+  screen.getByText("Enter a valid email address or mobile number.");
+
+  fill({ reason: "Typo", contact: "person@example" });
+
+  await screen.findByText("Enter a valid email address or mobile number.");
+  expect(sent).toEqual([]);
+  expect(contactInput().value).toBe("person@example");
 });
