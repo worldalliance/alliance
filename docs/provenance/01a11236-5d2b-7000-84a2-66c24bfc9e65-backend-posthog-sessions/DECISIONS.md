@@ -6,3 +6,4 @@
 - Nest's global exception filter also catches body-parser errors, verified with HTTP requests and the real SDK's outgoing payload. Remove the separate Express handler so these errors use the same validated context and capture policy.
 - Install request context in configureApp before body parsing so production and HTTP tests exercise the same middleware.
 - A header-supplied distinct id is unauthenticated, so events attributed to it set `$process_person_profile: false`; anonymous web visitors otherwise get no person profile.
+- Web requests sent before posthog-js loads, such as the first `authMe` of a page load, carry no identifiers. Loading it earlier would move initialization out of the provider that keeps it off the mobile sign-in handoff page.
