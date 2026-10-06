@@ -12,12 +12,17 @@ import Modal, {
   ModalHeader,
   ModalTitle,
 } from "@alliance/sharedweb/ui/Modal";
-import { Copy, Link2, Ticket } from "lucide-react";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { BellOff, Copy, Link2, Ticket } from "lucide-react";
 import React, { useState } from "react";
 import { useRefusalToast } from "../../lib/useRefusalToast";
-import { useInviteWaitlistEntryAdmin } from "../../lib/useWaitlistEntriesAdmin";
+import {
+  useInviteWaitlistEntryAdmin,
+  useUnsubscribeWaitlistEntryAdmin,
+} from "../../lib/useWaitlistEntriesAdmin";
 import { PLACEMENT_NOTES } from "../../lib/waitlistEmail";
 import { SPAM_STATUSES } from "../../lib/waitlistFilter";
+import ConfirmDialog from "../ConfirmDialog";
 import { ICON_BUTTON_CLASS } from "./controlClasses";
 
 const PLACEMENT_WARNINGS: Record<WaitlistInvitePlacement, string | null> = {
@@ -149,11 +154,24 @@ export const InvitationDialog: React.FC<{
   );
 };
 
+enum OpenDialog {
+  Referral = "referral",
+  Unsubscribe = "unsubscribe",
+}
+
 const EntryContactActions: React.FC<{
   entry: AdminWaitlistEntryDto;
   onInvite: () => void;
 }> = ({ entry, onInvite }) => {
-  const [open, setOpen] = useState(false);
+  const refusalToast = useRefusalToast();
+  const { success } = useToast();
+  const [open, setOpen] = useState<OpenDialog | null>(null);
+  const close = () => setOpen(null);
+  const unsubscribe = useUnsubscribeWaitlistEntryAdmin({
+    onSuccess: () => success(`Marked ${entry.name} unsubscribed`),
+    onError: (err) => refusalToast(err, "Could not mark them unsubscribed."),
+    onSettled: close,
+  });
 
   return (
     <div className="flex gap-1">
@@ -162,7 +180,7 @@ const EntryContactActions: React.FC<{
         aria-label={`Referral link for ${entry.name}`}
         title="Referral link"
         className={ICON_BUTTON_CLASS}
-        onClick={() => setOpen(true)}
+        onClick={() => setOpen(OpenDialog.Referral)}
       >
         <Link2 size={16} />
       </button>
@@ -175,11 +193,20 @@ const EntryContactActions: React.FC<{
       >
         <Ticket size={16} />
       </button>
-      {open && (
-        <LinkDialog
-          title={`Referral link for ${entry.name}`}
-          onClose={() => setOpen(false)}
+      {entry.phoneNumber && !entry.unsubscribedAt && (
+        <button
+          type="button"
+          aria-label={`Mark unsubscribed: ${entry.name}`}
+          title="Mark unsubscribed"
+          className={ICON_BUTTON_CLASS}
+          disabled={unsubscribe.isPending}
+          onClick={() => setOpen(OpenDialog.Unsubscribe)}
         >
+          <BellOff size={16} />
+        </button>
+      )}
+      {open === OpenDialog.Referral && (
+        <LinkDialog title={`Referral link for ${entry.name}`} onClose={close}>
           <p>
             Others join the waitlist through it, credited to {entry.name}. It
             does not let anyone create an account.
@@ -190,6 +217,14 @@ const EntryContactActions: React.FC<{
           />
         </LinkDialog>
       )}
+      <ConfirmDialog
+        isOpen={open === OpenDialog.Unsubscribe}
+        title={`Mark ${entry.name} unsubscribed?`}
+        message="Record that they asked to stop being contacted. Joining again does not resubscribe them, and there is no way to undo this here."
+        onConfirm={() => unsubscribe.mutate(entry.id)}
+        onCancel={close}
+        isLoading={unsubscribe.isPending}
+      />
     </div>
   );
 };

@@ -8,6 +8,7 @@ import {
   waitlistAdminRevokeEntryInvitesAdmin,
   waitlistAdminSearchEntriesAdmin,
   waitlistAdminUnmobilizeEntriesAdmin,
+  waitlistAdminUnsubscribeEntriesAdmin,
 } from "@alliance/shared/client";
 import type {
   WaitlistEntryFilterDto,
@@ -120,6 +121,27 @@ export function useInviteWaitlistEntryAdmin(params: {
     onError: params.onError,
     onSettled: () => {
       void invalidateEntries();
+    },
+  });
+}
+
+export function useUnsubscribeWaitlistEntryAdmin(params: {
+  onSuccess: () => void;
+  onError: (err: Error) => void;
+  onSettled: () => void;
+}) {
+  const invalidate = useInvalidateEntries();
+  return useMutation({
+    mutationFn: (entryId: number) =>
+      waitlistAdminUnsubscribeEntriesAdmin({
+        body: { entryIds: [entryId] },
+        throwOnError: true,
+      }),
+    onSuccess: params.onSuccess,
+    onError: params.onError,
+    onSettled: async () => {
+      params.onSettled();
+      await invalidate();
     },
   });
 }

@@ -14,6 +14,10 @@ import {
   WaitlistEmailRecipient,
   WaitlistEmailRecipientStatus,
 } from "../src/waitlist/entities/waitlist-email-recipient.entity";
+import {
+  WaitlistEntryAction,
+  WaitlistEntryActionKind,
+} from "../src/waitlist/entities/waitlist-entry-action.entity";
 import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistEmailSkipReason } from "../src/waitlist/waitlist-email-audience";
 import { WaitlistEmailSender } from "../src/waitlist/waitlist-email-sender.service";
@@ -329,6 +333,35 @@ describe("Waitlist phone contact (e2e)", () => {
       expect(
         cohorts.body.find((c: { id: number }) => c.id === legacy.id).filter,
       ).toEqual(base);
+    });
+
+    it("marks an entry unsubscribed once, recording who, and signup leaves it", async () => {
+      const entry = await saveEntry();
+      const unsubscribe = () =>
+        asAdmin(
+          request(server()).post("/waitlist/admin/entries/unsubscribe"),
+        ).send({ entryIds: [entry.id] });
+
+      expect((await unsubscribe().expect(200)).body.changed).toBe(1);
+      expect((await unsubscribe().expect(200)).body.changed).toBe(0);
+      await submit({ phoneNumber: entry.phoneNumber }).expect(200);
+
+      const after = await entryRepo.findOneByOrFail({ id: entry.id });
+      expect(after.unsubscribedAt).toBeInstanceOf(Date);
+      expect(after.mobilizedAt).toBeNull();
+      const actions = await ctx.dataSource
+        .getRepository(WaitlistEntryAction)
+        .findBy({ entryId: entry.id });
+      expect(actions).toEqual([
+        expect.objectContaining({
+          kind: WaitlistEntryActionKind.MarkUnsubscribed,
+          staffUserId: ctx.adminUserId,
+        }),
+      ]);
+      await request(server())
+        .post("/waitlist/admin/entries/unsubscribe")
+        .send({ entryIds: [entry.id] })
+        .expect(401);
     });
   });
 
