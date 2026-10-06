@@ -18,6 +18,7 @@ import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity"
 import { ExperimentAssignment } from "src/notifs/entities/experiment-assignment.entity";
 import { MissedSuitePlanService } from "src/notifs/missed-suite-plans.service";
 import { NotifsModule } from "src/notifs/notifs.module";
+import { StreakRecognitionService } from "src/notifs/streak-recognition.service";
 import { PushModule } from "src/push/push.module";
 import { ShareUrlsModule } from "src/share-urls/share-urls.module";
 import { CustomValidator } from "src/tasks/entities/customvalidator.entity";
@@ -129,6 +130,7 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
     ActionEventRecipientService,
     ActionEventReminderService,
     MissedSuitePlanService,
+    StreakRecognitionService,
     ReloadUsersJoinedWorker,
     ContractReminderWorker,
     ContractSuspenderWorker,

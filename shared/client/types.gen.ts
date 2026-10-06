@@ -320,6 +320,7 @@ export type ReminderGroup = {
     allSent: boolean;
     excludeOptionalActions: boolean;
     excludePreviouslyNotified: boolean;
+    streakRecognition: boolean;
 };
 
 export type ActionSuite = {
@@ -3117,6 +3118,7 @@ export type CreateReminderGroupDto = {
     useSuiteTaskCount: boolean;
     excludeOptionalActions: boolean;
     excludePreviouslyNotified: boolean;
+    streakRecognition?: boolean;
     userIds?: Array<number>;
     userTagId?: string;
     suiteId?: number;
@@ -3148,6 +3150,7 @@ export type ReminderGroupDto = {
     allSent: boolean;
     excludeOptionalActions: boolean;
     excludePreviouslyNotified: boolean;
+    streakRecognition: boolean;
     /**
      * Whether the group's email uses a missed-suite keyword, so dispatch sends it as a missed-suite notice
      */

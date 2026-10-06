@@ -8,7 +8,10 @@ import {
   cohortNotifiesRecipientPersonally,
   ReminderCohortType,
 } from "src/actions/entities/reminder-group.entity";
-import { type MissedSuiteStanding } from "src/actions/missed-suite-streak";
+import {
+  type MissedSuiteStanding,
+  type SuiteOutcome,
+} from "src/actions/missed-suite-streak";
 import { EmailStatus } from "src/mail/mail.entity";
 import { MailService, processKeywordReplacements } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
@@ -55,6 +58,11 @@ import { MissedSuitePlanService } from "./missed-suite-plans.service";
 import { generateCIDForNotif } from "./notif-utils";
 import { NotifsService } from "./notifs.service";
 import { sendReminderInAppEntry } from "./reminder-in-app-entry";
+import {
+  STREAK_COPY_RECOGNIZES,
+  streakRecognitionTemplates,
+} from "./streak-recognition";
+import { StreakRecognitionService } from "./streak-recognition.service";
 
 export type UncompletedTaskSummary = {
   id: number;
@@ -81,6 +89,7 @@ export class ActionEventNotifWorker {
     private readonly notifsService: NotifsService,
     @InjectRepository(ExperimentAssignment)
     private readonly experimentAssignmentRepository: Repository<ExperimentAssignment>,
+    private readonly streakRecognitions: StreakRecognitionService,
   ) {}
 
   @Cron("*/3 * * * *")
@@ -102,10 +111,11 @@ export class ActionEventNotifWorker {
         const duePlans = await this.missedSuitePlans.dropClaimedPlans(
           await this.reminderService.evaluateNotifications(windowStart, now),
         );
-        const closedSuites = await this.missedSuitePlans.findClosedSuitesFor(
-          duePlans,
+        const closedSuites = await this.missedSuitePlans.findClosedSuitesFor({
+          plans: duePlans,
           now,
-        );
+          forStreakRecognition: true,
+        });
         const skippedByGroup = new Map<
           number,
           { problem: string; count: number }
@@ -123,7 +133,7 @@ export class ActionEventNotifWorker {
           });
           switch (resolution.kind) {
             case MissedSuitePlanKind.Ordinary:
-              await this.processOne(plan);
+              await this.processOne(plan, closedSuites);
               break;
             case MissedSuitePlanKind.NoSuite:
               skip(plan, "has no suite");
@@ -209,7 +219,10 @@ export class ActionEventNotifWorker {
     });
   }
 
-  private async processOne(plan: NotificationPlan) {
+  private async processOne(
+    plan: NotificationPlan,
+    closedSuites: SuiteOutcome[],
+  ) {
     const cid = generateCIDForNotif();
 
     let uncompletedTasks = await this.findUncompletedTasksForPlan(plan);
@@ -242,6 +255,10 @@ export class ActionEventNotifWorker {
     }
 
     const idempotency_key = `reminder:${plan.group.id}:${plan.user.id}`;
+    const recognition = await this.streakRecognitions.resolve(
+      plan,
+      closedSuites,
+    );
 
     // Group-leads nudges are about *other* users' tasks, so they don't get
     // the event stamp or covered-task record and never count toward
@@ -266,6 +283,10 @@ export class ActionEventNotifWorker {
       sent: false,
       type: ActionEventNotifType.Reminder,
       idempotency_key,
+      actionSuite: recognition ? plan.group.actionSuite : undefined,
+      streakCount: recognition?.count ?? null,
+      streakRunSuiteId: recognition?.runSuiteId ?? null,
+      streakRecognitionCopy: recognition?.copy ?? null,
     } satisfies Partial<ActionEventNotif>);
 
     let notif: ActionEventNotif;
@@ -279,16 +300,42 @@ export class ActionEventNotifWorker {
       throw error;
     }
 
+    const templates = recognition
+      ? streakRecognitionTemplates({
+          copy: recognition.copy,
+          group: plan.group,
+          streakCount: recognition.count,
+        })
+      : plan.group;
+    const render = (template: string) =>
+      this.processCustomReminderText(template, plan, cid, uncompletedTasks);
+    const recognized = recognition
+      ? STREAK_COPY_RECOGNIZES[recognition.copy]
+      : false;
+    if (recognized) {
+      notif.notification =
+        (await sendReminderInAppEntry(this.notifsService, {
+          plan,
+          cid,
+          template: templates.pushMessage,
+          render,
+          tasks: uncompletedTasks,
+        })) ?? undefined;
+      notif.sent = !!notif.notification;
+    }
     const sendingAnyNotif = await this.deliver({
       notif,
       user: plan.user,
       cid,
-      templates: plan.group,
-      render: (template) =>
-        this.processCustomReminderText(template, plan, cid, uncompletedTasks),
-      push: { screen: "/", idempotencyKey: plan.group.id.toString() },
+      templates,
+      render,
+      push: {
+        screen: "/",
+        idempotencyKey: plan.group.id.toString(),
+        notification: notif.notification,
+      },
     });
-    if (sendingAnyNotif) {
+    if (sendingAnyNotif || recognized) {
       await this.actionEventNotifsRepository.save(notif);
     }
   }

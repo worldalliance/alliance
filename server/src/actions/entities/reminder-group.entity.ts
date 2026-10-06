@@ -251,6 +251,17 @@ export class ReminderGroup {
   @IsDefined()
   @Allow()
   excludePreviouslyNotified: boolean;
+
+  /**
+   * Draw members reaching a completed-suite streak milestone into the
+   * streak-recognition experiment; variant members get the milestone before
+   * their push and SMS copy, as their email subject, and as an in-app entry.
+   */
+  @ApiProperty()
+  @Column({ type: "boolean", default: false })
+  @IsDefined()
+  @Allow()
+  streakRecognition: boolean;
 }
 
 export function firstOccurrenceInRange(

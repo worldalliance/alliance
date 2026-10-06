@@ -15,9 +15,11 @@ function suite(
   return {
     suiteId,
     closedAt: new Date(2026, 0, suiteId),
+    onboarding: false,
     actions,
     missedActionIdsByUser:
       outcome === "unassigned" ? new Map() : new Map([[MEMBER, outcome]]),
+    completedUserIds: new Set(),
   };
 }
 
