@@ -2,6 +2,11 @@ import { MailerService, type ISendMailOptions } from "@nestjs-modules/mailer";
 import { Test } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Action } from "src/actions/entities/action.entity";
+import { MessageSource } from "src/link-tracking/message-tracking.entity";
+import {
+  MessageTrackingService,
+  type TrackedMessage,
+} from "src/link-tracking/message-tracking.service";
 import { User } from "src/user/entities/user.entity";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
 import {
@@ -25,7 +30,6 @@ describe("processKeywordReplacements", () => {
   const baseContext = {
     user: { id: 1, name: "Jane Doe" } as User,
     action: { id: 10, name: "Test Action" } as Action,
-    cid: "test-cid",
     uncompletedTasksTime: "90 minutes",
     uncompletedTasksNames: ["Task A", "Task B"],
   };
@@ -53,18 +57,14 @@ describe("processKeywordReplacements", () => {
       expect(result).toBe("2 tasks: Task A, Task B (90 minutes)");
     });
 
-    it("replaces #{link} and #{grouplink} with cid", () => {
+    it("replaces #{link} and #{grouplink}", () => {
       const result = processKeywordReplacements(
         "Link: #{link} Group: #{grouplink}",
         { ...baseContext, uncompletedTasksCount: 1 },
       );
-      expect(result).toContain(
-        "Link: https://app.example.org/tasks?cid=test-cid",
+      expect(result).toBe(
+        "Link: https://app.example.org/tasks Group: https://app.example.org/groups?tab=members",
       );
-      expect(result).toContain(
-        "Group: https://app.example.org/groups?tab=members",
-      );
-      expect(result).toContain("cid=test-cid");
     });
 
     it("links #{link} and #{grouplink} to ALT_APP_URL when set", () => {
@@ -76,7 +76,7 @@ describe("processKeywordReplacements", () => {
           { ...baseContext, uncompletedTasksCount: 1 },
         );
         expect(result).toBe(
-          "Link: https://alt.example.org/tasks?cid=test-cid Group: https://alt.example.org/groups?tab=members&cid=test-cid",
+          "Link: https://alt.example.org/tasks Group: https://alt.example.org/groups?tab=members",
         );
       } finally {
         process.env.ALT_APP_URL = originalAltAppUrl;
@@ -204,10 +204,13 @@ describe("sendMail", () => {
     ) => Promise<{ accepted: string[]; messageId: string }>,
     other: {
       saveFails?: boolean;
+      trackFails?: boolean;
       verifyAllTransporters?: () => Promise<boolean>;
     } = {},
   ) {
     const saves: Mail[] = [];
+    const tracked: TrackedMessage[] = [];
+    const discarded: string[] = [];
     const moduleRef = await Test.createTestingModule({
       providers: [
         MailService,
@@ -216,6 +219,22 @@ describe("sendMail", () => {
           useValue: {
             sendMail,
             verifyAllTransporters: other.verifyAllTransporters,
+          },
+        },
+        {
+          provide: MessageTrackingService,
+          useValue: {
+            track: (input: { message: TrackedMessage }) => {
+              if (other.trackFails) {
+                return Promise.reject(new Error("insert failed"));
+              }
+              tracked.push(input.message);
+              return Promise.resolve("track-1");
+            },
+            discard: (trackingId: string) => {
+              discarded.push(trackingId);
+              return Promise.resolve();
+            },
           },
         },
         {
@@ -234,7 +253,7 @@ describe("sendMail", () => {
       ],
     }).compile();
 
-    return { service: moduleRef.get(MailService), saves };
+    return { service: moduleRef.get(MailService), saves, tracked, discarded };
   }
 
   const send = (service: MailService) =>
@@ -243,7 +262,7 @@ describe("sendMail", () => {
       emailType: EmailType.Welcome,
       subject: "Welcome to the Alliance",
       context: { name: "Jane", url: "https://example.org/verify" },
-      cid: null,
+      tracking: null,
     });
 
   beforeEach(() => {
@@ -280,6 +299,73 @@ describe("sendMail", () => {
     expect(saves[0].status).toBe(EmailStatus.Pending);
   });
 
+  it("tags app links with the message's own tracking ID", async () => {
+    process.env.APP_URL = "https://app.example.org";
+    let html: unknown;
+    const { service } = await harness((options) => {
+      html = options.html;
+      return Promise.resolve({
+        accepted: ["member@example.org"],
+        messageId: "",
+      });
+    });
+
+    const mail = await service.sendActionEventNotificationEmail({
+      subject: "Tasks",
+      message: "See https://app.example.org/tasks",
+      recipient: "member@example.org",
+      tracking: {
+        owner: { userId: 1 },
+        source: MessageSource.ActionReminder,
+        context: {},
+        actionEventNotifId: null,
+      },
+    });
+
+    expect(mail.cid).toBe("track-1");
+    expect(html).toContain("https://app.example.org/tasks?cid=track-1");
+  });
+
+  it("attributes a contract reminder to its member", async () => {
+    const { service, tracked } = await harness(() =>
+      Promise.resolve({ accepted: ["member@example.org"], messageId: "" }),
+    );
+
+    const mail = await service.sendContractReminderEmail({
+      userId: 7,
+      email: "member@example.org",
+      name: "Jane",
+    });
+
+    expect(mail.cid).toBe("track-1");
+    expect(tracked).toEqual([
+      {
+        owner: { userId: 7 },
+        source: MessageSource.ContractReminder,
+        context: {},
+        actionEventNotifId: null,
+      },
+    ]);
+  });
+
+  it("reports a failed tracking insert as unsent, without sending", async () => {
+    const sendMail = jest.fn(() =>
+      Promise.resolve({ accepted: ["member@example.org"], messageId: "" }),
+    );
+    const { service, saves } = await harness(sendMail, { trackFails: true });
+
+    await expect(
+      service.sendContractReminderEmail({
+        userId: 7,
+        email: "member@example.org",
+        name: "Jane",
+      }),
+    ).rejects.toBeInstanceOf(MailNotSentError);
+
+    expect(sendMail).not.toHaveBeenCalled();
+    expect(saves).toEqual([]);
+  });
+
   it("refuses to send when MAIL_FROM is unset", async () => {
     delete process.env.MAIL_FROM;
     let attempted = false;
@@ -292,6 +378,38 @@ describe("sendMail", () => {
     await expect(sending).rejects.toThrow("MAIL_FROM is unset");
     await expect(sending).rejects.toBeInstanceOf(MailNotSentError);
     expect(attempted).toBe(false);
+  });
+
+  it("tracks nothing when MAIL_FROM is unset", async () => {
+    delete process.env.MAIL_FROM;
+    const { service, tracked } = await harness(() =>
+      Promise.resolve({ accepted: [], messageId: "" }),
+    );
+
+    await expect(
+      service.sendContractReminderEmail({
+        userId: 7,
+        email: "member@example.org",
+        name: "Jane",
+      }),
+    ).rejects.toBeInstanceOf(MailNotSentError);
+    expect(tracked).toEqual([]);
+  });
+
+  it("discards the tracking of a Mail row it couldn't save", async () => {
+    const { service, discarded } = await harness(
+      () => Promise.resolve({ accepted: [], messageId: "" }),
+      { saveFails: true },
+    );
+
+    await expect(
+      service.sendContractReminderEmail({
+        userId: 7,
+        email: "member@example.org",
+        name: "Jane",
+      }),
+    ).rejects.toBeInstanceOf(MailNotSentError);
+    expect(discarded).toEqual(["track-1"]);
   });
 
   it("reports a Mail row it couldn't save as not sent, without sending", async () => {
@@ -370,6 +488,7 @@ describe("waitlist templates", () => {
           MailService,
           { provide: MailerService, useValue: {} },
           { provide: getRepositoryToken(Mail), useValue: {} },
+          { provide: MessageTrackingService, useValue: {} },
         ],
       }).compile();
 

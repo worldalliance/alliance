@@ -7,6 +7,15 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
 import { Action } from "src/actions/entities/action.entity";
 import {
+  MessageChannel,
+  MessageSource,
+} from "src/link-tracking/message-tracking.entity";
+import {
+  MessageTrackingService,
+  type TrackedMessage,
+} from "src/link-tracking/message-tracking.service";
+import { tagHtmlLinks } from "src/link-tracking/tag-links";
+import {
   ActionListStyle,
   formatActionList,
 } from "src/notifs/notification-content";
@@ -15,7 +24,6 @@ import {
   groupMembersListUrl,
   siteBaseUrl,
   tasksUrl,
-  withCid,
 } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
@@ -40,7 +48,6 @@ export function processKeywordReplacements(
     user: User;
     action: Action;
     deadlineEvent?: ActionEvent;
-    cid: string;
     uncompletedTasksCount: number;
     uncompletedTasksTime: string;
     uncompletedTasksNames: string[];
@@ -62,7 +69,7 @@ export function processKeywordReplacements(
         ? "0"
         : context.uncompletedMembersInGroupCount.toString(),
     )
-    .replaceAll("#{grouplink}", withCid(groupMembersListUrl(true), context.cid))
+    .replaceAll("#{grouplink}", groupMembersListUrl(true))
     .replaceAll("#{lastname}", lastname)
     .replaceAll("#{action}", context.action.name)
     .replaceAll(
@@ -98,7 +105,7 @@ export function processKeywordReplacements(
         ? getTimeLeftString(context.deadlineEvent, dateNow)
         : "[err]",
     )
-    .replaceAll("#{link}", withCid(tasksUrl(true), context.cid))
+    .replaceAll("#{link}", tasksUrl(true))
     .replaceAll(
       "#{formattedtasklist}",
       formatActionList(context.uncompletedTasksNames, ActionListStyle.Numbered),
@@ -154,6 +161,7 @@ export class MailService {
     private readonly mailerService: MailerService,
     @InjectRepository(Mail)
     private readonly mailRepository: Repository<Mail>,
+    private readonly messageTracking: MessageTrackingService,
   ) {}
 
   private readonly templates: Record<EmailType, string> = {
@@ -186,14 +194,37 @@ export class MailService {
     );
   }
 
+  private async prepareSend(
+    emailType: EmailType,
+    context: ISendMailOptions["context"],
+  ): Promise<{ from: string; rendered: string }> {
+    // Apple forwards to a Hide My Email relay only from senders registered
+    // under Sign in with Apple for Email Communication in the developer
+    // portal. Register a new address there before changing MAIL_FROM.
+    const from = process.env.MAIL_FROM;
+    if (!from) {
+      throw new MailNotSentError("MAIL_FROM is unset");
+    }
+    const rendered = await this.renderHtml(emailType, context).catch(notSent);
+    return { from, rendered };
+  }
+
   async sendMail(params: {
     recipient: string;
     emailType: EmailType;
     subject: string | null;
     context: ISendMailOptions["context"];
-    cid: string | null;
+    tracking: TrackedMessage | null;
   }): Promise<Mail> {
-    const { recipient, emailType, subject, context, cid } = params;
+    const { recipient, emailType, subject, context, tracking } = params;
+    const prepared = mailSendingEnabled()
+      ? await this.prepareSend(emailType, context)
+      : null;
+    const cid =
+      tracking &&
+      (await this.messageTracking
+        .track({ message: tracking, channel: MessageChannel.Email })
+        .catch(notSent));
     const mail = this.mailRepository.create({
       sentMessageId: null,
       renderedHtml: null,
@@ -203,25 +234,23 @@ export class MailService {
       cid,
     });
 
-    if (!mailSendingEnabled()) {
+    if (!prepared) {
       return await this.mailRepository.save(mail);
     }
-
-    // Apple forwards to a Hide My Email relay only from senders registered
-    // under Sign in with Apple for Email Communication in the developer
-    // portal. Register a new address there before changing MAIL_FROM.
-    const from = process.env.MAIL_FROM;
-    if (!from) {
-      throw new MailNotSentError("MAIL_FROM is unset");
-    }
+    const { from, rendered } = prepared;
 
     const tag =
       process.env.NODE_ENV === "production" ? "production" : "development";
 
-    const html = await this.renderHtml(emailType, context).catch(notSent);
+    const html = cid
+      ? tagHtmlLinks({ html: rendered, trackingId: cid })
+      : rendered;
 
     mail.renderedHtml = html;
-    await this.mailRepository.save(mail).catch(notSent);
+    await this.mailRepository.save(mail).catch(async (error: unknown) => {
+      if (cid) await this.messageTracking.discard(cid);
+      return notSent(error);
+    });
 
     const sent = await R.fromPromise(
       this.mailerService.sendMail({
@@ -268,7 +297,7 @@ export class MailService {
         name,
         url: `${process.env.APP_URL}/verifyEmail?token=${verifyToken}`,
       },
-      cid: null,
+      tracking: null,
     });
   }
 
@@ -294,7 +323,7 @@ export class MailService {
         url,
         verb,
       },
-      cid: null,
+      tracking: null,
     });
   }
 
@@ -309,23 +338,29 @@ export class MailService {
       context: {
         name,
       },
-      cid: null,
+      tracking: null,
     });
   }
 
-  public async sendContractReminderEmail(
-    email: string,
-    name: string,
-  ): Promise<Mail> {
+  public async sendContractReminderEmail(params: {
+    userId: number;
+    email: string;
+    name: string;
+  }): Promise<Mail> {
     return this.sendMail({
-      recipient: email,
+      recipient: params.email,
       emailType: EmailType.ContractReminder,
       subject: "Sign your membership contract to participate in actions",
       context: {
-        name,
+        name: params.name,
         link: tasksUrl(true),
       },
-      cid: null,
+      tracking: {
+        owner: { userId: params.userId },
+        source: MessageSource.ContractReminder,
+        context: {},
+        actionEventNotifId: null,
+      },
     });
   }
 
@@ -341,7 +376,7 @@ export class MailService {
       emailType,
       subject: WAITLIST_SUBJECTS[emailType],
       context: { url, unsubscribeUrl },
-      cid: null,
+      tracking: null,
     });
   }
 
@@ -361,13 +396,14 @@ export class MailService {
   public async sendWaitlistStaffEmail(params: {
     recipient: string;
     content: WaitlistStaffEmail;
+    tracking: TrackedMessage | null;
   }): Promise<Mail> {
     return this.sendMail({
       recipient: params.recipient,
       emailType: EmailType.WaitlistStaff,
       subject: params.content.subject,
       context: params.content,
-      cid: null,
+      tracking: params.tracking,
     });
   }
 
@@ -380,9 +416,9 @@ export class MailService {
       url?: string | null;
       createdAt: string;
     }[];
-    cid: string;
+    tracking: TrackedMessage;
   }): Promise<Mail> {
-    const { email, name, unreadCount, notifications, cid } = params;
+    const { email, name, unreadCount, notifications, tracking } = params;
     const subject = `You have ${withCount(unreadCount, "unread Alliance forum notification")}`;
 
     return this.sendMail({
@@ -399,17 +435,17 @@ export class MailService {
         })),
         appUrl: siteBaseUrl(),
       },
-      cid,
+      tracking,
     });
   }
 
   public async sendActionEventNotificationEmail(params: {
     subject: string;
     message: string;
-    cid: string;
+    tracking: TrackedMessage;
     recipient: string;
   }): Promise<Mail> {
-    const { subject, message, cid, recipient } = params;
+    const { subject, message, tracking, recipient } = params;
     return this.sendMail({
       recipient,
       emailType: EmailType.CustomActionReminder,
@@ -417,7 +453,7 @@ export class MailService {
       context: {
         customMessage: message.replace(/\n/g, "<br>"),
       },
-      cid,
+      tracking,
     });
   }
 

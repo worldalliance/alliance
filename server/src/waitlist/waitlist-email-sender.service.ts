@@ -7,6 +7,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InviteFeedEvents } from "src/invite-feed.events";
+import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import { EmailStatus, type Mail } from "src/mail/mail.entity";
 import { MailNotSentError, MailService } from "src/mail/mail.service";
 import { LOCK_KEYS } from "src/notifs/lock-keys";
@@ -36,6 +37,8 @@ type PreparedEmail = {
   email: string;
   mobilize: boolean;
   staffUserId: number | null;
+  /** As staff wrote it, before any recipient's values went in. */
+  campaignSubject: string;
   subject: string;
   bodyHtml: string;
   unsubscribeUrl: string;
@@ -260,6 +263,16 @@ export class WaitlistEmailSender {
           bodyHtml: prepared.bodyHtml,
           unsubscribeUrl: prepared.unsubscribeUrl,
         },
+        tracking: {
+          owner: { waitlistEntryId: prepared.recipient.entryId },
+          source: MessageSource.WaitlistCampaign,
+          context: {
+            waitlistEmailBatchId: prepared.recipient.batchId,
+            waitlistEmailRecipientId: prepared.recipient.id,
+            subject: prepared.campaignSubject,
+          },
+          actionEventNotifId: null,
+        },
       }),
     );
     const outcome = sendOutcome(sent);
@@ -359,6 +372,7 @@ export class WaitlistEmailSender {
         email,
         mobilize: batch.mobilize,
         staffUserId: batch.staffUserId,
+        campaignSubject: batch.subject,
         ...rendered.value,
         unsubscribeUrl,
       };

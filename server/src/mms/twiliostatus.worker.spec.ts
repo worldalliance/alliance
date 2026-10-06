@@ -1,4 +1,5 @@
 import type { EventLogService } from "src/eventlog/eventlog.service";
+import type { MessageTrackingService } from "src/link-tracking/message-tracking.service";
 import type { Repository } from "src/utils/Repository";
 import { Mms } from "./mms.entity";
 import { MmsService } from "./mms.service";
@@ -19,6 +20,7 @@ describe("TwilioStatusWorker", () => {
     const mmsService = new MmsService(
       {} as Repository<Mms>,
       {} as EventLogService,
+      {} as MessageTrackingService,
     );
     refreshMmsData = jest
       .spyOn(mmsService, "refreshMmsData")

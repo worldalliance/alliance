@@ -17,6 +17,11 @@ import {
   ActionUpdateNotificationMode,
 } from "src/actions/entities/action-update.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
+import {
+  MessageChannel,
+  MessageSource,
+  MessageTracking,
+} from "src/link-tracking/message-tracking.entity";
 import { Mail } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { Mms } from "src/mms/mms.entity";
@@ -284,6 +289,17 @@ describe("action update recognition (e2e)", () => {
     expect(a.mms?.body).toMatch(
       /^Your 3 letters led to a hearing on the bill\. \S+\/actions\/\d+\?cid=/,
     );
+    expect(a.mms?.body.endsWith(`?cid=${a.mms?.cid}`)).toBe(true);
+    expect(
+      await ctx.dataSource
+        .getRepository(MessageTracking)
+        .findOneByOrFail({ trackingId: a.mms?.cid ?? "" }),
+    ).toMatchObject({
+      channel: MessageChannel.Sms,
+      source: MessageSource.ActionUpdate,
+      userId: variant.id,
+      context: { actionId: expect.any(Number), actionUpdateId: id },
+    });
     expect(recognitionCopySchema.parse(a.copy).emailSubject).toBe(
       "Your 3 letters led to a hearing on the bill.",
     );

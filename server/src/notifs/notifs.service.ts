@@ -9,6 +9,7 @@ import { chunk } from "es-toolkit";
 import { actionUpdateEntrySendTime } from "src/actions/action-update-visibility";
 import { ActionUpdate } from "src/actions/entities/action-update.entity";
 import { Comment } from "src/forum/entities/comment.entity";
+import { MessageTrackingService } from "src/link-tracking/message-tracking.service";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { User } from "src/user/entities/user.entity";
@@ -129,6 +130,7 @@ export class NotifsService {
     private readonly mailService: MailService,
     private readonly mmsService: MmsService,
     private readonly renderService: NotificationRenderService,
+    private readonly messageTracking: MessageTrackingService,
   ) {}
 
   async findAll(
@@ -307,8 +309,12 @@ export class NotifsService {
     const notif = await this.notifsRepository.findOne({
       where: { cid: body.cid },
     });
-    if (notif) {
-      await this.notifsRepository.update(notif.id, { readAt: new Date() });
+    const notificationId =
+      notif?.id ?? (await this.messageTracking.notificationIdFor(body.cid));
+    if (notificationId !== null) {
+      await this.notifsRepository.update(notificationId, {
+        readAt: new Date(),
+      });
     }
 
     const mms = await this.mmsService.setClickedLinkByCid(body.cid);

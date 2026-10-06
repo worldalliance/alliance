@@ -64,10 +64,11 @@ export class ContractReminderWorker {
 
         for (const user of users) {
           try {
-            await this.mailService.sendContractReminderEmail(
-              user.email,
-              nameParts(user.name).firstname,
-            );
+            await this.mailService.sendContractReminderEmail({
+              userId: user.id,
+              email: user.email,
+              name: nameParts(user.name).firstname,
+            });
           } catch (err) {
             this.logger.error(
               `Failed to send contract reminder to ${user.email}`,

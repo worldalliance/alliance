@@ -46,7 +46,6 @@ import {
   ActionEventNotif,
   ActionEventNotifType,
 } from "./entities/action-event-notif.entity";
-import { generateCIDForNotif } from "./notif-utils";
 import { assertStreakRecognitionAllowed } from "./streak-recognition";
 import { testUser } from "./test-users";
 
@@ -701,7 +700,6 @@ export class ActionEventReminderService {
       action: event.action,
       deadlineEvent,
       user: testUser,
-      cid: await generateCIDForNotif(),
       uncompletedTasksCount: dto.taskCount,
       uncompletedTasksTime: dto.taskCount * 5 + " minutes",
       uncompletedTasksNames: ["Task 1", "Task 2", "Task 3"].slice(

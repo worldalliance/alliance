@@ -116,12 +116,11 @@ describe("ActionEventNotifWorker.processCustomReminderText", () => {
       const result = await worker.processCustomReminderText(
         template,
         plan,
-        "cid-123",
         uncompletedTasks,
       );
 
       expect(result).toBe(
-        "Hi Alex Example (Alex Example), action Test Action has 3 tasks due in 2 days and 6 hours. Link: https://app.example.org/tasks?cid=cid-123",
+        "Hi Alex Example (Alex Example), action Test Action has 3 tasks due in 2 days and 6 hours. Link: https://app.example.org/tasks",
       );
     } finally {
       jest.useRealTimers();
@@ -167,12 +166,11 @@ describe("ActionEventNotifWorker.processCustomReminderText", () => {
       const result = await worker.processCustomReminderText(
         template,
         plan,
-        "cid-456",
         uncompletedTasks,
       );
 
       expect(result).toBe(
-        "Hello Cher! Deadline in [err] / [err]. Tasks left: 1. Visit https://app.example.org/tasks?cid=cid-456",
+        "Hello Cher! Deadline in [err] / [err]. Tasks left: 1. Visit https://app.example.org/tasks",
       );
       expect(consoleErrorSpy).toHaveBeenCalledWith("User 9 has no last name");
     } finally {

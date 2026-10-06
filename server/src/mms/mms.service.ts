@@ -1,4 +1,5 @@
 import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
+import { R } from "@alliance/common/result";
 import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import {
   BadRequestException,
@@ -10,6 +11,12 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
+import { MessageChannel } from "src/link-tracking/message-tracking.entity";
+import {
+  MessageTrackingService,
+  type TrackedMessage,
+} from "src/link-tracking/message-tracking.service";
+import { tagTextLinks } from "src/link-tracking/tag-links";
 import type { Repository } from "src/utils/Repository";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
@@ -47,6 +54,7 @@ export class MmsService {
     @InjectRepository(Mms)
     private readonly mmsRepository: Repository<Mms>,
     private readonly eventLogService: EventLogService,
+    private readonly messageTracking: MessageTrackingService,
   ) {
     if (process.env.NODE_ENV === "test") {
       return;
@@ -86,9 +94,23 @@ export class MmsService {
     to: string;
     body: string;
     mediaUrls: string[];
-    cid: string | null;
+    tracking: TrackedMessage | null;
   }): Promise<Mms | null> {
-    const { to, body, mediaUrls, cid } = params;
+    const { to, mediaUrls, tracking } = params;
+    let cid: string | null = null;
+    if (tracking) {
+      const tracked = await R.fromPromise(
+        this.messageTracking.track({
+          message: tracking,
+          channel: MessageChannel.Sms,
+        }),
+      );
+      if (!tracked.ok) return this.reportFailure(to, tracked.error);
+      cid = tracked.value;
+    }
+    const body = cid
+      ? tagTextLinks({ text: params.body, trackingId: cid })
+      : params.body;
     if (
       process.env.NODE_ENV === "test" ||
       !notifDeliveryEnabled() ||
@@ -129,7 +151,12 @@ export class MmsService {
         body: body,
         mediaUrl: mediaUrls,
       });
-      const message = await withTimeout(sending, this.sendTimeoutMs);
+      const message = await withTimeout(sending, this.sendTimeoutMs).catch(
+        async (error: unknown) => {
+          if (cid) await this.messageTracking.discard(cid);
+          throw error;
+        },
+      );
 
       if (message === TIMED_OUT) {
         this.recordLateSend({ sending, to, body, cid });
@@ -140,21 +167,25 @@ export class MmsService {
 
       return this.saveSent({ message, to, body, cid });
     } catch (error) {
-      const errorMessage = thrownMessage(error);
-      this.logger.error(
-        `Failed to send MMS to ${to}: ${errorMessage}`,
-        thrownStack(error),
-      );
-      if (process.env.NODE_ENV === "production") {
-        this.eventLogService.sendMessage({
-          type: EventType.SmsFailure,
-          message: `Failed to send MMS to ${to}: ${errorMessage}`,
-          blob: { errorMessage, to, from: this.senderFor(to) },
-          userId: null,
-        });
-      }
-      return null;
+      return this.reportFailure(to, error);
     }
+  }
+
+  private reportFailure(to: string, error: unknown): null {
+    const errorMessage = thrownMessage(error);
+    this.logger.error(
+      `Failed to send MMS to ${to}: ${errorMessage}`,
+      thrownStack(error),
+    );
+    if (process.env.NODE_ENV === "production") {
+      this.eventLogService.sendMessage({
+        type: EventType.SmsFailure,
+        message: `Failed to send MMS to ${to}: ${errorMessage}`,
+        blob: { errorMessage, to, from: this.senderFor(to) },
+        userId: null,
+      });
+    }
+    return null;
   }
 
   private senderFor(to: string): string {
@@ -197,12 +228,18 @@ export class MmsService {
   }): void {
     const { sending, to, body, cid } = params;
     void sending
-      .then(async (message) => {
-        const mms = await this.saveSent({ message, to, body, cid });
-        this.logger.warn(
-          `MMS to ${to} landed after ${this.sendTimeoutMs}ms and was recorded as ${mms.id} (SID ${message.sid})`,
-        );
-      })
+      .then(
+        async (message) => {
+          const mms = await this.saveSent({ message, to, body, cid });
+          this.logger.warn(
+            `MMS to ${to} landed after ${this.sendTimeoutMs}ms and was recorded as ${mms.id} (SID ${message.sid})`,
+          );
+        },
+        async (error: unknown) => {
+          if (cid) await this.messageTracking.discard(cid);
+          throw error;
+        },
+      )
       .catch((error: unknown) => {
         this.logger.error(
           `MMS to ${to} failed after ${this.sendTimeoutMs}ms: ${thrownMessage(error)}`,

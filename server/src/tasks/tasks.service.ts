@@ -1009,7 +1009,7 @@ export class TasksService {
             to: normalized,
             body: welcomeMessage,
             mediaUrls: [],
-            cid: null,
+            tracking: null,
           });
           if (mms) {
             await this.userService.setOptInMms(user.id, mms.id);

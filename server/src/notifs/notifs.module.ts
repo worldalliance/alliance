@@ -7,6 +7,7 @@ import { Action } from "src/actions/entities/action.entity";
 import { Community } from "src/community/entities/community.entity";
 import { Comment } from "src/forum/entities/comment.entity";
 import { Post } from "src/forum/entities/post.entity";
+import { LinkTrackingModule } from "src/link-tracking/link-tracking.module";
 import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
 import { User } from "src/user/entities/user.entity";
@@ -34,6 +35,7 @@ import { NotifsService } from "./notifs.service";
       Action,
       Post,
     ]),
+    LinkTrackingModule,
     MailModule,
     forwardRef(() => MmsModule),
     forwardRef(() => UserModule),

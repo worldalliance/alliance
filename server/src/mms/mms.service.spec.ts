@@ -1,6 +1,11 @@
 import { Logger } from "@nestjs/common";
 import { EventType } from "src/eventlog/event-log.entity";
 import type { EventLogService } from "src/eventlog/eventlog.service";
+import {
+  MessageSource,
+  type MessageTracking,
+} from "src/link-tracking/message-tracking.entity";
+import { MessageTrackingService } from "src/link-tracking/message-tracking.service";
 import type { Repository } from "src/utils/Repository";
 import type Twilio from "twilio";
 import type { Mms } from "./mms.entity";
@@ -34,6 +39,7 @@ describe("MmsService sendMms", () => {
   let saved: Partial<Mms>[];
   let eventLogService: jest.Mocked<EventLogService>;
   let service: MmsService;
+  let messageTracking: MessageTrackingService;
 
   beforeEach(() => {
     saved = [];
@@ -50,7 +56,11 @@ describe("MmsService sendMms", () => {
 
     // bun sets NODE_ENV=test, so the constructor returns before it reaches
     // twilio and leaves the client and the sender unset.
-    service = new MmsService(mmsRepository, eventLogService);
+    messageTracking = new MessageTrackingService(
+      {} as Repository<MessageTracking>,
+    );
+    jest.spyOn(messageTracking, "track").mockResolvedValue("track-1");
+    service = new MmsService(mmsRepository, eventLogService, messageTracking);
     service["twilioPhoneNumber"] = "+15555550100";
 
     jest.spyOn(Logger.prototype, "log").mockImplementation(() => {});
@@ -72,7 +82,7 @@ describe("MmsService sendMms", () => {
         to: TO,
         body: BODY,
         mediaUrls: ["https://example.com/task.png"],
-        cid: "cid-1",
+        tracking: null,
       }),
     );
 
@@ -86,10 +96,96 @@ describe("MmsService sendMms", () => {
         status: "queued",
         errorCode: null,
         errorMessage: null,
-        cid: "cid-1",
+        cid: null,
       },
     ]);
     expect(eventLogService.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("tags app links with the message's own tracking ID", async () => {
+    const appUrl = process.env.APP_URL;
+    process.env.APP_URL = "https://app.example.org";
+    try {
+      await service.sendMms({
+        to: TO,
+        body: "Tasks: https://app.example.org/tasks",
+        mediaUrls: [],
+        tracking: {
+          owner: { userId: 1 },
+          source: MessageSource.ForumReply,
+          context: {},
+          actionEventNotifId: null,
+        },
+      });
+    } finally {
+      process.env.APP_URL = appUrl;
+    }
+
+    expect(saved).toEqual([
+      expect.objectContaining({
+        body: "Tasks: https://app.example.org/tasks?cid=track-1",
+        cid: "track-1",
+      }),
+    ]);
+  });
+
+  it("reports a failed tracking insert as an unsent text", async () => {
+    jest
+      .spyOn(messageTracking, "track")
+      .mockRejectedValue(new Error("insert failed"));
+
+    const result = await asProduction(() =>
+      service.sendMms({
+        to: TO,
+        body: BODY,
+        mediaUrls: [],
+        tracking: {
+          owner: { userId: 1 },
+          source: MessageSource.ForumReply,
+          context: {},
+          actionEventNotifId: null,
+        },
+      }),
+    );
+
+    expect(result).toBeNull();
+    expect(saved).toEqual([]);
+    expect(eventLogService.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: EventType.SmsFailure }),
+    );
+  });
+
+  it.each([
+    { twilio: "rejects", result: false },
+    { twilio: "accepts", result: true },
+  ])("keeps the tracking only when twilio $twilio", async ({ result }) => {
+    const discard = jest
+      .spyOn(messageTracking, "discard")
+      .mockResolvedValue(undefined);
+    service["twilioClient"] = {
+      messages: {
+        create: () =>
+          result
+            ? Promise.resolve(message)
+            : Promise.reject(new Error("21610 unsubscribed recipient")),
+      },
+    } as unknown as Twilio.Twilio;
+
+    await asProduction(() =>
+      service.sendMms({
+        to: TO,
+        body: BODY,
+        mediaUrls: [],
+        tracking: {
+          owner: { userId: 1 },
+          source: MessageSource.ForumReply,
+          context: {},
+          actionEventNotifId: null,
+        },
+      }),
+    );
+
+    expect(discard.mock.calls).toEqual(result ? [] : [["track-1"]]);
   });
 
   it("sends to UK numbers from the alphanumeric sender", async () => {
@@ -103,7 +199,7 @@ describe("MmsService sendMms", () => {
         to: "+447700900123",
         body: BODY,
         mediaUrls: [],
-        cid: null,
+        tracking: null,
       }),
     );
 
@@ -124,7 +220,7 @@ describe("MmsService sendMms", () => {
         to: TO,
         body: BODY,
         mediaUrls: ["https://example.com/task.png"],
-        cid: "cid-1",
+        tracking: null,
       }),
     );
 
@@ -165,6 +261,9 @@ describe("MmsService sendMms", () => {
   });
 
   it("writes no row for a send that failed after the deadline", async () => {
+    const discard = jest
+      .spyOn(messageTracking, "discard")
+      .mockResolvedValue(undefined);
     service["recordLateSend"]({
       sending: Promise.reject(new Error("network down")),
       to: TO,
@@ -174,6 +273,7 @@ describe("MmsService sendMms", () => {
     await delay(0);
 
     expect(saved).toEqual([]);
+    expect(discard).toHaveBeenCalledWith("cid-1");
     // This test staying green also covers the rejection: bun fails a test that
     // leaves one unhandled, and sendMms has stopped listening by this point.
   });
@@ -191,7 +291,11 @@ describe("MmsService constructor", () => {
 
   // The constructor only stores these.
   const construct = () =>
-    new MmsService({} as Repository<Mms>, {} as EventLogService);
+    new MmsService(
+      {} as Repository<Mms>,
+      {} as EventLogService,
+      {} as MessageTrackingService,
+    );
 
   beforeEach(() => {
     previous = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
