@@ -82,7 +82,7 @@ export default function DemocraticGrantmaking26() {
           >
             <div className="flex flex-col gap-4 lg:gap-[clamp(1rem,2.5vh,2rem)]">
               <p className="site-sans -mb-2 text-left text-[1.05rem] text-white/80 sm:text-[1.2rem]">
-                This fall
+                Coming in fall 2026
               </p>
               <DisplayHeading
                 as="h1"
