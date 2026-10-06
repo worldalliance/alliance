@@ -55,9 +55,20 @@ export function isCanonicalE164(value: string): boolean {
   return R.unwrapOr(toE164(value), null) === value;
 }
 
-/** Digits and phone punctuation only, so free text containing a number isn't one. */
+const PHONE_SEPARATOR = String.raw`[\s()./\p{Pd}\u2212]`;
+const PHONE_EXTENSION = String.raw`(?:ext\.?|x|#)\s*\d+`;
+// Each digit has one place to match, so a failing match stays linear.
+const PHONE_LIKE = new RegExp(
+  String.raw`^\+?(?:${PHONE_SEPARATOR}*\d)+${PHONE_SEPARATOR}*(?:${PHONE_EXTENSION})?$`,
+  "iu",
+);
+
+/**
+ * Digits, phone punctuation, and an optional extension only, so free text
+ * containing a number isn't one.
+ */
 export function looksLikePhoneNumber(input: string): boolean {
-  return /^\+?[\d\s().-]*\d[\d\s().-]*$/.test(input.trim());
+  return PHONE_LIKE.test(input.normalize("NFKC").trim());
 }
 
 export function phoneSearchDigits(input: string | null | undefined): string {

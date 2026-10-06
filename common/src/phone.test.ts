@@ -140,15 +140,42 @@ describe("looksLikePhoneNumber", () => {
       "(415) 555-2671",
       "+44 20 7946 0958",
       "415.555",
+      "415-555-2671 x3",
+      "415-555-2671 Ext. 3",
+      "415-555-2671 #3",
+      "030/1234567",
+      "030\u20131234567",
+      "030\u20141234567",
+      "030\u20101234567",
+      "030\u20111234567",
+      "030\u22121234567",
+      "\uff10\uff13\uff10 \uff11\uff12\uff13\uff14",
     ]) {
       expect(looksLikePhoneNumber(typed)).toBe(true);
     }
   });
 
   it("rejects empty, email, and worded input", () => {
-    for (const typed of ["", "  ", "+", "()-", "12@example.com", "Bob 2"]) {
+    for (const typed of [
+      "",
+      "  ",
+      "+",
+      "()-",
+      "12@example.com",
+      "Bob 2",
+      "x3",
+      "415 x",
+    ]) {
       expect(looksLikePhoneNumber(typed)).toBe(false);
     }
+  });
+});
+
+describe("looksLikePhoneNumber on long input", () => {
+  it("rejects digits then spaces then text without backtracking", () => {
+    expect(
+      looksLikePhoneNumber(`${"1".repeat(100_000)}${" ".repeat(100_000)}!`),
+    ).toBe(false);
   });
 });
 
