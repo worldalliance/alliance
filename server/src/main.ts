@@ -2,20 +2,20 @@ import { devPorts, PortCaller } from "@alliance/common/dev-ports";
 import { GUEST_HEADER } from "@alliance/common/guest";
 import { currentNodeEnv, isDeployed } from "@alliance/common/node-env";
 import { NOTIFS_LOADED_AT_HEADER } from "@alliance/common/notifs";
-import { HttpAdapterHost, NestFactory } from "@nestjs/core";
+import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { IoAdapter } from "@nestjs/platform-socket.io";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { useContainer } from "class-validator";
 import { randomUUID } from "node:crypto";
-import { PostHog, setupExpressErrorHandler } from "posthog-node";
+import { PostHog } from "posthog-node";
 import type { ServerOptions } from "socket.io";
 import { AppModule } from "./app.module";
 import { mailSendingEnabled } from "./mail/mail.service";
 import { MetricsInterceptor } from "./metrics";
 import { twilioSignatureEnforced } from "./mms/twilio-signature.guard";
 import { injectResponseSchemas } from "./openapi-errors";
-import { PosthogExceptionFilter } from "./posthog.filter";
+import { capturePosthogExceptions } from "./posthog.filter";
 import { configureApp } from "./utils/configure-app";
 import { socketCorsOrigins } from "./utils/cors-origins";
 import { requestContext } from "./utils/request-context";
@@ -158,11 +158,7 @@ async function bootstrap() {
     });
   }
 
-  if (client) {
-    const { httpAdapter } = app.get(HttpAdapterHost);
-    app.useGlobalFilters(new PosthogExceptionFilter(client, httpAdapter));
-    setupExpressErrorHandler(client, app);
-  }
+  if (client) capturePosthogExceptions(app, client);
 
   await app.listen(port, "0.0.0.0");
 }

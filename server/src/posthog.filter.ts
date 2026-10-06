@@ -2,10 +2,15 @@ import {
   ArgumentsHost,
   Catch,
   HttpException,
+  type INestApplication,
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
-import { AbstractHttpAdapter, BaseExceptionFilter } from "@nestjs/core";
+import {
+  AbstractHttpAdapter,
+  BaseExceptionFilter,
+  HttpAdapterHost,
+} from "@nestjs/core";
 import type { Request } from "express";
 import { PostHog } from "posthog-node";
 
@@ -53,4 +58,13 @@ export class PosthogExceptionFilter extends BaseExceptionFilter {
 
     return super.catch(exception, host);
   }
+}
+
+/** The filter also sees body-parser errors, so an Express error handler beside it would capture those twice. */
+export function capturePosthogExceptions(
+  app: INestApplication,
+  client: PostHog,
+): void {
+  const { httpAdapter } = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new PosthogExceptionFilter(client, httpAdapter));
 }
