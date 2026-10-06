@@ -327,7 +327,7 @@ export type ActionSuite = {
     name: string;
     createdAt: string;
     updatedAt: string;
-    actions: Array<Action>;
+    actions?: Array<Action>;
     generalUpdates?: Array<GeneralUpdate>;
     reminderGroups?: Array<ReminderGroup>;
     events: Array<ActionEvent>;

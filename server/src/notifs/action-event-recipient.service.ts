@@ -11,7 +11,10 @@ import {
   evaluateCohortExpression,
   type CohortEvaluationContext,
 } from "src/actions/cohort-expression.evaluator";
-import { ActionSuite } from "src/actions/entities/action-suite.entity";
+import {
+  ActionSuite,
+  loadedActionSuiteActions,
+} from "src/actions/entities/action-suite.entity";
 import {
   ReminderCohortType,
   ReminderGroup,
@@ -478,9 +481,9 @@ export class ActionEventRecipientService {
   ): Promise<User[]> {
     // Callers load suite actions without their events, which the
     // saved-decision reads need.
-    const scopeIds = (actionSuite?.actions ?? [event.action]).map(
-      (action) => action.id,
-    );
+    const scopeIds = (
+      actionSuite ? loadedActionSuiteActions(actionSuite) : [event.action]
+    ).map((action) => action.id);
     const actionsById = new Map(
       (
         await this.actionRepository.find({

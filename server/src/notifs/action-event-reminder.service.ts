@@ -14,7 +14,10 @@ import {
 } from "src/actions/dto/action.dto";
 import { NotificationScheduleEntryDto } from "src/actions/dto/notification-schedule.dto";
 import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
-import { ActionSuite } from "src/actions/entities/action-suite.entity";
+import {
+  ActionSuite,
+  loadedActionSuiteActions,
+} from "src/actions/entities/action-suite.entity";
 import { Action, parseAction } from "src/actions/entities/action.entity";
 import { FollowUpForm } from "src/actions/entities/follow-up-form.entity";
 import {
@@ -427,7 +430,7 @@ export class ActionEventReminderService {
     });
     // Parse the jsonb cohortExpressions right at the fetch.
     const scopeActions = (
-      suite?.actions?.length ? suite.actions : [action]
+      suite ? loadedActionSuiteActions(suite) : [action]
     ).map(parseAction);
 
     const actionIds = new Set<number>();
@@ -777,16 +780,14 @@ export function assertExcludePreviouslyNotifiedAllowed(
  * actions for suite-count groups, else the member event's own action. A user
  * whose prior notifs cover this whole scope has nothing new to hear from the
  * group — even if their (possibly global) message task list would not be
- * empty. Falls back to the single action when the suite's actions aren't
- * loaded (e.g. the preview's tentative group), which can only over-exclude
- * relative to the suite scope, never notify someone twice.
+ * empty.
  */
 export function groupTaskScopeActionIds(group: ReminderGroup): number[] {
   const suiteActions =
-    group.useSuiteTaskCount && group.actionSuite?.actions?.length
-      ? group.actionSuite.actions
-      : null;
-  return suiteActions
+    group.useSuiteTaskCount && group.actionSuite
+      ? loadedActionSuiteActions(group.actionSuite)
+      : [];
+  return suiteActions.length
     ? suiteActions.map((action) => action.id)
     : [group.memberActionEvent.action.id];
 }

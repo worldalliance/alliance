@@ -65,10 +65,7 @@ import {
   REVIEWER_NAME_MAX_LENGTH,
   REVIEWER_URL_MAX_LENGTH,
 } from "../entities/action-reviewer.entity";
-import {
-  ActionSuite,
-  type ParsedActionSuite,
-} from "../entities/action-suite.entity";
+import { ActionSuite } from "../entities/action-suite.entity";
 import { ActionUpdate } from "../entities/action-update.entity";
 import { Action, type ParsedAction } from "../entities/action.entity";
 import { GeneralUpdate } from "../entities/general-update.entity";
@@ -1149,19 +1146,16 @@ export class ActionSuiteDto extends PickType(ActionSuite, ["id", "name"]) {
   @Allow()
   generalUpdates: GeneralUpdateDto[];
 
-  constructor(suite: ParsedActionSuite, actions?: ParsedAction[]) {
+  constructor(suite: ActionSuite, actions: ParsedAction[]) {
     super();
     this.id = suite.id;
     this.name = suite.name;
-    this.actions =
-      actions?.map((action) => new ActionDto(action)) ??
-      suite.actions?.map((action) => new ActionDto(action)) ??
-      [];
+    this.actions = actions.map((action) => new ActionDto(action));
     // Suite events are stored as per-action duplicate rows tagged suiteManaged;
     // we surface actions[0]'s copies as canonical. Brittle if actions drift —
     // any divergence (extra/missing rows, reordering) is invisible here.
-    this.events = suite.actions?.length
-      ? (suite.actions[0].events
+    this.events = actions.length
+      ? (actions[0].events
           ?.filter((event) => event.suiteManaged)
           .map((event) => new ActionEventDto(event)) ?? [])
       : [];
