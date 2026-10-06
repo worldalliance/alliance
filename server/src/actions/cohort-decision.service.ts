@@ -502,14 +502,20 @@ export class CohortDecisionService {
       admissible.map(({ action }) => action.id),
       users.length === 1 ? users[0].id : undefined,
     );
-    const pending = admissible.filter(({ action }) => {
-      const decided = decidedByAction.get(action.id);
-      return users.some((user) => !decided?.has(user.id));
-    });
-    if (pending.length === 0) return new Set();
-    const [, toDecide] = await this.partitionBackfill(pending);
+    const pending = new Set(
+      admissible.filter(({ action }) => {
+        const decided = decidedByAction.get(action.id);
+        return users.some((user) => !decided?.has(user.id));
+      }),
+    );
+    if (pending.size === 0) return new Set();
+    // Like resolveAll, orders without the actions the pass backfills, so both
+    // break a read cycle at the same action.
+    const [, notBackfilled] = await this.partitionBackfill(closed);
     return this.decideClosedInOrder({
-      closed: toDecide,
+      closed: orderByDecisionReads(notBackfilled).filter((item) =>
+        pending.has(item),
+      ),
       users,
       population: users,
       decidedByAction,
