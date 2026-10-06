@@ -22,6 +22,7 @@ const entry = (
   name: `Person ${id}`,
   email: `person${id}@example.com`,
   phoneNumber: null,
+  shareCode: `share${id}`,
   reason: null,
   organization: null,
   sourceLink: null,

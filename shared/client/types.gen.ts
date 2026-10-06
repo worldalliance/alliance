@@ -4602,6 +4602,10 @@ export type AdminWaitlistEntryDto = {
      * E.164
      */
     phoneNumber: string | null;
+    /**
+     * The personal code others join through
+     */
+    shareCode: string;
     reason: string | null;
     organization: WaitlistNamedRefDto | null;
     sourceLink: WaitlistSourceLinkDto | null;

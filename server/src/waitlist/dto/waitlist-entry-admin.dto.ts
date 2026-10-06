@@ -262,6 +262,9 @@ export class AdminWaitlistEntryDto {
   @ApiProperty({ type: String, nullable: true, description: "E.164" })
   phoneNumber: string | null;
 
+  @ApiProperty({ description: "The personal code others join through" })
+  shareCode: string;
+
   @ApiProperty({ type: String, nullable: true })
   reason: string | null;
 
@@ -301,6 +304,7 @@ export class AdminWaitlistEntryDto {
     this.name = entry.name;
     this.email = entry.email;
     this.phoneNumber = entry.phoneNumber;
+    this.shareCode = entry.code;
     this.reason = entry.reason;
     this.organization = entry.organization
       ? new WaitlistNamedRefDto(entry.organization)

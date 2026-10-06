@@ -225,6 +225,7 @@ describe("Waitlist phone contact (e2e)", () => {
           id: phone.id,
           email: null,
           phoneNumber: phone.phoneNumber,
+          shareCode: phone.code,
         }),
       ]);
       const byEmail = await search({ search: email.email }).expect(200);
