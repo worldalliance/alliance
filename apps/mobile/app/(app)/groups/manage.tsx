@@ -9,8 +9,6 @@ import {
   communityJoinPublicCommunity,
   communityLeave,
   communityRejectCommunityInvite,
-  userJoinGroupAssignment,
-  userLeaveGroupAssignment,
 } from "@alliance/shared/client";
 import type {
   CommunityDto,
@@ -26,6 +24,7 @@ import {
 } from "@alliance/shared/lib/communityUtils";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
+import { useGroupAssignment } from "@alliance/shared/lib/useGroupAssignment";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { usePublicCommunities } from "@alliance/shared/lib/usePublicCommunities";
 import { router } from "expo-router";
@@ -100,7 +99,6 @@ export default function GroupManageScreen() {
   const [decliningInviteId, setDecliningInviteId] = useState<number | null>(
     null,
   );
-  const [assignmentBusy, setAssignmentBusy] = useState(false);
 
   const requiresMaxCapacity = isMaxCapacityRequired(newCommunity);
 
@@ -289,43 +287,44 @@ export default function GroupManageScreen() {
     [memberCommunities, refreshAll, refreshUser],
   );
 
+  const { join, leave } = useGroupAssignment({
+    onChanged: async () => {
+      await refreshUser();
+      await refreshAll();
+    },
+  });
+  const assignmentBusy = join.isPending || leave.isPending;
+
   const handleRequestAssignment = useCallback(() => {
     const needsConfirm = memberCommunities.length > 0;
-    const run = async () => {
-      setAssignmentBusy(true);
-      try {
-        await userJoinGroupAssignment();
-        await refreshUser();
-        await refreshAll();
-      } catch (e) {
-        console.error("Failed to join group assignment", e);
-        Alert.alert("Error", "Unable to start reassignment. Please try again.");
-      } finally {
-        setAssignmentBusy(false);
-      }
-    };
+    const run = () =>
+      join.mutate(undefined, {
+        onError: (e) => {
+          console.error("Failed to join group assignment", e);
+          Alert.alert(
+            "Error",
+            "Unable to start reassignment. Please try again.",
+          );
+        },
+      });
     if (needsConfirm) {
       Alert.alert("Group assignment", requestGroupAssignmentConfirmation, [
         { text: "No", style: "cancel" },
-        { text: "Yes, reassign me", onPress: () => void run() },
+        { text: "Yes, reassign me", onPress: run },
       ]);
     } else {
-      void run();
+      run();
     }
-  }, [memberCommunities.length, refreshUser, refreshAll]);
+  }, [memberCommunities.length, join]);
 
-  const handleCancelAssignment = useCallback(async () => {
-    setAssignmentBusy(true);
-    try {
-      await userLeaveGroupAssignment();
-      await refreshUser();
-    } catch (e) {
-      console.error("Failed to cancel assignment", e);
-      Alert.alert("Error", "Unable to cancel. Please try again.");
-    } finally {
-      setAssignmentBusy(false);
-    }
-  }, [refreshUser]);
+  const handleCancelAssignment = useCallback(() => {
+    leave.mutate(undefined, {
+      onError: (e) => {
+        console.error("Failed to cancel assignment", e);
+        Alert.alert("Error", "Unable to cancel. Please try again.");
+      },
+    });
+  }, [leave]);
 
   const handleAcceptInvite = useCallback(
     (invite: CommunityInviteDto) => {
@@ -511,7 +510,7 @@ export default function GroupManageScreen() {
                   {user?.undergoingGroupAssignment ? (
                     <Button
                       title={assignmentLabels.cancelLabel}
-                      onPress={() => void handleCancelAssignment()}
+                      onPress={handleCancelAssignment}
                       color={ButtonColor.Black}
                       size={ButtonSize.Small}
                       disabled={assignmentBusy}
