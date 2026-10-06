@@ -1,5 +1,5 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { phoneSearchDigits } from "@alliance/common/phone";
+import { phoneSearchDigits, phoneSearchTerm } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
 import {
   actionsActionRelationsAdmin,
@@ -154,7 +154,7 @@ const UsersList: React.FC = () => {
       return filteredByTags;
     }
     const query = searchQuery.toLowerCase().trim();
-    const phoneQuery = phoneSearchDigits(query);
+    const phoneQuery = phoneSearchTerm(query);
     return filteredByTags.filter((user) => {
       const name = user.name?.toLowerCase() ?? "";
       const email = user.email?.toLowerCase() ?? "";

@@ -8,6 +8,7 @@ import {
   phoneNumberCountry,
   phoneNumberForEditing,
   phoneSearchDigits,
+  phoneSearchTerm,
   stripPhoneNumberFormatting,
   toE164,
 } from "./phone";
@@ -179,11 +180,47 @@ describe("looksLikePhoneNumber on long input", () => {
   });
 });
 
+describe("phoneSearchDigits on long input", () => {
+  it("reads digits then separators then text without backtracking", () => {
+    expect(phoneSearchDigits(`1${" ".repeat(100_000)}a`)).toBe("1");
+    expect(phoneSearchDigits(`1${" ".repeat(100_000)}x`)).toBe("1");
+  });
+});
+
+describe("phoneSearchTerm", () => {
+  it("drops a trunk or international prefix", () => {
+    expect(phoneSearchTerm("020 7946 0958")).toBe("2079460958");
+    expect(phoneSearchTerm("0044 20 7946 0958")).toBe("442079460958");
+    expect(phoneSearchTerm("020 7946")).toBe("207946");
+    expect(phoneSearchTerm("0 1234")).toBe("1234");
+  });
+
+  it("keeps leading zeros when too few digits follow", () => {
+    expect(phoneSearchTerm("0042")).toBe("0042");
+    expect(phoneSearchTerm("0 123")).toBe("0123");
+    expect(phoneSearchTerm("0000")).toBe("0000");
+  });
+
+  it("is the digits alone without leading zeros, and empty without digits", () => {
+    expect(phoneSearchTerm("(415) 555-2671")).toBe("4155552671");
+    expect(phoneSearchTerm("ada")).toBe("");
+  });
+});
+
 describe("phoneSearchDigits", () => {
   it("reduces a query and a stored number to the same shape", () => {
     expect(phoneSearchDigits("(415) 555-2671")).toBe("4155552671");
     expect(phoneSearchDigits("+14155552671")).toBe("14155552671");
     expect(phoneSearchDigits("4155")).toBe("4155");
+    expect(phoneSearchDigits("020 7946 0958")).toBe("02079460958");
+    expect(phoneSearchDigits("+44 (0)20 7946 0958")).toBe("442079460958");
+    expect(phoneSearchDigits("415-555-2671 x12")).toBe("4155552671");
+    expect(phoneSearchDigits("415-555-2671 Ext. 12")).toBe("4155552671");
+    expect(phoneSearchDigits("#4155")).toBe("4155");
+    expect(phoneSearchDigits("alex 4155")).toBe("4155");
+    expect(phoneSearchDigits("\uff14\uff11\uff15 \uff15\uff15\uff15")).toBe(
+      "415555",
+    );
   });
 
   it("is empty for a query with no digits in it", () => {

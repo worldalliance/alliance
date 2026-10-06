@@ -62,6 +62,11 @@ const PHONE_LIKE = new RegExp(
   String.raw`^\+?(?:${PHONE_SEPARATOR}*\d)+${PHONE_SEPARATOR}*(?:${PHONE_EXTENSION})?$`,
   "iu",
 );
+const NUMBER_BEFORE_EXTENSION = new RegExp(
+  String.raw`^(.*\d)${PHONE_SEPARATOR}*${PHONE_EXTENSION}$`,
+  "isu",
+);
+const MIN_UNPREFIXED_DIGITS = 4;
 
 /**
  * Digits, phone punctuation, and an optional extension only, so free text
@@ -71,8 +76,27 @@ export function looksLikePhoneNumber(input: string): boolean {
   return PHONE_LIKE.test(input.normalize("NFKC").trim());
 }
 
+/** Digits of the number alone, without any extension or bracketed trunk 0. */
 export function phoneSearchDigits(input: string | null | undefined): string {
-  return input?.replace(/\D/g, "") ?? "";
+  return (
+    input
+      ?.normalize("NFKC")
+      .trim()
+      .replace(NUMBER_BEFORE_EXTENSION, "$1")
+      .replace("(0)", "")
+      .replace(/\D/g, "") ?? ""
+  );
+}
+
+/**
+ * The digits a stored number must contain to match a typed one. Leading zeros
+ * are dropped, since E.164 drops a national trunk 0 or international 00
+ * prefix, unless too few digits remain, as in the tail "0042".
+ */
+export function phoneSearchTerm(input: string | null | undefined): string {
+  const digits = phoneSearchDigits(input);
+  const unprefixed = digits.replace(/^0+/, "");
+  return unprefixed.length >= MIN_UNPREFIXED_DIGITS ? unprefixed : digits;
 }
 
 /** Removes separators but preserves `+` to retain international semantics. */
