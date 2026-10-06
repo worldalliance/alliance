@@ -395,7 +395,7 @@ const AwayRangesSection: React.FC = () => {
                 type="date"
                 value={startDateInput}
                 onChange={(e) => setStartDateInput(e.target.value)}
-                min={new Date().toISOString().slice(0, 16)}
+                min={formatDateForInput(new Date())}
               />
             </div>
             <div className="flex-1">
@@ -405,7 +405,7 @@ const AwayRangesSection: React.FC = () => {
                 type="date"
                 value={endDateInput}
                 onChange={(e) => setEndDateInput(e.target.value)}
-                min={startDateInput || new Date().toISOString().slice(0, 16)}
+                min={startDateInput || formatDateForInput(new Date())}
               />
             </div>
           </div>
