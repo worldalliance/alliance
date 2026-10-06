@@ -55,6 +55,11 @@ export function isCanonicalE164(value: string): boolean {
   return R.unwrapOr(toE164(value), null) === value;
 }
 
+/** Digits and phone punctuation only, so free text containing a number isn't one. */
+export function looksLikePhoneNumber(input: string): boolean {
+  return /^\+?[\d\s().-]*\d[\d\s().-]*$/.test(input.trim());
+}
+
 export function phoneSearchDigits(input: string | null | undefined): string {
   return input?.replace(/\D/g, "") ?? "";
 }
