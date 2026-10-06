@@ -1,10 +1,14 @@
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
+
+/** False where the editor's surroundings already render the block. */
+export const BlockPreviewAllowed = createContext(true);
 
 /**
- * A block editor's rendering of its block as respondents see it: always shown
- * under the editor, or behind a Show preview toggle.
+ * A block editor's rendering of its block as respondents see it: under the
+ * editor, behind a Show preview toggle, or nothing where BlockPreviewAllowed is
+ * false.
  */
 export function BlockPreview({
   block,
@@ -14,7 +18,9 @@ export function BlockPreview({
   toggleable?: boolean;
 }) {
   const [shown, setShown] = useState(false);
+  const allowed = useContext(BlockPreviewAllowed);
 
+  if (!allowed) return null;
   if (!toggleable) {
     return (
       <div className="pt-2 border-t border-gray-200">

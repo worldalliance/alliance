@@ -2,28 +2,27 @@ import type {
   AnyField,
   CheckboxExtractionTarget,
 } from "@alliance/common/forms/form-schema";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { hasExtractionEnabled, supportsExtraction } from "./fieldExtraction";
 
-export function FieldExtraMenu({
-  field,
-  showCustomValidatorControl,
-  onCustomValidatorToggle,
-  showConditionalVisibilityControl,
-  onConditionalVisibilityToggle,
-  onExtractionToggle,
-  onCheckboxExtractionTargetChange,
-}: {
+type FieldExtraOptionsProps = {
   field: AnyField;
   showCustomValidatorControl: boolean;
   onCustomValidatorToggle: (checked: boolean) => void;
-  showConditionalVisibilityControl: boolean;
-  /** Null while the field's visibility is edited through its group. */
-  onConditionalVisibilityToggle: ((checked: boolean) => void) | null;
   onExtractionToggle: (checked: boolean) => void;
   onCheckboxExtractionTargetChange: (
     target: CheckboxExtractionTarget | "",
   ) => void;
+};
+
+export function FieldExtraMenu({
+  showConditionalVisibilityControl,
+  onConditionalVisibilityToggle,
+  ...options
+}: FieldExtraOptionsProps & {
+  showConditionalVisibilityControl: boolean;
+  /** Null while the field's visibility is edited through its group. */
+  onConditionalVisibilityToggle: ((checked: boolean) => void) | null;
 }) {
   const [isExtraMenuOpen, setIsExtraMenuOpen] = useState(false);
   const extraMenuRef = useRef<HTMLDivElement | null>(null);
@@ -76,70 +75,84 @@ export function FieldExtraMenu({
       </button>
       {isExtraMenuOpen && (
         <div className="absolute right-0 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-2 text-sm shadow-lg">
-          <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
-            <input
-              type="checkbox"
-              className="mr-2"
-              checked={showCustomValidatorControl}
-              onChange={(event) =>
-                onCustomValidatorToggle(event.target.checked)
-              }
-            />
-            Use custom validator
-          </label>
-          {onConditionalVisibilityToggle && (
+          <FieldExtraOptions {...options}>
+            {onConditionalVisibilityToggle && (
+              <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
+                <input
+                  type="checkbox"
+                  className="mr-2"
+                  checked={showConditionalVisibilityControl}
+                  onChange={(event) =>
+                    onConditionalVisibilityToggle(event.target.checked)
+                  }
+                />
+                Use conditional visibility
+              </label>
+            )}
+          </FieldExtraOptions>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function FieldExtraOptions({
+  field,
+  showCustomValidatorControl,
+  onCustomValidatorToggle,
+  onExtractionToggle,
+  onCheckboxExtractionTargetChange,
+  children,
+}: FieldExtraOptionsProps & {
+  /** Options listed after the custom validator's. */
+  children?: ReactNode;
+}) {
+  return (
+    <>
+      <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
+        <input
+          type="checkbox"
+          className="mr-2"
+          checked={showCustomValidatorControl}
+          onChange={(event) => onCustomValidatorToggle(event.target.checked)}
+        />
+        Use custom validator
+      </label>
+      {children}
+      {supportsExtraction(field) && (
+        <>
+          <div className="border-t border-gray-100 my-1" />
+          {field.kind === "checkbox" || field.kind === "custom" ? (
+            <div className="px-3 py-1.5">
+              <label className="block text-gray-700 mb-1">
+                Extract response into:
+              </label>
+              <select
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={field.autoExtractUserData?.target || ""}
+                onChange={(e) =>
+                  onCheckboxExtractionTargetChange(
+                    e.target.value as CheckboxExtractionTarget | "",
+                  )
+                }
+              >
+                <option value="">None</option>
+                <option value="shareInfoPublicly">Share info publicly</option>
+              </select>
+            </div>
+          ) : (
             <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
               <input
                 type="checkbox"
                 className="mr-2"
-                checked={showConditionalVisibilityControl}
-                onChange={(event) =>
-                  onConditionalVisibilityToggle(event.target.checked)
-                }
+                checked={hasExtractionEnabled(field)}
+                onChange={(event) => onExtractionToggle(event.target.checked)}
               />
-              Use conditional visibility
+              Extract response into user data
             </label>
           )}
-          {supportsExtraction(field) && (
-            <>
-              <div className="border-t border-gray-100 my-1" />
-              {field.kind === "checkbox" || field.kind === "custom" ? (
-                <div className="px-3 py-1.5">
-                  <label className="block text-gray-700 mb-1">
-                    Extract response into:
-                  </label>
-                  <select
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    value={field.autoExtractUserData?.target || ""}
-                    onChange={(e) =>
-                      onCheckboxExtractionTargetChange(
-                        e.target.value as CheckboxExtractionTarget | "",
-                      )
-                    }
-                  >
-                    <option value="">None</option>
-                    <option value="shareInfoPublicly">
-                      Share info publicly
-                    </option>
-                  </select>
-                </div>
-              ) : (
-                <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
-                  <input
-                    type="checkbox"
-                    className="mr-2"
-                    checked={hasExtractionEnabled(field)}
-                    onChange={(event) =>
-                      onExtractionToggle(event.target.checked)
-                    }
-                  />
-                  Extract response into user data
-                </label>
-              )}
-            </>
-          )}
-        </div>
+        </>
       )}
-    </div>
+    </>
   );
 }
