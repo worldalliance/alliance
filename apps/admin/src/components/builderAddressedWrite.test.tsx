@@ -51,6 +51,7 @@ describe("OutputBuilder hands a display block the addressed write", () => {
           addressed.push(blockId),
           findDisplayBlock(schema, blockId)
         )}
+        editorsKey={0}
       />,
     );
 

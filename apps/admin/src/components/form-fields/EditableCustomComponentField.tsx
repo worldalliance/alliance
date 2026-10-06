@@ -15,6 +15,7 @@ import {
   useExternalShareTargetsAdmin,
 } from "../../lib/useExternalShareTargetsAdmin";
 import { RequiredToggle } from "./CommonControls";
+import { useDerivedWrite } from "./derivedWrite";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
@@ -64,6 +65,7 @@ export function EditableCustomComponentField({
   const [configDrafts, setConfigDrafts] = useState<Record<string, string>>({});
   const [configErrors, setConfigErrors] = useState<Record<string, string>>({});
   const fallbackComponent = customComponentRegistry[0];
+  const derivedWrite = useDerivedWrite();
 
   useEffect(() => {
     if (field.componentId) {
@@ -72,14 +74,16 @@ export function EditableCustomComponentField({
     if (!fallbackComponent) {
       return;
     }
-    onUpdate({
-      componentId: fallbackComponent.id,
-      componentConfig: buildDefaultConfig(fallbackComponent),
-      defaultValue: undefined,
-    } as Partial<CustomComponentField>);
+    derivedWrite(() =>
+      onUpdate({
+        componentId: fallbackComponent.id,
+        componentConfig: buildDefaultConfig(fallbackComponent),
+        defaultValue: undefined,
+      } as Partial<CustomComponentField>),
+    );
     setConfigDrafts({});
     setConfigErrors({});
-  }, [field.componentId, onUpdate, fallbackComponent]);
+  }, [derivedWrite, field.componentId, onUpdate, fallbackComponent]);
 
   const selectedComponent = useMemo(
     () => getCustomComponentById(field.componentId),
@@ -133,11 +137,13 @@ export function EditableCustomComponentField({
       }
     }
     if (changed) {
-      onUpdate({
-        componentConfig: normalizeComponentConfig(nextConfig),
-      } as Partial<CustomComponentField>);
+      derivedWrite(() =>
+        onUpdate({
+          componentConfig: normalizeComponentConfig(nextConfig),
+        } as Partial<CustomComponentField>),
+      );
     }
-  }, [selectedComponent, componentConfig, onUpdate]);
+  }, [derivedWrite, selectedComponent, componentConfig, onUpdate]);
 
   const handleComponentChange = (componentId: string) => {
     const nextComponent = getCustomComponentById(componentId);

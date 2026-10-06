@@ -16,6 +16,7 @@ const renderBuilder = (schema: FormSchema) =>
             schema={schema}
             onSchemaChange={() => {}}
             onUpdateBlockById={() => null}
+            editorsKey={0}
           />
         </ToastProvider>
       </QueryClientProvider>

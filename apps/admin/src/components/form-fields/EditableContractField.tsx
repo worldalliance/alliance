@@ -3,6 +3,7 @@ import { useCurrentContract } from "@alliance/shared/lib/useCurrentContract";
 import { useEffect, useMemo, useRef } from "react";
 import { useContractsAdmin } from "../../lib/useContractsAdmin";
 import { RequiredToggle } from "./CommonControls";
+import { useDerivedWrite } from "./derivedWrite";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
 
@@ -19,6 +20,7 @@ export function EditableContractField({
   const { data: contracts = [] } = useContractsAdmin();
 
   const { data: currentContract } = useCurrentContract();
+  const derivedWrite = useDerivedWrite();
 
   // Default to current contract when none selected (once per field)
   const hasDefaulted = useRef(false);
@@ -31,8 +33,8 @@ export function EditableContractField({
       return;
     }
     hasDefaulted.current = true;
-    onUpdate({ contractId: currentContract.id });
-  }, [currentContract, field.contractId, onUpdate]);
+    derivedWrite(() => onUpdate({ contractId: currentContract.id }));
+  }, [currentContract, derivedWrite, field.contractId, onUpdate]);
 
   const contractOptions = useMemo(
     () =>
@@ -56,13 +58,15 @@ export function EditableContractField({
     if (selectedContract.id === field.contract?.id) {
       return;
     }
-    onUpdate({
-      contract: {
-        id: selectedContract.id,
-        markdown: selectedContract.markdown,
-      },
-    });
-  }, [selectedContract, field.contract?.id, onUpdate]);
+    derivedWrite(() =>
+      onUpdate({
+        contract: {
+          id: selectedContract.id,
+          markdown: selectedContract.markdown,
+        },
+      }),
+    );
+  }, [derivedWrite, selectedContract, field.contract?.id, onUpdate]);
 
   // Merge selected contract onto field so RenderField (existing preview) can show markdown + sign toggle
   const fieldWithContract = useMemo(

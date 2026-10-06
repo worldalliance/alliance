@@ -21,7 +21,7 @@ import { cn } from "@alliance/shared/styles/util";
 import OutputRenderer from "@alliance/sharedweb/forms/OutputRenderer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { addressedWrite, type BlockWriteById } from "../lib/displayBlockById";
 import { createDisplayBlock } from "./display-blocks";
 import { renderBlockEditor } from "./display-blocks/blockEditors";
@@ -151,12 +151,15 @@ interface OutputBuilderProps {
   onSchemaChange: (schema: FormSchema) => void;
   /** Owned by the builder above, which outlives a view switch. */
   onUpdateBlockById: BlockWriteById;
+  /** Remounts the block editors when it changes, as after undo. */
+  editorsKey: number;
 }
 
 export function OutputBuilder({
   schema,
   onSchemaChange,
   onUpdateBlockById,
+  editorsKey,
 }: OutputBuilderProps) {
   const [selectedViewId, setSelectedViewId] = useState<string | null>(
     () => schema.outputViews?.[0]?.id ?? null,
@@ -596,9 +599,11 @@ export function OutputBuilder({
                       or output blocks.
                     </div>
                   )}
-                  {selectedView.blocks.map((block, index) =>
-                    renderBlock(block, index),
-                  )}
+                  <Fragment key={editorsKey}>
+                    {selectedView.blocks.map((block, index) =>
+                      renderBlock(block, index),
+                    )}
+                  </Fragment>
                   {draggedIndex !== null &&
                     selectedView &&
                     selectedView.blocks.length > 0 && (
