@@ -5,10 +5,8 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { InjectRepository } from "@nestjs/typeorm";
 import type { Request } from "express";
-import { User } from "src/user/entities/user.entity";
-import type { Repository } from "typeorm";
+import { SessionService } from "../session.service";
 import { sessionFromRequest } from "../tokens";
 import { attachSession } from "./attach-session";
 
@@ -16,8 +14,7 @@ import { attachSession } from "./attach-session";
 export class AdminGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
+    private sessionService: SessionService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -27,14 +24,7 @@ export class AdminGuard implements CanActivate {
       const payload = await sessionFromRequest(this.jwtService, request);
       attachSession(request, payload);
 
-      const user = await this.userRepository.findOne({
-        where: { email: payload.email },
-      });
-
-      if (!user) {
-        console.log("admin guard failed");
-        throw new UnauthorizedException();
-      }
+      const user = await this.sessionService.currentUser(payload);
       if (!user.admin) {
         console.log("user is not admin");
         throw new UnauthorizedException();

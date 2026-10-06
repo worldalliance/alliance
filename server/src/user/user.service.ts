@@ -165,7 +165,11 @@ import {
   User,
 } from "./entities/user.entity";
 import { CLAIMABLE_INVITE, inviteAcceptedSql } from "./invite-claim";
-import { type FriendsAcceptedPayload, UserEvents } from "./user.events";
+import {
+  type AccountDeletedPayload,
+  type FriendsAcceptedPayload,
+  UserEvents,
+} from "./user.events";
 import { referralLabel } from "./user.utils";
 
 export type ReferrerResolution =
@@ -770,16 +774,6 @@ export class UserService {
       expiresIn: `7d`,
       secret: process.env.JWT_SECRET,
     });
-  }
-
-  async isAdmin(id: number): Promise<boolean> {
-    const user = await this.findOneOrFail(id);
-    return user.admin;
-  }
-
-  async isCommunityLeader(email: string): Promise<boolean> {
-    const user = await this.findOneByEmail(email);
-    return user?.isCommunityLeader ?? false;
   }
 
   /* ───────────────────────────────
@@ -3292,6 +3286,8 @@ export class UserService {
       });
     });
 
+    const payload: AccountDeletedPayload = { userId: deleted.id };
+    this.eventEmitter.emit(UserEvents.AccountDeleted, payload);
     await forwardAudit();
   }
 }

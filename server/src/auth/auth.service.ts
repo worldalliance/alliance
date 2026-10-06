@@ -27,6 +27,7 @@ import { UserService } from "../user/user.service";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { Guest } from "./entities/guest.entity";
 import type { OAuthProfile } from "./oauth/oauth-client";
+import { SessionService } from "./session.service";
 import {
   ACCESS_COOKIE,
   accessTokenPayload,
@@ -56,6 +57,7 @@ export class AuthService {
     private usersService: UserService,
     private jwtService: JwtService,
     private mailService: MailService,
+    private sessionService: SessionService,
     @InjectRepository(Guest)
     private guestRepository: Repository<Guest>,
   ) {}
@@ -134,11 +136,16 @@ export class AuthService {
   }
 
   async getAuthenticatedSession(req: Request): Promise<JwtPayload | null> {
-    try {
-      return await sessionFromRequest(this.jwtService, req);
-    } catch {
-      return null;
-    }
+    const session = await R.fromPromise(
+      sessionFromRequest(this.jwtService, req),
+    );
+    if (!session.ok) return null;
+    const current = await R.fromPromise(
+      this.sessionService.assertCurrent(session.value),
+    );
+    if (current.ok) return session.value;
+    if (current.error instanceof UnauthorizedException) return null;
+    throw current.error;
   }
 
   async getAuthenticatedUserId(req: Request): Promise<number | null> {
@@ -396,8 +403,8 @@ export class AuthService {
     };
   }
 
-  async getProfile(email: string): Promise<User> {
-    const user = await this.usersService.findOneByEmail(email, {
+  async getProfile(userId: number): Promise<User> {
+    const user = await this.usersService.findOne(userId, {
       communities: true,
       contractEvents: true,
       city: true,

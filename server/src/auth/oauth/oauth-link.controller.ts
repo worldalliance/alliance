@@ -105,7 +105,7 @@ export class OAuthLinkController {
       return new OAuthLinkDto(linked);
     }
     return new OAuthLinkDto(
-      R.success(await this.authService.getProfile(linked.value.email)),
+      R.success(await this.authService.getProfile(linked.value.id)),
     );
   }
 }
