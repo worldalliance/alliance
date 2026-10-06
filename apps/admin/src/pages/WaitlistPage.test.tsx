@@ -464,3 +464,22 @@ it("disables selection while the previous filter's rows still show", async () =>
     ),
   );
 });
+
+it("filters by contact method", async () => {
+  renderPage();
+  fireEvent.change(await screen.findByLabelText("Contact"), {
+    target: { value: "phone" },
+  });
+  await waitFor(() =>
+    expect(api.searches.at(-1)?.filter).toEqual({
+      ...INITIAL_WAITLIST_FILTER,
+      contactMethod: "phone",
+    }),
+  );
+  fireEvent.change(screen.getByLabelText("Contact"), {
+    target: { value: "" },
+  });
+  await waitFor(() =>
+    expect(api.searches.at(-1)?.filter).toEqual(INITIAL_WAITLIST_FILTER),
+  );
+});

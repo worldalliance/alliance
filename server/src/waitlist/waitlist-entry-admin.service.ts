@@ -10,6 +10,7 @@ import { inviteClaimableSql, inviteClaimedSql } from "src/user/invite-claim";
 import type { Repository } from "src/utils/Repository";
 import { Brackets, In, type SelectQueryBuilder } from "typeorm";
 import {
+  WaitlistContactMethod,
   type WaitlistEntryFilterDto,
   type WaitlistEntryPage,
   WaitlistEntrySearchDto,
@@ -40,6 +41,11 @@ const INVITE_STATE_SQL = `CASE
     THEN '${WaitlistInviteState.Revoked}'
   ELSE '${WaitlistInviteState.None}'
 END`;
+
+const CONTACT_METHOD_SQL: Record<WaitlistContactMethod, string> = {
+  [WaitlistContactMethod.Email]: "entry.email IS NOT NULL",
+  [WaitlistContactMethod.Phone]: "entry.phoneNumber IS NOT NULL",
+};
 
 const escapeLike = (text: string): string => text.replace(/[\\%_]/g, "\\$&");
 
@@ -131,6 +137,9 @@ export class WaitlistEntryAdminService {
       query.andWhere("entry.spamStatus IN (:...spamStatuses)", {
         spamStatuses: filter.spamStatuses,
       });
+    }
+    if (filter.contactMethod !== undefined) {
+      query.andWhere(CONTACT_METHOD_SQL[filter.contactMethod]);
     }
     return query;
   }

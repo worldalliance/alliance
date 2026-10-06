@@ -44,6 +44,11 @@ export enum WaitlistInviteState {
   Revoked = "revoked",
 }
 
+export enum WaitlistContactMethod {
+  Email = "email",
+  Phone = "phone",
+}
+
 export enum WaitlistEntrySort {
   JoinedDesc = "joined_desc",
   JoinedAsc = "joined_asc",
@@ -146,6 +151,14 @@ export class WaitlistEntryFilterDto {
   @IsArray()
   @IsEnum(WaitlistSpamStatus, { each: true })
   spamStatuses?: WaitlistSpamStatus[];
+
+  @ApiPropertyOptional({
+    enum: WaitlistContactMethod,
+    enumName: "WaitlistContactMethod",
+  })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsEnum(WaitlistContactMethod)
+  contactMethod?: WaitlistContactMethod;
 }
 
 /**

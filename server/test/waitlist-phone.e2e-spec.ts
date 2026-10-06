@@ -1,7 +1,15 @@
 import request from "supertest";
 import type { Repository } from "typeorm";
+import {
+  Campaign,
+  CampaignKind,
+} from "../src/campaign/entities/campaign.entity";
 import { MailService } from "../src/mail/mail.service";
-import { WaitlistEntrySort } from "../src/waitlist/dto/waitlist-entry-admin.dto";
+import {
+  WaitlistContactMethod,
+  WaitlistEntrySort,
+} from "../src/waitlist/dto/waitlist-entry-admin.dto";
+import { WaitlistCohort } from "../src/waitlist/entities/waitlist-cohort.entity";
 import {
   WaitlistEmailRecipient,
   WaitlistEmailRecipientStatus,
@@ -257,6 +265,69 @@ describe("Waitlist phone contact (e2e)", () => {
           expect.objectContaining({ id: uk.id }),
         ]);
       }
+    });
+
+    it("filters by contact method alike in rows, ids, metrics, and cohorts", async () => {
+      const organization = await ctx.dataSource.getRepository(Campaign).save({
+        name: "Contact Org",
+        code: `org-${Math.random()}`,
+        kind: CampaignKind.Organization,
+      });
+      const phone = await saveEntry({ organizationId: organization.id });
+      const email = await saveEntry({
+        organizationId: organization.id,
+        phoneNumber: null,
+        email: `filtered-${Math.random()}@example.com`,
+      });
+      const ids = async (filter: Record<string, unknown>) =>
+        (
+          await asAdmin(
+            request(server()).post("/waitlist/admin/entries/ids"),
+          ).send({ filter })
+        ).body.ids;
+      const base = { organizationIds: [organization.id] };
+
+      const phoneOnly = {
+        ...base,
+        contactMethod: WaitlistContactMethod.Phone,
+      };
+      const rows = await search(phoneOnly).expect(200);
+      expect(rows.body.entries.map((e: { id: number }) => e.id)).toEqual([
+        phone.id,
+      ]);
+      expect(rows.body.total).toBe(1);
+      expect(await ids(phoneOnly)).toEqual([phone.id]);
+      expect(
+        await ids({ ...base, contactMethod: WaitlistContactMethod.Email }),
+      ).toEqual([email.id]);
+      expect(await ids(base)).toEqual(
+        [phone.id, email.id].sort((a, b) => a - b),
+      );
+      const metrics = await asAdmin(
+        request(server()).post("/waitlist/admin/entries/metrics"),
+      )
+        .send({ filter: phoneOnly })
+        .expect(200);
+      expect(metrics.body.status.entries).toBe(1);
+      await search({ contactMethod: "fax" }).expect(400);
+
+      const cohort = await asAdmin(
+        request(server()).post("/waitlist/admin/cohorts"),
+      )
+        .send({ name: `Phones ${Math.random()}`, filter: phoneOnly })
+        .expect(201);
+      expect(cohort.body.filter.contactMethod).toBe(
+        WaitlistContactMethod.Phone,
+      );
+      const legacy = await ctx.dataSource
+        .getRepository(WaitlistCohort)
+        .save({ name: `Legacy ${Math.random()}`, filter: base });
+      const cohorts = await asAdmin(
+        request(server()).get("/waitlist/admin/cohorts"),
+      ).expect(200);
+      expect(
+        cohorts.body.find((c: { id: number }) => c.id === legacy.id).filter,
+      ).toEqual(base);
     });
   });
 

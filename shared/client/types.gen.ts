@@ -4546,6 +4546,8 @@ export type WaitlistInviteState = 'none' | 'unused' | 'claimed' | 'revoked';
 
 export type WaitlistSpamStatus = 'clean' | 'suspected' | 'spam' | 'not_spam';
 
+export type WaitlistContactMethod = 'email' | 'phone';
+
 export type WaitlistEntryFilterDto = {
     /**
      * Matches part of a name or email, or, when the text looks like a phone number, part of a phone number's digits ignoring punctuation
@@ -4565,6 +4567,7 @@ export type WaitlistEntryFilterDto = {
     tagIds?: Array<number>;
     inviteStates?: Array<WaitlistInviteState>;
     spamStatuses?: Array<WaitlistSpamStatus>;
+    contactMethod?: WaitlistContactMethod;
 };
 
 export type WaitlistEntrySort = 'joined_desc' | 'joined_asc' | 'organization_asc' | 'organization_desc';

@@ -1,5 +1,6 @@
 import type {
   AdminWaitlistLinkDto,
+  WaitlistContactMethod,
   WaitlistEntryFilterDto,
   WaitlistInviteState,
   WaitlistSpamStatus,
@@ -83,6 +84,15 @@ const isInviteState = (value: string): value is WaitlistInviteState =>
 
 export const INVITE_STATES =
   Object.keys(INVITE_STATE_LABELS).filter(isInviteState);
+
+export const CONTACT_METHOD_LABELS: Record<WaitlistContactMethod, string> = {
+  email: "Email",
+  phone: "Phone",
+};
+
+export const isContactMethod = (
+  value: string,
+): value is WaitlistContactMethod => value in CONTACT_METHOD_LABELS;
 
 /** Spam-like entries get no email and start hidden. */
 export const SPAM_STATUSES: Record<

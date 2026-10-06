@@ -13,9 +13,11 @@ import {
   toEndDateInput,
 } from "../../lib/dateInput";
 import {
+  CONTACT_METHOD_LABELS,
   INITIAL_WAITLIST_FILTER,
   INVITE_STATE_LABELS,
   INVITE_STATES,
+  isContactMethod,
   linkOptions,
   sameFilter,
   SPAM_STATUS_VALUES,
@@ -89,7 +91,11 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
     { label: string; yes: string; no: string }
   > = {
     mobilized: { label: "Mobilized", yes: "Mobilized", no: "Waiting" },
-    subscribed: { label: "Email", yes: "Subscribed", no: "Unsubscribed" },
+    subscribed: {
+      label: "Subscription",
+      yes: "Subscribed",
+      no: "Unsubscribed",
+    },
     hasReason: { label: "Reason", yes: "Has reason", no: "No reason" },
   };
 
@@ -140,6 +146,24 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
         selected={filter.tagIds ?? []}
         onChange={(ids) => set("tagIds", ids)}
       />
+      <select
+        aria-label="Contact"
+        className={SELECT_CLASS}
+        value={filter.contactMethod ?? ""}
+        onChange={(e) =>
+          set(
+            "contactMethod",
+            isContactMethod(e.target.value) ? e.target.value : undefined,
+          )
+        }
+      >
+        <option value="">Contact: any</option>
+        {Object.entries(CONTACT_METHOD_LABELS).map(([value, label]) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </select>
       {BOOLEAN_FIELDS.map((key) => (
         <BooleanFilter
           key={key}
