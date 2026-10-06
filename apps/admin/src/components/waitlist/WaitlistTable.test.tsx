@@ -10,6 +10,7 @@ const entry: AdminWaitlistEntryDto = {
   id: 1,
   name: "Test Person",
   email: "person@example.com",
+  phoneNumber: null,
   reason: null,
   organization: null,
   sourceLink: null,
@@ -104,4 +105,23 @@ it("shows account creation and every dated signing and suspension", () => {
     expect(within(row).getAllByRole("cell")[contractIndex].textContent).toBe(
       "No contract events",
     );
+});
+
+it("shows a phone entry's number for display", () => {
+  render(
+    <ToastProvider>
+      <WaitlistTable
+        entries={[{ ...entry, email: null, phoneNumber: "+14155552671" }]}
+        selectedIds={new Set()}
+        onSelectedIdsChange={() => {}}
+        onDeselect={() => {}}
+        selectable
+        sort="joined_desc"
+        onSortChange={() => {}}
+        onFilterReferrer={() => {}}
+      />
+    </ToastProvider>,
+    queryWrapper(),
+  );
+  expect(screen.getByText("(415) 555-2671")).toBeTruthy();
 });

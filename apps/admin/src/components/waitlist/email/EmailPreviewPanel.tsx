@@ -57,7 +57,8 @@ const EmailPreviewPanel: React.FC<EmailPreviewPanelProps> = ({
               <ChevronLeft size={16} />
             </button>
             <span className="text-zinc-700">
-              {sample.name} &lt;{sample.email}&gt;
+              {sample.name}
+              {sample.email && ` <${sample.email}>`}
               {index >= 0 && ` · ${index + 1} of ${recipientIds.length}`}
             </span>
             <button

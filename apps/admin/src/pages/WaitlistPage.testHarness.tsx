@@ -21,6 +21,7 @@ const entry = (
   id,
   name: `Person ${id}`,
   email: `person${id}@example.com`,
+  phoneNumber: null,
   reason: null,
   organization: null,
   sourceLink: null,
@@ -82,6 +83,7 @@ export const emailPreview = (
   fields: Partial<WaitlistEmailPreviewDto> = {},
 ): WaitlistEmailPreviewDto => ({
   selected: 2,
+  noEmail: 0,
   unsubscribed: 0,
   spam: 0,
   claimed: 0,

@@ -52,6 +52,10 @@ function entryException(
       return new BadRequestException(
         "Send a link code or a referrer code, not both",
       );
+    case WaitlistEntryError.OneContact:
+      return new BadRequestException(
+        "Send either an email address or a phone number",
+      );
     case WaitlistEntryError.UnknownCode:
       return new NotFoundException("This waitlist link is not active");
     case WaitlistEntryError.ReasonRequired:
@@ -88,10 +92,12 @@ export class WaitlistController {
     if (created.value === null) {
       return new WaitlistEntryResultDto(null);
     }
-    void this.waitlistMailService.sendShareLink({
-      email: dto.email,
-      emailType: EmailType.WaitlistConfirmation,
-    });
+    if (dto.email !== undefined) {
+      void this.waitlistMailService.sendShareLink({
+        email: dto.email,
+        emailType: EmailType.WaitlistConfirmation,
+      });
+    }
     await this.browserService.rememberEntry({
       res,
       entryId: created.value.id,

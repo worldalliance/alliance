@@ -125,7 +125,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
   const confirmed = submit.isSuccess
     ? {
         shareCode: submit.data.shareCode,
-        email: submit.variables.email,
+        email: submit.variables.email ?? null,
         mobilized: false,
       }
     : remembered && {

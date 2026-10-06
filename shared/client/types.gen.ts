@@ -4452,7 +4452,14 @@ export type CreateWaitlistEntryDto = {
      */
     referrerCode?: string;
     name: string;
-    email: string;
+    /**
+     * Send this or `phoneNumber`
+     */
+    email?: string;
+    /**
+     * E.164; send this or `email`
+     */
+    phoneNumber?: string;
     /**
      * Required when the referral resolves to no organization
      */
@@ -4462,7 +4469,7 @@ export type CreateWaitlistEntryDto = {
 
 export type WaitlistEntryResultDto = {
     /**
-     * The new entry's personal code; null when the email was already on the waitlist
+     * The new entry's personal code; null when the contact was already on the waitlist
      */
     shareCode: string | null;
 };
@@ -4587,7 +4594,11 @@ export type WaitlistTagDto = {
 export type AdminWaitlistEntryDto = {
     id: number;
     name: string;
-    email: string;
+    email: string | null;
+    /**
+     * E.164
+     */
+    phoneNumber: string | null;
     reason: string | null;
     organization: WaitlistNamedRefDto | null;
     sourceLink: WaitlistSourceLinkDto | null;
@@ -4795,7 +4806,7 @@ export type WaitlistEmailPlaceholder = 'name' | 'organizationName' | 'signupLink
 export type WaitlistEmailSampleDto = {
     entryId: number;
     name: string;
-    email: string;
+    email: string | null;
     subject: string | null;
     html: string | null;
     missing: Array<WaitlistEmailPlaceholder>;
@@ -4807,7 +4818,11 @@ export type WaitlistEmailPreviewDto = {
      */
     selected: number;
     /**
-     * Selected entries skipped as unsubscribed
+     * Selected entries skipped for having no email
+     */
+    noEmail: number;
+    /**
+     * Selected entries with email skipped as unsubscribed
      */
     unsubscribed: number;
     /**
@@ -4897,13 +4912,14 @@ export type WaitlistEmailBatchDto = {
 
 export type WaitlistEmailRecipientStatus = 'pending' | 'sending' | 'sent' | 'failed' | 'uncertain' | 'skipped';
 
-export type WaitlistEmailSkipReason = 'unsubscribed' | 'invite_claimed' | 'spam';
+export type WaitlistEmailSkipReason = 'no_email' | 'unsubscribed' | 'invite_claimed' | 'spam';
 
 export type WaitlistEmailRecipientDto = {
     id: number;
     entryId: number;
     name: string;
-    email: string;
+    email: string | null;
+    phoneNumber: string | null;
     status: WaitlistEmailRecipientStatus;
     skipReason: WaitlistEmailSkipReason | null;
     error: string | null;

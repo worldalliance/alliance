@@ -5,6 +5,7 @@ import type { WaitlistEmailValues } from "./waitlist-email-render";
 import { SPAM_LIKE } from "./waitlist-spam";
 
 export enum WaitlistEmailSkipReason {
+  NoEmail = "no_email",
   Unsubscribed = "unsubscribed",
   InviteClaimed = "invite_claimed",
   Spam = "spam",
@@ -19,6 +20,9 @@ export function skipReason(params: {
   includeClaimed: boolean;
 }): WaitlistEmailSkipReason | null {
   const { candidate, includeClaimed } = params;
+  if (candidate.entry.email === null) {
+    return WaitlistEmailSkipReason.NoEmail;
+  }
   if (candidate.entry.unsubscribedAt) {
     return WaitlistEmailSkipReason.Unsubscribed;
   }

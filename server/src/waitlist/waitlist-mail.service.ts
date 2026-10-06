@@ -105,10 +105,16 @@ export class WaitlistMailService {
       return;
     }
     const entry = await this.entryRepository.findOneBy({ email });
-    if (!entry || entry.unsubscribedAt || SPAM_LIKE[entry.spamStatus]) {
+    const recipient = entry?.email;
+    if (
+      !entry ||
+      !recipient ||
+      entry.unsubscribedAt ||
+      SPAM_LIKE[entry.spamStatus]
+    ) {
       return;
     }
-    const claim = await this.claim(entry.email, dailyCap);
+    const claim = await this.claim(recipient, dailyCap);
     switch (claim) {
       case MailClaim.RecipientLimited:
         return;
@@ -129,7 +135,7 @@ export class WaitlistMailService {
         throw new Error(`unknown mail claim: ${claim satisfies never}`);
     }
     await this.mailService.sendWaitlistLinkEmail({
-      recipient: entry.email,
+      recipient,
       emailType,
       url: waitlistShareLink(entry.code),
       unsubscribeUrl: waitlistUnsubscribeLink(entry.unsubscribeToken),

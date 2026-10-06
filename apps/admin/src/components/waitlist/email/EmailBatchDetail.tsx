@@ -8,6 +8,7 @@ import React from "react";
 import { useNavigate } from "react-router";
 import { adminRefusalMessage } from "../../../lib/adminRefusal";
 import { useWaitlistEmailAdmin } from "../../../lib/useWaitlistEmailsAdmin";
+import { waitlistContactLabel } from "../../../lib/waitlistContact";
 import {
   type EmailDraft,
   emailDraftState,
@@ -17,6 +18,7 @@ import { BORDERED_ICON_BUTTON_CLASS } from "../controlClasses";
 import EmailRetryActions from "./EmailRetryActions";
 
 const SKIP_LABELS: Record<WaitlistEmailSkipReason, string> = {
+  no_email: "Phone contact — no email address",
   unsubscribed: "Unsubscribed",
   invite_claimed: "Already claimed an invite",
   spam: "Marked or suspected as spam",
@@ -68,7 +70,9 @@ const EmailBatchDetail: React.FC<{ batch: WaitlistEmailBatchDto }> = ({
               <tr key={recipient.id} className="border-t border-zinc-200">
                 <td className="py-1">
                   {recipient.name}{" "}
-                  <span className="text-zinc-500">{recipient.email}</span>
+                  <span className="text-zinc-500">
+                    {waitlistContactLabel(recipient)}
+                  </span>
                 </td>
                 <td className="py-1">{STATUS_LABELS[recipient.status]}</td>
                 <td className="py-1 text-zinc-600">

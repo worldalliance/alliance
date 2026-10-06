@@ -103,6 +103,9 @@ export function skippedGroups(params: {
 }): string[] {
   const { preview, includeClaimed } = params;
   return [
+    preview.noEmail
+      ? `${preview.noEmail} with a phone contact and no email address`
+      : null,
     preview.unsubscribed ? `${preview.unsubscribed} unsubscribed` : null,
     preview.spam ? `${preview.spam} marked or suspected as spam` : null,
     !includeClaimed && preview.claimed

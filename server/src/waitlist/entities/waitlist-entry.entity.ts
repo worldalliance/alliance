@@ -33,6 +33,14 @@ export enum WaitlistSpamStatus {
   "CHK_waitlist_entry_email_trimmed",
   `"email" !~ '^[[:space:]]|[[:space:]]$'`,
 )
+@Check(
+  "CHK_waitlist_entry_one_contact",
+  `("email" IS NULL) <> ("phoneNumber" IS NULL)`,
+)
+@Check(
+  "CHK_waitlist_entry_phone_e164",
+  `"phoneNumber" ~ '^[+][1-9][0-9]{1,14}$'`,
+)
 export class WaitlistEntry {
   @PrimaryGeneratedColumn()
   id: number;
@@ -41,8 +49,12 @@ export class WaitlistEntry {
   name: string;
 
   @Index({ unique: true })
-  @Column({ type: "citext" })
-  email: string;
+  @Column({ type: "citext", nullable: true })
+  email: string | null;
+
+  @Index({ unique: true })
+  @Column({ type: "varchar", nullable: true })
+  phoneNumber: string | null;
 
   @Column({ type: "text", nullable: true })
   reason: string | null;

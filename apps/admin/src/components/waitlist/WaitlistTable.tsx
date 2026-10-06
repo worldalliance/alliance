@@ -11,6 +11,7 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import React from "react";
+import { waitlistContactLabel } from "../../lib/waitlistContact";
 import { INVITE_STATE_LABELS, SPAM_STATUSES } from "../../lib/waitlistFilter";
 import SpamToggle from "./SpamToggle";
 
@@ -190,7 +191,9 @@ const WaitlistTable: React.FC<WaitlistTableProps> = ({
               </td>
               <td className="px-3 py-2">
                 <p className="font-medium text-zinc-900">{entry.name}</p>
-                <p className="text-xs text-zinc-500">{entry.email}</p>
+                <p className="text-xs text-zinc-500">
+                  {waitlistContactLabel(entry)}
+                </p>
                 {entry.unsubscribedAt && (
                   <p className="text-xs text-amber-700">Unsubscribed</p>
                 )}

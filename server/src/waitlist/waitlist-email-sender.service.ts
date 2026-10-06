@@ -315,6 +315,10 @@ export class WaitlistEmailSender {
         });
         return null;
       }
+      const { email } = entry;
+      if (email === null) {
+        throw new Error(`waitlist entry ${entry.id} has no email to send to`);
+      }
 
       const invite = findWaitlistEmailPlaceholders([
         batch.subject,
@@ -352,7 +356,7 @@ export class WaitlistEmailSender {
       });
       return {
         recipient,
-        email: entry.email,
+        email,
         mobilize: batch.mobilize,
         staffUserId: batch.staffUserId,
         ...rendered.value,
