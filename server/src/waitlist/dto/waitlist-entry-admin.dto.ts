@@ -61,7 +61,8 @@ export class WaitlistEntryFilterDto {
   @ApiPropertyOptional({
     type: String,
     nullable: true,
-    description: "Matches part of a name or email",
+    description:
+      "Matches part of a name or email, or, when the text looks like a phone number, part of a phone number's digits ignoring punctuation",
   })
   @IsOptional()
   @Transform(trimToNull)

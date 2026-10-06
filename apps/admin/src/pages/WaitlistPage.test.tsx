@@ -124,7 +124,7 @@ it("clears a search still being typed", async () => {
   fireEvent.change(screen.getByLabelText("Mobilized"), {
     target: { value: "false" },
   });
-  const box = screen.getByLabelText("Search name or email");
+  const box = screen.getByLabelText("Search name, email, or phone");
   fireEvent.change(box, { target: { value: "pat" } });
   fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
   await new Promise((resolve) => setTimeout(resolve, 400));
@@ -135,7 +135,7 @@ it("clears a search still being typed", async () => {
 it("searches after typing stops", async () => {
   renderPage();
   await screen.findByText("person1@example.com");
-  fireEvent.change(screen.getByLabelText("Search name or email"), {
+  fireEvent.change(screen.getByLabelText("Search name, email, or phone"), {
     target: { value: "  pat " },
   });
   await waitFor(() =>

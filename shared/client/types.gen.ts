@@ -4548,7 +4548,7 @@ export type WaitlistSpamStatus = 'clean' | 'suspected' | 'spam' | 'not_spam';
 
 export type WaitlistEntryFilterDto = {
     /**
-     * Matches part of a name or email
+     * Matches part of a name or email, or, when the text looks like a phone number, part of a phone number's digits ignoring punctuation
      */
     search?: string | null;
     organizationIds?: Array<number>;

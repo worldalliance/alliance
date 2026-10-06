@@ -1,3 +1,4 @@
+import { looksLikePhoneNumber, phoneSearchTerm } from "@alliance/common/phone";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import {
@@ -53,13 +54,22 @@ export class WaitlistEntryAdminService {
   filtered(filter: WaitlistEntryFilterDto): SelectQueryBuilder<WaitlistEntry> {
     const query = this.entryRepository.createQueryBuilder("entry");
     if (filter.search) {
+      const phoneTerm = looksLikePhoneNumber(filter.search)
+        ? phoneSearchTerm(filter.search)
+        : "";
       query.andWhere(
-        new Brackets((search) =>
+        new Brackets((search) => {
           search
             .where("entry.name ILIKE :search")
-            .orWhere("entry.email ILIKE :search"),
-        ),
-        { search: `%${escapeLike(filter.search)}%` },
+            .orWhere("entry.email ILIKE :search");
+          if (phoneTerm) {
+            search.orWhere("entry.phoneNumber LIKE :phoneTerm");
+          }
+        }),
+        {
+          search: `%${escapeLike(filter.search)}%`,
+          phoneTerm: `%${phoneTerm}%`,
+        },
       );
     }
     if (filter.organizationIds?.length) {

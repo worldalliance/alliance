@@ -1,6 +1,7 @@
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { MailService } from "../src/mail/mail.service";
+import { WaitlistEntrySort } from "../src/waitlist/dto/waitlist-entry-admin.dto";
 import {
   WaitlistEmailRecipient,
   WaitlistEmailRecipientStatus,
@@ -26,6 +27,9 @@ describe("Waitlist phone contact (e2e)", () => {
   let nextPhone = 0;
   const uniquePhone = () => `+1415555${String(nextPhone++).padStart(4, "0")}`;
 
+  const nationalSpelling = (phone: string) =>
+    `(${phone.slice(2, 5)}) ${phone.slice(5, 8)}-${phone.slice(8)}`;
+
   const submit = (
     fields: Record<string, unknown>,
     agent: request.Agent | ReturnType<typeof request> = request(server()),
@@ -49,6 +53,14 @@ describe("Waitlist phone contact (e2e)", () => {
         ...fields,
       }),
     );
+
+  const search = (filter: Record<string, unknown>) =>
+    asAdmin(request(server()).post("/waitlist/admin/entries/search")).send({
+      filter,
+      sort: WaitlistEntrySort.JoinedAsc,
+      offset: 0,
+      limit: 200,
+    });
 
   beforeAll(async () => {
     ctx = await createTestApp([WaitlistModule]);
@@ -186,6 +198,66 @@ describe("Waitlist phone contact (e2e)", () => {
     await expect(
       insert({ email: null, phoneNumber: "415-555-2671" }),
     ).rejects.toThrow(/CHK_waitlist_entry_phone_e164/);
+  });
+
+  describe("admin", () => {
+    it("shows the contact, and finds a number however it is punctuated", async () => {
+      const phone = await saveEntry({ name: "Searchable Phone" });
+      const email = await saveEntry({
+        name: "Searchable Email",
+        phoneNumber: null,
+        email: `searchable-${Math.random()}@example.com`,
+      });
+
+      const res = await search({
+        search: nationalSpelling(phone.phoneNumber ?? ""),
+      }).expect(200);
+      expect(res.body.entries).toEqual([
+        expect.objectContaining({
+          id: phone.id,
+          email: null,
+          phoneNumber: phone.phoneNumber,
+        }),
+      ]);
+      const byEmail = await search({ search: email.email }).expect(200);
+      expect(byEmail.body.entries).toEqual([
+        expect.objectContaining({ id: email.id, phoneNumber: null }),
+      ]);
+    });
+
+    it("finds a number by its start typed with a trunk 0", async () => {
+      const uk = await saveEntry({ phoneNumber: "+442079460959" });
+      const res = await search({ search: "020 7946" }).expect(200);
+      expect(res.body.entries.map((e: { id: number }) => e.id)).toContain(
+        uk.id,
+      );
+    });
+
+    it("finds a number by a tail that starts with zeros", async () => {
+      const phone = await saveEntry({ phoneNumber: "+12025550000" });
+      const res = await search({ search: "0000" }).expect(200);
+      expect(res.body.entries.map((e: { id: number }) => e.id)).toContain(
+        phone.id,
+      );
+    });
+
+    it("matches no number from free text that contains its digits", async () => {
+      const phone = await saveEntry({ name: "Gated Phone" });
+      const res = await search({
+        search: `Room ${(phone.phoneNumber ?? "").slice(2, 5)}`,
+      }).expect(200);
+      expect(res.body.entries).toEqual([]);
+    });
+
+    it("finds a non-US number typed with its trunk or international prefix", async () => {
+      const uk = await saveEntry({ phoneNumber: "+442079460958" });
+      for (const typed of ["020 7946 0958", "0044 20 7946 0958"]) {
+        const res = await search({ search: typed }).expect(200);
+        expect(res.body.entries).toEqual([
+          expect.objectContaining({ id: uk.id }),
+        ]);
+      }
+    });
   });
 
   describe("email audiences", () => {
