@@ -5,6 +5,7 @@ import {
   OAuthProvider,
   type OAuthIntent,
 } from "@alliance/common/oauth";
+import type { PosthogContext } from "@alliance/common/posthog";
 import { R, type Result } from "@alliance/common/result";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { JwtService, TokenExpiredError } from "@nestjs/jwt";
@@ -13,6 +14,7 @@ import { milliseconds } from "date-fns";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { hasPassword, User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
+import { requestContext } from "src/utils/request-context";
 import { Not, type Repository } from "typeorm";
 import { z } from "zod";
 import { AuthService } from "../auth.service";
@@ -47,6 +49,7 @@ export type OAuthState = {
   proofHash: string;
   referralCode?: string;
   userId?: number;
+  posthog?: PosthogContext;
 };
 
 /**
@@ -165,9 +168,13 @@ export class OAuthAuthService {
     private spentTokens: SpentTokenService,
   ) {}
 
-  signState(state: Omit<OAuthState, "tokenType">): Promise<string> {
+  signState(state: Omit<OAuthState, "tokenType" | "posthog">): Promise<string> {
     return this.jwtService.signAsync(
-      { ...state, tokenType: JWTTokenType.oauthState },
+      {
+        ...state,
+        posthog: requestContext.getStore()?.posthog,
+        tokenType: JWTTokenType.oauthState,
+      },
       { expiresIn: STATE_LIFETIME },
     );
   }

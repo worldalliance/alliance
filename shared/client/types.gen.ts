@@ -5237,6 +5237,8 @@ export type OAuthRedirectToProviderData = {
         returnTo: string;
         referralCode?: string;
         timeZone?: string;
+        posthogSessionId?: string;
+        posthogDistinctId?: string;
     };
     url: '/auth/{provider}/start';
 };

@@ -1,5 +1,6 @@
 import { OAUTH_PROVIDER_LABEL, OAuthProvider } from "@alliance/common/oauth";
 import { cn } from "@alliance/shared/styles/util";
+import type { MouseEvent } from "react";
 import OAuthProviderIcon from "./icons/OAuthProviderIcon";
 
 export interface OAuthButtonsProps {
@@ -9,6 +10,15 @@ export interface OAuthButtonsProps {
   className?: string;
   disabled?: boolean;
 }
+
+// The browser reads href after these handlers run, so the URL carries state
+// from the moment the member opens it rather than from the last render.
+const refreshOnOpen = (href: () => string) => {
+  const refresh = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.currentTarget.href = href();
+  };
+  return { onClick: refresh, onAuxClick: refresh, onContextMenu: refresh };
+};
 
 /** Anchors, because each flow is a top-level navigation to the server. */
 const OAuthButtons = ({
@@ -22,6 +32,7 @@ const OAuthButtons = ({
       <a
         key={provider}
         href={disabled ? undefined : hrefFor(provider)}
+        {...(disabled ? {} : refreshOnOpen(() => hrefFor(provider)))}
         aria-disabled={disabled || undefined}
         className={cn(
           "inline-flex w-full items-center justify-center gap-3 rounded border border-zinc-300 bg-white px-4 py-3 text-[15px] font-medium text-zinc-700 transition-colors hover:bg-zinc-50",

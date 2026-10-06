@@ -34,6 +34,15 @@ export class OAuthStartDto {
   @IsOptional()
   @IsTimeZoneIdentifier()
   timeZone?: string;
+
+  // Left to parsePosthogContext, so a malformed analytics id cannot fail sign-in.
+  @ApiPropertyOptional({ type: String })
+  @IsOptional()
+  posthogSessionId?: unknown;
+
+  @ApiPropertyOptional({ type: String })
+  @IsOptional()
+  posthogDistinctId?: unknown;
 }
 
 export class OAuthCallbackDto {

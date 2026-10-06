@@ -1,5 +1,7 @@
+import { client } from "@alliance/shared/client/client.gen";
 import type { AnalyticsBackend } from "@alliance/shared/lib/analytics";
 import { registerAnalytics } from "@alliance/shared/lib/analytics";
+import { registerPosthogRequestContext } from "@alliance/shared/lib/posthog-request";
 import {
   PostHogProviderProps,
   PostHogProvider as RNPostHogProvider,
@@ -7,6 +9,10 @@ import {
 } from "posthog-react-native";
 import { type ReactNode, useEffect } from "react";
 import { releaseTarget } from "./config";
+import {
+  posthogRequestContext,
+  SESSION_IDLE_TIMEOUT_SECONDS,
+} from "./posthogRequestContext";
 
 const postHogProviderProps: Omit<PostHogProviderProps, "children"> = __DEV__
   ? {
@@ -14,6 +20,7 @@ const postHogProviderProps: Omit<PostHogProviderProps, "children"> = __DEV__
       options: {
         host: "https://us.i.posthog.com",
         defaultOptIn: false,
+        sessionExpirationTimeSeconds: SESSION_IDLE_TIMEOUT_SECONDS,
       },
       autocapture: false,
     }
@@ -23,6 +30,7 @@ const postHogProviderProps: Omit<PostHogProviderProps, "children"> = __DEV__
         host: releaseTarget().posthog.host,
         enableSessionReplay: true,
         captureAppLifecycleEvents: true,
+        sessionExpirationTimeSeconds: SESSION_IDLE_TIMEOUT_SECONDS,
         sessionReplayConfig: {
           maskAllTextInputs: false,
           captureLog: true,
@@ -42,6 +50,10 @@ function AnalyticsBridge() {
       registerAnalytics(
         posthog satisfies Required<Pick<AnalyticsBackend, "flush">>,
       );
+      return registerPosthogRequestContext({
+        client,
+        getContext: () => posthogRequestContext(posthog),
+      });
     }
   }, [posthog]);
   return null;

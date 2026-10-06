@@ -2,6 +2,7 @@ import { MOBILE_OAUTH_RETURN_PATH } from "@alliance/common/oauth";
 import { client } from "@alliance/shared/client/client.gen";
 import { registerAnalytics } from "@alliance/shared/lib/analytics";
 import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
+import { registerPosthogRequestContext } from "@alliance/shared/lib/posthog-request";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
@@ -25,6 +26,7 @@ import { HtmlBackgroundManager } from "./components/HtmlBackgroundManager";
 import { AuthProvider } from "./lib/AuthContext";
 import { getApiUrl, getPosthogHost } from "./lib/config";
 import PosthogBuildTag from "./lib/PosthogBuildTag";
+import { posthogRequestContext } from "./lib/posthogRequestContext";
 import { socialPreviewMeta } from "./lib/socialPreviewMeta";
 
 const queryClient = new QueryClient({
@@ -43,6 +45,10 @@ client.setConfig({
 registerErrorStatus(client);
 
 registerAnalytics(posthog);
+registerPosthogRequestContext({
+  client,
+  getContext: () => posthogRequestContext(posthog),
+});
 
 export function meta() {
   return socialPreviewMeta({ title: "Alliance" });

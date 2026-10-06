@@ -10,6 +10,7 @@ import {
   type OAuthError,
   type OAuthOutcome,
 } from "@alliance/common/oauth";
+import type { PosthogContext } from "@alliance/common/posthog";
 import { deviceTimeZone, signupTimeZone } from "@alliance/shared/lib/timeZone";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
@@ -24,6 +25,7 @@ export function oauthStartUrl(params: {
   intent: OAuthIntent;
   returnTo: string;
   referralCode?: string | null;
+  posthog?: PosthogContext;
 }): string {
   const url = new URL(`${params.apiUrl}/auth/${params.provider}/start`);
   url.searchParams.set("intent", params.intent);
@@ -34,6 +36,12 @@ export function oauthStartUrl(params: {
   }
   if (params.referralCode) {
     url.searchParams.set("referralCode", params.referralCode);
+  }
+  if (params.posthog?.sessionId) {
+    url.searchParams.set("posthogSessionId", params.posthog.sessionId);
+  }
+  if (params.posthog?.distinctId) {
+    url.searchParams.set("posthogDistinctId", params.posthog.distinctId);
   }
   return url.toString();
 }
