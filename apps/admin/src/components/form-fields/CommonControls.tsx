@@ -30,8 +30,10 @@ import {
 import {
   SelectedCountComparison,
   type Condition,
+  type FormulaNode,
   type VisibleIfFormula,
 } from "@alliance/common/forms/visible-if-formula";
+import { R, type Result } from "@alliance/common/result";
 import {
   CustomExpressionUserDto,
   CustomValidatorType,
@@ -43,6 +45,7 @@ import {
 import {
   conditionNameForIndex,
   defaultFormulaForConditionCount,
+  formulaConditionNames,
   parseVisibilityFormula,
   serializeVisibilityFormula,
 } from "@alliance/shared/forms/visibilityFormula";
@@ -82,22 +85,20 @@ import {
 } from "./FormulaChoiceConditionValue";
 import { SelectedCountConditionValue } from "./SelectedCountConditionValue";
 
-function getFormulaConditionRefs(node: VisibleIfFormula["formula"]): string[] {
-  if (typeof node === "string") return [node];
-  if (node.op === "NOT") {
-    return getFormulaConditionRefs(
-      typeof node.operand === "string" ? node.operand : node.operand,
-    );
-  }
-  const left =
-    typeof node.left === "string"
-      ? [node.left]
-      : getFormulaConditionRefs(node.left);
-  const right =
-    typeof node.right === "string"
-      ? [node.right]
-      : getFormulaConditionRefs(node.right);
-  return [...left, ...right];
+function parseAllowedFormula(
+  text: string,
+  allowed: Set<string>,
+): Result<FormulaNode, string> {
+  const parsed = parseVisibilityFormula(text);
+  if (!parsed.ok) return parsed;
+  const unknown = formulaConditionNames(parsed.value).find(
+    (name) => !allowed.has(name),
+  );
+  return unknown === undefined
+    ? parsed
+    : R.failure(
+        `Unknown condition "${unknown}". Use only condition names that exist in your list (e.g. condition1, condition2).`,
+      );
 }
 
 const DEVICE_LABELS: Record<DeviceVisibilityTarget, string> = {
@@ -589,7 +590,7 @@ export function ConditionalVisibility({
           next.length
       ) {
         const current = field.visibleIfFormula.formula;
-        const refs = getFormulaConditionRefs(current);
+        const refs = formulaConditionNames(current);
         if (refs.every((r) => allowed.has(r))) {
           formulaNode = current;
         } else {
@@ -619,15 +620,8 @@ export function ConditionalVisibility({
     defaultStr: string,
     allowed: Set<string>,
   ): VisibleIfFormula["formula"] {
-    const parsed = parseVisibilityFormula(defaultStr, allowed);
-    if ("error" in parsed) {
-      const fallback = parseVisibilityFormula(
-        "condition1",
-        new Set(["condition1"]),
-      );
-      return "node" in fallback ? fallback.node : "condition1";
-    }
-    return parsed.node;
+    const parsed = parseAllowedFormula(defaultStr, allowed);
+    return parsed.ok ? parsed.value : "condition1";
   }
 
   const handleFormulaChange = useCallback(
@@ -635,8 +629,8 @@ export function ConditionalVisibility({
       setFormulaError(null);
       if (conditions.length === 0) return;
       const allowed = allowedConditionNames;
-      const parsed = parseVisibilityFormula(text.trim(), allowed);
-      if ("error" in parsed) {
+      const parsed = parseAllowedFormula(text.trim(), allowed);
+      if (!parsed.ok) {
         setFormulaError(parsed.error);
         return;
       }
@@ -645,7 +639,7 @@ export function ConditionalVisibility({
         conditionsMap[conditionNameForIndex(i)] = c;
       });
       onChange({
-        visibleIfFormula: { conditions: conditionsMap, formula: parsed.node },
+        visibleIfFormula: { conditions: conditionsMap, formula: parsed.value },
       });
     },
     [conditions, allowedConditionNames, onChange],

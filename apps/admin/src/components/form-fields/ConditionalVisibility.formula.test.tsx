@@ -306,3 +306,15 @@ it("lists later fields under their own heading and warns when one is picked", ()
   expect(conditionOf()).toMatchObject({ when: "share" });
   expect(screen.getByText(/comes later in the form/)).toBeTruthy();
 });
+
+it("rejects a formula naming a condition that isn't in the list", () => {
+  render(<Editor controller={staticSelect} />);
+  fireEvent.click(screen.getByRole("button", { name: "+ Field condition" }));
+  const input = screen.getByPlaceholderText("e.g. condition1 AND condition2");
+
+  fireEvent.change(input, { target: { value: "c1" } });
+  fireEvent.blur(input);
+
+  expect(screen.getByText(/Unknown condition "c1"/)).toBeTruthy();
+  expect(latest?.formula).toBe("condition1");
+});
