@@ -3,7 +3,6 @@ import {
   Body,
   Controller,
   Delete,
-  ForbiddenException,
   Get,
   Param,
   ParseIntPipe,
@@ -133,9 +132,7 @@ export class ConversationController {
     @Param("conversationId", ParseIntPipe) conversationId: number,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
-    return this.ensureParticipantAndRun(conversationId, req.user.sub, () =>
-      this.conversationService.acceptInvite(conversationId, req.user.sub),
-    );
+    return this.conversationService.acceptInvite(conversationId, req.user.sub);
   }
 
   @Post(":conversationId/decline")
@@ -145,9 +142,7 @@ export class ConversationController {
     @Param("conversationId", ParseIntPipe) conversationId: number,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
-    return this.ensureParticipantAndRun(conversationId, req.user.sub, () =>
-      this.conversationService.declineInvite(conversationId, req.user.sub),
-    );
+    return this.conversationService.declineInvite(conversationId, req.user.sub);
   }
 
   @Post(":conversationId/participants")
@@ -227,20 +222,5 @@ export class ConversationController {
       conversationId,
       req.user.sub,
     );
-  }
-
-  private async ensureParticipantAndRun<T>(
-    conversationId: number,
-    userId: number,
-    action: () => Promise<T>,
-  ): Promise<T> {
-    const isParticipant = await this.conversationService.isParticipant(
-      conversationId,
-      userId,
-    );
-    if (!isParticipant) {
-      throw new ForbiddenException("You are not part of this conversation.");
-    }
-    return action();
   }
 }

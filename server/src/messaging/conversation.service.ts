@@ -43,6 +43,12 @@ import { Message } from "./entities/message.entity";
 import { Participant, ParticipantState } from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
 
+type ParticipantLookup = {
+  conversationId: number;
+  userId: number;
+  relations?: Relations<Participant>;
+};
+
 @Injectable()
 export class ConversationService {
   private readonly logger = new Logger(ConversationService.name);
@@ -420,7 +426,10 @@ export class ConversationService {
     conversationId: number,
     userId: number,
   ): Promise<ConversationDto> {
-    const participant = await this.getParticipantOrFail(conversationId, userId);
+    const participant = await this.getParticipantOrFail({
+      conversationId,
+      userId,
+    });
 
     if (participant.state === ParticipantState.Joined) {
       return this.buildConversationDto(conversationId, userId);
@@ -494,7 +503,10 @@ export class ConversationService {
     conversationId: number,
     userId: number,
   ): Promise<ConversationDto> {
-    const participant = await this.getParticipantOrFail(conversationId, userId);
+    const participant = await this.getParticipantOrFail({
+      conversationId,
+      userId,
+    });
     if (participant.state !== ParticipantState.Invited) {
       throw new ForbiddenException("There's no invite to decline.");
     }
@@ -633,7 +645,10 @@ export class ConversationService {
     conversationId: number,
     userId: number,
   ): Promise<ConversationDto> {
-    const participant = await this.getParticipantOrFail(conversationId, userId);
+    const participant = await this.getParticipantOrFail({
+      conversationId,
+      userId,
+    });
     if (!conversationTypesUsersCanLeave[participant.conversation.type]) {
       throw new ForbiddenException("This conversation can't be left.");
     }
@@ -822,7 +837,10 @@ export class ConversationService {
     conversationId: number,
     userId: number,
   ): Promise<ConversationDto> {
-    const participant = await this.getParticipantOrFail(conversationId, userId);
+    const participant = await this.getParticipantOrFail({
+      conversationId,
+      userId,
+    });
 
     const lastMessage = await this.findLastMessage(conversationId);
 
@@ -850,13 +868,7 @@ export class ConversationService {
     conversationId: number,
     userId: number,
   ): Promise<boolean> {
-    const count = await this.participantRepository.count({
-      where: {
-        conversation: { id: conversationId },
-        user: { id: userId },
-      },
-    });
-    return count > 0;
+    return (await this.findParticipant({ conversationId, userId })) !== null;
   }
 
   private ensureMembersEditable(conversation: Conversation) {
@@ -871,7 +883,10 @@ export class ConversationService {
     conversationId: number,
     userId: number,
   ): Promise<Participant> {
-    const participant = await this.getParticipantOrFail(conversationId, userId);
+    const participant = await this.getParticipantOrFail({
+      conversationId,
+      userId,
+    });
     if (!this.isConversationAdmin(participant)) {
       throw new ForbiddenException("Admin access required.");
     }
@@ -902,16 +917,15 @@ export class ConversationService {
     });
   }
 
-  private async getParticipantOrFail(
-    conversationId: number,
-    userId: number,
-  ): Promise<Participant> {
-    const participant = await this.participantRepository.findOne({
-      where: {
-        conversation: { id: conversationId },
-        user: { id: userId },
-      },
-      relations: this.participantRelations,
+  async getParticipantOrFail({
+    conversationId,
+    userId,
+    relations = this.participantRelations,
+  }: ParticipantLookup): Promise<Participant> {
+    const participant = await this.findParticipant({
+      conversationId,
+      userId,
+      relations,
     });
 
     if (!participant) {
@@ -919,6 +933,20 @@ export class ConversationService {
     }
 
     return participant;
+  }
+
+  private findParticipant({
+    conversationId,
+    userId,
+    relations,
+  }: ParticipantLookup): Promise<Participant | null> {
+    return this.participantRepository.findOne({
+      where: {
+        conversation: { id: conversationId },
+        user: { id: userId },
+      },
+      relations,
+    });
   }
 
   private async buildConversationDto(

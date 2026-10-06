@@ -2,7 +2,6 @@ import { AnalyticsEvent } from "@alliance/common/analytics";
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Param,
   ParseIntPipe,
@@ -16,7 +15,6 @@ import { AdminGuard } from "src/auth/guards/admin.guard";
 import { AuthGuard } from "src/auth/guards/auth.guard";
 import type { JwtRequest } from "src/auth/tokens";
 import { PosthogService } from "src/posthog/posthog.service";
-import { ConversationService } from "./conversation.service";
 import {
   ConversationMessagesQueryDto,
   CreateMessageDto,
@@ -29,7 +27,6 @@ import { MessageService } from "./message.service";
 export class MessageController {
   constructor(
     private readonly messageService: MessageService,
-    private readonly conversationService: ConversationService,
     private readonly posthog: PosthogService,
   ) {}
 
@@ -53,7 +50,6 @@ export class MessageController {
     @Body() dto: CreateMessageDto,
     @Request() req: JwtRequest,
   ): Promise<MessageDto> {
-    await this.ensureParticipant(dto.conversationId, req.user.sub);
     const message = await this.messageService.sendMessage(req.user.sub, dto);
     this.posthog.capture({
       event: AnalyticsEvent.MessageSent,
@@ -74,21 +70,10 @@ export class MessageController {
     @Query() query: ConversationMessagesQueryDto,
     @Request() req: JwtRequest,
   ): Promise<MessageDto[]> {
-    await this.ensureParticipant(conversationId, req.user.sub);
     return this.messageService.getConversationMessages(
       req.user.sub,
       conversationId,
       query,
     );
-  }
-
-  private async ensureParticipant(conversationId: number, userId: number) {
-    const isParticipant = await this.conversationService.isParticipant(
-      conversationId,
-      userId,
-    );
-    if (!isParticipant) {
-      throw new ForbiddenException("You are not part of this conversation.");
-    }
   }
 }
