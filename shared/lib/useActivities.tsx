@@ -5,14 +5,17 @@ import {
   actionsFriendActivity,
   actionsFriendActivityForAction,
   actionsGetActionActivities,
+  actionsGetActivity,
   actionsGetActivityFeed,
   actionsLikeActivity,
   actionsUnlikeActivity,
 } from "@alliance/shared/client";
 import {
   InfiniteData,
+  skipToken,
   useInfiniteQuery,
   useMutation,
+  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
@@ -170,8 +173,20 @@ export const useRefreshActivities = () => {
   );
 };
 
+export const useActivity = (activityId: number) =>
+  useQuery({
+    queryKey: queryKeys.activity(activityId),
+    queryFn: activityId
+      ? () =>
+          actionsGetActivity({
+            path: { id: activityId },
+            throwOnError: true,
+          }).then((res) => res.data)
+      : skipToken,
+  });
+
 /** Likes or unlikes an activity, optimistically in every cached activity
- * list. */
+ * list and in its useActivity entry. */
 export const useLikeActivity = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -189,48 +204,76 @@ export const useLikeActivity = () => {
       throw new Error("Like request failed");
     },
     onMutate: async ({ activityId, isLiked }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.activitiesAll() });
+      const detailKey = queryKeys.activity(activityId);
+      // cancelQueries doesn't restart the fetch it cancels; onSettled does.
+      const detailWasFetching =
+        queryClient.isFetching({ queryKey: detailKey }) > 0;
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: queryKeys.activitiesAll() }),
+        queryClient.cancelQueries({ queryKey: detailKey }),
+      ]);
 
       const previousQueries = queryClient.getQueriesData<InfiniteActivityData>({
         queryKey: queryKeys.activitiesAll(),
       });
+      const previousDetail =
+        queryClient.getQueryData<ActionActivityDto>(detailKey);
 
+      const toggle = <T extends ActionActivityDto>(a: T): T => ({
+        ...a,
+        likedByMe: !isLiked,
+        likesCount: isLiked ? a.likesCount - 1 : a.likesCount + 1,
+      });
       queryClient.setQueriesData<InfiniteActivityData>(
         { queryKey: queryKeys.activitiesAll() },
         (old) =>
           mapInfiniteActivities(old, (a) =>
-            a.id === activityId
-              ? {
-                  ...a,
-                  likedByMe: !isLiked,
-                  likesCount: isLiked ? a.likesCount - 1 : a.likesCount + 1,
-                }
-              : a,
+            a.id === activityId ? toggle(a) : a,
           ),
       );
+      queryClient.setQueryData<ActionActivityDto>(
+        detailKey,
+        (old) => old && toggle(old),
+      );
 
-      return { previousQueries };
+      return { previousQueries, previousDetail, detailWasFetching };
     },
-    onError: (_err, _vars, context) => {
+    onError: (_err, { activityId }, context) => {
       context?.previousQueries?.forEach(([key, data]) => {
         queryClient.setQueryData(key, data);
       });
+      if (context?.previousDetail) {
+        queryClient.setQueryData(
+          queryKeys.activity(activityId),
+          context.previousDetail,
+        );
+      }
     },
     onSuccess: (data, { activityId }) => {
+      const fromServer = <T extends ActionActivityDto>(a: T): T => ({
+        ...a,
+        likes: data.likes,
+        likesCount: data.likesCount,
+        likedByMe: data.likedByMe,
+      });
       queryClient.setQueriesData<InfiniteActivityData>(
         { queryKey: queryKeys.activitiesAll() },
         (old) =>
           mapInfiniteActivities(old, (a) =>
-            a.id === activityId
-              ? {
-                  ...a,
-                  likes: data.likes,
-                  likesCount: data.likesCount,
-                  likedByMe: data.likedByMe,
-                }
-              : a,
+            a.id === activityId ? fromServer(a) : a,
           ),
       );
+      queryClient.setQueryData<ActionActivityDto>(
+        queryKeys.activity(activityId),
+        (old) => old && fromServer(old),
+      );
+    },
+    onSettled: (_data, _err, { activityId }, context) => {
+      if (context?.detailWasFetching) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.activity(activityId),
+        });
+      }
     },
   });
 };

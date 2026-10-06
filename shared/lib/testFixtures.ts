@@ -1,5 +1,6 @@
 import { milliseconds } from "date-fns";
 import type {
+  ActionActivityDto,
   ActionEventDto,
   CommunityDto,
   ConversationDto,
@@ -126,6 +127,25 @@ export function makeProfile(id: number): ProfileDto {
     displayName: `User ${id}`,
     hasActiveContract: true,
     isCommunityLeader: false,
+  };
+}
+
+export function makeActivity(
+  overrides: Partial<ActionActivityDto> = {},
+): ActionActivityDto {
+  return {
+    id: 1,
+    type: "user_completed",
+    actionId: 1,
+    actionName: "Test action",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    likesCount: 0,
+    likedByMe: false,
+    likes: [],
+    user: makeProfile(1),
+    comments: [],
+    editableContent: { body: "", attachments: [] },
+    ...overrides,
   };
 }
 
