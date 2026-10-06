@@ -13,7 +13,6 @@ import { EmailStatus } from "src/mail/mail.entity";
 import { MailService, processKeywordReplacements } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { PushService } from "src/push/push.service";
-import { tasksUrl } from "src/search/approutes";
 import type { User } from "src/user/entities/user.entity";
 import {
   userActionNotifsEnabled_email,
@@ -37,14 +36,10 @@ import {
 } from "./entities/action-event-notif.entity";
 import {
   Experiment,
-  ExperimentArm,
   ExperimentAssignment,
 } from "./entities/experiment-assignment.entity";
-import {
-  NotificationCategory,
-  type Notification,
-} from "./entities/notification.entity";
-import { assignExperimentArms } from "./experiment-assignment";
+import { type Notification } from "./entities/notification.entity";
+import { assignExperimentArm } from "./experiment-assignment";
 import { LOCK_KEYS } from "./lock-keys";
 import { withPgAdvisoryLock } from "./lock-utils";
 import {
@@ -59,7 +54,7 @@ import {
 import { MissedSuitePlanService } from "./missed-suite-plans.service";
 import { generateCIDForNotif } from "./notif-utils";
 import { NotifsService } from "./notifs.service";
-import { buildReminderMessage } from "./reminder-message";
+import { sendReminderInAppEntry } from "./reminder-in-app-entry";
 
 export type UncompletedTaskSummary = {
   id: number;
@@ -316,7 +311,15 @@ export class ActionEventNotifWorker {
           standing,
           copy:
             standing.missNumber === 1
-              ? FIRST_MISS_COPY[await this.assignFirstMissArm(plan.user.id)]
+              ? FIRST_MISS_COPY[
+                  await assignExperimentArm(
+                    this.experimentAssignmentRepository.manager,
+                    {
+                      experiment: Experiment.MissedSuiteFirstNotice,
+                      userId: plan.user.id,
+                    },
+                  )
+                ]
               : MissedSuiteNoticeCopy.SecondMissReportV1,
         }
       : null;
@@ -362,31 +365,15 @@ export class ActionEventNotifWorker {
         notice.standing,
       );
 
-    const inAppMessage = await buildReminderMessage({
-      template: templates.pushMessage,
-      renderText: render,
-      recipient: plan.user,
-      action: plan.group.memberActionEvent.action,
-      tasks: notice.standing.missedActions,
-    });
-    if (inAppMessage.text.trim()) {
-      notif.notification = await this.notifsService.sendNotif({
-        user: plan.user,
-        category: NotificationCategory.ActionEvent,
-        message: inAppMessage,
-        destination: null,
-        webAppLocation: tasksUrl(),
-        mobileAppLocation: tasksUrl(),
-        associatedUsers: [],
-        shouldPush: false,
+    notif.notification =
+      (await sendReminderInAppEntry(this.notifsService, {
+        plan,
         cid,
-      });
-      notif.sent = true;
-    } else {
-      this.logger.error(
-        `missed-suite reminder group ${plan.group.id} has blank push copy; skipped its in-app entry`,
-      );
-    }
+        template: templates.pushMessage,
+        render,
+        tasks: notice.standing.missedActions,
+      })) ?? undefined;
+    notif.sent = !!notif.notification;
     await this.deliver({
       notif,
       user: plan.user,
@@ -400,19 +387,6 @@ export class ActionEventNotifWorker {
       },
     });
     await this.actionEventNotifsRepository.save(notif);
-  }
-
-  private async assignFirstMissArm(userId: number): Promise<ExperimentArm> {
-    const arm = (
-      await assignExperimentArms(this.experimentAssignmentRepository.manager, {
-        experiment: Experiment.MissedSuiteFirstNotice,
-        userIds: [userId],
-      })
-    ).get(userId);
-    if (arm === undefined) {
-      throw new Error(`no first-miss arm for user ${userId}`);
-    }
-    return arm;
   }
 
   /** Sends on each channel the member enabled; true if any was attempted. */
