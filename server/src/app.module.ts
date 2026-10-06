@@ -24,6 +24,7 @@ import { GeoModule } from "./geo/geo.module";
 import { ImagesModule } from "./images/images.module";
 import { LikesModule } from "./likes/likes.module";
 import { LinkPreviewModule } from "./link-preview/link-preview.module";
+import { LinkTrackingModule } from "./link-tracking/link-tracking.module";
 import { MailModule } from "./mail/mail.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { MmsModule } from "./mms/mms.module";
@@ -93,6 +94,7 @@ if (!("polyfilled" in Intl.DateTimeFormat)) {
     LinkPreviewModule,
     NotifsModule,
     GeoModule,
+    LinkTrackingModule,
     MailModule,
     SearchModule,
     ShareUrlsModule,

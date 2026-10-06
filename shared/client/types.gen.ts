@@ -1463,6 +1463,16 @@ export type UploadImageResponseDto = {
     key: string;
 };
 
+export type LinkOpeningPlatform = 'web' | 'mobile';
+
+export type RecordLinkOpeningDto = {
+    openingId: string;
+    trackingId: string;
+    destination: string;
+    platform: LinkOpeningPlatform;
+    observedAt: string;
+};
+
 export type GetShareLinkDto = {
     actionId?: number;
     externalTargetId?: number;
@@ -7389,6 +7399,30 @@ export type MailgunWebhookHandleResponses = {
 };
 
 export type MailgunWebhookHandleResponse = MailgunWebhookHandleResponses[keyof MailgunWebhookHandleResponses];
+
+export type LinkOpeningRecordData = {
+    body: RecordLinkOpeningDto;
+    path?: never;
+    query?: never;
+    url: '/link-openings';
+};
+
+export type LinkOpeningRecordErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type LinkOpeningRecordError = LinkOpeningRecordErrors[keyof LinkOpeningRecordErrors];
+
+export type LinkOpeningRecordResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type LinkOpeningRecordResponse = LinkOpeningRecordResponses[keyof LinkOpeningRecordResponses];
 
 export type ShareUrlsGetShareLinkData = {
     body: GetShareLinkDto;
