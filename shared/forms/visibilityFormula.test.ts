@@ -50,6 +50,27 @@ describe("parseVisibilityFormula", () => {
   });
 });
 
+describe("serializeVisibilityFormula", () => {
+  it("omits parentheses around a right-nested chain of one operator", () => {
+    const text = "a AND b AND (c OR (NOT (d AND e)))";
+    expect(serializeVisibilityFormula(parsed(text))).toBe(text);
+  });
+
+  it("keeps a left-nested chain's shape through a reparse", () => {
+    const leftNested = parsed("(a AND b) AND c");
+    expect(serializeVisibilityFormula(leftNested)).toBe("(a AND b) AND c");
+    expect(parsed(serializeVisibilityFormula(leftNested))).toEqual(leftNested);
+  });
+
+  it("describes every condition in a chain through the leaf", () => {
+    expect(
+      serializeVisibilityFormula(parsed("a AND b AND c"), (name) =>
+        name.toUpperCase(),
+      ),
+    ).toBe("A AND B AND C");
+  });
+});
+
 describe("name round trips", () => {
   it.each([
     "c1",

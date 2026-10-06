@@ -132,7 +132,13 @@ export function serializeVisibilityFormula(
       : `(${serializeVisibilityFormula(child, leaf)})`;
   if (typeof node === "string") return leaf(node);
   if (node.op === "NOT") return `NOT ${operand(node.operand)}`;
-  return `${operand(node.left)} ${node.op} ${operand(node.right)}`;
+  // The parser nests a chain of one operator to the right, so a
+  // same-operator right child reads back unchanged without parentheses.
+  const right =
+    typeof node.right !== "string" && node.right.op === node.op
+      ? serializeVisibilityFormula(node.right, leaf)
+      : operand(node.right);
+  return `${operand(node.left)} ${node.op} ${right}`;
 }
 
 /** Every condition name the formula references, in order, with repeats. */
