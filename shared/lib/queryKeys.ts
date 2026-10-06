@@ -38,6 +38,7 @@ export const queryKeys = {
   /** Also prefixes generalUpdatesUnread, so invalidating it refetches that too. */
   actions: () => ["actions"] as const,
   activitiesAll,
+  activity: (activityId: number) => ["actionsGetActivity", activityId] as const,
   activities: ({
     list,
     objectId,
