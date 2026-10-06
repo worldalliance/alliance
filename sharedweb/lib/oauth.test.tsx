@@ -102,4 +102,28 @@ describe("oauthStartUrl", () => {
     detectZone("-08:00");
     expect(startUrl().searchParams.has("timeZone")).toBe(false);
   });
+
+  test("carries the PostHog session that started the flow", () => {
+    const url = new URL(
+      oauthStartUrl({
+        apiUrl: "http://api.example.com",
+        provider: OAuthProvider.Google,
+        intent: OAuthIntent.Authenticate,
+        returnTo: "http://app.example.com/join",
+        posthog: {
+          sessionId: "01900000-0000-7000-8000-000000000001",
+          distinctId: "anonymous",
+        },
+      }),
+    );
+    expect(url.searchParams.get("posthogSessionId")).toBe(
+      "01900000-0000-7000-8000-000000000001",
+    );
+    expect(url.searchParams.get("posthogDistinctId")).toBe("anonymous");
+  });
+
+  test("leaves off PostHog ids when analytics has none", () => {
+    expect(startUrl().searchParams.has("posthogSessionId")).toBe(false);
+    expect(startUrl().searchParams.has("posthogDistinctId")).toBe(false);
+  });
 });

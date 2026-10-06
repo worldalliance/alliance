@@ -34,17 +34,21 @@ export function liveSessionId(stored: {
   return sessionId;
 }
 
+// Analytics must never block the request it describes.
+export function readPosthogContext(
+  getContext: () => PosthogContext | undefined,
+): PosthogContext | undefined {
+  const result = R.fromThrowable(getContext);
+  if (result.ok) return result.value;
+  console.warn("[analytics] Request context unavailable", result.error);
+}
+
 export function registerPosthogRequestContext(params: {
   client: Client;
   getContext: () => PosthogContext | undefined;
 }): () => void {
   const interceptor = params.client.interceptors.request.use((request) => {
-    const result = R.fromThrowable(params.getContext);
-    if (!result.ok) {
-      console.warn("[analytics] Request context unavailable", result.error);
-      return request;
-    }
-    const context = result.value;
+    const context = readPosthogContext(params.getContext);
     if (context?.sessionId)
       request.headers.set(POSTHOG_SESSION_HEADER, context.sessionId);
     if (context?.distinctId)

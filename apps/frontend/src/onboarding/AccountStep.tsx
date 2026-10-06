@@ -3,6 +3,7 @@ import { ACCOUNT_MOVED_MESSAGE, ALLIANCE_DOMAIN } from "@alliance/common/url";
 import { authForgotPassword, authLogin } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import { Features } from "@alliance/shared/lib/features";
+import { readPosthogContext } from "@alliance/shared/lib/posthog-request";
 import {
   INVITE_REFUSAL_HEADING,
   useInvite,
@@ -18,11 +19,13 @@ import { oauthStartUrl } from "@alliance/sharedweb/lib/oauth";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";
+import posthog from "posthog-js";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { href, Link, useLocation, useNavigate } from "react-router";
 import { z } from "zod";
 import { useAuth } from "../lib/AuthContext";
 import { getApiUrl, isFeatureEnabled } from "../lib/config";
+import { posthogRequestContext } from "../lib/posthogRequestContext";
 import { WAITLIST_HREF } from "../site/links";
 import { SiteArrow } from "../site/ui";
 import {
@@ -232,6 +235,9 @@ export function AccountStep({
                       intent: OAuthIntent.Authenticate,
                       returnTo: oauthReturnTo,
                       referralCode,
+                      posthog: readPosthogContext(() =>
+                        posthogRequestContext(posthog),
+                      ),
                     })
                   }
                 />

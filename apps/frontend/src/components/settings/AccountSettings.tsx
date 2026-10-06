@@ -8,6 +8,7 @@ import {
 import { R, type Result } from "@alliance/common/result";
 import { authForgotPassword, authRefreshTokens } from "@alliance/shared/client";
 import { disconnectAccount, passwordLink } from "@alliance/shared/lib/copy";
+import { readPosthogContext } from "@alliance/shared/lib/posthog-request";
 import type { SettingsSaveStatus } from "@alliance/shared/lib/settings";
 import {
   canDisconnect,
@@ -25,8 +26,10 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import OAuthProviderIcon from "@alliance/sharedweb/ui/icons/OAuthProviderIcon";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useMutation } from "@tanstack/react-query";
+import posthog from "posthog-js";
 import { useEffect, useState } from "react";
 import { getApiUrl } from "../../lib/config";
+import { posthogRequestContext } from "../../lib/posthogRequestContext";
 
 export const ACCOUNT_SECTION_ID = "account";
 
@@ -212,6 +215,7 @@ export default function AccountSettings({
               provider: connecting,
               intent: OAuthIntent.Link,
               returnTo: `${window.location.origin}${window.location.pathname}#${ACCOUNT_SECTION_ID}`,
+              posthog: readPosthogContext(() => posthogRequestContext(posthog)),
             }),
           );
         });
