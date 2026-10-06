@@ -1,6 +1,6 @@
 import { SelectedCountComparison } from "@alliance/common/forms/visible-if-formula";
 import { useEffect, useState } from "react";
-import { INPUT_CLASS } from "./FormulaChoiceConditionValue";
+import { INPUT_CLASS } from "./styles";
 
 const COMPARISON_LABELS: Record<SelectedCountComparison, string> = {
   [SelectedCountComparison.GreaterThan]: "More than",
@@ -33,7 +33,7 @@ export function SelectedCountConditionValue({
   return (
     <div className="flex gap-2">
       <select
-        aria-label="Comparison"
+        aria-label="Count comparison"
         className={INPUT_CLASS}
         value={comparison}
         onChange={(event) => {

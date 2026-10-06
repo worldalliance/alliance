@@ -151,18 +151,6 @@ export function formulaConditionNames(node: FormulaNode): string[] {
   ];
 }
 
-/** Default AND formula for n named conditions (condition1 … conditionN). */
-export function defaultFormulaForConditionCount(n: number): string {
-  if (n <= 0) return "";
-  if (n === 1) return "condition1";
-  return Array.from({ length: n }, (_, i) => `condition${i + 1}`).join(" AND ");
-}
-
-/** Condition name for index (0-based): condition1, condition2, ... */
-export function conditionNameForIndex(index: number): string {
-  return `condition${index + 1}`;
-}
-
 function isGeneratedConditionName(s: string): boolean {
   return CONDITION_NAME_REGEX.test(s);
 }

@@ -82,8 +82,9 @@ export function useFormOptions(): {
   options: FormOption[];
   isLoading: boolean;
   isError: boolean;
+  refetch: () => void;
 } {
-  const { data, isLoading, isError } = useFormsQuery();
+  const { data, isLoading, isError, refetch } = useFormsQuery();
   const forms = data ?? NO_FORMS;
   const options = useMemo(
     () =>
@@ -95,7 +96,7 @@ export function useFormOptions(): {
       })),
     [forms],
   );
-  return { options, isLoading, isError };
+  return { options, isLoading, isError, refetch: () => void refetch() };
 }
 
 export enum ResponseCountStatus {

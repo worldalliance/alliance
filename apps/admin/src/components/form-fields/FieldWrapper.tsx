@@ -18,11 +18,11 @@ import {
   useVisibilityGroupMember,
 } from "../VisibilityGroupContext";
 import {
-  ConditionalVisibility,
   CustomValidatorSelect,
   OutputFieldToggle,
   OutputPrivateByDefaultToggle,
 } from "./CommonControls";
+import { ConditionalVisibility } from "./conditions/ConditionalVisibility";
 import {
   isDraftValidatorId,
   useCustomValidatorDrafts,

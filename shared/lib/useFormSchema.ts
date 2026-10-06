@@ -58,6 +58,7 @@ function formQuestionFieldsQuery(formId: number) {
 export function useFormQuestionFields(formId: number | undefined): {
   fields: readonly AnyField[];
   status: FormFieldsStatus;
+  refetch: () => void;
 } {
   // 0 is the builder's "no form picked yet" sentinel, and asking the server
   // for form 0 only 404s.
@@ -69,7 +70,11 @@ export function useFormQuestionFields(formId: number | undefined): {
           queryFn: skipToken,
         },
   );
-  return { fields: result.data?.fields ?? NO_FIELDS, status: statusOf(result) };
+  return {
+    fields: result.data?.fields ?? NO_FIELDS,
+    status: statusOf(result),
+    refetch: () => void result.refetch(),
+  };
 }
 
 /** Both failures leave the picker with no fields; they differ only in what it

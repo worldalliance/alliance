@@ -30,10 +30,8 @@ import {
   SharedVisibilityNotice,
   useVisibilityGroupMember,
 } from "../VisibilityGroupContext";
-import {
-  ConditionalVisibility,
-  type OutputBlockOption,
-} from "../form-fields/CommonControls";
+import { ConditionalVisibility } from "../form-fields/conditions/ConditionalVisibility";
+import type { OutputBlockOption } from "../form-fields/conditions/ContextRules";
 import { usePerViewerOptionsAllowed } from "./PerViewerOptionsContext";
 
 type ManualUserListEntry = Pick<UserDto, "id" | "name" | "hasActiveContract">;

@@ -111,6 +111,8 @@ export const queryKeys = {
   clustersAdmin: () => ["clusterListAdmin"] as const,
   communitiesAdmin: () => ["communityGetCommunitiesAdmin"] as const,
   contractsAdmin: () => ["contractAllAdmin"] as const,
+  customValidatorAdmin: (id: number) =>
+    ["tasksFindOneCustomValidatorAdmin", id] as const,
   eventLogAdmin: (page: number, limit: number, eventType: EventType | "") =>
     ["eventLogFindAllAdmin", page, limit, eventType] as const,
   externalShareTargetsAdmin: () => ["externalShareTargetsAdmin"] as const,
