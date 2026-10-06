@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "src/user/entities/user.entity";
 import type { FindOptionsWhere, Repository } from "typeorm";
-import type { JwtPayload } from "./tokens";
+import { generationOf, type JwtPayload } from "./tokens";
 
 @Injectable()
 export class SessionService {
@@ -30,6 +30,6 @@ export class SessionService {
   }
 
   private accountOf(session: JwtPayload): FindOptionsWhere<User> {
-    return { id: session.sub };
+    return { id: session.sub, sessionGeneration: generationOf(session) };
   }
 }

@@ -1,6 +1,7 @@
 import { io } from "socket.io-client";
 import { TokenMode } from "src/auth/dto/signin.dto";
 import { SessionService } from "src/auth/session.service";
+import { JWTTokenType, sessionTokenPayload } from "src/auth/tokens";
 import { Community } from "src/community/entities/community.entity";
 import { EventLogGateway } from "src/eventlog/eventlog.gateway";
 import { EventLogModule } from "src/eventlog/eventlog.module";
@@ -37,6 +38,9 @@ describe("Session checks (e2e)", () => {
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .send({ reason: "Requested", confirmationEmail: user.email })
       .expect(200);
+
+  const me = (token: string) =>
+    request(server()).get("/auth/me").set("Authorization", `Bearer ${token}`);
 
   beforeAll(async () => {
     ctx = await createTestApp([MessagingModule, EventLogModule, TasksModule]);
@@ -78,6 +82,50 @@ describe("Session checks (e2e)", () => {
       .expect(401);
     // The handler refuses a missing account with "Invalid user id".
     expect(refreshed.body.message).toBe("Unauthorized");
+  });
+
+  it("keeps a session issued before generations existed", async () => {
+    const member = await createMember();
+    const { sessionGeneration: _absent, ...legacy } = sessionTokenPayload({
+      tokenType: JWTTokenType.access,
+      user: member,
+    });
+    const token = ctx.jwtService.sign(legacy, {
+      secret: process.env.JWT_SECRET,
+    });
+
+    await me(token).expect(200);
+  });
+
+  it("refuses a token from an earlier generation of its account", async () => {
+    const member = await createMember({ sessionGeneration: 1 });
+
+    await me(
+      signAccessToken(ctx.jwtService, { ...member, sessionGeneration: 0 }),
+    ).expect(401);
+    await me(signAccessToken(ctx.jwtService, member)).expect(200);
+  });
+
+  it("refreshes a session of a later generation", async () => {
+    const member = await createMember({ sessionGeneration: 1 });
+    const { refresh_token } = (
+      await request(server())
+        .post("/auth/login")
+        .send({
+          email: member.email,
+          password: "password",
+          mode: TokenMode.Header,
+        })
+        .expect(200)
+    ).body;
+
+    const { access_token } = (
+      await request(server())
+        .post("/auth/refresh?mode=header")
+        .set("Authorization", `Bearer ${refresh_token}`)
+        .expect(200)
+    ).body;
+    await me(access_token).expect(200);
   });
 
   it("does not let an old admin token act for a new account with its email", async () => {

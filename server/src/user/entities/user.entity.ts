@@ -121,6 +121,10 @@ export class User {
   @IsEmail()
   email: string;
 
+  /** Credentials carry this, and one carrying another generation is refused. */
+  @Column({ type: "int", default: 0 })
+  sessionGeneration: number;
+
   @Column({
     type: "varchar",
     nullable: true,

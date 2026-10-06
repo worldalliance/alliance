@@ -951,6 +951,31 @@ describe("OAuth sign-in (e2e)", () => {
         );
       });
 
+      it("hands over a session only while its generation is current", async () => {
+        const member = await freshMember({ sessionGeneration: 1 });
+        profile = {
+          ...profile,
+          subject: `browser-generation-${member.id}`,
+          email: member.email,
+        };
+        const handOff = async () => {
+          const { proof, state } = await startBrowserSession();
+          const returned = await finishInBrowser({ code: "code", state });
+          return { handoff: String(returned.get("handoff")), proof };
+        };
+
+        const current = await redeem(await handOff());
+        expect((await sessionUser(current.session.access_token)).id).toBe(
+          member.id,
+        );
+
+        const stale = await handOff();
+        await ctx.dataSource
+          .getRepository(User)
+          .increment({ id: member.id }, "sessionGeneration", 1);
+        expect(await redeem(stale)).toEqual({ error: OAuthError.Failed });
+      });
+
       it("finishes an Apple form post", async () => {
         const member = await freshMember();
         profile = {

@@ -96,6 +96,7 @@ export const testUser = new User({
   clusterId: null,
   preferredReminderTime: null,
   timeZone: null,
+  sessionGeneration: 0,
 } satisfies Omit<
   User,
   | "friends"
