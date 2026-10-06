@@ -97,8 +97,8 @@ const WaitlistFilters: React.FC<WaitlistFiltersProps> = ({
     <div className="flex flex-wrap items-center gap-2">
       <input
         type="search"
-        aria-label="Search name or email"
-        placeholder="Search name or email"
+        aria-label="Search name, email, or phone"
+        placeholder="Search name, email, or phone"
         maxLength={200}
         className="rounded border border-zinc-300 px-2 py-1 text-sm w-56"
         value={search}

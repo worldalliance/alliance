@@ -143,14 +143,14 @@ it("keeps the typed name when a cohort name is taken", async () => {
 it("drops a search still being typed when applying a cohort", async () => {
   renderPage();
   await screen.findByText("person1@example.com");
-  const box = screen.getByLabelText("Search name or email");
+  const box = screen.getByLabelText("Search name, email, or phone");
   fireEvent.change(box, { target: { value: "pat" } });
   fireEvent.change(await screen.findByLabelText("Cohort"), {
     target: { value: "3" },
   });
   await new Promise((resolve) => setTimeout(resolve, 400));
   expect(api.searches.at(-1)?.filter).toEqual({ mobilized: false });
-  expect(screen.getByLabelText("Search name or email")).toHaveProperty(
+  expect(screen.getByLabelText("Search name, email, or phone")).toHaveProperty(
     "value",
     "",
   );
