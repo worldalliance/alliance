@@ -12,6 +12,7 @@ const preview = (
   fields: Partial<WaitlistEmailPreviewDto> = {},
 ): WaitlistEmailPreviewDto => ({
   selected: 3,
+  noEmail: 0,
   unsubscribed: 0,
   spam: 0,
   claimed: 0,
@@ -125,6 +126,20 @@ describe("sendConfirmation", () => {
       }),
     ).toBe(
       "Email “News” to 3 recipients now.\n\nSkips 1 unsubscribed, 3 marked or suspected as spam, and 2 who already claimed an invite.\n\nMobilized status stays as it is.",
+    );
+  });
+
+  it("counts phone contacts as skipped first", () => {
+    expect(
+      sendConfirmation({
+        preview: preview({ noEmail: 2, unsubscribed: 1 }),
+        used: uses(),
+        includeClaimed: false,
+        subject: "News",
+        mobilize: false,
+      }),
+    ).toContain(
+      "Skips 2 with a phone contact and no email address and 1 unsubscribed.",
     );
   });
 

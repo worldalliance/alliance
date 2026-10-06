@@ -19,11 +19,29 @@ import { detectSpamStatus, SPAM_LIKE_STATUSES } from "./waitlist-spam";
 
 export enum WaitlistEntryError {
   BothCodes = "both_codes",
+  OneContact = "one_contact",
   UnknownCode = "unknown_code",
   ReasonRequired = "reason_required",
 }
 
 export type NewWaitlistEntry = { id: number; code: string };
+
+type WaitlistContact =
+  | { email: string; phoneNumber: null }
+  | { email: null; phoneNumber: string };
+
+function contactOf({
+  email,
+  phoneNumber,
+}: CreateWaitlistEntryDto): Result<WaitlistContact, WaitlistEntryError> {
+  if (email !== undefined && phoneNumber === undefined) {
+    return R.success({ email, phoneNumber: null });
+  }
+  if (phoneNumber !== undefined && email === undefined) {
+    return R.success({ email: null, phoneNumber });
+  }
+  return R.failure(WaitlistEntryError.OneContact);
+}
 
 const NOT_SPAM_LIKE = { spamStatus: Not(In(SPAM_LIKE_STATUSES)) };
 
@@ -113,10 +131,14 @@ export class WaitlistService {
     });
   }
 
-  /** Resolves to the new entry, or null for a known email. */
+  /** Resolves to the new entry, or null for a known contact. */
   async create(
     dto: CreateWaitlistEntryDto,
   ): Promise<Result<NewWaitlistEntry | null, WaitlistEntryError>> {
+    const contact = contactOf(dto);
+    if (R.isFailure(contact)) {
+      return contact;
+    }
     const resolved = await this.resolveReferral(dto);
     if (R.isFailure(resolved)) {
       return resolved;
@@ -135,7 +157,7 @@ export class WaitlistService {
       .insert()
       .values({
         name: dto.name,
-        email: dto.email,
+        ...contact.value,
         reason,
         committedAt: new Date(),
         code,
@@ -151,7 +173,12 @@ export class WaitlistService {
     if (row) {
       return R.success({ id: row.id, code });
     }
-    if (await this.entryRepository.existsBy({ email: dto.email })) {
+    const { email, phoneNumber } = contact.value;
+    if (
+      await this.entryRepository.existsBy(
+        email !== null ? { email } : { phoneNumber },
+      )
+    ) {
       return R.success(null);
     }
     throw new Error("Waitlist entry insert conflicted on its personal code");

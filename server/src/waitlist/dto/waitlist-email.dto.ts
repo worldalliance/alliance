@@ -45,8 +45,8 @@ export class WaitlistEmailSampleDto {
   @ApiProperty()
   name: string;
 
-  @ApiProperty()
-  email: string;
+  @ApiProperty({ type: String, nullable: true })
+  email: string | null;
 
   @ApiProperty({ type: String, nullable: true })
   subject: string | null;
@@ -73,6 +73,7 @@ export class WaitlistEmailSampleDto {
 
 export type WaitlistEmailPreview = {
   selected: number;
+  noEmail: number;
   unsubscribed: number;
   spam: number;
   claimed: number;
@@ -89,7 +90,12 @@ export class WaitlistEmailPreviewDto {
   @ApiProperty({ description: "Selected entries that exist" })
   selected: number;
 
-  @ApiProperty({ description: "Selected entries skipped as unsubscribed" })
+  @ApiProperty({ description: "Selected entries skipped for having no email" })
+  noEmail: number;
+
+  @ApiProperty({
+    description: "Selected entries with email skipped as unsubscribed",
+  })
   unsubscribed: number;
 
   @ApiProperty({
@@ -135,6 +141,7 @@ export class WaitlistEmailPreviewDto {
 
   constructor(input: WaitlistEmailPreview) {
     this.selected = input.selected;
+    this.noEmail = input.noEmail;
     this.unsubscribed = input.unsubscribed;
     this.spam = input.spam;
     this.claimed = input.claimed;

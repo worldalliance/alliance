@@ -19,7 +19,7 @@ import {
 } from "src/search/approutes";
 import { UserService } from "src/user/user.service";
 import type { Repository } from "src/utils/Repository";
-import { DataSource, In } from "typeorm";
+import { DataSource, In, IsNull, Not } from "typeorm";
 import type {
   SendWaitlistEmailDto,
   TestWaitlistEmailDto,
@@ -230,6 +230,7 @@ export class WaitlistEmailService {
 
     return {
       selected: candidates.length,
+      noEmail: countSkipped(WaitlistEmailSkipReason.NoEmail),
       unsubscribed: countSkipped(WaitlistEmailSkipReason.Unsubscribed),
       spam: countSkipped(WaitlistEmailSkipReason.Spam),
       claimed: countSkipped(WaitlistEmailSkipReason.InviteClaimed),
@@ -263,6 +264,14 @@ export class WaitlistEmailService {
     });
     if (existing) {
       return this.findSummary(existing.id);
+    }
+    if (
+      !(await this.entryRepository.existsBy({
+        id: In(dto.entryIds),
+        email: Not(IsNull()),
+      }))
+    ) {
+      throw new BadRequestException("No selected entry has an email address");
     }
     if (usesOrganizationName(dto)) {
       const recipients = await this.findRecipients(dto);
@@ -367,7 +376,7 @@ export class WaitlistEmailService {
           skipReason: true,
           error: true,
           acceptedAt: true,
-          entry: { id: true, name: true, email: true },
+          entry: { id: true, name: true, email: true, phoneNumber: true },
         },
         where: { batchId: id },
         relations: { entry: true },

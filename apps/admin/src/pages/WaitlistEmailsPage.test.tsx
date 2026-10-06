@@ -44,6 +44,7 @@ const detail: WaitlistEmailBatchDetailDto = {
       entryId: 11,
       name: "Sent Person",
       email: "sent@example.com",
+      phoneNumber: null,
       status: "sent",
       skipReason: null,
       error: null,
@@ -54,6 +55,7 @@ const detail: WaitlistEmailBatchDetailDto = {
       entryId: 12,
       name: "Failed Person",
       email: "failed@example.com",
+      phoneNumber: null,
       status: "failed",
       skipReason: null,
       error: "550 mailbox unavailable",
@@ -64,8 +66,20 @@ const detail: WaitlistEmailBatchDetailDto = {
       entryId: 13,
       name: "Skipped Person",
       email: "skipped@example.com",
+      phoneNumber: null,
       status: "skipped",
       skipReason: "unsubscribed",
+      error: null,
+      acceptedAt: null,
+    },
+    {
+      id: 4,
+      entryId: 14,
+      name: "Phone Person",
+      email: null,
+      phoneNumber: "+14155552671",
+      status: "skipped",
+      skipReason: "no_email",
       error: null,
       acceptedAt: null,
     },
@@ -154,6 +168,7 @@ it("lists emails with their counts and shows a batch's recipients", async () => 
   fireEvent.click(screen.getByRole("button", { name: /You're invited/ }));
   expect(await screen.findByText("550 mailbox unavailable")).toBeTruthy();
   expect(screen.getByText("Unsubscribed")).toBeTruthy();
+  expect(screen.getByText("(415) 555-2671")).toBeTruthy();
   expect(
     screen.getByText(
       `Sent ${formatDateTime(new Date("2026-09-02T00:01:00.000Z"))}`,

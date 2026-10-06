@@ -18,6 +18,7 @@ afterEach(cleanup);
 const previewOf = (selected: number) =>
   ({
     selected,
+    noEmail: 0,
     unsubscribed: 0,
     spam: 0,
     claimed: 0,

@@ -257,6 +257,22 @@ SET
                   END;
 UPDATE "user" SET "password" = :'password_hash';
 
+-- Prod gains this column, and with it any phone entries, only once the
+-- migration adding it ships there; until then the guard skips the rewrite.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = current_schema()
+      AND table_name = 'waitlist_entry'
+      AND column_name = 'phoneNumber'
+  ) THEN
+    UPDATE "waitlist_entry"
+    SET "phoneNumber" = '+1555' || lpad(id::text, 7, '0')
+    WHERE "phoneNumber" IS NOT NULL;
+  END IF;
+END $$;
+
 -- Keys the fake names and sentences, so each comes out the same from one sync
 -- to the next. Change it to deal new ones.
 \set seed 1

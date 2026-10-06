@@ -251,7 +251,9 @@ describe("Waitlist metrics (e2e)", () => {
     // Its invite email failed, its accepted email carried no invite, and its
     // email's owner signed up through an unrelated invite, which the waitlist
     // doesn't track.
+    const waitingEmail = `waiting-${Math.random()}@example.com`;
     const waiting = await saveEntry(newsletter, {
+      email: waitingEmail,
       createdAt: new Date("2026-03-03T12:00:00Z"),
     });
     await emailInvite({
@@ -275,7 +277,7 @@ describe("Waitlist metrics (e2e)", () => {
     );
     await userRepo.save(
       userRepo.create({
-        email: waiting.email,
+        email: waitingEmail,
         password: "password",
         name: "Same Email",
         referralSource: ReferralSource.OnetimeInvite,

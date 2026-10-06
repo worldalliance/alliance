@@ -1,0 +1,263 @@
+import request from "supertest";
+import type { Repository } from "typeorm";
+import { MailService } from "../src/mail/mail.service";
+import {
+  WaitlistEmailRecipient,
+  WaitlistEmailRecipientStatus,
+} from "../src/waitlist/entities/waitlist-email-recipient.entity";
+import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
+import { WaitlistEmailSkipReason } from "../src/waitlist/waitlist-email-audience";
+import { WaitlistEmailSender } from "../src/waitlist/waitlist-email-sender.service";
+import { WaitlistMailService } from "../src/waitlist/waitlist-mail.service";
+import { WaitlistModule } from "../src/waitlist/waitlist.module";
+import { createTestApp, TestContext } from "./e2e-test-utils";
+
+describe("Waitlist phone contact (e2e)", () => {
+  let ctx: TestContext;
+  let entryRepo: Repository<WaitlistEntry>;
+  let sendShareLink: jest.SpyInstance;
+  let sendStaff: jest.SpyInstance;
+  let run: jest.SpyInstance;
+
+  const server = () => ctx.app.getHttpServer();
+  const asAdmin = (req: request.Test) =>
+    req.set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+  let nextPhone = 0;
+  const uniquePhone = () => `+1415555${String(nextPhone++).padStart(4, "0")}`;
+
+  const submit = (
+    fields: Record<string, unknown>,
+    agent: request.Agent | ReturnType<typeof request> = request(server()),
+  ) =>
+    agent.post("/waitlist/entries").send({
+      name: "Phone Person",
+      reason: "I want to help",
+      committed: true,
+      ...fields,
+    });
+
+  const saveEntry = (fields: Partial<WaitlistEntry> = {}) =>
+    entryRepo.save(
+      entryRepo.create({
+        name: "Test Person",
+        email: null,
+        phoneNumber: uniquePhone(),
+        code: `code-${Math.random()}`,
+        committedAt: new Date(),
+        reason: "I want to help",
+        ...fields,
+      }),
+    );
+
+  beforeAll(async () => {
+    ctx = await createTestApp([WaitlistModule]);
+    entryRepo = ctx.dataSource.getRepository(WaitlistEntry);
+    sendShareLink = jest.spyOn(
+      ctx.app.get(WaitlistMailService),
+      "sendShareLink",
+    );
+    sendStaff = jest.spyOn(ctx.app.get(MailService), "sendWaitlistStaffEmail");
+    run = jest.spyOn(ctx.app.get(WaitlistEmailSender), "run");
+  }, 50000);
+
+  beforeEach(() => {
+    process.env.WAITLIST_PUBLIC_MAIL_DAILY_CAP = "1000";
+    sendShareLink.mockClear();
+    sendStaff.mockClear();
+  });
+
+  afterAll(async () => {
+    delete process.env.WAITLIST_PUBLIC_MAIL_DAILY_CAP;
+    await ctx.app.close();
+  });
+
+  describe("signup", () => {
+    it("stores a phone entry, remembers it in the browser, and mails nothing", async () => {
+      const phoneNumber = uniquePhone();
+      const browser = request.agent(server());
+      const res = await submit({ phoneNumber }, browser).expect(200);
+
+      const entry = await entryRepo.findOneByOrFail({ phoneNumber });
+      expect(entry.email).toBeNull();
+      expect(res.body.shareCode).toBe(entry.code);
+      expect(sendShareLink).not.toHaveBeenCalled();
+      const remembered = await browser.get("/waitlist/browser").expect(200);
+      expect(remembered.body.entry).toEqual({
+        shareCode: entry.code,
+        mobilized: false,
+      });
+    });
+
+    it.each<[string, Record<string, unknown>]>([
+      [
+        "both contacts",
+        { email: "both@example.com", phoneNumber: "+14155552671" },
+      ],
+      ["neither contact", {}],
+      ["a blank email", { email: "  " }],
+      ["a null phone number", { phoneNumber: null }],
+      ["a national spelling", { phoneNumber: "(415) 555-2671" }],
+      ["an invalid number", { phoneNumber: "+1123" }],
+    ])("rejects %s without inserting", async (_label, fields) => {
+      const before = await entryRepo.count();
+      await submit(fields).expect(400);
+      expect(await entryRepo.count()).toBe(before);
+      expect(sendShareLink).not.toHaveBeenCalled();
+    });
+
+    it("keeps the first entry for a repeated number, unsubscribed, and reveals no code", async () => {
+      const phoneNumber = uniquePhone();
+      const first = await submit({ name: "First", phoneNumber }).expect(200);
+      await entryRepo.update(
+        { phoneNumber },
+        { unsubscribedAt: new Date("2026-01-01T00:00:00Z") },
+      );
+      const browser = request.agent(server());
+
+      const again = await submit(
+        { name: "Second", phoneNumber, reason: "Different" },
+        browser,
+      ).expect(200);
+
+      expect(again.body.shareCode).toBeNull();
+      expect(again.headers["set-cookie"]).toBeUndefined();
+      const entries = await entryRepo.findBy({ phoneNumber });
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({
+        code: first.body.shareCode,
+        name: "First",
+        reason: "I want to help",
+        unsubscribedAt: new Date("2026-01-01T00:00:00Z"),
+      });
+      const state = await browser.get("/waitlist/browser").expect(200);
+      expect(state.body).toEqual({ entry: null, inviteCode: null });
+    });
+
+    it("records one entry for concurrent submissions of a number", async () => {
+      const phoneNumber = uniquePhone();
+      const responses = await Promise.all(
+        Array.from({ length: 5 }, () => submit({ phoneNumber })),
+      );
+
+      expect(responses.map((res) => res.status)).toEqual([
+        200, 200, 200, 200, 200,
+      ]);
+      const codes = responses
+        .map((res) => res.body.shareCode)
+        .filter((code) => code !== null);
+      const entries = await entryRepo.findBy({ phoneNumber });
+      expect(entries).toHaveLength(1);
+      expect(codes).toEqual([entries[0].code]);
+    });
+
+    it("keeps an email entry and a phone entry of one person apart", async () => {
+      const phoneNumber = uniquePhone();
+      const email = `same-${Math.random()}@example.com`;
+      await submit({ name: "Same Person", email }).expect(200);
+      await submit({ name: "Same Person", phoneNumber }).expect(200);
+
+      const email1 = await entryRepo.findOneByOrFail({ email });
+      const phone1 = await entryRepo.findOneByOrFail({ phoneNumber });
+      expect(email1.id).not.toBe(phone1.id);
+      expect(email1.phoneNumber).toBeNull();
+    });
+  });
+
+  it("enforces exactly one canonical contact in the database", async () => {
+    const insert = (contact: {
+      email: string | null;
+      phoneNumber: string | null;
+    }) =>
+      entryRepo.insert({
+        name: "Constraint",
+        reason: "Testing",
+        committedAt: new Date(),
+        code: `code-${Math.random()}`,
+        ...contact,
+      });
+
+    await expect(insert({ email: null, phoneNumber: null })).rejects.toThrow(
+      /CHK_waitlist_entry_one_contact/,
+    );
+    await expect(
+      insert({ email: "both-db@example.com", phoneNumber: uniquePhone() }),
+    ).rejects.toThrow(/CHK_waitlist_entry_one_contact/);
+    await expect(
+      insert({ email: null, phoneNumber: "415-555-2671" }),
+    ).rejects.toThrow(/CHK_waitlist_entry_phone_e164/);
+  });
+
+  describe("email audiences", () => {
+    const preview = (entryIds: number[]) =>
+      asAdmin(request(server()).post("/waitlist/admin/emails/preview")).send({
+        subject: "Hi #{name}",
+        body: "Welcome",
+        includeClaimed: false,
+        entryIds,
+      });
+
+    const send = (entryIds: number[]) =>
+      asAdmin(request(server()).post("/waitlist/admin/emails")).send({
+        subject: "Hi #{name}",
+        body: "Welcome",
+        includeClaimed: false,
+        mobilize: false,
+        requestId: crypto.randomUUID(),
+        entryIds,
+      });
+
+    it("counts phone entries as skipped before any other reason", async () => {
+      const phone = await saveEntry({ unsubscribedAt: new Date() });
+      const email = await saveEntry({
+        phoneNumber: null,
+        email: `audience-${Math.random()}@example.com`,
+      });
+
+      const res = await preview([phone.id, email.id]).expect(200);
+      expect(res.body).toMatchObject({
+        selected: 2,
+        noEmail: 1,
+        unsubscribed: 0,
+        recipientIds: [email.id],
+      });
+    });
+
+    it("refuses to send to only phone entries, and skips them in a mixed send", async () => {
+      const phone = await saveEntry();
+      const email = await saveEntry({
+        phoneNumber: null,
+        email: `mixed-${Math.random()}@example.com`,
+      });
+      await send([phone.id]).expect(400);
+
+      const batch = await send([phone.id, email.id]).expect(201);
+      await Promise.all(run.mock.results.map((result) => result.value));
+
+      const recipients = await ctx.dataSource
+        .getRepository(WaitlistEmailRecipient)
+        .find({ where: { batchId: batch.body.id }, order: { id: "ASC" } });
+      expect(
+        recipients.map((r) => [r.entryId, r.status, r.skipReason]),
+      ).toEqual([
+        [
+          phone.id,
+          WaitlistEmailRecipientStatus.Skipped,
+          WaitlistEmailSkipReason.NoEmail,
+        ],
+        [email.id, expect.any(String), null],
+      ]);
+      expect(sendStaff.mock.calls.map(([params]) => params.recipient)).toEqual([
+        email.email,
+      ]);
+      const detail = await asAdmin(
+        request(server()).get(`/waitlist/admin/emails/${batch.body.id}`),
+      ).expect(200);
+      expect(detail.body.recipients[0]).toMatchObject({
+        entryId: phone.id,
+        email: null,
+        phoneNumber: phone.phoneNumber,
+      });
+    });
+  });
+});

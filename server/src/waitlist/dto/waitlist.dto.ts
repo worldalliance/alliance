@@ -1,4 +1,5 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
+import { applyDecorators } from "@nestjs/common";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
 import {
   Equals,
@@ -11,8 +12,12 @@ import {
   ValidateIf,
 } from "class-validator";
 import { getImageSource } from "src/images/images.service";
+import { IsE164 } from "src/utils/phone";
 import { trim, trimToNull } from "src/utils/transforms";
 import type { WaitlistEntry } from "../entities/waitlist-entry.entity";
+
+const IsWaitlistEmail = () =>
+  applyDecorators(Transform(trim), IsEmail(), MaxLength(320));
 
 /** At most one; neither means the visitor arrived without a referral. */
 export class WaitlistReferralCodesDto {
@@ -38,11 +43,15 @@ export class CreateWaitlistEntryDto extends WaitlistReferralCodesDto {
   @MaxLength(200)
   name: string;
 
-  @ApiProperty()
-  @Transform(trim)
-  @IsEmail()
-  @MaxLength(320)
-  email: string;
+  @ApiPropertyOptional({ description: "Send this or `phoneNumber`" })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsWaitlistEmail()
+  email?: string;
+
+  @ApiPropertyOptional({ description: "E.164; send this or `email`" })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsE164()
+  phoneNumber?: string;
 
   @ApiPropertyOptional({
     type: String,
@@ -60,9 +69,11 @@ export class CreateWaitlistEntryDto extends WaitlistReferralCodesDto {
   committed: true;
 }
 
-export class WaitlistLinkRequestDto extends PickType(CreateWaitlistEntryDto, [
-  "email",
-] as const) {}
+export class WaitlistLinkRequestDto {
+  @ApiProperty()
+  @IsWaitlistEmail()
+  email: string;
+}
 
 export class WaitlistUnsubscribeDto {
   @ApiProperty({
@@ -86,7 +97,7 @@ export class WaitlistEntryResultDto {
     type: String,
     nullable: true,
     description:
-      "The new entry's personal code; null when the email was already on the waitlist",
+      "The new entry's personal code; null when the contact was already on the waitlist",
   })
   shareCode: string | null;
 

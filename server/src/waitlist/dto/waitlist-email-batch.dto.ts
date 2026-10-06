@@ -124,8 +124,11 @@ export class WaitlistEmailRecipientDto {
   @ApiProperty()
   name: string;
 
-  @ApiProperty()
-  email: string;
+  @ApiProperty({ type: String, nullable: true })
+  email: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  phoneNumber: string | null;
 
   @ApiProperty({
     enum: WaitlistEmailRecipientStatus,
@@ -156,6 +159,7 @@ export class WaitlistEmailRecipientDto {
     this.entryId = input.entryId;
     this.name = input.entry.name;
     this.email = input.entry.email;
+    this.phoneNumber = input.entry.phoneNumber;
     this.status = input.status;
     this.skipReason = input.skipReason;
     this.error = input.error;

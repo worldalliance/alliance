@@ -137,7 +137,7 @@ describe("Waitlist email admin (e2e)", () => {
   const recipientsOf = (batchId: number) =>
     recipientRepo.find({ where: { batchId }, order: { id: "ASC" } });
 
-  const sentTo = (email: string) =>
+  const sentTo = (email: string | null) =>
     sendStaff.mock.calls.filter(([params]) => params.recipient === email);
 
   beforeAll(async () => {
