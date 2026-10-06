@@ -1,48 +1,11 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
-import { notifsLinkClick } from "@alliance/shared/client";
 import { captureEvent } from "@alliance/shared/lib/analytics";
-import { useNotifications } from "@alliance/shared/lib/useNotifications";
 import { posthog } from "posthog-js";
 import { useEffect } from "react";
 import { useSearchParams } from "react-router";
 
-export const useCIDFromParams = (actionId?: number) => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { refreshNotifications } = useNotifications();
-  const cid = searchParams.get("cid");
-
-  useEffect(() => {
-    let cancelled = false;
-    if (cid) {
-      posthog.register_for_session({ cid });
-
-      notifsLinkClick({
-        body: { cid },
-      }).then((response) => {
-        let platform = "unknown";
-        if (response.data) {
-          platform = response.data.mms ? "mms" : "email";
-          if (!cancelled) {
-            searchParams.delete("cid");
-            setSearchParams(searchParams, {
-              replace: true,
-              preventScrollReset: true,
-            });
-          }
-        }
-        captureEvent(AnalyticsEvent.NotifLinkClick, {
-          cid,
-          platform,
-          actionId,
-        });
-        refreshNotifications({ limit: 20 });
-      });
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [cid, setSearchParams, searchParams, actionId, refreshNotifications]);
-
+export const useSidFromParams = (actionId?: number) => {
+  const [searchParams] = useSearchParams();
   const sid = searchParams.get("sid") ?? searchParams.get("ref");
   useEffect(() => {
     if (sid) {

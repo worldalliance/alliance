@@ -49,7 +49,7 @@ import {
   sidebarProgressActionCandidates,
 } from "../../lib/fetchTaskFormProgressViews";
 import { useTaskActionsData } from "../../lib/useTaskActionsData";
-import { useCIDFromParams } from "../../lib/utils";
+import { useSidFromParams } from "../../lib/utils";
 import { MOCK_TASK_FORMS, MOCK_TASKS } from "../../onboarding/mockTasks";
 import { useMockTasks } from "../../onboarding/useMockTasks";
 import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
@@ -114,7 +114,7 @@ const HomePage = () => {
     limit: 10,
   });
 
-  useCIDFromParams();
+  useSidFromParams();
 
   const {
     todoActions,

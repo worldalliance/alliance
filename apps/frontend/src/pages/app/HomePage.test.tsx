@@ -38,7 +38,7 @@ beforeEach(() => {
       handleDismissAction: async () => {},
       handleDismissGeneralUpdate: async () => {},
     }));
-  jest.spyOn(utilsModule, "useCIDFromParams").mockImplementation(() => {});
+  jest.spyOn(utilsModule, "useSidFromParams").mockImplementation(() => {});
   jest
     .spyOn(globalFeedModule, "default")
     .mockReturnValue({ items: [], loading: false, error: null });

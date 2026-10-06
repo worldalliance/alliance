@@ -14,7 +14,7 @@ import { Link, href, useNavigate, useParams } from "react-router";
 import Comments from "../../components/Comments";
 import LikeFooter from "../../components/LikeFooter";
 import { useAuth } from "../../lib/AuthContext";
-import { useCIDFromParams } from "../../lib/utils";
+import { useSidFromParams } from "../../lib/utils";
 
 const PostDetailPage: React.FC = () => {
   const { id: postId } = useParams<{ id: string }>();
@@ -23,7 +23,7 @@ const PostDetailPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  useCIDFromParams();
+  useSidFromParams();
 
   const {
     post,

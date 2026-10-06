@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Outlet, useNavigation } from "react-router";
 import NavbarTopBar from "./components/NavbarTopBar";
 import NavbarVertical from "./components/NavbarVertical";
+import { RefreshNotificationsOnOpening } from "./lib/linkOpenings";
 import { NavbarOptionsProvider } from "./lib/NavbarOptionsContext";
 import { useTaskActionsData } from "./lib/useTaskActionsData";
 import { Walkthrough } from "./onboarding/walkthrough/Walkthrough";
@@ -46,6 +47,7 @@ function Navbar() {
   return (
     <NavbarOptionsProvider>
       <NotificationsProvider>
+        <RefreshNotificationsOnOpening />
         <IncomingCommunityInvitesProvider>
           <NavbarVertical
             todoActions={nTasks}
