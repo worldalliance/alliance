@@ -3,6 +3,7 @@ import {
   formatPhoneNumberForDisplay,
   formatPhoneNumberNational,
   isCanonicalE164,
+  looksLikePhoneNumber,
   normalizePhoneNumber,
   phoneNumberCountry,
   phoneNumberForEditing,
@@ -128,6 +129,25 @@ describe("asCountryCode", () => {
   it("rejects anything the parser cannot use as a region", () => {
     for (const code of ["ZZ", "GBR", "", "  ", null, undefined]) {
       expect(asCountryCode(code)).toBeNull();
+    }
+  });
+});
+
+describe("looksLikePhoneNumber", () => {
+  it("accepts digits with phone punctuation", () => {
+    for (const typed of [
+      "4",
+      "(415) 555-2671",
+      "+44 20 7946 0958",
+      "415.555",
+    ]) {
+      expect(looksLikePhoneNumber(typed)).toBe(true);
+    }
+  });
+
+  it("rejects empty, email, and worded input", () => {
+    for (const typed of ["", "  ", "+", "()-", "12@example.com", "Bob 2"]) {
+      expect(looksLikePhoneNumber(typed)).toBe(false);
     }
   });
 });
