@@ -4,12 +4,12 @@ import { thrownStatus } from "./hey-api";
  * to wait, not settling the question. */
 const RETRYABLE_REFUSALS = new Set([408, 429]);
 
-export const isRefused = (error: unknown): boolean => {
-  const status = thrownStatus(error);
-  return (
-    status !== undefined && status < 500 && !RETRYABLE_REFUSALS.has(status)
-  );
-};
+/** A missing status is a lost response, which asking again can fix. */
+export const isRefusedStatus = (status: number | undefined): boolean =>
+  status !== undefined && status < 500 && !RETRYABLE_REFUSALS.has(status);
+
+export const isRefused = (error: unknown): boolean =>
+  isRefusedStatus(thrownStatus(error));
 
 /** React Query's `retry`, minus the refusals asking again cannot change. */
 export const retryUnlessRefused =

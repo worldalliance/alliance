@@ -122,6 +122,10 @@ export enum ExceptionEvent {
   OAuthFailed = "oauth_failed",
   PasswordLoginFailed = "password_login_failed",
   MalformedListAnswer = "malformed_list_answer",
+  LinkOpeningNotStored = "link_opening_not_stored",
+  LinkOpeningRefused = "link_opening_refused",
+  LinkOpeningsUnreadable = "link_openings_unreadable",
+  LinkOpeningExpired = "link_opening_expired",
 }
 
 export const SLACK_PROPERTY = "send_to_slack";
@@ -217,4 +221,8 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [ExceptionEvent.OAuthFailed]: true,
   [ExceptionEvent.PasswordLoginFailed]: true,
   [ExceptionEvent.MalformedListAnswer]: false,
+  [ExceptionEvent.LinkOpeningNotStored]: false,
+  [ExceptionEvent.LinkOpeningRefused]: false,
+  [ExceptionEvent.LinkOpeningsUnreadable]: false,
+  [ExceptionEvent.LinkOpeningExpired]: false,
 };
