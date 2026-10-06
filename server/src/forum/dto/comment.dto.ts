@@ -89,7 +89,12 @@ export class CommentDto extends PickType(Comment, [
       .map((like) => new ProfileDto(like))
       .sort(byLikeOrder(comment.id))
       .slice(0, LIKE_FACEPILE_LIMIT);
-    this.editableContent = new EditableContentDto(comment.editableContent);
+    // A deleted comment keeps its place in the thread, not its content.
+    this.editableContent = new EditableContentDto(
+      this.deleted
+        ? { ...comment.editableContent, body: "", attachments: [] }
+        : comment.editableContent,
+    );
   }
 }
 

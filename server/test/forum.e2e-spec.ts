@@ -718,15 +718,11 @@ describe("Forum (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
 
-      // Verify reply is deleted by trying to update it (should fail)
-      const reply = await request(ctx.app.getHttpServer())
+      await request(ctx.app.getHttpServer())
         .patch(`/forum/comments/${replyId}`)
         .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .send({
-          content: "This should fail",
-        });
-
-      expect(reply.body.deleted).toBe(true);
+        .send({ editableContent: { body: "Too late", attachments: [] } })
+        .expect(404);
     });
 
     it("should say a missing reply is gone", async () => {
