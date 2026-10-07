@@ -63,7 +63,9 @@ export function ProjectTimeline({
                 <span
                   className={cn(
                     "size-2.75 shrink-0 rounded-full ring-4 ring-[var(--site-primary)]",
-                    current ? "bg-green" : "bg-white/45",
+                    current
+                      ? "bg-green"
+                      : "bg-[color-mix(in_srgb,white_45%,var(--site-primary))]",
                   )}
                 />
                 {!last && (

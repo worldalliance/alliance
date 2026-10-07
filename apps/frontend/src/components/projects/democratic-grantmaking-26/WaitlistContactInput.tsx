@@ -12,7 +12,6 @@ import { WAITLIST_FIELD } from "./waitlistStyles";
 
 export const CONTACT_LABEL = "Email or mobile number";
 export const INVALID_CONTACT = "Enter a valid email address or mobile number.";
-const HELPER_ID = "waitlist-contact-helper";
 const ERROR_ID = "waitlist-contact-error";
 
 export type WaitlistContact = { email: string } | { phoneNumber: string };
@@ -88,7 +87,7 @@ export function WaitlistContactInput({
           spellCheck={false}
           placeholder={CONTACT_LABEL}
           aria-label={CONTACT_LABEL}
-          aria-describedby={error ? `${ERROR_ID} ${HELPER_ID}` : HELPER_ID}
+          aria-describedby={error ? ERROR_ID : undefined}
           aria-invalid={Boolean(error)}
           required
           maxLength={320}
@@ -103,9 +102,6 @@ export function WaitlistContactInput({
           {error}
         </p>
       )}
-      <p id={HELPER_ID} className="text-sm text-white/85">
-        Where should we send your invitation?
-      </p>
     </div>
   );
 }
