@@ -677,9 +677,11 @@ export class ForumService {
       editableContent: content,
     });
 
-    await this.postRepository.update(createCommentDto.parentObjectId, {
-      updatedAt: new Date(),
-    });
+    if (createCommentDto.parentObjectType === CommentParentObject.Post) {
+      await this.postRepository.update(createCommentDto.parentObjectId, {
+        updatedAt: new Date(),
+      });
+    }
 
     await this.commentRepository.save(reply);
 

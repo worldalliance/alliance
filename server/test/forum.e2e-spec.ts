@@ -1171,6 +1171,47 @@ describe("Forum (e2e)", () => {
       expect(actionComments.body.length).toBeGreaterThan(0);
     });
 
+    it("leaves a post sharing a commented action's id unbumped", async () => {
+      const postRepo = ctx.dataSource.getRepository(Post);
+      await ctx.dataSource.query(
+        `SELECT setval(pg_get_serial_sequence('post', 'id'), next), setval(pg_get_serial_sequence('action', 'id'), next)
+         FROM (SELECT GREATEST((SELECT MAX(id) FROM post), (SELECT MAX(id) FROM action)) AS next) ids`,
+      );
+      const action = await actionRepo.save({
+        name: "Shared Id Action",
+        category: [],
+        body: "An action whose id a post shares",
+        status: ActionStatus.MemberAction,
+      });
+      await eventRepo.save({
+        title: "Action Started",
+        description: "Action is now in member action phase",
+        newStatus: ActionStatus.MemberAction,
+        date: new Date(Date.now() - milliseconds({ hours: 1 })),
+        action,
+      });
+      const post = await postRepo.save({
+        title: "Shared Id Post",
+        authorId: ctx.testUserId,
+        editableContent: { body: "Body", attachments: [] },
+      });
+      expect(post.id).toBe(action.id);
+
+      await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "On the action", attachments: [] },
+          parentObjectId: action.id,
+          parentObjectType: CommentParentObject.Action,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      expect(
+        (await postRepo.findOneByOrFail({ id: post.id })).updatedAt,
+      ).toEqual(post.updatedAt);
+    });
+
     it("supports liking and unliking posts and comments", async () => {
       const postResponse = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
