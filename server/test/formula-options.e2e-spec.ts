@@ -661,6 +661,7 @@ describe("Options formulas (e2e)", () => {
       }).expect(201);
 
       expect(response.body.formulaChoices).toEqual({});
+      expect(response.body.answers).toEqual({ toggle: "no" });
     });
 
     it("refuses a choice only a hidden answer would offer", async () => {

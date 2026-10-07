@@ -1232,7 +1232,7 @@ export class TasksService {
     return this.createAndSaveFormResponse({
       form,
       formId,
-      dto: submitFormDto,
+      dto: { ...submitFormDto, answers },
       snapshot,
       validatorResults,
       formulaChoices: await checkedFormulaChoices({
