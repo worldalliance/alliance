@@ -31,6 +31,7 @@ import { ActionEventNotif } from "./entities/action-event-notif.entity";
 import { ExperimentAssignment } from "./entities/experiment-assignment.entity";
 import { MissedSuitePlanService } from "./missed-suite-plans.service";
 import { NotifsService } from "./notifs.service";
+import { StreakRecognitionService } from "./streak-recognition.service";
 
 describe("ActionEventNotifWorker.processCustomReminderText", () => {
   let worker: ActionEventNotifWorker;
@@ -62,6 +63,7 @@ describe("ActionEventNotifWorker.processCustomReminderText", () => {
       {} as PushService,
       {} as NotifsService,
       {} as Repository<ExperimentAssignment>,
+      {} as StreakRecognitionService,
     );
   });
 
@@ -199,6 +201,7 @@ describe("ActionEventNotifWorker.findUncompletedTasksForPlan", () => {
       {} as PushService,
       {} as NotifsService,
       {} as Repository<ExperimentAssignment>,
+      {} as StreakRecognitionService,
     );
   });
 

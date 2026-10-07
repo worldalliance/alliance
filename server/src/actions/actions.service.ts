@@ -80,6 +80,7 @@ import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { NotificationPlan } from "src/notifs/dto/notification-plan.dto";
 import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { NotifsService } from "src/notifs/notifs.service";
+import { assertStreakRecognitionAllowed } from "src/notifs/streak-recognition";
 import { PosthogService } from "src/posthog/posthog.service";
 import { actionActivityUrl } from "src/search/approutes";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
@@ -167,6 +168,7 @@ import {
   assertNotInACohort,
   assertTagsExist,
 } from "./cohort-reference-validation";
+import { TERMINAL_ACTIVITY_COMPLETES } from "./completed-suite-streak";
 import {
   ActionActivityDto,
   ActionDto,
@@ -3631,6 +3633,7 @@ export class ActionsService {
     body: CreateReminderGroupDto,
   ): Promise<NotificationPlan[]> {
     assertExcludePreviouslyNotifiedAllowed(body);
+    assertStreakRecognitionAllowed(body);
     const event = await this.actionEventRepository.findOneOrFail({
       where: { id: eventId },
       relations: {
@@ -3678,6 +3681,7 @@ export class ActionsService {
       allSent: false,
       actionSuite,
       timingAnchorEvent,
+      streakRecognition: bodyRest.streakRecognition ?? false,
     } satisfies ReminderGroup;
 
     const withDeadlineEvent =
@@ -4224,16 +4228,22 @@ export class ActionsService {
     actions: ParsedAction[],
     maxPastDate: Date,
   ): Promise<SuspendPlanContext> {
-    const actionsBySuite = new Map<number, ParsedAction[]>();
+    const actionsBySuite = new Map<
+      number,
+      { onboarding: boolean; actions: ParsedAction[] }
+    >();
     for (const action of actions) {
       if (!action.suite || action.onboarding || action.optional) continue;
-      const suiteActions = actionsBySuite.get(action.suite.id) ?? [];
-      suiteActions.push(action);
-      actionsBySuite.set(action.suite.id, suiteActions);
+      const entry = actionsBySuite.get(action.suite.id) ?? {
+        onboarding: action.suite.onboarding,
+        actions: [],
+      };
+      entry.actions.push(action);
+      actionsBySuite.set(action.suite.id, entry);
     }
 
     const closedSuites = [...actionsBySuite].flatMap(
-      ([suiteId, suiteActions]) => {
+      ([suiteId, { onboarding, actions: suiteActions }]) => {
         let closedAt: Date | null = null;
         for (const action of suiteActions) {
           const deadline = action.memberActionPhase.deadlineEvent?.date;
@@ -4241,7 +4251,14 @@ export class ActionsService {
           if (!closedAt || deadline > closedAt) closedAt = deadline;
         }
         if (!closedAt || closedAt > maxPastDate) return [];
-        return [{ suiteId, closedAt, actions: suiteActions }];
+        return [
+          {
+            suiteId,
+            closedAt,
+            onboarding,
+            actions: suiteActions,
+          },
+        ];
       },
     );
     closedSuites.sort(
@@ -4256,17 +4273,23 @@ export class ActionsService {
     const actionIds = closedSuites.flatMap((suite) =>
       suite.actions.map((action) => action.id),
     );
-    const satisfyingActivities = await this.actionActivityRepository.find({
+    const terminalActivities = await this.actionActivityRepository.find({
       where: {
         actionId: In(actionIds),
         type: In(TERMINAL_ACTIVITY_TYPES),
       },
-      select: { actionId: true, userId: true },
+      select: { actionId: true, userId: true, type: true, createdAt: true },
     });
-    const satisfied = new Set(
-      satisfyingActivities.map(
-        (activity) => `${activity.userId}:${activity.actionId}`,
-      ),
+    const latestTerminalTypes = new Map(
+      Object.entries(
+        groupBy(
+          terminalActivities,
+          (activity) => `${activity.userId}:${activity.actionId}`,
+        ),
+      ).map(([key, activities]) => [
+        key,
+        findLatestTerminalActivity(activities)?.type,
+      ]),
     );
 
     // Share the active-user load and per-leaf cohort queries across every
@@ -4307,6 +4330,7 @@ export class ActionsService {
     const suites: SuiteOutcome[] = [];
     for (const suite of closedSuites) {
       const missedActionIdsByUser = new Map<number, number[]>();
+      const completedUserIds = new Set<number>();
       for (const action of suite.actions) {
         const { event, deadlineEvent } = action.memberActionPhase;
         if (!event) continue;
@@ -4325,14 +4349,23 @@ export class ActionsService {
             continue;
           }
           const missed = missedActionIdsByUser.get(user.id) ?? [];
+          const latestTerminalType = latestTerminalTypes.get(
+            `${user.id}:${action.id}`,
+          );
           if (
             computeMissedRequiredAction({
               action,
-              hasTerminalActivity: satisfied.has(`${user.id}:${action.id}`),
+              hasTerminalActivity: latestTerminalType !== undefined,
               now: maxPastDate,
             })
           ) {
             missed.push(action.id);
+          }
+          if (
+            latestTerminalType !== undefined &&
+            TERMINAL_ACTIVITY_COMPLETES[latestTerminalType]
+          ) {
+            completedUserIds.add(user.id);
           }
           missedActionIdsByUser.set(user.id, missed);
           idToUser.set(user.id, user);
@@ -4341,12 +4374,14 @@ export class ActionsService {
       suites.push({
         suiteId: suite.suiteId,
         closedAt: suite.closedAt,
+        onboarding: suite.onboarding,
         actions: suite.actions.map(({ id, name, timeEstimate }) => ({
           id,
           name,
           timeEstimate,
         })),
         missedActionIdsByUser,
+        completedUserIds,
       });
     }
 

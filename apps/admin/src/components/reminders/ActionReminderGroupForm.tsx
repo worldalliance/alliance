@@ -1,5 +1,6 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { errorMessage } from "@alliance/common/errorMessage";
+import { usesMissedSuiteKeyword } from "@alliance/common/missed-suite-keywords";
 import { R } from "@alliance/common/result";
 import {
   actionsPreviewEmailHtmlAdmin,
@@ -46,6 +47,7 @@ type ReminderGroupContentFields = Pick<
   | "useSuiteTaskCount"
   | "excludeOptionalActions"
   | "excludePreviouslyNotified"
+  | "streakRecognition"
 >;
 
 type ReminderGroupScheduleFields = Pick<
@@ -122,6 +124,18 @@ const COHORT_OPTION_OBJ: Record<ReminderCohortType, string> = {
 const COHORT_OPTIONS = Object.entries(COHORT_OPTION_OBJ).map(
   ([value, label]) => ({ value, label }),
 );
+
+// Group-leads nudges are about *other* users' tasks, so options about the
+// recipient's own notifs or streak don't apply (the server rejects them).
+const COHORT_NOTIFIES_RECIPIENT_PERSONALLY: Record<
+  ReminderCohortType,
+  boolean
+> = {
+  all_uncompleted: true,
+  tag: true,
+  custom: true,
+  group_leads_with_uncompleted: false,
+};
 
 interface ActionReminderFormProps {
   suiteId: number;
@@ -227,6 +241,10 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       initialValues.reminderGroup?.excludePreviouslyNotified ?? false,
     );
 
+  const [streakRecognition, setStreakRecognition] = useState<boolean>(
+    initialValues.reminderGroup?.streakRecognition ?? false,
+  );
+
   const initialTimingAnchorEventId =
     initialGroup?.timingAnchorEvent?.id ??
     initialGroup?.timingAnchorEventId ??
@@ -280,12 +298,13 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     initialValues.reminderGroup?.userTag?.id ?? null,
   );
 
-  // Group-leads nudges are about *other* users' tasks, so "already notified
-  // for this event" doesn't apply to them (the server rejects the combination).
-  const excludePreviouslyNotifiedApplies =
-    cohortType !== "group_leads_with_uncompleted";
+  const notifiesRecipientPersonally =
+    COHORT_NOTIFIES_RECIPIENT_PERSONALLY[cohortType];
   const effectiveExcludePreviouslyNotified =
-    excludePreviouslyNotifiedApplies && excludePreviouslyNotified;
+    notifiesRecipientPersonally && excludePreviouslyNotified;
+  const streakRecognitionApplies =
+    notifiesRecipientPersonally &&
+    !usesMissedSuiteKeyword({ emailSubject, emailMessage });
 
   const [localError, setLocalError] = useState<string | null>(null);
   const initialSnapshotRef = useRef<string>("");
@@ -659,6 +678,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     setExcludePreviouslyNotified(
       initialValues.reminderGroup?.excludePreviouslyNotified ?? false,
     );
+    setStreakRecognition(
+      initialValues.reminderGroup?.streakRecognition ?? false,
+    );
     setTimingAnchorEventId(
       nextGroup?.timingAnchorEvent?.id ??
         nextGroup?.timingAnchorEventId ??
@@ -804,6 +826,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       useSuiteTaskCount,
       excludeOptionalActions,
       excludePreviouslyNotified: effectiveExcludePreviouslyNotified,
+      streakRecognition: streakRecognitionApplies && streakRecognition,
       timingAnchorEventId: effectiveTimingAnchorEventId,
     } satisfies ActionReminderGroupFormSubmitPayload;
 
@@ -1299,11 +1322,18 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           checked={excludeOptionalActions}
           onChange={(checked) => setExcludeOptionalActions(checked)}
         />
-        {excludePreviouslyNotifiedApplies && (
+        {notifiesRecipientPersonally && (
           <LargeCheckbox
             label="Only notify about tasks not yet notified (skip users with nothing new)"
             checked={excludePreviouslyNotified}
             onChange={(checked) => setExcludePreviouslyNotified(checked)}
+          />
+        )}
+        {streakRecognitionApplies && (
+          <LargeCheckbox
+            label="Streak recognition"
+            checked={streakRecognition}
+            onChange={(checked) => setStreakRecognition(checked)}
           />
         )}
       </div>

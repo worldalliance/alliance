@@ -14,6 +14,7 @@ export enum Experiment {
   MissedSuiteFirstNotice = "missed_suite_first_notice",
   /** Variant completers read branch A of `RecognitionBranch`; everyone else, branch B. */
   ActionUpdateRecognition = "action_update_recognition",
+  StreakRecognition = "streak_recognition",
 }
 
 export enum ExperimentArm {

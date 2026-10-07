@@ -7,7 +7,9 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import ActionReminderGroupForm from "./ActionReminderGroupForm";
+import { reminderPresets } from "./presets";
 
 const { baseUrl, fetch } = client.getConfig();
 
@@ -31,7 +33,19 @@ const initialValues = {
   users: [],
 };
 
-const formElement = (suiteId: number, waitForRecipientCount = true) => (
+type FormProps = ComponentProps<typeof ActionReminderGroupForm>;
+
+const formElement = ({
+  suiteId = 7,
+  waitForRecipientCount = true,
+  reminderGroup = null,
+  onSubmit = () => {},
+}: {
+  suiteId?: number;
+  waitForRecipientCount?: boolean;
+  reminderGroup?: FormProps["initialValues"]["reminderGroup"];
+  onSubmit?: FormProps["onSubmit"];
+} = {}) => (
   <ActionReminderGroupForm
     suiteId={suiteId}
     waitForRecipientCount={waitForRecipientCount}
@@ -42,8 +56,8 @@ const formElement = (suiteId: number, waitForRecipientCount = true) => (
     usersLoadFailed={false}
     userTags={[]}
     loadingUserTags={false}
-    initialValues={initialValues}
-    onSubmit={() => {}}
+    initialValues={{ ...initialValues, reminderGroup }}
+    onSubmit={onSubmit}
   />
 );
 
@@ -60,7 +74,7 @@ const plan = { scheduledFor: new Date(2030, 0, 1).toISOString() };
 
 it("previews the group with its suite", async () => {
   const fetchMock = mockFetch();
-  render(formElement(7));
+  render(formElement());
 
   await waitFor(() => expect(tentativeRequests(fetchMock)).toHaveLength(1));
   expect(await tentativeRequests(fetchMock)[0].clone().json()).toMatchObject({
@@ -70,11 +84,11 @@ it("previews the group with its suite", async () => {
 
 it("sends one preview request for a burst of changes", async () => {
   const fetchMock = mockFetch();
-  const { rerender } = render(formElement(7));
+  const { rerender } = render(formElement());
   await new Promise((resolve) => setTimeout(resolve, 100));
-  rerender(formElement(8));
+  rerender(formElement({ suiteId: 8 }));
   await new Promise((resolve) => setTimeout(resolve, 100));
-  rerender(formElement(9));
+  rerender(formElement({ suiteId: 9 }));
 
   await waitFor(() => expect(tentativeRequests(fetchMock)).toHaveLength(1));
   await new Promise((resolve) => setTimeout(resolve, 400));
@@ -97,10 +111,10 @@ it("ignores a preview response superseded by a newer change", async () => {
     }
     return Promise.resolve(Response.json([plan], { status: 201 }));
   });
-  const { rerender } = render(formElement(7));
+  const { rerender } = render(formElement());
   await waitFor(() => expect(tentativeRequests(fetchMock)).toHaveLength(1));
 
-  rerender(formElement(8));
+  rerender(formElement({ suiteId: 8 }));
   await screen.findByText("1");
   resolveFirst(Response.json([plan, plan, plan], { status: 201 }));
   await new Promise((resolve) => setTimeout(resolve, 50));
@@ -116,7 +130,7 @@ it("holds submit until the recipient count is current", async () => {
         })
       : Promise.resolve(Response.json([], { status: 201 })),
   );
-  render(formElement(7));
+  render(formElement());
   const submit = screen.getByRole("button", { name: "Create Reminders" });
 
   expect(submit).toHaveProperty("disabled", true);
@@ -136,7 +150,7 @@ it("holds submit after a failed preview until a retry succeeds", async () => {
     if (failing) throw new TypeError("Failed to fetch");
     return Response.json([plan], { status: 201 });
   });
-  render(formElement(7));
+  render(formElement());
   const submit = screen.getByRole("button", { name: "Create Reminders" });
 
   expect(await screen.findByText("Failed to fetch")).toBeTruthy();
@@ -160,10 +174,10 @@ it("replaces a failed preview's error while it recounts", async () => {
     }
     return new Promise<Response>(() => {});
   });
-  const { rerender } = render(formElement(7));
+  const { rerender } = render(formElement());
   expect(await screen.findByText("Failed to fetch")).toBeTruthy();
 
-  rerender(formElement(8));
+  rerender(formElement({ suiteId: 8 }));
 
   expect(screen.queryByText("Failed to fetch")).toBeNull();
   expect(screen.getByText("Counting recipients…")).toBeTruthy();
@@ -215,11 +229,11 @@ it("clears a fixed validation error once the preview succeeds", async () => {
 
 it("holds submit again when a change outdates the count", async () => {
   mockFetch(async () => Response.json([plan], { status: 201 }));
-  const { rerender } = render(formElement(7));
+  const { rerender } = render(formElement());
   const submit = screen.getByRole("button", { name: "Create Reminders" });
   await waitFor(() => expect(submit).toHaveProperty("disabled", false));
 
-  rerender(formElement(8));
+  rerender(formElement({ suiteId: 8 }));
 
   expect(submit).toHaveProperty("disabled", true);
 });
@@ -230,10 +244,72 @@ it("lets a form that needs no count submit while counting", async () => {
       ? new Promise<Response>(() => {})
       : Promise.resolve(Response.json([], { status: 201 })),
   );
-  render(formElement(7, false));
+  render(formElement({ waitForRecipientCount: false }));
 
   await waitFor(() => expect(tentativeRequests(fetchMock)).toHaveLength(1));
   expect(
     screen.getByRole("button", { name: "Create Reminders" }),
   ).toHaveProperty("disabled", false);
+});
+
+it("submits the streak recognition preset with its flag, which the admin can clear", async () => {
+  mockFetch();
+  const onSubmit = jest.fn();
+  render(
+    formElement({
+      waitForRecipientCount: false,
+      reminderGroup: reminderPresets["Streak recognition"],
+      onSubmit,
+    }),
+  );
+  const submit = screen.getByRole("button", { name: "Create Reminders" });
+
+  fireEvent.click(submit);
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+  expect(onSubmit.mock.calls[0][0]).toMatchObject({ streakRecognition: true });
+
+  fireEvent.click(screen.getByLabelText("Streak recognition"));
+  fireEvent.click(submit);
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2));
+  expect(onSubmit.mock.calls[1][0]).toMatchObject({ streakRecognition: false });
+});
+
+it("drops streak recognition for a group-leads cohort, which the server rejects it for", async () => {
+  mockFetch();
+  const onSubmit = jest.fn();
+  render(
+    formElement({
+      waitForRecipientCount: false,
+      reminderGroup: {
+        ...reminderPresets["Streak recognition"],
+        cohortType: "group_leads_with_uncompleted",
+      },
+      onSubmit,
+    }),
+  );
+
+  expect(screen.queryByLabelText("Streak recognition")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Create Reminders" }));
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+  expect(onSubmit.mock.calls[0][0]).toMatchObject({ streakRecognition: false });
+});
+
+it("drops streak recognition for a missed-suite reminder, which the server rejects it for", async () => {
+  mockFetch();
+  const onSubmit = jest.fn();
+  render(
+    formElement({
+      waitForRecipientCount: false,
+      reminderGroup: {
+        ...reminderPresets["Missed Deadline"],
+        streakRecognition: true,
+      },
+      onSubmit,
+    }),
+  );
+
+  expect(screen.queryByLabelText("Streak recognition")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Create Reminders" }));
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+  expect(onSubmit.mock.calls[0][0]).toMatchObject({ streakRecognition: false });
 });
