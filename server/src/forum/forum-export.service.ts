@@ -17,6 +17,7 @@ import type { User } from "src/user/entities/user.entity";
 import type { Comment } from "./entities/comment.entity";
 import type { EditableContent } from "./entities/editablecontent.entity";
 import type { ParsedPost } from "./entities/post.entity";
+import { flattenComments } from "./flatten-comments";
 import { ForumService } from "./forum.service";
 
 export type PostExport = {
@@ -109,13 +110,6 @@ function contentOf(
     throw new Error(`${owner} was loaded without editableContent`);
   }
   return content;
-}
-
-function flattenComments(comments: Comment[]): Comment[] {
-  return comments.flatMap((comment) => [
-    comment,
-    ...flattenComments(comment.children ?? []),
-  ]);
 }
 
 async function markdownToHtml(body: string): Promise<string> {

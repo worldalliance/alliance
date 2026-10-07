@@ -1,5 +1,15 @@
+import {
+  GlobalFeedItemDto,
+  GlobalFeedItemType,
+} from "src/actions/dto/action.dto";
+import { Cluster } from "src/cluster/entities/cluster.entity";
 import { CommentDto } from "src/forum/dto/comment.dto";
-import { CommentParentObject } from "src/forum/entities/comment.entity";
+import { PostDto } from "src/forum/dto/post.dto";
+import {
+  Comment,
+  CommentParentObject,
+} from "src/forum/entities/comment.entity";
+import { ForumService } from "src/forum/forum.service";
 import { UnreadContent } from "src/notifs/entities/unread-content.entity";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
@@ -176,5 +186,177 @@ describe("Forum soft deletion (e2e)", () => {
     expect(placeholder.children).toEqual([
       expect.objectContaining({ id: reply.id }),
     ]);
+  });
+
+  it("drops a soft-deleted account's comments and the replies under them", async () => {
+    const departing = await member();
+    const replier = await member();
+    const postId = await createPost(ctx.accessToken);
+    const kept = (await comment({ ...replier, postId }).expect(201)).body;
+    const parent = (await comment({ ...departing, postId }).expect(201)).body;
+    const reply = (
+      await comment({ ...replier, postId, parentId: parent.id }).expect(201)
+    ).body;
+
+    await userRepo.softDelete(departing.user.id);
+
+    expect((await thread(postId)).map((entry) => entry.id)).toEqual([kept.id]);
+    expect(
+      (await ctx.app.get(ForumService).findCommentsForPostRaw(postId)).map(
+        (entry) => entry.id,
+      ),
+    ).toEqual([kept.id]);
+    const posts = await request(server())
+      .get("/forum/posts")
+      .set("Authorization", `Bearer ${replier.token}`)
+      .expect(200);
+    expect(
+      posts.body.find((post: PostDto) => post.id === postId)?.commentCount,
+    ).toBe(1);
+    for (const list of ["comments", "forumComments"]) {
+      const listed = await request(server())
+        .get(`/forum/posts/user/${replier.user.id}/${list}`)
+        .expect(200);
+      expect(listed.body.map((entry: CommentDto) => entry.id)).toEqual([
+        kept.id,
+      ]);
+    }
+    await comment({ ...replier, postId, parentId: parent.id }).expect(404);
+    await comment({ ...replier, postId, parentId: reply.id }).expect(404);
+  });
+
+  it("leaves replies under a soft-deleted account's comment out of the global feed", async () => {
+    const departing = await member();
+    const replier = await member();
+    const postId = await createPost(ctx.accessToken);
+    const parent = (await comment({ ...departing, postId }).expect(201)).body;
+    await comment({ ...replier, postId, parentId: parent.id }).expect(201);
+
+    await userRepo.softDelete(departing.user.id);
+
+    const feed = await request(server())
+      .get("/actions/globalFeed?limit=100")
+      .set("Authorization", `Bearer ${replier.token}`)
+      .expect(200);
+    expect(
+      feed.body.filter(
+        (item: GlobalFeedItemDto) =>
+          item.type === GlobalFeedItemType.ForumComments &&
+          item.forumComments?.postId === postId,
+      ),
+    ).toEqual([]);
+    const members = await request(server())
+      .get(`/actions/globalFeed/forumCommentMembers?postId=${postId}`)
+      .set("Authorization", `Bearer ${replier.token}`)
+      .expect(200);
+    expect(members.body).toEqual([]);
+  });
+
+  it("drops a soft-deleted account's activity and action comments and the replies under them", async () => {
+    const departing = await member();
+    const replier = await member();
+    const commentRepo = ctx.dataSource.getRepository(Comment);
+    const forum = ctx.app.get(ForumService);
+    const threadUnder = async (parentObjectType: CommentParentObject) => {
+      const parentObjectId = 900000 + emails++;
+      const save = (authorId: number, parentId: number | null = null) =>
+        commentRepo.save({
+          authorId,
+          parentObjectType,
+          parentObjectId,
+          parentId,
+          editableContent: { body: "Hello", attachments: [] },
+        });
+      const kept = await save(replier.user.id);
+      const hidden = await save(departing.user.id);
+      await save(replier.user.id, hidden.id);
+      return { parentObjectId, kept };
+    };
+    const activity = await threadUnder(CommentParentObject.Activity);
+    const action = await threadUnder(CommentParentObject.Action);
+
+    await userRepo.softDelete(departing.user.id);
+
+    expect(
+      (await forum.findCommentsForActivity(activity.parentObjectId)).map(
+        (entry) => entry.id,
+      ),
+    ).toEqual([activity.kept.id]);
+    expect(
+      (await forum.findCommentsForActivities([activity.parentObjectId]))
+        .get(activity.parentObjectId)
+        ?.map((entry) => entry.id),
+    ).toEqual([activity.kept.id]);
+    expect(
+      (await forum.findCommentsForAction(action.parentObjectId)).map(
+        (entry) => entry.id,
+      ),
+    ).toEqual([action.kept.id]);
+  });
+
+  it("shows a comment author's cluster in the thread", async () => {
+    const author = await member();
+    const cluster = await ctx.dataSource
+      .getRepository(Cluster)
+      .save({ displayName: "Thread cluster" });
+    await userRepo.update(author.user.id, { cluster: { id: cluster.id } });
+    const postId = await createPost(ctx.accessToken);
+    await comment({ ...author, postId }).expect(201);
+
+    const [entry] = await thread(postId);
+    expect(entry.author?.cluster).toEqual(
+      expect.objectContaining({ id: cluster.id }),
+    );
+  });
+
+  it("previews a post's newest comment by a live account", async () => {
+    const departing = await member();
+    const staying = await member();
+    const postId = await createPost(ctx.accessToken);
+    const kept = (await comment({ ...staying, postId }).expect(201)).body;
+    const hidden = (await comment({ ...departing, postId }).expect(201)).body;
+    await comment({ ...staying, postId, parentId: hidden.id }).expect(201);
+
+    await userRepo.softDelete(departing.user.id);
+
+    const posts = await request(server())
+      .get("/forum/posts")
+      .set("Authorization", `Bearer ${staying.token}`)
+      .expect(200);
+    expect(
+      posts.body.find((post: PostDto) => post.id === postId)?.lastComment?.id,
+    ).toBe(kept.id);
+    expect(
+      (
+        await ctx.app.get(ForumService).findForumCommentsByUserForFeed({
+          authorId: staying.user.id,
+          limit: 10,
+        })
+      ).map((entry) => entry.comment.id),
+    ).toEqual([kept.id]);
+  });
+
+  it("counts the undeleted comments a thread shows", async () => {
+    const departing = await member();
+    const staying = await member();
+    const postId = await createPost(ctx.accessToken);
+    const root = (await comment({ ...staying, postId }).expect(201)).body;
+    const hidden = (
+      await comment({ ...departing, postId, parentId: root.id }).expect(201)
+    ).body;
+    await comment({ ...staying, postId, parentId: hidden.id }).expect(201);
+    const deleted = (await comment({ ...staying, postId }).expect(201)).body;
+    await comment({ ...staying, postId, parentId: deleted.id }).expect(201);
+    await deleteComment(staying.token, deleted.id).expect(200);
+
+    await userRepo.softDelete(departing.user.id);
+
+    const posts = await request(server())
+      .get("/forum/posts")
+      .set("Authorization", `Bearer ${staying.token}`)
+      .expect(200);
+    expect(
+      posts.body.find((post: PostDto) => post.id === postId)?.commentCount,
+    ).toBe(2);
   });
 });

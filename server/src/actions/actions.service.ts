@@ -68,6 +68,7 @@ import {
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { Post } from "src/forum/entities/post.entity";
 import { ForumService } from "src/forum/forum.service";
+import { hiddenCommentIds } from "src/forum/hidden-comments";
 import { renderedImageKey } from "src/images/images.service";
 import { FacepileService } from "src/likes/facepile.service";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
@@ -4707,6 +4708,9 @@ export class ActionsService {
       })
       .andWhere("comment.createdAt > :oneWeekAgo", { oneWeekAgo })
       .andWhere("comment.deleted = false")
+      .andWhere("NOT (comment.id = ANY(:hiddenIds))", {
+        hiddenIds: await hiddenCommentIds(this.commentRepository.manager),
+      })
       .orderBy("comment.createdAt", "DESC")
       .getMany();
 
@@ -5034,12 +5038,18 @@ export class ActionsService {
           AND comment."parentObjectId" = $2
           AND comment."createdAt" > $3
           AND comment.deleted = false
+          AND NOT (comment.id = ANY($4))
         ORDER BY comment."authorId" ASC, comment."createdAt" DESC, comment.id DESC
       ) ranked`;
 
     const pageIds = await this.queryFeedMemberPageIds({
       rankedSql,
-      params: [CommentParentObject.Post, postId, oneWeekAgo],
+      params: [
+        CommentParentObject.Post,
+        postId,
+        oneWeekAgo,
+        await hiddenCommentIds(this.commentRepository.manager),
+      ],
       limit,
       afterId,
     });

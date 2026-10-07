@@ -32,8 +32,9 @@ import { isForeignKeyViolation, isUniqueViolation } from "src/utils/db-errors";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import {
   In,
-  Not,
   type EntityManager,
+  type FindOptionsRelations,
+  type FindOptionsWhere,
   type ObjectLiteral,
   type Repository,
   type SelectQueryBuilder,
@@ -56,6 +57,8 @@ import { Comment, CommentParentObject } from "./entities/comment.entity";
 import { EditableContent } from "./entities/editablecontent.entity";
 import { PostTag } from "./entities/post-tag.entity";
 import { parsePost, Post, type ParsedPost } from "./entities/post.entity";
+import { flattenComments } from "./flatten-comments";
+import { hiddenCommentIds } from "./hidden-comments";
 import { filterVisiblePosts } from "./post-visibility";
 
 export type ForumFeedComment = {
@@ -166,29 +169,17 @@ export class ForumService {
       .leftJoinAndSelect("post.author", "author")
       .leftJoinAndSelect("post.action", "action")
       .leftJoinAndSelect("post.editableContent", "editableContent")
-      .leftJoin(
-        Comment,
-        "comment",
-        "comment.parentObjectId = post.id " +
-          "AND comment.parentObjectType = :parentType " +
-          "AND comment.deleted = false",
-        { parentType: CommentParentObject.Post },
-      )
-      .orderBy("post.updatedAt", "DESC")
-      .addSelect("COUNT(comment.id)", "commentCount")
-      .groupBy("post.id")
-      .addGroupBy("author.id")
-      .addGroupBy("action.id")
-      .addGroupBy("editableContent.id");
+      .orderBy("post.updatedAt", "DESC");
     this.addPostVisibilityFilter(qb, "post", userId);
 
-    const { entities: posts, raw } = await qb.getRawAndEntities();
+    const posts = await qb.getMany();
 
     if (!posts.length) {
       return [];
     }
 
     const postIds = posts.map((p) => p.id);
+    const commentCounts = await this.countThreadComments(postIds);
 
     const postsWithAuthors = await this.postRepository.find({
       where: { id: In(postIds) },
@@ -209,12 +200,15 @@ export class ForumService {
     // 3) Fetch last comment per post in one query using DISTINCT ON (Postgres)
     const lastComments = await this.commentRepository
       .createQueryBuilder("comment")
-      .leftJoinAndSelect("comment.author", "author")
+      .innerJoinAndSelect("comment.author", "author")
       .leftJoinAndSelect("comment.editableContent", "editableContent")
       .where("comment.parentObjectType = :parentType", {
         parentType: CommentParentObject.Post,
       })
       .andWhere("comment.deleted = false")
+      .andWhere("NOT (comment.id = ANY(:hiddenIds))", {
+        hiddenIds: await hiddenCommentIds(this.commentRepository.manager),
+      })
       .andWhere("comment.parentObjectId IN (:...postIds)", { postIds })
       .distinctOn(["comment.parentObjectId"])
       .orderBy("comment.parentObjectId", "ASC")
@@ -225,9 +219,9 @@ export class ForumService {
       lastComments.map((c) => [c.parentObjectId, c]),
     );
 
-    return posts.map((post, index) => ({
+    return posts.map((post) => ({
       post: parsePost(post),
-      commentCount: Number(raw[index].commentCount ?? 0),
+      commentCount: commentCounts.get(post.id) ?? 0,
       lastComment: lastCommentByPostId.get(post.id) ?? undefined,
     }));
   }
@@ -249,6 +243,35 @@ export class ForumService {
       .orderBy("post.updatedAt", "DESC");
     this.addPostVisibilityFilter(qb, "post", requestingUserId);
     return (await qb.getMany()).map(parsePost);
+  }
+
+  /**
+   * Per post, how many of the comments its thread shows are not deleted. A
+   * deleted comment's replies still count; a comment by a deleted account and
+   * every reply under it do not.
+   */
+  private async countThreadComments(
+    postIds: number[],
+  ): Promise<Map<number, number>> {
+    if (!postIds.length) {
+      return new Map();
+    }
+    const rows: { postId: number; count: string }[] =
+      await this.commentRepository.query(
+        `SELECT c."parentObjectId" AS "postId", COUNT(*) AS count
+         FROM comment c
+         WHERE c."parentObjectType" = $1
+           AND c."parentObjectId" = ANY($2)
+           AND NOT c.deleted
+           AND NOT (c.id = ANY($3))
+         GROUP BY c."parentObjectId"`,
+        [
+          CommentParentObject.Post,
+          postIds,
+          await hiddenCommentIds(this.commentRepository.manager),
+        ],
+      );
+    return new Map(rows.map((row) => [row.postId, Number(row.count)]));
   }
 
   private async findOneVisiblePost(
@@ -281,21 +304,38 @@ export class ForumService {
     return this.findOneVisiblePost(id, userId);
   }
 
+  /**
+   * A thread's comment trees without the comments whose author's account was
+   * deleted, nor the replies under them.
+   */
+  private async findThreadComments(params: {
+    where: FindOptionsWhere<Comment>;
+    relations?: FindOptionsRelations<Comment>;
+  }): Promise<Comment[]> {
+    const comments = await this.commentRepository.find({
+      where: params.where,
+      relations: { author: true, ...params.relations },
+      order: { createdAt: "ASC" },
+    });
+    // The author join leaves out a deleted account, and the hierarchy drops
+    // the replies whose parent it no longer finds.
+    return this.organizeRepliesHierarchy(
+      comments.filter((comment) => comment.author),
+    );
+  }
+
   async findCommentsForPostRaw(postId: number): Promise<Comment[]> {
-    const allComments = await this.commentRepository.find({
+    const comments = await this.findThreadComments({
       where: {
         parentObjectId: postId,
         parentObjectType: CommentParentObject.Post,
       },
-      relations: { author: true },
-      order: { createdAt: "ASC" },
     });
-
-    return allComments;
+    return flattenComments(comments);
   }
 
   async findCommentsForPost(postId: number): Promise<Comment[]> {
-    const allComments = await this.commentRepository.find({
+    return this.findThreadComments({
       where: {
         parentObjectId: postId,
         parentObjectType: CommentParentObject.Post,
@@ -305,10 +345,7 @@ export class ForumService {
         editableContent: true,
         likes: true,
       },
-      order: { createdAt: "ASC" },
     });
-
-    return this.organizeRepliesHierarchy(allComments);
   }
 
   async findLastCommentForPost(postId: number): Promise<Comment | null> {
@@ -326,16 +363,13 @@ export class ForumService {
   }
 
   async findCommentsForActivity(activityId: number): Promise<Comment[]> {
-    const allComments = await this.commentRepository.find({
+    return this.findThreadComments({
       where: {
         parentObjectId: activityId,
         parentObjectType: CommentParentObject.Activity,
       },
-      relations: { author: true, editableContent: true, likes: true },
-      order: { createdAt: "ASC" },
+      relations: { editableContent: true, likes: true },
     });
-
-    return this.organizeRepliesHierarchy(allComments);
   }
 
   async findCommentsForActivities(
@@ -345,26 +379,21 @@ export class ForumService {
       return new Map();
     }
 
-    const allComments = await this.commentRepository.find({
+    const roots = await this.findThreadComments({
       where: {
         parentObjectId: In(activityIds),
         parentObjectType: CommentParentObject.Activity,
       },
-      relations: { author: true, editableContent: true, likes: true },
-      order: { createdAt: "ASC" },
+      relations: { editableContent: true, likes: true },
     });
 
     const grouped = new Map<number, Comment[]>();
-    for (const comment of allComments) {
+    for (const comment of roots) {
       const commentsForActivity =
         grouped.get(comment.parentObjectId) ?? ([] as Comment[]);
       commentsForActivity.push(comment);
       grouped.set(comment.parentObjectId, commentsForActivity);
     }
-
-    grouped.forEach((comments, activityId) => {
-      grouped.set(activityId, this.organizeRepliesHierarchy(comments));
-    });
 
     return grouped;
   }
@@ -378,7 +407,7 @@ export class ForumService {
   }): Promise<ForumFeedComment[]> {
     const { userId, userClusterId, sourceUserIds, limit, before } = params;
 
-    const qb = this.forumFeedCommentsQuery();
+    const qb = await this.forumFeedCommentsQuery();
 
     const authorClauses: string[] = ["author.id = :feedUserId"];
     const authorParams: Record<string, unknown> = { feedUserId: userId };
@@ -405,9 +434,12 @@ export class ForumService {
   }): Promise<ForumFeedComment[]> {
     const { authorId, requestingUserId, limit, before } = params;
 
-    const qb = this.forumFeedCommentsQuery().andWhere("author.id = :authorId", {
-      authorId,
-    });
+    const qb = (await this.forumFeedCommentsQuery()).andWhere(
+      "author.id = :authorId",
+      {
+        authorId,
+      },
+    );
 
     return this.loadForumFeedComments({
       qb,
@@ -417,7 +449,7 @@ export class ForumService {
     });
   }
 
-  private forumFeedCommentsQuery(): SelectQueryBuilder<Comment> {
+  private async forumFeedCommentsQuery(): Promise<SelectQueryBuilder<Comment>> {
     return this.commentRepository
       .createQueryBuilder("comment")
       .innerJoin(Post, "post", "post.id = comment.parentObjectId")
@@ -427,7 +459,10 @@ export class ForumService {
       .where("comment.parentObjectType = :postType", {
         postType: CommentParentObject.Post,
       })
-      .andWhere("comment.deleted = false");
+      .andWhere("comment.deleted = false")
+      .andWhere("NOT (comment.id = ANY(:hiddenIds))", {
+        hiddenIds: await hiddenCommentIds(this.commentRepository.manager),
+      });
   }
 
   private async loadForumFeedComments(params: {
@@ -471,16 +506,13 @@ export class ForumService {
   }
 
   async findCommentsForAction(actionId: number): Promise<Comment[]> {
-    const allComments = await this.commentRepository.find({
+    return this.findThreadComments({
       where: {
         parentObjectId: actionId,
         parentObjectType: CommentParentObject.Action,
       },
-      relations: { author: true, editableContent: true, likes: true },
-      order: { createdAt: "ASC" },
+      relations: { editableContent: true, likes: true },
     });
-
-    return this.organizeRepliesHierarchy(allComments);
   }
 
   private organizeRepliesHierarchy(replies: Comment[]): Comment[] {
@@ -647,7 +679,7 @@ export class ForumService {
         relations: { author: true },
       });
 
-      if (!parentReply) {
+      if (!parentReply || (await this.isHiddenFromThread(parentReply.id))) {
         throw new NotFoundException(
           `Parent reply with ID "${createCommentDto.parentId}" not found`,
         );
@@ -714,6 +746,13 @@ export class ForumService {
     await this.sendNotifsForNewComment(replyWithAuthor);
 
     return replyWithAuthor;
+  }
+
+  /** Whether a deleted account wrote the comment or any comment above it. */
+  private async isHiddenFromThread(commentId: number): Promise<boolean> {
+    return (await hiddenCommentIds(this.commentRepository.manager)).includes(
+      commentId,
+    );
   }
 
   async sendNotifsForNewComment(comment: Comment): Promise<void> {
@@ -1083,14 +1122,19 @@ export class ForumService {
   }
 
   async findCommentsByUser(userId: number): Promise<UserComment[]> {
-    const comments = await this.commentRepository.find({
-      where: {
-        authorId: userId,
-        deleted: false,
-        parentObjectType: Not(CommentParentObject.Activity),
-      },
-      relations: { author: true, editableContent: true },
-    });
+    const comments = await this.commentRepository
+      .createQueryBuilder("comment")
+      .leftJoinAndSelect("comment.author", "author")
+      .leftJoinAndSelect("comment.editableContent", "editableContent")
+      .where("comment.authorId = :userId", { userId })
+      .andWhere("comment.deleted = false")
+      .andWhere("comment.parentObjectType != :activity", {
+        activity: CommentParentObject.Activity,
+      })
+      .andWhere("NOT (comment.id = ANY(:hiddenIds))", {
+        hiddenIds: await hiddenCommentIds(this.commentRepository.manager),
+      })
+      .getMany();
     const postIds = comments
       .filter(
         (comment) => comment.parentObjectType === CommentParentObject.Post,
@@ -1124,15 +1168,21 @@ export class ForumService {
   }
 
   async findForumCommentsByUser(userId: number): Promise<Comment[]> {
-    return this.commentRepository.find({
-      where: {
-        authorId: userId,
-        deleted: false,
-        parentObjectType: CommentParentObject.Post,
-      },
-      relations: { author: true, editableContent: true, likes: true },
-      order: { createdAt: "DESC" },
-    });
+    return this.commentRepository
+      .createQueryBuilder("comment")
+      .leftJoinAndSelect("comment.author", "author")
+      .leftJoinAndSelect("comment.editableContent", "editableContent")
+      .leftJoinAndSelect("comment.likes", "likes")
+      .where("comment.authorId = :userId", { userId })
+      .andWhere("comment.deleted = false")
+      .andWhere("comment.parentObjectType = :post", {
+        post: CommentParentObject.Post,
+      })
+      .andWhere("NOT (comment.id = ANY(:hiddenIds))", {
+        hiddenIds: await hiddenCommentIds(this.commentRepository.manager),
+      })
+      .orderBy("comment.createdAt", "DESC")
+      .getMany();
   }
 
   async findPostsByTitle(params: {
