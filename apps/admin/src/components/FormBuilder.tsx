@@ -92,7 +92,7 @@ import {
   useWideCanvasLayout,
 } from "./form-canvas/CanvasWorkspace";
 import { ElementSettings } from "./form-canvas/ElementSettings";
-import { FormCanvas, type ElementMove } from "./form-canvas/FormCanvas";
+import { FormCanvas } from "./form-canvas/FormCanvas";
 import {
   AVAILABLE_ELEMENTS,
   DISPLAY_ONLY_ELEMENTS,
@@ -105,6 +105,7 @@ import {
 import { PageSettings, PageSettingsSidebar } from "./form-canvas/PageSettings";
 import { SettingsSidebar } from "./form-canvas/SettingsSidebar";
 import { SidebarSection } from "./form-canvas/sidebarSections";
+import type { ListMove } from "./form-canvas/useListDrag";
 import { VisibilityGroupSettings } from "./form-canvas/VisibilityGroupSettings";
 import { ElementExpressionScope } from "./form-fields/conditions/expressionBuffers";
 import { isDraftValidatorId } from "./form-fields/customValidatorDrafts";
@@ -1604,7 +1605,7 @@ export function FormBuilder(props: FormBuilderProps) {
     replaceFields(currentPage.fields.filter((_, i) => i !== index));
   };
 
-  const moveElement = ({ from, dropIndex, position }: ElementMove) => {
+  const moveElement = ({ from, dropIndex, position }: ListMove) => {
     const moved = moveItem({
       items: currentPage.fields,
       draggedIndex: from,

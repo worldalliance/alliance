@@ -8,11 +8,12 @@ import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import RenderField from "@alliance/sharedweb/forms/RenderField";
 import { GripVertical } from "lucide-react";
-import type { DragEvent, FormEvent, MouseEvent } from "react";
+import type { FormEvent, MouseEvent } from "react";
 import { FORM_BUILDER_PREVIEW_USER } from "../../lib/testData";
-import { DropPosition } from "../../lib/useDragReorder";
 import { ConditionsIndicator } from "./ConditionsIndicator";
+import { DropLine } from "./DropLine";
 import { SidebarSection } from "./sidebarSections";
+import type { ListDrag } from "./useListDrag";
 
 /**
  * Blocks whose controls stay usable on the canvas, to inspect layout: an
@@ -48,25 +49,6 @@ const blockLinks = (event: MouseEvent) => {
 
 const blockSubmit = (event: FormEvent) => event.preventDefault();
 
-export type CanvasDrag = {
-  onDragStart: (event: DragEvent) => void;
-  onDragEnd: () => void;
-  onDragOver: (event: DragEvent) => void;
-  dragging: boolean;
-  dropPosition: DropPosition | null;
-};
-
-function DropLine({ position }: { position: DropPosition }) {
-  return (
-    <div
-      className={cn(
-        "pointer-events-none absolute inset-x-0 z-20 h-0.5 rounded-full bg-blue-500",
-        position === DropPosition.Before ? "-top-3" : "-bottom-3",
-      )}
-    />
-  );
-}
-
 export function CanvasElement({
   element,
   label,
@@ -81,7 +63,7 @@ export function CanvasElement({
   onSelect: (section: SidebarSection) => void;
   /** Null when the element shows unconditionally, or through its group. */
   conditionSummary: string | null;
-  drag: CanvasDrag;
+  drag: ListDrag;
 }) {
   const interactive =
     !isQuestionField(element) && INTERACTIVE_ON_CANVAS[element.kind];
@@ -96,7 +78,13 @@ export function CanvasElement({
       onClick={() => onSelect(SidebarSection.Content)}
       onDragOver={drag.onDragOver}
     >
-      {drag.dropPosition && <DropLine position={drag.dropPosition} />}
+      {drag.dropPosition && (
+        <DropLine
+          position={drag.dropPosition}
+          before="-top-3"
+          after="-bottom-3"
+        />
+      )}
       <button
         type="button"
         aria-label={`Select ${label}`}
