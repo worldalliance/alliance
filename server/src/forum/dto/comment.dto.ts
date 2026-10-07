@@ -102,8 +102,8 @@ export class CommentDto extends PickType(Comment, [
 }
 
 export class UserCommentDto extends CommentDto {
-  @ApiPropertyOptional()
-  parentTitle?: string;
+  @ApiProperty()
+  parentTitle: string;
 
   constructor({ comment, parentTitle, ...rest }: UserComment) {
     super(comment, rest);
@@ -113,7 +113,7 @@ export class UserCommentDto extends CommentDto {
 
 export type UserComment = {
   comment: Comment;
-  parentTitle?: string;
+  parentTitle: string;
 } & CommentDtoOptions;
 
 export class CreateCommentDto extends PickType(Comment, [

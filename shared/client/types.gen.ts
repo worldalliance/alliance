@@ -3700,7 +3700,7 @@ export type UserCommentDto = {
     likesCount: number;
     likedByMe?: boolean;
     editableContent: EditableContentDto;
-    parentTitle?: string;
+    parentTitle: string;
 };
 
 export type UpdatePostDto = {
