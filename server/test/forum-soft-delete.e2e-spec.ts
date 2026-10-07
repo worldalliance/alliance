@@ -440,6 +440,37 @@ describe("Forum soft deletion (e2e)", () => {
     ).toBe(2);
   });
 
+  it("takes comments on a scheduled post only from those who can see it", async () => {
+    const author = await member();
+    const outsider = await member();
+    const postId = (
+      await request(server())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${author.token}`)
+        .send({
+          title: "Scheduled",
+          editableContent: { body: "Post body", attachments: [] },
+          visibleAt: new Date(Date.now() + 86_400_000),
+        })
+        .expect(201)
+    ).body.id;
+
+    await comment({ ...outsider, postId }).expect(404);
+    await comment({ ...author, postId }).expect(201);
+    await comment({ token: ctx.adminAccessToken, postId }).expect(201);
+  });
+
+  it("refuses a comment on a deleted post", async () => {
+    const author = await member();
+    const postId = await createPost(author.token);
+    await request(server())
+      .delete(`/forum/posts/${postId}`)
+      .set("Authorization", `Bearer ${author.token}`)
+      .expect(200);
+
+    await comment({ ...author, postId }).expect(404);
+  });
+
   it("still flags a deleted post and comment for the previous release", async () => {
     const author = await member();
     const postId = await createPost(author.token);

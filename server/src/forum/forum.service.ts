@@ -297,6 +297,16 @@ export class ForumService {
     return parsePost(post);
   }
 
+  private async assertPostVisible(id: number, userId: number): Promise<void> {
+    const qb = this.postRepository
+      .createQueryBuilder("post")
+      .where("post.id = :id", { id });
+    this.addPostVisibilityFilter(qb, "post", userId);
+    if (!(await qb.getExists())) {
+      throw new NotFoundException(`Post with ID "${id}" not found`);
+    }
+  }
+
   async findOnePostFull(id: number, userId?: number): Promise<ParsedPost> {
     return this.findOneVisiblePost(id, userId);
   }
@@ -673,6 +683,9 @@ export class ForumService {
     userId: number,
   ): Promise<Comment> {
     await this.assertCommentParentNotInStaffPreview(createCommentDto);
+    if (createCommentDto.parentObjectType === CommentParentObject.Post) {
+      await this.assertPostVisible(createCommentDto.parentObjectId, userId);
+    }
 
     // Validate parent reply if provided
     let parentReply: Comment | null = null;
