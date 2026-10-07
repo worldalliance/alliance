@@ -246,16 +246,11 @@ UPDATE "mms_optout"
 SET "phoneNumber" = '+15550000000'
 WHERE "phoneNumber" NOT LIKE '+1555%';
 
-\set internal_email '@(worldalliance|thealliance)[.]org$'
-
 -- `phoneNumber` is nullable; keep the NULLs so staging still exercises the
 -- "member has no phone number" branches.
 UPDATE "user"
 SET
-  "email"       = CASE
-                    WHEN "email" ~* :'internal_email' THEN "email"
-                    ELSE 'user'||id||'@example.com'
-                  END,
+  "email"       = 'user'||id||'@example.com',
   "phoneNumber" = CASE
                     WHEN "phoneNumber" IS NULL THEN NULL
                     ELSE '+1555' || lpad(id::text, 7, '0')
@@ -443,8 +438,7 @@ BEGIN
   RAISE NOTICE 'Redacted text answers in % form response(s).', updated_count;
 END $$;
 
-UPDATE "mail" SET "to" = 'user'||id||'@example.com'
-WHERE "to" !~* :'internal_email';
+UPDATE "mail" SET "to" = 'user'||id||'@example.com';
 
 -- Clear push tokens so staging can never reach real devices
 UPDATE "user_device" SET "expoPushToken" = NULL;
