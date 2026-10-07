@@ -135,9 +135,7 @@ export const InvitationDialog: React.FC<{
               : "Reused the entry's unused invitation."}
           </p>
           {placement && (
-            <p className="text-amber-700">
-              This invitation has {placement}.
-            </p>
+            <p className="text-amber-700">This invitation has {placement}.</p>
           )}
         </>
       ) : (
