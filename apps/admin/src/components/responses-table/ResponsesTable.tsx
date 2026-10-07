@@ -63,7 +63,12 @@ import {
 } from "./persistence";
 import ResponseDrawer from "./ResponseDrawer";
 import { buildRows, buildTableColumns, DEFAULT_HIDDEN_COLUMNS } from "./rows";
-import { highlightSegments, matchesQuery, normalizeQuery } from "./search";
+import {
+  highlightSegments,
+  matchesQuery,
+  normalizeQuery,
+  searchedColumnIds,
+} from "./search";
 import SnapshotNavigator, { snapshotSeed } from "./SnapshotNavigator";
 import { buildSnapshotEntries } from "./snapshots";
 import { compareRows } from "./sorting";
@@ -319,7 +324,9 @@ const ResponsesTable: React.FC<ResponsesTableProps> = ({
     if (!query) return scoped;
     return scoped.filter((row) =>
       matchesQuery({
-        texts: visibleColumnIds.map((id) => row.cells[id]?.text ?? ""),
+        texts: searchedColumnIds(visibleColumnIds).map(
+          (id) => row.cells[id]?.text ?? "",
+        ),
         query,
       }),
     );

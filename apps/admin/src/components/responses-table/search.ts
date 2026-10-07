@@ -1,3 +1,5 @@
+import { MetaColumnId } from "./types";
+
 export const normalizeQuery = (query: string): string =>
   query.trim().toLowerCase();
 
@@ -9,6 +11,11 @@ export function matchesQuery(params: {
   if (!query) return true;
   return params.texts.some((text) => text.toLowerCase().includes(query));
 }
+
+// Admins look members up by ID, so the user ID is searched even while its column is hidden.
+export const searchedColumnIds = (
+  visibleColumnIds: readonly string[],
+): string[] => [...visibleColumnIds, MetaColumnId.UserId];
 
 export type HighlightSegment = { text: string; match: boolean };
 

@@ -1,13 +1,13 @@
 import type { AnyField } from "@alliance/common/forms/form-schema";
 import type { FormResponseDto, ProfileDto } from "@alliance/shared/client";
-import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
+import { makeFormResponse, makeUser } from "@alliance/shared/lib/testFixtures";
 import {
   buildQuestionColumns,
   collectSnapshotFields,
   SnapshotMode,
 } from "./columns";
 import { buildRows, buildTableColumns } from "./rows";
-import { highlightSegments, matchesQuery } from "./search";
+import { highlightSegments, matchesQuery, searchedColumnIds } from "./search";
 import { MetaColumnId } from "./types";
 
 const SCHEMA = {
@@ -142,6 +142,19 @@ describe("matchesQuery", () => {
         query: "esha gupta",
       }),
     ).toBe(true);
+  });
+
+  it("searches the user ID while its column is hidden", () => {
+    const { rows } = buildTestRows([
+      makeFormResponse({ id: 1, user: makeUser({ id: 1654 }) }),
+    ]);
+    const texts = textsFor({
+      row: rows[0],
+      columnIds: searchedColumnIds([MetaColumnId.Respondent]),
+    });
+
+    expect(matchesQuery({ texts, query: "1654" })).toBe(true);
+    expect(matchesQuery({ texts, query: "1655" })).toBe(false);
   });
 
   it("matches the respondent name the table renders for an anonymous response", () => {
