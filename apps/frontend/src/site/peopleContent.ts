@@ -79,4 +79,8 @@ export const experts: Expert[] = [
     name: "Katie Chess",
     description: "Former rare plant botanist, USGS",
   },
+  {
+    name: "Luke Kemp",
+    description: "Author and Research Affiliate, University of Cambridge",
+  },
 ];
