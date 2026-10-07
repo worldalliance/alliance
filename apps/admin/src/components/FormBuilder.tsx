@@ -40,7 +40,6 @@ import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { Copy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBeforeUnload, useBlocker, useSearchParams } from "react-router";
 import { conditionSourceFields } from "../lib/conditionSourceFields";
@@ -89,10 +88,12 @@ import {
 } from "./form-canvas/canvasSelection";
 import {
   CanvasWorkspace,
+  DrawerKind,
   useWideCanvasLayout,
 } from "./form-canvas/CanvasWorkspace";
 import { ElementSettings } from "./form-canvas/ElementSettings";
 import { FormCanvas } from "./form-canvas/FormCanvas";
+import { FormOutline } from "./form-canvas/FormOutline";
 import {
   AVAILABLE_ELEMENTS,
   DISPLAY_ONLY_ELEMENTS,
@@ -480,6 +481,12 @@ const copyElementWithUniqueIds = (
 
 const GROUP_SECTIONS = [SidebarSection.Content, SidebarSection.Conditions];
 
+const SECTION_ON_SELECT: Record<CanvasTargetKind, SidebarSection> = {
+  [CanvasTargetKind.Page]: SidebarSection.Content,
+  [CanvasTargetKind.Element]: SidebarSection.Content,
+  [CanvasTargetKind.Group]: SidebarSection.Conditions,
+};
+
 export function FormBuilder(props: FormBuilderProps) {
   const { initialSchema, setFormId } = props;
   // Destructuring the union would drop the correlation between these, so they
@@ -604,18 +611,11 @@ export function FormBuilder(props: FormBuilderProps) {
     );
   }, []);
   const wideCanvas = useWideCanvasLayout();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawer, setDrawer] = useState<DrawerKind | null>(null);
   const [focusPending, setFocusPending] = useState(false);
   const focused = useCallback(() => setFocusPending(false), []);
-
-  // Page drag and drop state
-  const [draggedPageIndex, setDraggedPageIndex] = useState<number | null>(null);
-  const [dragOverPageIndex, setDragOverPageIndex] = useState<number | null>(
-    null,
-  );
-  const [pageDropPosition, setPageDropPosition] = useState<DropPosition | null>(
-    null,
-  );
+  const [revealPending, setRevealPending] = useState(false);
+  const revealed = useCallback(() => setRevealPending(false), []);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -711,16 +711,28 @@ export function FormBuilder(props: FormBuilderProps) {
   const select = (target: CanvasTarget, nextSection: SidebarSection) => {
     setSelection({ pageId: currentPage.id, target });
     setSection(nextSection);
-    if (!wideCanvas) setDrawerOpen(true);
+    if (!wideCanvas) setDrawer(DrawerKind.Settings);
   };
 
-  const openPage = (pageIndex: number) => {
+  const showPage = (page: Page, pageIndex: number) => {
     setSelectedPageIndex(pageIndex);
-    setSelection({
-      pageId: schema.pages[pageIndex]?.id ?? "",
-      target: { kind: CanvasTargetKind.Page },
-    });
-    setSection(SidebarSection.Content);
+    setSelection({ pageId: page.id, target: { kind: CanvasTargetKind.Page } });
+  };
+
+  const selectFromOutline = ({
+    page,
+    pageIndex,
+    target,
+  }: {
+    page: Page;
+    pageIndex: number;
+    target: CanvasTarget;
+  }) => {
+    setSelectedPageIndex(pageIndex);
+    setSelection({ pageId: page.id, target });
+    setSection(SECTION_ON_SELECT[target.kind]);
+    setRevealPending(true);
+    setDrawer(wideCanvas ? null : DrawerKind.Settings);
   };
 
   const insertAndSelect = (item: PageItem, loc: InsertLoc) => {
@@ -1139,6 +1151,26 @@ export function FormBuilder(props: FormBuilderProps) {
       ...schema,
       pages: [...schema.pages, newPage],
     });
+    selectFromOutline({
+      page: newPage,
+      pageIndex: schema.pages.length,
+      target: { kind: CanvasTargetKind.Page },
+    });
+    setFocusPending(true);
+  };
+
+  const movePage = ({ from, dropIndex, position }: ListMove) => {
+    const moved = reorderPages({
+      pages: schema.pages,
+      draggedIndex: from,
+      dropIndex,
+      position,
+      selectedIndex: selectedPageIndex,
+    });
+    if (moved) {
+      updateSchema({ ...schema, pages: moved.pages });
+      setSelectedPageIndex(moved.selectedIndex);
+    }
   };
 
   const copyPage = (pageIndex: number) => {
@@ -1154,10 +1186,7 @@ export function FormBuilder(props: FormBuilderProps) {
       { ...schema, pages: nextPages },
       new Map([...visibilityGroups, ...deriveVisibilityGroups([copiedPage])]),
     );
-    setSelectedPageIndex(copiedPageIndex);
-    setDraggedPageIndex(null);
-    setDragOverPageIndex(null);
-    setPageDropPosition(null);
+    showPage(copiedPage, copiedPageIndex);
   };
 
   const applyJson = (next: FormSchema) => {
@@ -1545,48 +1574,21 @@ export function FormBuilder(props: FormBuilderProps) {
     };
   }, [handleSaveForm, hasUnsavedChanges, isLoading, isSaving]);
 
-  // Page drag handlers
-  const handlePageDragStart = (pageIndex: number) => (e: React.DragEvent) => {
-    setDraggedPageIndex(pageIndex);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handlePageDragEnd = () => {
-    setDraggedPageIndex(null);
-    setDragOverPageIndex(null);
-    setPageDropPosition(null);
-  };
-
-  const handlePageDragOver = (pageIndex: number) => (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-
-    if (draggedPageIndex === null || draggedPageIndex === pageIndex) {
-      return;
-    }
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const midpoint = rect.left + rect.width / 2;
-    const position =
-      e.clientX < midpoint ? DropPosition.Before : DropPosition.After;
-
-    setDragOverPageIndex(pageIndex);
-    setPageDropPosition(position);
-  };
-
-  const replaceFields = (fields: PageItem[]) => {
+  const replaceFields = (fields: PageItem[], pageIndex = selectedPageIndex) => {
+    const before = schema.pages[pageIndex];
+    if (!before) return;
     updateSchema({
       ...schema,
       pages: schema.pages.map((page, idx) =>
-        idx === selectedPageIndex ? { ...page, fields } : page,
+        idx === pageIndex ? { ...page, fields } : page,
       ),
     });
     setSelection((current) =>
-      current.pageId === currentPage.id
+      current.pageId === before.id
         ? {
             ...current,
             target: followElement({
-              before: currentPage.fields,
+              before: before.fields,
               after: fields,
               target: current.target,
             }),
@@ -1605,14 +1607,17 @@ export function FormBuilder(props: FormBuilderProps) {
     replaceFields(currentPage.fields.filter((_, i) => i !== index));
   };
 
-  const moveElement = ({ from, dropIndex, position }: ListMove) => {
+  const moveElement = (
+    { from, dropIndex, position }: ListMove,
+    pageIndex = selectedPageIndex,
+  ) => {
     const moved = moveItem({
-      items: currentPage.fields,
+      items: schema.pages[pageIndex]?.fields ?? [],
       draggedIndex: from,
       dropIndex,
       position,
     });
-    if (moved) replaceFields(moved.items);
+    if (moved) replaceFields(moved.items, pageIndex);
   };
 
   const duplicateElement = (index: number) => {
@@ -1775,6 +1780,26 @@ export function FormBuilder(props: FormBuilderProps) {
             onSection={setSection}
             focusPending={focusPending}
             onFocused={focused}
+            onMoveUp={
+              selectedPageIndex > 0
+                ? () =>
+                    movePage({
+                      from: selectedPageIndex,
+                      dropIndex: selectedPageIndex - 1,
+                      position: DropPosition.Before,
+                    })
+                : null
+            }
+            onMoveDown={
+              selectedPageIndex < schema.pages.length - 1
+                ? () =>
+                    movePage({
+                      from: selectedPageIndex,
+                      dropIndex: selectedPageIndex + 1,
+                      position: DropPosition.After,
+                    })
+                : null
+            }
             onEditJson={() =>
               setJsonScope({
                 kind: JsonScopeKind.Page,
@@ -2039,144 +2064,6 @@ export function FormBuilder(props: FormBuilderProps) {
                     </div>
                   )}
                 </div>
-
-                {!isPreviewMode && !displayOnly && activeEditor === "form" && (
-                  <div
-                    className="flex space-x-1 mt-4 items-center"
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "move";
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const moved =
-                        draggedPageIndex !== null &&
-                        pageDropPosition !== null &&
-                        dragOverPageIndex !== null &&
-                        reorderPages({
-                          pages: schema.pages,
-                          draggedIndex: draggedPageIndex,
-                          dropIndex: dragOverPageIndex,
-                          position: pageDropPosition,
-                          selectedIndex: selectedPageIndex,
-                        });
-                      if (moved) {
-                        updateSchema({ ...schema, pages: moved.pages });
-                        setSelectedPageIndex(moved.selectedIndex);
-                      }
-                      handlePageDragEnd();
-                    }}
-                  >
-                    {schema.pages.map((page, index) => {
-                      const isDragging = draggedPageIndex === index;
-                      const showInsertionBar =
-                        dragOverPageIndex === index &&
-                        pageDropPosition &&
-                        !isDragging;
-
-                      return (
-                        <div key={page.id} className="relative">
-                          {showInsertionBar &&
-                            pageDropPosition === DropPosition.Before && (
-                              <div className="absolute -left-0.5 top-0 bottom-0 w-0.5 bg-blue-500 rounded-full z-10">
-                                <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                              </div>
-                            )}
-
-                          <div
-                            draggable
-                            onDragStart={handlePageDragStart(index)}
-                            onDragEnd={handlePageDragEnd}
-                            onDragOver={handlePageDragOver(index)}
-                            className={cn(
-                              "flex items-center rounded-md text-sm font-medium cursor-move pr-2 transition-all border",
-                              selectedPageIndex === index
-                                ? "bg-blue-100 text-blue-700 border-blue-200"
-                                : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-transparent",
-                              isDragging && "opacity-50 scale-95",
-                            )}
-                          >
-                            <div
-                              className="px-2 py-2 text-gray-400 hover:text-gray-600 cursor-move"
-                              title="Drag to reorder"
-                            >
-                              <svg
-                                className="w-3 h-3"
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
-                              >
-                                <path d="M10 6L6 10l4 4 4-4-4-4zM8 12l2-2 2 2H8z" />
-                                <path d="M7 2a1 1 0 000 2h6a1 1 0 100-2H7zM7 16a1 1 0 100 2h6a1 1 0 100-2H7z" />
-                              </svg>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => openPage(index)}
-                              className="py-2 flex-1 text-left pr-2"
-                            >
-                              {page.title}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                copyPage(index);
-                              }}
-                              className="py-2 px-1 text-gray-400 hover:text-blue-600"
-                              title="Copy page"
-                              aria-label={`Copy ${page.title || "page"}`}
-                            >
-                              <Copy
-                                className="h-3.5 w-3.5"
-                                aria-hidden="true"
-                              />
-                            </button>
-
-                            <FormJsonButton
-                              label={`Edit ${page.title || "page"} JSON`}
-                              onClick={() =>
-                                setJsonScope({
-                                  kind: JsonScopeKind.Page,
-                                  pageIndex: index,
-                                })
-                              }
-                              className="py-2 px-1 text-gray-400"
-                            />
-
-                            {schema.pages.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removePage(index);
-                                }}
-                                className="py-2 text-gray-400 hover:text-red-500"
-                              >
-                                ×
-                              </button>
-                            )}
-                          </div>
-
-                          {showInsertionBar &&
-                            pageDropPosition === DropPosition.After && (
-                              <div className="absolute -right-0.5 top-0 bottom-0 w-0.5 bg-blue-500 rounded-full z-10">
-                                <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                              </div>
-                            )}
-                        </div>
-                      );
-                    })}
-                    <div
-                      onClick={addPage}
-                      color={ButtonColor.White}
-                      className="p-1 !h-6 !w-6 rounded-full hover:bg-gray-200 flex items-center justify-center cursor-pointer"
-                    >
-                      <p className="-mt-px text-zinc-700">+</p>
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div className="flex-shrink-0 mx-4 min-h-0 relative">
@@ -2266,8 +2153,32 @@ export function FormBuilder(props: FormBuilderProps) {
                 ) : (
                   <CanvasWorkspace
                     wide={wideCanvas}
-                    drawerOpen={drawerOpen}
-                    onDrawerOpenChange={setDrawerOpen}
+                    drawer={drawer}
+                    onDrawerChange={setDrawer}
+                    outline={
+                      <FormOutline
+                        pages={schema.pages}
+                        groups={canvasGroups}
+                        displayOnly={displayOnly}
+                        pageIndex={selectedPageIndex}
+                        selected={resolvedTarget}
+                        selectionKey={targetKey(currentPage, resolvedTarget)}
+                        onSelect={(pageIndex, target) =>
+                          selectFromOutline({
+                            page: schema.pages[pageIndex]!,
+                            pageIndex,
+                            target,
+                          })
+                        }
+                        onAddPage={addPage}
+                        onMovePage={movePage}
+                        onMoveElement={(pageIndex, move) =>
+                          moveElement(move, pageIndex)
+                        }
+                      />
+                    }
+                    revealPending={revealPending}
+                    onRevealed={revealed}
                     canvasKey={currentPage.id}
                     settingsKey={targetKey(currentPage, resolvedTarget)}
                     canvas={

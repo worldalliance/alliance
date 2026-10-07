@@ -8,6 +8,7 @@ import {
   within,
 } from "@testing-library/react";
 import {
+  canvas,
   insertElement,
   openSection,
   selectElement,
@@ -52,7 +53,7 @@ const schema: FormSchema = {
 
 const heading = () => settings().getAllByRole("heading")[0]?.textContent;
 const canvasOrder = () =>
-  screen
+  canvas()
     .getAllByRole("button", { name: /^Select / })
     .map((button) => button.getAttribute("aria-label"));
 const button = (name: string) =>

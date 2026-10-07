@@ -3,12 +3,12 @@ import {
   isQuestionField,
   type PageItem,
 } from "@alliance/common/forms/form-schema";
-import { ArrowDown, ArrowUp, Copy, FileJson, Trash2 } from "lucide-react";
+import { Copy, FileJson, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   SettingsAction,
   SettingsActions,
-  SettingsIconAction,
+  SettingsMoveActions,
 } from "./SettingsActions";
 import { SettingsSidebar } from "./SettingsSidebar";
 import { ALL_SECTIONS, SidebarSection } from "./sidebarSections";
@@ -51,20 +51,7 @@ export function ElementSettings({
         maxTextLength: 60,
       })}
       headingActions={
-        <>
-          <SettingsIconAction
-            label="Move up"
-            Icon={ArrowUp}
-            disabled={!onMoveUp}
-            onClick={() => onMoveUp?.()}
-          />
-          <SettingsIconAction
-            label="Move down"
-            Icon={ArrowDown}
-            disabled={!onMoveDown}
-            onClick={() => onMoveDown?.()}
-          />
-        </>
+        <SettingsMoveActions onMoveUp={onMoveUp} onMoveDown={onMoveDown} />
       }
       sections={displayOnly ? DISPLAY_ONLY_SECTIONS : ALL_SECTIONS}
       section={section}

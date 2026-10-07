@@ -254,7 +254,8 @@ describe("FormBuilder visibility groups", () => {
 
   it("groups a copied page like a freshly loaded one", () => {
     renderFormBuilder(schemaWith([text("a", X), text("b", X)]));
-    fireEvent.click(screen.getByRole("button", { name: "Copy Page 1" }));
+    openSection("Advanced");
+    fireEvent.click(screen.getByRole("button", { name: "Copy page" }));
     expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
   });
 

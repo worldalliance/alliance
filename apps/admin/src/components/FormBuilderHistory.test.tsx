@@ -113,6 +113,11 @@ const button = (name: string) =>
   screen.getByRole<HTMLButtonElement>("button", { name });
 const pageTitle = () =>
   screen.getByPlaceholderText<HTMLInputElement>("Page title");
+const copyPage = () => {
+  openSection("Advanced");
+  fireEvent.click(button("Copy page"));
+  openSection("Content");
+};
 const save = () =>
   act(async () => {
     fireEvent.click(button("Save Form"));
@@ -476,13 +481,13 @@ it("undoes a contract question with the contract it defaults to", async () => {
 
 it("stays at the position of a page undo removes, or the last page past the end", async () => {
   renderFormBuilder(twoPages, 1);
-  fireEvent.click(button("Copy One"));
+  copyPage();
   expect(pageTitle().value).toBe("One (Copy)");
   await nextTask();
   fireEvent.click(button("Undo"));
   expect(pageTitle().value).toBe("Two");
 
-  fireEvent.click(button("Copy Two"));
+  copyPage();
   expect(pageTitle().value).toBe("Two (Copy)");
   await nextTask();
   fireEvent.click(button("Undo"));
@@ -491,7 +496,7 @@ it("stays at the position of a page undo removes, or the last page past the end"
 
 it("keeps the page on screen when undo removes a page before it", async () => {
   renderFormBuilder(twoPages, 1);
-  fireEvent.click(button("Copy One"));
+  copyPage();
   await nextTask();
   fireEvent.click(screen.getByRole("button", { name: "Two" }));
 
