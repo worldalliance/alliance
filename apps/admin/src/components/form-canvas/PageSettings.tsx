@@ -3,7 +3,11 @@ import { Copy, FileJson, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { ExpressionScope } from "../form-fields/conditions/expressionBuffers";
 import { VisibilityConditions } from "../form-fields/conditions/VisibilityConditions";
-import { SettingsAction, SettingsActions } from "./SettingsActions";
+import {
+  SettingsAction,
+  SettingsActions,
+  SettingsMoveActions,
+} from "./SettingsActions";
 import { SettingsSidebar } from "./SettingsSidebar";
 import { ALL_SECTIONS, SectionPanels, SidebarSection } from "./sidebarSections";
 
@@ -14,6 +18,8 @@ export function PageSettingsSidebar({
   onSection,
   focusPending,
   onFocused,
+  onMoveUp,
+  onMoveDown,
   onEditJson,
   onCopy,
   onDelete,
@@ -24,6 +30,9 @@ export function PageSettingsSidebar({
   onSection: (section: SidebarSection) => void;
   focusPending: boolean;
   onFocused: () => void;
+  /** Null where the page can't move that way. */
+  onMoveUp: (() => void) | null;
+  onMoveDown: (() => void) | null;
   onEditJson: () => void;
   onCopy: () => void;
   /** Null where the page can't be deleted. */
@@ -33,6 +42,13 @@ export function PageSettingsSidebar({
   return (
     <SettingsSidebar
       heading="Page settings"
+      headingActions={
+        <SettingsMoveActions
+          noun="page"
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+        />
+      }
       sections={ALL_SECTIONS}
       section={section}
       onSection={onSection}

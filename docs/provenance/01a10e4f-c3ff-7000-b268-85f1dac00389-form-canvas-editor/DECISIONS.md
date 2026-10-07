@@ -125,6 +125,16 @@ Replace the page tab strip with an outline to the left of the canvas.
 
 Checks: select elements and pages from the outline across pages; add, copy, delete, and reorder pages with stable IDs; move elements by drag and by keyboard; outline collapse at narrow widths.
 
+As implemented:
+
+- `FormOutline` lists each page with a disclosure control, its top-level elements, and each visibility group as an entry ("Shared visibility · N elements") holding its members. The open page starts expanded and the others collapsed, so a long form stays compact; groups start expanded. A selection made anywhere (canvas, sidebar, undo) expands the page and group holding it and scrolls its entry into view in the outline. Groups never collapse on the canvas, so "expands the enclosing group" applies to the outline.
+- Choosing an outline entry opens its page, selects it (Content for a page or element, Conditions for a group, as on the canvas), and scrolls the canvas to it. Selecting on the canvas doesn't scroll it, so clicking a tall element can't move the admin's place.
+- Add page sits in the outline's heading; it appends a page, opens it, and focuses its title. Copy page and Delete page stay in the page's Advanced section, where PR 3 put them, since a destructive icon in a compact outline row would have to say what it does in words. Move page up/down sit beside the page settings heading, as Move up/down do for an element, and are the keyboard path for reordering pages; element keyboard moves stay in the element's sidebar. The tab strip's per-page JSON button is gone; page JSON stays in Advanced.
+- Rows drag by their whole row, with a grip on hover. Pages reorder among pages and elements within their own page, including a page that isn't open; a drop onto another page's elements does nothing. The canvas and outline share `useListDrag` and `DropLine`. Group entries don't drag, as groups don't on the canvas.
+- Below 1024px the outline opens from an "Open outline" button at the canvas's top left, as a left drawer with the settings drawer's focus and Escape handling (the two share one `Drawer`). Choosing an entry closes the outline and opens settings, as any selection does at that width.
+- A display-only editor's outline lists its blocks without page entries or Add page, since its page has no settings.
+- The canvas is a "Form canvas" region, so tests and assistive technology can tell its "Select …" buttons from outline entries with similar names.
+
 ## PR 5: Nested elements, inline text, and personalized content
 
 - Outline entries for list sub-fields and accordion sections/blocks. A list displays one representative row of selectable child fields; child edits change the list schema, rather than a sample answer. Accordion section titles and child blocks are selectable; expanding a section exposes its contents, and selecting inside one expands it. Existing allowed sub-field kinds and nesting limits remain the boundary.

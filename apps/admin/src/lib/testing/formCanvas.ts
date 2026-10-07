@@ -3,10 +3,15 @@ import { fireEvent, screen, within } from "@testing-library/react";
 const escapeRegExp = (text: string) =>
   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+export const canvas = () =>
+  within(screen.getByRole("region", { name: "Form canvas" }));
+
+export const outline = () => within(screen.getByLabelText("Outline"));
+
 /** Selects the canvas element whose label or text ends with `text`. */
 export const selectElement = (text: string) =>
   fireEvent.click(
-    screen.getByRole("button", {
+    canvas().getByRole("button", {
       name: new RegExp(`^Select .*${escapeRegExp(text)}$`),
     }),
   );

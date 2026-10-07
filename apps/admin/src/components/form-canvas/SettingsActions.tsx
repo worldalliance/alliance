@@ -1,5 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
-import type { LucideIcon } from "lucide-react";
+import { ArrowDown, ArrowUp, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function SettingsActions({
@@ -83,5 +83,33 @@ export function SettingsIconAction({
     >
       <Icon className="h-4 w-4" aria-hidden="true" />
     </button>
+  );
+}
+
+export function SettingsMoveActions({
+  noun,
+  onMoveUp,
+  onMoveDown,
+}: {
+  noun?: string;
+  onMoveUp: (() => void) | null;
+  onMoveDown: (() => void) | null;
+}) {
+  const label = noun ? `Move ${noun}` : "Move";
+  return (
+    <>
+      <SettingsIconAction
+        label={`${label} up`}
+        Icon={ArrowUp}
+        disabled={!onMoveUp}
+        onClick={() => onMoveUp?.()}
+      />
+      <SettingsIconAction
+        label={`${label} down`}
+        Icon={ArrowDown}
+        disabled={!onMoveDown}
+        onClick={() => onMoveDown?.()}
+      />
+    </>
   );
 }

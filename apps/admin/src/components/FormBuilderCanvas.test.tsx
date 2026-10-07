@@ -1,26 +1,23 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import { R } from "@alliance/common/result";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
   cleanup,
   fireEvent,
-  render,
   screen,
   within,
 } from "@testing-library/react";
-import { createMemoryRouter, RouterProvider } from "react-router";
 import {
+  canvas,
   insertElement,
   openSection,
   selectElement,
   settings,
 } from "../lib/testing/formCanvas";
-import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
-import { FormBuilder } from "./FormBuilder";
+import {
+  renderDisplayOnlyBuilder,
+  renderFormBuilder,
+} from "../lib/testing/renderFormBuilder";
 
 afterEach(cleanup);
 serveApi(routes({}, () => Response.json([])));
@@ -56,7 +53,7 @@ const schema: FormSchema = {
 
 const heading = () => settings().getAllByRole("heading")[0]?.textContent;
 const canvasOrder = () =>
-  screen
+  canvas()
     .getAllByRole("button", { name: /^Select / })
     .map((button) => button.getAttribute("aria-label"));
 const button = (name: string) =>
@@ -640,46 +637,15 @@ describe("the form canvas in a narrow window", () => {
 
 describe("the display-only canvas", () => {
   const renderDisplayOnly = () =>
-    render(
-      <SiteOriginLinkProvider origin="https://worldalliance.org">
-        <QueryClientProvider client={new QueryClient()}>
-          <ToastProvider>
-            <RouterProvider
-              router={createMemoryRouter([
-                {
-                  path: "/",
-                  element: (
-                    <FormBuilder
-                      displayOnly
-                      title="Update"
-                      initialSnapshotId={1}
-                      onSave={async () => R.success({ snapshotId: 2 })}
-                      initialSchema={{
-                        pages: [
-                          {
-                            id: "p1",
-                            fields: [
-                              {
-                                id: "h",
-                                type: "display",
-                                kind: "header",
-                                text: "News",
-                              },
-                            ],
-                          },
-                        ],
-                        outputViews: [],
-                      }}
-                      setFormId={() => {}}
-                    />
-                  ),
-                },
-              ])}
-            />
-          </ToastProvider>
-        </QueryClientProvider>
-      </SiteOriginLinkProvider>,
-    );
+    renderDisplayOnlyBuilder({
+      pages: [
+        {
+          id: "p1",
+          fields: [{ id: "h", type: "display", kind: "header", text: "News" }],
+        },
+      ],
+      outputViews: [],
+    });
 
   it("edits blocks without conditions, page settings, or questions", () => {
     renderDisplayOnly();

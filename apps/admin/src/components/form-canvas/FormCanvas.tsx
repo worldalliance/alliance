@@ -3,14 +3,13 @@ import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula
 import { withCount } from "@alliance/common/plural";
 import { cn } from "@alliance/shared/styles/util";
 import { TriangleAlert } from "lucide-react";
-import { useState, type DragEvent, type ReactNode } from "react";
-import { DropPosition } from "../../lib/useDragReorder";
+import type { ReactNode } from "react";
 import {
   pageSegments,
   SegmentKind,
   type VisibilityGroups,
 } from "../../lib/visibilityGroups";
-import { CanvasElement, type CanvasDrag } from "./CanvasElement";
+import { CanvasElement } from "./CanvasElement";
 import {
   CanvasTargetKind,
   describeElement,
@@ -21,12 +20,7 @@ import {
 import { ConditionsIndicator } from "./ConditionsIndicator";
 import type { InsertLoc } from "./InsertPoint";
 import { SidebarSection } from "./sidebarSections";
-
-export type ElementMove = {
-  from: number;
-  dropIndex: number;
-  position: DropPosition;
-};
+import { useListDrag, type ListMove } from "./useListDrag";
 
 type FormCanvasProps = {
   page: Page;
@@ -41,7 +35,7 @@ type FormCanvasProps = {
     loc: InsertLoc,
     options?: { prominent: true },
   ) => ReactNode;
-  onMove: (move: ElementMove) => void;
+  onMove: (move: ListMove) => void;
 };
 
 /** The selected page as respondents see it, with selection and editing overlays. */
@@ -57,59 +51,9 @@ export function FormCanvas({
   onMove,
 }: FormCanvasProps) {
   const fields = page.fields;
-  const [dragged, setDragged] = useState<number | null>(null);
-  const [dropTarget, setDropTarget] = useState<{
-    index: number;
-    position: DropPosition;
-  } | null>(null);
-
-  const endDrag = () => {
-    setDragged(null);
-    setDropTarget(null);
-  };
-
-  // The drop line sits in the gap between elements, so the whole canvas accepts
-  // the drop and commits the last target an element reported.
-  const acceptDrop = (event: DragEvent) => {
-    if (dragged !== null) event.preventDefault();
-  };
-  const drop = (event: DragEvent) => {
-    event.preventDefault();
-    if (dragged !== null && dropTarget !== null) {
-      onMove({
-        from: dragged,
-        dropIndex: dropTarget.index,
-        position: dropTarget.position,
-      });
-    }
-    endDrag();
-  };
-
-  const dragFor = (index: number): CanvasDrag => ({
-    onDragStart: (event: DragEvent) => {
-      event.dataTransfer.effectAllowed = "move";
-      setDragged(index);
-    },
-    onDragEnd: endDrag,
-    onDragOver: (event: DragEvent) => {
-      if (dragged === null) return;
-      event.preventDefault();
-      event.dataTransfer.dropEffect = "move";
-      const rect = event.currentTarget.getBoundingClientRect();
-      const position =
-        event.clientY < rect.top + rect.height / 2
-          ? DropPosition.Before
-          : DropPosition.After;
-      if (dropTarget?.index !== index || dropTarget.position !== position) {
-        setDropTarget({ index, position });
-      }
-    },
-    dragging: dragged === index,
-    dropPosition:
-      dragged !== null && dragged !== index && dropTarget?.index === index
-        ? dropTarget.position
-        : null,
-  });
+  const { acceptDrop, drop, dragFor } = useListDrag<string>((_, move) =>
+    onMove(move),
+  );
 
   const renderElement = (
     element: PageItem,
@@ -129,7 +73,7 @@ export function FormCanvas({
           ? summarize(element.visibleIfFormula)
           : null
       }
-      drag={dragFor(index)}
+      drag={dragFor(page.id, index)}
     />
   );
 
