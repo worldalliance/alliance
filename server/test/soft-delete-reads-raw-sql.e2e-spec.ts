@@ -12,6 +12,8 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
+import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
+import { EntityResolverService } from "src/ai-detection/entity-resolver.service";
 import { AnalyticsModule } from "src/analytics/analytics.module";
 import { AnalyticsService } from "src/analytics/analytics.service";
 import { ClusterModule } from "src/cluster/cluster.module";
@@ -413,6 +415,43 @@ describe("Raw SQL reads skip soft-deleted rows (e2e)", () => {
         sources: [{ sourceFormId: form.id, fieldId: "employers" }],
       });
       expect(aggregate.counts).toEqual({ "company-0": 2, "company-1": 0 });
+    });
+
+    it("resolves only live comments and form responses for AI detection", async () => {
+      const resolver = new EntityResolverService(ctx.dataSource);
+      const author = await member();
+      const { form, snapshot } = await createFormWithSnapshot(ctx.dataSource, {
+        title: "Detected",
+        schema,
+      });
+      const response = await respond({
+        formId: form.id,
+        formSnapshotId: snapshot.id,
+        userId: author.id,
+        employers: [],
+        createdAt: new Date(),
+      });
+      const posted = await comment({
+        authorId: author.id,
+        parentObjectType: CommentParentObject.Post,
+        parentObjectId: 0,
+      });
+
+      await expect(
+        resolver.resolve(DetectableEntity.Comment, posted.id),
+      ).resolves.toMatchObject({ id: posted.id });
+      await expect(
+        resolver.resolve(DetectableEntity.FormResponse, response),
+      ).resolves.toMatchObject({ id: response });
+
+      await commentRepo.update(posted.id, { deleted: true });
+      await softDeleteResponse(response);
+      await expect(
+        resolver.resolve(DetectableEntity.Comment, posted.id),
+      ).rejects.toThrow(`Comment ${posted.id} was not found`);
+      await expect(
+        resolver.resolve(DetectableEntity.FormResponse, response),
+      ).rejects.toThrow(`FormResponse ${response} was not found`);
     });
   });
 
