@@ -611,20 +611,17 @@ export class TasksService {
 
     const fieldLookup = collectFieldLookup(schema.pages);
 
-    const visibilityExtras: ConditionExtras = {
+    const visibilityExtras = {
       deviceType: submitFormDto.deviceType,
       visibilityValidatorResults: validatorResults,
       fieldLookup,
-      previousAnswerData:
-        Object.keys(previousAnswerData).length > 0
-          ? previousAnswerData
-          : undefined,
+      previousAnswerData,
       userHasCity: visibilityContext.userHasCity,
       userPropertyHasValue: visibilityContext.userPropertyHasValue,
       firstContractSignedAt:
         visibilityContext.firstContractSignedAt?.toISOString() ?? null,
       completedActionCount: visibilityContext.completedActionCount,
-    };
+    } satisfies ConditionExtras;
 
     const effectiveAnswers = stripHiddenAnswers(
       schema.pages,
@@ -632,6 +629,35 @@ export class TasksService {
       visibilityExtras,
     );
 
+    this.assertAnswersValid({ schema, effectiveAnswers, visibilityExtras });
+
+    const formulaChoices = await checkedFormulaChoices({
+      schema,
+      answers: effectiveAnswers,
+      loadSources: () =>
+        this.submittedFormulaSources({
+          schema,
+          userId,
+          sent: submitFormDto.formulaSources,
+        }),
+    });
+
+    return { validatorResults, effectiveAnswers, formulaChoices };
+  }
+
+  /** `effectiveAnswers` must already have hidden fields' answers stripped. */
+  private assertAnswersValid({
+    schema,
+    effectiveAnswers,
+    visibilityExtras,
+  }: {
+    schema: FormSchema;
+    effectiveAnswers: Record<string, FormValue>;
+    // Without it, a condition on another form's answer reads this form's
+    // answer of the same id.
+    visibilityExtras: ConditionExtras &
+      Required<Pick<ConditionExtras, "previousAnswerData">>;
+  }): void {
     for (const page of schema.pages) {
       if (!isPageCurrentlyVisible(page, effectiveAnswers, visibilityExtras)) {
         // Fields on a hidden page are never shown, so their requirements
@@ -780,19 +806,6 @@ export class TasksService {
         }
       }
     }
-
-    const formulaChoices = await checkedFormulaChoices({
-      schema,
-      answers: effectiveAnswers,
-      loadSources: () =>
-        this.submittedFormulaSources({
-          schema,
-          userId,
-          sent: submitFormDto.formulaSources,
-        }),
-    });
-
-    return { validatorResults, effectiveAnswers, formulaChoices };
   }
 
   /**
@@ -1201,14 +1214,21 @@ export class TasksService {
     const validatorResults = parseSubmittedValidatorResults(
       submitFormDto.visibilityValidatorResults ?? {},
     );
+    const visibilityExtras = {
+      deviceType: submitFormDto.deviceType,
+      visibilityValidatorResults: validatorResults,
+      previousAnswerData: {},
+    } satisfies ConditionExtras;
     const answers = stripHiddenAnswers(
       schema.pages,
       parseSubmittedAnswers(submitFormDto.answers),
-      {
-        deviceType: submitFormDto.deviceType,
-        visibilityValidatorResults: validatorResults,
-      },
+      visibilityExtras,
     );
+    this.assertAnswersValid({
+      schema,
+      effectiveAnswers: answers,
+      visibilityExtras,
+    });
     return this.createAndSaveFormResponse({
       form,
       formId,
