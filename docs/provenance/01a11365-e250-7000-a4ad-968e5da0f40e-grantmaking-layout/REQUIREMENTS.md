@@ -1,0 +1,31 @@
+---
+user: Grant Hough
+task: Refine the democratic grantmaking project layout
+---
+
+- Bring the timeline up, match its horizontal width to the title and signup blocks above, and make it feel standalone.
+- Give the questions beneath a more designed layout; the left-aligned text feels like a Google Doc.
+- Stay close to the platform's overall style.
+- The blue main section must fill at least the viewport, especially in landscape.
+- Integrate the timeline into the page instead of enclosing it in a separate card. Its first and last nodes should bound its horizontal extent, including the final label.
+- Refine the question cards further; the initial cards are an improvement but feel basic.
+- Space timeline nodes evenly while preserving centered middle labels and inward-aligned endpoint labels.
+- Move the blue section’s content down and fill slightly more of the available space.
+- Balance the gap from the advisor section to the timeline with the gap below it; the user called the latter destination “waitlist,” which needs clarification.
+- Research layouts for four equally weighted text blocks and revise the white section accordingly.
+- Add slightly more space at the timeline. Remove the lines in the white section and account for the similar answer lengths of “What this is” and “How do I participate?” when arranging the questions.
+- The user approved the agent’s proposal to replace floating quadrants with one softly tinted section containing four stacked question-and-answer rows, keeping answers visible and using the Alliance’s serif headings.
+- Return to quadrants, styled consistently with the larger Alliance website.
+- Keep the revised quadrant cards and remove their icons.
+- Reduce the outer vertical space above and below the four cards by about 40% on horizontal/desktop screens and 75% on mobile.
+- Increase the resulting mobile outer vertical spacing by about 20%.
+- On mobile, restore the original plain list of left-aligned questions and answers.
+- Add a little more top and bottom padding to the white section on mobile after restoring the plain list.
+- Nudge the signup form down slightly in the horizontal/desktop layout.
+- Center the signup form vertically against the complete opposite block, from “Coming in fall” through the advisor section, rather than applying a downward offset.
+- The user’s screenshot shows the mathematically centered signup form still feels too high; lower it visibly on desktop.
+- Nudge the desktop signup form a tiny bit farther down.
+- Reduce the mobile gap between the introductory subtitle and the Full name field.
+- Make the mobile spacing above and below the main title equal.
+- On mobile/vertical layouts, make the progress bar and preceding content occupy the first full viewport, with the timeline initially below view. Tighten the main title’s line height, particularly on desktop.
+- On larger horizontal screens, center the blue-area content approximately vertically while preserving the normal horizontal layout.

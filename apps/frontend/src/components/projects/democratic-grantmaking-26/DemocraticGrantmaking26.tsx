@@ -32,8 +32,7 @@ export function meta() {
   });
 }
 
-const GRID =
-  "grid grid-cols-1 gap-y-10 lg:grid-cols-[minmax(0,1fr)_max(24rem,28.65%)] lg:gap-x-[5.65%]";
+const PROJECT_COL = cn(SITE_COL, "lg:max-w-[1400px]");
 
 function ProjectProgress() {
   const members = useAllianceMemberCount();
@@ -70,60 +69,76 @@ export default function DemocraticGrantmaking26() {
       <Navbar overPrimary />
       <main>
         <div
-          className="bg-[var(--site-primary)] pb-10 text-white lg:flex lg:min-h-screen lg:flex-col lg:gap-[clamp(1.5rem,4vh,3.5rem)] lg:pb-[clamp(1.5rem,4vh,3.5rem)]"
+          className="min-h-svh bg-[var(--site-primary)] pb-10 text-white lg:flex lg:flex-col lg:pb-0"
           style={{ paddingTop: NAV_HEIGHT }}
         >
           <div
-            className={cn(
-              SITE_COL,
-              GRID,
-              "pt-10 lg:-translate-y-[2vh] lg:flex-1 lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-center lg:gap-x-[3.5%] lg:pt-[clamp(1.5rem,5vh,4rem)]",
-            )}
+            className="flex flex-col pb-6 lg:contents"
+            style={{ minHeight: `calc(100svh - ${NAV_HEIGHT}px)` }}
           >
-            <div className="flex flex-col gap-4 lg:gap-[clamp(1rem,2.5vh,2rem)]">
-              <p className="site-sans -mb-2 text-left text-[1.05rem] text-white/80 sm:text-[1.2rem]">
-                Coming in fall 2026
-              </p>
-              <DisplayHeading
-                as="h1"
-                onDark
-                className="text-5xl sm:text-6xl lg:text-[clamp(3rem,min(5vw,8vh),6rem)]"
-              >
-                Help decide where to donate{" "}
-                <span className="site-display text-green">$100,000</span>
-              </DisplayHeading>
-              <SiteSubtitle size={SubtitleSize.Page} onDark>
-                Join the Alliance to nominate and vote on candidate non-profits.
-              </SiteSubtitle>
-              <FeaturedPeople className="mt-4 hidden lg:flex" />
+            <div
+              className={cn(
+                PROJECT_COL,
+                "grid grid-cols-1 gap-y-6 pt-10 lg:mt-[max(0px,calc((100svh_-_1000px)/3))] lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-center lg:gap-x-[1.5%] lg:pt-[clamp(3rem,10vh,6rem)]",
+              )}
+            >
+              <div className="flex flex-col gap-4 lg:gap-[clamp(1rem,2.5vh,2rem)]">
+                <p className="site-sans text-left text-[1.05rem] text-white/80 sm:text-[1.2rem] lg:-mb-2">
+                  Coming in fall 2026
+                </p>
+                <DisplayHeading
+                  as="h1"
+                  onDark
+                  leading={1.2}
+                  className="text-5xl sm:text-6xl lg:text-[clamp(3rem,min(5vw,8vh),6rem)]"
+                >
+                  Help decide where to donate{" "}
+                  <span className="site-display text-green">$100,000</span>
+                </DisplayHeading>
+                <SiteSubtitle size={SubtitleSize.Page} onDark>
+                  Join the Alliance to nominate and vote on candidate
+                  non-profits.
+                </SiteSubtitle>
+                <FeaturedPeople className="mt-4 hidden lg:flex" />
+              </div>
+              <WaitlistSignupForm className="w-full lg:translate-y-10 lg:gap-[clamp(0.75rem,1.5vh,1.25rem)]" />
             </div>
-            <WaitlistSignupForm className="w-full lg:gap-[clamp(0.75rem,1.5vh,1.25rem)]" />
+            <div
+              className={cn(
+                PROJECT_COL,
+                "mt-auto pt-8 lg:mt-0 lg:flex lg:grow lg:flex-col lg:justify-end lg:pt-12",
+              )}
+            >
+              <ProjectProgress />
+            </div>
           </div>
-          <div className={cn(SITE_COL, "mt-14 lg:mt-0")}>
-            <ProjectProgress />
+          <div className={cn(PROJECT_COL, "mt-10 lg:mt-12 lg:grow lg:pb-34")}>
+            <ProjectTimeline currentIdx={0} />
           </div>
-          <ProjectTimeline
-            currentIdx={0}
-            className={cn(SITE_COL, "mt-10 lg:mt-0")}
-          />
-          <section className={cn(SITE_COL, "mt-10 lg:hidden")}>
+          <section className={cn(PROJECT_COL, "mt-10 lg:hidden")}>
             <BandHeading onDark size={BandHeadingSize.Section} className="mb-6">
               Experts
             </BandHeading>
             <FeaturedPeople />
           </section>
         </div>
-        <div className={cn(SITE_COL, GRID, "pt-10 pb-16 lg:pt-14 lg:pb-24")}>
-          <div className="flex flex-col gap-10">
-            {ABOUT_SECTIONS.map((section) => (
-              <section key={section.heading} className="flex flex-col gap-4">
+        <div className={cn(PROJECT_COL, "py-6 md:py-[1.05rem] lg:py-12")}>
+          <div className="grid gap-10 md:grid-cols-2 md:gap-4">
+            {ABOUT_SECTIONS.map(({ heading, body }) => (
+              <section
+                key={heading}
+                className="flex flex-col items-start gap-5 md:items-center md:rounded-[var(--site-radius-card)] md:bg-zinc-100 md:p-10 lg:px-12"
+              >
                 <BandHeading
                   size={BandHeadingSize.Section}
-                  className="text-[var(--site-primary)]"
+                  className="text-[var(--site-primary)] md:text-center"
                 >
-                  {section.heading}
+                  {heading}
                 </BandHeading>
-                <DocProse markdown={section.body} />
+                <DocProse
+                  markdown={body}
+                  className="w-full md:max-w-lg md:text-center [&_ol]:text-left"
+                />
               </section>
             ))}
           </div>
