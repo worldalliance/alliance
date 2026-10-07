@@ -1155,16 +1155,27 @@ export class ForumService {
       where: { id: In(actionIds) },
     });
 
-    return comments.map((comment) => ({
-      comment,
-      parentTitle:
-        comment.parentObjectType === CommentParentObject.Post
-          ? posts.find((post) => post.id === comment.parentObjectId)?.title
-          : comment.parentObjectType === CommentParentObject.Action
-            ? actions.find((action) => action.id === comment.parentObjectId)
-                ?.name
-            : undefined,
-    }));
+    const parentTitleOf = (comment: Comment): string | undefined => {
+      switch (comment.parentObjectType) {
+        case CommentParentObject.Post:
+          return posts.find((post) => post.id === comment.parentObjectId)
+            ?.title;
+        case CommentParentObject.Action:
+          return actions.find((action) => action.id === comment.parentObjectId)
+            ?.name;
+        case CommentParentObject.Activity:
+          return undefined;
+        default:
+          throw new Error(
+            `unknown comment parent: ${comment.parentObjectType satisfies never}`,
+          );
+      }
+    };
+
+    return comments.flatMap((comment) => {
+      const parentTitle = parentTitleOf(comment);
+      return parentTitle === undefined ? [] : [{ comment, parentTitle }];
+    });
   }
 
   async findForumCommentsByUser(userId: number): Promise<Comment[]> {

@@ -2,6 +2,7 @@ import {
   GlobalFeedItemDto,
   GlobalFeedItemType,
 } from "src/actions/dto/action.dto";
+import { Action } from "src/actions/entities/action.entity";
 import { Cluster } from "src/cluster/entities/cluster.entity";
 import { CommentDto } from "src/forum/dto/comment.dto";
 import { PostDto } from "src/forum/dto/post.dto";
@@ -156,6 +157,39 @@ describe("Forum soft deletion (e2e)", () => {
       .post(`/forum/posts/${postId}/like`)
       .set("Authorization", `Bearer ${ctx.accessToken}`)
       .expect(404);
+  });
+
+  it("leaves comments on a deleted action out of a member's comment list", async () => {
+    const author = await member();
+    const actionRepo = ctx.dataSource.getRepository(Action);
+    const commentRepo = ctx.dataSource.getRepository(Comment);
+    const kept = await actionRepo.save({
+      name: "Kept",
+      category: [],
+      body: "",
+    });
+    const removed = await actionRepo.save({
+      name: "Removed",
+      category: [],
+      body: "",
+    });
+    for (const action of [kept, removed]) {
+      await commentRepo.save({
+        authorId: author.user.id,
+        parentObjectType: CommentParentObject.Action,
+        parentObjectId: action.id,
+        editableContent: { body: "Hello", attachments: [] },
+      });
+    }
+    await actionRepo.softDelete(removed.id);
+
+    const listed = await request(server())
+      .get(`/forum/posts/user/${author.user.id}/comments`)
+      .expect(200);
+
+    expect(
+      listed.body.map((entry: CommentDto) => entry.parentObjectId),
+    ).toEqual([kept.id]);
   });
 
   it("takes a reply to a deleted comment without telling its author", async () => {
