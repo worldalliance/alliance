@@ -14,7 +14,6 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { ActionFormVariant } from "./action-form-variant.entity";
 import { Action } from "./action.entity";
@@ -24,8 +23,12 @@ import { Action } from "./action.entity";
 // (`action.taskFormId`). Sticky: once a row exists, it never changes, though
 // deleting its variant before launch deletes the row.
 @Entity()
-@Unique("UQ_action_form_assignment_actionId_userId", ["actionId", "userId"])
+@Index("UQ_action_form_assignment_actionId_userId", ["actionId", "userId"], {
+  unique: true,
+  where: '"deletedAt" IS NULL',
+})
 @Index("IDX_action_form_assignment_variantId", ["variantId"])
+@Index("IDX_action_form_assignment_actionId", ["actionId"])
 export class ActionFormAssignment {
   @PrimaryGeneratedColumn()
   @ApiProperty()

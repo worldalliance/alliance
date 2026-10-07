@@ -9,14 +9,15 @@ import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
+  Index,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 
 @Entity("oauth_account")
-@Unique(["provider", "subject"])
-@Unique(["userId", "provider"])
+@Index(["provider", "subject"], { unique: true, where: '"deletedAt" IS NULL' })
+@Index(["userId", "provider"], { unique: true, where: '"deletedAt" IS NULL' })
+@Index(["userId"])
 export class OAuthAccount {
   @PrimaryGeneratedColumn()
   id: number;

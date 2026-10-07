@@ -57,7 +57,7 @@ export const readableActionStatus: Record<ActionStatus, string> = {
 @Index(["action", "newStatus", "date"])
 @Index("UQ_action_event_one_member_action", ["action"], {
   unique: true,
-  where: `"newStatus" = 'member_action'`,
+  where: `"newStatus" = 'member_action' AND "deletedAt" IS NULL`,
 })
 export class ActionEvent {
   @PrimaryGeneratedColumn()

@@ -9,11 +9,11 @@ import {
   Check,
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { Notification } from "../../notifs/entities/notification.entity";
 import { User } from "./user.entity";
@@ -26,7 +26,10 @@ export enum FriendStatus {
 
 @Entity()
 @Check(`"requesterId" <> "addresseeId"`)
-@Unique(["lowUserId", "highUserId"])
+@Index(["lowUserId", "highUserId"], {
+  unique: true,
+  where: '"deletedAt" IS NULL',
+})
 export class Friend {
   // Fields
 

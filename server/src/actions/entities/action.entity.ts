@@ -27,12 +27,12 @@ import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
+  Index,
   JoinTable,
   ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { ActionCategory } from "../action-category";
 import {
@@ -77,7 +77,7 @@ export function actionStatusAt(
 }
 
 @Entity()
-@Unique(["taskFormId"])
+@Index(["taskFormId"], { unique: true, where: '"deletedAt" IS NULL' })
 export class Action {
   // Fields
 

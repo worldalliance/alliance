@@ -292,9 +292,9 @@ export class ActionFormVariantService {
 
     if (inserts.length === 0) return result;
 
-    // ON CONFLICT DO NOTHING for the (actionId, userId) unique constraint —
-    // a parallel request may have inserted first. After the upsert, re-read
-    // to learn the canonical assignment for the conflicted rows.
+    // ON CONFLICT DO NOTHING for the live-row (actionId, userId) unique
+    // index — a parallel request may have inserted first. After the upsert,
+    // re-read to learn the canonical assignment for the conflicted rows.
     await this.assignmentRepo
       .createQueryBuilder()
       .insert()

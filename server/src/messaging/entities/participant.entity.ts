@@ -10,10 +10,10 @@ import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { Conversation } from "./conversation.entity";
 import { Message } from "./message.entity";
@@ -24,7 +24,8 @@ export enum ParticipantState {
 }
 
 @Entity()
-@Unique(["conversation", "user"])
+@Index(["conversation", "user"], { unique: true, where: '"deletedAt" IS NULL' })
+@Index(["conversation"])
 export class Participant {
   @PrimaryGeneratedColumn()
   id: number;

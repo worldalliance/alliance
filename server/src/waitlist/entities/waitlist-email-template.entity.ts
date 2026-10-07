@@ -12,7 +12,7 @@ export class WaitlistEmailTemplate {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Index({ unique: true })
+  @Index({ unique: true, where: '"deletedAt" IS NULL' })
   @Column({ type: "citext" })
   name: string;
 

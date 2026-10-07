@@ -8,15 +8,15 @@ import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { User } from "./user.entity";
 
 @Entity()
-@Unique(["expoPushToken"])
+@Index(["expoPushToken"], { unique: true, where: '"deletedAt" IS NULL' })
 export class UserDevice {
   @PrimaryGeneratedColumn("uuid")
   @ApiProperty()

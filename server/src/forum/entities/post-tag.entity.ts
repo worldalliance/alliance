@@ -6,15 +6,20 @@ import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
+  Exclusion,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { Post } from "./post.entity";
 
 @Entity()
-@Unique(["postId", "name"], { deferrable: "INITIALLY DEFERRED" })
+@Exclusion(
+  "EX_post_tag_postId_name",
+  `USING btree ("postId" WITH =, "name" WITH =) WHERE ("deletedAt" IS NULL) DEFERRABLE INITIALLY DEFERRED`,
+)
+@Index(["postId"])
 export class PostTag {
   @PrimaryGeneratedColumn()
   @ApiProperty()

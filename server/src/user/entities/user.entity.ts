@@ -117,7 +117,8 @@ export class User {
   @IsNotEmpty()
   name: string;
 
-  @Column({ type: "citext", unique: true })
+  @Index({ unique: true, where: '"deletedAt" IS NULL' })
+  @Column({ type: "citext" })
   @IsNotEmpty()
   @IsEmail()
   email: string;
