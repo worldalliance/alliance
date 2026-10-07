@@ -676,6 +676,11 @@ export type FormVisibility = {
   visiblePageIndices: number[];
   nextVisiblePageIndex: number | null;
   previousVisiblePageIndex: number | null;
+  /**
+   * False while an input a condition reads is loading or failed, so which
+   * pages are visible, and where Next goes, may still change.
+   */
+  visibilitySettled: boolean;
   validateFieldValue: (
     field: AnyField,
     fieldValue: FormValue | undefined,
@@ -692,9 +697,10 @@ export type FormVisibility = {
  * loses a selection only once its options formula stops offering it.
  *
  * Also nudges `currentPageIndex` to the nearest visible page when an answer
- * hides the page the user is on, and drops unoffered selections from
- * `formData`, so `setCurrentPageIndex` and `setFormData` must be referentially
- * stable. Pass `useState` setters, or `useCallback`s.
+ * hides the page the user is on, once `visibilitySettled`, and drops
+ * unoffered selections from `formData`, so `setCurrentPageIndex` and
+ * `setFormData` must be referentially stable. Pass `useState` setters, or
+ * `useCallback`s.
  */
 export function useFormVisibility(args: {
   schema: FormSchema;
@@ -808,13 +814,14 @@ export function useFormVisibility(args: {
       ),
     [schema, visibilityValidatorResults],
   );
+  const visibilitySettled =
+    !Object.values(visibilityInputs).some(Boolean) && !verdictsPending;
   const offeredChoicesFor = useOfferedChoicesFor({
     schema,
     extras: visibilityExtrasReadOnly,
     historiesStatus: sourceHistories.status,
     sources: optionsSources,
-    inputsSettled:
-      !Object.values(visibilityInputs).some(Boolean) && !verdictsPending,
+    inputsSettled: visibilitySettled,
   });
   useDropUnofferedChoices({
     schema,
@@ -904,6 +911,7 @@ export function useFormVisibility(args: {
   );
 
   useEffect(() => {
+    if (!visibilitySettled) return;
     const fallback = getFallbackVisiblePageIndex(
       visiblePageIndices,
       currentPageIndex,
@@ -911,7 +919,12 @@ export function useFormVisibility(args: {
     if (fallback !== null) {
       setCurrentPageIndex(fallback);
     }
-  }, [visiblePageIndices, currentPageIndex, setCurrentPageIndex]);
+  }, [
+    visibilitySettled,
+    visiblePageIndices,
+    currentPageIndex,
+    setCurrentPageIndex,
+  ]);
 
   const validateFieldValue = useCallback(
     (
@@ -943,6 +956,7 @@ export function useFormVisibility(args: {
     visiblePageIndices,
     nextVisiblePageIndex,
     previousVisiblePageIndex,
+    visibilitySettled,
     validateFieldValue,
   };
 }
