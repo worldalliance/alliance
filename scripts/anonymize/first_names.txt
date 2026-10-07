@@ -12,7 +12,7 @@ Priya
 Miguel
 Hannah
 Dmitri
-Fatima
+Sidney
 Connor
 Ji-woo
 Esperanza
@@ -46,8 +46,8 @@ DeShawn
 Elena
 Hamza
 Bridget
-Raj
-Carmen
+Akash
+Mark
 Minh
 Abigail
 Tomasz
@@ -58,9 +58,9 @@ Henrik
 Imani
 Nikolai
 Guadalupe
-Samuel
+Gabi
 Anh
-Malik
+Grant
 Francesca
 Haruto
 Ximena
@@ -83,7 +83,7 @@ Rafael
 Ayesha
 Lars
 Keisha
-Stavros
+Charlie
 Lin
 Juan
 Noor
@@ -121,8 +121,8 @@ Ruth
 Ahmed
 Sakura
 Terrell
-Greta
-Pablo
+Alex
+Charles
 Esther
 Kai
 Dalia
