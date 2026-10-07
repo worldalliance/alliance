@@ -1,4 +1,3 @@
-import type { DisplayKind } from "@alliance/common/forms/display-blocks";
 import {
   isQuestionField,
   type PageItem,
@@ -8,46 +7,14 @@ import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import RenderField from "@alliance/sharedweb/forms/RenderField";
 import { GripVertical } from "lucide-react";
-import type { FormEvent, MouseEvent } from "react";
 import { FORM_BUILDER_PREVIEW_USER } from "../../lib/testData";
+import { CanvasContent, INTERACTIVE_ON_CANVAS } from "./CanvasContent";
 import { ConditionsIndicator } from "./ConditionsIndicator";
 import { DropLine } from "./DropLine";
 import { SidebarSection } from "./sidebarSections";
 import type { ListDrag } from "./useListDrag";
 
-/**
- * Blocks whose controls stay usable on the canvas, to inspect layout: an
- * accordion's sections, a video's player, an image's lightbox. Everything
- * else renders inert, so a click anywhere on it only selects it.
- */
-const INTERACTIVE_ON_CANVAS: Record<DisplayKind, boolean> = {
-  header: false,
-  text: false,
-  quote: false,
-  label: false,
-  divider: false,
-  spacer: false,
-  html: false,
-  images: true,
-  video: true,
-  biglink: false,
-  copytext: false,
-  previousAnswer: false,
-  userLocation: false,
-  chatTranscript: false,
-  accordion: true,
-};
-
 const ignoreAnswer = () => {};
-
-/** Links inside an interactive block lead respondents away; authoring stays. */
-const blockLinks = (event: MouseEvent) => {
-  if (event.target instanceof Element && event.target.closest("a[href]")) {
-    event.preventDefault();
-  }
-};
-
-const blockSubmit = (event: FormEvent) => event.preventDefault();
 
 export function CanvasElement({
   element,
@@ -91,12 +58,7 @@ export function CanvasElement({
         aria-pressed={selected}
         className="absolute inset-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       />
-      <div
-        className={cn("relative", !interactive && "pointer-events-none")}
-        inert={!interactive}
-        onClickCapture={interactive ? blockLinks : undefined}
-        onSubmitCapture={interactive ? blockSubmit : undefined}
-      >
+      <CanvasContent interactive={interactive}>
         {isQuestionField(element) ? (
           <RenderField
             field={element}
@@ -108,7 +70,7 @@ export function CanvasElement({
         ) : (
           <RenderDisplayBlock block={element} />
         )}
-      </div>
+      </CanvasContent>
       <span
         draggable
         onDragStart={drag.onDragStart}
