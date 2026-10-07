@@ -61,6 +61,8 @@ import { CommunityService } from "src/community/community.service";
 import { Community } from "src/community/entities/community.entity";
 import {
   assertLive,
+  softDeleteCascade,
+  softDeleteWhere,
   updateLive,
   writeUnderLive,
 } from "src/datasources/soft-delete";
@@ -153,6 +155,7 @@ import {
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
 import { ActionFormVariantService } from "./action-form-variant.service";
+import { replaceReviewers } from "./action-reviewers";
 import { recognitionModeOf } from "./action-update-recognition";
 import {
   ActionUpdateRecognitionService,
@@ -1639,7 +1642,10 @@ export class ActionsService {
   }
 
   async deleteGeneralUpdate(id: number): Promise<void> {
-    await this.generalUpdateRepository.delete(id);
+    await softDeleteWhere(this.generalUpdateRepository.manager, {
+      target: GeneralUpdate,
+      where: { id },
+    });
   }
 
   async syncGeneralUpdateDatesForSuites(
@@ -2047,8 +2053,8 @@ export class ActionsService {
     const previousTaskFormId = action.taskFormId;
     Object.assign(action, rest);
 
-    // Replacing reviewers is a delete plus a cascading insert; without one
-    // transaction a failed save leaves the action with none.
+    // Replacing reviewers soft-deletes the dropped ones before the save;
+    // without one transaction a failed save still drops them.
     await writeUnderLive(this.actionRepository.manager, {
       parents: [
         ...(suiteId == null ? [] : [{ target: ActionSuite, id: suiteId }]),
@@ -2068,8 +2074,11 @@ export class ActionsService {
       },
       write: async (em) => {
         if (reviewers !== undefined) {
-          await em.delete(ActionReviewer, { actionId: id });
-          action.reviewers = this.reviewerRows(reviewers);
+          action.reviewers = await replaceReviewers({
+            em,
+            actionId: id,
+            rows: this.reviewerRows(reviewers),
+          });
         }
         await em.save(Action, action);
         if (rest.prerequisiteActionIds !== undefined) {
@@ -2166,7 +2175,7 @@ export class ActionsService {
       relations: { suite: true },
     });
     await this.actionRepository.manager.transaction(async (em) => {
-      await em.delete(Action, id);
+      await softDeleteWhere(em, { target: Action, where: { id } });
       await assertNotAPrerequisite({ em, actionId: id });
       await assertNotInACohort({ em, actionId: id });
     });
@@ -2234,7 +2243,10 @@ export class ActionsService {
       where: { id: followUpFormId },
     });
     if (followUpForm) {
-      await this.followUpFormRepository.remove(followUpForm);
+      await softDeleteCascade(this.followUpFormRepository.manager, {
+        target: FollowUpForm,
+        ids: [followUpForm.id],
+      });
     }
   }
 
@@ -3560,7 +3572,10 @@ export class ActionsService {
     const actionUpdate = await this.actionUpdateRepository.findOneOrFail({
       where: { id },
     });
-    await this.actionUpdateRepository.delete(id);
+    await softDeleteCascade(this.actionUpdateRepository.manager, {
+      target: ActionUpdate,
+      ids: [actionUpdate.id],
+    });
     return actionUpdate;
   }
 
@@ -3748,7 +3763,10 @@ export class ActionsService {
           possibleEvent.suiteManaged
         ) {
           console.log("deleting event", possibleEvent.id);
-          await em.delete(ActionEvent, possibleEvent.id);
+          await softDeleteCascade(em, {
+            target: ActionEvent,
+            ids: [possibleEvent.id],
+          });
         }
       }
       await assertPrerequisitesValid({

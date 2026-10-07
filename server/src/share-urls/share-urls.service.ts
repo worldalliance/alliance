@@ -12,7 +12,11 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Action } from "src/actions/entities/action.entity";
 import { Community } from "src/community/entities/community.entity";
-import { assertLive, writeUnderLive } from "src/datasources/soft-delete";
+import {
+  assertLive,
+  softDeleteCascade,
+  writeUnderLive,
+} from "src/datasources/soft-delete";
 import { InviteFeedEvents } from "src/invite-feed.events";
 import {
   generateCIDForExternalTarget,
@@ -516,7 +520,10 @@ export class ShareUrlsService {
         "Your primary invite link cannot be deleted.",
       );
     }
-    await this.shareUrlRepository.remove(row);
+    await softDeleteCascade(this.shareUrlRepository.manager, {
+      target: ShareUrl,
+      ids: [row.id],
+    });
   }
 
   async deleteById(id: string): Promise<void> {
@@ -524,7 +531,10 @@ export class ShareUrlsService {
     if (!row) {
       throw new NotFoundException("share url not found");
     }
-    await this.shareUrlRepository.remove(row);
+    await softDeleteCascade(this.shareUrlRepository.manager, {
+      target: ShareUrl,
+      ids: [row.id],
+    });
   }
 
   async findForCampaign(

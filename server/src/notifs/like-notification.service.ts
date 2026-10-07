@@ -1,6 +1,7 @@
 import type { FeedActionActivity } from "@alliance/common/actionActivity";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { softDeleteCascade } from "src/datasources/soft-delete";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
 import {
@@ -208,7 +209,10 @@ export class LikeNotificationService {
       );
 
       if (updatedUsers.length === 0) {
-        await notifRepo.remove(notif);
+        await softDeleteCascade(manager, {
+          target: Notification,
+          ids: [notif.id],
+        });
         return;
       }
 

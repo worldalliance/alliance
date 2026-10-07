@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { softDeleteCascade } from "src/datasources/soft-delete";
 import { isUniqueViolation } from "src/utils/db-errors";
 import type { Repository } from "src/utils/Repository";
 import type { SaveWaitlistEmailTemplateDto } from "./dto/waitlist-email-template.dto";
@@ -59,6 +60,10 @@ export class WaitlistEmailTemplateService {
   }
 
   async delete(id: number): Promise<void> {
-    await this.templateRepository.remove(await this.findOne(id));
+    const template = await this.findOne(id);
+    await softDeleteCascade(this.templateRepository.manager, {
+      target: WaitlistEmailTemplate,
+      ids: [template.id],
+    });
   }
 }

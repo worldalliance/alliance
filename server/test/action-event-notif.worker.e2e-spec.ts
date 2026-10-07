@@ -19,6 +19,7 @@ import {
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
 import { Community } from "src/community/entities/community.entity";
+import { softDeleteCascade } from "src/datasources/soft-delete";
 import {
   MessageChannel,
   MessageSource,
@@ -371,9 +372,10 @@ describe("ActionEventNotifWorker (e2e)", () => {
         plannedCount += plans.filter(
           (plan) => plan.group.id === reminderGroup.id,
         ).length;
-        await ctx.dataSource.manager.softDelete(ReminderGroup, [
-          reminderGroup.id,
-        ]);
+        await softDeleteCascade(ctx.dataSource.manager, {
+          target: ReminderGroup,
+          ids: [reminderGroup.id],
+        });
         return plans;
       });
 
@@ -416,7 +418,10 @@ describe("ActionEventNotifWorker (e2e)", () => {
       .spyOn(mms, "sendMms")
       .mockImplementation(async (...args) => {
         deliveries++;
-        await ctx.dataSource.manager.delete(ReminderGroup, [reminderGroup.id]);
+        await softDeleteCascade(ctx.dataSource.manager, {
+          target: ReminderGroup,
+          ids: [reminderGroup.id],
+        });
         return send(...args);
       });
 

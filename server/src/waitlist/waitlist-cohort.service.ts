@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { softDeleteCascade } from "src/datasources/soft-delete";
 import { isUniqueViolation } from "src/utils/db-errors";
 import type { Repository } from "src/utils/Repository";
 import { In } from "typeorm";
@@ -96,6 +97,10 @@ export class WaitlistCohortService {
   }
 
   async delete(id: number): Promise<void> {
-    await this.cohortRepository.remove(await this.findOne(id));
+    const cohort = await this.findOne(id);
+    await softDeleteCascade(this.cohortRepository.manager, {
+      target: WaitlistCohort,
+      ids: [cohort.id],
+    });
   }
 }

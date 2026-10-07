@@ -8,6 +8,7 @@ import {
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { CohortDecisionReason } from "src/actions/entities/cohort-decision-reason";
 import { SingleMemberCohortService } from "src/actions/single-member-cohort.service";
+import { softDeleteCascade } from "src/datasources/soft-delete";
 import {
   Comment,
   CommentParentObject,
@@ -826,7 +827,10 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
   describe("rows of a deleted recipient", () => {
     const deletedUser = async () => {
       const user = await createUser();
-      await ctx.dataSource.manager.softDelete(User, [user.id]);
+      await softDeleteCascade(ctx.dataSource.manager, {
+        target: User,
+        ids: [user.id],
+      });
       return user;
     };
     const due = () => new Date(Date.now() - milliseconds({ minutes: 1 }));
@@ -874,6 +878,97 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       expect(
         await unreadContentRepo.findOneByOrFail({ id: orphan.id }),
       ).toMatchObject({ pushClaimedBy: null });
+    });
+
+    it("keeps a push deleted with its member while it is sent", async () => {
+      const user = await createUser();
+      mockSendPush.mockImplementationOnce(async (messages) => {
+        await softDeleteCascade(ctx.dataSource.manager, {
+          target: User,
+          ids: [user.id],
+        });
+        return messages.map(() => ({ status: "ok", id: "send-race" }));
+      });
+
+      const [push] = await pushService.sendMessages([
+        {
+          userId: user.id,
+          expoPushToken: "ExponentPushToken[send-race]",
+          body: "Due",
+          idempotencyKey: "send-race",
+        },
+      ]);
+
+      expect(
+        (
+          await pushRepo.findOneOrFail({
+            where: { id: push.id },
+            withDeleted: true,
+          })
+        ).deletedAt,
+      ).not.toBeNull();
+    });
+
+    it("sends no push for a notification deleted before it goes out", async () => {
+      const user = await createUser();
+      const notif = await createNotification(user, due());
+      await softDeleteCascade(ctx.dataSource.manager, {
+        target: Notification,
+        ids: [notif.id],
+      });
+
+      const pushes = await pushService.sendMessages([
+        {
+          userId: user.id,
+          expoPushToken: "ExponentPushToken[deleted-notification]",
+          body: "Due",
+          idempotencyKey: "deleted-notification",
+          notification: notif,
+        },
+      ]);
+
+      expect(pushes).toEqual([]);
+      expect(mockSendPush.mock.calls.flatMap(([messages]) => messages)).toEqual(
+        [],
+      );
+    });
+
+    it("keeps a push deleted with its member while its receipt is fetched", async () => {
+      const user = await createUser();
+      const push = await pushRepo.save(
+        pushRepo.create({
+          user,
+          expoPushToken: "ExponentPushToken[receipt-race]",
+          body: "Due",
+          receiptId: "receipt-race",
+          receiptStatus: "pending",
+          idempotencyKey: "receipt-race",
+        }),
+      );
+      const receipts = jest
+        .spyOn(
+          ctx.app.get<Expo>(EXPO_CLIENT),
+          "getPushNotificationReceiptsAsync",
+        )
+        .mockImplementation(async () => {
+          await softDeleteCascade(ctx.dataSource.manager, {
+            target: User,
+            ids: [user.id],
+          });
+          return { "receipt-race": { status: "ok" } };
+        });
+
+      await pushService.queryExpoStatuses();
+      receipts.mockRestore();
+
+      expect(
+        (
+          await pushRepo.findOneOrFail({
+            where: { id: push.id },
+            withDeleted: true,
+          })
+        ).deletedAt,
+      ).not.toBeNull();
     });
   });
 });

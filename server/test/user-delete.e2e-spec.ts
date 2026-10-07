@@ -49,8 +49,6 @@ describe("Admin account deletion (e2e)", () => {
     expect(await eventLogRepo.findOne({ where: { id: owned.id } })).toBeNull();
   });
 
-  // EventLog.user cascades, so an entry attributed to the deleted member would
-  // take the record of its own deletion with it.
   it("keeps the audit entry, detached from the deleted member", async () => {
     const target = await createTarget("audited@example.com");
 
@@ -75,8 +73,6 @@ describe("Admin account deletion (e2e)", () => {
     });
   });
 
-  // Once the row is gone the audit entry is the only evidence the account
-  // existed, so it shares the deletion's transaction rather than following it.
   it("keeps the account when the audit entry cannot be written", async () => {
     const target = await createTarget("audit-fails@example.com");
 

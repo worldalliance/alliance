@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { softDeleteWhere } from "src/datasources/soft-delete";
 import type { Repository } from "src/utils/Repository";
 import {
   CreateExternalShareTargetDto,
@@ -69,8 +70,11 @@ export class ExternalShareTargetsService {
   }
 
   async remove(id: number): Promise<void> {
-    const result = await this.repository.delete(id);
-    if (!result.affected) {
+    const deleted = await softDeleteWhere(this.repository.manager, {
+      target: ExternalShareTarget,
+      where: { id },
+    });
+    if (!deleted) {
       throw new NotFoundException("External share target not found");
     }
   }

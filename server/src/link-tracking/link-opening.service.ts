@@ -6,11 +6,12 @@ import {
 import { R, type Result } from "@alliance/common/result";
 import { Injectable } from "@nestjs/common";
 import { milliseconds } from "date-fns";
+import { lockLive } from "src/datasources/soft-delete";
 import { Mail } from "src/mail/mail.entity";
 import { Mms } from "src/mms/mms.entity";
 import { Notification } from "src/notifs/entities/notification.entity";
 import { PosthogService } from "src/posthog/posthog.service";
-import { isForeignKeyViolation } from "src/utils/db-errors";
+import { User } from "src/user/entities/user.entity";
 import { DataSource, type EntityManager, IsNull } from "typeorm";
 import type { RecordLinkOpeningDto } from "./dto/link-opening.dto";
 import { legacyOwner } from "./legacy-link-owner";
@@ -92,25 +93,16 @@ export class LinkOpeningService {
       return R.failure(LinkOpeningRejection.Invalid);
     }
 
-    const recorded = await R.fromPromise(
-      this.dataSource.transaction((manager) =>
-        this.insert({
-          manager,
-          dto,
-          // Normalized here rather than checked, so an older client's
-          // normalization still records its opening.
-          destination: normalizeDestination(dto.destination),
-          now,
-        }),
-      ),
+    const insertion = await this.dataSource.transaction((manager) =>
+      this.insert({
+        manager,
+        dto,
+        // Normalized here rather than checked, so an older client's
+        // normalization still records its opening.
+        destination: normalizeDestination(dto.destination),
+        now,
+      }),
     );
-    if (R.isFailure(recorded)) {
-      if (isForeignKeyViolation(recorded.error)) {
-        return R.failure(LinkOpeningRejection.Unknown);
-      }
-      throw recorded.error;
-    }
-    const insertion = recorded.value;
     switch (insertion.kind) {
       case InsertKind.Recorded:
         this.capture(insertion);
@@ -145,6 +137,12 @@ export class LinkOpeningService {
       })) ?? (await this.recoverLegacy({ manager, cid: dto.trackingId, now }));
     if (tracking === InsertKind.Unknown) return { kind: tracking };
     const attributed = tracking instanceof MessageTracking;
+    if (
+      attributed &&
+      !(await lockLive(manager, [{ target: MessageTracking, id: tracking.id }]))
+    ) {
+      return { kind: InsertKind.Unknown };
+    }
 
     const inserted = await manager
       .createQueryBuilder()
@@ -242,6 +240,12 @@ export class LinkOpeningService {
     });
     const entry = entries.length === 1 ? entries[0] : null;
     const owner = await legacyOwner({ manager, cid, messages, entry });
+    if (
+      owner &&
+      !(await lockLive(manager, [{ target: User, id: owner.userId }]))
+    ) {
+      return InsertKind.Unknown;
+    }
 
     if (entry && !entry.readAt && (!owner || entry.user?.id === owner.userId)) {
       await manager.update(Notification, { id: entry.id }, { readAt: now });

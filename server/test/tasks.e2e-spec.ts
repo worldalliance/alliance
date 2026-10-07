@@ -1624,6 +1624,28 @@ describe("Tasks (e2e)", () => {
       expect(counts.body).toEqual([{ formId: draftFormId, count: 0 }]);
     });
 
+    it("starts a fresh draft once the last one was cleared", async () => {
+      await saveDraft({ "full-name": "Cleared" }).expect(200);
+      await ctx.app
+        .get(TasksService)
+        .deleteFormDraft(ctx.testUserId, draftFormId);
+
+      await Promise.all([
+        saveDraft({ "full-name": "Fresh" }).expect(200),
+        saveDraft({ "full-name": "Fresh" }).expect(200),
+      ]);
+
+      const drafts = await formResponseDraftRepo.find({
+        where: { formId: draftFormId },
+        withDeleted: true,
+        order: { id: "ASC" },
+      });
+      expect(drafts.map((draft) => [draft.answers, draft.deletedAt])).toEqual([
+        [{ "full-name": "Cleared" }, expect.any(Date)],
+        [{ "full-name": "Fresh" }, null],
+      ]);
+    });
+
     it("is deleted by the submission it was a draft of", async () => {
       await saveDraft({ "full-name": "Half Typed" }).expect(200);
 

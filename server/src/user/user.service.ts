@@ -45,6 +45,8 @@ import { Community } from "src/community/entities/community.entity";
 import {
   liveOrNull,
   lockLive,
+  softDeleteCascade,
+  softDeleteWhere,
   updateLive,
   writeUnderLive,
 } from "src/datasources/soft-delete";
@@ -706,10 +708,6 @@ export class UserService {
     return this.insertUser({ data, assignment });
   }
 
-  async remove(id: number): Promise<void> {
-    await this.userRepository.delete(id);
-  }
-
   async setAdmin(id: number, admin: boolean): Promise<void> {
     await updateLive(this.dataSource.manager, {
       target: User,
@@ -1046,7 +1044,10 @@ export class UserService {
       await this.notifsService.setRead(rel.acceptedNotif.id, rel.requester.id);
     }
 
-    await this.friendRepository.delete(rel.id);
+    await softDeleteCascade(this.friendRepository.manager, {
+      target: Friend,
+      ids: [rel.id],
+    });
   }
 
   async findFriends(userId: number): Promise<User[]> {
@@ -1734,7 +1735,10 @@ export class UserService {
       [AwayRangeEditor.Member]: !isAwayRangeStartLocked(awayRange, now),
     } satisfies Record<AwayRangeEditor, boolean>;
     if (removes[editor]) {
-      await this.userAwayRangeRepository.remove(awayRange);
+      await softDeleteCascade(this.userAwayRangeRepository.manager, {
+        target: UserAwayRange,
+        ids: [awayRange.id],
+      });
       return;
     }
     if (hasAwayRangeEnded(awayRange, now)) {
@@ -1935,7 +1939,10 @@ export class UserService {
   }
 
   async deleteTag(tagId: string): Promise<void> {
-    await this.tagRepository.delete(tagId);
+    await softDeleteWhere(this.tagRepository.manager, {
+      target: Tag,
+      where: { id: tagId },
+    });
   }
 
   async getAmbassadorProgramDashboard(): Promise<AmbassadorProgramDashboard> {
@@ -2290,7 +2297,10 @@ export class UserService {
     const goal = await this.ambassadorInviteGoalRepository.findOneOrFail({
       where: { id: goalId, ambassador: { id: userId } },
     });
-    await this.ambassadorInviteGoalRepository.delete(goal.id);
+    await softDeleteCascade(this.ambassadorInviteGoalRepository.manager, {
+      target: AmbassadorInviteGoal,
+      ids: [goal.id],
+    });
   }
 
   async getAmbassadorInviteDashboard(
@@ -3412,18 +3422,21 @@ export class UserService {
   }
 
   /**
-   * Hard-deletes a member. Everything keyed to them goes with the row: forum
-   * posts and comments, action activity (so completion counts drop), messages,
-   * notifications, and their own event-log history. The click history of a
-   * waitlist entry whose invite they claimed is deleted first, while the claim
-   * still links it to them.
+   * Soft-deletes a member. Everything keyed to them is hidden with the row:
+   * forum posts and comments, action activity (so completion counts drop),
+   * messages, notifications, and their own event-log history. The rows stay
+   * in the database for an operator to restore by hand; join rows such as
+   * group memberships, likes, tags and co-authorships are deleted instead. The
+   * click history of a waitlist entry whose invite they claimed is hidden too.
    *
-   * The record of the deletion is therefore written with a null `userId` —
-   * `EventLog.user` cascades, so an entry attributed to the deleted member
-   * would delete itself along with everything else. It shares the deletion's
-   * transaction: once the row is gone that entry is the only evidence the
-   * account ever existed, so a failure to write it has to take the deletion
-   * with it rather than leave an unrecorded one behind.
+   * The deletion also bumps the account's session generation, so every
+   * session issued before it stays invalid, even after a restore.
+   *
+   * The record of the deletion is written with a null `userId`: it is the
+   * admin's act, not part of the member's history that the deletion hides and
+   * a restore brings back. It shares the deletion's transaction, so a
+   * failure to write it takes the deletion with it rather than leave an
+   * unrecorded one behind.
    */
   async deleteUserAdmin(params: {
     userId: number;
@@ -3466,8 +3479,9 @@ export class UserService {
       : "";
 
     const forwardAudit = await this.dataSource.transaction(async (manager) => {
+      await manager.increment(User, { id: deleted.id }, "sessionGeneration", 1);
       await deleteClaimedWaitlistTracking({ manager, userId: deleted.id });
-      await manager.delete(User, deleted.id);
+      await softDeleteCascade(manager, { target: User, ids: [deleted.id] });
 
       return this.eventLogService.sendMessageInTransaction(manager, {
         type: EventType.AccountDeleted,

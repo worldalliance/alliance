@@ -31,7 +31,11 @@ import { ReferralSource, User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { WaitlistEntry } from "src/waitlist/entities/waitlist-entry.entity";
 import supertest from "supertest";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import {
+  createTestApp,
+  TestContext,
+  writeDuringDeletion,
+} from "./e2e-test-utils";
 
 describe("Link openings (e2e)", () => {
   let ctx: TestContext;
@@ -348,6 +352,27 @@ describe("Link openings (e2e)", () => {
       0,
     );
     await post(opening(mms!.cid!)).expect(404);
+  });
+
+  it("refuses an opening of a tracking deleted while it records", async () => {
+    const mms = await mmsService.sendMms({
+      to: "+15555550125",
+      body: "https://app.example.org/tasks",
+      mediaUrls: [],
+      tracking: reminder(member.id),
+    });
+    const tracking = await trackingFor(mms!.cid!);
+    const recorded = opening(mms!.cid!);
+
+    const res = await writeDuringDeletion({
+      dataSource: ctx.dataSource,
+      target: MessageTracking,
+      id: tracking!.id,
+      write: () => post(recorded).then((response) => response),
+    });
+
+    expect(res).toMatchObject({ status: 404 });
+    expect(await openings().countBy({ openingId: recorded.openingId })).toBe(0);
   });
 
   const saveConvert = async (name: string) => {

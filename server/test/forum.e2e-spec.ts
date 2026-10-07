@@ -2637,6 +2637,30 @@ describe("Forum (e2e)", () => {
       expect(await commentTagId(postId, droppedCommentId)).toBeNull();
     });
 
+    it("re-adds a dropped tag's name, in a later save or the same one", async () => {
+      const { postId, tags } = await createTaggedPost(["A", "B"]);
+
+      const dropped = await saveTags({
+        postId,
+        tags: [{ id: tags[0].id, name: "A" }],
+        knownTagIds: tagIds(tags),
+      }).expect(200);
+      const readded = await saveTags({
+        postId,
+        tags: [{ id: tags[0].id, name: "A" }, { name: "B" }],
+        knownTagIds: tagIds(dropped.body.tags),
+      }).expect(200);
+      expect(readded.body.tags.map((tag) => tag.name)).toEqual(["A", "B"]);
+
+      const replaced = await saveTags({
+        postId,
+        tags: [{ id: readded.body.tags[0].id, name: "A" }, { name: "B" }],
+        knownTagIds: tagIds(readded.body.tags),
+      }).expect(200);
+      expect(replaced.body.tags.map((tag) => tag.name)).toEqual(["A", "B"]);
+      expect(replaced.body.tags[1].id).not.toBe(readded.body.tags[1].id);
+    });
+
     it("keeps every tag when a save fails partway", async () => {
       const { postId, tags } = await createTaggedPost(["A", "B", "C"]);
       const commentId = await commentWithTag(postId, tags[2].id);

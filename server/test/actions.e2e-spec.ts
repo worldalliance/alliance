@@ -4198,6 +4198,36 @@ describe("Actions (e2e)", () => {
       expect(await reviewerRepo.countBy({ actionId: action.id })).toBe(1);
     });
 
+    it("keeps the rows of reviewers an update sends again", async () => {
+      const action = await createAction("Resent Reviewers", [
+        { name: "Jane" },
+        { name: "Bob" },
+      ]);
+      const before = await reviewerRepo.findBy({ actionId: action.id });
+
+      const res = await request(ctx.app.getHttpServer())
+        .patch(`/actions/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ reviewers: [{ name: "Bob" }, { name: "Carol" }] })
+        .expect(200);
+
+      expect(res.body.reviewers).toEqual([{ name: "Bob" }, { name: "Carol" }]);
+      const rows = await reviewerRepo.find({
+        where: { actionId: action.id },
+        order: { position: "ASC", id: "ASC" },
+        withDeleted: true,
+      });
+      const bob = before.find((row) => row.name === "Bob");
+      expect(
+        rows.map((row) => [row.name, row.position, row.deletedAt === null]),
+      ).toEqual([
+        ["Jane", 0, false],
+        ["Bob", 0, true],
+        ["Carol", 1, true],
+      ]);
+      expect(rows.find((row) => row.name === "Bob")?.id).toBe(bob?.id);
+    });
+
     it("leaves reviewers alone when the update omits them", async () => {
       const action = await createAction("Kept Reviewers", [{ name: "Jane" }]);
 

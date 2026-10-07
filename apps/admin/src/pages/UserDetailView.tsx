@@ -671,7 +671,7 @@ const UserDetailView: React.FC = () => {
               color={ButtonColor.Red}
               onClick={() => setIsDeleteModalOpen(true)}
               size="small"
-              title="Permanently delete this member's account"
+              title="Delete this member's account: hide it and end its sessions"
             >
               <Trash2 size={14} className="inline mr-1" />
               Delete account

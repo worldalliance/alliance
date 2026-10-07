@@ -2,6 +2,10 @@ import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
 import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import {
+  softDeleteCascade,
+  softDeleteWhere,
+} from "src/datasources/soft-delete";
 import { inviteClaimantSql } from "src/user/invite-claim";
 import type { Repository } from "src/utils/Repository";
 import { randomToken } from "src/utils/random";
@@ -60,7 +64,10 @@ export class MessageTrackingService {
    */
   async discard(trackingId: string): Promise<void> {
     const discarded = await R.fromPromise(
-      this.trackingRepository.delete({ trackingId }),
+      softDeleteWhere(this.trackingRepository.manager, {
+        target: MessageTracking,
+        where: { trackingId },
+      }),
     );
     if (!discarded.ok) {
       this.logger.error(
@@ -81,8 +88,8 @@ export class MessageTrackingService {
 }
 
 /**
- * Removes the waitlist emails' attribution for each entry whose invite the
- * member claimed, with their openings. Call before deleting the member.
+ * Soft-deletes the waitlist emails' attribution for each entry whose invite
+ * the member claimed, with their openings. Call before deleting the member.
  * Another claimant of the same entry doesn't keep it: a claim is the only
  * stored link to the recipient, and a forwarded invite can't be told apart.
  */
@@ -90,13 +97,16 @@ export async function deleteClaimedWaitlistTracking(params: {
   manager: EntityManager;
   userId: number;
 }): Promise<void> {
-  await params.manager
-    .createQueryBuilder()
-    .delete()
-    .from(MessageTracking)
+  const tracked = await params.manager
+    .createQueryBuilder(MessageTracking, "tracking")
+    .select("tracking.id", "id")
     .where(
-      `"waitlistEntryId" IN (SELECT invite."waitlistEntryId" FROM onetime_invite invite JOIN "user" claimant ON ${inviteClaimantSql({ invite: "invite", claimant: "claimant" })} WHERE claimant.id = :userId)`,
+      `tracking."waitlistEntryId" IN (SELECT invite."waitlistEntryId" FROM onetime_invite invite JOIN "user" claimant ON ${inviteClaimantSql({ invite: "invite", claimant: "claimant" })} WHERE claimant.id = :userId)`,
       { userId: params.userId },
     )
-    .execute();
+    .getRawMany<{ id: number }>();
+  await softDeleteCascade(params.manager, {
+    target: MessageTracking,
+    ids: tracked.map(({ id }) => id),
+  });
 }

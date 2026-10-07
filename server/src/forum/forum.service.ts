@@ -12,7 +12,7 @@ import { assertNotInStaffPreview } from "src/actions/staff-preview";
 import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
 import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
 import { findWithDeletedRoot } from "src/datasources/find-with-deleted-root";
-import { assertLive } from "src/datasources/soft-delete";
+import { assertLive, softDeleteCascade } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { FacepileService } from "src/likes/facepile.service";
@@ -1129,12 +1129,10 @@ export class ForumService {
       throw new NotFoundException("You can only delete your own replies");
     }
 
-    for (const notification of reply.notifications) {
-      await this.commentRepository.manager.delete(
-        Notification,
-        notification.id,
-      );
-    }
+    await softDeleteCascade(this.commentRepository.manager, {
+      target: Notification,
+      ids: reply.notifications.map((notification) => notification.id),
+    });
 
     await this.commentRepository.update(
       { id, deletedAt: IsNull() },
@@ -1422,9 +1420,10 @@ export class ForumService {
     );
     const removed = existing.filter((tag) => !keptIds.has(tag.id));
 
-    if (removed.length > 0) {
-      await tagRepository.remove(removed);
-    }
+    await softDeleteCascade(manager, {
+      target: PostTag,
+      ids: removed.map((tag) => tag.id),
+    });
     await tagRepository.save(kept);
   }
 

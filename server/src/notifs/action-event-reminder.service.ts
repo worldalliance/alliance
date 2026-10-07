@@ -27,7 +27,11 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
-import { type LiveRow, writeUnderLive } from "src/datasources/soft-delete";
+import {
+  type LiveRow,
+  softDeleteWhere,
+  writeUnderLive,
+} from "src/datasources/soft-delete";
 import { EmailType } from "src/mail/mail.entity";
 import { MailService, processKeywordReplacements } from "src/mail/mail.service";
 import { Tag } from "src/user/entities/tag.entity";
@@ -637,8 +641,9 @@ export class ActionEventReminderService {
   }
 
   async deleteReminderGroup(groupId: number): Promise<void> {
-    await this.reminderGroupRepository.delete({
-      id: groupId,
+    await softDeleteWhere(this.reminderGroupRepository.manager, {
+      target: ReminderGroup,
+      where: { id: groupId },
     });
   }
 

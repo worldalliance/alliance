@@ -123,7 +123,8 @@ export class User {
   @IsEmail()
   email: string;
 
-  /** Credentials carry this, and one carrying another generation is refused. */
+  /** Session tokens carry this; deleting the account bumps it, so sessions
+   * issued before the deletion stay invalid even after a restore. */
   @Column({ type: "int", default: 0 })
   sessionGeneration: number;
 
@@ -398,9 +399,9 @@ export class User {
   referredByShareUrl?: Relation<ShareUrl> | null;
 
   /**
-   * Group placement copied off the invite link at registration. Deleting the
-   * link nulls `referredByShareUrlId`, which can happen before this user signs
-   * their contract, so placement must not be read back off the link.
+   * Group placement copied off the invite link at registration. Reads hide a
+   * deleted link, which can happen before this user signs their contract, so
+   * placement must not be read back off the link.
    */
   @Column({
     type: "enum",

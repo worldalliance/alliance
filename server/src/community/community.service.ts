@@ -11,6 +11,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import {
   lockLiveIds,
+  softDeleteWhere,
   updateLive,
   writeUnderLive,
 } from "src/datasources/soft-delete";
@@ -714,11 +715,18 @@ export class CommunityService {
         "User cannot delete community with other members",
       );
     }
-    await this.communityRepository.delete(communityId);
+    await this.softDeleteCommunity(communityId);
   }
 
   async deleteCommunityAdmin(communityId: number): Promise<void> {
-    await this.communityRepository.delete(communityId);
+    await this.softDeleteCommunity(communityId);
+  }
+
+  private async softDeleteCommunity(communityId: number): Promise<void> {
+    await softDeleteWhere(this.communityRepository.manager, {
+      target: Community,
+      where: { id: communityId },
+    });
   }
 
   async addUserToCommunityAdmin(params: {

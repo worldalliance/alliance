@@ -4,7 +4,11 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { updateLive, writeUnderLive } from "src/datasources/soft-delete";
+import {
+  softDeleteCascade,
+  updateLive,
+  writeUnderLive,
+} from "src/datasources/soft-delete";
 import { isUniqueViolation } from "src/utils/db-errors";
 import type { Repository } from "src/utils/Repository";
 import { In } from "typeorm";
@@ -125,7 +129,7 @@ export class WaitlistTagService {
           `Cohorts filter by this tag: ${cohorts.map((c) => c.name).join(", ")}`,
         );
       }
-      await manager.remove(tag);
+      await softDeleteCascade(manager, { target: WaitlistTag, ids: [tag.id] });
     });
   }
 

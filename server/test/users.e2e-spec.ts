@@ -8,6 +8,7 @@ import { AuthService } from "src/auth/auth.service";
 import { TokenMode } from "src/auth/dto/signin.dto";
 import { JWTTokenType } from "src/auth/tokens";
 import { ContractService } from "src/contract/contract.service";
+import { softDeleteCascade } from "src/datasources/soft-delete";
 import {
   Notification,
   NotificationCategory,
@@ -1655,6 +1656,11 @@ describe("Users (e2e)", () => {
         relations: { communities: true, referredByShareUrl: true },
       });
       expect(updatedUser?.referredByShareUrl).toBeNull();
+      const [stored] = await ctx.dataSource.query(
+        `SELECT "referredByShareUrlId" FROM "user" WHERE id = $1`,
+        [newUser.id],
+      );
+      expect(stored.referredByShareUrlId).toBe(reusableInvite.id);
       expect(
         updatedUser?.communities.some(
           (community) => community.id === inviteCommunity.id,
@@ -1710,7 +1716,10 @@ describe("Users (e2e)", () => {
           "Doomed community invite",
           doomed.id,
         );
-      await ctx.dataSource.manager.delete(Community, [doomed.id]);
+      await softDeleteCascade(ctx.dataSource.manager, {
+        target: Community,
+        ids: [doomed.id],
+      });
 
       const newUser = await signUpThroughInvite({
         name: "Deleted Group Invitee",
@@ -1755,7 +1764,10 @@ describe("Users (e2e)", () => {
       });
       expect(newUser.inviteAssignmentCommunityId).toBe(doomed.id);
 
-      await ctx.dataSource.manager.delete(Community, [doomed.id]);
+      await softDeleteCascade(ctx.dataSource.manager, {
+        target: Community,
+        ids: [doomed.id],
+      });
 
       await contractService.signContract({
         userId: newUser.id,
@@ -1791,7 +1803,10 @@ describe("Users (e2e)", () => {
       await deletion.startTransaction();
       let newUser: User;
       try {
-        await deletion.manager.delete(Community, [doomed.id]);
+        await softDeleteCascade(deletion.manager, {
+          target: Community,
+          ids: [doomed.id],
+        });
         const signup = signUpThroughInvite({
           name: "Raced Deleted Group Invitee",
           email: "raced.deleted.group.invitee@example.com",

@@ -6,6 +6,7 @@ import {
 import { ActionStatus } from "src/actions/entities/action-event.entity";
 import { Action } from "src/actions/entities/action.entity";
 import { Cluster } from "src/cluster/entities/cluster.entity";
+import { softDeleteCascade } from "src/datasources/soft-delete";
 import { CommentDto } from "src/forum/dto/comment.dto";
 import type { PostDto, UpdatePostSettingsDto } from "src/forum/dto/post.dto";
 import {
@@ -382,6 +383,49 @@ describe("Forum soft deletion (e2e)", () => {
     ).toEqual([action.kept.id]);
   });
 
+  it("drops a deleted account's comments and the replies under them", async () => {
+    const departing = await member();
+    const replier = await member();
+    const postId = await createPost(ctx.accessToken);
+    const kept = (await comment({ ...replier, postId }).expect(201)).body;
+    const parent = (await comment({ ...departing, postId }).expect(201)).body;
+    const hidden = (
+      await comment({ ...replier, postId, parentId: parent.id }).expect(201)
+    ).body;
+
+    await request(server())
+      .delete(`/user/userdetail/${departing.user.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({ reason: "Requested", confirmationEmail: departing.user.email })
+      .expect(200);
+
+    expect((await thread(postId)).map((entry) => entry.id)).toEqual([kept.id]);
+    expect(
+      (await ctx.app.get(ForumService).findCommentsForPostRaw(postId)).map(
+        (entry) => entry.id,
+      ),
+    ).toEqual([kept.id]);
+    await comment({ ...replier, postId, parentId: parent.id }).expect(404);
+    await comment({ ...replier, postId, parentId: hidden.id }).expect(404);
+  });
+
+  it("leaves a deleted account out of a comment's likes", async () => {
+    const author = await member();
+    const [staying, departing] = await Promise.all([member(), member()]);
+    const postId = await createPost(ctx.accessToken);
+    const liked = (await comment({ ...author, postId }).expect(201)).body;
+    await ctx.dataSource
+      .createQueryBuilder()
+      .relation(Comment, "likes")
+      .of(liked.id)
+      .add([staying.user.id, departing.user.id]);
+
+    await userRepo.softDelete(departing.user.id);
+
+    const [entry] = await thread(postId);
+    expect(entry.likes.map((liker) => liker.id)).toEqual([staying.user.id]);
+  });
+
   it("shows a comment author's cluster in the thread", async () => {
     const author = await member();
     const cluster = await ctx.dataSource
@@ -606,7 +650,10 @@ describe("Forum soft deletion (e2e)", () => {
     const deletion = ctx.dataSource.createQueryRunner();
     await deletion.startTransaction();
     try {
-      await deletion.manager.delete(User, [author.user.id]);
+      await softDeleteCascade(deletion.manager, {
+        target: User,
+        ids: [author.user.id],
+      });
       const settle = (write: Promise<unknown>) =>
         write.then(
           () => "written",

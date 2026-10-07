@@ -1,11 +1,14 @@
 import { NotFoundException } from "@nestjs/common";
+import { getRepositoryToken } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
+import { softDeleteCascade } from "src/datasources/soft-delete";
 import { ConversationService } from "src/messaging/conversation.service";
 import {
   ConversationAdminSummaryDto,
   ConversationDto,
   MessageDto,
 } from "src/messaging/dto/messaging.dto";
+import { Conversation } from "src/messaging/entities/conversation.entity";
 import { Message } from "src/messaging/entities/message.entity";
 import {
   Participant,
@@ -274,6 +277,32 @@ describe("Messaging soft deletion (e2e)", () => {
     ).toMatchObject({ messageCount: 1, lastMessage: { id: shown } });
   });
 
+  it("keeps a read cursor on a message hidden with its author's account", async () => {
+    const chat = await createChat();
+    const lastRead = await sent({
+      token: chat.memberToken,
+      conversationId: chat.conversationId,
+      body: "goodbye",
+    });
+    await request(server())
+      .post(`/messaging/conversations/${chat.conversationId}/read`)
+      .set("Authorization", `Bearer ${chat.leaderToken}`)
+      .expect(201);
+
+    await request(server())
+      .delete(`/user/userdetail/${chat.member.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({ reason: "Requested", confirmationEmail: chat.member.email })
+      .expect(200);
+
+    expect(
+      await ctx.dataSource.getRepository(Participant).findOneByOrFail({
+        conversation: { id: chat.conversationId },
+        user: { id: chat.leader.id },
+      }),
+    ).toMatchObject({ lastReadMessageId: lastRead });
+  });
+
   it("refuses to start a conversation with an account deleted meanwhile", async () => {
     const [initiator, target] = await Promise.all(
       [0, 1].map(() =>
@@ -289,7 +318,10 @@ describe("Messaging soft deletion (e2e)", () => {
     const deletion = ctx.dataSource.createQueryRunner();
     await deletion.startTransaction();
     try {
-      await deletion.manager.delete(User, [target.id]);
+      await softDeleteCascade(deletion.manager, {
+        target: User,
+        ids: [target.id],
+      });
       const started = ctx.app
         .get(ConversationService)
         .createDirectConversation(initiator.id, { targetUserId: target.id });
@@ -316,7 +348,10 @@ describe("Messaging soft deletion (e2e)", () => {
     const deletion = ctx.dataSource.createQueryRunner();
     await deletion.startTransaction();
     try {
-      await deletion.manager.delete(User, [chat.member.id]);
+      await softDeleteCascade(deletion.manager, {
+        target: User,
+        ids: [chat.member.id],
+      });
       const sending = send({
         token: chat.memberToken,
         conversationId: chat.conversationId,
@@ -350,9 +385,13 @@ describe("Messaging soft deletion (e2e)", () => {
     const deletion = ctx.dataSource.createQueryRunner();
     await deletion.startTransaction();
     try {
-      await deletion.manager.delete(Participant, {
-        conversation: { id: conversationId },
-        user: { id: invitee.id },
+      const { id: participantId } = await deletion.manager.findOneByOrFail(
+        Participant,
+        { conversation: { id: conversationId }, user: { id: invitee.id } },
+      );
+      await softDeleteCascade(deletion.manager, {
+        target: Participant,
+        ids: [participantId],
       });
       const accepting = request(server())
         .post(`/messaging/conversations/${conversationId}/accept`)
@@ -394,7 +433,10 @@ describe("Messaging soft deletion (e2e)", () => {
         replyToId: quoted,
       }).then((res) => res.status);
       await waitForLockWait(ctx.dataSource);
-      await deletion.manager.delete(User, [chat.leader.id]);
+      await softDeleteCascade(deletion.manager, {
+        target: User,
+        ids: [chat.leader.id],
+      });
       await deletion.commitTransaction();
       expect(await replying).toBe(400);
     } finally {
@@ -402,5 +444,74 @@ describe("Messaging soft deletion (e2e)", () => {
     }
 
     expect(await userRepo.existsBy({ id: chat.leader.id })).toBe(false);
+  });
+
+  it("keeps a group's chat deleted when a sync renaming it loaded it first", async () => {
+    const chat = await createChat();
+    const conversations = ctx.dataSource.getRepository(Conversation);
+    const { community } = await conversations.findOneOrFail({
+      where: { id: chat.conversationId },
+      relations: { community: true },
+    });
+    await conversations.update(chat.conversationId, { title: "Stale title" });
+    const repo: Repository<Conversation> = ctx.app.get(
+      getRepositoryToken(Conversation),
+    );
+    const findOne = repo.findOne.bind(repo);
+    const loaded = jest
+      .spyOn(repo, "findOne")
+      .mockImplementationOnce(async (options) => {
+        const conversation = await findOne(options);
+        await softDeleteCascade(ctx.dataSource.manager, {
+          target: Community,
+          ids: [community!.id],
+        });
+        return conversation;
+      });
+    try {
+      await expect(
+        ctx.app
+          .get(ConversationService)
+          .syncCommunityConversationMembers(community!.id),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    } finally {
+      loaded.mockRestore();
+    }
+
+    expect(
+      await conversations.findOne({
+        where: { id: chat.conversationId },
+        withDeleted: true,
+      }),
+    ).toMatchObject({ title: "Stale title", deletedAt: expect.any(Date) });
+  });
+
+  it("keeps a reply's quote of a message hidden with its author's account", async () => {
+    const chat = await createChat();
+    const quoted = await sent({
+      token: chat.memberToken,
+      conversationId: chat.conversationId,
+      body: "quoted",
+    });
+    const reply = await sent({
+      token: chat.leaderToken,
+      conversationId: chat.conversationId,
+      body: "reply",
+      replyToId: quoted,
+    });
+
+    await request(server())
+      .delete(`/user/userdetail/${chat.member.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({ reason: "Requested", confirmationEmail: chat.member.email })
+      .expect(200);
+
+    expect(
+      await messageRepo.findOneOrFail({
+        where: { id: reply },
+        relations: { replyTo: true },
+        withDeleted: true,
+      }),
+    ).toMatchObject({ replyTo: { id: quoted } });
   });
 });
