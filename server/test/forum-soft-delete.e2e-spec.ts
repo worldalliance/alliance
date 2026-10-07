@@ -117,6 +117,7 @@ describe("Forum soft deletion (e2e)", () => {
       await ctx.dataSource.getRepository(Comment).findOneOrFail({
         where: { id: parent.id },
         relations: { editableContent: true },
+        withDeleted: true,
       }),
     ).toMatchObject({
       editableContent: {
@@ -124,6 +125,37 @@ describe("Forum soft deletion (e2e)", () => {
         attachments: ["attachment-key.webp"],
       },
     });
+  });
+
+  it("leaves a soft-deleted liker out of a deleted comment's loaded likes", async () => {
+    const author = await member();
+    const liker = await member();
+    const deletedLiker = await member();
+    const postId = await createPost(ctx.accessToken);
+    const deleted = (await comment({ ...author, postId }).expect(201)).body;
+    for (const { token } of [liker, deletedLiker]) {
+      await request(server())
+        .post(`/forum/comments/${deleted.id}/like`)
+        .set("Authorization", `Bearer ${token}`)
+        .expect(201);
+    }
+
+    await userRepo.softDelete(deletedLiker.user.id);
+    await deleteComment(author.token, deleted.id).expect(200);
+
+    const [loaded] = await ctx.app
+      .get(ForumService)
+      .findCommentsForPost(postId);
+    expect(loaded.likes!.map((user) => user.id)).toEqual([liker.user.id]);
+  });
+
+  it("answers a repeated delete of a comment as it did the first", async () => {
+    const author = await member();
+    const postId = await createPost(ctx.accessToken);
+    const deleted = (await comment({ ...author, postId }).expect(201)).body;
+
+    await deleteComment(author.token, deleted.id).expect(200);
+    await deleteComment(author.token, deleted.id).expect(200);
   });
 
   it("unpins a comment when it is deleted", async () => {
@@ -168,6 +200,40 @@ describe("Forum soft deletion (e2e)", () => {
       .patch(`/forum/admin/comments/${deleted.id}/pin`)
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .expect(404);
+  });
+
+  it("refuses to like a deleted post", async () => {
+    const author = await member();
+    const postId = await createPost(author.token);
+    await request(server())
+      .delete(`/forum/posts/${postId}`)
+      .set("Authorization", `Bearer ${author.token}`)
+      .expect(200);
+
+    await request(server())
+      .post(`/forum/posts/${postId}/like`)
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .expect(404);
+  });
+
+  it("leaves comments on a deleted post out of a member's comment list", async () => {
+    const author = await member();
+    const kept = await createPost(ctx.accessToken);
+    const removed = await createPost(author.token);
+    await comment({ ...author, postId: kept }).expect(201);
+    await comment({ ...author, postId: removed }).expect(201);
+    await request(server())
+      .delete(`/forum/posts/${removed}`)
+      .set("Authorization", `Bearer ${author.token}`)
+      .expect(200);
+
+    const listed = await request(server())
+      .get(`/forum/posts/user/${author.user.id}/comments`)
+      .expect(200);
+
+    expect(
+      listed.body.map((entry: CommentDto) => entry.parentObjectId),
+    ).toEqual([kept]);
   });
 
   it("leaves comments on a deleted action out of a member's comment list", async () => {
@@ -423,6 +489,34 @@ describe("Forum soft deletion (e2e)", () => {
     ).toEqual([kept.id]);
   });
 
+  it("leaves a comment its author deleted out of previews and comment lists", async () => {
+    const author = await member();
+    const postId = await createPost(ctx.accessToken);
+    const kept = (await comment({ ...author, postId }).expect(201)).body;
+    const deleted = (await comment({ ...author, postId }).expect(201)).body;
+    await deleteComment(author.token, deleted.id).expect(200);
+
+    const posts = await request(server())
+      .get("/forum/posts")
+      .set("Authorization", `Bearer ${author.token}`)
+      .expect(200);
+    expect(
+      posts.body.find((post: PostDto) => post.id === postId)?.lastComment?.id,
+    ).toBe(kept.id);
+    const listed = await request(server())
+      .get(`/forum/posts/user/${author.user.id}/comments`)
+      .expect(200);
+    expect(listed.body.map((entry: CommentDto) => entry.id)).toEqual([kept.id]);
+    expect(
+      (
+        await ctx.app.get(ForumService).findForumCommentsByUserForFeed({
+          authorId: author.user.id,
+          limit: 10,
+        })
+      ).map((entry) => entry.comment.id),
+    ).toEqual([kept.id]);
+  });
+
   it("counts the undeleted comments a thread shows", async () => {
     const departing = await member();
     const staying = await member();
@@ -445,5 +539,30 @@ describe("Forum soft deletion (e2e)", () => {
     expect(
       posts.body.find((post: PostDto) => post.id === postId)?.commentCount,
     ).toBe(2);
+  });
+
+  it("still flags a deleted post and comment for the previous release", async () => {
+    const author = await member();
+    const postId = await createPost(author.token);
+    const commentId = (await comment({ ...author, postId }).expect(201)).body
+      .id;
+
+    await deleteComment(author.token, commentId).expect(200);
+    await request(server())
+      .delete(`/forum/posts/${postId}`)
+      .set("Authorization", `Bearer ${author.token}`)
+      .expect(200);
+
+    for (const [table, id] of [
+      ["post", postId],
+      ["comment", commentId],
+    ] as const) {
+      expect(
+        await ctx.dataSource.query(
+          `SELECT "deleted", "deletedAt" IS NOT NULL AS "hidden" FROM "${table}" WHERE "id" = $1`,
+          [id],
+        ),
+      ).toEqual([{ deleted: true, hidden: true }]);
+    }
   });
 });

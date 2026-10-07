@@ -83,14 +83,12 @@ export class LikesService {
       where: { id: commentId },
       select: {
         id: true,
-        deleted: true,
         parentObjectType: true,
         parentObjectId: true,
       },
     });
     if (
       !comment ||
-      comment.deleted ||
       (await isCommentHidden(this.commentRepository.manager, comment))
     ) {
       throw new NotFoundException(`Comment with ID "${commentId}" not found`);

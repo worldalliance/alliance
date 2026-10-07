@@ -3352,6 +3352,19 @@ describe("Forum (e2e)", () => {
       expect(page).toContain("Nested reply");
     });
 
+    it("exports a post its author deleted", async () => {
+      const postId = await createPostWithThread();
+      await request(ctx.app.getHttpServer())
+        .delete(`/forum/posts/${postId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const page = await exportPage(postId);
+
+      expect(page).toContain("Archived Post");
+      expect(page).toContain("Top level comment");
+    });
+
     it("embeds an attachment in the page", async () => {
       const s3 = ctx.app.get<{
         send: (command: GetObjectCommand) => Promise<GetObjectCommandOutput>;

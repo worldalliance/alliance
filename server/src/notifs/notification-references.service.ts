@@ -117,7 +117,7 @@ export class NotificationReferencesService {
     const [loadedComments, actionUpdates] = await Promise.all([
       findIn(idsOf(targets, ContentTargetType.Comment), (id) =>
         repo(this.commentRepository).find({
-          where: { id, deleted: false },
+          where: { id },
           relations: { author: true, editableContent: true },
         }),
       ),

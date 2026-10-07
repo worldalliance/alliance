@@ -60,7 +60,7 @@ export async function countThreadComments(
      FROM comment c
      WHERE c."parentObjectType" = $1
        AND c."parentObjectId" = ANY($2)
-       AND NOT c.deleted
+       AND c."deletedAt" IS NULL
        AND NOT (c.id = ANY($3))
      GROUP BY c."parentObjectId"`,
     [CommentParentObject.Post, params.postIds, params.hiddenIds],
