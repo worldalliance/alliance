@@ -22,9 +22,10 @@ export class LinkOpening {
   @Column({ type: "uuid" })
   openingId: string;
 
+  /** Null for a legacy link with no recoverable recipient. */
   @Index()
-  @Column()
-  messageTrackingId: number;
+  @Column({ type: "integer", nullable: true })
+  messageTrackingId: number | null;
 
   @ManyToOne(() => MessageTracking, { onDelete: "CASCADE" })
   @JoinColumn({ name: "messageTrackingId" })

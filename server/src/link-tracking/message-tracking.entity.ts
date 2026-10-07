@@ -21,6 +21,8 @@ import { z } from "zod";
 export enum MessageChannel {
   Email = "email",
   Sms = "sms",
+  /** A legacy link whose ID both an email and a text carried. */
+  Unknown = "unknown",
 }
 
 export enum MessageSource {
@@ -103,6 +105,13 @@ export class MessageTracking {
 
   @Column({ type: "enum", enum: MessageChannel })
   channel: MessageChannel;
+
+  /**
+   * Recovered on its first opening from a link sent before tracking; its
+   * context is as of that opening.
+   */
+  @Column({ default: false })
+  legacy: boolean;
 
   @Column({ type: "enum", enum: MessageSource })
   source: MessageSource;

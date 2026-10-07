@@ -100,6 +100,7 @@ export class ActionUpdateExposure {
 
   /** The shared tracking ID of an exposure prepared before each message got
    * its own; no longer written. */
+  @Index({ where: `"cid" IS NOT NULL` })
   @Column({ type: "varchar", nullable: true })
   cid: string | null;
 

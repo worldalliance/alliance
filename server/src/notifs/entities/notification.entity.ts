@@ -220,6 +220,7 @@ export class Notification {
 
   /** The shared tracking ID of a forum reply or missed-suite notice sent
    * before each message got its own; no longer written. */
+  @Index({ where: `"cid" IS NOT NULL` })
   @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   cid: string | null;

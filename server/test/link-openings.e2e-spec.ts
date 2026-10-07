@@ -139,6 +139,7 @@ describe("Link openings (e2e)", () => {
     expect(tracking).toMatchObject({
       channel: MessageChannel.Sms,
       userId: member.id,
+      legacy: false,
     });
     expect(await openings().countBy({ messageTrackingId: tracking!.id })).toBe(
       1,
