@@ -105,6 +105,7 @@ export enum ReferralSource {
    OR "inviteAssignmentKind" IS NOT DISTINCT FROM 'community'`,
 )
 @Index(["referredByShareUrl"])
+@Index(["id"], { where: '"deletedAt" IS NOT NULL' })
 @Entity()
 export class User {
   // Fields

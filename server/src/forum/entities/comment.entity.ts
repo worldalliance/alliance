@@ -9,6 +9,7 @@ import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   JoinTable,
   ManyToMany,
@@ -29,6 +30,8 @@ export enum CommentParentObject {
 }
 
 @Entity()
+@Index(["authorId"])
+@Index(["parentId"])
 export class Comment {
   @PrimaryGeneratedColumn()
   @ApiProperty()
