@@ -1,4 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
+import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
 import {
   Children,
   isValidElement,
@@ -7,7 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useMediaQuery } from "../lib/useMediaQuery";
 
 type ColumnBreakpoints = {
   default: number;

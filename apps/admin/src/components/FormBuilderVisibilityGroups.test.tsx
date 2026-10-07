@@ -15,6 +15,14 @@ import {
 } from "@testing-library/react";
 import { useState } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import {
+  canvasGroups,
+  insertElement,
+  openSection,
+  selectElement,
+  selectGroup,
+  settings,
+} from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 import { FormBuilder } from "./FormBuilder";
 
@@ -40,49 +48,61 @@ const schemaWith = (fields: PageItem[]): FormSchema => ({
   aggregateViews: [],
 });
 
-const groupCards = () =>
-  screen.queryAllByRole("region", { name: "Visibility group" });
 const memberCounts = () =>
-  groupCards().map(
-    (card) => within(card).getByText(/^Shared visibility/).textContent,
+  canvasGroups().map(
+    (group) => within(group).getByText(/^Shared visibility/).textContent,
   );
 const saveButton = () =>
   screen.getByRole("button", { name: /No changes|Save Form/ });
+const openGroup = (
+  index: number,
+  section: "Content" | "Conditions" = "Conditions",
+) => {
+  selectGroup(canvasGroups()[index]!);
+  openSection(section);
+};
+const splitButtons = () =>
+  settings().getAllByRole("button", { name: /^Split group before / });
+const detachButtons = () =>
+  settings().getAllByRole("button", {
+    name: /^Edit .* visibility separately$/,
+  });
 
 describe("FormBuilder visibility groups", () => {
   it("wraps matching neighbors in one group with a shared summary", () => {
     renderFormBuilder(schemaWith([text("a", X), text("b", X), text("c")]));
-    const [card] = groupCards();
-    expect(groupCards()).toHaveLength(1);
+    const [group] = canvasGroups();
+    expect(canvasGroups()).toHaveLength(1);
     expect(
-      within(card).getByText("Shared visibility · 2 elements"),
+      within(group!).getByText("Shared visibility · 2 elements"),
     ).toBeTruthy();
     expect(
-      within(card).getByText("Shown when Label q is answered"),
+      within(group!).getByText("Shown when Label q is answered"),
     ).toBeTruthy();
-    expect(
-      within(card).getAllByRole("button", {
-        name: "Edit visibility separately",
-      }),
-    ).toHaveLength(2);
+    openGroup(0, "Content");
+    expect(detachButtons()).toHaveLength(2);
   });
 
-  it("splits and collapses without marking the form unsaved", () => {
-    renderFormBuilder(schemaWith([text("a", X), text("b", X), text("c", X)]));
-    const [card] = groupCards();
-    fireEvent.click(
-      within(card).getByRole("button", { name: "Collapse group" }),
-    );
-    expect(within(card).queryByDisplayValue("Label a")).toBeNull();
+  it("opens a group's shared rule, and its members from there", () => {
+    renderFormBuilder(schemaWith([text("a", X), text("b", X)]));
+    selectGroup(canvasGroups()[0]!);
     expect(
-      within(card).getByText("Shared visibility · 3 elements"),
-    ).toBeTruthy();
-    fireEvent.click(within(card).getByRole("button", { name: "Expand group" }));
-
+      screen
+        .getByRole("tab", { name: "Conditions" })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+    openSection("Content");
     fireEvent.click(
-      within(card).getAllByRole("button", { name: "Split group here" })[1],
+      settings().getByRole("button", { name: "Text Field: Label b" }),
     );
-    expect(groupCards()).toHaveLength(1);
+    expect(settings().getByDisplayValue("Label b")).toBeTruthy();
+  });
+
+  it("splits without marking the form unsaved", () => {
+    renderFormBuilder(schemaWith([text("a", X), text("b", X), text("c", X)]));
+    openGroup(0, "Content");
+    fireEvent.click(splitButtons()[1]!);
+    expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
     expect(saveButton().textContent).toBe("No changes");
   });
 
@@ -94,41 +114,40 @@ describe("FormBuilder visibility groups", () => {
       formula: "condition1",
     };
     renderFormBuilder(schemaWith([text("a", named), text("b", named)]));
+    openGroup(0);
     fireEvent.click(
-      within(groupCards()[0]).getByRole("button", {
-        name: "Edit as expression",
-      }),
+      settings().getByRole("button", { name: "Edit as expression" }),
     );
-    fireEvent.change(
-      within(groupCards()[0]).getByRole("textbox", { name: "Expression" }),
-      { target: { value: "NOT condition1" } },
-    );
-    const [card] = groupCards();
+    fireEvent.change(settings().getByRole("textbox", { name: "Expression" }), {
+      target: { value: "NOT condition1" },
+    });
     expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
     expect(
-      within(card).getByText("Shown when NOT Label q is answered"),
+      within(canvasGroups()[0]!).getByText(
+        "Shown when NOT Label q is answered",
+      ),
     ).toBeTruthy();
     expect(saveButton().textContent).toBe("Save Form");
   });
 
   it("clearing shared visibility dissolves the group and dirties the form", () => {
     renderFormBuilder(schemaWith([text("a", X), text("b", X)]));
+    openGroup(0);
     fireEvent.click(screen.getByRole("button", { name: "Clear visibility" }));
-    expect(groupCards()).toHaveLength(0);
+    expect(canvasGroups()).toHaveLength(0);
     expect(saveButton().textContent).toBe("Save Form");
   });
 
   it("joins a neighbor by adopting its condition", () => {
     renderFormBuilder(schemaWith([text("a", X), text("b", X), text("c")]));
+    selectElement("Label c");
+    openSection("Conditions");
     fireEvent.click(
       screen.getByRole("button", {
         name: "Share the previous element's visibility",
       }),
     );
-    const [card] = groupCards();
-    expect(
-      within(card).getByText("Shared visibility · 3 elements"),
-    ).toBeTruthy();
+    expect(memberCounts()).toEqual(["Shared visibility · 3 elements"]);
     expect(saveButton().textContent).toBe("Save Form");
   });
 
@@ -136,36 +155,45 @@ describe("FormBuilder visibility groups", () => {
     renderFormBuilder(
       schemaWith([text("a", X), text("b", X), text("c", shownWhen("a"))]),
     );
+    selectElement("Label c");
+    openSection("Conditions");
     fireEvent.click(
       screen.getByRole("button", {
         name: "Use the previous element's visibility, replacing this element's",
       }),
     );
-    expect(
-      within(groupCards()[0]).getByText("Shared visibility · 3 elements"),
-    ).toBeTruthy();
+    expect(memberCounts()).toEqual(["Shared visibility · 3 elements"]);
   });
 
   it("merges split halves that share a condition in one click", () => {
     renderFormBuilder(
       schemaWith([text("a", X), text("b", X), text("c", X), text("d", X)]),
     );
+    openGroup(0, "Content");
+    fireEvent.click(splitButtons()[1]!);
+    expect(canvasGroups()).toHaveLength(2);
+    openSection("Conditions");
     fireEvent.click(
-      within(groupCards()[0]).getAllByRole("button", {
-        name: "Split group here",
-      })[1],
+      settings().getByRole("button", { name: "Merge with the next group" }),
     );
-    expect(groupCards()).toHaveLength(2);
-    fireEvent.click(
-      within(groupCards()[0]).getByRole("button", {
-        name: "Merge with the next group",
-      }),
-    );
-    expect(groupCards()).toHaveLength(1);
-    expect(
-      within(groupCards()[0]).getByText("Shared visibility · 4 elements"),
-    ).toBeTruthy();
+    expect(memberCounts()).toEqual(["Shared visibility · 4 elements"]);
     expect(saveButton().textContent).toBe("No changes");
+  });
+
+  it("keeps the merged group selected after merging into the previous one", () => {
+    renderFormBuilder(
+      schemaWith([text("a", X), text("b", X), text("c", X), text("d", X)]),
+    );
+    openGroup(0, "Content");
+    fireEvent.click(splitButtons()[1]!);
+    openGroup(1);
+    fireEvent.click(
+      settings().getByRole("button", { name: "Merge with the previous group" }),
+    );
+    expect(memberCounts()).toEqual(["Shared visibility · 4 elements"]);
+    expect(settings().getAllByRole("heading")[0]?.textContent).toBe(
+      "Shared visibility",
+    );
   });
 
   it("merges groups with different conditions under the chosen one", () => {
@@ -177,59 +205,50 @@ describe("FormBuilder visibility groups", () => {
         text("d", shownWhen("a")),
       ]),
     );
+    openGroup(0);
     fireEvent.click(
-      within(groupCards()[0]).getByRole("button", {
-        name: "Merge with the next group",
-      }),
+      settings().getByRole("button", { name: "Merge with the next group" }),
     );
     fireEvent.click(
       screen.getByRole("button", { name: /Use previous group's visibility/ }),
     );
-    const [card] = groupCards();
-    expect(groupCards()).toHaveLength(1);
+    expect(memberCounts()).toEqual(["Shared visibility · 4 elements"]);
     expect(
-      within(card).getByText("Shared visibility · 4 elements"),
-    ).toBeTruthy();
-    expect(
-      within(card).getByText("Shown when Label q is answered"),
+      within(canvasGroups()[0]!).getByText("Shown when Label q is answered"),
     ).toBeTruthy();
   });
 
   it("gives an element added inside a group the group's condition", () => {
     renderFormBuilder(schemaWith([text("a", X), text("b", X)]));
-    const [card] = groupCards();
-    const addButtons = within(card).getAllByTitle("Add element here");
-    fireEvent.click(addButtons[addButtons.length - 1]);
-    fireEvent.change(screen.getByPlaceholderText(/Type to search/), {
-      target: { value: "Email" },
-    });
-    fireEvent.click(
-      screen.getByRole("button", { name: /^Email Field\s*Field$/ }),
+    const addButtons = within(canvasGroups()[0]!).getAllByTitle(
+      "Add element here",
     );
-    expect(
-      within(groupCards()[0]).getByText("Shared visibility · 3 elements"),
-    ).toBeTruthy();
+    insertElement(addButtons[addButtons.length - 1]!, "Email Field");
+    expect(memberCounts()).toEqual(["Shared visibility · 3 elements"]);
   });
 
   it("offers copying an existing element only outside a group", () => {
-    const searchCopyAt = (addButton: (cards: HTMLElement[]) => HTMLElement) => {
+    const searchCopyAt = (
+      addButton: (groups: HTMLElement[]) => HTMLElement,
+    ) => {
       cleanup();
       renderFormBuilder(schemaWith([text("a", X), text("b", X)]));
-      fireEvent.click(addButton(groupCards()));
-      fireEvent.change(screen.getByPlaceholderText(/Type to search/), {
-        target: { value: "Copy Existing" },
-      });
+      fireEvent.click(addButton(canvasGroups()));
+      fireEvent.change(
+        screen.getByRole("textbox", { name: "Search elements" }),
+        { target: { value: "Copy Existing" } },
+      );
       return screen.queryByRole("button", {
         name: /^Copy Existing Element\s*Copy$/,
       });
     };
     expect(
       searchCopyAt(
-        ([card]) => within(card).getAllByTitle("Add element here")[0],
+        ([group]) => within(group!).getAllByTitle("Add element here")[0]!,
       ),
     ).toBeNull();
     expect(
-      searchCopyAt(() => screen.getAllByTitle("Add element here")[0]),
+      searchCopyAt(() => screen.getAllByTitle("Add element here")[0]!),
     ).not.toBeNull();
   });
 
@@ -239,47 +258,36 @@ describe("FormBuilder visibility groups", () => {
     expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
   });
 
-  it("leaves no empty options menu on a grouped accordion", () => {
-    renderFormBuilder(
-      schemaWith([
-        text("a", X),
-        {
-          id: "acc",
-          type: "display",
-          kind: "accordion",
-          sections: [],
-          visibleIfFormula: X,
-        },
-      ]),
-    );
+  it("points a grouped member's conditions at its group", () => {
+    renderFormBuilder(schemaWith([text("a", X), text("b", X)]));
+    selectElement("Label a");
+    openSection("Conditions");
     expect(
-      within(groupCards()[0]).queryByRole("button", {
-        name: "Display block options",
-      }),
-    ).toBeNull();
+      settings().getByText("Visibility is shared with its group."),
+    ).toBeTruthy();
+    expect(settings().queryByRole("button", { name: "Add rule" })).toBeNull();
   });
 
   it("ungrouping or detaching keeps the form saved", () => {
     renderFormBuilder(schemaWith([text("a", X), text("b", X), text("c", X)]));
-    fireEvent.click(
-      within(groupCards()[0]).getAllByRole("button", {
-        name: "Edit visibility separately",
-      })[0],
-    );
-    expect(
-      within(groupCards()[0]).getByText("Shared visibility · 2 elements"),
-    ).toBeTruthy();
+    openGroup(0, "Content");
+    fireEvent.click(detachButtons()[0]!);
+    expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
+    openSection("Conditions");
     fireEvent.click(screen.getByRole("button", { name: "Ungroup all" }));
-    expect(groupCards()).toHaveLength(0);
+    expect(canvasGroups()).toHaveLength(0);
     expect(saveButton().textContent).toBe("No changes");
   });
 
-  it("shows a self-dependency error inside the group", () => {
+  it("flags a group's errors on the canvas, and lists them in its settings", () => {
     renderFormBuilder(
       schemaWith([text("a", shownWhen("a")), text("b", shownWhen("a"))]),
     );
-    const [card] = groupCards();
-    expect(within(card).getByRole("alert").textContent).toBe(
+    expect(
+      within(canvasGroups()[0]!).getByText("1 member with errors"),
+    ).toBeTruthy();
+    openGroup(0);
+    expect(settings().getByRole("alert").textContent).toBe(
       'Label a: Visibility of "a" depends on its own answer',
     );
   });
@@ -292,7 +300,8 @@ describe("FormBuilder visibility groups", () => {
       formula: "c1",
     };
     renderFormBuilder(schemaWith([text("a", badDate), text("b", badDate)]));
-    const items = within(within(groupCards()[0]).getByRole("alert"))
+    openGroup(0);
+    const items = within(settings().getByRole("alert"))
       .getAllByRole("listitem")
       .map((item) => item.textContent?.split(":")[0]);
     expect(items).toEqual(["Label a", "Label b"]);
@@ -348,34 +357,24 @@ describe("FormBuilder visibility groups across loads", () => {
 
   it("regroups when the whole form's JSON is replaced", async () => {
     renderFormBuilder(grouped);
-    fireEvent.click(
-      within(groupCards()[0]).getAllByRole("button", {
-        name: "Split group here",
-      })[0],
-    );
-    expect(
-      within(groupCards()[0]).getByText("Shared visibility · 2 elements"),
-    ).toBeTruthy();
+    openGroup(0, "Content");
+    fireEvent.click(splitButtons()[0]!);
+    expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
     await applyFormJson(grouped);
-    expect(
-      within(groupCards()[0]).getByText("Shared visibility · 3 elements"),
-    ).toBeTruthy();
+    expect(memberCounts()).toEqual(["Shared visibility · 3 elements"]);
   });
 
   const splitHalves = () => {
     renderFormBuilder(
       schemaWith([text("a", X), text("b", X), text("c", X), text("d", X)]),
     );
-    fireEvent.click(
-      within(groupCards()[0]).getAllByRole("button", {
-        name: "Split group here",
-      })[1],
-    );
+    openGroup(0, "Content");
+    fireEvent.click(splitButtons()[1]!);
   };
   const applyElementJson = async (element: PageItem) => {
-    fireEvent.click(
-      screen.getAllByRole("button", { name: "Edit element JSON" })[1],
-    );
+    selectElement("Label a");
+    openSection("Advanced");
+    fireEvent.click(screen.getByRole("button", { name: "Edit element JSON" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Element JSON" }), {
       target: { value: JSON.stringify(element) },
     });
@@ -407,26 +406,20 @@ describe("FormBuilder visibility groups across loads", () => {
 
   it("keeps a group's unsaved expression when its first member detaches", async () => {
     renderFormBuilder(schemaWith([text("a", X), text("b", X), text("c", X)]));
-    const [card] = groupCards();
+    openGroup(0);
     fireEvent.click(
-      within(card!).getByRole("button", { name: "Edit as expression" }),
+      settings().getByRole("button", { name: "Edit as expression" }),
     );
-    fireEvent.change(
-      within(card!).getByRole("textbox", { name: "Expression" }),
-      {
-        target: { value: "c1 AND" },
-      },
-    );
+    fireEvent.change(settings().getByRole("textbox", { name: "Expression" }), {
+      target: { value: "c1 AND" },
+    });
     await act(async () => {});
 
-    fireEvent.click(
-      within(card!).getAllByRole("button", {
-        name: "Edit visibility separately",
-      })[0]!,
-    );
-    const [remaining] = groupCards();
+    openSection("Content");
+    fireEvent.click(detachButtons()[0]!);
+    openSection("Conditions");
     expect(
-      within(remaining!).getByRole<HTMLTextAreaElement>("textbox", {
+      settings().getByRole<HTMLTextAreaElement>("textbox", {
         name: "Expression",
       }).value,
     ).toBe("c1 AND");
@@ -445,17 +438,11 @@ describe("FormBuilder visibility groups across loads", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Apply id and kind changes" }),
     );
-    fireEvent.click(
-      within(groupCards()[0]).getAllByRole("button", {
-        name: "Split group here",
-      })[0],
-    );
+    openGroup(0, "Content");
+    fireEvent.click(splitButtons()[0]!);
     fireEvent.click(screen.getByRole("button", { name: "Save Form" }));
     await waitFor(() => expect(saveButton().textContent).toBe("No changes"));
     await act(async () => {});
-    expect(groupCards()).toHaveLength(1);
-    expect(
-      within(groupCards()[0]).getByText("Shared visibility · 2 elements"),
-    ).toBeTruthy();
+    expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
   });
 });

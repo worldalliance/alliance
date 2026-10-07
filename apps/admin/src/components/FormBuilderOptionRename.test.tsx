@@ -3,6 +3,7 @@ import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula
 import { client } from "@alliance/shared/client/client.gen";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { z } from "zod";
+import { selectElement } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 
 afterEach(cleanup);
@@ -86,6 +87,7 @@ describe("FormBuilder option value rename", () => {
       },
     });
     renderFormBuilder(schema, 1);
+    selectElement("Ctrl");
 
     const valueInput = screen
       .getAllByPlaceholderText<HTMLInputElement>("Value")

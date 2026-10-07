@@ -14,9 +14,6 @@ export function EditableRadioField({
   field,
   onUpdate,
   onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
   previousFields,
   laterFields,
 }: BaseFieldProps<RadioField>) {
@@ -73,9 +70,6 @@ export function EditableRadioField({
       previousFields={previousFields}
       laterFields={laterFields}
       onRemove={onRemove}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      isDragging={isDragging}
     >
       <FieldLabelEditor
         value={field.label}

@@ -12,7 +12,6 @@ import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
 import type { ConditionSourceFields } from "../../lib/conditionSourceFields";
 import { updateListSubField } from "../../lib/updateListSubField";
-import { ElementJsonContext } from "../FormJsonButton";
 import {
   formFieldsErrorReason,
   FormPickerError,
@@ -125,13 +124,7 @@ function renderSubFieldEditor<K extends ListSubFieldKind>(
   props: BaseFieldProps<FieldOfKind[K]>,
 ) {
   const Editor: FieldEditor<K> | null = LIST_SUB_FIELD_EDITORS[kind];
-  return (
-    Editor && (
-      <ElementJsonContext.Provider value={null}>
-        <Editor {...props} />
-      </ElementJsonContext.Provider>
-    )
-  );
+  return Editor && <Editor {...props} />;
 }
 
 function renderEditableSubField(
@@ -148,7 +141,6 @@ function renderEditableSubField(
         onUpdate: (updates) => updateSubField(index, updates),
         onRemove: () => removeSubField(index),
         ...sources,
-        isDragging: false,
       })}
     </ElementExpressionScope>
   );
@@ -158,9 +150,6 @@ export function EditableListField({
   field,
   onUpdate,
   onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
   previousFields,
   laterFields,
 }: BaseFieldProps<ListField>) {
@@ -209,9 +198,6 @@ export function EditableListField({
       previousFields={previousFields}
       laterFields={laterFields}
       onRemove={onRemove}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      isDragging={isDragging}
     >
       <FieldLabelEditor
         value={field.label}

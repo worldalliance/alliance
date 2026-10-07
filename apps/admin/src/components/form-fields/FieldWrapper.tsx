@@ -6,17 +6,14 @@ import {
   CustomValidatorType,
   tasksFindOneCustomValidatorAdmin,
 } from "@alliance/shared/client";
-import { cn } from "@alliance/shared/styles/util";
 import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import RenderField from "@alliance/sharedweb/forms/RenderField";
 import { useEffect, useState } from "react";
 import { FORM_BUILDER_PREVIEW_USER } from "../../lib/testData";
-import { ElementJsonButton } from "../FormJsonButton";
 import {
-  JoinVisibilityButtons,
-  SharedVisibilityNotice,
-  useVisibilityGroupMember,
-} from "../VisibilityGroupContext";
+  SectionPanels,
+  useSidebarSections,
+} from "../form-canvas/sidebarSections";
 import {
   CustomValidatorSelect,
   OutputFieldToggle,
@@ -24,6 +21,7 @@ import {
 } from "./CommonControls";
 import { ConditionalVisibility } from "./conditions/ConditionalVisibility";
 import { useTypedExpression } from "./conditions/expressionBuffers";
+import { ElementConditions } from "./conditions/VisibilityConditions";
 import {
   isDraftValidatorId,
   useCustomValidatorDrafts,
@@ -33,7 +31,7 @@ import {
   hasExtractionEnabled,
   supportsExtraction,
 } from "./fieldExtraction";
-import { FieldExtraMenu } from "./FieldExtraMenu";
+import { FieldExtraMenu, FieldExtraOptions } from "./FieldExtraMenu";
 import type { FieldWrapperProps } from "./types";
 
 function isFormField(field: unknown): field is AnyField {
@@ -49,12 +47,9 @@ export function FieldWrapper<T extends AnyField>({
   laterFields,
   onRemove,
   children,
-  onDragStart,
-  onDragEnd,
-  isDragging,
 }: FieldWrapperProps<T>) {
   const isCurrentFormField = isFormField(field);
-  const groupMember = useVisibilityGroupMember(field.id);
+  const sidebar = useSidebarSections();
   const { createDraftId, drafts, removeDraft, setDraft } =
     useCustomValidatorDrafts();
   const [showCustomValidatorControl, setShowCustomValidatorControl] = useState(
@@ -265,47 +260,79 @@ export function FieldWrapper<T extends AnyField>({
     } as unknown as Partial<T>);
   };
 
-  return (
-    <div
-      className={cn(
-        "group relative border rounded-lg transition-all [&_input,&_textarea]:bg-white",
-        isDragging
-          ? "border-blue-400 shadow-lg opacity-50"
-          : "border-gray-200 hover:border-gray-300",
+  const outputToggles = isCurrentFormField && field.kind !== "custom" && (
+    <div className="mt-2 flex items-center gap-4">
+      <OutputFieldToggle
+        checked={Boolean(field.output?.output)}
+        onChange={handleOutputFieldToggle}
+      />
+      {field.output?.output && (
+        <OutputPrivateByDefaultToggle
+          checked={Boolean(field.output?.privateByDefault)}
+          onChange={handleOutputPrivateByDefaultToggle}
+        />
       )}
-    >
-      {/* Drag handle */}
-      <div
-        className="absolute -left-3 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity"
-        draggable
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        title="Drag to reorder"
-      >
-        <div className="text-gray-400 hover:text-gray-600 p-2 pr-1 bg-white shadow-lg rounded-sm">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-            <circle cx="2" cy="2" r="1" />
-            <circle cx="6" cy="2" r="1" />
-            <circle cx="2" cy="6" r="1" />
-            <circle cx="6" cy="6" r="1" />
-            <circle cx="2" cy="10" r="1" />
-            <circle cx="6" cy="10" r="1" />
-          </svg>
-        </div>
-      </div>
+    </div>
+  );
+  const customValidatorSelect = (
+    <CustomValidatorSelect
+      type={customValidatorType}
+      idArgument={customValidatorIdArgument}
+      expression={customValidatorExpression}
+      onChange={handleValidatorChange}
+    />
+  );
 
+  if (sidebar) {
+    return (
+      <SectionPanels
+        content={<div className="space-y-3">{children}</div>}
+        conditions={
+          <ElementConditions
+            field={field}
+            previousFields={previousFields || []}
+            laterFields={laterFields}
+            onChange={handleVisibilityChange}
+          />
+        }
+        advanced={
+          isCurrentFormField && (
+            <div className="space-y-3 text-sm">
+              <div className="-mx-3">
+                <FieldExtraOptions
+                  field={field}
+                  showCustomValidatorControl={showCustomValidatorControl}
+                  onCustomValidatorToggle={handleCustomValidatorToggle}
+                  onExtractionToggle={handleExtractionToggle}
+                  onCheckboxExtractionTargetChange={
+                    handleCheckboxExtractionTargetChange
+                  }
+                />
+              </div>
+              {supportsExtraction(field) && hasExtractionEnabled(field) && (
+                <p className="text-xs text-blue-600">
+                  {getExtractionLabel(field)}
+                </p>
+              )}
+              {showCustomValidatorControl && customValidatorSelect}
+              {outputToggles}
+            </div>
+          )
+        }
+      />
+    );
+  }
+
+  return (
+    <div className="relative border rounded-lg transition-all [&_input,&_textarea]:bg-white border-gray-200 hover:border-gray-300">
       <div className="mb-1 flex items-center justify-end gap-1 absolute right-0 top-0 bg-white rounded-lg">
-        <JoinVisibilityButtons elementId={field.id} />
-        <ElementJsonButton />
         {isCurrentFormField && (
           <FieldExtraMenu
             field={field}
             showCustomValidatorControl={showCustomValidatorControl}
             onCustomValidatorToggle={handleCustomValidatorToggle}
             showConditionalVisibilityControl={showConditionalVisibilityControl}
-            onConditionalVisibilityToggle={
-              groupMember ? null : handleConditionalVisibilityToggle
-            }
+            onConditionalVisibilityToggle={handleConditionalVisibilityToggle}
             onExtractionToggle={handleExtractionToggle}
             onCheckboxExtractionTargetChange={
               handleCheckboxExtractionTargetChange
@@ -325,20 +352,7 @@ export function FieldWrapper<T extends AnyField>({
       <div className="space-y-3">
         <div className="bg-gray-100 p-4 rounded-t-lg space-y-2">
           {children}
-          {isCurrentFormField && field.kind !== "custom" && (
-            <div className="mt-2 flex items-center gap-4">
-              <OutputFieldToggle
-                checked={Boolean(field.output?.output)}
-                onChange={handleOutputFieldToggle}
-              />
-              {field.output?.output && (
-                <OutputPrivateByDefaultToggle
-                  checked={Boolean(field.output?.privateByDefault)}
-                  onChange={handleOutputPrivateByDefaultToggle}
-                />
-              )}
-            </div>
-          )}
+          {outputToggles}
         </div>
         {isCurrentFormField && (
           <div className="p-4 pt-0 mb-0">
@@ -370,20 +384,11 @@ export function FieldWrapper<T extends AnyField>({
             )}
           </div>
         )}
-        {groupMember && <SharedVisibilityNotice detach={groupMember.detach} />}
         {isCurrentFormField &&
-          (showCustomValidatorControl ||
-            (showConditionalVisibilityControl && !groupMember)) && (
+          (showCustomValidatorControl || showConditionalVisibilityControl) && (
             <div className="space-y-2 border-t border-gray-200 p-4">
-              {showCustomValidatorControl && (
-                <CustomValidatorSelect
-                  type={customValidatorType}
-                  idArgument={customValidatorIdArgument}
-                  expression={customValidatorExpression}
-                  onChange={handleValidatorChange}
-                />
-              )}
-              {showConditionalVisibilityControl && !groupMember && (
+              {showCustomValidatorControl && customValidatorSelect}
+              {showConditionalVisibilityControl && (
                 <ConditionalVisibility
                   field={field}
                   previousFields={previousFields || []}

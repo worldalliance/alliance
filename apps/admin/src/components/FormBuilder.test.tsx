@@ -1,6 +1,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { client } from "@alliance/shared/client/client.gen";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { openSection, selectElement } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 
 afterEach(cleanup);
@@ -115,6 +116,7 @@ describe("FormBuilder save conflict with an options formula", () => {
     });
     jest.spyOn(window, "confirm").mockReturnValue(true);
     renderBuilder(withFormula);
+    selectElement("Pick");
 
     fireEvent.click(
       screen.getByRole("button", { name: "What you can write here" }),
@@ -419,11 +421,11 @@ describe("FormBuilder save once a source form loads", () => {
   });
 });
 
-describe("FormBuilder page visibility toggle", () => {
+describe("FormBuilder page conditions", () => {
   const { baseUrl, fetch } = client.getConfig();
   afterEach(() => client.setConfig({ baseUrl, fetch }));
 
-  it("follows the selected page's conditions when switching pages", () => {
+  it("follow the selected page when switching pages", () => {
     const hasCity = {
       conditions: { c1: { kind: "userHasCity", userHasCity: true } },
       formula: "c1",
@@ -440,19 +442,15 @@ describe("FormBuilder page visibility toggle", () => {
         { id: "p3", title: "Three", fields: [], visibleIfFormula: hasCity },
       ],
     });
-    const toggle = () =>
-      screen.getByLabelText<HTMLInputElement>(
-        "Use conditional visibility for this page",
-      );
+    const conditionsOf = (title: string) => {
+      fireEvent.click(screen.getByRole("button", { name: title }));
+      openSection("Conditions");
+      return screen.queryAllByRole("listitem", { name: /^Rule / }).length;
+    };
 
-    expect(toggle().checked).toBe(false);
-    fireEvent.click(toggle());
-    expect(toggle().checked).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Two" }));
-    expect(toggle().checked).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Three" }));
-    expect(toggle().checked).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "One" }));
-    expect(toggle().checked).toBe(false);
+    expect(conditionsOf("One")).toBe(0);
+    expect(conditionsOf("Two")).toBe(1);
+    expect(conditionsOf("Three")).toBe(1);
+    expect(conditionsOf("One")).toBe(0);
   });
 });

@@ -6,7 +6,6 @@ import { pickForCount, withCount } from "@alliance/common/plural";
 import { imageUploadFailed } from "@alliance/shared/lib/copy";
 import { uploadImageDataUri } from "@alliance/shared/lib/uploadImageDataUri";
 import { cn } from "@alliance/shared/styles/util";
-import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { resolveImageSrc } from "@alliance/sharedweb/lib/imageSrc";
 import { readFileDataUri } from "@alliance/sharedweb/lib/readFileDataUri";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
@@ -35,6 +34,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { VariableTextField } from "../VariableTextField";
+import { BlockPreview } from "./BlockPreview";
 import {
   DisplayBlockWrapper,
   type BlockWriteLanding,
@@ -441,11 +441,7 @@ function ImagesEditor({
         </DndContext>
       )}
 
-      {images.length > 0 && (
-        <div className="border-t border-gray-200 pt-2">
-          <RenderDisplayBlock block={block} />
-        </div>
-      )}
+      {images.length > 0 && <BlockPreview block={block} />}
     </div>
   );
 }

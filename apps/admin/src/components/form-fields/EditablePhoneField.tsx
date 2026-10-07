@@ -8,9 +8,6 @@ export function EditablePhoneField({
   field,
   onUpdate,
   onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
   previousFields,
   laterFields,
 }: BaseFieldProps<PhoneField>) {
@@ -21,9 +18,6 @@ export function EditablePhoneField({
       previousFields={previousFields}
       laterFields={laterFields}
       onRemove={onRemove}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      isDragging={isDragging}
     >
       <FieldLabelEditor
         value={field.label}

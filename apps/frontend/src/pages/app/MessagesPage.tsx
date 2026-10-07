@@ -21,6 +21,7 @@ import {
 } from "@alliance/shared/lib/messages";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
 import { cn } from "@alliance/shared/styles/util";
+import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -31,7 +32,6 @@ import ConversationDetailPanel from "../../components/ConversationDetailPanel";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
 import { useAuth } from "../../lib/AuthContext";
 import { useNavbarOptions } from "../../lib/NavbarOptionsContext";
-import { useMediaQuery } from "../../lib/useMediaQuery";
 import useLiveConvoMessages, { useConversations } from "./messages";
 
 const MessagesPage = () => {

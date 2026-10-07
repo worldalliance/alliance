@@ -1,6 +1,7 @@
 import type { FormSchema, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { openSection, selectElement } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 
 afterEach(cleanup);
@@ -76,6 +77,7 @@ it("gives each list sub-field its own expression text", async () => {
       },
     ]),
   );
+  selectElement("People");
   editAsExpression();
   await typeExpression("c1 AND");
   editAsExpression();
@@ -118,6 +120,8 @@ it("shows the pasted formula as rules after Apply JSON, not stale typed text", a
     },
   ]);
   renderFormBuilder(schema);
+  selectElement("A");
+  openSection("Conditions");
   editAsExpression();
   await typeExpression("c1 AND");
 
@@ -155,6 +159,11 @@ it("keeps an id-less block's text out of history, for only as long as it is moun
       },
     ]),
   );
+  const openBlockConditions = () => {
+    selectElement("Text Block: A");
+    openSection("Conditions");
+  };
+  openBlockConditions();
   editAsExpression();
   await typeExpression("c1 AND");
   expect(
@@ -162,6 +171,7 @@ it("keeps an id-less block's text out of history, for only as long as it is moun
   ).toBe(true);
 
   revisit("Two", "One");
+  openBlockConditions();
   expect(expressions().map((box) => box.value)).toEqual([]);
 });
 
@@ -187,45 +197,63 @@ const expectToggleKeepsThenDropsText = async ({
   expect(expressions().map((box) => box.value)).toEqual([]);
 };
 
-it("keeps a page's rule-less text behind its toggle until turned off", async () => {
+/**
+ * Text typed before any rule saves no formula, so it stays in the sidebar's
+ * Conditions on every visit until all conditions are removed.
+ */
+const expectRuleLessTextKeptUntilRemoved = async ({
+  openConditions,
+  revisitEditor,
+}: {
+  openConditions: () => void;
+  revisitEditor: () => void;
+}) => {
+  openConditions();
+  editAsExpression();
+  await typeExpression("c9");
+
+  revisitEditor();
+  openConditions();
+  expect(expressions().map((box) => box.value)).toEqual(["c9"]);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Remove all conditions" }),
+  );
+  expect(expressions().map((box) => box.value)).toEqual([]);
+  revisitEditor();
+  openConditions();
+  expect(expressions().map((box) => box.value)).toEqual([]);
+};
+
+it("keeps a page's rule-less text until its conditions are removed", async () => {
   renderFormBuilder(twoPagesWith([]));
   fireEvent.click(screen.getByRole("button", { name: "Two" }));
-  await expectToggleKeepsThenDropsText({
-    toggle: () =>
-      fireEvent.click(
-        screen.getByLabelText("Use conditional visibility for this page"),
-      ),
+  await expectRuleLessTextKeptUntilRemoved({
+    openConditions: () => openSection("Conditions"),
     revisitEditor: () => revisit("One", "Two"),
   });
 });
 
-it("keeps a question's rule-less text behind its toggle until turned off", async () => {
+it("keeps a question's rule-less text until its conditions are removed", async () => {
   renderFormBuilder(
     twoPagesWith([{ id: "a", type: "input", kind: "text", label: "A" }]),
   );
-  await expectToggleKeepsThenDropsText({
-    toggle: () => {
-      const menu = screen.getAllByRole("button", {
-        name: "Extra form options",
-      })[1]!;
-      if (menu.getAttribute("aria-expanded") !== "true") fireEvent.click(menu);
-      fireEvent.click(screen.getByLabelText("Use conditional visibility"));
+  await expectRuleLessTextKeptUntilRemoved({
+    openConditions: () => {
+      selectElement("A");
+      openSection("Conditions");
     },
     revisitEditor: () => revisit("Two", "One"),
   });
 });
 
-it("keeps a display block's rule-less text behind its toggle until turned off", async () => {
+it("keeps a display block's rule-less text until its conditions are removed", async () => {
   renderFormBuilder(
     twoPagesWith([{ id: "b", type: "display", kind: "text", text: "B" }]),
   );
-  await expectToggleKeepsThenDropsText({
-    toggle: () => {
-      const menu = screen.getByRole("button", {
-        name: "Display block options",
-      });
-      if (menu.getAttribute("aria-expanded") !== "true") fireEvent.click(menu);
-      fireEvent.click(screen.getByLabelText("Use conditional visibility"));
+  await expectRuleLessTextKeptUntilRemoved({
+    openConditions: () => {
+      selectElement("Text Block: B");
+      openSection("Conditions");
     },
     revisitEditor: () => revisit("Two", "One"),
   });

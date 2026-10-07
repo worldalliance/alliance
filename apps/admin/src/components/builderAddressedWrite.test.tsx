@@ -12,6 +12,7 @@ import {
 import type { ReactElement } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { findDisplayBlock } from "../lib/displayBlockById";
+import { selectElement } from "../lib/testing/formCanvas";
 import { FormBuilder } from "./FormBuilder";
 import { OutputBuilder } from "./OutputBuilder";
 
@@ -104,6 +105,7 @@ describe("FormBuilder hands a display block the addressed write", () => {
       },
     ]);
     renderIn(<RouterProvider router={router} />);
+    selectElement("Video Block");
 
     await act(async () => {
       fireEvent.change(document.querySelector("input[type=file]")!, {
@@ -125,6 +127,7 @@ describe("FormBuilder hands a display block the addressed write", () => {
       screen.getByPlaceholderText<HTMLInputElement>("Page title").value,
     ).toBe("Renamed");
     openPage("One");
+    selectElement("Video Block: videos/one");
     expect(screen.getByText("Manage video file")).toBeTruthy();
   });
 });

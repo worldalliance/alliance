@@ -28,7 +28,7 @@ import { useAuth } from "../lib/AuthContext";
 import { socialPreviewMeta } from "../lib/socialPreviewMeta";
 import { useContract } from "../lib/useContract";
 import { useRememberInvite } from "../lib/useRememberInvite";
-// import { useMediaQuery } from "../lib/useMediaQuery";
+// import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
 import { SiteFooter } from "../site/Footer";
 import { JoinCta } from "../site/JoinCta";
 import { Navbar } from "../site/Navbar";

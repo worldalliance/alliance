@@ -1,9 +1,11 @@
+import type { AnyField } from "@alliance/common/forms/form-schema";
 import {
   SelectedCountComparison,
   type Condition,
   type VisibleIfFormula,
 } from "@alliance/common/forms/visible-if-formula";
 import { serializeVisibilityFormula } from "@alliance/shared/forms/visibilityFormula";
+import { getOptionLabel } from "./questionAnswer";
 
 const COMPARISON_SYMBOLS: Record<SelectedCountComparison, string> = {
   [SelectedCountComparison.GreaterThan]: ">",
@@ -21,9 +23,15 @@ const CONTRACT_COMPARISON_TEXT: Record<
   onOrAfter: "on or after",
 };
 
+/** The question a rule reads, on this form or, given its id, another one. */
+export type ConditionFieldLookup = (
+  fieldId: string,
+  sourceFormId: number | null,
+) => AnyField | undefined;
+
 export function describeCondition(
   condition: Condition,
-  labelOf: (fieldId: string) => string,
+  fieldOf: ConditionFieldLookup,
 ): string {
   switch (condition.kind) {
     case "equals":
@@ -31,15 +39,22 @@ export function describeCondition(
     case "anySelected":
     case "selectedCount":
     case "hasValue": {
+      const sourceFormId = condition.sourceFormId ?? null;
+      const field = fieldOf(condition.when, sourceFormId);
+      const question = field?.label?.trim() || condition.when;
       const source =
-        condition.sourceFormId == null
-          ? labelOf(condition.when)
-          : `${condition.when} (form ${condition.sourceFormId})`;
+        sourceFormId === null ? question : `${question} (form ${sourceFormId})`;
+      const option = (value: unknown) =>
+        JSON.stringify(
+          (field && typeof value === "string"
+            ? getOptionLabel(field, value)?.trim()
+            : undefined) || value,
+        );
       switch (condition.kind) {
         case "equals":
-          return `${source} is ${JSON.stringify(condition.equals)}`;
+          return `${source} is ${option(condition.equals)}`;
         case "includesOption":
-          return `${source} includes ${JSON.stringify(condition.includesOption)}`;
+          return `${source} includes ${option(condition.includesOption)}`;
         case "anySelected":
           return `${source} has ${condition.anySelected ? "a" : "no"} selection`;
         case "selectedCount":
@@ -74,10 +89,10 @@ export function describeCondition(
 /** The formula with each condition name replaced by what it checks. */
 export function summarizeVisibility(
   formula: VisibleIfFormula,
-  labelOf: (fieldId: string) => string,
+  fieldOf: ConditionFieldLookup,
 ): string {
   return serializeVisibilityFormula(formula.formula, (name) => {
     const condition = formula.conditions[name];
-    return condition ? describeCondition(condition, labelOf) : name;
+    return condition ? describeCondition(condition, fieldOf) : name;
   });
 }

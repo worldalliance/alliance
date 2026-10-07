@@ -11,9 +11,6 @@ export function EditableContractField({
   field,
   onUpdate,
   onRemove,
-  onDragStart,
-  onDragEnd,
-  isDragging,
   previousFields,
   laterFields,
 }: BaseFieldProps<ContractField>) {
@@ -81,9 +78,6 @@ export function EditableContractField({
       previousFields={previousFields}
       laterFields={laterFields}
       onRemove={onRemove}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      isDragging={isDragging}
     >
       <div>
         <label className="block text-xs font-medium text-gray-700 mb-1">

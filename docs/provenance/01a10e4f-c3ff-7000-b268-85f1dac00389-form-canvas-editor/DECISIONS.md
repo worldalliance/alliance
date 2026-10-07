@@ -40,7 +40,7 @@ Rewrite `ConditionalVisibility` in its own folder (`form-fields/conditions/`), r
 - Changing a condition's source, comparison, or value preserves the surrounding expression. Maintain stable condition names: a new row takes the number after every name used by the conditions or the formula, so deleting a row never retargets a reference.
 - In simple mode, adding/removing rows follows the selected All/Any combination. With no rows, visibility is unconditional.
 - In advanced mode, retain the expression text exactly while editing rows. Adding a row makes it available for explicit reference. A row the expression references can't be removed until the expression stops using it, so the expression is preserved and the admin repairs it. Converting to simple mode requires the admin to explicitly choose the replacement combination.
-- Expression text that doesn't parse, or that names a rule no condition defines, stays in the editor with its error and isn't saved. Nothing gates Save on a broken formula until PR 7, and the runtime reads a missing name as false, so saving one would silently change who sees the element. In this PR the editor holds the text locally; PR 2 moves it into the draft.
+- Expression text that doesn't parse, or that names a rule no condition defines, stays in the editor with its error and isn't saved. Nothing gates Save on a broken formula until PR 8, and the runtime reads a missing name as false, so saving one would silently change who sees the element. In this PR the editor holds the text locally; PR 2 moves it into the draft.
 - A rule identifies its source form, question label, compatible comparison, and value. Keep a visible distinction between sources on this form and another form; preserve the existing eligibility rules for same-page/later-page references.
 - Show literal values using their type: option labels for selections, booleans for checkbox/contract checks, and number inputs for numeric values. Keep option-value renaming propagation and current formula-backed option handling.
 - One "Add rule" menu lists answer-on-this-form and answer-on-another-form first, then validator, device, account checks (input views), or output-block visibility (output views).
@@ -82,28 +82,50 @@ As implemented:
 - Keep mine amends the present with the saved version. Take theirs and Merge start a new history with no validator drafts or expression buffers: Save created the validators before the conflict surfaced, so both sides already hold real ids, and typed text belongs to formulas the replacement may not have.
 - Undo and redo are icon buttons (Undo2/Redo2 with labels and shortcut tooltips) beside the JSON button, hidden in Preview and disabled while saving, loading, or resolving a conflict, since Save amends the present it started from and the other two are about to replace it. ⌘/Ctrl+Z undoes and ⇧⌘/Ctrl+Z or Ctrl+Y redoes (not ⌘Y, which macOS browsers use for History), within the builder (or with nothing focused), except inside a text control or a dialog; the builder can sit in a page with other controls, such as an action's follow-up forms tab. Undo and redo keep the page on screen by id (`useSelectedPage`), since they can add, remove, or reorder pages before it, and stay at its position when that page goes, or the last page if that position is gone. They close the insert picker and search, whose position on the page may no longer hold. The page visibility editor and the Output View's block editors remount on undo/redo along with the element editors; the Output View keeps its selected view. Remounting also drops local text an editor hasn't committed to the draft (a custom component's config JSON that doesn't parse yet); keeping it would mean moving each such buffer into the draft, as the next change does for expressions.
 
-## PR 3: Canvas workspace
+## PR 3: Canvas and settings sidebar
 
-Replace the card list, element palette, and page tab strip with the three-part workspace. Shared visibility keeps its current operations, moved into the sidebar.
+Replace the card list and element palette with the form canvas and a settings sidebar. The page tab strip stays until PR 4 replaces it with the outline. Shared visibility keeps its current operations, moved into the sidebar. The original PR 3 also held the outline; it moved to PR 4 to keep each change reviewable.
 
-- Keep the builder tab navigation, undo/redo, and Save/Preview controls above a three-part workspace: outline, form canvas, and settings sidebar. Each area scrolls independently so selecting or editing does not displace the admin's location.
+- Keep the builder tab navigation, undo/redo, and Save/Preview controls above the workspace: form canvas and settings sidebar, with the outline joining as a third part in PR 4. Each area scrolls independently so selecting or editing does not displace the admin's location.
 - Show one selected page using respondent typography, spacing, and field/block presentation (`RenderField`/`RenderDisplayBlock`). Editing overlays add selection outlines, insertion points, drag handles, and concise condition indicators. Avoid repeating a miniature preview inside the settings panel.
 - Address selection by stable identity: page id, element id (position only for display blocks the schema lets go without an id), so reordering cannot redirect an edit. Start with the first page and page settings selected. Fall back to the page when the selected element no longer exists, such as after undo.
 - Show Content, Conditions, and Advanced sections as in the sidebar comparison. Select Content for an individual element and Conditions for a visibility group. Clicking a condition indicator selects its Conditions section directly.
 - Clicking a form input selects its containing field. Authoring suppresses answering, submitting, upload/signing actions, and outbound links. Media and accordion controls needed to inspect layout remain usable without invoking respondent actions.
 - Render existing editors in the sidebar through a section context: `FieldWrapper` renders the editor's controls under Content and validator/output/extraction settings under Advanced; `DisplayBlockWrapper` gains the same sections while keeping its card mode for Output View; inline block previews hide in the sidebar. Advanced also holds the element ID, JSON at element/page scope, duplicate, and delete.
 - An empty page offers an insertion point and a brief empty state. The picker searches permitted question/content types and preserves existing copy-from-element behavior (not inside a group). Insertion selects the result and focuses its first applicable editing control.
-- Organize the outline by pages and top-level elements, with visibility groups shown with their members. Page controls provide add, copy, delete, and reorder. Selecting an outline entry opens its page, expands the enclosing group, scrolls it into view, and updates the sidebar.
-- Support drag handles on the canvas and outline, with explicit move controls for keyboard use. Moves stay within a page, as today.
-- Groups appear as a subtle boundary with their summary and element count; their sidebar offers the shared rule, split, ungroup, detach, and the existing join/merge actions until PR 5 replaces them.
-- Keep the persistent sidebar at 1024px and wider. At narrower widths, use an accessible settings drawer that closes to reveal the form; the outline can collapse behind its own control. Preserve selection when changing layout. Move focus into an opened drawer, support Escape to close it, and restore focus to its invoking element. Avoid changing focus when merely scrolling the canvas or switching a desktop selection through a pointer.
+- Support drag handles on the canvas, with explicit move controls for keyboard use. Moves stay within a page, as today.
+- Groups appear as a subtle boundary with their summary and element count; their sidebar offers the shared rule, split, ungroup, detach, and the existing join/merge actions until PR 6 replaces them.
+- Keep the persistent sidebar at 1024px and wider. At narrower widths, use an accessible settings drawer that closes to reveal the form. Preserve selection when changing layout. Move focus into an opened drawer, support Escape to close it, and restore focus to its invoking element. Avoid changing focus when merely scrolling the canvas or switching a desktop selection through a pointer.
 - Provide keyboard selection, labeled icon controls, visible focus, and explicit wording for deletion. Hover can reveal shortcuts but cannot be the only way to reach essential controls.
 - Display-only update editors retain their permitted settings and element types; they offer no Conditions section, viewer-specific conditions, or user overrides.
 - Preview keeps using the existing Preview and preview-as-user flow. Returning to editing restores the selected page/element.
 
-Checks: builder tests rewritten for the canvas (select/edit without answering, insert/copy/move elements and pages with stable IDs, JSON scopes, display-only editors); browser pass on a multi-page staging-like form and a display-only update at wide and narrow widths.
+Checks: builder tests rewritten for the canvas (select/edit without answering, insert/copy/move elements with stable IDs, JSON scopes, display-only editors); browser pass on a multi-page staging-like form and a display-only update at wide and narrow widths.
 
-## PR 4: Nested elements, inline text, and personalized content
+As implemented:
+
+- `SidebarSections` provides the active section to the selected element's editor; `FieldWrapper` and `DisplayBlockWrapper` render `SectionPanels` instead of a card when it is present. A panel mounts when first opened and then stays mounted while hidden: an unvisited section fetches nothing (custom validators, the user list), and local text survives switching sections. Panels provide null to their content, so list sub-fields and accordion blocks stay cards, as do Output View blocks.
+- Conditions shows the visibility editor directly, without the card's "Use conditional visibility" toggle. "Remove all conditions" takes the toggle's place, dropping the formula and any typed expression in one step; without it, an advanced formula whose rules the expression references could never be made unconditional. Text typed before any rule therefore stays visible until removed. Output View and nested cards keep their toggles.
+- Selection is the page id plus an element id (or the position of an id-less block, which any move updates; undo, redo, Apply JSON, and conflict loads, which can shift it, return the selection to the page) or a group key; merging a selected group into the previous one follows the surviving key. Choosing a page tab selects its page settings. Undo and redo keep the selection by id; deleting the selected element shows page settings on Content, away from where Delete page sits in Advanced, and undoing the deletion returns to the element.
+- The canvas renders `RenderField` inert with a no-op `onChange`, and `RenderDisplayBlock`; images, video, and accordions stay interactive, with link clicks suppressed. Authored text shows uninterpolated.
+- The insert picker lists every permitted type before anything is typed; Enter takes the first match, and Escape returns focus to its button. The end-of-page "Add element" button is always shown; points between elements appear on hover or focus. Inserting selects the new element and focuses the first control of its Content.
+- Advanced holds the element ID, Edit element JSON, Duplicate (inserted after the original, in its group), and Delete question or Delete block; Move up and Move down sit beside the sidebar heading, stay focusable (`aria-disabled`) at the page's edge, and step past the whole of a group the element isn't in, so they never split one; dropping an element between a group's members on the canvas still does, as dragging did before. A page's Advanced holds its ID, Edit page JSON, Copy page, and Delete page.
+- A group's boundary header selects the group on its Conditions: the summary, merge, ungroup, clear, errors, and the shared editor. Its Content lists the members, each selectable and detachable, with a split control between them. Groups no longer collapse. A group whose members fail validation says how many on its boundary, since its errors are listed only in its settings.
+- Below 1024px, settings open in a drawer when something is selected or from "Open settings". The drawer is an `aside` rather than a dialog, so ⌘/Ctrl+Z still undoes inside it; Escape or its close button returns focus to whatever held it when it opened, or to the selection on the canvas once that is gone (an insert picker, after inserting). When the sidebar changes what it shows and so removes the control that had focus (Delete, a group member, Ungroup), focus moves to the sidebar rather than dropping to the page, so Escape still closes the drawer.
+- A display-only editor shows Content and Advanced; its page has no settings, so selecting it shows a hint.
+- Removed as orphaned: the element palette (`ElementSelect`), `PageSegmentList`, `PageVisibilityControl`, `ElementJsonContext`, and the cards' group and element JSON controls, since no card renders a top-level element any more.
+
+## PR 4: Outline
+
+Replace the page tab strip with an outline to the left of the canvas.
+
+- Organize the outline by pages and top-level elements, with visibility groups shown with their members. Page controls provide add, copy, delete, and reorder. Selecting an outline entry opens its page, expands the enclosing group, scrolls it into view, and updates the sidebar.
+- Support drag handles in the outline for pages and elements, with explicit move controls for keyboard use. Element moves stay within a page.
+- At widths below 1024px, the outline collapses behind its own control.
+
+Checks: select elements and pages from the outline across pages; add, copy, delete, and reorder pages with stable IDs; move elements by drag and by keyboard; outline collapse at narrow widths.
+
+## PR 5: Nested elements, inline text, and personalized content
 
 - Outline entries for list sub-fields and accordion sections/blocks. A list displays one representative row of selectable child fields; child edits change the list schema, rather than a sample answer. Accordion section titles and child blocks are selectable; expanding a section exposes its contents, and selecting inside one expands it. Existing allowed sub-field kinds and nesting limits remain the boundary.
 - The list and accordion editors show their children as selectable rows with move and delete, instead of inline editors.
@@ -113,7 +135,7 @@ Checks: builder tests rewritten for the canvas (select/edit without answering, i
 
 Checks: tests editing a list child and an accordion block through both outline and canvas; inline editing of a label containing a variable token; editing a user override, switching targets, and undoing without changing another user's content.
 
-## PR 5: Shared visibility by selection
+## PR 6: Shared visibility by selection
 
 - Groups remain editor metadata over consecutive top-level page elements. Save the shared formula on each member using the existing schema. Derive groups from consecutive equal formulas on load; identify each group by its summary and element count.
 - Support a consecutive selection range within one page through Shift-selection on the canvas and outline and an accessible checkbox per outline entry. With two or more selected, the sidebar offers sharing visibility. Extending selection across pages or nested scopes is unavailable.
@@ -125,7 +147,7 @@ Checks: tests editing a list child and an accordion block through both outline a
 
 Checks: select a consecutive range, resolve differing rules explicitly, apply a shared rule, and detach/split/ungroup without erasing visibility; undo each operation restores formula and membership.
 
-## PR 6: Dependencies and deletion
+## PR 7: Dependencies and deletion
 
 - Compute source/dependent links from the current draft (pages, top-level elements, and list sub-fields, visibility and required-if), updating after edits, moves, deletion, JSON application, and undo/redo. Search the current form; do not fetch all forms to build a global dependency graph.
 - The Conditions section shows "Depends on" source questions and a question's "Used by" targets, including dependent pages and list children. Group repeated shared targets together, with access to the members. A page dependent is a selectable page entry.
@@ -135,7 +157,7 @@ Checks: select a consecutive range, resolve differing rules explicitly, apply a 
 
 Checks: navigate from a dependent to its source and from a question to its dependent page/element; open an external source in another tab while retaining the current draft; delete a source after viewing affected targets, then undo.
 
-## PR 7: Authoring errors and gating
+## PR 8: Authoring errors and gating
 
 - Apply the existing schema validation plus authoring checks: unparsed expression buffers, expressions naming undefined conditions, and same-form rules reading questions the form lacks. These checks stay in the admin; server validation is unchanged.
 - Show errors beside affected canvas/outline entries and at the top of the sidebar. A header issue list links each error to its target. Keep malformed content editable through a flagged element shell (an error boundary per canvas element that retries when the content changes).

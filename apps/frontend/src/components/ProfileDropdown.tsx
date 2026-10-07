@@ -1,5 +1,6 @@
 import { NAV_BAR_CONTAINER_HEIGHT } from "@alliance/shared/lib/constants";
 import { cn } from "@alliance/shared/styles/util";
+import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
 import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
@@ -7,7 +8,6 @@ import { ChevronDown } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Link, href, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../lib/AuthContext";
-import { useMediaQuery } from "../lib/useMediaQuery";
 import { MOCK_PARAM } from "../onboarding/useMockTasks";
 import {
   WALKTHROUGH_PARAM,

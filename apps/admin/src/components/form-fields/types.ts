@@ -6,9 +6,6 @@ export interface BaseFieldProps<T extends AnyField | DisplayBlock> {
   field: T;
   onUpdate: (updates: Partial<T>) => void;
   onRemove: () => void;
-  onDragStart?: (e: React.DragEvent) => void;
-  onDragEnd?: (e: React.DragEvent) => void;
-  isDragging?: boolean;
   previousFields?: AnyField[];
   laterFields?: AnyField[];
 }
@@ -26,7 +23,4 @@ export interface FieldWrapperProps<T extends AnyField | DisplayBlock> {
   laterFields?: AnyField[];
   onRemove: () => void;
   children: React.ReactNode;
-  onDragStart?: (e: React.DragEvent) => void;
-  onDragEnd?: (e: React.DragEvent) => void;
-  isDragging?: boolean;
 }

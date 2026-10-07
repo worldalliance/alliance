@@ -1,3 +1,4 @@
+import type { AnyField } from "@alliance/common/forms/form-schema";
 import { UserValueProperty } from "@alliance/common/forms/user-properties";
 import {
   SelectedCountComparison,
@@ -5,7 +6,56 @@ import {
 } from "@alliance/common/forms/visible-if-formula";
 import { summarizeVisibility } from "./visibilitySummary";
 
+const fieldsById: Record<string, AnyField> = {
+  q: { id: "q", type: "input", kind: "text", label: "Question" },
+  m: {
+    id: "m",
+    type: "input",
+    kind: "multiselect",
+    label: "Many",
+    options: [],
+  },
+};
+
 describe("summarizeVisibility", () => {
+  it("names options and other forms' questions by label", () => {
+    const pet: AnyField = {
+      id: "pet",
+      type: "input",
+      kind: "radio",
+      label: "Pet",
+      options: [
+        { label: "A cat", value: "cat" },
+        { label: " ", value: "dog" },
+      ],
+    };
+    const theirPet: AnyField = { ...pet, label: "Their pet" };
+    const summary = summarizeVisibility(
+      {
+        conditions: {
+          c1: { kind: "equals", when: "pet", equals: "cat" },
+          c2: { kind: "includesOption", when: "pet", includesOption: "dog" },
+          c3: {
+            kind: "hasValue",
+            when: "pet",
+            hasValue: true,
+            sourceFormId: 7,
+          },
+        },
+        formula: {
+          op: "AND",
+          left: "c1",
+          right: { op: "AND", left: "c2", right: "c3" },
+        },
+      },
+      (id, sourceFormId) =>
+        id !== "pet" ? undefined : sourceFormId === 7 ? theirPet : pet,
+    );
+    expect(summary).toBe(
+      'Pet is "A cat" AND Pet includes "dog" AND Their pet (form 7) is answered',
+    );
+  });
+
   it("replaces each condition name in the formula with what it checks", () => {
     const summary = summarizeVisibility(
       {
@@ -24,7 +74,7 @@ describe("summarizeVisibility", () => {
           right: { op: "NOT", operand: "condition10" },
         },
       },
-      (id) => ({ q: "Question", m: "Many" })[id] ?? id,
+      (id) => fieldsById[id],
     );
     expect(summary).toBe('Question is "yes" OR (NOT Many selections ≥ 2)');
   });
@@ -40,14 +90,17 @@ describe("summarizeVisibility", () => {
           right: { op: "NOT", operand: "-x" },
         },
       },
-      (id) => id,
+      () => undefined,
     );
     expect(summary).toBe("user has city AND (NOT user has no city)");
   });
 
   it("leaves a name with no condition as written", () => {
     expect(
-      summarizeVisibility({ conditions: {}, formula: "missing" }, (id) => id),
+      summarizeVisibility(
+        { conditions: {}, formula: "missing" },
+        () => undefined,
+      ),
     ).toBe("missing");
   });
 
@@ -116,7 +169,8 @@ describe("summarizeVisibility", () => {
     expect(
       summarizeVisibility(
         { conditions: { c: condition }, formula: "c" },
-        (id) => (id === "q" ? "Question" : id),
+        (id, sourceFormId) =>
+          sourceFormId === null ? fieldsById[id] : undefined,
       ),
     ).toBe(expected);
   });
