@@ -895,6 +895,7 @@ const FormRenderer = ({
     visiblePageIndices,
     nextVisiblePageIndex,
     previousVisiblePageIndex,
+    visibilitySettled,
     validateFieldValue,
   } = useFormVisibility({
     schema,
@@ -989,7 +990,7 @@ const FormRenderer = ({
   };
 
   const handleNextPage = async () => {
-    if (nextVisiblePageIndex === null) {
+    if (nextVisiblePageIndex === null || !visibilitySettled) {
       return;
     }
     const result = await validatePage(currentPageIndex, true);
@@ -1279,7 +1280,11 @@ const FormRenderer = ({
                 color={ButtonColor.Black}
                 size={ButtonSize.Medium}
                 className="flex-2 py-4! gap-x-1"
-                disabled={submitting || imageUpload.uploadingAny}
+                disabled={
+                  submitting ||
+                  imageUpload.uploadingAny ||
+                  (!isLastPage && !visibilitySettled)
+                }
               >
                 {submitting ? (
                   <ActivityIndicator size="small" color="#fff" />

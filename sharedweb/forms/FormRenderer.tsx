@@ -594,6 +594,7 @@ const FormRenderer = ({
     visiblePageIndices,
     nextVisiblePageIndex,
     previousVisiblePageIndex,
+    visibilitySettled,
     validateFieldValue,
   } = useFormVisibility({
     schema,
@@ -720,7 +721,7 @@ const FormRenderer = ({
 
     // File fields receive their stored answer only after the upload finishes,
     // so validation must wait too.
-    if (uploadingAny) return;
+    if (uploadingAny || !visibilitySettled) return;
 
     if (nextVisiblePageIndex !== null) {
       const result = await validatePage(currentPageIndex, true);
@@ -787,6 +788,7 @@ const FormRenderer = ({
     }
 
     if (nextVisiblePageIndex !== null) {
+      if (!visibilitySettled) return finishSubmit(false);
       const result = await validatePage(currentPageIndex, true);
       if (!result.isValid) {
         setInvalidFieldFocus({ fieldId: result.firstInvalidFieldId });
@@ -862,6 +864,7 @@ const FormRenderer = ({
     uploadingAny,
     validateAllPagesAndShowFirstInvalid,
     validatePage,
+    visibilitySettled,
     visibilityValidatorResults,
     pauseSyncing,
     resumeSyncing,
@@ -1246,7 +1249,7 @@ const FormRenderer = ({
                     variant={BaseButtonVariant.Black}
                     size={BaseButtonSize.MediumDynamic}
                     onClick={handleNext}
-                    disabled={uploadingAny}
+                    disabled={uploadingAny || !visibilitySettled}
                   >
                     Next
                   </BaseButton>

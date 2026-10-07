@@ -461,6 +461,19 @@ describe("useFormVisibility", () => {
     expect(moves).toEqual([0]);
   });
 
+  it("stays on a page that looks hidden while its visibility inputs load", () => {
+    const moves: number[] = [];
+    const { result } = renderVisibility({
+      formData: { gate: "no" },
+      currentPageIndex: 1,
+      setCurrentPageIndex: (index) => moves.push(index),
+      visibilityInputsLoading: true,
+    });
+
+    expect(moves).toEqual([]);
+    expect(result.current.visibilitySettled).toBe(false);
+  });
+
   it("recomputes a variable combining another form's answers with a local one as the local answer changes", () => {
     const schema: FormSchema = {
       ...schemaWith([
