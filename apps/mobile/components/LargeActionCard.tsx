@@ -137,7 +137,9 @@ export default function LargeActionCard({
           {action.name}
         </Text>
       </View>
-      <Text className="text-base mb-4">{action.shortDescription}</Text>
+      <Text className="text-base text-zinc-500 mb-4">
+        {action.shortDescription}
+      </Text>
       <ActionCompletedBarWithInfo
         action={action}
         friendActivities={friendActivities}
