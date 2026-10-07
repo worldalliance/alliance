@@ -1,6 +1,7 @@
 import { looksLikePhoneNumber, phoneSearchTerm } from "@alliance/common/phone";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { findWithDeletedRoot } from "src/datasources/find-with-deleted-root";
 import {
   ContractEvent,
   compareContractEventsNewestFirst,
@@ -162,9 +163,9 @@ export class WaitlistEntryAdminService {
     ids: number[],
   ): Promise<Map<number, ContractEvent[]>> {
     const invites = ids.length
-      ? await this.entryRepository.manager
-          .createQueryBuilder(OnetimeInvite, "invite")
-          .setFindOptions({
+      ? await findWithDeletedRoot(this.entryRepository.manager, {
+          target: OnetimeInvite,
+          options: {
             select: {
               id: true,
               waitlistEntryId: true,
@@ -181,10 +182,8 @@ export class WaitlistEntryAdminService {
             },
             where: { waitlistEntryId: In(ids) },
             relations: { invitedUser: { contractEvents: true } },
-          })
-          // After setFindOptions, so deleted accounts and events stay filtered.
-          .withDeleted()
-          .getMany()
+          },
+        }).getMany()
       : [];
     const eventsByEntry = new Map<number, ContractEvent[]>();
     for (const invite of invites) {

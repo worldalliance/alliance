@@ -5626,7 +5626,7 @@ describe("Actions (e2e)", () => {
           authorId: scenario.staff ? staff.id : ctx.testUserId,
           parentObjectType: CommentParentObject.Activity,
           parentObjectId: activity.id,
-          deleted: scenario.deleted,
+          deletedAt: scenario.deleted ? new Date() : null,
           editableContent: { body: "Hello", attachments: [] },
         });
         if (!scenario.excluded) expectedIds.push(user.id);

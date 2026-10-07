@@ -28,10 +28,12 @@ export class CommentDto extends PickType(Comment, [
   "parentObjectType",
   "createdAt",
   "updatedAt",
-  "deleted",
   "pinned",
   "tagId",
 ]) {
+  @ApiProperty()
+  deleted: boolean;
+
   @ApiProperty({ type: ProfileDto })
   author: ProfileDto;
 
@@ -70,7 +72,7 @@ export class CommentDto extends PickType(Comment, [
     this.parentObjectType = comment.parentObjectType;
     this.createdAt = comment.createdAt;
     this.updatedAt = comment.updatedAt;
-    this.deleted = comment.deleted;
+    this.deleted = comment.deletedAt !== null;
     this.pinned = comment.pinned;
     this.tagId = comment.tagId;
     this.author = new ProfileDto(comment.author);

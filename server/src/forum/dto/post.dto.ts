@@ -42,13 +42,15 @@ export class PostDto extends PickType(Post, [
   "updatedAt",
   "pinned",
   "qaMode",
-  "deleted",
   "expertIds",
   "expertLabel",
   "authorIds",
   "notifyForReplies",
   "showClusterTags",
 ]) {
+  @ApiProperty()
+  deleted: boolean;
+
   @ApiPropertyOptional({ type: () => ActionDto })
   action: ActionDto | undefined;
 
@@ -109,7 +111,7 @@ export class PostDto extends PickType(Post, [
     this.updatedAt = post.updatedAt;
     this.pinned = post.pinned;
     this.qaMode = post.qaMode;
-    this.deleted = post.deleted;
+    this.deleted = post.deletedAt !== null;
     this.expertIds = post.expertIds;
     this.expertLabel = post.expertLabel;
     this.authorIds = post.authorIds;

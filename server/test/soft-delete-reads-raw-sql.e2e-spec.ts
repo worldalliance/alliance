@@ -33,6 +33,7 @@ import {
 } from "src/user/entities/contract-event.entity";
 import { Friend, FriendStatus } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
+import request from "supertest";
 import type { Repository } from "typeorm";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
@@ -319,6 +320,31 @@ describe("Raw SQL reads skip soft-deleted rows (e2e)", () => {
     expect(members.map((profile) => profile.id)).toEqual([live.id]);
   });
 
+  it("lists only members whose comment on a post is live", async () => {
+    const postId: number = (
+      await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "Discussion",
+          editableContent: { body: "Post body", attachments: [] },
+        })
+        .expect(201)
+    ).body.id;
+    const [live, deleted] = await Promise.all([member(), member()]);
+    const onPost = {
+      parentObjectType: CommentParentObject.Post,
+      parentObjectId: postId,
+    };
+    await comment({ authorId: live.id, ...onPost });
+    await commentRepo.softDelete(
+      (await comment({ authorId: deleted.id, ...onPost })).id,
+    );
+
+    const members = await actionsService.getForumCommentMembers(postId, 100);
+    expect(members.map((profile) => profile.id)).toEqual([live.id]);
+  });
+
   describe("form responses", () => {
     const schema: FormSchema = {
       pages: [
@@ -444,7 +470,7 @@ describe("Raw SQL reads skip soft-deleted rows (e2e)", () => {
         resolver.resolve(DetectableEntity.FormResponse, response),
       ).resolves.toMatchObject({ id: response });
 
-      await commentRepo.update(posted.id, { deleted: true });
+      await commentRepo.softDelete(posted.id);
       await softDeleteResponse(response);
       await expect(
         resolver.resolve(DetectableEntity.Comment, posted.id),

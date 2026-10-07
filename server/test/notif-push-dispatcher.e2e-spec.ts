@@ -118,7 +118,7 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       editableContent,
       parentObjectType: CommentParentObject.Action,
       parentObjectId: params.action.id,
-      deleted: false,
+      deletedAt: null,
       pinned: false,
       likesCount: 0,
     });
@@ -138,7 +138,7 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       editableContent,
       parentObjectType: CommentParentObject.Post,
       parentObjectId: 1,
-      deleted: false,
+      deletedAt: null,
       pinned: false,
       likesCount: 0,
     });
@@ -474,7 +474,7 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
         author: owner,
         authors: [],
         editableContent: { body: "Body", attachments: [] },
-        deleted: false,
+        deletedAt: null,
         visibleAt: new Date(),
       });
       await ctx.app.get(LikeNotificationService).createOrUpdate({
@@ -574,7 +574,7 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       );
       await ctx.dataSource
         .getRepository(Comment)
-        .update(row.contentId, { deleted: true });
+        .update(row.contentId, { deletedAt: new Date() });
 
       const messages = await dispatcher.findUnreadContentPushes(
         "test-dispatch-deleted-comment",

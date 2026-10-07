@@ -925,7 +925,7 @@ export class ActionsService {
           INNER JOIN action ON action.id = completion."actionId" AND action.onboarding = true
             AND action."deletedAt" IS NULL
           INNER JOIN comment ON comment."parentObjectType" = $3
-            AND comment."parentObjectId" = completion.id AND comment.deleted = false
+            AND comment."parentObjectId" = completion.id AND comment."deletedAt" IS NULL
           INNER JOIN "user" author ON author.id = comment."authorId" AND author.staff = true
             AND author."deletedAt" IS NULL
           WHERE completion."userId" = activity."userId" AND completion.type = $2
@@ -4707,7 +4707,6 @@ export class ActionsService {
         postType: CommentParentObject.Post,
       })
       .andWhere("comment.createdAt > :oneWeekAgo", { oneWeekAgo })
-      .andWhere("comment.deleted = false")
       .andWhere("NOT (comment.id = ANY(:hiddenIds))", {
         hiddenIds: await hiddenCommentIds(this.commentRepository.manager),
       })
@@ -5037,7 +5036,7 @@ export class ActionsService {
         WHERE comment."parentObjectType" = $1
           AND comment."parentObjectId" = $2
           AND comment."createdAt" > $3
-          AND comment.deleted = false
+          AND comment."deletedAt" IS NULL
           AND NOT (comment.id = ANY($4))
         ORDER BY comment."authorId" ASC, comment."createdAt" DESC, comment.id DESC
       ) ranked`;

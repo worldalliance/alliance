@@ -37,7 +37,7 @@ export class EntityResolverService {
           SELECT c."id", ec."body"
           FROM "comment" c
           LEFT JOIN "editable_content" ec ON ec."id" = c."editableContentId"
-          WHERE c."id" = $1 AND NOT c."deleted"
+          WHERE c."id" = $1 AND c."deletedAt" IS NULL
           LIMIT 1
           `,
           [entityId],

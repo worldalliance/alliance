@@ -114,7 +114,7 @@ describe("Notification content stability (e2e)", () => {
       author,
       authors: [],
       editableContent: { body: "Body", attachments: [] },
-      deleted: false,
+      deletedAt: null,
       visibleAt: new Date(),
     });
 
@@ -138,7 +138,7 @@ describe("Notification content stability (e2e)", () => {
       authorId: replier.id,
       editableContent,
       ...parent,
-      deleted: false,
+      deletedAt: null,
       pinned: false,
       likesCount: 0,
     });
@@ -802,7 +802,9 @@ describe("Notification content stability (e2e)", () => {
       (await entry(row.id, NotificationSourceType.UnreadContent))?.message,
     ).toBe("Riley Renamed replied: Edited body");
 
-    await ctx.dataSource.getRepository(Post).update(post.id, { deleted: true });
+    await ctx.dataSource
+      .getRepository(Post)
+      .update(post.id, { deletedAt: new Date() });
     expect(
       await entry(row.id, NotificationSourceType.UnreadContent),
     ).toBeUndefined();
@@ -844,7 +846,7 @@ describe("Notification content stability (e2e)", () => {
 
     await ctx.dataSource
       .getRepository(Comment)
-      .update(comment.id, { deleted: true });
+      .update(comment.id, { deletedAt: new Date() });
 
     expect(
       await entry(row.id, NotificationSourceType.UnreadContent),
@@ -1008,7 +1010,7 @@ describe("Notification content stability (e2e)", () => {
 
       await ctx.dataSource
         .getRepository(Post)
-        .update(post.id, { deleted: true });
+        .update(post.id, { deletedAt: new Date() });
 
       expect(await shown(row.id)).toBeUndefined();
       expect(await unreadCount()).toBe(before - 1);
@@ -1077,7 +1079,7 @@ describe("Notification content stability (e2e)", () => {
 
       await ctx.dataSource
         .getRepository(Post)
-        .update(post.id, { deleted: true });
+        .update(post.id, { deletedAt: new Date() });
 
       expect(await shown(row.id)).toBeUndefined();
       expect(await unreadCount()).toBe(before - 1);

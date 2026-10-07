@@ -82,12 +82,11 @@ export class LikesService {
       where: { id: commentId },
       select: {
         id: true,
-        deleted: true,
         parentObjectType: true,
         parentObjectId: true,
       },
     });
-    if (!comment || comment.deleted) {
+    if (!comment) {
       throw new NotFoundException(`Comment with ID "${commentId}" not found`);
     }
 

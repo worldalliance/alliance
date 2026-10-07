@@ -11,6 +11,7 @@ import { Action } from "src/actions/entities/action.entity";
 import { assertNotInStaffPreview } from "src/actions/staff-preview";
 import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
 import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
+import { findWithDeletedRoot } from "src/datasources/find-with-deleted-root";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { FacepileService } from "src/likes/facepile.service";
@@ -32,6 +33,7 @@ import { isForeignKeyViolation, isUniqueViolation } from "src/utils/db-errors";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import {
   In,
+  IsNull,
   type EntityManager,
   type FindOptionsRelations,
   type FindOptionsWhere,
@@ -205,7 +207,6 @@ export class ForumService {
       .where("comment.parentObjectType = :parentType", {
         parentType: CommentParentObject.Post,
       })
-      .andWhere("comment.deleted = false")
       .andWhere("NOT (comment.id = ANY(:hiddenIds))", {
         hiddenIds: await hiddenCommentIds(this.commentRepository.manager),
       })
@@ -262,7 +263,7 @@ export class ForumService {
          FROM comment c
          WHERE c."parentObjectType" = $1
            AND c."parentObjectId" = ANY($2)
-           AND NOT c.deleted
+           AND c."deletedAt" IS NULL
            AND NOT (c.id = ANY($3))
          GROUP BY c."parentObjectId"`,
         [
@@ -305,18 +306,22 @@ export class ForumService {
   }
 
   /**
-   * A thread's comment trees without the comments whose author's account was
-   * deleted, nor the replies under them.
+   * A thread's comment trees, keeping a comment its author deleted as a
+   * placeholder for the replies under it, without the comments whose author's
+   * account was deleted, nor the replies under them.
    */
   private async findThreadComments(params: {
     where: FindOptionsWhere<Comment>;
     relations?: FindOptionsRelations<Comment>;
   }): Promise<Comment[]> {
-    const comments = await this.commentRepository.find({
-      where: params.where,
-      relations: { author: true, ...params.relations },
-      order: { createdAt: "ASC" },
-    });
+    const comments = await findWithDeletedRoot(this.commentRepository.manager, {
+      target: Comment,
+      options: {
+        where: params.where,
+        relations: { author: true, ...params.relations },
+        order: { createdAt: "ASC" },
+      },
+    }).getMany();
     // The author join leaves out a deleted account, and the hierarchy drops
     // the replies whose parent it no longer finds.
     return this.organizeRepliesHierarchy(
@@ -353,7 +358,6 @@ export class ForumService {
       where: {
         parentObjectId: postId,
         parentObjectType: CommentParentObject.Post,
-        deleted: false,
       },
       relations: { author: true, editableContent: true },
       order: { createdAt: "DESC" },
@@ -459,7 +463,6 @@ export class ForumService {
       .where("comment.parentObjectType = :postType", {
         postType: CommentParentObject.Post,
       })
-      .andWhere("comment.deleted = false")
       .andWhere("NOT (comment.id = ANY(:hiddenIds))", {
         hiddenIds: await hiddenCommentIds(this.commentRepository.manager),
       });
@@ -601,7 +604,10 @@ export class ForumService {
       throw new NotFoundException("You can only delete your own posts");
     }
 
-    await this.postRepository.update(id, { deleted: true });
+    await this.postRepository.update(
+      { id, deletedAt: IsNull() },
+      { deletedAt: () => "CURRENT_TIMESTAMP", legacyDeleted: true },
+    );
   }
 
   private async assertCommentParentNotInStaffPreview(
@@ -677,6 +683,7 @@ export class ForumService {
           parentObjectId: createCommentDto.parentObjectId,
         },
         relations: { author: true },
+        withDeleted: true,
       });
 
       if (!parentReply || (await this.isHiddenFromThread(parentReply.id))) {
@@ -762,7 +769,7 @@ export class ForumService {
     let parentAuthor: User | undefined;
     if (comment.parentId) {
       const parentReply = await this.commentRepository.findOne({
-        where: { id: comment.parentId, deleted: false },
+        where: { id: comment.parentId },
         relations: { author: { contractEvents: true } },
       });
       parentAuthor = parentReply?.author;
@@ -770,7 +777,7 @@ export class ForumService {
 
     if (comment.parentObjectType === CommentParentObject.Post) {
       const post = await this.postRepository.findOneOrFail({
-        where: { id: comment.parentObjectId, deleted: false },
+        where: { id: comment.parentObjectId },
         relations: { author: true, authors: true },
       });
       if (!post.author) {
@@ -879,7 +886,7 @@ export class ForumService {
     userId: number,
   ): Promise<Comment> {
     const reply = await this.commentRepository.findOne({
-      where: { id, deleted: false },
+      where: { id },
       relations: { author: true, editableContent: true },
     });
 
@@ -938,11 +945,11 @@ export class ForumService {
     const object =
       type === "comment"
         ? await this.commentRepository.findOne({
-            where: { id, deleted: false },
+            where: { id },
             relations: { likes: true, author: true, editableContent: true },
           })
         : await this.postRepository.findOne({
-            where: { id, deleted: false },
+            where: { id },
             relations: { likes: true, author: true, authors: true },
           });
 
@@ -1085,6 +1092,7 @@ export class ForumService {
     const reply = await this.commentRepository.findOne({
       where: { id },
       relations: { notifications: true },
+      withDeleted: true,
     });
 
     if (!reply) {
@@ -1099,7 +1107,14 @@ export class ForumService {
       await this.notifRepository.delete(notification.id);
     }
 
-    await this.commentRepository.update(id, { deleted: true, pinned: false });
+    await this.commentRepository.update(
+      { id, deletedAt: IsNull() },
+      {
+        deletedAt: () => "CURRENT_TIMESTAMP",
+        legacyDeleted: true,
+        pinned: false,
+      },
+    );
   }
 
   async findPostsByUser(params: {
@@ -1127,7 +1142,6 @@ export class ForumService {
       .leftJoinAndSelect("comment.author", "author")
       .leftJoinAndSelect("comment.editableContent", "editableContent")
       .where("comment.authorId = :userId", { userId })
-      .andWhere("comment.deleted = false")
       .andWhere("comment.parentObjectType != :activity", {
         activity: CommentParentObject.Activity,
       })
@@ -1185,7 +1199,6 @@ export class ForumService {
       .leftJoinAndSelect("comment.editableContent", "editableContent")
       .leftJoinAndSelect("comment.likes", "likes")
       .where("comment.authorId = :userId", { userId })
-      .andWhere("comment.deleted = false")
       .andWhere("comment.parentObjectType = :post", {
         post: CommentParentObject.Post,
       })
@@ -1310,7 +1323,6 @@ export class ForumService {
 
   async getPostsForAdmin(): Promise<ParsedPost[]> {
     const posts = await this.postRepository.find({
-      where: { deleted: false },
       relations: {
         author: true,
         experts: true,
@@ -1393,7 +1405,7 @@ export class ForumService {
       .createQueryBuilder()
       .update(Comment)
       .set({ pinned: () => `NOT "pinned"` })
-      .where('id = :commentId AND NOT "deleted"', { commentId })
+      .where('id = :commentId AND "deletedAt" IS NULL', { commentId })
       .execute();
     if (!affected) {
       throw new NotFoundException(`Comment with ID "${commentId}" not found`);

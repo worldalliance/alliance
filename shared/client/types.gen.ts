@@ -541,7 +541,6 @@ export type Post = {
     pinned: boolean;
     updatedAt: string;
     visibleAt: string | null;
-    deleted: boolean;
     likes?: Array<User>;
     likesIds: Array<number>;
     qaMode: boolean;
@@ -572,7 +571,6 @@ export type Comment = {
     authorId: number;
     parentObjectType: CommentParentObject;
     parentObjectId: number;
-    deleted: boolean;
     createdAt: string;
     updatedAt: string;
     parent?: Comment;
@@ -2307,12 +2305,12 @@ export type CommentDto = {
     id: number;
     parentObjectType: CommentParentObject;
     parentObjectId: number;
-    deleted: boolean;
     createdAt: string;
     updatedAt: string;
     parentId: number | null;
     pinned: boolean;
     tagId: number | null;
+    deleted: boolean;
     author: ProfileDto;
     children?: Array<CommentDto>;
     likes: Array<ProfileDto>;
@@ -3656,13 +3654,13 @@ export type PostDto = {
     pinned: boolean;
     updatedAt: string;
     visibleAt: string | null;
-    deleted: boolean;
     qaMode: boolean;
     expertLabel: string | null;
     expertIds: Array<number>;
     authorIds: Array<number>;
     notifyForReplies: boolean;
     showClusterTags: boolean;
+    deleted: boolean;
     action?: ActionDto;
     author: ProfileDto;
     commentCount?: number;
@@ -3680,12 +3678,12 @@ export type UserCommentDto = {
     id: number;
     parentObjectType: CommentParentObject;
     parentObjectId: number;
-    deleted: boolean;
     createdAt: string;
     updatedAt: string;
     parentId: number | null;
     pinned: boolean;
     tagId: number | null;
+    deleted: boolean;
     author: ProfileDto;
     children?: Array<CommentDto>;
     likes: Array<ProfileDto>;

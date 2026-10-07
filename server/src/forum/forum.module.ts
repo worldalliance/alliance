@@ -21,6 +21,7 @@ import { ForumDigestService } from "./forum-digest.service";
 import { ForumExportService } from "./forum-export.service";
 import { ForumController } from "./forum.controller";
 import { ForumService } from "./forum.service";
+import { LegacyDeletedFlagService } from "./legacy-deleted-flag.service";
 
 @Module({
   imports: [
@@ -45,7 +46,12 @@ import { ForumService } from "./forum.service";
     S3Module,
   ],
   controllers: [ForumController],
-  providers: [ForumService, ForumDigestService, ForumExportService],
+  providers: [
+    ForumService,
+    ForumDigestService,
+    ForumExportService,
+    LegacyDeletedFlagService,
+  ],
   exports: [ForumService],
 })
 export class ForumModule {}

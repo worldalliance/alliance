@@ -15,7 +15,7 @@ export function filterVisiblePosts<T extends ObjectLiteral>(params: {
   now?: Date;
 }): SelectQueryBuilder<T> {
   const { qb, postAlias, viewerIdSql, now = new Date() } = params;
-  qb.andWhere(`${postAlias}.deleted = false`);
+  qb.andWhere(`${postAlias}.deletedAt IS NULL`);
   const clauses = [
     `${postAlias}.visibleAt IS NULL`,
     `${postAlias}.visibleAt < :postVisibility_now`,

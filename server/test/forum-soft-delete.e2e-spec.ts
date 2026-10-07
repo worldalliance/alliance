@@ -109,6 +109,32 @@ describe("Forum soft deletion (e2e)", () => {
     });
   });
 
+  it("leaves a soft-deleted liker out of a deleted comment's placeholder", async () => {
+    const author = await member();
+    const liker = await member();
+    const postId = await createPost(ctx.accessToken);
+    const deleted = (await comment({ ...author, postId }).expect(201)).body;
+    await request(server())
+      .post(`/forum/comments/${deleted.id}/like`)
+      .set("Authorization", `Bearer ${liker.token}`)
+      .expect(201);
+
+    await userRepo.softDelete(liker.user.id);
+    await deleteComment(author.token, deleted.id).expect(200);
+
+    const [placeholder] = await thread(postId);
+    expect(placeholder).toMatchObject({ id: deleted.id, likes: [] });
+  });
+
+  it("answers a repeated delete of a comment as it did the first", async () => {
+    const author = await member();
+    const postId = await createPost(ctx.accessToken);
+    const deleted = (await comment({ ...author, postId }).expect(201)).body;
+
+    await deleteComment(author.token, deleted.id).expect(200);
+    await deleteComment(author.token, deleted.id).expect(200);
+  });
+
   it("unpins a comment when it is deleted", async () => {
     const author = await member();
     const postId = await createPost(ctx.accessToken);
@@ -145,18 +171,24 @@ describe("Forum soft deletion (e2e)", () => {
       .expect(404);
   });
 
-  it("refuses to like a deleted post", async () => {
+  it("leaves comments on a deleted post out of a member's comment list", async () => {
     const author = await member();
-    const postId = await createPost(author.token);
+    const kept = await createPost(ctx.accessToken);
+    const removed = await createPost(author.token);
+    await comment({ ...author, postId: kept }).expect(201);
+    await comment({ ...author, postId: removed }).expect(201);
     await request(server())
-      .delete(`/forum/posts/${postId}`)
+      .delete(`/forum/posts/${removed}`)
       .set("Authorization", `Bearer ${author.token}`)
       .expect(200);
 
-    await request(server())
-      .post(`/forum/posts/${postId}/like`)
-      .set("Authorization", `Bearer ${ctx.accessToken}`)
-      .expect(404);
+    const listed = await request(server())
+      .get(`/forum/posts/user/${author.user.id}/comments`)
+      .expect(200);
+
+    expect(
+      listed.body.map((entry: CommentDto) => entry.parentObjectId),
+    ).toEqual([kept]);
   });
 
   it("leaves comments on a deleted action out of a member's comment list", async () => {
@@ -190,6 +222,20 @@ describe("Forum soft deletion (e2e)", () => {
     expect(
       listed.body.map((entry: CommentDto) => entry.parentObjectId),
     ).toEqual([kept.id]);
+  });
+
+  it("refuses to like a deleted post", async () => {
+    const author = await member();
+    const postId = await createPost(author.token);
+    await request(server())
+      .delete(`/forum/posts/${postId}`)
+      .set("Authorization", `Bearer ${author.token}`)
+      .expect(200);
+
+    await request(server())
+      .post(`/forum/posts/${postId}/like`)
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .expect(404);
   });
 
   it("takes a reply to a deleted comment without telling its author", async () => {
@@ -392,5 +438,30 @@ describe("Forum soft deletion (e2e)", () => {
     expect(
       posts.body.find((post: PostDto) => post.id === postId)?.commentCount,
     ).toBe(2);
+  });
+
+  it("still flags a deleted post and comment for the previous release", async () => {
+    const author = await member();
+    const postId = await createPost(author.token);
+    const commentId = (await comment({ ...author, postId }).expect(201)).body
+      .id;
+
+    await deleteComment(author.token, commentId).expect(200);
+    await request(server())
+      .delete(`/forum/posts/${postId}`)
+      .set("Authorization", `Bearer ${author.token}`)
+      .expect(200);
+
+    for (const [table, id] of [
+      ["post", postId],
+      ["comment", commentId],
+    ] as const) {
+      expect(
+        await ctx.dataSource.query(
+          `SELECT "deleted", "deletedAt" IS NOT NULL AS "hidden" FROM "${table}" WHERE "id" = $1`,
+          [id],
+        ),
+      ).toEqual([{ deleted: true, hidden: true }]);
+    }
   });
 });
