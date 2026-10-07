@@ -43,7 +43,7 @@ const CopyableLink: React.FC<{ label: string; url: string }> = ({
   label,
   url,
 }) => {
-  const [copied, setCopied] = useState<CopyOutcome | null>(null);
+  const [outcome, setOutcome] = useState<CopyOutcome | null>(null);
   return (
     <div className="space-y-1">
       <div className="flex gap-2">
@@ -59,12 +59,12 @@ const CopyableLink: React.FC<{ label: string; url: string }> = ({
           aria-label={`Copy ${label.toLowerCase()}`}
           title={`Copy ${label.toLowerCase()}`}
           className={ICON_BUTTON_CLASS}
-          onClick={async () => setCopied(await copyOutcome(url))}
+          onClick={async () => setOutcome(await copyOutcome(url))}
         >
           <Copy size={16} />
         </button>
       </div>
-      {copied && COPY_FEEDBACK[copied]}
+      {outcome && COPY_FEEDBACK[outcome]}
     </div>
   );
 };
