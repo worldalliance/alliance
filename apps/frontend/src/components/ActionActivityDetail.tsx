@@ -5,6 +5,7 @@ import { formatTime } from "@alliance/shared/lib/utils";
 import { OutputRenderer } from "@alliance/sharedweb/forms/OutputRenderer";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
 import { useMemo } from "react";
 import { Link, href, useOutletContext, useParams } from "react-router";
@@ -44,7 +45,7 @@ const ActionActivityDetail = () => {
 
   const origactivity = activities.find((a) => a.id === activityId) || null;
 
-  const { data: fetchedActivity } = useActivity(activityId);
+  const { data: fetchedActivity, isLoading } = useActivity(activityId);
 
   const activity = useMemo(() => {
     const base = fetchedActivity ?? origactivity;
@@ -68,6 +69,14 @@ const ActionActivityDetail = () => {
   };
 
   const isLiked = activity?.likedByMe ?? false;
+
+  if (!activity && isLoading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Spinner size="medium" />
+      </div>
+    );
+  }
 
   if (activity?.actionId !== action.id) {
     return <BasicErrorMessage>Activity not found</BasicErrorMessage>;
