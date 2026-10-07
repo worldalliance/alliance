@@ -1,0 +1,151 @@
+name: Manual review
+run-name: "${{ inputs.review_skill }}: ${{ inputs.review_target }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      checkout_ref:
+        description: Full commit SHA, branch, or tag to check out
+        type: string
+        required: true
+        default: main
+      review_target:
+        description: Commit, revision range, or description of changes to review (HEAD means the checkout above)
+        type: string
+        required: true
+        default: HEAD
+      review_skill:
+        description: review-base for one standalone commit; review for a range or description
+        type: choice
+        required: true
+        default: review-base
+        options:
+          - review-base
+          - review
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    defaults:
+      run:
+        shell: bash
+        working-directory: review-source
+    env:
+      REVIEW_TOOLS_DIR: ${{ github.workspace }}/review-tools
+      OUTPUT_DIR: ${{ github.workspace }}/manual-review
+      REVIEW_SKILL: ${{ inputs.review_skill }}
+      REVIEW_TARGET: ${{ inputs.review_target }}
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+
+    steps:
+      - name: Checkout review instructions
+        uses: actions/checkout@v4
+        with:
+          path: review-tools
+          persist-credentials: false
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref }}
+          path: review-source
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Installing dependencies and reviewing run the source's code while the Claude token is in reach.
+      - name: Require a commit from this repository
+        run: |
+          if [ -z "$(git for-each-ref --contains HEAD refs/remotes/origin refs/tags)" ]; then
+            echo "::error::$(git rev-parse HEAD) is on no branch or tag of this repository"
+            exit 1
+          fi
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: |
+          bun install --frozen-lockfile
+          (cd server && bun install --frozen-lockfile)
+          (cd common && bun install --frozen-lockfile)
+
+      - name: Install Claude Code
+        run: npm i -g @anthropic-ai/claude-code
+
+      - name: Review changes
+        id: review
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          BASH_DEFAULT_TIMEOUT_MS: "600000"
+        run: |
+          set -euo pipefail
+          if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN is not set"
+            exit 1
+          fi
+          mkdir -p "$OUTPUT_DIR"
+          jq -n \
+            --arg checkout "$(git rev-parse HEAD)" \
+            --arg target "$REVIEW_TARGET" \
+            --arg skill "$REVIEW_SKILL" \
+            '{checkout: $checkout, target: $target, skill: $skill}' > "$OUTPUT_DIR/request.json"
+          claude -p \
+            --dangerously-skip-permissions \
+            --output-format stream-json \
+            --verbose \
+            --model claude-opus-5-5 \
+            < "$REVIEW_TOOLS_DIR/.github/manual-review/prompt.md" \
+            | tee "$OUTPUT_DIR/transcript.jsonl"
+          jq -ner -f "$REVIEW_TOOLS_DIR/.github/manual-review/result.jq" \
+            "$OUTPUT_DIR/transcript.jsonl" > "$OUTPUT_DIR/review.md"
+          if [ "$REVIEW_SKILL" = review-base ]; then
+            jq -e '(.base | type == "string") and (.summary | type == "string" and test("\\S")) and (.findings | type == "array")' \
+              "$OUTPUT_DIR/findings.json" > /dev/null
+          fi
+
+      - name: Redact review artifacts
+        id: redact
+        if: always() && steps.review.outcome != 'skipped'
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ] && [ -d "$OUTPUT_DIR" ]; then
+            find "$OUTPUT_DIR" -type f -exec perl -pi -e 's/\Q$ENV{TOKEN}\E/[redacted]/g' {} +
+          fi
+
+      - name: Publish review summary
+        if: success()
+        run: cat "$OUTPUT_DIR/review.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload review artifacts
+        if: always() && steps.redact.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: manual-review
+          path: ${{ env.OUTPUT_DIR }}
+          retention-days: 7
