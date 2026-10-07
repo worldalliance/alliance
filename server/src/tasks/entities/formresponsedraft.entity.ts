@@ -13,10 +13,10 @@ import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { Form } from "./form.entity";
 
@@ -29,7 +29,8 @@ const logger = new Logger("FormResponseDraft");
  * the form is submitted or withdrawn from.
  */
 @Entity()
-@Unique(["userId", "formId"])
+@Index(["userId", "formId"], { unique: true, where: '"deletedAt" IS NULL' })
+@Index(["userId"])
 export class FormResponseDraft {
   @PrimaryGeneratedColumn()
   @ApiProperty()

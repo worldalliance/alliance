@@ -24,13 +24,16 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { Action } from "./action.entity";
 
 @Entity()
 @Index("IDX_action_form_variant_actionId", ["actionId"])
-@Unique("UQ_action_form_variant_formId", ["formId"])
+@Index("IDX_action_form_variant_formId", ["formId"])
+@Index("UQ_action_form_variant_formId", ["formId"], {
+  unique: true,
+  where: '"deletedAt" IS NULL',
+})
 export class ActionFormVariant {
   @PrimaryGeneratedColumn()
   @ApiProperty()

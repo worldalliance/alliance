@@ -17,15 +17,15 @@ import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
+  Index,
   JoinTable,
   ManyToMany,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { User } from "./user.entity";
 
 @Entity()
-@Unique(["name"])
+@Index(["name"], { unique: true, where: '"deletedAt" IS NULL' })
 export class Tag {
   // Fields
 

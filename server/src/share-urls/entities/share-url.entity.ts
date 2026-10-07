@@ -55,16 +55,18 @@ export enum ShareUrlKind {
 )
 @Index("UQ_share_url_user_action", ["user", "action"], {
   unique: true,
-  where: '"actionId" IS NOT NULL AND "duplicate" = false',
+  where:
+    '"actionId" IS NOT NULL AND "duplicate" = false AND "deletedAt" IS NULL',
 })
 @Index("UQ_share_url_user_external_target", ["user", "externalTarget"], {
   unique: true,
-  where: '"externalTargetId" IS NOT NULL AND "duplicate" = false',
+  where:
+    '"externalTargetId" IS NOT NULL AND "duplicate" = false AND "deletedAt" IS NULL',
 })
 @Index("UQ_share_url_campaign_action", ["campaign", "action"], {
   unique: true,
   where:
-    '"actionId" IS NOT NULL AND "campaignId" IS NOT NULL AND "duplicate" = false',
+    '"actionId" IS NOT NULL AND "campaignId" IS NOT NULL AND "duplicate" = false AND "deletedAt" IS NULL',
 })
 @Index(
   "UQ_share_url_campaign_external_target",
@@ -72,16 +74,16 @@ export enum ShareUrlKind {
   {
     unique: true,
     where:
-      '"externalTargetId" IS NOT NULL AND "campaignId" IS NOT NULL AND "duplicate" = false',
+      '"externalTargetId" IS NOT NULL AND "campaignId" IS NOT NULL AND "duplicate" = false AND "deletedAt" IS NULL',
   },
 )
 @Index("UQ_share_url_user_invite", ["user"], {
   unique: true,
-  where: `"kind" = 'invite' AND "userId" IS NOT NULL AND "duplicate" = false`,
+  where: `"kind" = 'invite' AND "userId" IS NOT NULL AND "duplicate" = false AND "deletedAt" IS NULL`,
 })
 @Index("UQ_share_url_campaign_invite", ["campaign"], {
   unique: true,
-  where: `"kind" = 'invite' AND "campaignId" IS NOT NULL AND "duplicate" = false`,
+  where: `"kind" = 'invite' AND "campaignId" IS NOT NULL AND "duplicate" = false AND "deletedAt" IS NULL`,
 })
 export class ShareUrl {
   @PrimaryGeneratedColumn("uuid")

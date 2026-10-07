@@ -11,11 +11,11 @@ import {
   Check,
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { Message } from "./message.entity";
 import { Participant } from "./participant.entity";
@@ -24,7 +24,8 @@ import { Participant } from "./participant.entity";
 @Check(
   `("type" = 'direct' AND "communityId" IS NULL) OR ("type" = 'multiple' AND "communityId" IS NULL) OR ("type" = 'community' AND "communityId" IS NOT NULL)`,
 )
-@Unique(["community"])
+@Index(["community"], { unique: true, where: '"deletedAt" IS NULL' })
+@Index(["community"])
 export class Conversation {
   @PrimaryGeneratedColumn()
   @ApiProperty({ type: Number })

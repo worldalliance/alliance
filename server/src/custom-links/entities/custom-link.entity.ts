@@ -31,7 +31,7 @@ export class CustomLink {
   @MaxLength(200)
   label: string;
 
-  @Index({ unique: true })
+  @Index({ unique: true, where: '"deletedAt" IS NULL' })
   @Column()
   @ApiProperty()
   @Transform(trim)

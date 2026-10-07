@@ -14,7 +14,13 @@ import {
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  Entity,
+  Index,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from "typeorm";
 import { ActionCategory } from "../action-category";
 import { Action } from "./action.entity";
 
@@ -31,7 +37,8 @@ export class Project {
   @Allow()
   id: number;
 
-  @Column({ unique: true })
+  @Index({ unique: true, where: '"deletedAt" IS NULL' })
+  @Column()
   @ApiProperty()
   @Allow()
   name: string;
