@@ -97,7 +97,7 @@ export default function DemocraticGrantmaking26() {
                   <span className="site-display text-green">$100,000</span>
                 </DisplayHeading>
                 <SiteSubtitle size={SubtitleSize.Page} onDark>
-                  Join the Alliance to nominate and vote on non-profits.
+                  Nominate and vote on non-profits.
                 </SiteSubtitle>
                 <FeaturedPeople className="mt-4 hidden lg:flex" />
               </div>
