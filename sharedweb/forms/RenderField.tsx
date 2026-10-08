@@ -23,6 +23,7 @@ import {
   CARD_ID_KEY,
   cardSubFields,
   defaultCardCount,
+  listCardLimits,
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
@@ -68,7 +69,12 @@ import {
   dropdownIconsPadding,
 } from "./ClearSelection";
 import { getCustomComponentById } from "./components";
-import { ListAddButton, ListCard, ListRemoveButton } from "./ListCard";
+import {
+  ListAddButton,
+  ListCard,
+  ListHiddenNote,
+  ListRemoveButton,
+} from "./ListCard";
 import MultiSelectDropdown from "./MultiSelectDropdown";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { CheckboxSection } from "./optionPicker";
@@ -1010,11 +1016,7 @@ export function RenderField({
     case "list": {
       const listField = field as ListField;
       const defaultCount = defaultCardCount(listField);
-      const minCards = Math.max(0, Math.floor(Number(listField.min || 0)));
-      const maxCards =
-        typeof listField.max === "number" && listField.max >= 0
-          ? Math.floor(listField.max)
-          : Infinity;
+      const { minCards, maxCards } = listCardLimits(listField);
 
       const cards = resolveCards({ value, defaultCardCount: defaultCount });
       const canDelete = cards.length > minCards;
@@ -1104,11 +1106,7 @@ export function RenderField({
                         />
                         {!disabled &&
                           isHiddenInOutput &&
-                          !responseHiddenFromOthers && (
-                            <p className="text-xs text-gray-500">
-                              This will not be shown to other members.
-                            </p>
-                          )}
+                          !responseHiddenFromOthers && <ListHiddenNote />}
                       </div>
                     );
                   })}

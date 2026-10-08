@@ -23,6 +23,15 @@ export function ListCard({
   );
 }
 
+/** Under a sub-field that output views leave out. */
+export function ListHiddenNote() {
+  return (
+    <p className="text-xs text-gray-500">
+      This will not be shown to other members.
+    </p>
+  );
+}
+
 export function ListRemoveButton({
   onClick,
   disabled,

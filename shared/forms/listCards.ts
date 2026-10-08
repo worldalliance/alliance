@@ -75,6 +75,20 @@ export function defaultCardCount(listField: ListField): number {
   return Math.max(0, Math.floor(listField.defaultNumber ?? 0));
 }
 
+/** How many cards a respondent may keep; `maxCards` is Infinity unless set. */
+export function listCardLimits(listField: ListField): {
+  minCards: number;
+  maxCards: number;
+} {
+  return {
+    minCards: Math.max(0, Math.floor(Number(listField.min || 0))),
+    maxCards:
+      typeof listField.max === "number" && listField.max >= 0
+        ? Math.floor(listField.max)
+        : Infinity,
+  };
+}
+
 /**
  * The cards a list field renders for an answer: the schema's defaults while
  * the answer is still undefined, each carrying an id.
