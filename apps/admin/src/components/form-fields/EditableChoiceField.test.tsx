@@ -14,6 +14,7 @@ import {
 } from "@testing-library/react";
 import { useState } from "react";
 import { MemoryRouter } from "react-router";
+import { EditorSidebar } from "../../lib/testing/EditorSidebar";
 import { CustomValidatorDraftsContext } from "./customValidatorDrafts";
 import { EditableChoiceField } from "./EditableChoiceField";
 
@@ -52,17 +53,18 @@ function Editor({ start = initial }: { start?: MultiSelectField }) {
               createDraftId: () => -1,
             }}
           >
-            <EditableChoiceField
-              field={field}
-              onUpdate={(updates) =>
-                setField((prev) => ({
-                  ...prev,
-                  ...updates,
-                  kind: "multiselect",
-                }))
-              }
-              onRemove={() => {}}
-            />
+            <EditorSidebar>
+              <EditableChoiceField
+                field={field}
+                onUpdate={(updates) =>
+                  setField((prev) => ({
+                    ...prev,
+                    ...updates,
+                    kind: "multiselect",
+                  }))
+                }
+              />
+            </EditorSidebar>
           </CustomValidatorDraftsContext.Provider>
         </SiteAppProvider>
       </MemoryRouter>

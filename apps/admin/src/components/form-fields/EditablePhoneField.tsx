@@ -7,7 +7,6 @@ import type { BaseFieldProps } from "./types";
 export function EditablePhoneField({
   field,
   onUpdate,
-  onRemove,
   previousFields,
   laterFields,
 }: BaseFieldProps<PhoneField>) {
@@ -17,7 +16,6 @@ export function EditablePhoneField({
       onUpdate={onUpdate}
       previousFields={previousFields}
       laterFields={laterFields}
-      onRemove={onRemove}
     >
       <FieldLabelEditor
         value={field.label}

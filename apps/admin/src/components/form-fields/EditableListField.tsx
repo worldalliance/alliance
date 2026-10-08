@@ -118,7 +118,6 @@ function createDefaultSubField(
 export function EditableListField({
   field,
   onUpdate,
-  onRemove,
   previousFields,
   laterFields,
 }: BaseFieldProps<ListField>) {
@@ -153,7 +152,6 @@ export function EditableListField({
       onUpdate={onUpdate}
       previousFields={previousFields}
       laterFields={laterFields}
-      onRemove={onRemove}
     >
       <FieldLabelEditor
         value={field.label}

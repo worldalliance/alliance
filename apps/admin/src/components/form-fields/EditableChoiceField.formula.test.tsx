@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { MemoryRouter } from "react-router";
+import { EditorSidebar } from "../../lib/testing/EditorSidebar";
 import { FormulaSourcesProvider } from "../FormulaSourcesContext";
 import { inputHelp } from "../variableInputHelp";
 import type { InputSources } from "../VariableInputPickers";
@@ -93,13 +94,14 @@ function Editor({
             <FormulaSourcesProvider
               value={{ sources: formSources, formListFailed }}
             >
-              <EditableChoiceField
-                field={field}
-                onUpdate={(updates) =>
-                  setField((prev) => ({ ...prev, ...updates }))
-                }
-                onRemove={() => {}}
-              />
+              <EditorSidebar>
+                <EditableChoiceField
+                  field={field}
+                  onUpdate={(updates) =>
+                    setField((prev) => ({ ...prev, ...updates }))
+                  }
+                />
+              </EditorSidebar>
             </FormulaSourcesProvider>
           </CustomValidatorDraftsContext.Provider>
         </SiteAppProvider>

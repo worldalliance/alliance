@@ -51,7 +51,6 @@ const buildDefaultConfig = (component?: CustomComponentDefinition) => {
 export function EditableCustomComponentField({
   field,
   onUpdate,
-  onRemove,
   previousFields,
   laterFields,
 }: BaseFieldProps<CustomComponentField>) {
@@ -326,7 +325,6 @@ export function EditableCustomComponentField({
       onUpdate={onUpdate}
       previousFields={previousFields}
       laterFields={laterFields}
-      onRemove={onRemove}
     >
       <FieldLabelEditor
         value={field.label}

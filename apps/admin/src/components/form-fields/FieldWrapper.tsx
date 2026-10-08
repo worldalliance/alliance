@@ -6,21 +6,13 @@ import {
   CustomValidatorType,
   tasksFindOneCustomValidatorAdmin,
 } from "@alliance/shared/client";
-import { staticFieldContext } from "@alliance/shared/useFormRenderer";
-import RenderField from "@alliance/sharedweb/forms/RenderField";
 import { useEffect, useState } from "react";
-import { FORM_BUILDER_PREVIEW_USER } from "../../lib/testData";
-import {
-  SectionPanels,
-  useSidebarSections,
-} from "../form-canvas/sidebarSections";
+import { SectionPanels } from "../form-canvas/sidebarSections";
 import {
   CustomValidatorSelect,
   OutputFieldToggle,
   OutputPrivateByDefaultToggle,
 } from "./CommonControls";
-import { ConditionalVisibility } from "./conditions/ConditionalVisibility";
-import { useTypedExpression } from "./conditions/expressionBuffers";
 import { ElementConditions } from "./conditions/VisibilityConditions";
 import {
   isDraftValidatorId,
@@ -31,7 +23,7 @@ import {
   hasExtractionEnabled,
   supportsExtraction,
 } from "./fieldExtraction";
-import { FieldExtraMenu, FieldExtraOptions } from "./FieldExtraMenu";
+import { FieldExtraOptions } from "./FieldExtraOptions";
 import type { FieldWrapperProps } from "./types";
 
 function isFormField(field: unknown): field is AnyField {
@@ -45,25 +37,14 @@ export function FieldWrapper<T extends AnyField>({
   onUpdate,
   previousFields,
   laterFields,
-  onRemove,
   children,
 }: FieldWrapperProps<T>) {
   const isCurrentFormField = isFormField(field);
-  const sidebar = useSidebarSections();
   const { createDraftId, drafts, removeDraft, setDraft } =
     useCustomValidatorDrafts();
   const [showCustomValidatorControl, setShowCustomValidatorControl] = useState(
     () => (isCurrentFormField ? Boolean(field.customValidatorId) : false),
   );
-  const initialVisibilityCount =
-    isCurrentFormField && field.visibleIfFormula?.conditions
-      ? Object.keys(field.visibleIfFormula.conditions).length
-      : 0;
-  const expression = useTypedExpression(field);
-  const [
-    showConditionalVisibilityControl,
-    setShowConditionalVisibilityControl,
-  ] = useState(() => initialVisibilityCount > 0 || expression.typed);
 
   const [customValidatorType, setCustomValidatorType] = useState<
     CustomValidatorType | undefined
@@ -81,7 +62,6 @@ export function FieldWrapper<T extends AnyField>({
   useEffect(() => {
     if (!isCurrentFormField) {
       setShowCustomValidatorControl(false);
-      setShowConditionalVisibilityControl(false);
       return;
     }
 
@@ -121,21 +101,11 @@ export function FieldWrapper<T extends AnyField>({
       setCustomValidatorExpression(null);
       setLoadedValidatorId(null);
     }
-
-    const conditionCount =
-      isCurrentFormField && field.visibleIfFormula?.conditions
-        ? Object.keys(field.visibleIfFormula.conditions).length
-        : 0;
-
-    if (conditionCount > 0 && !showConditionalVisibilityControl) {
-      setShowConditionalVisibilityControl(true);
-    }
   }, [
     field,
     isCurrentFormField,
     drafts,
     loadedValidatorId,
-    showConditionalVisibilityControl,
     showCustomValidatorControl,
   ]);
 
@@ -186,16 +156,6 @@ export function FieldWrapper<T extends AnyField>({
         idArgument: null,
         expression: null,
       });
-    }
-  };
-
-  const handleConditionalVisibilityToggle = (checked: boolean) => {
-    setShowConditionalVisibilityControl(checked);
-    if (!checked) {
-      handleVisibilityChange({
-        visibleIfFormula: undefined,
-      });
-      expression.clear();
     }
   };
 
@@ -283,122 +243,39 @@ export function FieldWrapper<T extends AnyField>({
     />
   );
 
-  if (sidebar) {
-    return (
-      <SectionPanels
-        content={<div className="space-y-3">{children}</div>}
-        conditions={
-          <ElementConditions
-            field={field}
-            previousFields={previousFields || []}
-            laterFields={laterFields}
-            onChange={handleVisibilityChange}
-          />
-        }
-        advanced={
-          isCurrentFormField && (
-            <div className="space-y-3 text-sm">
-              <div className="-mx-3">
-                <FieldExtraOptions
-                  field={field}
-                  showCustomValidatorControl={showCustomValidatorControl}
-                  onCustomValidatorToggle={handleCustomValidatorToggle}
-                  onExtractionToggle={handleExtractionToggle}
-                  onCheckboxExtractionTargetChange={
-                    handleCheckboxExtractionTargetChange
-                  }
-                />
-              </div>
-              {supportsExtraction(field) && hasExtractionEnabled(field) && (
-                <p className="text-xs text-blue-600">
-                  {getExtractionLabel(field)}
-                </p>
-              )}
-              {showCustomValidatorControl && customValidatorSelect}
-              {outputToggles}
-            </div>
-          )
-        }
-      />
-    );
-  }
-
   return (
-    <div className="relative border rounded-lg transition-all [&_input,&_textarea]:bg-white border-gray-200 hover:border-gray-300">
-      <div className="mb-1 flex items-center justify-end gap-1 absolute right-0 top-0 bg-white rounded-lg">
-        {isCurrentFormField && (
-          <FieldExtraMenu
-            field={field}
-            showCustomValidatorControl={showCustomValidatorControl}
-            onCustomValidatorToggle={handleCustomValidatorToggle}
-            showConditionalVisibilityControl={showConditionalVisibilityControl}
-            onConditionalVisibilityToggle={handleConditionalVisibilityToggle}
-            onExtractionToggle={handleExtractionToggle}
-            onCheckboxExtractionTargetChange={
-              handleCheckboxExtractionTargetChange
-            }
-          />
-        )}
-        <button
-          onClick={onRemove}
-          className="text-gray-500 hover:text-red-500 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50"
-          title="Remove field"
-          type="button"
-        >
-          ×
-        </button>
-      </div>
-
-      <div className="space-y-3">
-        <div className="bg-gray-100 p-4 rounded-t-lg space-y-2">
-          {children}
-          {outputToggles}
-        </div>
-        {isCurrentFormField && (
-          <div className="p-4 pt-0 mb-0">
-            <RenderField
+    <SectionPanels
+      content={<div className="space-y-3">{children}</div>}
+      conditions={
+        <ElementConditions
+          field={field}
+          previousFields={previousFields || []}
+          laterFields={laterFields}
+          onChange={handleVisibilityChange}
+        />
+      }
+      advanced={
+        isCurrentFormField && (
+          <div className="space-y-3 text-sm">
+            <FieldExtraOptions
               field={field}
-              disabled
-              isPreview
-              randomizationKey="preview"
-              user={FORM_BUILDER_PREVIEW_USER}
-              fieldContext={staticFieldContext}
+              showCustomValidatorControl={showCustomValidatorControl}
+              onCustomValidatorToggle={handleCustomValidatorToggle}
+              onExtractionToggle={handleExtractionToggle}
+              onCheckboxExtractionTargetChange={
+                handleCheckboxExtractionTargetChange
+              }
             />
             {supportsExtraction(field) && hasExtractionEnabled(field) && (
-              <div className="mt-4 text-xs text-blue-600 flex items-center gap-1">
-                <svg
-                  className="w-3 h-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+              <p className="text-xs text-blue-600">
                 {getExtractionLabel(field)}
-              </div>
+              </p>
             )}
+            {showCustomValidatorControl && customValidatorSelect}
+            {outputToggles}
           </div>
-        )}
-        {isCurrentFormField &&
-          (showCustomValidatorControl || showConditionalVisibilityControl) && (
-            <div className="space-y-2 border-t border-gray-200 p-4">
-              {showCustomValidatorControl && customValidatorSelect}
-              {showConditionalVisibilityControl && (
-                <ConditionalVisibility
-                  field={field}
-                  previousFields={previousFields || []}
-                  laterFields={laterFields}
-                  onChange={handleVisibilityChange}
-                />
-              )}
-            </div>
-          )}
-      </div>
-    </div>
+        )
+      }
+    />
   );
 }

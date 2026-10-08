@@ -149,6 +149,7 @@ As implemented:
 - An element selection can carry a child: a list sub-field, an accordion section, or a block in a section, each addressed by id, or by position where the schema lets it go without one (sections may lack ids). A child that is gone resolves to its nearest enclosing item still there (a section's block to the section, then to the element), and undo, redo, Apply JSON, and conflict loads drop a child addressed by position, as they do an id-less element.
 - The list and accordion editors list their children as rows to select, with Move up/down, and no longer embed the children's editors. Adding a sub-field, block, or section selects it with its first control focused. Delete sits in the child's own Advanced section, as for elements, rather than in the rows, since the rows are compact and a destructive action says what it does in words.
 - A selected child's settings show its editor, Move up/down beside the heading (keeping it selected), a link back to its container, and its id and Delete in Advanced. A sub-field gets Content, Conditions, and Advanced; a section (its title) and a section's block get Content and Advanced, since neither carries visibility. Deleting a child shows its container's Content.
+- Removed as orphaned: the field editors' card layout (preview, "…" menu, and conditional-visibility toggle) and `FieldExtraMenu`, since every field editor now renders in the sidebar. Their unit tests render the editor in `EditorSidebar`.
 
 ## PR 6: Inline text
 

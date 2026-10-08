@@ -10,7 +10,6 @@ import type { BaseFieldProps } from "./types";
 export function EditableContractField({
   field,
   onUpdate,
-  onRemove,
   previousFields,
   laterFields,
 }: BaseFieldProps<ContractField>) {
@@ -77,7 +76,6 @@ export function EditableContractField({
       onUpdate={onUpdate}
       previousFields={previousFields}
       laterFields={laterFields}
-      onRemove={onRemove}
     >
       <div>
         <label className="block text-xs font-medium text-gray-700 mb-1">

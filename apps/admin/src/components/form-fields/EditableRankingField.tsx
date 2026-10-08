@@ -13,7 +13,6 @@ import type { BaseFieldProps } from "./types";
 export function EditableRankingField({
   field,
   onUpdate,
-  onRemove,
   previousFields,
   laterFields,
 }: BaseFieldProps<RankingField>) {
@@ -76,7 +75,6 @@ export function EditableRankingField({
       onUpdate={onUpdate}
       previousFields={previousFields}
       laterFields={laterFields}
-      onRemove={onRemove}
     >
       <FieldLabelEditor
         value={field.label}

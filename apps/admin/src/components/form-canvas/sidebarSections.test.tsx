@@ -92,14 +92,10 @@ const openSection = (name: string) =>
   fireEvent.click(screen.getByRole("tab", { name }));
 
 describe("an editor in the settings sidebar", () => {
-  it("splits a question's settings across sections, without its card", () => {
+  it("splits a question's settings across sections", () => {
     renderSidebar({ id: "t", type: "input", kind: "text", label: "Town" });
 
     expect(panel().getByPlaceholderText("Enter placeholder text")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Extra form options" })).toBe(
-      null,
-    );
-    expect(screen.queryByTitle("Remove field")).toBeNull();
 
     openSection("Conditions");
     expect(panel().getByRole("button", { name: "Add rule" })).toBeTruthy();
@@ -107,7 +103,6 @@ describe("an editor in the settings sidebar", () => {
     openSection("Advanced");
     expect(panel().getByLabelText("Use custom validator")).toBeTruthy();
     expect(panel().getByText("Delete question")).toBeTruthy();
-    expect(panel().queryByLabelText("Use conditional visibility")).toBeNull();
   });
 
   it("moves between sections with the arrow keys", () => {

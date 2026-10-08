@@ -7,7 +7,6 @@ import type { BaseFieldProps } from "./types";
 export function EditableCityField({
   field,
   onUpdate,
-  onRemove,
   previousFields,
   laterFields,
 }: BaseFieldProps<CityField>) {
@@ -17,7 +16,6 @@ export function EditableCityField({
       onUpdate={onUpdate}
       previousFields={previousFields}
       laterFields={laterFields}
-      onRemove={onRemove}
     >
       <FieldLabelEditor
         value={field.label}

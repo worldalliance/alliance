@@ -5,7 +5,7 @@ describe("renderFieldEditor", () => {
     const field = { kind: "signature", id: "f", type: "input", label: null };
     expect(() =>
       // @ts-expect-error a kind outside the schema
-      renderFieldEditor({ field, onUpdate() {}, onRemove() {} }),
+      renderFieldEditor({ field, onUpdate() {} }),
     ).toThrow("no editor for field kind signature");
   });
 });

@@ -195,7 +195,6 @@ function childView({
                 onUpdate({
                   fields: updateListSubField(fields, index, updates),
                 }),
-              onRemove: remove,
               previousFields: fields.slice(0, index),
               laterFields: fields.slice(index + 1),
             })}

@@ -5,7 +5,6 @@ import type { ComponentType } from "react";
 export interface BaseFieldProps<T extends AnyField | DisplayBlock> {
   field: T;
   onUpdate: (updates: Partial<T>) => void;
-  onRemove: () => void;
   previousFields?: AnyField[];
   laterFields?: AnyField[];
 }
@@ -21,6 +20,5 @@ export interface FieldWrapperProps<T extends AnyField | DisplayBlock> {
   onUpdate: (updates: Partial<T>) => void;
   previousFields?: AnyField[];
   laterFields?: AnyField[];
-  onRemove: () => void;
   children: React.ReactNode;
 }
