@@ -100,4 +100,5 @@ export default [
     route("/signup", "onboarding/OnboardingPage.tsx", { id: "signup" }),
     route("/resetpassword", "pages/app/ResetPasswordPage.tsx"),
   ]),
+  route("/:customLinkSlug", "pages/static/CustomLinkRedirect.tsx"),
 ] satisfies RouteConfig;

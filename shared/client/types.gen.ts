@@ -3866,6 +3866,32 @@ export type SaveSearchSelectionDto = {
     type: SearchItemType;
 };
 
+export type CustomLinkDto = {
+    id: number;
+    label: string;
+    slug: string;
+    destination: string;
+    visits: number;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type CreateCustomLinkDto = {
+    label: string;
+    slug: string;
+    destination: string;
+};
+
+export type UpdateCustomLinkDto = {
+    label?: string;
+    slug?: string;
+    destination?: string;
+};
+
+export type CustomLinkDestinationDto = {
+    destination: string;
+};
+
 export type FormulaSourceDto = {
     formId: number;
     responseIds: Array<number>;
@@ -12894,6 +12920,124 @@ export type SearchSaveSelectedResponses = {
 };
 
 export type SearchSaveSelectedResponse = SearchSaveSelectedResponses[keyof SearchSaveSelectedResponses];
+
+export type CustomLinksFindAllAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/custom-links';
+};
+
+export type CustomLinksFindAllAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CustomLinksFindAllAdminError = CustomLinksFindAllAdminErrors[keyof CustomLinksFindAllAdminErrors];
+
+export type CustomLinksFindAllAdminResponses = {
+    200: Array<CustomLinkDto>;
+};
+
+export type CustomLinksFindAllAdminResponse = CustomLinksFindAllAdminResponses[keyof CustomLinksFindAllAdminResponses];
+
+export type CustomLinksCreateAdminData = {
+    body: CreateCustomLinkDto;
+    path?: never;
+    query?: never;
+    url: '/custom-links';
+};
+
+export type CustomLinksCreateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CustomLinksCreateAdminError = CustomLinksCreateAdminErrors[keyof CustomLinksCreateAdminErrors];
+
+export type CustomLinksCreateAdminResponses = {
+    200: CustomLinkDto;
+};
+
+export type CustomLinksCreateAdminResponse = CustomLinksCreateAdminResponses[keyof CustomLinksCreateAdminResponses];
+
+export type CustomLinksRemoveAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/custom-links/{id}';
+};
+
+export type CustomLinksRemoveAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CustomLinksRemoveAdminError = CustomLinksRemoveAdminErrors[keyof CustomLinksRemoveAdminErrors];
+
+export type CustomLinksRemoveAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type CustomLinksRemoveAdminResponse = CustomLinksRemoveAdminResponses[keyof CustomLinksRemoveAdminResponses];
+
+export type CustomLinksUpdateAdminData = {
+    body: UpdateCustomLinkDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/custom-links/{id}';
+};
+
+export type CustomLinksUpdateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CustomLinksUpdateAdminError = CustomLinksUpdateAdminErrors[keyof CustomLinksUpdateAdminErrors];
+
+export type CustomLinksUpdateAdminResponses = {
+    200: CustomLinkDto;
+};
+
+export type CustomLinksUpdateAdminResponse = CustomLinksUpdateAdminResponses[keyof CustomLinksUpdateAdminResponses];
+
+export type CustomLinksResolveData = {
+    body?: never;
+    path: {
+        slug: string;
+    };
+    query?: never;
+    url: '/custom-links/resolve/{slug}';
+};
+
+export type CustomLinksResolveErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CustomLinksResolveError = CustomLinksResolveErrors[keyof CustomLinksResolveErrors];
+
+export type CustomLinksResolveResponses = {
+    200: CustomLinkDestinationDto;
+};
+
+export type CustomLinksResolveResponse = CustomLinksResolveResponses[keyof CustomLinksResolveResponses];
 
 export type TasksSubmitFormData = {
     body: SubmitFormDto;

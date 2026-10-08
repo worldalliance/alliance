@@ -17,6 +17,7 @@ import { CampaignModule } from "./campaign/campaign.module";
 import { ClusterModule } from "./cluster/cluster.module";
 import { CommunityModule } from "./community/community.module";
 import { ContractModule } from "./contract/contract.module";
+import { CustomLinksModule } from "./custom-links/custom-links.module";
 import { connectionOptions } from "./datasources/dataSource";
 import { EventLogModule } from "./eventlog/eventlog.module";
 import { ForumModule } from "./forum/forum.module";
@@ -98,6 +99,7 @@ if (!("polyfilled" in Intl.DateTimeFormat)) {
     MailModule,
     SearchModule,
     ShareUrlsModule,
+    CustomLinksModule,
     CampaignModule,
     TasksModule,
     MmsModule,

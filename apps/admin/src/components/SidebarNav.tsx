@@ -122,8 +122,13 @@ const SidebarNav = ({
     },
     {
       folder: SidebarFolder.InvitesSharing,
-      label: "Invites & Sharing",
+      label: "Links",
       links: [
+        {
+          to: "/custom-links",
+          label: "Custom Links",
+          icon: <LinkIcon size={16} />,
+        },
         {
           to: "/invite-links",
           label: "Invite Links",
