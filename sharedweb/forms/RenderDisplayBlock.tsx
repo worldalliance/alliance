@@ -13,13 +13,19 @@ import {
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { Accordion } from "@base-ui/react/accordion";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import React, { useRef, useState } from "react";
 import { resolveImageSrc } from "../lib/imageSrc";
 import { AvatarProfile } from "../ui/Avatar";
 import Card from "../ui/Card";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import ImageLightbox from "../ui/ImageLightbox";
+import {
+  ACCORDION_CONTENTS,
+  ACCORDION_SECTIONS,
+  ACCORDION_TITLE,
+  AccordionChevron,
+} from "./accordionStyles";
 import BigLinkDisplay from "./BigLinkDisplay";
 import CopyTextDisplay from "./CopyTextDisplay";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
@@ -175,23 +181,17 @@ function ImagesDisplay({ images }: { images: ImagesItem[] }) {
 
 function AccordionDisplay({ block }: { block: AccordionBlock }) {
   return (
-    <Accordion.Root
-      multiple={!block.singleOpen}
-      className="border-y border-gray-200 divide-y divide-gray-200"
-    >
+    <Accordion.Root multiple={!block.singleOpen} className={ACCORDION_SECTIONS}>
       {block.sections.map((section, index) => (
         <Accordion.Item key={section.id ?? index}>
           <Accordion.Header>
             <Accordion.Trigger className="group flex w-full items-center justify-between gap-3 py-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
-              <span className="font-medium text-zinc-900">{section.title}</span>
-              <ChevronDown
-                size={18}
-                className="shrink-0 text-zinc-500 transition-transform group-data-[panel-open]:rotate-180"
-              />
+              <span className={ACCORDION_TITLE}>{section.title}</span>
+              <AccordionChevron className="group-data-[panel-open]:rotate-180" />
             </Accordion.Trigger>
           </Accordion.Header>
           <Accordion.Panel className="overflow-hidden">
-            <div className="flex flex-col gap-3 pb-4">
+            <div className={ACCORDION_CONTENTS}>
               {section.blocks.map((nested, nestedIndex) => (
                 <RenderDisplayBlock
                   key={nested.id ?? nestedIndex}
