@@ -10,11 +10,14 @@ import {
   ValidateIf,
 } from "class-validator";
 import { IsTimeZoneIdentifier } from "src/utils/timezone";
+import { trim } from "src/utils/transforms";
 import { TokenMode } from "./signin.dto";
 
 export class SignUpDto {
   @IsDefined()
+  @IsString()
   @IsNotEmpty()
+  @Transform(trim)
   @ApiProperty()
   readonly name: string;
 

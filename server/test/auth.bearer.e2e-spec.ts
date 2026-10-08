@@ -106,6 +106,59 @@ describe("Auth (e2e)", () => {
     expect(user.tags).toEqual([]);
   });
 
+  it("trims surrounding whitespace from the registered name", async () => {
+    const referrer = await userRepository.save(
+      userRepository.create({
+        email: "trimreferrer@test.com",
+        password: "password",
+        name: "Referrer",
+      }),
+    );
+
+    await request(ctx.app.getHttpServer())
+      .post("/auth/register")
+      .send({
+        email: "trimmednametest@test.com",
+        password: "password",
+        name: "  Ada Lovelace  ",
+        mode: TokenMode.Header,
+        timeZone: "America/Los_Angeles",
+        referralCode: referrer.referralCode,
+      } satisfies SignUpDto)
+      .expect(201);
+
+    const user = await userRepository.findOneOrFail({
+      where: { email: "trimmednametest@test.com" },
+    });
+    expect(user.name).toBe("Ada Lovelace");
+  });
+
+  it("rejects a registered name that is blank after trimming", async () => {
+    const referrer = await userRepository.save(
+      userRepository.create({
+        email: "blankreferrer@test.com",
+        password: "password",
+        name: "Referrer",
+      }),
+    );
+
+    await request(ctx.app.getHttpServer())
+      .post("/auth/register")
+      .send({
+        email: "blanknametest@test.com",
+        password: "password",
+        name: "   ",
+        mode: TokenMode.Header,
+        timeZone: "America/Los_Angeles",
+        referralCode: referrer.referralCode,
+      } satisfies SignUpDto)
+      .expect(400);
+
+    expect(
+      await userRepository.existsBy({ email: "blanknametest@test.com" }),
+    ).toBe(false);
+  });
+
   it("returns a token for a valid login", async () => {
     const user = userRepository.create({
       email: "newusertest@test.com",

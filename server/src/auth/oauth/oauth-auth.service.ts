@@ -365,7 +365,7 @@ export class OAuthAuthService {
 
     const created = await R.fromPromise(
       this.authService.createReferredUser({
-        name: profile.name ?? profile.email,
+        name: profile.name?.trim() || profile.email,
         email: profile.email,
         password: null,
         timeZone: params.timeZone,

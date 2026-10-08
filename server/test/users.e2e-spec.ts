@@ -353,6 +353,34 @@ describe("Users (e2e)", () => {
     );
   });
 
+  describe("name on /user/update", () => {
+    const update = (body: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .post("/user/update")
+        .send(body)
+        .set("Authorization", `Bearer ${userAToken}`);
+
+    it("trims surrounding whitespace from a new name", async () => {
+      const res = await update({ name: "  Ada Lovelace  " });
+
+      expect(res.status).toBe(201);
+      expect((await userRepo.findOneByOrFail({ id: userAId })).name).toBe(
+        "Ada Lovelace",
+      );
+    });
+
+    it("rejects a name that is blank after trimming", async () => {
+      await update({ name: "Original Name" });
+
+      const res = await update({ name: "   " });
+
+      expect(res.status).toBe(400);
+      expect((await userRepo.findOneByOrFail({ id: userAId })).name).toBe(
+        "Original Name",
+      );
+    });
+  });
+
   describe("time zone on /user/update", () => {
     const timeZoneOf = async (id: number) =>
       (await userRepo.findOneByOrFail({ id })).timeZone;
