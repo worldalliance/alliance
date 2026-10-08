@@ -46,7 +46,6 @@ import {
   ActionEventNotif,
   ActionEventNotifType,
 } from "./entities/action-event-notif.entity";
-import { assertStreakRecognitionAllowed } from "./streak-recognition";
 import { testUser } from "./test-users";
 
 export interface MissedDeadlineCandidate {
@@ -540,7 +539,6 @@ export class ActionEventReminderService {
     dto: CreateReminderGroupDto,
   ): Promise<ReminderGroup> {
     assertExcludePreviouslyNotifiedAllowed(dto);
-    assertStreakRecognitionAllowed(dto);
     const event = await this.eventRepository.findOneOrFail({
       where: { id: eventId },
       relations: { action: true },
@@ -591,10 +589,6 @@ export class ActionEventReminderService {
     const group = await this.reminderGroupRepository.findOneOrFail({
       where: { id: groupId },
       relations: { memberActionEvent: { action: true }, actionSuite: true },
-    });
-    assertStreakRecognitionAllowed({
-      ...dto,
-      streakRecognition: dto.streakRecognition ?? group.streakRecognition,
     });
 
     let userTag: Tag | undefined = undefined;

@@ -1,4 +1,3 @@
-import { usesMissedSuiteKeyword } from "@alliance/common/missed-suite-keywords";
 import type { ActionSuite } from "src/actions/entities/action-suite.entity";
 import type { ReminderGroup } from "src/actions/entities/reminder-group.entity";
 import {
@@ -19,7 +18,11 @@ export type ChannelTemplates = Pick<
 export function isMissedSuiteReminderGroup(
   group: Pick<ReminderGroup, "emailSubject" | "emailMessage">,
 ): boolean {
-  return usesMissedSuiteKeyword(group);
+  return [group.emailSubject, group.emailMessage].some(
+    (message) =>
+      message.includes("#{missedactioncontext}") ||
+      message.includes("#{secondmisswarning}"),
+  );
 }
 
 export enum MissedSuitePlanKind {

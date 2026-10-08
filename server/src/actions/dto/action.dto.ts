@@ -105,11 +105,6 @@ export class CreateReminderGroupDto extends PickType(ReminderGroup, [
   "excludeOptionalActions",
   "excludePreviouslyNotified",
 ]) {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  streakRecognition?: boolean;
-
   @ApiPropertyOptional({ type: Number, isArray: true })
   @IsOptional()
   userIds?: number[];
@@ -1085,7 +1080,6 @@ export class ReminderGroupDto extends PickType(ReminderGroup, [
   "allSent",
   "excludeOptionalActions",
   "excludePreviouslyNotified",
-  "streakRecognition",
 ]) {
   @ApiProperty({
     description:
@@ -1121,7 +1115,6 @@ export class ReminderGroupDto extends PickType(ReminderGroup, [
     this.allSent = group.allSent;
     this.excludeOptionalActions = group.excludeOptionalActions;
     this.excludePreviouslyNotified = group.excludePreviouslyNotified;
-    this.streakRecognition = group.streakRecognition;
     this.isMissedSuite = isMissedSuiteReminderGroup(group);
   }
 }

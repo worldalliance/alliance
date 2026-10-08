@@ -46,17 +46,11 @@ export class MissedSuitePlanService {
     return plans.filter((plan) => !claimed.has(keyOf(plan)));
   }
 
-  async findClosedSuitesFor(params: {
-    plans: NotificationPlan[];
-    now: Date;
-    forStreakRecognition: boolean;
-  }): Promise<SuiteOutcome[]> {
-    const { plans, now, forStreakRecognition } = params;
-    return plans.some(
-      (plan) =>
-        isMissedSuiteReminderGroup(plan.group) ||
-        (forStreakRecognition && plan.group.streakRecognition),
-    )
+  async findClosedSuitesFor(
+    plans: NotificationPlan[],
+    now: Date,
+  ): Promise<SuiteOutcome[]> {
+    return plans.some((plan) => isMissedSuiteReminderGroup(plan.group))
       ? this.actionsService.findClosedSuiteOutcomes(now)
       : [];
   }
@@ -69,11 +63,7 @@ export class MissedSuitePlanService {
   async toPreview(
     plans: NotificationPlan[],
   ): Promise<PreviewNotificationPlanDto[]> {
-    const closedSuites = await this.findClosedSuitesFor({
-      plans,
-      now: new Date(),
-      forStreakRecognition: false,
-    });
+    const closedSuites = await this.findClosedSuitesFor(plans, new Date());
     return (await this.dropClaimedPlans(plans)).flatMap((plan) => {
       const resolution = resolveMissedSuitePlan({
         group: plan.group,

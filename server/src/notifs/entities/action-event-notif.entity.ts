@@ -37,21 +37,10 @@ export enum MissedSuiteNoticeCopy {
   SecondMissReportV1 = "second_miss_report_v1",
 }
 
-/** Which copy a streak-milestone reminder sent; a reworded copy gets a new value. */
-export enum StreakRecognitionCopy {
-  /** The reminder group's configured text. */
-  Control = "control",
-  RecognitionV1 = "recognition_v1",
-}
-
 @Entity()
 @Index(["idempotency_key"], {
   unique: true,
   where: "idempotency_key IS NOT NULL",
-})
-@Index(["user", "streakRunSuiteId", "streakCount"], {
-  unique: true,
-  where: `"streakRunSuiteId" IS NOT NULL`,
 })
 export class ActionEventNotif {
   @PrimaryGeneratedColumn()
@@ -145,23 +134,7 @@ export class ActionEventNotif {
   })
   missedSuiteCopy: MissedSuiteNoticeCopy | null;
 
-  /** Completed suites in the member's run when a streak milestone was reached. */
-  @Column({ type: "integer", nullable: true })
-  streakCount: number | null;
-
-  /** The first suite of that run, identifying it across reminders. */
-  @Column({ type: "integer", nullable: true })
-  streakRunSuiteId: number | null;
-
-  @Column({
-    type: "enum",
-    enum: StreakRecognitionCopy,
-    enumName: "StreakRecognitionCopy",
-    nullable: true,
-  })
-  streakRecognitionCopy: StreakRecognitionCopy | null;
-
-  /** The in-app entry a missed-suite notice or streak recognition created alongside its channels. */
+  /** The in-app entry a missed-suite notice created alongside its channels. */
   @OneToOne(() => Notification, { onDelete: "SET NULL", nullable: true })
   @JoinColumn({ name: "notificationId" })
   notification?: Relation<Notification>;

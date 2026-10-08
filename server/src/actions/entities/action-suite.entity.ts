@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
-import { Allow, IsDefined, IsOptional } from "class-validator";
+import { Allow, IsOptional } from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -31,12 +31,6 @@ export class ActionSuite {
   @ApiProperty()
   @Allow()
   name: string;
-
-  /** Excluded from completed-suite streaks whatever its actions' onboarding flags. */
-  @Column({ default: false })
-  @IsDefined()
-  @Allow()
-  onboarding: boolean;
 
   @CreateDateColumnTz()
   @ApiProperty()

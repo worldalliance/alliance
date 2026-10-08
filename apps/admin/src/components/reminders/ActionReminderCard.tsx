@@ -249,12 +249,6 @@ const ActionReminderCard = ({
                 skips users with nothing new
               </p>
             )}
-            {group.streakRecognition && (
-              <p className="text-xs text-gray-500">
-                Recognizes completed-suite streaks for the experiment&apos;s
-                variant arm
-              </p>
-            )}
             {group.allSent && (
               <p className="text-green">All reminders processed</p>
             )}
