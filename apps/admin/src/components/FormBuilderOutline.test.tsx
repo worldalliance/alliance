@@ -3,6 +3,7 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import {
   canvas,
+  heading,
   openSection,
   outline,
   selectElement,
@@ -57,7 +58,6 @@ const schema: FormSchema = {
   aggregateViews: [],
 };
 
-const heading = () => settings().getAllByRole("heading")[0]?.textContent;
 const entry = (name: string) => outline().getByRole("button", { name });
 const entries = () =>
   outline()

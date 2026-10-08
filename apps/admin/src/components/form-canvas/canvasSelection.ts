@@ -253,7 +253,7 @@ export function forgetPositions(target: CanvasTarget): CanvasTarget {
   return element;
 }
 
-const keyPart = (item: { id?: string } | undefined, index: number) =>
+export const keyPart = (item: { id?: string } | undefined, index: number) =>
   item?.id || `@${index}`;
 
 function childKey(element: PageItem | undefined, child: ResolvedChild) {

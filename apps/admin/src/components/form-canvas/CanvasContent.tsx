@@ -1,13 +1,20 @@
 import type { DisplayKind } from "@alliance/common/forms/display-blocks";
 import { cn } from "@alliance/shared/styles/util";
-import type { FormEvent, MouseEvent, ReactNode } from "react";
+import { staticFieldContext } from "@alliance/shared/useFormRenderer";
+import RenderField from "@alliance/sharedweb/forms/RenderField";
+import type { ComponentProps, FormEvent, MouseEvent, ReactNode } from "react";
+import { FORM_BUILDER_PREVIEW_USER } from "../../lib/testData";
 
 /**
- * Blocks whose controls stay usable on the canvas, to inspect layout: an
- * accordion's sections, a video's player, an image's lightbox. Everything
- * else renders inert, so a click anywhere on it only selects it.
+ * Blocks whose controls stay usable on the canvas, to inspect layout: a
+ * video's player, an image's lightbox. Everything else renders inert, so a
+ * click anywhere on it only selects it. An accordion lays out its own
+ * sections on the canvas.
  */
-export const INTERACTIVE_ON_CANVAS: Record<DisplayKind, boolean> = {
+export const INTERACTIVE_ON_CANVAS: Record<
+  Exclude<DisplayKind, "accordion">,
+  boolean
+> = {
   header: false,
   text: false,
   quote: false,
@@ -22,8 +29,14 @@ export const INTERACTIVE_ON_CANVAS: Record<DisplayKind, boolean> = {
   previousAnswer: false,
   userLocation: false,
   chatTranscript: false,
-  accordion: true,
 };
+
+export const selectionRing = (selected: boolean) =>
+  selected ? "ring-2 ring-blue-500" : "hover:ring-1 hover:ring-blue-200";
+
+/** A button covering an item, so a click anywhere on it selects it. */
+export const SELECT_OVERLAY =
+  "absolute inset-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
 
 /** Links inside an interactive block lead respondents away; authoring stays. */
 const blockLinks = (event: MouseEvent) => {
@@ -33,6 +46,25 @@ const blockLinks = (event: MouseEvent) => {
 };
 
 const blockSubmit = (event: FormEvent) => event.preventDefault();
+
+export const ignoreAnswer = () => {};
+
+/** A question as the canvas previews it, answering nothing. */
+export function CanvasQuestion({
+  field,
+}: {
+  field: ComponentProps<typeof RenderField>["field"];
+}) {
+  return (
+    <RenderField
+      field={field}
+      onChange={ignoreAnswer}
+      disableOptionRandomization
+      user={FORM_BUILDER_PREVIEW_USER}
+      fieldContext={staticFieldContext}
+    />
+  );
+}
 
 export function CanvasContent({
   interactive,

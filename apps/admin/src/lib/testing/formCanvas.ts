@@ -6,6 +6,14 @@ const escapeRegExp = (text: string) =>
 export const canvas = () =>
   within(screen.getByRole("region", { name: "Form canvas" }));
 
+export const canvasButton = (name: string) =>
+  canvas().getByRole("button", { name });
+
+export const canvasOrder = (name = /^Select /) =>
+  canvas()
+    .getAllByRole("button", { name })
+    .map((button) => button.getAttribute("aria-label"));
+
 export const outline = () => within(screen.getByLabelText("Outline"));
 
 /** Selects the canvas element whose label or text ends with `text`. */
@@ -22,6 +30,8 @@ export const openSection = (name: "Content" | "Conditions" | "Advanced") =>
 /** The selected item's settings, in the sidebar or the drawer. */
 export const settings = () =>
   within(screen.getByRole("complementary", { name: "Settings" }));
+
+export const heading = () => settings().getAllByRole("heading")[0]?.textContent;
 
 export const canvasGroups = () =>
   screen.queryAllByRole("region", { name: "Visibility group" });

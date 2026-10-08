@@ -8,7 +8,8 @@ import {
   within,
 } from "@testing-library/react";
 import {
-  canvas,
+  canvasOrder,
+  heading,
   insertElement,
   openSection,
   selectElement,
@@ -51,11 +52,6 @@ const schema: FormSchema = {
   aggregateViews: [],
 };
 
-const heading = () => settings().getAllByRole("heading")[0]?.textContent;
-const canvasOrder = () =>
-  canvas()
-    .getAllByRole("button", { name: /^Select / })
-    .map((button) => button.getAttribute("aria-label"));
 const button = (name: string) =>
   screen.getByRole<HTMLButtonElement>("button", { name });
 
@@ -274,10 +270,10 @@ describe("the form canvas", () => {
         },
       ],
     });
-    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(button("Contents of Section: More"));
     const link = screen.getByRole("link", { name: "Away" });
     expect(fireEvent.click(link)).toBe(false);
-    expect(heading()).toBe("Accordion Block: More");
+    expect(heading()).toBe("Text Block: [Away](https://example.com)");
   });
 
   it("keeps a form inside an accordion from submitting", () => {
@@ -310,7 +306,7 @@ describe("the form canvas", () => {
         },
       ],
     });
-    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(button("Contents of Section: More"));
     const form = within(button("Select Accordion Block: More").parentElement!)
       .getByRole("button", { name: "Go" })
       .closest("form")!;

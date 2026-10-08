@@ -2,44 +2,94 @@ import {
   isQuestionField,
   type PageItem,
 } from "@alliance/common/forms/form-schema";
+import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { cn } from "@alliance/shared/styles/util";
-import { staticFieldContext } from "@alliance/shared/useFormRenderer";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
-import RenderField from "@alliance/sharedweb/forms/RenderField";
 import { GripVertical } from "lucide-react";
-import { FORM_BUILDER_PREVIEW_USER } from "../../lib/testData";
-import { CanvasContent, INTERACTIVE_ON_CANVAS } from "./CanvasContent";
-import { ConditionsIndicator } from "./ConditionsIndicator";
+import { CanvasAccordion, CanvasList } from "./CanvasContainers";
+import {
+  CanvasContent,
+  CanvasQuestion,
+  INTERACTIVE_ON_CANVAS,
+  SELECT_OVERLAY,
+  selectionRing,
+} from "./CanvasContent";
+import type { ChildTarget, ResolvedChild } from "./canvasSelection";
+import { ElementConditionsIndicator } from "./ConditionsIndicator";
 import { DropLine } from "./DropLine";
 import { SidebarSection } from "./sidebarSections";
 import type { ListDrag } from "./useListDrag";
 
-const ignoreAnswer = () => {};
+function ElementContent({
+  element,
+  selectedChild,
+  onSelectChild,
+  summarize,
+}: {
+  element: PageItem;
+  selectedChild: ResolvedChild | undefined;
+  onSelectChild: (child: ChildTarget, section: SidebarSection) => void;
+  summarize: (formula: VisibleIfFormula) => string;
+}) {
+  if (element.kind === "list") {
+    return (
+      <CanvasList
+        list={element}
+        selectedChild={selectedChild}
+        onSelectChild={onSelectChild}
+        summarize={summarize}
+      />
+    );
+  }
+  if (element.kind === "accordion") {
+    return (
+      <CanvasAccordion
+        block={element}
+        selectedChild={selectedChild}
+        onSelectChild={onSelectChild}
+      />
+    );
+  }
+  return isQuestionField(element) ? (
+    <CanvasContent interactive={false}>
+      <CanvasQuestion field={element} />
+    </CanvasContent>
+  ) : (
+    <CanvasContent interactive={INTERACTIVE_ON_CANVAS[element.kind]}>
+      <RenderDisplayBlock block={element} />
+    </CanvasContent>
+  );
+}
 
 export function CanvasElement({
   element,
   label,
   selected,
+  selectedChild,
   onSelect,
+  onSelectChild,
+  summarize,
   conditionSummary,
   drag,
 }: {
   element: PageItem;
   label: string;
   selected: boolean;
+  selectedChild: ResolvedChild | undefined;
   onSelect: (section: SidebarSection) => void;
+  onSelectChild: (child: ChildTarget, section: SidebarSection) => void;
+  summarize: (formula: VisibleIfFormula) => string;
   /** Null when the element shows unconditionally, or through its group. */
   conditionSummary: string | null;
   drag: ListDrag;
 }) {
-  const interactive =
-    !isQuestionField(element) && INTERACTIVE_ON_CANVAS[element.kind];
-
   return (
     <div
       className={cn(
         "group/element relative -mx-3 rounded-md px-3 py-2 transition-shadow",
-        selected ? "ring-2 ring-blue-500" : "hover:ring-1 hover:ring-blue-200",
+        selectedChild && !selected
+          ? "ring-1 ring-blue-300"
+          : selectionRing(selected),
         drag.dragging && "opacity-50",
       )}
       onClick={() => onSelect(SidebarSection.Content)}
@@ -56,21 +106,14 @@ export function CanvasElement({
         type="button"
         aria-label={`Select ${label}`}
         aria-pressed={selected}
-        className="absolute inset-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className={SELECT_OVERLAY}
       />
-      <CanvasContent interactive={interactive}>
-        {isQuestionField(element) ? (
-          <RenderField
-            field={element}
-            onChange={ignoreAnswer}
-            disableOptionRandomization
-            user={FORM_BUILDER_PREVIEW_USER}
-            fieldContext={staticFieldContext}
-          />
-        ) : (
-          <RenderDisplayBlock block={element} />
-        )}
-      </CanvasContent>
+      <ElementContent
+        element={element}
+        selectedChild={selectedChild}
+        onSelectChild={onSelectChild}
+        summarize={summarize}
+      />
       <span
         draggable
         onDragStart={drag.onDragStart}
@@ -85,14 +128,9 @@ export function CanvasElement({
         <GripVertical className="h-4 w-4" />
       </span>
       {conditionSummary && (
-        <ConditionsIndicator
-          onClick={(event) => {
-            event.stopPropagation();
-            onSelect(SidebarSection.Conditions);
-          }}
-          label={`Edit conditions: shown when ${conditionSummary}`}
-          title={`Shown when ${conditionSummary}`}
-          className="absolute -right-2 -top-2 z-10 shadow-sm"
+        <ElementConditionsIndicator
+          summary={conditionSummary}
+          onOpen={() => onSelect(SidebarSection.Conditions)}
         />
       )}
     </div>

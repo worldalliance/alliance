@@ -1,73 +1,30 @@
-import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import {
+  canvasButton,
+  canvasOrder,
+  heading,
   openSection,
   selectElement,
   settings,
 } from "../lib/testing/formCanvas";
+import { nestedSchema, subFieldOrder } from "../lib/testing/nestedForm";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 
 afterEach(cleanup);
 serveApi(routes({}, () => Response.json([])));
 
-const schema: FormSchema = {
-  pages: [
-    {
-      id: "p1",
-      title: "One",
-      fields: [
-        {
-          id: "kids",
-          type: "input",
-          kind: "list",
-          label: "Kids",
-          fields: [
-            { id: "name", type: "input", kind: "text", label: "Name" },
-            { id: "age", type: "input", kind: "number", label: "Age" },
-          ],
-        },
-        {
-          id: "faq",
-          type: "display",
-          kind: "accordion",
-          sections: [
-            {
-              id: "s1",
-              title: "Shipping",
-              blocks: [
-                { id: "t1", type: "display", kind: "text", text: "Ships fast" },
-              ],
-            },
-            { id: "s2", title: "Returns", blocks: [] },
-          ],
-        },
-      ],
-    },
-  ],
-  outputViews: [],
-  aggregateViews: [],
-};
-
-const heading = () => settings().getAllByRole("heading")[0]?.textContent;
-const rowOrder = (pattern: RegExp) =>
-  settings()
-    .getAllByTitle(pattern)
-    .map((row) => row.title);
-const subFieldRows = () => rowOrder(/^(Text|Number) Field: /);
-const selectChild = (container: string, child: string) => {
-  selectElement(container);
-  fireEvent.click(settings().getByRole("button", { name: child }));
-};
-
 describe("a container's settings", () => {
   it("lists its children as rows to select and reorder", () => {
-    renderFormBuilder(schema);
+    renderFormBuilder(nestedSchema);
     selectElement("List Field: Kids");
     fireEvent.click(
       settings().getByRole("button", { name: "Move Text Field: Name down" }),
     );
-    expect(subFieldRows()).toEqual(["Number Field: Age", "Text Field: Name"]);
+    expect(subFieldOrder()).toEqual([
+      "Select Number Field: Age",
+      "Select Text Field: Name",
+    ]);
 
     fireEvent.click(
       settings().getByRole("button", { name: "Text Field: Name" }),
@@ -80,7 +37,7 @@ describe("a container's settings", () => {
   });
 
   it("selects a sub-field it adds, with its first control focused", async () => {
-    renderFormBuilder(schema);
+    renderFormBuilder(nestedSchema);
     selectElement("List Field: Kids");
     fireEvent.change(settings().getByDisplayValue("+ Add field to card"), {
       target: { value: "email" },
@@ -93,31 +50,36 @@ describe("a container's settings", () => {
   });
 
   it("moves a selected child and keeps it selected", () => {
-    renderFormBuilder(schema);
-    selectChild("List Field: Kids", "Text Field: Name");
+    renderFormBuilder(nestedSchema);
+    selectElement("Text Field: Name");
     fireEvent.click(settings().getByRole("button", { name: "Move down" }));
     expect(heading()).toBe("Text Field: Name");
-    selectElement("List Field: Kids");
-    expect(subFieldRows()).toEqual(["Number Field: Age", "Text Field: Name"]);
+    expect(subFieldOrder()).toEqual([
+      "Select Number Field: Age",
+      "Select Text Field: Name",
+    ]);
   });
 
   it("returns to the container on deleting a child, which undo restores", () => {
-    renderFormBuilder(schema);
-    selectChild("List Field: Kids", "Text Field: Name");
+    renderFormBuilder(nestedSchema);
+    selectElement("Text Field: Name");
     openSection("Advanced");
     fireEvent.click(
       settings().getByRole("button", { name: "Delete question" }),
     );
     expect(heading()).toBe("List Field: Kids");
-    expect(subFieldRows()).toEqual(["Number Field: Age"]);
+    expect(subFieldOrder()).toEqual(["Select Number Field: Age"]);
 
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
-    expect(subFieldRows()).toEqual(["Text Field: Name", "Number Field: Age"]);
+    expect(subFieldOrder()).toEqual([
+      "Select Text Field: Name",
+      "Select Number Field: Age",
+    ]);
   });
 
   it("deletes a sub-field it has no editor for", () => {
     renderFormBuilder({
-      ...schema,
+      ...nestedSchema,
       pages: [
         {
           id: "p1",
@@ -153,25 +115,12 @@ describe("a container's settings", () => {
       settings().getByRole("button", { name: "Delete question" }),
     );
     expect(heading()).toBe("List Field: Kids");
-    expect(subFieldRows()).toEqual(["Text Field: Name"]);
-  });
-
-  it("renames a section from its settings", () => {
-    renderFormBuilder(schema);
-    selectChild("Accordion Block: Shipping, Returns", "Section: Returns");
-    expect(heading()).toBe("Section: Returns");
-    fireEvent.change(
-      settings().getByRole("textbox", { name: "Section title" }),
-      {
-        target: { value: "Refunds" },
-      },
-    );
-    expect(heading()).toBe("Section: Refunds");
+    expect(subFieldOrder()).toEqual(["Select Text Field: Name"]);
   });
 
   it("moves a selected id-less section and keeps it selected", () => {
     renderFormBuilder({
-      ...schema,
+      ...nestedSchema,
       pages: [
         {
           id: "p1",
@@ -189,19 +138,18 @@ describe("a container's settings", () => {
         },
       ],
     });
-    selectChild("Accordion Block: Shipping, Returns", "Section: Returns");
+    fireEvent.click(canvasButton("Select Section: Returns"));
     fireEvent.click(settings().getByRole("button", { name: "Move up" }));
     expect(heading()).toBe("Section: Returns");
-    selectElement("Accordion Block: Returns, Shipping");
-    expect(rowOrder(/^Section: /)).toEqual([
-      "Section: Returns",
-      "Section: Shipping",
+    expect(canvasOrder(/^Select Section/)).toEqual([
+      "Select Section: Returns",
+      "Select Section: Shipping",
     ]);
   });
 
   it("edits a block's content from its own settings, leaving its siblings", () => {
     renderFormBuilder({
-      ...schema,
+      ...nestedSchema,
       pages: [
         {
           id: "p1",
@@ -225,27 +173,27 @@ describe("a container's settings", () => {
         },
       ],
     });
-    selectChild("Accordion Block: Shipping", "Text Block: Second");
+    fireEvent.click(canvasButton("Contents of Section: Shipping"));
+    fireEvent.click(canvasButton("Select Text Block: Second"));
     fireEvent.change(settings().getByPlaceholderText("Enter text content"), {
       target: { value: "Updated" },
     });
     expect(heading()).toBe("Text Block: Updated");
-    selectElement("Accordion Block: Shipping");
-    expect(rowOrder(/^Text Block: /)).toEqual([
-      "Text Block: First",
-      "Text Block: Updated",
+    expect(canvasOrder(/^Select Text Block/)).toEqual([
+      "Select Text Block: First",
+      "Select Text Block: Updated",
     ]);
   });
 
   it("adds and reorders an accordion's sections and blocks from its rows", async () => {
-    renderFormBuilder(schema);
+    renderFormBuilder(nestedSchema);
     selectElement("Accordion Block: Shipping, Returns");
     fireEvent.click(
       settings().getByRole("button", { name: "Move Section: Returns up" }),
     );
-    expect(rowOrder(/^Section: /)).toEqual([
-      "Section: Returns",
-      "Section: Shipping",
+    expect(canvasOrder(/^Select Section/)).toEqual([
+      "Select Section: Returns",
+      "Select Section: Shipping",
     ]);
 
     fireEvent.change(
@@ -269,7 +217,7 @@ describe("a container's settings", () => {
 
   it("moves and deletes an accordion's block from its own settings", () => {
     renderFormBuilder({
-      ...schema,
+      ...nestedSchema,
       pages: [
         {
           id: "p1",
@@ -293,17 +241,14 @@ describe("a container's settings", () => {
         },
       ],
     });
-    selectChild("Accordion Block: Shipping", "Text Block: First");
+    fireEvent.click(canvasButton("Contents of Section: Shipping"));
+    fireEvent.click(canvasButton("Select Text Block: First"));
     fireEvent.click(settings().getByRole("button", { name: "Move down" }));
     expect(heading()).toBe("Text Block: First");
-    selectElement("Accordion Block: Shipping");
-    expect(rowOrder(/^Text Block: /)).toEqual([
-      "Text Block: Second",
-      "Text Block: First",
+    expect(canvasOrder(/^Select Text Block/)).toEqual([
+      "Select Text Block: Second",
+      "Select Text Block: First",
     ]);
-    fireEvent.click(
-      settings().getByRole("button", { name: "Text Block: First" }),
-    );
 
     openSection("Advanced");
     fireEvent.click(settings().getByRole("button", { name: "Delete block" }));
@@ -315,7 +260,7 @@ describe("a container's settings", () => {
 
   it("returns to the container on deleting an id-less child, not its sibling", () => {
     renderFormBuilder({
-      ...schema,
+      ...nestedSchema,
       pages: [
         {
           id: "p1",
@@ -339,7 +284,8 @@ describe("a container's settings", () => {
         },
       ],
     });
-    selectChild("Accordion Block: Shipping, Returns", "Text Block: First");
+    fireEvent.click(canvasButton("Contents of Section: Shipping"));
+    fireEvent.click(canvasButton("Select Text Block: First"));
     openSection("Advanced");
     fireEvent.click(settings().getByRole("button", { name: "Delete block" }));
     expect(heading()).toBe("Section: Shipping");

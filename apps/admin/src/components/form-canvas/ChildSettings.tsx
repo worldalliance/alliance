@@ -53,6 +53,9 @@ const LIST_SUB_FIELD_EDITORS: {
   [K in ListSubFieldKind]: FieldEditor<K> | null;
 } = { ...SUB_FIELD_EDITORS, contract: null, custom: null };
 
+export const subFieldEditsConditions = (sub: ListSubField) =>
+  LIST_SUB_FIELD_EDITORS[sub.kind] !== null;
+
 function renderSubFieldEditor<K extends ListSubFieldKind>(
   kind: K,
   props: BaseFieldProps<FieldOfKind[K]>,
@@ -175,7 +178,7 @@ function childView({
         onUpdate({ fields: fields.filter((_, i) => i !== index) });
       return {
         heading: describeHeading(sub),
-        sections: LIST_SUB_FIELD_EDITORS[sub.kind]
+        sections: subFieldEditsConditions(sub)
           ? ALL_SECTIONS
           : UNCONDITIONAL_SECTIONS,
         moves: neighborMoves(fields, index, (next, to) => {
