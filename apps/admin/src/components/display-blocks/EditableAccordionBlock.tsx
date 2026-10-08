@@ -5,31 +5,31 @@ import type {
 } from "@alliance/common/forms/display-blocks";
 import { NESTABLE_DISPLAY_KINDS } from "@alliance/common/forms/display-blocks";
 import { DISPLAY_KIND_NAMES } from "@alliance/common/forms/element-descriptors";
-import { ArrowDown, ArrowUp, Plus, X } from "lucide-react";
-import { VariableTextField } from "../VariableTextField";
+import { Plus } from "lucide-react";
+import {
+  describeElement,
+  describeSection,
+  sectionBlockChild,
+  sectionChild,
+  sectionTitle,
+} from "../form-canvas/canvasSelection";
+import {
+  ChildRow,
+  ChildRows,
+  neighborMoves,
+  useSelectChild,
+} from "../form-canvas/ChildRows";
 import { createDisplayBlock } from "./createDisplayBlock";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
-import { EditableNestedBlock } from "./EditableNestedBlock";
-import { PerViewerOptions } from "./PerViewerOptionsContext";
 import type { BaseDisplayBlockProps } from "./types";
 
 const newBlockId = () =>
   `block-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
-const move = <T,>(items: T[], index: number, direction: -1 | 1): T[] => {
-  const target = index + direction;
-  if (target < 0 || target >= items.length) return items;
-  const next = [...items];
-  [next[index], next[target]] = [next[target], next[index]];
-  return next;
-};
-
-const moveButtonClass =
-  "p-1 text-zinc-400 hover:text-zinc-600 disabled:opacity-30";
-
 export function EditableAccordionBlock(
   props: BaseDisplayBlockProps<AccordionBlock>,
 ) {
+  const selectChild = useSelectChild();
   return (
     <DisplayBlockWrapper {...props} perUserContent={false}>
       {({ block: activeBlock, onUpdate: handleUpdate }) => {
@@ -64,143 +64,92 @@ export function EditableAccordionBlock(
               Only one section open at a time
             </label>
 
-            {sections.map((section, index) => (
-              <div
-                key={section.id ?? index}
-                className="rounded-md border border-gray-200 p-2 space-y-2"
-              >
-                <div className="flex items-center gap-2">
-                  <VariableTextField
-                    value={section.title}
-                    onChange={(title) => updateSection(index, { title })}
-                    className="flex-1 text-gray-900 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    placeholder="Section title"
-                  />
-                  <button
-                    type="button"
-                    title="Move section up"
-                    onClick={() => setSections(move(sections, index, -1))}
-                    disabled={index === 0}
-                    className={moveButtonClass}
+            {sections.length > 0 && (
+              <ChildRows>
+                {sections.map((section, index) => (
+                  <ChildRow
+                    key={section.id ?? index}
+                    label={describeSection(section)}
+                    onSelect={() => selectChild(sectionChild(section, index))}
+                    {...neighborMoves(sections, index, setSections)}
+                    className="font-medium"
                   >
-                    <ArrowUp size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    title="Move section down"
-                    onClick={() => setSections(move(sections, index, 1))}
-                    disabled={index === sections.length - 1}
-                    className={moveButtonClass}
-                  >
-                    <ArrowDown size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    title="Remove section"
-                    onClick={() =>
-                      setSections(sections.filter((_, i) => i !== index))
-                    }
-                    className="p-1 text-zinc-400 hover:text-red-600"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-
-                <PerViewerOptions allowed={false}>
-                  {section.blocks.map((nested, nestedIndex) => (
-                    <div
-                      key={nested.id ?? nestedIndex}
-                      className="flex items-start gap-1"
-                    >
-                      <div className="flex flex-col pt-2">
-                        <button
-                          type="button"
-                          title="Move block up"
-                          onClick={() =>
-                            setBlocks(
-                              index,
-                              move(section.blocks, nestedIndex, -1),
-                            )
-                          }
-                          disabled={nestedIndex === 0}
-                          className={moveButtonClass}
-                        >
-                          <ArrowUp size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          title="Move block down"
-                          onClick={() =>
-                            setBlocks(
-                              index,
-                              move(section.blocks, nestedIndex, 1),
-                            )
-                          }
-                          disabled={nestedIndex === section.blocks.length - 1}
-                          className={moveButtonClass}
-                        >
-                          <ArrowDown size={14} />
-                        </button>
-                      </div>
-                      <div className="flex-1">
-                        <EditableNestedBlock
-                          block={nested}
-                          onChange={(next) =>
-                            setBlocks(
-                              index,
-                              section.blocks.map((candidate, i) =>
-                                i === nestedIndex ? next : candidate,
-                              ),
-                            )
-                          }
-                          onRemove={() =>
-                            setBlocks(
-                              index,
-                              section.blocks.filter(
-                                (_, i) => i !== nestedIndex,
-                              ),
-                            )
-                          }
-                        />
-                      </div>
+                    <div className="space-y-1 pb-2 pl-4 pr-2">
+                      {section.blocks.length > 0 && (
+                        <ChildRows>
+                          {section.blocks.map((nested, nestedIndex) => (
+                            <ChildRow
+                              key={nested.id ?? nestedIndex}
+                              label={describeElement(nested)}
+                              onSelect={() =>
+                                selectChild(
+                                  sectionBlockChild({
+                                    section,
+                                    sectionIndex: index,
+                                    block: nested,
+                                    blockIndex: nestedIndex,
+                                  }),
+                                )
+                              }
+                              {...neighborMoves(
+                                section.blocks,
+                                nestedIndex,
+                                (blocks) => setBlocks(index, blocks),
+                              )}
+                            />
+                          ))}
+                        </ChildRows>
+                      )}
+                      <select
+                        value=""
+                        aria-label={`Add block to ${sectionTitle(section)}`}
+                        onChange={(e) => {
+                          const kind = NESTABLE_DISPLAY_KINDS.find(
+                            (candidate) => candidate === e.target.value,
+                          );
+                          if (!kind) return;
+                          const block = createDisplayBlock(kind, newBlockId());
+                          setBlocks(index, [...section.blocks, block]);
+                          selectChild(
+                            sectionBlockChild({
+                              section,
+                              sectionIndex: index,
+                              block,
+                              blockIndex: section.blocks.length,
+                            }),
+                            { focus: true },
+                          );
+                        }}
+                        className="text-xs border border-gray-300 rounded px-2 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="" disabled>
+                          Add block…
+                        </option>
+                        {NESTABLE_DISPLAY_KINDS.map((kind) => (
+                          <option key={kind} value={kind}>
+                            {DISPLAY_KIND_NAMES[kind]}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  ))}
-                </PerViewerOptions>
-
-                <select
-                  value=""
-                  onChange={(e) => {
-                    const kind = NESTABLE_DISPLAY_KINDS.find(
-                      (candidate) => candidate === e.target.value,
-                    );
-                    if (!kind) return;
-                    setBlocks(index, [
-                      ...section.blocks,
-                      createDisplayBlock(kind, newBlockId()),
-                    ]);
-                  }}
-                  className="text-xs border border-gray-300 rounded px-2 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="" disabled>
-                    Add block…
-                  </option>
-                  {NESTABLE_DISPLAY_KINDS.map((kind) => (
-                    <option key={kind} value={kind}>
-                      {DISPLAY_KIND_NAMES[kind]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
+                  </ChildRow>
+                ))}
+              </ChildRows>
+            )}
 
             <button
               type="button"
-              onClick={() =>
-                setSections([
-                  ...sections,
-                  { id: newBlockId(), title: "Section title", blocks: [] },
-                ])
-              }
+              onClick={() => {
+                const section = {
+                  id: newBlockId(),
+                  title: "Section title",
+                  blocks: [],
+                };
+                setSections([...sections, section]);
+                selectChild(sectionChild(section, sections.length), {
+                  focus: true,
+                });
+              }}
               className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
             >
               <Plus size={14} />

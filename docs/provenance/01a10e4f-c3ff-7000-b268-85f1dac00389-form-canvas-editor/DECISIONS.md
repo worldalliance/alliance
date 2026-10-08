@@ -140,9 +140,15 @@ As implemented:
 The original PR 5 also held inline text editing and personalized content. Each touches different editors, so they moved to PRs 6 and 7 to keep each change reviewable; PR 7's override targeting covers PR 6's inline edits too.
 
 - Outline entries for list sub-fields and accordion sections/blocks. A list displays one representative row of selectable child fields; child edits change the list schema, rather than a sample answer. Accordion section titles and child blocks are selectable; expanding a section exposes its contents, and selecting inside one expands it. Existing allowed sub-field kinds and nesting limits remain the boundary.
-- The list and accordion editors show their children as selectable rows with move and delete, instead of inline editors.
+- The list and accordion editors show their children as selectable rows with move controls, instead of inline editors.
 
 Checks: tests editing a list child and an accordion block through both outline and canvas.
+
+As implemented:
+
+- An element selection can carry a child: a list sub-field, an accordion section, or a block in a section, each addressed by id, or by position where the schema lets it go without one (sections may lack ids). A child that is gone resolves to its nearest enclosing item still there (a section's block to the section, then to the element), and undo, redo, Apply JSON, and conflict loads drop a child addressed by position, as they do an id-less element.
+- The list and accordion editors list their children as rows to select, with Move up/down, and no longer embed the children's editors. Adding a sub-field, block, or section selects it with its first control focused. Delete sits in the child's own Advanced section, as for elements, rather than in the rows, since the rows are compact and a destructive action says what it does in words.
+- A selected child's settings show its editor, Move up/down beside the heading (keeping it selected), a link back to its container, and its id and Delete in Advanced. A sub-field gets Content, Conditions, and Advanced; a section (its title) and a section's block get Content and Advanced, since neither carries visibility. Deleting a child shows its container's Content.
 
 ## PR 6: Inline text
 

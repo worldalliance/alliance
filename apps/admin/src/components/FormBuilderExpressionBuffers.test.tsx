@@ -1,7 +1,11 @@
 import type { FormSchema, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { act, cleanup, fireEvent, screen } from "@testing-library/react";
-import { openSection, selectElement } from "../lib/testing/formCanvas";
+import {
+  openSection,
+  selectElement,
+  settings,
+} from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 
 afterEach(cleanup);
@@ -77,12 +81,22 @@ it("gives each list sub-field its own expression text", async () => {
       },
     ]),
   );
-  selectElement("People");
+  const selectSubField = (label: string) => {
+    selectElement("People");
+    fireEvent.click(
+      settings().getByRole("button", { name: `Text Field: ${label}` }),
+    );
+    openSection("Conditions");
+  };
+  selectSubField("First");
   editAsExpression();
   await typeExpression("c1 AND");
+  selectSubField("Second");
   editAsExpression();
+  expect(expressions().map((box) => box.value)).toEqual(["c1"]);
 
-  expect(expressions().map((box) => box.value)).toEqual(["c1 AND", "c1"]);
+  selectSubField("First");
+  expect(expressions().map((box) => box.value)).toEqual(["c1 AND"]);
 });
 
 it("keeps an output block's expression text across tabs", async () => {

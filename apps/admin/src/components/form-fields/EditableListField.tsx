@@ -3,15 +3,19 @@ import {
   fieldPickerLabel,
 } from "@alliance/common/forms/element-descriptors";
 import type {
-  AnyField,
   FieldKind,
   ListField,
   ListSubField,
 } from "@alliance/common/forms/form-schema";
-import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
 import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
-import type { ConditionSourceFields } from "../../lib/conditionSourceFields";
-import { updateListSubField } from "../../lib/updateListSubField";
+import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
+import { describeElement, subFieldChild } from "../form-canvas/canvasSelection";
+import {
+  ChildRow,
+  ChildRows,
+  neighborMoves,
+  useSelectChild,
+} from "../form-canvas/ChildRows";
 import {
   formFieldsErrorReason,
   FormPickerError,
@@ -19,9 +23,7 @@ import {
 } from "../FormPickerError";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
-import { ElementExpressionScope } from "./conditions/expressionBuffers";
-import { SUB_FIELD_EDITORS } from "./subFieldEditors";
-import type { BaseFieldProps, FieldEditor, FieldOfKind } from "./types";
+import type { BaseFieldProps } from "./types";
 
 const SUB_FIELD_KINDS_OPTIONS = {
   textarea: true,
@@ -113,39 +115,6 @@ function createDefaultSubField(
   }
 }
 
-type ListSubFieldKind = ListSubField["kind"];
-
-const LIST_SUB_FIELD_EDITORS: {
-  [K in ListSubFieldKind]: FieldEditor<K> | null;
-} = { ...SUB_FIELD_EDITORS, contract: null, custom: null };
-
-function renderSubFieldEditor<K extends ListSubFieldKind>(
-  kind: K,
-  props: BaseFieldProps<FieldOfKind[K]>,
-) {
-  const Editor: FieldEditor<K> | null = LIST_SUB_FIELD_EDITORS[kind];
-  return Editor && <Editor {...props} />;
-}
-
-function renderEditableSubField(
-  sub: ListSubField,
-  index: number,
-  updateSubField: (index: number, updates: Partial<AnyField>) => void,
-  removeSubField: (index: number) => void,
-  sources: ConditionSourceFields,
-) {
-  return (
-    <ElementExpressionScope id={sub.id}>
-      {renderSubFieldEditor(sub.kind, {
-        field: sub,
-        onUpdate: (updates) => updateSubField(index, updates),
-        onRemove: () => removeSubField(index),
-        ...sources,
-      })}
-    </ElementExpressionScope>
-  );
-}
-
 export function EditableListField({
   field,
   onUpdate,
@@ -167,28 +136,15 @@ export function EditableListField({
     (f) => f.id === field.prefillFromPreviousAnswer?.sourceFieldId,
   );
   const sourceSubFields = selectedSourceListField?.fields ?? [];
-
-  const addSubField = (kind: (typeof SUB_FIELD_KINDS)[number]) => {
-    const sub = createDefaultSubField(field.id, kind);
-    onUpdate({ fields: [...(field.fields ?? []), sub] });
-  };
-
-  const updateSubField = (index: number, updates: Partial<AnyField>) => {
-    onUpdate({
-      fields: updateListSubField(field.fields ?? [], index, updates),
-    });
-  };
-
-  const removeSubField = (index: number) => {
-    const next = (field.fields ?? []).filter((_, i) => i !== index);
-    onUpdate({ fields: next });
-  };
+  const selectChild = useSelectChild();
 
   const subFields = field.fields ?? [];
-  const sourcesFor = (index: number): ConditionSourceFields => ({
-    previousFields: subFields.slice(0, index),
-    laterFields: subFields.slice(index + 1),
-  });
+  const addSubField = (kind: (typeof SUB_FIELD_KINDS)[number]) => {
+    const sub = createDefaultSubField(field.id, kind);
+    onUpdate({ fields: [...subFields, sub] });
+    selectChild(subFieldChild(sub, subFields.length), { focus: true });
+  };
+
   const hiddenIds = field.outputViewHiddenFieldIds ?? [];
 
   return (
@@ -274,18 +230,21 @@ export function EditableListField({
         <label className="block text-xs font-medium text-gray-700 mb-1">
           Fields in each card
         </label>
-        <div className="space-y-3">
-          {subFields.map((sub, index) => (
-            <div key={sub.id}>
-              {renderEditableSubField(
-                sub,
-                index,
-                updateSubField,
-                removeSubField,
-                sourcesFor(index),
-              )}
-            </div>
-          ))}
+        <div className="space-y-2">
+          {subFields.length > 0 && (
+            <ChildRows>
+              {subFields.map((sub, index) => (
+                <ChildRow
+                  key={sub.id || index}
+                  label={describeElement(sub)}
+                  onSelect={() => selectChild(subFieldChild(sub, index))}
+                  {...neighborMoves(subFields, index, (fields) =>
+                    onUpdate({ fields }),
+                  )}
+                />
+              ))}
+            </ChildRows>
+          )}
           <div className="relative">
             <select
               value=""

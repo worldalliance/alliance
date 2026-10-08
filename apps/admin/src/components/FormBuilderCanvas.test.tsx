@@ -557,34 +557,25 @@ describe("the form canvas in a narrow window", () => {
 
   it("leaves the drawer open when Escape closes a menu inside it", () => {
     renderFormBuilder({
-      pages: [
+      ...schema,
+      variables: [
         {
-          id: "p1",
-          fields: [
-            {
-              id: "kids",
-              type: "input",
-              kind: "list",
-              label: "Kids",
-              fields: [
-                { id: "name", type: "input", kind: "text", label: "Name" },
-              ],
-            },
-          ],
+          name: "town",
+          inputs: { input1: { kind: "field", fieldId: "town" } },
+          formula: "input1",
         },
       ],
-      outputViews: [],
-      aggregateViews: [],
     });
-    selectElement("Kids");
-    const menu = settings().getByRole("button", {
-      name: "Extra form options",
+    selectElement("Town");
+    fireEvent.click(
+      settings().getByRole("button", { name: "Insert a variable" }),
+    );
+    expect(settings().getByRole("listbox")).toBeTruthy();
+    fireEvent.keyDown(settings().getByPlaceholderText("Enter field label"), {
+      key: "Escape",
     });
-    fireEvent.click(menu);
-    expect(menu.getAttribute("aria-expanded")).toBe("true");
-    fireEvent.keyDown(menu, { key: "Escape" });
-    expect(menu.getAttribute("aria-expanded")).toBe("false");
-    expect(heading()).toBe("List Field: Kids");
+    expect(settings().queryByRole("listbox")).toBeNull();
+    expect(heading()).toBe("Text Field: Town");
   });
 
   it("focuses an inserted element's first control in the drawer it opens", async () => {

@@ -29,8 +29,8 @@ const JOIN_ICONS: Record<NeighborDirection, typeof ArrowUpToLine> = {
   [NeighborDirection.Next]: ArrowDownToLine,
 };
 
-// Carries the id of the top-level element it describes, so editors nested in
-// that element (list sub-fields, accordion blocks) don't take it as their own.
+// Carries the id of the top-level element it describes, so an editor under it
+// for anything else doesn't take it as its own.
 export const VisibilityGroupContext = createContext<
   ({ elementId: string } & VisibilityGroupRole) | null
 >(null);

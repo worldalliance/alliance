@@ -81,16 +81,20 @@ import {
   CanvasTargetKind,
   elementTarget,
   followElement,
+  forgetPositions,
   resolveTarget,
   targetKey,
   type CanvasSelection,
   type CanvasTarget,
+  type ChildTarget,
 } from "./form-canvas/canvasSelection";
 import {
   CanvasWorkspace,
   DrawerKind,
   useWideCanvasLayout,
 } from "./form-canvas/CanvasWorkspace";
+import { SelectChildProvider } from "./form-canvas/ChildRows";
+import { ChildSettings } from "./form-canvas/ChildSettings";
 import { ElementSettings } from "./form-canvas/ElementSettings";
 import { FormCanvas } from "./form-canvas/FormCanvas";
 import { FormOutline } from "./form-canvas/FormOutline";
@@ -599,16 +603,12 @@ export function FormBuilder(props: FormBuilderProps) {
     target: { kind: CanvasTargetKind.Page },
   }));
   const [section, setSection] = useState(SidebarSection.Content);
-  // A schema from elsewhere can shift what sits at an id-less block's
-  // position, so its selection would land on another element.
   const reloadEditors = useCallback(() => {
     setSchemaLoads((count) => count + 1);
-    setSelection((current) =>
-      current.target.kind === CanvasTargetKind.Element &&
-      current.target.id === null
-        ? { ...current, target: { kind: CanvasTargetKind.Page } }
-        : current,
-    );
+    setSelection((current) => {
+      const target = forgetPositions(current.target);
+      return target === current.target ? current : { ...current, target };
+    });
   }, []);
   const wideCanvas = useWideCanvasLayout();
   const [drawer, setDrawer] = useState<DrawerKind | null>(null);
@@ -1632,10 +1632,10 @@ export function FormBuilder(props: FormBuilderProps) {
   const applyGrouped = ({ pages, groups }: GroupedPages) =>
     updateSchema({ ...schema, pages }, groups);
 
-  const renderElementEditor = (index: number) => {
+  const updateElementAt = (index: number) => {
     const field = currentPage.fields[index];
-    if (!field) return null;
-    const updateField = (updates: Partial<PageItem>) => {
+    return (updates: Partial<PageItem>) => {
+      if (!field) return;
       const optionValueChange =
         isQuestionField(field) &&
         fieldHasOptions(field) &&
@@ -1702,6 +1702,23 @@ export function FormBuilder(props: FormBuilderProps) {
         pages: nextPages,
       });
     };
+  };
+
+  const selectChildOf =
+    (index: number) => (child: ChildTarget, options?: { focus: true }) => {
+      const element = currentPage.fields[index];
+      if (!element) return;
+      select(
+        { ...elementTarget(element, index), child },
+        SidebarSection.Content,
+      );
+      if (options?.focus) setFocusPending(true);
+    };
+
+  const renderElementEditor = (index: number) => {
+    const field = currentPage.fields[index];
+    if (!field) return null;
+    const updateField = updateElementAt(index);
 
     const { previousFields, laterFields } = conditionSourceFields({
       pages: schema.pages,
@@ -1735,9 +1752,11 @@ export function FormBuilder(props: FormBuilderProps) {
           }
         >
           <PerViewerOptions allowed={!displayOnly}>
-            {isQuestionField(field)
-              ? renderFieldEditor({ field, ...commonProps })
-              : renderBlockEditor({ block: field, ...commonProps })}
+            <SelectChildProvider value={selectChildOf(index)}>
+              {isQuestionField(field)
+                ? renderFieldEditor({ field, ...commonProps })
+                : renderBlockEditor({ block: field, ...commonProps })}
+            </SelectChildProvider>
           </PerViewerOptions>
         </VisibilityGroupContext.Provider>
       </ElementExpressionScope>
@@ -1823,8 +1842,37 @@ export function FormBuilder(props: FormBuilderProps) {
           </PageSettingsSidebar>
         );
       case CanvasTargetKind.Element: {
-        const { index } = resolvedTarget;
+        const { index, child } = resolvedTarget;
         const element = currentPage.fields[index]!;
+        if (child) {
+          return (
+            <ElementExpressionScope
+              parent={`element:${currentPage.id}`}
+              id={element.id}
+            >
+              <ChildSettings
+                element={element}
+                child={child}
+                onUpdate={updateElementAt(index)}
+                updateCurrent={addressedWrite(element, updateBlockById)}
+                onReselect={(next) =>
+                  setSelection({
+                    pageId: currentPage.id,
+                    target: { ...elementTarget(element, index), child: next },
+                  })
+                }
+                onSelectParent={() =>
+                  select(elementTarget(element, index), SidebarSection.Content)
+                }
+                section={section}
+                onSection={setSection}
+                focusPending={focusPending}
+                onFocused={focused}
+                editorKey={`${targetKey(currentPage, resolvedTarget)}-${schemaLoads}`}
+              />
+            </ElementExpressionScope>
+          );
+        }
         const stepTo = (direction: NeighborDirection) => {
           const step = stepPast({
             fields: currentPage.fields,
