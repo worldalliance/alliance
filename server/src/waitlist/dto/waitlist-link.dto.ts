@@ -28,6 +28,9 @@ export class AdminWaitlistLinkDto {
   @ApiProperty()
   channel: string;
 
+  @ApiProperty()
+  showReferralMessage: boolean;
+
   @ApiProperty({ type: Date, nullable: true })
   publishedAt: Date | null;
 
@@ -45,6 +48,7 @@ export class AdminWaitlistLinkDto {
     this.code = input.link.code;
     this.organizationId = input.link.organizationId;
     this.channel = input.link.channel;
+    this.showReferralMessage = input.link.showReferralMessage;
     this.publishedAt = input.link.publishedAt;
     this.archivedAt = input.link.archivedAt;
     this.createdAt = input.link.createdAt;
@@ -53,6 +57,11 @@ export class AdminWaitlistLinkDto {
 }
 
 export class CreateWaitlistLinkDto {
+  @ApiPropertyOptional({ default: true })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsBoolean()
+  showReferralMessage?: boolean;
+
   @ApiProperty()
   @IsInt()
   organizationId: number;
@@ -71,6 +80,11 @@ export class CreateWaitlistLinkDto {
 }
 
 export class UpdateWaitlistLinkDto {
+  @ApiPropertyOptional()
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsBoolean()
+  showReferralMessage?: boolean;
+
   @ApiPropertyOptional()
   @ValidateIf((_object, value) => value !== undefined)
   @Transform(trim)

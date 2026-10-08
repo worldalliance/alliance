@@ -119,6 +119,25 @@ test("names the organization on its link", async () => {
   expect(sent[0]).toMatchObject({ linkCode: "acme-news" });
 });
 
+test("shows the standard form for an unbranded link and retains its attribution", async () => {
+  referral = () => Response.json({ organization: null, inviterName: null });
+  const { container } = renderForm("?link=homepage");
+  await waitFor(() =>
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: /Join the Alliance waitlist/,
+      }).disabled,
+    ).toBe(false),
+  );
+  expect(
+    screen.queryByText(/invited you|others from|Checking your invitation/),
+  ).toBeNull();
+  expect(container.querySelector("form .group\\/avatar")).toBeNull();
+  fill();
+  await screen.findByText("You’re on the waitlist.");
+  expect(sent[0]).toMatchObject({ linkCode: "homepage" });
+});
+
 test("says it is checking the link while the lookup is out", async () => {
   referral = () => Response.json(organizationReferral(1));
   renderForm("?link=acme-news");

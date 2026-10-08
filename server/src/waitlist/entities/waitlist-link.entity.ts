@@ -30,6 +30,9 @@ export class WaitlistLink {
   @Column()
   channel: string;
 
+  @Column({ default: true })
+  showReferralMessage: boolean;
+
   /** Staff-entered tracking metadata; publishes nothing. */
   @Column({ type: "timestamptz", nullable: true })
   publishedAt: Date | null;

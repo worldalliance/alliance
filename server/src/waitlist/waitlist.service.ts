@@ -45,6 +45,7 @@ function contactOf({
 const NOT_SPAM_LIKE = { spamStatus: Not(In(SPAM_LIKE_STATUSES)) };
 
 type ResolvedReferral = {
+  showReferralMessage: boolean;
   organization: Campaign | null;
   sourceLinkId: number | null;
   referrer: WaitlistEntry | null;
@@ -80,6 +81,7 @@ export class WaitlistService {
         return R.failure(WaitlistEntryError.UnknownCode);
       }
       return R.success({
+        showReferralMessage: link.showReferralMessage,
         organization: link.organization,
         sourceLinkId: link.id,
         referrer: null,
@@ -94,12 +96,14 @@ export class WaitlistService {
         return R.failure(WaitlistEntryError.UnknownCode);
       }
       return R.success({
+        showReferralMessage: true,
         organization: referrer.organization ?? null,
         sourceLinkId: referrer.sourceLinkId,
         referrer,
       });
     }
     return R.success({
+      showReferralMessage: false,
       organization: null,
       sourceLinkId: null,
       referrer: null,
@@ -114,6 +118,9 @@ export class WaitlistService {
       return resolved;
     }
     const { organization, referrer } = resolved.value;
+    if (!resolved.value.showReferralMessage) {
+      return R.success({ organization: null, inviterName: null });
+    }
     const entryCount = organization
       ? await this.entryRepository.countBy({
           organizationId: organization.id,

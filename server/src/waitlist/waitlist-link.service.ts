@@ -66,6 +66,7 @@ export class WaitlistLinkService {
           code: randomToken(8),
           organizationId: organization.id,
           channel: dto.channel,
+          showReferralMessage: dto.showReferralMessage ?? true,
           publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : null,
         }),
       );
@@ -82,6 +83,9 @@ export class WaitlistLinkService {
       throw new NotFoundException("Waitlist link not found");
     }
     if (dto.channel !== undefined) link.channel = dto.channel;
+    if (dto.showReferralMessage !== undefined) {
+      link.showReferralMessage = dto.showReferralMessage;
+    }
     if (dto.publishedAt !== undefined) {
       link.publishedAt = dto.publishedAt ? new Date(dto.publishedAt) : null;
     }

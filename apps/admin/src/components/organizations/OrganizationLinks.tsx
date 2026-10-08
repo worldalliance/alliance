@@ -32,12 +32,14 @@ const OrganizationLinks: React.FC<OrganizationLinksProps> = ({
   const { success, error: toastError } = useToast();
   const [channel, setChannel] = useState("");
   const [publishedOn, setPublishedOn] = useState("");
+  const [showReferralMessage, setShowReferralMessage] = useState(true);
   const [archiving, setArchiving] = useState<AdminWaitlistLinkDto | null>(null);
 
   const create = useCreateWaitlistLinkAdmin({
     onSuccess: () => {
       setChannel("");
       setPublishedOn("");
+      setShowReferralMessage(true);
     },
     onError: (err) => refusalToast(err, "Could not create the link."),
   });
@@ -58,6 +60,11 @@ const OrganizationLinks: React.FC<OrganizationLinksProps> = ({
   return (
     <div className="flex flex-col gap-2">
       <h3 className="text-sm font-semibold text-zinc-800">Waitlist links</h3>
+      <p className="text-xs text-zinc-500">
+        Show referral message displays the organization&apos;s invitation, logo,
+        and signup count. Turn it off for the standard page; signups still count
+        toward this link and organization.
+      </p>
       {links.length > 0 && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -70,6 +77,9 @@ const OrganizationLinks: React.FC<OrganizationLinksProps> = ({
                 </th>
                 <th className="px-3 py-2 font-medium text-zinc-600">Created</th>
                 <th className="px-3 py-2 font-medium text-zinc-600">Entries</th>
+                <th className="px-3 py-2 font-medium text-zinc-600">
+                  Referral message
+                </th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
@@ -101,6 +111,7 @@ const OrganizationLinks: React.FC<OrganizationLinksProps> = ({
               organizationId,
               channel: channel.trim(),
               publishedAt: publishedAt.value,
+              showReferralMessage,
             });
         }}
       >
@@ -120,6 +131,15 @@ const OrganizationLinks: React.FC<OrganizationLinksProps> = ({
             value={publishedOn}
             onChange={(e) => setPublishedOn(e.target.value)}
           />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-zinc-700">
+          <input
+            type="checkbox"
+            checked={showReferralMessage}
+            disabled={create.isPending}
+            onChange={(e) => setShowReferralMessage(e.target.checked)}
+          />
+          Show referral message
         </label>
         <Button
           color={ButtonColor.White}
@@ -214,6 +234,15 @@ const LinkRow: React.FC<LinkRowProps> = ({
         {formatMediumDateEnUS(new Date(link.createdAt))}
       </td>
       <td className="px-3 py-2">{link.entryCount}</td>
+      <td className="px-3 py-2">
+        <input
+          type="checkbox"
+          aria-label={`Show referral message for ${link.channel}`}
+          checked={link.showReferralMessage}
+          disabled={disabled}
+          onChange={(e) => onUpdate({ showReferralMessage: e.target.checked })}
+        />
+      </td>
       <td className="px-3 py-2 text-right">
         <Button
           color={ButtonColor.Transparent}

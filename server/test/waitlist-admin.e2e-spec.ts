@@ -57,6 +57,62 @@ describe("Waitlist admin (e2e)", () => {
   });
 
   describe("links", () => {
+    it("can hide referral messaging while preserving attribution and personal referrals", async () => {
+      const created = await createLink({ showReferralMessage: false }).expect(
+        201,
+      );
+      expect(created.body.showReferralMessage).toBe(false);
+      const lookup = () =>
+        request(server())
+          .get("/waitlist/referral")
+          .query({ linkCode: created.body.code });
+      expect((await lookup().expect(200)).body).toEqual({
+        organization: null,
+        inviterName: null,
+      });
+      const joined = await request(server())
+        .post("/waitlist/entries")
+        .send({
+          name: "Test Inviter",
+          email: `standard-${Math.random()}@example.com`,
+          linkCode: created.body.code,
+        })
+        .expect(200);
+      const personal = await request(server())
+        .get("/waitlist/referral")
+        .query({ referrerCode: joined.body.shareCode })
+        .expect(200);
+      expect(personal.body.inviterName).toBe("Test Inviter");
+      expect(personal.body.organization.name).toBe(organization.name);
+      const listed = await admin.get("/waitlist/admin/links").expect(200);
+      expect(
+        listed.body.find((link: { id: number }) => link.id === created.body.id),
+      ).toMatchObject({ showReferralMessage: false, entryCount: 1 });
+      const path = `/waitlist/admin/links/${created.body.id}`;
+      await admin.patch(path, { channel: "Updated" }).expect(200);
+      expect((await lookup().expect(200)).body.organization).toBeNull();
+      await admin.patch(path, { showReferralMessage: true }).expect(200);
+      expect((await lookup().expect(200)).body.organization.name).toBe(
+        organization.name,
+      );
+      await admin.patch(path, { showReferralMessage: false }).expect(200);
+      expect((await lookup().expect(200)).body.organization).toBeNull();
+    });
+
+    it.each([null, "false", 0])(
+      "rejects an invalid referral-message setting: %s",
+      async (showReferralMessage) => {
+        await createLink({ showReferralMessage }).expect(400);
+        const created = await createLink({}).expect(201);
+        expect(created.body.showReferralMessage).toBe(true);
+        await admin
+          .patch(`/waitlist/admin/links/${created.body.id}`, {
+            showReferralMessage,
+          })
+          .expect(400);
+      },
+    );
+
     it("rejects non-admins", async () => {
       await request(server())
         .get("/waitlist/admin/links")

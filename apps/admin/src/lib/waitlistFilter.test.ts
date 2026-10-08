@@ -76,6 +76,7 @@ describe("linkOptions", () => {
     organizationId: 1,
     channel,
     publishedAt: null,
+    showReferralMessage: true,
     archivedAt: archived ? "2026-09-02T00:00:00.000Z" : null,
     createdAt: "2026-09-01T00:00:00.000Z",
     entryCount: 0,

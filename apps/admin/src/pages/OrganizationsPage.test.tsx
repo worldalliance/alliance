@@ -41,6 +41,7 @@ const link: AdminWaitlistLinkDto = {
   organizationId: 1,
   channel: "Newsletter",
   publishedAt: null,
+  showReferralMessage: true,
   archivedAt: null,
   createdAt: "2026-09-01T00:00:00.000Z",
   entryCount: 3,
@@ -207,7 +208,12 @@ it("adds a link and archives one after confirming", async () => {
     expect(requests).toContainEqual({
       method: "POST",
       path: "/waitlist/admin/links",
-      body: { organizationId: 1, channel: "Social", publishedAt: null },
+      body: {
+        organizationId: 1,
+        channel: "Social",
+        publishedAt: null,
+        showReferralMessage: true,
+      },
     }),
   );
 
@@ -219,6 +225,48 @@ it("adds a link and archives one after confirming", async () => {
       method: "PATCH",
       path: "/waitlist/admin/links/7",
       body: { archived: true },
+    }),
+  );
+});
+
+it("can create and update a link with referral messaging disabled", async () => {
+  renderPage();
+  await screen.findByDisplayValue("Newsletter");
+  const [channel] = screen.getAllByLabelText("New link's channel");
+  fireEvent.change(channel, { target: { value: "Homepage" } });
+  fireEvent.click(
+    screen.getAllByRole("checkbox", {
+      name: "Show referral message",
+    })[0],
+  );
+  fireEvent.click(screen.getAllByRole("button", { name: "Add link" })[0]);
+  await waitFor(() =>
+    expect(requests).toContainEqual({
+      method: "POST",
+      path: "/waitlist/admin/links",
+      body: {
+        organizationId: 1,
+        channel: "Homepage",
+        publishedAt: null,
+        showReferralMessage: false,
+      },
+    }),
+  );
+  expect(
+    screen.getAllByRole<HTMLInputElement>("checkbox", {
+      name: "Show referral message",
+    })[0].checked,
+  ).toBe(true);
+  fireEvent.click(
+    screen.getByRole("checkbox", {
+      name: "Show referral message for Newsletter",
+    }),
+  );
+  await waitFor(() =>
+    expect(requests).toContainEqual({
+      method: "PATCH",
+      path: "/waitlist/admin/links/7",
+      body: { showReferralMessage: false },
     }),
   );
 });

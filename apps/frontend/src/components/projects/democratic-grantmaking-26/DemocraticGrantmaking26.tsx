@@ -1,6 +1,5 @@
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { cn } from "@alliance/shared/styles/util";
-import { Clock3 } from "lucide-react";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
 import { DocProse } from "../../../site/DocProse";
 import { SiteFooter } from "../../../site/Footer";
@@ -74,13 +73,13 @@ export default function DemocraticGrantmaking26() {
           style={{ paddingTop: NAV_HEIGHT }}
         >
           <div
-            className="flex flex-col justify-center pb-6 max-lg:[@media(max-aspect-ratio:1/2)_and_(min-height:901px)]:min-h-0! max-lg:[@media(max-aspect-ratio:1/2)_and_(min-height:901px)]:pb-6 md:pb-22 lg:contents"
+            className="flex flex-col justify-center pb-[clamp(1.5rem,10svh,6rem)] max-lg:[@media(max-aspect-ratio:1/2)_and_(min-height:901px)]:min-h-0! max-lg:[@media(max-aspect-ratio:1/2)_and_(min-height:901px)]:pb-6 md:pb-22 lg:min-h-0! lg:flex-1 lg:pb-0"
             style={{ minHeight: `calc(100svh - ${NAV_HEIGHT}px)` }}
           >
             <div
               className={cn(
                 PROJECT_COL,
-                "grid grid-cols-1 gap-y-6 pt-10 [@media(max-width:480px)_and_(max-height:700px)]:pt-6 lg:mt-[max(0px,calc((100svh_-_1000px)/3))] lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-center lg:gap-x-[1.5%] lg:pt-[clamp(3rem,10vh,6rem)]",
+                "grid grid-cols-1 gap-y-6 pt-10 [@media(max-width:480px)_and_(max-height:700px)]:pt-6 lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-center lg:gap-x-[1.5%] lg:pt-[clamp(1.5rem,4svh,4rem)]",
               )}
             >
               <div className="flex flex-col gap-4 lg:gap-[clamp(1rem,2.5vh,2rem)]">
@@ -101,33 +100,23 @@ export default function DemocraticGrantmaking26() {
                 </SiteSubtitle>
                 <FeaturedPeople className="mt-4 hidden lg:flex" />
               </div>
-              <div className="flex w-full flex-col gap-6 lg:translate-y-10">
-                <section className="rounded-[var(--site-radius-card)] bg-white/5 p-4 ring-1 ring-white/15 ring-inset">
-                  <h2 className="text-base font-medium text-white">
-                    The Alliance
-                  </h2>
-                  <p className="mt-1 text-sm leading-relaxed text-white/80">
-                    A community tackling global crises through coordinated
-                    projects.
-                  </p>
-                  <p className="mt-3 flex items-center gap-2 text-sm text-white/80">
-                    <Clock3 className="size-4 shrink-0" aria-hidden />
-                    <span>
-                      Members commit{" "}
-                      <strong className="font-medium text-white">
-                        15 minutes a week
-                      </strong>
-                    </span>
-                  </p>
-                </section>
-                <WaitlistSignupForm className="lg:gap-[clamp(0.75rem,1.5vh,1.25rem)]" />
-              </div>
+              <WaitlistSignupForm className="w-full lg:gap-[clamp(0.75rem,1.5vh,1.25rem)]" />
             </div>
-            <div className={cn(PROJECT_COL, "pt-8 lg:pt-22")}>
+            <div
+              className={cn(
+                PROJECT_COL,
+                "pt-8 lg:pt-[clamp(1.5rem,4svh,4rem)]",
+              )}
+            >
               <ProjectProgress />
             </div>
           </div>
-          <div className={cn(PROJECT_COL, "mt-10 lg:mt-12 lg:grow lg:pb-34")}>
+          <div
+            className={cn(
+              PROJECT_COL,
+              "mt-10 lg:mt-[clamp(1.5rem,4svh,3rem)] lg:pb-[clamp(1.5rem,6svh,6rem)]",
+            )}
+          >
             <ProjectTimeline currentIdx={0} />
           </div>
           <section className={cn(PROJECT_COL, "mt-10 lg:hidden")}>

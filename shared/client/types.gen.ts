@@ -4793,6 +4793,7 @@ export type AdminWaitlistLinkDto = {
     code: string;
     organizationId: number;
     channel: string;
+    showReferralMessage: boolean;
     publishedAt: string | null;
     archivedAt: string | null;
     createdAt: string;
@@ -4803,6 +4804,7 @@ export type AdminWaitlistLinkDto = {
 };
 
 export type CreateWaitlistLinkDto = {
+    showReferralMessage?: boolean;
     organizationId: number;
     /**
      * Where the link is shared, e.g. Newsletter
@@ -4812,6 +4814,7 @@ export type CreateWaitlistLinkDto = {
 };
 
 export type UpdateWaitlistLinkDto = {
+    showReferralMessage?: boolean;
     channel?: string;
     publishedAt?: string | null;
     /**
