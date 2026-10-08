@@ -45,7 +45,7 @@ export function ProjectTimeline({
       <BandHeading
         onDark
         size={BandHeadingSize.Section}
-        className="mb-8 text-center lg:sr-only"
+        className="mb-8 text-left lg:sr-only"
       >
         Timeline
       </BandHeading>

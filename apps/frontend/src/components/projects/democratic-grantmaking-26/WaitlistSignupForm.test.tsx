@@ -82,7 +82,7 @@ const fill = (contact = "person@example.com") => {
   );
 };
 
-test("shows a direct visitor their personal link", async () => {
+test("submits without reason or commitment and shows the personal link", async () => {
   renderForm();
   expect(
     screen.queryByLabelText("Why do you want to join the Alliance?"),
@@ -96,7 +96,6 @@ test("shows a direct visitor their personal link", async () => {
     {
       name: "Test Person",
       email: "person@example.com",
-      committed: true,
     },
   ]);
   const link = screen.getByLabelText<HTMLInputElement>("Your personal link");

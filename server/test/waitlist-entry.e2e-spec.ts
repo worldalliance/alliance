@@ -26,7 +26,7 @@ describe("Waitlist entry (e2e)", () => {
   let link: WaitlistLink;
 
   type EntryFields = Partial<Omit<CreateWaitlistEntryDto, "committed">> & {
-    committed?: boolean;
+    committed?: boolean | string | null;
   };
 
   const submit = (fields: EntryFields) =>
@@ -35,7 +35,6 @@ describe("Waitlist entry (e2e)", () => {
       .send({
         name: "Test Person",
         email: `person-${Math.random()}@example.com`,
-        committed: true,
         ...fields,
       });
 
@@ -93,7 +92,7 @@ describe("Waitlist entry (e2e)", () => {
       expect(entry.sourceLinkId).toBe(link.id);
       expect(entry.referrerId).toBeNull();
       expect(entry.reason).toBeNull();
-      expect(entry.committedAt).toBeInstanceOf(Date);
+      expect(entry.committedAt).toBeNull();
     });
 
     it("carries the referrer's organization and source link to a personal referral", async () => {
@@ -115,27 +114,35 @@ describe("Waitlist entry (e2e)", () => {
       expect(entry.code).not.toBe(referrer.code);
     });
 
-    it("accepts an entry without a reason, including through an unaffiliated referrer", async () => {
-      const direct = await submit({}).expect(200);
-      const directEntry = await entryRepo.findOneByOrFail({
+    it.each([
+      {},
+      { reason: "", committed: "" },
+      { reason: "   ", committed: "   " },
+      { reason: null, committed: null },
+      { committed: false },
+    ])("accepts omitted or blank signup fields %p", async (fields) => {
+      const direct = await submit(fields).expect(200);
+      const entry = await entryRepo.findOneByOrFail({
         code: direct.body.shareCode,
       });
-      expect(directEntry.reason).toBeNull();
-      expect(directEntry.organizationId).toBeNull();
+      expect(entry.reason).toBeNull();
+      expect(entry.committedAt).toBeNull();
+      expect(entry.organizationId).toBeNull();
+      await submit({ referrerCode: direct.body.shareCode, ...fields }).expect(
+        200,
+      );
+    });
 
-      const trimmed = await submit({ reason: " I want to help " }).expect(200);
-      expect(
-        (await entryRepo.findOneByOrFail({ code: trimmed.body.shareCode }))
-          .reason,
-      ).toBe("I want to help");
-
-      const blank = await submit({ reason: "   " }).expect(200);
-      expect(
-        (await entryRepo.findOneByOrFail({ code: blank.body.shareCode }))
-          .reason,
-      ).toBeNull();
-
-      await submit({ referrerCode: direct.body.shareCode }).expect(200);
+    it("preserves an explicitly supplied reason and commitment", async () => {
+      const direct = await submit({
+        reason: " I want to help ",
+        committed: true,
+      }).expect(200);
+      const entry = await entryRepo.findOneByOrFail({
+        code: direct.body.shareCode,
+      });
+      expect(entry.reason).toBe("I want to help");
+      expect(entry.committedAt).toBeInstanceOf(Date);
     });
 
     it("keeps the first entry for a repeated email and reveals no code", async () => {
@@ -210,7 +217,7 @@ describe("Waitlist entry (e2e)", () => {
     });
 
     it.each<[string, EntryFields]>([
-      ["no commitment", { committed: false }],
+      ["an invalid commitment", { committed: "yes" }],
       ["a blank name", { name: "  " }],
       ["an invalid email", { email: "not-an-email" }],
       ["an overlong reason", { reason: "x".repeat(4001) }],

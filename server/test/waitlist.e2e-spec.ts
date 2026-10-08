@@ -1,5 +1,7 @@
 import request from "supertest";
 import type { Repository } from "typeorm";
+import { WaitlistReasonOptional1791422971421 } from "../migrations/1791422971421-WaitlistReasonOptional";
+import { OptionalWaitlistSignupFields1791481267826 } from "../migrations/1791481267826-OptionalWaitlistSignupFields";
 import { SignUpDto } from "../src/auth/dto/sign-up.dto";
 import { TokenMode } from "../src/auth/dto/signin.dto";
 import {
@@ -49,10 +51,35 @@ describe("Waitlist records (e2e)", () => {
     });
   }, 50000);
 
-  it("stores an entry with no organization and no reason", async () => {
-    const entry = await saveEntry({});
-    expect(entry.reason).toBeNull();
-    expect(entry.organizationId).toBeNull();
+  it("migrates existing entries while allowing omitted signup fields", async () => {
+    const existing = await saveEntry({ reason: "Existing reason" });
+    const runner = ctx.dataSource.createQueryRunner();
+    try {
+      await runner.query(
+        `ALTER TABLE "waitlist_entry" ALTER COLUMN "committedAt" SET NOT NULL`,
+      );
+      await runner.query(
+        `ALTER TABLE "waitlist_entry" ADD CONSTRAINT "CHK_waitlist_entry_reason" CHECK ("organizationId" IS NOT NULL OR coalesce("reason", '') ~ '[^[:space:]]')`,
+      );
+      await new WaitlistReasonOptional1791422971421().up(runner);
+      await new OptionalWaitlistSignupFields1791481267826().up(runner);
+      const preserved = await entryRepo.findOneByOrFail({ id: existing.id });
+      expect(preserved.reason).toBe(existing.reason);
+      expect(preserved.committedAt).toEqual(existing.committedAt);
+      const added = await saveEntry({ committedAt: null });
+      expect(added.reason).toBeNull();
+      expect(added.committedAt).toBeNull();
+    } finally {
+      await runner.release();
+    }
+  });
+
+  it("allows absent and blank reasons without an organization", async () => {
+    await saveEntry({});
+    await saveEntry({ reason: "" });
+    await saveEntry({ reason: " \t\n" });
+    await saveEntry({ reason: "I want to help" });
+    await saveEntry({ organizationId: organization.id });
   });
 
   it("keeps one entry per email, ignoring case", async () => {

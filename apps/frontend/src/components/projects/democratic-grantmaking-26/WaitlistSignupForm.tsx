@@ -142,7 +142,6 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
     submit.mutate({
       name: String(form.get("name") ?? ""),
       ...parsed.value,
-      committed: true,
       ...codes,
     });
   };

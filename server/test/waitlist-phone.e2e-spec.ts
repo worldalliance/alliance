@@ -97,13 +97,18 @@ describe("Waitlist phone contact (e2e)", () => {
   });
 
   describe("signup", () => {
-    it("stores a phone entry, remembers it in the browser, and mails nothing", async () => {
+    it("stores a phone entry without optional fields, remembers it in the browser, and mails nothing", async () => {
       const phoneNumber = uniquePhone();
       const browser = request.agent(server());
-      const res = await submit({ phoneNumber }, browser).expect(200);
+      const res = await submit(
+        { phoneNumber, reason: undefined, committed: undefined },
+        browser,
+      ).expect(200);
 
       const entry = await entryRepo.findOneByOrFail({ phoneNumber });
       expect(entry.email).toBeNull();
+      expect(entry.reason).toBeNull();
+      expect(entry.committedAt).toBeNull();
       expect(res.body.shareCode).toBe(entry.code);
       expect(sendShareLink).not.toHaveBeenCalled();
       const remembered = await browser.get("/waitlist/browser").expect(200);

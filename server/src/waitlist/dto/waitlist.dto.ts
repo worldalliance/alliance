@@ -2,7 +2,7 @@ import { applyDecorators } from "@nestjs/common";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
 import {
-  Equals,
+  IsBoolean,
   IsEmail,
   IsNotEmpty,
   IsOptional,
@@ -60,9 +60,11 @@ export class CreateWaitlistEntryDto extends WaitlistReferralCodesDto {
   @MaxLength(4000)
   reason?: string | null;
 
-  @ApiProperty({ type: Boolean, enum: [true] })
-  @Equals(true)
-  committed: true;
+  @ApiPropertyOptional({ type: Boolean, nullable: true })
+  @IsOptional()
+  @Transform(trimToNull)
+  @IsBoolean()
+  committed?: boolean | null;
 }
 
 export class WaitlistLinkRequestDto {

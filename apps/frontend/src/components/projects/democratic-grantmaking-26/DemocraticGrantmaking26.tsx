@@ -1,5 +1,6 @@
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { cn } from "@alliance/shared/styles/util";
+import { Clock3 } from "lucide-react";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
 import { DocProse } from "../../../site/DocProse";
 import { SiteFooter } from "../../../site/Footer";
@@ -69,22 +70,22 @@ export default function DemocraticGrantmaking26() {
       <Navbar overPrimary />
       <main>
         <div
-          className="min-h-svh bg-[var(--site-primary)] pb-10 text-white lg:flex lg:flex-col lg:pb-0"
+          className="bg-[var(--site-primary)] pb-10 text-white lg:flex lg:min-h-svh lg:flex-col lg:pb-0"
           style={{ paddingTop: NAV_HEIGHT }}
         >
           <div
-            className="flex flex-col pb-6 lg:contents"
+            className="flex flex-col justify-center pb-6 max-lg:[@media(max-aspect-ratio:1/2)_and_(min-height:901px)]:min-h-0! max-lg:[@media(max-aspect-ratio:1/2)_and_(min-height:901px)]:pb-6 md:pb-22 lg:contents"
             style={{ minHeight: `calc(100svh - ${NAV_HEIGHT}px)` }}
           >
             <div
               className={cn(
                 PROJECT_COL,
-                "grid grid-cols-1 gap-y-6 pt-10 lg:mt-[max(0px,calc((100svh_-_1000px)/3))] lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-center lg:gap-x-[1.5%] lg:pt-[clamp(3rem,10vh,6rem)]",
+                "grid grid-cols-1 gap-y-6 pt-10 [@media(max-width:480px)_and_(max-height:700px)]:pt-6 lg:mt-[max(0px,calc((100svh_-_1000px)/3))] lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-center lg:gap-x-[1.5%] lg:pt-[clamp(3rem,10vh,6rem)]",
               )}
             >
               <div className="flex flex-col gap-4 lg:gap-[clamp(1rem,2.5vh,2rem)]">
                 <p className="site-sans text-left text-[1.05rem] text-white/80 sm:text-[1.2rem] lg:-mb-2">
-                  Coming in fall 2026
+                  An Alliance project · Fall 2026
                 </p>
                 <DisplayHeading
                   as="h1"
@@ -96,19 +97,33 @@ export default function DemocraticGrantmaking26() {
                   <span className="site-display text-green">$100,000</span>
                 </DisplayHeading>
                 <SiteSubtitle size={SubtitleSize.Page} onDark>
-                  Join the Alliance to nominate and vote on candidate
-                  non-profits.
+                  Join the Alliance to nominate and vote on non-profits.
                 </SiteSubtitle>
                 <FeaturedPeople className="mt-4 hidden lg:flex" />
               </div>
-              <WaitlistSignupForm className="w-full lg:translate-y-10 lg:gap-[clamp(0.75rem,1.5vh,1.25rem)]" />
+              <div className="flex w-full flex-col gap-6 lg:translate-y-10">
+                <section className="rounded-[var(--site-radius-card)] bg-white/5 p-4 ring-1 ring-white/15 ring-inset">
+                  <h2 className="text-base font-medium text-white">
+                    The Alliance
+                  </h2>
+                  <p className="mt-1 text-sm leading-relaxed text-white/80">
+                    A community tackling global crises through coordinated
+                    projects.
+                  </p>
+                  <p className="mt-3 flex items-center gap-2 text-sm text-white/80">
+                    <Clock3 className="size-4 shrink-0" aria-hidden />
+                    <span>
+                      Members commit{" "}
+                      <strong className="font-medium text-white">
+                        15 minutes a week
+                      </strong>
+                    </span>
+                  </p>
+                </section>
+                <WaitlistSignupForm className="lg:gap-[clamp(0.75rem,1.5vh,1.25rem)]" />
+              </div>
             </div>
-            <div
-              className={cn(
-                PROJECT_COL,
-                "mt-auto pt-8 lg:mt-0 lg:flex lg:grow lg:flex-col lg:justify-end lg:pt-12",
-              )}
-            >
+            <div className={cn(PROJECT_COL, "pt-8 lg:pt-22")}>
               <ProjectProgress />
             </div>
           </div>
@@ -131,17 +146,17 @@ export default function DemocraticGrantmaking26() {
             {ABOUT_SECTIONS.map(({ heading, body }) => (
               <section
                 key={heading}
-                className="flex flex-col items-start gap-5 md:items-center md:rounded-[var(--site-radius-card)] md:bg-zinc-100 md:p-10 lg:px-12"
+                className="flex flex-col items-start gap-5 md:rounded-[var(--site-radius-card)] md:bg-zinc-100 md:p-10 lg:px-12"
               >
                 <BandHeading
                   size={BandHeadingSize.Section}
-                  className="text-[var(--site-primary)] md:text-center"
+                  className="text-[var(--site-primary)]"
                 >
                   {heading}
                 </BandHeading>
                 <DocProse
                   markdown={body}
-                  className="w-full md:max-w-lg md:text-center [&_ol]:text-left"
+                  className="w-full md:max-w-lg text-left"
                 />
               </section>
             ))}

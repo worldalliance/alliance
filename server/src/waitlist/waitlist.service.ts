@@ -154,7 +154,7 @@ export class WaitlistService {
         name: dto.name,
         ...contact.value,
         reason,
-        committedAt: new Date(),
+        committedAt: dto.committed === true ? new Date() : null,
         code,
         organizationId: organization?.id ?? null,
         sourceLinkId,

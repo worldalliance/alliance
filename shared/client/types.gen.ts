@@ -4473,11 +4473,8 @@ export type CreateWaitlistEntryDto = {
      * E.164; send this or `email`
      */
     phoneNumber?: string;
-    /**
-     * Required when the referral resolves to no organization
-     */
     reason?: string | null;
-    committed: true;
+    committed?: boolean | null;
 };
 
 export type WaitlistEntryResultDto = {

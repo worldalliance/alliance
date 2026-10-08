@@ -55,8 +55,8 @@ export class WaitlistEntry {
   @Column({ type: "text", nullable: true })
   reason: string | null;
 
-  @Column({ type: "timestamptz" })
-  committedAt: Date;
+  @Column({ type: "timestamptz", nullable: true })
+  committedAt: Date | null;
 
   /** The personal sharing code others join through. */
   @Index({ unique: true })
