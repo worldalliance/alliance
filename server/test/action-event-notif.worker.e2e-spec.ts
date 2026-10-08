@@ -19,6 +19,11 @@ import {
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
 import { Community } from "src/community/entities/community.entity";
+import {
+  MessageChannel,
+  MessageSource,
+  MessageTracking,
+} from "src/link-tracking/message-tracking.entity";
 import { ActionEventNotifWorker } from "src/notifs/action-event-notif.worker";
 import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
@@ -251,6 +256,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     );
 
   beforeEach(async () => {
+    await notifRepo.query("DELETE FROM message_tracking");
     await notifRepo.query("DELETE FROM action_event_notif");
     await reminderGroupRepo.query("DELETE FROM reminder_group");
     await activityRepo.query("DELETE FROM action_activity");
@@ -291,6 +297,50 @@ describe("ActionEventNotifWorker (e2e)", () => {
     expect(notifs[0].user.id).toBe(user.id);
 
     expect(notifs[0].mms).toBeTruthy();
+  });
+
+  it("tracks a reminder's email and text apart, with its context", async () => {
+    const now = Date.now();
+    await userRepo.update(ctx.testUserId, { emailNotifsForActions: true });
+    const { action, memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName("tracked-action"),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
+    });
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })),
+        textMessage: "Remember #{action}: #{link}",
+      },
+    );
+
+    await dispatch();
+
+    const [notif] = await fetchNotifsForGroup(reminderGroup);
+    const tracking = await ctx.dataSource
+      .getRepository(MessageTracking)
+      .find({ order: { channel: "ASC" } });
+    expect(tracking).toMatchObject([
+      { trackingId: notif.mail?.cid, channel: MessageChannel.Email },
+      { trackingId: notif.mms?.cid, channel: MessageChannel.Sms },
+    ]);
+    for (const row of tracking) {
+      expect(row).toMatchObject({
+        source: MessageSource.ActionReminder,
+        userId: ctx.testUserId,
+        actionEventNotifId: notif.id,
+        context: {
+          reminderGroupId: reminderGroup.id,
+          reminderGroupName: reminderGroup.name,
+          actionId: action.id,
+          actionName: action.name,
+          notifiedActionIds: [action.id],
+        },
+      });
+    }
+    expect(notif.mms?.body).toMatch(new RegExp(`\\?cid=${notif.mms?.cid}$`));
   });
 
   it("does not send reminders older than the 3 hour lookback window", async () => {
@@ -2444,7 +2494,6 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const leaderText = await worker.processCustomReminderText(
       reminderGroup.textMessage,
       leaderPlan,
-      "cid-group-leads",
       leaderTasks,
     );
 
@@ -2569,7 +2618,6 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const leaderText = await worker.processCustomReminderText(
       reminderGroup.textMessage,
       leaderPlan2,
-      "cid-leader-count",
       leaderTasks2,
     );
 
@@ -2671,7 +2719,6 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const suiteText = await worker.processCustomReminderText(
       suiteReminderGroup.textMessage,
       suitePlan,
-      "cid-suite-count",
       suiteTasks,
     );
 
@@ -2700,7 +2747,6 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const totalText = await worker.processCustomReminderText(
       totalReminderGroup.textMessage,
       totalPlan,
-      "cid-total-count",
       totalTasks,
     );
 
@@ -2742,7 +2788,6 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const text = await worker.processCustomReminderText(
       "Hi #{firstname}, #{action} is waiting.",
       templatePlan,
-      "cid-123",
       templateTasks,
     );
 

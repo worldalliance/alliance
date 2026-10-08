@@ -25,6 +25,7 @@ import { Route } from "../.react-router/types/src/+types/root";
 import { HtmlBackgroundManager } from "./components/HtmlBackgroundManager";
 import { AuthProvider } from "./lib/AuthContext";
 import { getApiUrl, getPosthogHost } from "./lib/config";
+import { registerArrival, useLinkOpenings } from "./lib/linkOpenings";
 import PosthogBuildTag from "./lib/PosthogBuildTag";
 import { posthogRequestContext } from "./lib/posthogRequestContext";
 import { ShareLinkViewerFromAuth } from "./lib/ShareLinkViewerFromAuth";
@@ -57,6 +58,7 @@ export function meta() {
 
 const options: Partial<PostHogConfig> = {
   api_host: getPosthogHost(),
+  loaded: registerArrival,
   defaults: "2025-05-24",
   capture_exceptions: {
     capture_unhandled_errors: true,
@@ -123,6 +125,10 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 export function Layout({ children }: { children: React.ReactNode }) {
   useNumberInputScrollGuard();
   const { pathname } = useLocation();
+  const withPosthog =
+    import.meta.env.PROD && pathname !== MOBILE_OAUTH_RETURN_PATH;
+  // Here rather than in Root, so an arrival on an error page is sent too.
+  useLinkOpenings({ withPosthog });
 
   const inner = (
     <SiteAppProvider>
@@ -150,7 +156,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <body>
         {/* PostHog records the full URL, and the mobile app's sign-in handoff
             arrives in this page's query string. */}
-        {import.meta.env.PROD && pathname !== MOBILE_OAUTH_RETURN_PATH ? (
+        {withPosthog ? (
           <PostHogProvider
             apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}
             options={options}

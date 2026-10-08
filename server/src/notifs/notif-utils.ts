@@ -1,9 +1,5 @@
 import { randomToken } from "src/utils/random";
 
-export function generateCIDForNotif() {
-  return randomToken(5, "hex");
-}
-
 export function generateCIDForShareUrl() {
   return "share-" + generateCIDForExternalTarget();
 }

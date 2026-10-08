@@ -24,7 +24,6 @@ function render(copy: MissedSuiteNoticeCopy, taskNames: string[]) {
     processKeywordReplacements(template, {
       user: { id: 1, name: "Jane Doe" } as User,
       action: { id: 10, name: "Test Action" } as Action,
-      cid: "test-cid",
       uncompletedTasksCount: taskNames.length,
       uncompletedTasksTime: "0 minutes",
       uncompletedTasksNames: taskNames,

@@ -1,6 +1,7 @@
 import { Module, forwardRef } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { EventLogModule } from "src/eventlog/eventlog.module";
+import { LinkTrackingModule } from "src/link-tracking/link-tracking.module";
 import { User } from "src/user/entities/user.entity";
 import { MmsOptout } from "./mms-optout.entity";
 import { MmsUnsubService } from "./mms-unsub.service";
@@ -13,6 +14,7 @@ import { TwilioStatusWorker } from "./twiliostatus.worker";
   imports: [
     TypeOrmModule.forFeature([Mms, MmsOptout, User]),
     forwardRef(() => EventLogModule),
+    LinkTrackingModule,
   ],
   providers: [MmsService, TwilioStatusWorker, MmsUnsubService],
   controllers: [MmsController],

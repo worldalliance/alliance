@@ -14,14 +14,15 @@ import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { FacepileService } from "src/likes/facepile.service";
+import { MessageSource } from "src/link-tracking/message-tracking.entity";
+import type { TrackedMessage } from "src/link-tracking/message-tracking.service";
 import { EmailType } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { UnreadContentType } from "src/notifs/entities/unread-content.entity";
 import { LikeNotificationService } from "src/notifs/like-notification.service";
-import { generateCIDForNotif } from "src/notifs/notif-utils";
 import { NotifsService } from "src/notifs/notifs.service";
-import { commentUrl, postUrl, withCid } from "src/search/approutes";
+import { commentUrl, postUrl } from "src/search/approutes";
 import { ProfileDto } from "src/user/dto/user.dto";
 import {
   userActionNotifsEnabled_email,
@@ -789,7 +790,6 @@ export class ForumService {
         }),
     );
 
-    const cid = generateCIDForNotif();
     if (parentAuthor && parentAuthor.id !== comment.authorId) {
       await this.notifsService.createForumReplyNotif(comment, parentAuthor);
 
@@ -804,13 +804,19 @@ export class ForumService {
           },
         });
         if (post.notifyForReplies && parentAuthor.receiveReplyNotifications) {
-          const url = withCid(commentUrl(comment, undefined, true), cid);
+          const url = commentUrl(comment, undefined, true);
+          const tracking: TrackedMessage = {
+            owner: { userId: parentAuthor.id },
+            source: MessageSource.ForumReply,
+            context: { postId: post.id, commentId: comment.id },
+            actionEventNotifId: null,
+          };
           if (userActionNotifsEnabled_text(parentAuthor)) {
             await this.mmsService.sendMms({
               to: parentAuthor.phoneNumber!,
               body: `${authorDto.displayName} replied to your comment on ${post.title}: ${url}`,
               mediaUrls: [],
-              cid,
+              tracking,
             });
           } else if (userActionNotifsEnabled_email(parentAuthor)) {
             await this.mailService.sendMail({
@@ -822,7 +828,7 @@ export class ForumService {
                 displayName: authorDto.displayName,
                 postTitle: post.title,
               },
-              cid,
+              tracking,
             });
           } else {
             this.eventLogService.sendMessage({

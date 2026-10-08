@@ -15,13 +15,12 @@ export async function sendReminderInAppEntry(
   notifsService: NotifsService,
   params: {
     plan: NotificationPlan;
-    cid: string;
     template: string;
     render: (template: string) => Promise<string>;
     tasks: { id: number; name: string }[];
   },
 ): Promise<Notification | null> {
-  const { plan, cid, template, render, tasks } = params;
+  const { plan, template, render, tasks } = params;
   const message = await buildReminderMessage({
     template,
     renderText: render,
@@ -44,6 +43,5 @@ export async function sendReminderInAppEntry(
     mobileAppLocation: tasksUrl(),
     associatedUsers: [],
     shouldPush: false,
-    cid,
   });
 }

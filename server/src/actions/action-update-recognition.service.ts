@@ -8,6 +8,8 @@ import { R, type Result } from "@alliance/common/result";
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { chunk, escape, uniq } from "es-toolkit";
+import { MessageSource } from "src/link-tracking/message-tracking.entity";
+import type { TrackedMessage } from "src/link-tracking/message-tracking.service";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { Experiment } from "src/notifs/entities/experiment-assignment.entity";
@@ -16,10 +18,9 @@ import {
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
 import { assignExperimentArms } from "src/notifs/experiment-assignment";
-import { generateCIDForNotif } from "src/notifs/notif-utils";
 import { NotifsService } from "src/notifs/notifs.service";
 import { PushService } from "src/push/push.service";
-import { actionUrl, withCid } from "src/search/approutes";
+import { actionUrl } from "src/search/approutes";
 import { FormSnapshot } from "src/tasks/entities/formsnapshot.entity";
 import { User } from "src/user/entities/user.entity";
 import {
@@ -304,18 +305,14 @@ export class ActionUpdateRecognitionService {
           return planned.error;
         }
 
-        const prepared = planned.value.map((plan) => {
-          const cid = generateCIDForNotif();
-          return {
-            plan,
-            cid,
-            copy: recognitionCopy({
-              message: plan.message,
-              recipientName: plan.name,
-              link: withCid(actionUrl(update.actionId, true), cid),
-            }),
-          };
-        });
+        const prepared = planned.value.map((plan) => ({
+          plan,
+          copy: recognitionCopy({
+            message: plan.message,
+            recipientName: plan.name,
+            link: actionUrl(update.actionId, true),
+          }),
+        }));
         const entries = await this.notifsService.sendUnreadContents(
           prepared.map(({ plan, copy }) => ({
             user: { id: plan.userId },
@@ -328,7 +325,7 @@ export class ActionUpdateRecognitionService {
           em,
         );
         const frozen = prepared.map(
-          ({ plan, cid, copy }, index) =>
+          ({ plan, copy }, index) =>
             ({
               actionUpdateId: id,
               userId: plan.userId,
@@ -339,7 +336,6 @@ export class ActionUpdateRecognitionService {
               contribution: plan.contribution,
               weeksAgo: plan.weeksAgo,
               copy,
-              cid,
               preparedAt: now,
               unreadContentId: entries[index].id,
             }) satisfies QueryDeepPartialEntity<ActionUpdateExposure>,
@@ -436,7 +432,7 @@ export class ActionUpdateRecognitionService {
     exposure: ActionUpdateExposure,
     shownEntries: ReadonlyMap<number, UnreadContent>,
   ) {
-    const { user, actionUpdate, cid } = exposure;
+    const { user, actionUpdate } = exposure;
     if (!user || !actionUpdate) {
       throw new Error(`exposure ${exposure.id} loaded without its relations`);
     }
@@ -448,8 +444,17 @@ export class ActionUpdateRecognitionService {
     // A claim left by a crash is retaken; channels it already sent are skipped.
     const record = (sent: QueryDeepPartialEntity<ActionUpdateExposure>) =>
       this.dataSource.manager.update(ActionUpdateExposure, exposure.id, sent);
-    if (entry && cid !== null) {
+    if (entry && exposure.copy !== null) {
       const copy = recognitionCopySchema.parse(exposure.copy);
+      const tracking: TrackedMessage = {
+        owner: { userId: user.id },
+        source: MessageSource.ActionUpdate,
+        context: {
+          actionId: actionUpdate.actionId,
+          actionUpdateId: actionUpdate.id,
+        },
+        actionEventNotifId: null,
+      };
       if (user.pushesForActionUpdates) {
         await this.pushService.sendMessages(
           await this.pushService.getPushForAllUserDevices(user.id, {
@@ -472,7 +477,7 @@ export class ActionUpdateRecognitionService {
           to: user.phoneNumber,
           body: copy.sms,
           mediaUrls: [],
-          cid,
+          tracking,
         });
         await record(mms ? { mms } : { textFailedAt: new Date() });
       }
@@ -485,7 +490,7 @@ export class ActionUpdateRecognitionService {
           this.mailService.sendActionEventNotificationEmail({
             subject: copy.emailSubject,
             message: escape(copy.emailBody),
-            cid,
+            tracking,
             recipient: user.email,
           }),
         );

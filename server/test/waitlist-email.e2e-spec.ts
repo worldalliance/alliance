@@ -1,3 +1,4 @@
+import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import request from "supertest";
 import { In, IsNull, Not, type Repository } from "typeorm";
 import {
@@ -516,6 +517,16 @@ describe("Waitlist email admin (e2e)", () => {
           {
             recipient: waiting.email,
             content: expect.objectContaining({ subject: "Join, Wai Ting" }),
+            tracking: {
+              owner: { waitlistEntryId: waiting.id },
+              source: MessageSource.WaitlistCampaign,
+              context: {
+                waitlistEmailBatchId: recipients[0].batchId,
+                waitlistEmailRecipientId: recipients[0].id,
+                subject: "Join, #{name}",
+              },
+              actionEventNotifId: null,
+            },
           },
         ],
       ]);
@@ -1054,6 +1065,7 @@ describe("Waitlist email admin (e2e)", () => {
                 "00000000-0000-0000-0000-000000000000",
               ),
             }),
+            tracking: null,
           },
         ],
       ]);

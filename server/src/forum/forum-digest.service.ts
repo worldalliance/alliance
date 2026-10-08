@@ -2,13 +2,13 @@ import { thrownMessage } from "@alliance/common/errorMessage";
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
+import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import { MailService } from "src/mail/mail.service";
 import {
   Notification,
   NotificationCategory,
 } from "src/notifs/entities/notification.entity";
-import { generateCIDForNotif } from "src/notifs/notif-utils";
-import { siteBaseUrl, withCid } from "src/search/approutes";
+import { siteBaseUrl } from "src/search/approutes";
 import { ForumDigestPreference, User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
 import { ForumDigestLog } from "./entities/forum-digest-log.entity";
@@ -85,11 +85,9 @@ export class ForumDigestService {
         continue;
       }
 
-      const cidForNotif = await generateCIDForNotif();
-
       const digestItems = userNotifications.map((item) => ({
         message: item.message,
-        url: withCid(this.getAbsoluteUrl(item.webAppLocation), cidForNotif),
+        url: this.getAbsoluteUrl(item.webAppLocation),
         createdAt: this.formatTimestamp(item.createdAt),
       }));
 
@@ -99,7 +97,14 @@ export class ForumDigestService {
           name: user.name,
           unreadCount: userNotifications.length,
           notifications: digestItems,
-          cid: cidForNotif,
+          tracking: {
+            owner: { userId },
+            source: MessageSource.ForumDigest,
+            context: {
+              notificationIds: userNotifications.map((item) => item.id),
+            },
+            actionEventNotifId: null,
+          },
         });
         await this.notificationRepository.update(
           userNotifications.map((item) => item.id),

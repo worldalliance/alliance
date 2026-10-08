@@ -105,10 +105,6 @@ export function conversationUrl(conversationId: number) {
   return `/messages/${conversationId}`;
 }
 
-export function withCid(url: string, cid: string) {
-  return appendQueryParam(url, "cid", cid);
-}
-
 export function withSid(url: string, sid: string) {
   return appendQueryParam(url, "sid", sid);
 }

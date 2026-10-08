@@ -9,6 +9,7 @@ import {
 } from "posthog-react-native";
 import { type ReactNode, useEffect } from "react";
 import { releaseTarget } from "./config";
+import { linkOpeningSession } from "./linkOpenings";
 import {
   posthogRequestContext,
   SESSION_IDLE_TIMEOUT_SECONDS,
@@ -44,6 +45,7 @@ function AnalyticsBridge() {
   const posthog = usePostHog();
   useEffect(() => {
     if (posthog) {
+      void posthog.ready().then(() => linkOpeningSession.register(posthog));
       // AnalyticsBackend.flush is optional, so a posthog upgrade that dropped
       // flush would typecheck and turn every flushAnalytics into a silent
       // Unsupported. The pin makes that a build error instead.

@@ -34,7 +34,7 @@ import { useAuth } from "../../lib/AuthContext";
 import { useNavbarOptions } from "../../lib/NavbarOptionsContext";
 import { isNonmemberOnPublicActionReferral } from "../../lib/publicActionReferral";
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
-import { useCIDFromParams } from "../../lib/utils";
+import { useSidFromParams } from "../../lib/utils";
 import { NAV_HEIGHT, Navbar } from "../../site/Navbar";
 import ActionCompletedBarWithInfo from "./ActionCompletedBarWithInfo";
 
@@ -110,7 +110,7 @@ export default function ActionPage() {
   const [showReferralTaskPanel, setShowReferralTaskPanel] = useState(false);
   const [guestCompleted, setGuestCompleted] = useState(false);
 
-  useCIDFromParams(actionId);
+  useSidFromParams(actionId);
 
   const { activities, handleLikeActivity } = useActivities({
     list: ActivityList.Action,

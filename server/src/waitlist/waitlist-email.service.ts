@@ -447,6 +447,7 @@ export class WaitlistEmailService {
       this.mailService.sendWaitlistStaffEmail({
         recipient: staff.email,
         content: { ...sample.value, subject: `[Test] ${sample.value.subject}` },
+        tracking: null,
       }),
     );
     const outcome = sendOutcome(sent);

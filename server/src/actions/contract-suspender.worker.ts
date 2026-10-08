@@ -7,7 +7,6 @@ import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
-import { generateCIDForNotif } from "src/notifs/notif-utils";
 import { suspensionMessage } from "src/notifs/textnotifcontents";
 import { PushService } from "src/push/push.service";
 import {
@@ -87,7 +86,6 @@ export class ContractSuspenderWorker {
                 },
               }),
           );
-          const cid = generateCIDForNotif();
           if (userActionNotifsEnabled_text(user)) {
             await this.sendBestEffort(
               `suspension text to user ${user.id}`,
@@ -96,7 +94,7 @@ export class ContractSuspenderWorker {
                   to: user.phoneNumber!,
                   body: suspensionMessage,
                   mediaUrls: [],
-                  cid,
+                  tracking: null,
                 }),
             );
           }

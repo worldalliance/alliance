@@ -13,6 +13,7 @@ import {
   WAITLIST_LINK_THROTTLE,
 } from "src/auth/signup-throttle.config";
 import { LINK_PREVIEW_THROTTLE } from "src/link-preview/link-preview-throttle.config";
+import { LINK_OPENING_THROTTLE } from "src/link-tracking/link-opening-throttle.config";
 
 /**
  * Every named throttler in the app. `ThrottlerModule.forRoot` must be fed
@@ -26,6 +27,7 @@ export const ALL_THROTTLES: Record<string, ThrottlerOptions> = {
   ...WAITLIST_ENTRY_THROTTLE,
   ...WAITLIST_LINK_THROTTLE,
   ...LINK_PREVIEW_THROTTLE,
+  ...LINK_OPENING_THROTTLE,
 };
 
 /**

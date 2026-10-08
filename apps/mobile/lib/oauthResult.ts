@@ -214,9 +214,10 @@ export const UNFINISHED_FAILURE: ProviderFailure = {
 };
 
 /**
- * What `app/+native-intent.tsx` exports. Routing a return link would unmount
- * the login screen waiting on it. One that opens the app has no screen waiting:
- * Android killed the process during the browser session, so it goes to the gate.
+ * The OAuth step of `app/+native-intent.tsx`'s `redirectSystemPath`. Routing
+ * a return link would unmount the login screen waiting on it. One that opens
+ * the app has no screen waiting: Android killed the process during the browser
+ * session, so it goes to the gate.
  */
 export function oauthReturnRedirect(params: {
   path: string;

@@ -1,7 +1,6 @@
 import { client } from "@alliance/shared/client/client.gen";
 import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
-import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
 import { useFonts } from "expo-font";
 import { setNotificationHandler } from "expo-notifications";
@@ -9,6 +8,7 @@ import { Slot } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { AppState } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -22,6 +22,8 @@ import { AuthProvider } from "../lib/AuthContext";
 import PostHogProvider from "../lib/PostHogProvider";
 import { getRefreshToken, saveSessionTokens } from "../lib/SecureStorage";
 import { getApiUrl } from "../lib/config";
+import { linkOpeningSession, startLinkOpenings } from "../lib/linkOpenings";
+import { queryClient } from "../lib/queryClient";
 import { refreshingFetch } from "../lib/session";
 import "../lib/setImmediatePolyfill";
 import { hideSplash } from "../lib/splash";
@@ -34,17 +36,6 @@ const SPLASH_WATCHDOG_MS = milliseconds({ seconds: 30 });
 setTimeout(hideSplash, SPLASH_WATCHDOG_MS);
 
 registerErrorStatus(client);
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: milliseconds({ minutes: 5 }),
-      gcTime: milliseconds({ minutes: 30 }),
-      retry: retryUnlessRefused(2),
-      refetchOnWindowFocus: false,
-    },
-  },
-});
 
 setNotificationHandler({
   handleNotification: async () => ({
@@ -77,6 +68,10 @@ export default function RootLayout() {
         saveTokens: saveSessionTokens,
       }),
       throwOnError: true,
+    });
+    return startLinkOpenings({
+      appState: AppState,
+      posthogReady: linkOpeningSession.ready,
     });
   }, []);
 

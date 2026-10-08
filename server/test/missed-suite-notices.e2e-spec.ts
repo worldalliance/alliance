@@ -13,6 +13,12 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
+import {
+  MessageChannel,
+  MessageSource,
+  MessageTracking,
+} from "src/link-tracking/message-tracking.entity";
+import { MailService } from "src/mail/mail.service";
 import { ActionEventNotifWorker } from "src/notifs/action-event-notif.worker";
 import {
   ActionEventNotif,
@@ -24,7 +30,10 @@ import {
   ExperimentArm,
   ExperimentAssignment,
 } from "src/notifs/entities/experiment-assignment.entity";
-import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import {
+  Notification,
+  NotificationCategory,
+} from "src/notifs/entities/notification.entity";
 import {
   ContractEvent,
   ContractEventType,
@@ -186,6 +195,7 @@ describe("missed-suite notices (e2e)", () => {
 
   beforeEach(async () => {
     for (const table of [
+      "message_tracking",
       "action_event_notif",
       "notification",
       "experiment_assignment",
@@ -293,6 +303,83 @@ describe("missed-suite notices (e2e)", () => {
         experiment: Experiment.MissedSuiteFirstNotice,
       }),
     ).toMatchObject({ arm: ExperimentArm.Control });
+  });
+
+  it("tracks the email and text apart, and an opening of either reads the notice", async () => {
+    await userRepo.update(ctx.testUserId, { emailNotifsForActions: true });
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+
+    await dispatch();
+
+    const [notice] = await notifRepo.find({
+      where: { type: ActionEventNotifType.MissedDeadline },
+      relations: { notification: true, mail: true, mms: true },
+    });
+    const tracking = await ctx.dataSource
+      .getRepository(MessageTracking)
+      .find({ order: { channel: "ASC" } });
+    expect(tracking).toMatchObject([
+      { trackingId: notice.mail?.cid, channel: MessageChannel.Email },
+      { trackingId: notice.mms?.cid, channel: MessageChannel.Sms },
+    ]);
+    for (const row of tracking) {
+      expect(row).toMatchObject({
+        source: MessageSource.MissedSuiteNotice,
+        userId: ctx.testUserId,
+        actionEventNotifId: notice.id,
+        context: {
+          reminderGroupId: group.id,
+          actionId: closed.actions[0].id,
+          actionSuiteId: closed.suite.id,
+          notifiedActionIds: [closed.actions[0].id],
+          missNumber: 1,
+          missedSuiteCopy: MissedSuiteNoticeCopy.FirstMissControl,
+        },
+      });
+    }
+    expect(notice.notification?.readAt).toBeNull();
+
+    await request(ctx.app.getHttpServer())
+      .post("/notifs/linkClick")
+      .send({ cid: notice.mms?.cid })
+      .expect(201);
+
+    const read = await notifRepo.findOneOrFail({
+      where: { id: notice.id },
+      relations: { notification: true },
+    });
+    expect(read.notification?.readAt).not.toBeNull();
+  });
+
+  it("reads the notice through its text when the email fails", async () => {
+    await userRepo.update(ctx.testUserId, { emailNotifsForActions: true });
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    await createMissedSuiteGroup(closed);
+    const sendEmail = jest
+      .spyOn(ctx.app.get(MailService), "sendActionEventNotificationEmail")
+      .mockRejectedValue(new Error("mailgun down"));
+
+    await expect(dispatch()).rejects.toThrow("mailgun down");
+    sendEmail.mockRestore();
+
+    const text = await ctx.dataSource
+      .getRepository(MessageTracking)
+      .findOneByOrFail({ channel: MessageChannel.Sms });
+    await request(ctx.app.getHttpServer())
+      .post("/notifs/linkClick")
+      .send({ cid: text.trackingId })
+      .expect(201);
+
+    expect(
+      await ctx.dataSource.getRepository(Notification).find(),
+    ).toMatchObject([{ readAt: expect.any(Date) }]);
   });
 
   it("draws an arm once and reuses it for later first misses", async () => {

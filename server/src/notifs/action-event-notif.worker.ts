@@ -12,6 +12,11 @@ import {
   type MissedSuiteStanding,
   type SuiteOutcome,
 } from "src/actions/missed-suite-streak";
+import {
+  NOTIF_SOURCE,
+  reminderContext,
+} from "src/link-tracking/message-tracking.entity";
+import type { TrackedMessage } from "src/link-tracking/message-tracking.service";
 import { EmailStatus } from "src/mail/mail.entity";
 import { MailService, processKeywordReplacements } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
@@ -55,7 +60,6 @@ import {
   type ChannelTemplates,
 } from "./missed-suite-notice";
 import { MissedSuitePlanService } from "./missed-suite-plans.service";
-import { generateCIDForNotif } from "./notif-utils";
 import { NotifsService } from "./notifs.service";
 import { sendReminderInAppEntry } from "./reminder-in-app-entry";
 import {
@@ -69,6 +73,23 @@ export type UncompletedTaskSummary = {
   name: string;
   timeEstimate?: number;
 };
+
+const reminderTracking = (
+  plan: NotificationPlan,
+  notif: ActionEventNotif,
+): TrackedMessage => ({
+  owner: { userId: plan.user.id },
+  source: NOTIF_SOURCE[notif.type],
+  context: reminderContext({
+    group: plan.group,
+    action: plan.group.memberActionEvent.action,
+    notifiedActionIds: notif.notifiedActionIds,
+    actionSuiteId: notif.actionSuite?.id ?? null,
+    missNumber: notif.missNumber,
+    missedSuiteCopy: notif.missedSuiteCopy,
+  }),
+  actionEventNotifId: notif.id,
+});
 
 const [PROCESS_ONE_LOCK_KEY1, PROCESS_ONE_LOCK_KEY2] =
   LOCK_KEYS.actionEventNotif;
@@ -186,7 +207,6 @@ export class ActionEventNotifWorker {
   async processCustomReminderText(
     text: string,
     plan: NotificationPlan,
-    cid: string,
     uncompletedTasks: UncompletedTaskSummary[],
     missedSuiteStanding?: MissedSuiteStanding,
   ): Promise<string> {
@@ -206,7 +226,6 @@ export class ActionEventNotifWorker {
       user: plan.user,
       action: plan.group.memberActionEvent.action,
       deadlineEvent: plan.group.deadlineEvent,
-      cid,
       uncompletedTasksCount: uncompletedTasks.length,
       uncompletedMembersInGroupCount,
       uncompletedTasksNames: uncompletedTasks.map((task) => task.name),
@@ -223,8 +242,6 @@ export class ActionEventNotifWorker {
     plan: NotificationPlan,
     closedSuites: SuiteOutcome[],
   ) {
-    const cid = generateCIDForNotif();
-
     let uncompletedTasks = await this.findUncompletedTasksForPlan(plan);
 
     if (plan.group.excludePreviouslyNotified) {
@@ -308,7 +325,7 @@ export class ActionEventNotifWorker {
         })
       : plan.group;
     const render = (template: string) =>
-      this.processCustomReminderText(template, plan, cid, uncompletedTasks);
+      this.processCustomReminderText(template, plan, uncompletedTasks);
     const recognized = recognition
       ? STREAK_COPY_RECOGNIZES[recognition.copy]
       : false;
@@ -316,17 +333,19 @@ export class ActionEventNotifWorker {
       notif.notification =
         (await sendReminderInAppEntry(this.notifsService, {
           plan,
-          cid,
           template: templates.pushMessage,
           render,
           tasks: uncompletedTasks,
         })) ?? undefined;
       notif.sent = !!notif.notification;
+      if (notif.notification) {
+        await this.actionEventNotifsRepository.save(notif);
+      }
     }
     const sendingAnyNotif = await this.deliver({
       notif,
       user: plan.user,
-      cid,
+      tracking: reminderTracking(plan, notif),
       templates,
       render,
       push: {
@@ -401,13 +420,11 @@ export class ActionEventNotifWorker {
     }
     if (!notice) return;
 
-    const cid = generateCIDForNotif();
     const templates = missedSuiteNoticeTemplates(notice.copy, plan.group);
     const render = (template: string) =>
       this.processCustomReminderText(
         template,
         plan,
-        cid,
         notice.standing.missedActions,
         notice.standing,
       );
@@ -415,16 +432,18 @@ export class ActionEventNotifWorker {
     notif.notification =
       (await sendReminderInAppEntry(this.notifsService, {
         plan,
-        cid,
         template: templates.pushMessage,
         render,
         tasks: notice.standing.missedActions,
       })) ?? undefined;
     notif.sent = !!notif.notification;
+    // An opening of the text reads this entry through notificationId, even
+    // when a later send fails.
+    if (notif.notification) await this.actionEventNotifsRepository.save(notif);
     await this.deliver({
       notif,
       user: plan.user,
-      cid,
+      tracking: reminderTracking(plan, notif),
       templates,
       render,
       push: {
@@ -440,7 +459,7 @@ export class ActionEventNotifWorker {
   private async deliver(params: {
     notif: ActionEventNotif;
     user: User;
-    cid: string;
+    tracking: TrackedMessage;
     templates: ChannelTemplates;
     render: (template: string) => Promise<string>;
     push: {
@@ -449,7 +468,7 @@ export class ActionEventNotifWorker {
       notification?: Notification;
     };
   }): Promise<boolean> {
-    const { notif, user, cid, templates, render, push } = params;
+    const { notif, user, tracking, templates, render, push } = params;
     let sendingAnyNotif = false;
     if (userActionNotifsEnabled_push(user)) {
       sendingAnyNotif = true;
@@ -473,7 +492,7 @@ export class ActionEventNotifWorker {
         to: user.phoneNumber!,
         body: await render(templates.textMessage),
         mediaUrls: [],
-        cid,
+        tracking,
       });
 
       if (result && !result.errorCode) {
@@ -486,7 +505,7 @@ export class ActionEventNotifWorker {
       const result = await this.mailService.sendActionEventNotificationEmail({
         subject: await render(templates.emailSubject),
         message: await render(templates.emailMessage),
-        cid,
+        tracking,
         recipient: user.email,
       });
       notif.mail = result;
