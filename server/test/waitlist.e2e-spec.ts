@@ -49,13 +49,10 @@ describe("Waitlist records (e2e)", () => {
     });
   }, 50000);
 
-  it("requires a reason only without an organization", async () => {
-    await expect(saveEntry({})).rejects.toThrow(/CHK_waitlist_entry_reason/);
-    await expect(saveEntry({ reason: " \t\n" })).rejects.toThrow(
-      /CHK_waitlist_entry_reason/,
-    );
-    await saveEntry({ reason: "I want to help" });
-    await saveEntry({ organizationId: organization.id });
+  it("stores an entry with no organization and no reason", async () => {
+    const entry = await saveEntry({});
+    expect(entry.reason).toBeNull();
+    expect(entry.organizationId).toBeNull();
   });
 
   it("keeps one entry per email, ignoring case", async () => {

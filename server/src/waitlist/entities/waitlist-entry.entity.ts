@@ -26,10 +26,6 @@ export enum WaitlistSpamStatus {
 // migration:generate drops backslashes from CHECK expressions, so match
 // whitespace with a POSIX class rather than \s.
 @Check(
-  "CHK_waitlist_entry_reason",
-  `"organizationId" IS NOT NULL OR coalesce("reason", '') ~ '[^[:space:]]'`,
-)
-@Check(
   "CHK_waitlist_entry_email_trimmed",
   `"email" !~ '^[[:space:]]|[[:space:]]$'`,
 )

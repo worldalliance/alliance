@@ -115,21 +115,27 @@ describe("Waitlist entry (e2e)", () => {
       expect(entry.code).not.toBe(referrer.code);
     });
 
-    it("requires a reason without an organization, including through an unaffiliated referrer", async () => {
-      await submit({}).expect(400);
-      await submit({ reason: "   " }).expect(400);
-      const direct = await submit({ reason: " I want to help " }).expect(200);
+    it("accepts an entry without a reason, including through an unaffiliated referrer", async () => {
+      const direct = await submit({}).expect(200);
       const directEntry = await entryRepo.findOneByOrFail({
         code: direct.body.shareCode,
       });
-      expect(directEntry.reason).toBe("I want to help");
+      expect(directEntry.reason).toBeNull();
       expect(directEntry.organizationId).toBeNull();
 
-      await submit({ referrerCode: direct.body.shareCode }).expect(400);
-      await submit({
-        referrerCode: direct.body.shareCode,
-        reason: "My friend told me",
-      }).expect(200);
+      const trimmed = await submit({ reason: " I want to help " }).expect(200);
+      expect(
+        (await entryRepo.findOneByOrFail({ code: trimmed.body.shareCode }))
+          .reason,
+      ).toBe("I want to help");
+
+      const blank = await submit({ reason: "   " }).expect(200);
+      expect(
+        (await entryRepo.findOneByOrFail({ code: blank.body.shareCode }))
+          .reason,
+      ).toBeNull();
+
+      await submit({ referrerCode: direct.body.shareCode }).expect(200);
     });
 
     it("keeps the first entry for a repeated email and reveals no code", async () => {

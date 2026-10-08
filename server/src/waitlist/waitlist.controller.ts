@@ -58,10 +58,6 @@ function entryException(
       );
     case WaitlistEntryError.UnknownCode:
       return new NotFoundException("This waitlist link is not active");
-    case WaitlistEntryError.ReasonRequired:
-      return new BadRequestException(
-        "Tell us why you want to join the Alliance",
-      );
     default:
       throw new Error(`unknown waitlist error: ${error satisfies never}`);
   }

@@ -53,11 +53,7 @@ export class CreateWaitlistEntryDto extends WaitlistReferralCodesDto {
   @IsE164()
   phoneNumber?: string;
 
-  @ApiPropertyOptional({
-    type: String,
-    nullable: true,
-    description: "Required when the referral resolves to no organization",
-  })
+  @ApiPropertyOptional({ type: String, nullable: true })
   @IsOptional()
   @Transform(trimToNull)
   @IsString()

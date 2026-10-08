@@ -62,7 +62,7 @@ export function ProjectTimeline({
               <div className="flex h-5 items-center gap-1 lg:h-auto lg:-translate-x-1/2">
                 <span
                   className={cn(
-                    "size-2.75 shrink-0 rounded-full ring-4 ring-[var(--site-primary)]",
+                    "size-3 lg:size-4 shrink-0 rounded-full ring-4 ring-[var(--site-primary)]",
                     current
                       ? "bg-green"
                       : "bg-[color-mix(in_srgb,white_45%,var(--site-primary))]",

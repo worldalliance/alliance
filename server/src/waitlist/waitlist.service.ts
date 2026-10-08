@@ -21,7 +21,6 @@ export enum WaitlistEntryError {
   BothCodes = "both_codes",
   OneContact = "one_contact",
   UnknownCode = "unknown_code",
-  ReasonRequired = "reason_required",
 }
 
 export type NewWaitlistEntry = { id: number; code: string };
@@ -145,10 +144,6 @@ export class WaitlistService {
     }
     const { organization, sourceLinkId, referrer } = resolved.value;
     const reason = dto.reason ?? null;
-    if (!organization && !reason) {
-      return R.failure(WaitlistEntryError.ReasonRequired);
-    }
-
     const code = randomToken(8);
     // ON CONFLICT rather than a caught unique violation: a failed query is
     // logged with its parameters, which here are the entrant's details.

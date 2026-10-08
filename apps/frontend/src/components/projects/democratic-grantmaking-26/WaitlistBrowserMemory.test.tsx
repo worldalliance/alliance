@@ -135,15 +135,6 @@ test("forgets a newly joined browser and hides its link", async () => {
   fireEvent.change(screen.getByLabelText("Email or mobile number"), {
     target: { value: "person@example.com" },
   });
-  fireEvent.change(
-    screen.getByLabelText("Why do you want to join the Alliance?"),
-    { target: { value: "To help" } },
-  );
-  fireEvent.click(
-    screen.getByLabelText(
-      "I understand that I'm joining the Alliance, which means weekly 15-minute projects.",
-    ),
-  );
   fireEvent.click(
     screen.getByRole("button", { name: /Join the Alliance waitlist/ }),
   );

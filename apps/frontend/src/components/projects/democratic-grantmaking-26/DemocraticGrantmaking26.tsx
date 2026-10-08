@@ -116,7 +116,11 @@ export default function DemocraticGrantmaking26() {
             <ProjectTimeline currentIdx={0} />
           </div>
           <section className={cn(PROJECT_COL, "mt-10 lg:hidden")}>
-            <BandHeading onDark size={BandHeadingSize.Section} className="mb-6">
+            <BandHeading
+              onDark
+              size={BandHeadingSize.Section}
+              className="mb-6 text-center"
+            >
               Experts
             </BandHeading>
             <FeaturedPeople />

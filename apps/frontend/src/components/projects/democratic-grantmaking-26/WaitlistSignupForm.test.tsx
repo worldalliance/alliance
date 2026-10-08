@@ -72,41 +72,30 @@ const renderForm = (search = "", client = new QueryClient()) => {
 const contactInput = () =>
   screen.getByLabelText<HTMLInputElement>("Email or mobile number");
 
-const fill = ({
-  reason,
-  contact = "person@example.com",
-}: { reason?: string; contact?: string } = {}) => {
+const fill = (contact = "person@example.com") => {
   fireEvent.change(screen.getByLabelText("Full name"), {
     target: { value: "Test Person" },
   });
   fireEvent.change(contactInput(), { target: { value: contact } });
-  if (reason !== undefined) {
-    fireEvent.change(
-      screen.getByLabelText("Why do you want to join the Alliance?"),
-      { target: { value: reason } },
-    );
-  }
-  fireEvent.click(
-    screen.getByLabelText(
-      "I understand that I'm joining the Alliance, which means weekly 15-minute projects.",
-    ),
-  );
   fireEvent.click(
     screen.getByRole("button", { name: /Join the Alliance waitlist/ }),
   );
 };
 
-test("asks a direct visitor why they want to join and shows their personal link", async () => {
+test("shows a direct visitor their personal link", async () => {
   renderForm();
+  expect(
+    screen.queryByLabelText("Why do you want to join the Alliance?"),
+  ).toBeNull();
+  expect(screen.queryByLabelText(/I'm joining the Alliance/)).toBeNull();
 
-  fill({ reason: "I want to help" });
+  fill();
 
   await screen.findByText("You’re on the waitlist.");
   expect(sent).toEqual([
     {
       name: "Test Person",
       email: "person@example.com",
-      reason: "I want to help",
       committed: true,
     },
   ]);
@@ -116,7 +105,7 @@ test("asks a direct visitor why they want to join and shows their personal link"
   );
 });
 
-test("skips the reason for an organization link and names the organization", async () => {
+test("names the organization on its link", async () => {
   referral = (url) => {
     expect(url.searchParams.get("linkCode")).toBe("acme-news");
     return Response.json(organizationReferral(2));
@@ -125,14 +114,10 @@ test("skips the reason for an organization link and names the organization", asy
 
   await screen.findByText("Acme Foundation");
   screen.getByText(/invited you to the Alliance/);
-  expect(
-    screen.queryByLabelText("Why do you want to join the Alliance?"),
-  ).toBeNull();
 
   fill();
   await screen.findByText("You’re on the waitlist.");
   expect(sent[0]).toMatchObject({ linkCode: "acme-news" });
-  expect(sent[0].reason).toBeUndefined();
 });
 
 test("says it is checking the link while the lookup is out", async () => {
@@ -177,7 +162,7 @@ test("counts others from the organization once three have joined", async () => {
   expect(screen.queryByText(/invited you/)).toBeNull();
 });
 
-test("names the person behind a personal link and still asks an unaffiliated referral for a reason", async () => {
+test("names the person behind a personal link", async () => {
   referral = (url) => {
     expect(url.searchParams.get("referrerCode")).toBe("friend");
     return Response.json({ organization: null, inviterName: "Pat Inviter" });
@@ -185,15 +170,13 @@ test("names the person behind a personal link and still asks an unaffiliated ref
   renderForm("?ref=friend");
 
   await screen.findByText("Pat Inviter");
-  fill({ reason: "Pat told me" });
+  fill();
   await screen.findByText("You’re on the waitlist.");
-  expect(sent[0]).toMatchObject({
-    referrerCode: "friend",
-    reason: "Pat told me",
-  });
+  expect(sent[0]).toMatchObject({ referrerCode: "friend" });
+  expect(sent[0].reason).toBeUndefined();
 });
 
-test("skips the reason for a personal link whose inviter has an organization", async () => {
+test("names the inviter on a personal link from an organization", async () => {
   referral = () =>
     Response.json({
       organization: { name: "Acme Foundation", picture: null, entryCount: 1 },
@@ -202,13 +185,9 @@ test("skips the reason for a personal link whose inviter has an organization", a
   renderForm("?ref=friend");
 
   await screen.findByText("Pat Inviter");
-  expect(
-    screen.queryByLabelText("Why do you want to join the Alliance?"),
-  ).toBeNull();
   fill();
   await screen.findByText("You’re on the waitlist.");
   expect(sent[0]).toMatchObject({ referrerCode: "friend" });
-  expect(sent[0].reason).toBeUndefined();
 });
 
 test("stops at an inactive link until the visitor continues without it", async () => {
@@ -226,7 +205,7 @@ test("stops at an inactive link until the visitor continues without it", async (
   fireEvent.click(
     screen.getByRole("button", { name: "Continue without this link" }),
   );
-  fill({ reason: "Still interested" });
+  fill();
   await screen.findByText("You’re on the waitlist.");
   expect(sent[0].linkCode).toBeUndefined();
 });
@@ -311,10 +290,6 @@ test("stops at a link that went inactive before the entry was sent", async () =>
   fireEvent.click(
     screen.getByRole("button", { name: "Continue without this link" }),
   );
-  fireEvent.change(
-    await screen.findByLabelText("Why do you want to join the Alliance?"),
-    { target: { value: "Still keen" } },
-  );
   fireEvent.click(
     screen.getByRole("button", { name: /Join the Alliance waitlist/ }),
   );
@@ -326,7 +301,7 @@ test("confirms a known email without revealing a link", async () => {
   entry = () => Response.json({ shareCode: null });
   renderForm();
 
-  fill({ reason: "Again" });
+  fill();
 
   await screen.findByText("You’re on the waitlist.");
   expect(screen.queryByLabelText("Your personal link")).toBeNull();
@@ -337,7 +312,7 @@ test("offers a known email its link by email while public email is on", async ()
   entry = () => Response.json({ shareCode: null });
   renderForm();
 
-  fill({ reason: "Again" });
+  fill();
 
   await screen.findByRole("button", { name: /Email me my link/ });
 });
@@ -346,7 +321,7 @@ test("offers no emailed link while public email is off", async () => {
   entry = () => Response.json({ shareCode: null });
   renderForm();
 
-  fill({ reason: "Again" });
+  fill();
 
   await screen.findByText("You’re on the waitlist.");
   expect(screen.queryByRole("button", { name: /Email me my link/ })).toBeNull();
@@ -360,7 +335,7 @@ test("keeps the answers and shows the refusal when the server rejects them", asy
     );
   renderForm();
 
-  fill({ reason: "Because" });
+  fill();
 
   await screen.findByText("email must be an email");
   expect(screen.getByLabelText<HTMLInputElement>("Full name").value).toBe(
@@ -376,7 +351,7 @@ test("sends one entry however often the button is pressed", async () => {
     });
   renderForm();
 
-  fill({ reason: "Eager" });
+  fill();
   const button = await screen.findByRole<HTMLButtonElement>("button", {
     name: /Joining/,
   });
@@ -395,7 +370,7 @@ test.each([
 ])("copies the personal link (landed=%p)", async (landed, writeText) => {
   jest.spyOn(navigator.clipboard, "writeText").mockImplementation(writeText);
   renderForm();
-  fill({ reason: "Sharing" });
+  fill();
   const link =
     await screen.findByLabelText<HTMLInputElement>("Your personal link");
 
@@ -414,7 +389,7 @@ test("sends a national number under the default country as E.164", async () => {
   mailEnabled = true;
   renderForm();
 
-  fill({ reason: "Texting", contact: "(415) 555-2671" });
+  fill("(415) 555-2671");
 
   await screen.findByText("You’re on the waitlist.");
   screen.getByText("We’ll be in touch when you can join the Alliance.");
@@ -430,7 +405,7 @@ test("reads a national number under the country picked after typing it", async (
     target: { value: "GB" },
   });
 
-  fill({ reason: "Abroad", contact: "020 7946 0958" });
+  fill("020 7946 0958");
 
   await screen.findByText("You’re on the waitlist.");
   expect(sent[0]).toMatchObject({ phoneNumber: "+442079460958" });
@@ -445,7 +420,7 @@ test("lets an international prefix override the picked country", async () => {
   fireEvent.change(contactInput(), { target: { value: "+44 20 7946 0958" } });
   expect(screen.getByLabelText<HTMLSelectElement>("Country").value).toBe("GB");
 
-  fill({ reason: "Pasted", contact: "+44 20 7946 0958" });
+  fill("+44 20 7946 0958");
 
   await screen.findByText("You’re on the waitlist.");
   expect(sent[0]).toMatchObject({ phoneNumber: "+442079460958" });
@@ -506,7 +481,7 @@ test("refuses an invalid contact on blur and on submit, sending nothing", async 
   fireEvent.blur(contactInput());
   screen.getByText("Enter a valid email address or mobile number.");
 
-  fill({ reason: "Typo", contact: "person@example" });
+  fill("person@example");
 
   await screen.findByText("Enter a valid email address or mobile number.");
   expect(sent).toEqual([]);

@@ -130,7 +130,6 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
   const linkInactive =
     thrownStatus(submit.error) === 404 || isRefused(referral.error);
   const referralKnown = !hasCode || referral.data !== undefined;
-  const needsReason = referralKnown && !referral.data?.organization;
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -143,7 +142,6 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
     submit.mutate({
       name: String(form.get("name") ?? ""),
       ...parsed.value,
-      reason: needsReason ? String(form.get("reason") ?? "") : undefined,
       committed: true,
       ...codes,
     });
@@ -243,29 +241,6 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         onBlur={() => setContactError(blurError(country))}
         disabled={restoring}
       />
-      {needsReason && (
-        <textarea
-          name="reason"
-          placeholder="Why do you want to join the Alliance?"
-          aria-label="Why do you want to join the Alliance?"
-          required
-          maxLength={4000}
-          rows={3}
-          disabled={restoring}
-          className={cn(WAITLIST_FIELD, "h-auto resize-y py-2.5")}
-        />
-      )}
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          name="commit"
-          type="checkbox"
-          required
-          disabled={restoring}
-          className="accent-green size-4 shrink-0"
-        />
-        I understand that I&apos;m joining the Alliance, which means weekly
-        15-minute projects.
-      </label>
       <Button
         type="submit"
         color={ButtonColor.Green}
@@ -285,8 +260,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         </p>
       )}
       <p className="text-center text-sm text-white/85">
-        By joining, you agree to receive waitlist updates and your invitation by
-        email or text.
+        When we&apos;re ready, we&apos;ll send you an invite link.
       </p>
     </form>
   );
