@@ -1,7 +1,7 @@
 import type { Page, PageItem } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
 import { cn } from "@alliance/shared/styles/util";
-import { ChevronRight, GripVertical, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   pageSegments,
@@ -10,18 +10,47 @@ import {
 } from "../../lib/visibilityGroups";
 import {
   CanvasTargetKind,
+  ChildKind,
   describeElement,
   elementTarget,
+  targetKey,
   type CanvasTarget,
+  type ResolvedChild,
   type ResolvedTarget,
 } from "./canvasSelection";
 import { DropLine } from "./DropLine";
+import { isContainer, OutlineContents } from "./OutlineContents";
+import { OutlineRow, type RowProps } from "./OutlineRow";
 import { useListDrag, type ListDrag, type ListMove } from "./useListDrag";
 
 const PAGES = "pages";
 
 const pageKey = (page: Page) => `page:${page.id}`;
 const groupKey = (key: string) => `group:${key}`;
+const elementKey = (page: Page, index: number, child?: ResolvedChild) =>
+  targetKey(page, { kind: CanvasTargetKind.Element, index, child });
+
+/** The entries holding `child`, outermost first. */
+function containersOf(page: Page, index: number, child: ResolvedChild) {
+  const element = elementKey(page, index);
+  switch (child.kind) {
+    case ChildKind.SubField:
+    case ChildKind.Section:
+      return [element];
+    case ChildKind.SectionBlock:
+      return [
+        element,
+        elementKey(page, index, {
+          kind: ChildKind.Section,
+          section: child.section,
+        }),
+      ];
+    default:
+      throw new Error(
+        `unknown child: ${JSON.stringify(child satisfies never)}`,
+      );
+  }
+}
 
 type FormOutlineProps = {
   pages: Page[];
@@ -40,8 +69,9 @@ type FormOutlineProps = {
 
 /**
  * Pages and their top-level elements, with visibility groups holding their
- * members. The selected page starts expanded, as does every group, and the
- * entries around a new selection expand to show it.
+ * members and lists and accordions their contents. The selected page starts
+ * expanded, as does every group, and the entries around a new selection
+ * expand to show it.
  */
 export function FormOutline({
   pages,
@@ -78,12 +108,24 @@ export function FormOutline({
     currentPage && pageKey(currentPage),
     selectedGroup && groupKey(selectedGroup),
   ].filter((key) => key !== undefined);
-  const [shownKey, setShownKey] = useState(selectionKey);
+  // Unlike pages and groups, these start collapsed.
+  const revealedContainers =
+    currentPage && selected.kind === CanvasTargetKind.Element && selected.child
+      ? containersOf(currentPage, selected.index, selected.child)
+      : [];
+  // Null at first, so a selection made before the outline mounts is revealed.
+  const [shownKey, setShownKey] = useState<string | null>(null);
   if (shownKey !== selectionKey) {
     setShownKey(selectionKey);
-    if (revealed.some((key) => expanded.get(key) === false)) {
+    if (
+      revealed.some((key) => expanded.get(key) === false) ||
+      revealedContainers.some((key) => expanded.get(key) !== true)
+    ) {
       setExpanded(
-        new Map([...expanded].filter(([key]) => !revealed.includes(key))),
+        new Map([
+          ...[...expanded].filter(([key]) => !revealed.includes(key)),
+          ...revealedContainers.map((key) => [key, true] as const),
+        ]),
       );
     }
   }
@@ -104,19 +146,45 @@ export function FormOutline({
 
   const renderElements = (page: Page, index: number) => {
     const onPage = index === pageIndex;
-    const elementEntry = (element: PageItem, at: number) => (
-      <OutlineEntry
-        key={element.id || at}
-        label={describeElement(element)}
-        current={
-          onPage &&
-          selected.kind === CanvasTargetKind.Element &&
-          selected.index === at
-        }
-        onSelect={() => onSelect(index, elementTarget(element, at))}
-        drag={dragFor(pageKey(page), at)}
-      />
-    );
+    const elementEntry = (element: PageItem, at: number) => {
+      const target =
+        onPage &&
+        selected.kind === CanvasTargetKind.Element &&
+        selected.index === at
+          ? selected
+          : null;
+      const key = elementKey(page, at);
+      const container = isContainer(element) ? element : null;
+      const open = container !== null && isExpanded(key, false);
+      return (
+        <OutlineEntry
+          key={element.id || at}
+          label={describeElement(element)}
+          current={target !== null && (!target.child || !open)}
+          onSelect={() => onSelect(index, elementTarget(element, at))}
+          drag={dragFor(pageKey(page), at)}
+          {...(container && {
+            expanded: open,
+            onToggle: () => toggle(key, false),
+          })}
+        >
+          {open && (
+            <OutlineContents
+              element={container}
+              child={target?.child}
+              selectChild={(child) =>
+                onSelect(index, { ...elementTarget(element, at), child })
+              }
+              sectionKey={(section) =>
+                elementKey(page, at, { kind: ChildKind.Section, section })
+              }
+              isExpanded={isExpanded}
+              toggle={toggle}
+            />
+          )}
+        </OutlineEntry>
+      );
+    };
     return (
       <ul>
         {pageSegments(page.fields, groups).map((segment) => {
@@ -247,74 +315,9 @@ function OutlineEntry({
         />
       )}
       <div draggable onDragStart={drag.onDragStart} onDragEnd={drag.onDragEnd}>
-        <OutlineRow {...row} />
+        <OutlineRow {...row} draggable />
       </div>
       {children}
     </li>
-  );
-}
-
-type RowProps = {
-  label: string;
-  current: boolean;
-  onSelect: () => void;
-  expanded?: boolean;
-  onToggle?: () => void;
-  className?: string;
-};
-
-function OutlineRow({
-  label,
-  current,
-  onSelect,
-  expanded,
-  onToggle,
-  className,
-}: RowProps) {
-  return (
-    <div
-      className={cn(
-        "group/row flex items-center rounded-md",
-        current ? "bg-blue-50 text-blue-700" : "hover:bg-gray-100",
-      )}
-    >
-      <GripVertical
-        className="h-3.5 w-3.5 shrink-0 cursor-grab text-gray-400 opacity-0 group-hover/row:opacity-100"
-        aria-hidden="true"
-      />
-      {onToggle ? (
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={expanded}
-          aria-label={`Contents of ${label}`}
-          title={expanded ? "Collapse" : "Expand"}
-          className="flex h-6 w-5 shrink-0 items-center justify-center rounded text-gray-500 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        >
-          <ChevronRight
-            className={cn(
-              "h-3.5 w-3.5 transition-transform",
-              expanded && "rotate-90",
-            )}
-            aria-hidden="true"
-          />
-        </button>
-      ) : (
-        <span className="w-5 shrink-0" />
-      )}
-      <button
-        type="button"
-        onClick={onSelect}
-        aria-current={current}
-        title={label}
-        className={cn(
-          "min-w-0 flex-1 truncate rounded py-1 pr-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-          !current && "text-gray-700",
-          className,
-        )}
-      >
-        {label}
-      </button>
-    </div>
   );
 }
