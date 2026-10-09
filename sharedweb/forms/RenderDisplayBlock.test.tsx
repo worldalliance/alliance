@@ -31,6 +31,28 @@ const accordion = (singleOpen?: boolean): AccordionBlock => ({
   ],
 });
 
+describe("the header display block", () => {
+  it("renders its level's heading, sized for it", () => {
+    render(
+      <RenderDisplayBlock
+        block={{ type: "display", kind: "header", text: "Small", level: 3 }}
+      />,
+    );
+    const heading = screen.getByRole("heading", { level: 3, name: "Small" });
+    expect(heading.className).toContain("text-xl");
+  });
+
+  it("defaults to a second-level heading", () => {
+    render(
+      <RenderDisplayBlock
+        block={{ type: "display", kind: "header", text: "Default" }}
+      />,
+    );
+    const heading = screen.getByRole("heading", { level: 2, name: "Default" });
+    expect(heading.className).toContain("text-2xl");
+  });
+});
+
 describe("the accordion display block", () => {
   it("reveals a section's blocks when its trigger is pressed", () => {
     render(<RenderDisplayBlock block={accordion()} />);
