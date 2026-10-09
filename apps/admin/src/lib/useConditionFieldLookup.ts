@@ -1,6 +1,6 @@
 import {
+  collectFieldLookup,
   collectSourceFormIds,
-  isQuestionField,
   type FormSchema,
   type Page,
 } from "@alliance/common/forms/form-schema";
@@ -22,13 +22,7 @@ export function useConditionFieldLookup(
   );
   const { byForm } = useFormQuestionFieldsMap(sourceFormIds);
   const ownFields = useMemo(
-    () =>
-      new Map(
-        schema.pages
-          .flatMap((candidate) => candidate.fields)
-          .filter(isQuestionField)
-          .map((field) => [field.id, field]),
-      ),
+    () => collectFieldLookup(schema.pages),
     [schema.pages],
   );
   return useMemo(
