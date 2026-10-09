@@ -52,12 +52,16 @@ export const ignoreAnswer = () => {};
 /** A question as the canvas previews it, answering nothing. */
 export function CanvasQuestion({
   field,
+  hideLabel,
 }: {
   field: ComponentProps<typeof RenderField>["field"];
+  hideLabel?: boolean;
 }) {
   return (
     <RenderField
-      field={field}
+      // A checkbox shows its label despite hideLabel.
+      field={hideLabel ? { ...field, label: null } : field}
+      hideLabel={hideLabel}
       onChange={ignoreAnswer}
       disableOptionRandomization
       user={FORM_BUILDER_PREVIEW_USER}

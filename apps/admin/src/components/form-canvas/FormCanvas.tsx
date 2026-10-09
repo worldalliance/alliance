@@ -3,7 +3,12 @@ import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula
 import { withCount } from "@alliance/common/plural";
 import { cn } from "@alliance/shared/styles/util";
 import { TriangleAlert } from "lucide-react";
-import type { ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
+import {
+  addressedWrite,
+  type BlockWriteById,
+} from "../../lib/displayBlockById";
 import {
   pageSegments,
   SegmentKind,
@@ -15,10 +20,19 @@ import {
   CanvasTargetKind,
   describeElement,
   elementTarget,
+  targetKey,
   type CanvasTarget,
   type ResolvedTarget,
 } from "./canvasSelection";
+import { selectedOnCanvas } from "./CanvasWorkspace";
 import { ConditionsIndicator } from "./ConditionsIndicator";
+import {
+  EditTextButton,
+  InlineTextEditor,
+  startOnEnter,
+  TextLines,
+  type InlineEditing,
+} from "./InlineText";
 import type { InsertLoc } from "./InsertPoint";
 import { SidebarSection } from "./sidebarSections";
 import { useListDrag, type ListMove } from "./useListDrag";
@@ -37,6 +51,9 @@ type FormCanvasProps = {
     options?: { prominent: true },
   ) => ReactNode;
   onMove: (move: ListMove) => void;
+  onUpdateElement: (index: number, updates: Partial<PageItem>) => void;
+  onUpdateBlockById: BlockWriteById;
+  onUpdatePage: (updates: Partial<Page>) => void;
 };
 
 /** The selected page as respondents see it, with selection and editing overlays. */
@@ -50,11 +67,28 @@ export function FormCanvas({
   invalidIds,
   renderInsertPoint,
   onMove,
+  onUpdateElement,
+  onUpdateBlockById,
+  onUpdatePage,
 }: FormCanvasProps) {
   const fields = page.fields;
   const { acceptDrop, drop, dragFor } = useListDrag<string>((_, move) =>
     onMove(move),
   );
+
+  const ref = useRef<HTMLDivElement>(null);
+  const selectedKey = targetKey(page, selected);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  if (editingKey !== null && editingKey !== selectedKey) setEditingKey(null);
+  const inline: InlineEditing = {
+    editing: editingKey === selectedKey,
+    start: () => setEditingKey(selectedKey),
+    stop: ({ refocus }) => {
+      if (!refocus) return setEditingKey(null);
+      flushSync(() => setEditingKey(null));
+      selectedOnCanvas(ref.current)?.focus();
+    },
+  };
 
   const renderElement = (
     element: PageItem,
@@ -77,6 +111,9 @@ export function FormCanvas({
           onSelect({ ...elementTarget(element, index), child }, section)
         }
         summarize={summarize}
+        onUpdate={(updates) => onUpdateElement(index, updates)}
+        updateCurrent={addressedWrite(element, onUpdateBlockById)}
+        inline={target ? inline : null}
         conditionSummary={
           !displayOnly && !inGroup && element.visibleIfFormula
             ? summarize(element.visibleIfFormula)
@@ -89,41 +126,67 @@ export function FormCanvas({
 
   const segments = pageSegments(fields, groups);
   const pageSelected = selected.kind === CanvasTargetKind.Page;
+  const pageDescription = page.description && (
+    <span className="mt-1 block text-gray-600">{page.description}</span>
+  );
 
   return (
     <div
+      ref={ref}
       className="mx-auto max-w-2xl rounded-lg border border-gray-200 bg-white px-10 py-8"
       onDragOver={acceptDrop}
       onDrop={drop}
     >
       {!displayOnly && (
         <div className="relative mb-4 flex items-start gap-2">
-          <button
-            type="button"
-            onClick={() =>
-              onSelect({ kind: CanvasTargetKind.Page }, SidebarSection.Content)
-            }
-            aria-label={`Page settings: ${page.title || "Untitled page"}`}
-            aria-pressed={pageSelected}
-            className={cn(
-              "-mx-3 flex-1 rounded-md px-3 py-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-              selectionRing(pageSelected),
-            )}
-          >
-            <span
+          {pageSelected && inline.editing ? (
+            <div className="-mx-3 flex-1 rounded-md px-3 py-1 ring-2 ring-blue-500">
+              <InlineTextEditor
+                value={page.title ?? ""}
+                variables={false}
+                onChange={(title) => onUpdatePage({ title })}
+                lines={TextLines.Single}
+                label="Page title"
+                onStop={inline.stop}
+                className="text-xl font-semibold text-gray-900"
+              />
+              {pageDescription}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() =>
+                onSelect(
+                  { kind: CanvasTargetKind.Page },
+                  SidebarSection.Content,
+                )
+              }
+              onKeyDown={pageSelected ? startOnEnter(inline) : undefined}
+              aria-label={`Page settings: ${page.title || "Untitled page"}`}
+              aria-pressed={pageSelected}
               className={cn(
-                "block text-xl font-semibold",
-                page.title ? "text-gray-900" : "text-gray-400",
+                "-mx-3 flex-1 rounded-md px-3 py-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+                selectionRing(pageSelected),
               )}
             >
-              {page.title || "Untitled page"}
-            </span>
-            {page.description && (
-              <span className="mt-1 block text-gray-600">
-                {page.description}
+              <span
+                className={cn(
+                  "block text-xl font-semibold",
+                  page.title ? "text-gray-900" : "text-gray-400",
+                )}
+              >
+                {page.title || "Untitled page"}
               </span>
-            )}
-          </button>
+              {pageDescription}
+            </button>
+          )}
+          {pageSelected && !inline.editing && (
+            <EditTextButton
+              label="Edit page title"
+              onClick={inline.start}
+              className="mt-1 shrink-0"
+            />
+          )}
           {page.visibleIfFormula && (
             <ConditionsIndicator
               onClick={() =>

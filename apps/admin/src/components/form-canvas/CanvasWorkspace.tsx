@@ -10,6 +10,10 @@ import {
   type ReactNode,
 } from "react";
 
+/** The selection's select button, marked pressed, within `root`. */
+export const selectedOnCanvas = (root: HTMLElement | null) =>
+  root?.querySelector<HTMLElement>('[aria-pressed="true"]');
+
 /** At this width and up the outline and settings sidebar stay beside the canvas. */
 export const useWideCanvasLayout = () => useMediaQuery("(min-width: 1024px)");
 
@@ -47,12 +51,13 @@ export function CanvasWorkspace({
   onDrawerChange: (drawer: DrawerKind | null) => void;
 }) {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const selectedOnCanvas = () =>
-    canvasRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]');
-  const focusSelection = useCallback(() => selectedOnCanvas()?.focus(), []);
+  const focusSelection = useCallback(
+    () => selectedOnCanvas(canvasRef.current)?.focus(),
+    [],
+  );
   useEffect(() => {
     if (!revealPending) return;
-    selectedOnCanvas()?.scrollIntoView({ block: "nearest" });
+    selectedOnCanvas(canvasRef.current)?.scrollIntoView({ block: "nearest" });
     onRevealed();
   }, [revealPending, onRevealed]);
   const settingsRef = useRef<HTMLDivElement>(null);

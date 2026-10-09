@@ -1,5 +1,5 @@
 import type { AccordionBlock } from "@alliance/common/forms/display-blocks";
-import type { ListField } from "@alliance/common/forms/form-schema";
+import type { ListField, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { listCardLimits } from "@alliance/shared/forms/listCards";
 import { cn } from "@alliance/shared/styles/util";
@@ -18,6 +18,9 @@ import {
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { RenderLabel } from "@alliance/sharedweb/forms/RenderField";
 import { useState, type ReactNode } from "react";
+import type { AddressedWrite } from "../../lib/displayBlockById";
+import { updateListSubField } from "../../lib/updateListSubField";
+import { accordionWrites } from "./accordionWrites";
 import {
   CanvasContent,
   CanvasQuestion,
@@ -40,12 +43,24 @@ import {
 } from "./canvasSelection";
 import { subFieldEditsConditions } from "./ChildSettings";
 import { ElementConditionsIndicator } from "./ConditionsIndicator";
+import {
+  EditTextButton,
+  InlineTextEditor,
+  inlineTextFor,
+  ITEM_PENCIL,
+  startOnEnter,
+  TextLines,
+  type InlineEditing,
+  type InlineText,
+} from "./InlineText";
 import { SidebarSection } from "./sidebarSections";
 
 type ContainerProps = {
   selectedChild: ResolvedChild | undefined;
   onSelectChild: (child: ChildTarget, section: SidebarSection) => void;
   summarize: (formula: VisibleIfFormula) => string;
+  onUpdate: (updates: Partial<PageItem>) => void;
+  inline: InlineEditing | null;
 };
 
 function CanvasChild({
@@ -54,6 +69,8 @@ function CanvasChild({
   onSelect,
   interactive,
   conditionSummary,
+  inline,
+  text,
   children,
 }: {
   label: string;
@@ -61,8 +78,12 @@ function CanvasChild({
   onSelect: (section: SidebarSection) => void;
   interactive: boolean;
   conditionSummary?: string;
+  /** Null unless the child is selected. */
+  inline: InlineEditing | null;
+  text: InlineText | null;
   children: ReactNode;
 }) {
+  const editing = text ? inline : null;
   return (
     <div
       className={cn(
@@ -78,9 +99,21 @@ function CanvasChild({
         type="button"
         aria-label={`Select ${label}`}
         aria-pressed={selected}
+        onKeyDown={editing ? startOnEnter(editing) : undefined}
         className={SELECT_OVERLAY}
       />
-      <CanvasContent interactive={interactive}>{children}</CanvasContent>
+      {editing?.editing && text ? (
+        text.editor
+      ) : (
+        <CanvasContent interactive={interactive}>{children}</CanvasContent>
+      )}
+      {editing && !editing.editing && text && (
+        <EditTextButton
+          label={text.editLabel}
+          onClick={editing.start}
+          className={ITEM_PENCIL}
+        />
+      )}
       {conditionSummary && (
         <ElementConditionsIndicator
           summary={conditionSummary}
@@ -99,14 +132,23 @@ export function CanvasList({
   selectedChild,
   onSelectChild,
   summarize,
-}: ContainerProps & { list: ListField }) {
+  onUpdate,
+  inline,
+  labelEditor,
+}: ContainerProps & {
+  list: ListField;
+  /** The list's label, open in place of its rendering. */
+  labelEditor: ReactNode;
+}) {
   const { minCards, maxCards } = listCardLimits(list);
   const hiddenInOutput = new Set(list.outputViewHiddenFieldIds ?? []);
   return (
     <div className="relative space-y-3">
-      <CanvasContent interactive={false}>
-        <RenderLabel field={list} />
-      </CanvasContent>
+      {labelEditor ?? (
+        <CanvasContent interactive={false}>
+          <RenderLabel field={list} />
+        </CanvasContent>
+      )}
       <ListCard
         remove={
           <CanvasContent interactive={false}>
@@ -120,28 +162,43 @@ export function CanvasList({
         {list.fields.length === 0 && (
           <p className="text-sm text-gray-500">No fields in each card yet.</p>
         )}
-        {list.fields.map((sub, index) => (
-          <CanvasChild
-            key={sub.id || index}
-            label={describeElement(sub)}
-            selected={
-              selectedChild?.kind === ChildKind.SubField &&
-              selectedChild.index === index
-            }
-            onSelect={(section) =>
-              onSelectChild(subFieldChild(sub, index), section)
-            }
-            interactive={false}
-            conditionSummary={
-              subFieldEditsConditions(sub) && sub.visibleIfFormula
-                ? summarize(sub.visibleIfFormula)
-                : undefined
-            }
-          >
-            <CanvasQuestion field={sub} />
-            {hiddenInOutput.has(sub.id) && <ListHiddenNote />}
-          </CanvasChild>
-        ))}
+        {list.fields.map((sub, index) => {
+          const selected =
+            selectedChild?.kind === ChildKind.SubField &&
+            selectedChild.index === index;
+          const childInline = selected ? inline : null;
+          return (
+            <CanvasChild
+              key={sub.id || index}
+              label={describeElement(sub)}
+              selected={selected}
+              onSelect={(section) =>
+                onSelectChild(subFieldChild(sub, index), section)
+              }
+              interactive={false}
+              conditionSummary={
+                subFieldEditsConditions(sub) && sub.visibleIfFormula
+                  ? summarize(sub.visibleIfFormula)
+                  : undefined
+              }
+              inline={childInline}
+              text={
+                childInline &&
+                inlineTextFor({
+                  item: sub,
+                  onChange: (label) =>
+                    onUpdate({
+                      fields: updateListSubField(list.fields, index, { label }),
+                    }),
+                  onStop: childInline.stop,
+                })
+              }
+            >
+              <CanvasQuestion field={sub} />
+              {hiddenInOutput.has(sub.id) && <ListHiddenNote />}
+            </CanvasChild>
+          );
+        })}
       </ListCard>
       {EXAMPLE_CARDS < maxCards && (
         <CanvasContent interactive={false}>
@@ -160,7 +217,13 @@ export function CanvasAccordion({
   block,
   selectedChild,
   onSelectChild,
-}: Omit<ContainerProps, "summarize"> & { block: AccordionBlock }) {
+  onUpdate,
+  updateCurrent,
+  inline,
+}: Omit<ContainerProps, "summarize"> & {
+  block: AccordionBlock;
+  updateCurrent: AddressedWrite | undefined;
+}) {
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   const setSectionOpen = ({ key, isOpen }: { key: string; isOpen: boolean }) =>
     setOpen((current) => {
@@ -200,6 +263,12 @@ export function CanvasAccordion({
     );
   }
 
+  const { updateSection, blockWrite } = accordionWrites({
+    sections: block.sections,
+    onUpdate,
+    updateCurrent,
+  });
+
   return (
     <div className={cn("relative", ACCORDION_SECTIONS)}>
       {block.sections.map((section, index) => {
@@ -209,6 +278,7 @@ export function CanvasAccordion({
         const sectionSelected =
           selectedChild?.kind === ChildKind.Section &&
           selectedChild.section === index;
+        const titleInline = sectionSelected ? inline : null;
         return (
           <div key={key}>
             <div
@@ -217,28 +287,53 @@ export function CanvasAccordion({
                 selectionRing(sectionSelected),
               )}
             >
-              <button
-                type="button"
-                aria-label={`Select ${label}`}
-                aria-pressed={sectionSelected}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onSelectChild(
-                    sectionChild(section, index),
-                    SidebarSection.Content,
-                  );
-                }}
-                className="min-w-0 flex-1 rounded-md py-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-              >
-                <span
-                  className={cn(
-                    ACCORDION_TITLE,
-                    !section.title && "text-gray-400",
-                  )}
+              {titleInline?.editing ? (
+                <div className="min-w-0 flex-1 py-2">
+                  <InlineTextEditor
+                    value={section.title}
+                    onChange={(title) =>
+                      updateSection(index, () => ({ title }))
+                    }
+                    lines={TextLines.Single}
+                    label="Section title"
+                    onStop={titleInline.stop}
+                    className={ACCORDION_TITLE}
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  aria-label={`Select ${label}`}
+                  aria-pressed={sectionSelected}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onSelectChild(
+                      sectionChild(section, index),
+                      SidebarSection.Content,
+                    );
+                  }}
+                  onKeyDown={
+                    titleInline ? startOnEnter(titleInline) : undefined
+                  }
+                  className="min-w-0 flex-1 rounded-md py-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 >
-                  {sectionTitle(section)}
-                </span>
-              </button>
+                  <span
+                    className={cn(
+                      ACCORDION_TITLE,
+                      !section.title && "text-gray-400",
+                    )}
+                  >
+                    {sectionTitle(section)}
+                  </span>
+                </button>
+              )}
+              {titleInline && !titleInline.editing && (
+                <EditTextButton
+                  label="Edit section title"
+                  onClick={titleInline.start}
+                  className="shrink-0"
+                />
+              )}
               <button
                 type="button"
                 aria-label={`Contents of ${label}`}
@@ -265,31 +360,47 @@ export function CanvasAccordion({
                     This section is empty.
                   </p>
                 )}
-                {section.blocks.map((nested, nestedIndex) => (
-                  <CanvasChild
-                    key={nested.id || nestedIndex}
-                    label={describeElement(nested)}
-                    selected={
-                      selectedChild?.kind === ChildKind.SectionBlock &&
-                      selectedChild.section === index &&
-                      selectedChild.block === nestedIndex
-                    }
-                    onSelect={(sidebarSection) =>
-                      onSelectChild(
-                        sectionBlockChild({
-                          section,
-                          sectionIndex: index,
-                          block: nested,
-                          blockIndex: nestedIndex,
-                        }),
-                        sidebarSection,
-                      )
-                    }
-                    interactive={INTERACTIVE_ON_CANVAS[nested.kind]}
-                  >
-                    <RenderDisplayBlock block={nested} />
-                  </CanvasChild>
-                ))}
+                {section.blocks.map((nested, nestedIndex) => {
+                  const selected =
+                    selectedChild?.kind === ChildKind.SectionBlock &&
+                    selectedChild.section === index &&
+                    selectedChild.block === nestedIndex;
+                  const childInline = selected ? inline : null;
+                  return (
+                    <CanvasChild
+                      key={nested.id || nestedIndex}
+                      label={describeElement(nested)}
+                      selected={selected}
+                      onSelect={(sidebarSection) =>
+                        onSelectChild(
+                          sectionBlockChild({
+                            section,
+                            sectionIndex: index,
+                            block: nested,
+                            blockIndex: nestedIndex,
+                          }),
+                          sidebarSection,
+                        )
+                      }
+                      interactive={INTERACTIVE_ON_CANVAS[nested.kind]}
+                      inline={childInline}
+                      text={
+                        childInline &&
+                        inlineTextFor({
+                          item: nested,
+                          onChange: (text) =>
+                            blockWrite({
+                              sectionIndex: index,
+                              blockIndex: nestedIndex,
+                            })(() => ({ text })),
+                          onStop: childInline.stop,
+                        })
+                      }
+                    >
+                      <RenderDisplayBlock block={nested} />
+                    </CanvasChild>
+                  );
+                })}
               </div>
             )}
           </div>
