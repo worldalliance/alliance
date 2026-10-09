@@ -12,6 +12,7 @@ import type {
   FormSchema,
   RangeField,
   RankingField,
+  TextField,
 } from "@alliance/common/forms/form-schema";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import { milliseconds } from "date-fns";
@@ -3513,6 +3514,19 @@ describe("Tasks (e2e)", () => {
         deviceType: "desktop" as const,
       });
 
+  const submitAsGuest = (
+    form: Awaited<ReturnType<typeof setupForm>>,
+    answers: Record<string, unknown>,
+  ) =>
+    request(ctx.app.getHttpServer())
+      .post(`/tasks/submitPublicForm/${form.formId}`)
+      .send({
+        answers,
+        formSnapshotId: form.formSnapshotId,
+        actionId: form.actionId,
+        deviceType: "desktop" as const,
+      });
+
   describe("Ranking field validation", () => {
     const rankingOptions = [
       { label: "A", value: "a" },
@@ -3611,6 +3625,25 @@ describe("Tasks (e2e)", () => {
       // Hidden (role = volunteer): the required ranking doesn't apply.
       await submit(form, { role: "volunteer" }).expect(201);
     });
+
+    it("rejects invalid and incomplete rankings from a guest", async () => {
+      const form = await setupForm("Guest Required Ranking", [
+        { ...optionalRankingField, required: true, numToRank: 2 },
+      ]);
+
+      const missing = await submitAsGuest(form, {}).expect(400);
+      expect(missing.body.message).toContain("is required");
+
+      const partial = await submitAsGuest(form, { rank: ["a"] }).expect(400);
+      expect(partial.body.message).toContain("requires ranking 2 items");
+
+      const duplicate = await submitAsGuest(form, {
+        rank: ["a", "a"],
+      }).expect(400);
+      expect(duplicate.body.message).toContain("invalid ranking");
+
+      await submitAsGuest(form, { rank: ["b", "a"] }).expect(201);
+    });
   });
 
   describe("Range field validation", () => {
@@ -3641,6 +3674,17 @@ describe("Tasks (e2e)", () => {
           answers,
         ).expect(201);
       }
+    });
+
+    it("rejects an optional answer outside the options from a guest", async () => {
+      const form = await setupForm("Guest Optional Range", [
+        optionalRangeField,
+      ]);
+
+      const res = await submitAsGuest(form, { scale: 8 }).expect(400);
+      expect(res.body.message).toContain("has an answer outside its options");
+
+      await submitAsGuest(form, { scale: 5 }).expect(201);
     });
 
     it("rejects a required answer outside the options", async () => {
@@ -3675,6 +3719,73 @@ describe("Tasks (e2e)", () => {
       );
     });
   });
+
+  describe.each(Object.entries({ member: submit, guest: submitAsGuest }))(
+    "Conditions on another form's answers, for a %s",
+    (_, send) => {
+      const q1: TextField = {
+        id: "q1",
+        type: "input",
+        kind: "text",
+        label: "Q1",
+      };
+
+      // Both forms have a `q1`, as forms copied from one another do.
+      const setUpGatedOnSource = async ({
+        field,
+        sourceHasValue,
+      }: {
+        field: TextField;
+        sourceHasValue: boolean;
+      }) => {
+        const source = await setupForm("Cross Form Source", [q1]);
+        return setupForm("Cross Form Target", [
+          q1,
+          {
+            ...field,
+            visibleIfFormula: {
+              conditions: {
+                condition1: {
+                  kind: "hasValue",
+                  when: "q1",
+                  hasValue: sourceHasValue,
+                  sourceFormId: source.formId,
+                },
+              },
+              formula: "condition1",
+            },
+          },
+        ]);
+      };
+
+      it("doesn't require a field shown only once the source form has an answer", async () => {
+        const form = await setUpGatedOnSource({
+          field: {
+            id: "tech",
+            type: "input",
+            kind: "text",
+            label: "Tech question",
+            required: true,
+          },
+          sourceHasValue: true,
+        });
+
+        await send(form, { q1: "yes" }).expect(201);
+      });
+
+      it("keeps an answer to a field shown while the source form has none", async () => {
+        const form = await setUpGatedOnSource({
+          field: { id: "follow", type: "input", kind: "text", label: "Follow" },
+          sourceHasValue: false,
+        });
+
+        const response = await send(form, { q1: "yes", follow: "sure" }).expect(
+          201,
+        );
+        expect(response.body.answers).toEqual({ q1: "yes", follow: "sure" });
+      });
+    },
+  );
 
   describe("User field extraction from form submission", () => {
     it("extracts and saves user fields", async () => {
