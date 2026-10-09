@@ -722,6 +722,7 @@ jobs:
             server/tsconfig.json \
             server/src \
             server/migrations \
+            scripts/deploy_backend.sh \
             scripts/sync_prod_to_staging.sh \
             scripts/anonymize \
             common/package.json \
@@ -820,49 +821,9 @@ jobs:
             export PANGRAM_API_URL=https://text.api.pangram.com/v3
             export EXPO_ACCESS_TOKEN=${{ secrets.EXPO_ACCESS_TOKEN }}
 
-            # Held until ~/nest-backend is final, rollback included; the prod →
-            # staging sync takes it around its own migrate-and-swap. pm2 calls
-            # close it so a daemon they spawn can't hold it.
-            exec 9>>~/migrate.lock
-            flock -w 300 9 || { echo "could not take ~/migrate.lock; a prod → staging sync may hold it"; exit 1; }
-
-            rm -rf nest-backend-deploy-backup || true
-            mv nest-backend nest-backend-deploy-backup || true
-
-            rollback () {
-              trap - ERR
-              echo "Deployment failed - rolling back"
-              cd ~/
-              pm2 delete nest-app 9>&- || true
-              if [ -d "nest-backend-deploy-backup" ]; then
-                rm -rf nest-backend
-                mv nest-backend-deploy-backup nest-backend
-                cd ~/nest-backend/server
-                pm2 start "bun src/main.ts" --name nest-app --interpreter none 9>&-
-              fi
-              exit 1
-            }
-            trap rollback ERR
-
-            mkdir -p ~/nest-backend
-            unzip -o ~/nest-build.zip -d ~/nest-backend
-
-            cd ~/nest-backend
-            bun install --frozen-lockfile
-
-            cd ~/nest-backend/server
-            # Run migrations
-            bunx typeorm-ts-node-commonjs --dataSource src/datasources/dataSource.ts migration:run
-
-            pm2 delete nest-app 9>&- || true
-            pm2 start "bun src/main.ts" --name nest-app --interpreter none 9>&-
-            pm2 save 9>&-
-
-            sleep 10
-            # The public /api/ path goes through the nginx vhost
-            # deploy-react-app owns, not this job; verify-api covers it.
-            curl --silent --fail --show-error --max-time 10 http://localhost:3005/ > /dev/null
-            exec 9>&-
+            # In memory, so a later deploy can't rewrite the file under a run still going.
+            deploy_backend=$(unzip -p ~/nest-build.zip scripts/deploy_backend.sh) || { echo "could not extract deploy_backend.sh"; exit 1; }
+            bash -c "$deploy_backend" || exit 1
 
             # The prod → staging sync runs from this box, outside the app, so
             # ship its script with the deploy. Staging only. Never fails the
