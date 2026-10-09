@@ -6,6 +6,8 @@ export type SiteLink = {
   to: string;
   /** Gets the arrow, marking it as a step out of the site's own pages. */
   withArrow?: boolean;
+  /** Goes to signup instead while the tab holds a usable invitation. */
+  acceptsInvite?: boolean;
 };
 
 export const PEOPLE_HREF = href("/people");
@@ -45,7 +47,7 @@ export const FOOTER_COLUMNS: SiteLink[][] = [
     { label: "Foundation", to: FOUNDATION_HREF },
   ],
   [
-    { label: "Join", to: WAITLIST_HREF, withArrow: true },
+    { label: "Join", to: WAITLIST_HREF, withArrow: true, acceptsInvite: true },
     { label: "Partner", to: PARTNER_HREF, withArrow: true },
   ],
 ];

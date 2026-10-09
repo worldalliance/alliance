@@ -61,9 +61,11 @@ Reuse the existing waitlist browser-token table for the session association, kee
 
 ## Dismissal
 
-Place a compact icon beside "Accept invite" with the accessible name and tooltip "Forget invitation." It clears this tab's invitation context, its sessionStorage key, and related cached data. Remove `ref` from the current URL with history replacement, preserving other parameters, so refreshing does not capture it again. An explicit invitation visit can set new session state.
+Place a compact icon beside "Accept invite" with the accessible name and tooltip "Forget invitation." It clears this tab's invitation context, its sessionStorage key, and related cached data. On a page that captures `ref`, remove it from the URL with history replacement, preserving other parameters, so refreshing does not capture it again. Other pages' `ref` (a waitlist referrer or action share) is theirs and stays. The invite page needs its code, so forgetting there goes to the homepage, where the explainer is. An explicit invitation visit can set new session state.
 
 Invitation dismissal requires no server operation. It leaves other storage keys, waitlist records, invitation records, and account sessions intact. The waitlist page's "Forget this browser" deletes its server-side session association, clears the waitlist session cookie, and clears this tab's invitation context. A server failure remains retryable and must not report successful forgetting. Either control updates all invitation actions in the tab; only the whole-browser control ends waitlist confirmation access.
+
+Completing signup, by email or a provider, uses the invitation, so signup clears the tab's invitation context without touching its URL or the lookups it still shows. Signing out in the same tab then shows no stale invitation.
 
 Ignore in-flight validation or restoration results after dismissal. No dismissal control is shown while a code is being checked, so dismissal during validation reaches the provider only through the waitlist page's control or a revalidation on returning to the tab. If removal from sessionStorage fails, suppress the code in memory and show a small retryable error under the navbar; do not promise it cannot return on refresh. Storage failures during browsing remain nonblocking.
 

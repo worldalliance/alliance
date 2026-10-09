@@ -14,6 +14,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { InviteSessionProvider } from "../../../site/invite/InviteSession";
 import { WaitlistSignupForm } from "./WaitlistSignupForm";
 
 let referral: (url: URL) => Response;
@@ -63,7 +64,9 @@ const renderForm = (search = "", client = new QueryClient()) => {
       <MemoryRouter
         initialEntries={[`/projects/democratic-grantmaking-26${search}`]}
       >
-        <WaitlistSignupForm />
+        <InviteSessionProvider>
+          <WaitlistSignupForm />
+        </InviteSessionProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );

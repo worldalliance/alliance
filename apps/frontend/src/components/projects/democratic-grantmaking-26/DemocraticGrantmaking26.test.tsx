@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../../../lib/AuthContext";
+import { InviteSessionProvider } from "../../../site/invite/InviteSession";
 import { authValue } from "../../../testing/authValue";
 import DemocraticGrantmaking26 from "./DemocraticGrantmaking26";
 
@@ -31,7 +32,9 @@ const renderPage = () =>
     <QueryClientProvider client={new QueryClient()}>
       <AuthContext.Provider value={authValue()}>
         <MemoryRouter>
-          <DemocraticGrantmaking26 />
+          <InviteSessionProvider>
+            <DemocraticGrantmaking26 />
+          </InviteSessionProvider>
         </MemoryRouter>
       </AuthContext.Provider>
     </QueryClientProvider>,

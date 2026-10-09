@@ -2,6 +2,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { Link } from "react-router";
 import membersPhoto from "../assets/redesign/members-photo.webp?w=480;960&format=avif;webp&as=picture";
 import { CTA_BODY } from "./content";
+import { useInviteSession } from "./invite/InviteSession";
 import { WAITLIST_HREF } from "./links";
 import { SITE_COL, SiteArrow, SitePicture, TexturedFill } from "./ui";
 
@@ -9,6 +10,7 @@ import { SITE_COL, SiteArrow, SitePicture, TexturedFill } from "./ui";
 const FOOTER_OVERLAP = 54;
 
 const JOIN_CTA_HEADING = "Join the waitlist";
+const INVITE_CTA_HEADING = "Accept invite";
 
 const cardClass = "group relative isolate block w-full overflow-hidden";
 const cardStyle = { borderRadius: "var(--site-radius-card)" };
@@ -41,13 +43,19 @@ function JoinCtaCard({ heading }: { heading: string }) {
   );
 }
 
+/** Without `to`, joins through the tab's invitation when it has one. */
 export function JoinCta({
-  to = WAITLIST_HREF,
-  heading = JOIN_CTA_HEADING,
+  to: explicitTo,
+  heading: explicitHeading,
 }: {
   to?: string;
   heading?: string;
 } = {}) {
+  const invite = useInviteSession();
+  const inviteHref = explicitTo === undefined ? invite.signupHref : null;
+  const to = explicitTo ?? inviteHref ?? WAITLIST_HREF;
+  const heading =
+    explicitHeading ?? (inviteHref ? INVITE_CTA_HEADING : JOIN_CTA_HEADING);
   return (
     <section id="join" className="relative bg-[var(--site-surface)]">
       <div

@@ -27,9 +27,9 @@ import { useSiteBackground } from "../components/HtmlBackgroundManager";
 import { useAuth } from "../lib/AuthContext";
 import { socialPreviewMeta } from "../lib/socialPreviewMeta";
 import { useContract } from "../lib/useContract";
-import { useRememberInvite } from "../lib/useRememberInvite";
 // import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
 import { SiteFooter } from "../site/Footer";
+import { useInviteSession } from "../site/invite/InviteSession";
 import { JoinCta } from "../site/JoinCta";
 import { Navbar } from "../site/Navbar";
 import { LandingBody } from "../site/sections/LandingBody";
@@ -103,7 +103,7 @@ const OnboardingPage = () => {
   // const mobileWeb = useMediaQuery(MOBILE_WEB_QUERY);
   useLockedViewport(!isAccount);
   const { inviter, refusal: inviteRefusal } = useInvite(referralCode);
-  useRememberInvite(referralCode);
+  const { clear: clearInvite } = useInviteSession();
   const faces = useSignupFaces(referralCode, {
     enabled: step === OnboardingStep.Agreement,
   });
@@ -191,6 +191,7 @@ const OnboardingPage = () => {
     oauthHandledRef.current = true;
     registeredRef.current = true;
     clearDraft();
+    clearInvite();
 
     if (user?.hasActiveContract) {
       navigate(redirectAfterLogin);
@@ -198,7 +199,15 @@ const OnboardingPage = () => {
     }
     setSkipPanelMorph(true);
     goTo(OnboardingStep.Community);
-  }, [oauthNotice, authLoading, user, goTo, navigate, redirectAfterLogin]);
+  }, [
+    oauthNotice,
+    authLoading,
+    user,
+    goTo,
+    navigate,
+    redirectAfterLogin,
+    clearInvite,
+  ]);
 
   useEffect(() => {
     if (!referralCode) return;
@@ -270,6 +279,7 @@ const OnboardingPage = () => {
       }
       registeredRef.current = true;
       clearDraft();
+      clearInvite();
 
       const me = await authMe();
       const user = me.data?.user;
@@ -313,6 +323,7 @@ const OnboardingPage = () => {
     referralCode,
     latestContract,
     enterPlatform,
+    clearInvite,
   ]);
 
   const filled = FILLED_SEGMENTS[step];
@@ -437,7 +448,7 @@ const OnboardingPage = () => {
             isAccount ? "opacity-100" : "pointer-events-none opacity-0",
           )}
         >
-          <Navbar />
+          <Navbar offerInvite={location.pathname === href("/login")} />
           <AccountStep
             email={email}
             onEmailChange={setEmail}

@@ -30,6 +30,7 @@ import PosthogBuildTag from "./lib/PosthogBuildTag";
 import { posthogRequestContext } from "./lib/posthogRequestContext";
 import { ShareLinkViewerFromAuth } from "./lib/ShareLinkViewerFromAuth";
 import { socialPreviewMeta } from "./lib/socialPreviewMeta";
+import { InviteSessionProvider } from "./site/invite/InviteSession";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -134,11 +135,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <SiteAppProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider queryClient={queryClient}>
-          <ShareLinkViewerFromAuth>
-            <ToastProvider>
-              <HtmlBackgroundManager>{children}</HtmlBackgroundManager>
-            </ToastProvider>
-          </ShareLinkViewerFromAuth>
+          <InviteSessionProvider>
+            <ShareLinkViewerFromAuth>
+              <ToastProvider>
+                <HtmlBackgroundManager>{children}</HtmlBackgroundManager>
+              </ToastProvider>
+            </ShareLinkViewerFromAuth>
+          </InviteSessionProvider>
         </AuthProvider>
       </QueryClientProvider>
     </SiteAppProvider>

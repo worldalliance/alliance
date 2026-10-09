@@ -7,7 +7,12 @@ import type {
 import { queryKeys } from "./queryKeys";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
-import { InviteRefusal, namedInviter, useInvite } from "./useInvite";
+import {
+  InviteAvailability,
+  InviteRefusal,
+  namedInviter,
+  useInvite,
+} from "./useInvite";
 
 const user: ReferrerProfileDto = {
   kind: "user",
@@ -83,6 +88,7 @@ describe("useInvite", () => {
     const invite = await settle();
     expect(invite.refusal).toBeNull();
     expect(invite.inviter?.displayName).toBe("Jane Smith");
+    expect(invite.availability).toBe(InviteAvailability.Available);
   });
 
   it("offers a personal or reusable code with no onetime invite", async () => {
@@ -90,6 +96,7 @@ describe("useInvite", () => {
     const invite = await settle();
     expect(invite.unresolved).toBe(false);
     expect(invite.inviter?.displayName).toBe("Jane Smith");
+    expect(invite.availability).toBe(InviteAvailability.Available);
   });
 
   it("finds a code unavailable only when both lookups name nothing", async () => {
@@ -97,6 +104,7 @@ describe("useInvite", () => {
     referrerStatus = 404;
     const invite = await settle();
     expect(invite.unresolved).toBe(true);
+    expect(invite.availability).toBe(InviteAvailability.Unavailable);
   });
 
   it("leaves a code it could not check to signup", async () => {
@@ -105,6 +113,7 @@ describe("useInvite", () => {
     const invite = await settle();
     expect(invite.unresolved).toBe(false);
     expect(invite.refusal).toBeNull();
+    expect(invite.availability).toBe(InviteAvailability.Unknown);
   });
 
   it("leaves a code to signup when only the referrer lookup fails", async () => {
@@ -134,6 +143,16 @@ describe("useInvite", () => {
     expect(result.current.unresolved).toBe(true);
   });
 
+  it("is not checking when there is no code", () => {
+    const { result } = renderHook(() => useInvite(null), queryWrapper());
+    expect(result.current.availability).toBe(InviteAvailability.Unknown);
+  });
+
+  it("is checking while a lookup is in flight", () => {
+    const { result } = renderHook(() => useInvite("CODE"), queryWrapper());
+    expect(result.current.availability).toBe(InviteAvailability.Checking);
+  });
+
   it.each<[OnetimeInviteStatus, InviteRefusal]>([
     ["link_used", InviteRefusal.Used],
     ["request_pending", InviteRefusal.Unapproved],
@@ -143,5 +162,6 @@ describe("useInvite", () => {
     const invite = await settle();
     expect(invite.refusal).toBe(refusal);
     expect(invite.inviter).toBeNull();
+    expect(invite.availability).toBe(InviteAvailability.Unavailable);
   });
 });

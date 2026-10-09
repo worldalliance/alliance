@@ -1,4 +1,4 @@
-import type { UserDto } from "@alliance/shared/client";
+import type { ContractDto, UserDto } from "@alliance/shared/client";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as configModule from "@alliance/sharedweb/lib/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -12,13 +12,26 @@ import {
 import { MemoryRouter, useLocation } from "react-router";
 import * as ytEmbedModule from "../components/AllianceIntroYouTubeEmbed";
 import { AuthContext, type AuthContextType } from "../lib/AuthContext";
+import { InviteSessionProvider } from "../site/invite/InviteSession";
 import { testAuthUser } from "../stories/testData";
 import OnboardingPage from "./OnboardingPage";
 import { OnboardingStep } from "./flow";
 
+let contract: ContractDto | null;
+
 serveApi(
   routes({
-    "GET /contract/current": () => Response.json(null),
+    "GET /contract/current": () => Response.json(contract),
+    "POST /auth/register": () => Response.json({}),
+    "GET /auth/me": () => Response.json({ user: testAuthUser }),
+    "POST /contract/sign/:id": () => Response.json({}),
+    "GET /user/referrerProfile/:code": () =>
+      Response.json({
+        kind: "user",
+        displayName: "Inviter",
+        profilePicture: null,
+      }),
+    "GET /user/onetimeInvite/:code": () => new Response(null, { status: 404 }),
     "POST /user/nmembers": () => Response.json({ count: 1000 }),
     "GET /user/slug/:id": () =>
       Response.json({ profilePicture: null, displayName: "" }),
@@ -33,6 +46,7 @@ const member = (hasActiveContract: boolean): UserDto => ({
 });
 
 beforeEach(() => {
+  contract = null;
   // The landing body's player reaches for a YouTube thumbnail on render.
   jest.spyOn(ytEmbedModule, "default").mockImplementation(() => <></>);
   // The OAuth return URL the account step builds needs a real origin.
@@ -84,8 +98,10 @@ const visit = (url: string, user?: UserDto) => {
     <MemoryRouter initialEntries={[url]}>
       <QueryClientProvider client={new QueryClient()}>
         <AuthContext.Provider value={authValue(user)}>
-          <OnboardingPage />
-          <Search />
+          <InviteSessionProvider>
+            <OnboardingPage />
+            <Search />
+          </InviteSessionProvider>
         </AuthContext.Provider>
       </QueryClientProvider>
     </MemoryRouter>,
@@ -130,4 +146,70 @@ test("a member with an account keeps their place across a reload", async () => {
   visit(`/onboarding?step=${OnboardingStep.Minutes}`, testAuthUser);
 
   await waitFor(() => expect(step()).toBe(OnboardingStep.Minutes));
+});
+
+test("forgets the tab's invitation once signup has used it", async () => {
+  sessionStorage.setItem(
+    "alliance:invite",
+    JSON.stringify({ explicit: null, saved: "good" }),
+  );
+  visit("/onboarding?google=linked", member(false));
+
+  await waitFor(() => expect(step()).toBe(OnboardingStep.Community));
+  expect(sessionStorage.getItem("alliance:invite")).toBeNull();
+});
+
+test("forgets the tab's invitation once email signup has used it", async () => {
+  contract = {
+    id: 1,
+    markdown: "",
+    description: [{ point: "Act together", subtext: "" }],
+  };
+  sessionStorage.setItem(
+    "alliance:invite",
+    JSON.stringify({ explicit: null, saved: "good" }),
+  );
+  localStorage.setItem(
+    "alliance:onboarding-draft",
+    JSON.stringify({
+      email: "member@example.com",
+      password: "a long password",
+      step: OnboardingStep.Agreement,
+      referralCode: null,
+      savedAt: Date.now(),
+    }),
+  );
+  visit(`/onboarding?step=${OnboardingStep.Agreement}`);
+
+  fireEvent.change(await screen.findByLabelText("Sign your full name"), {
+    target: { value: "Sam Member" },
+  });
+  expect(sessionStorage.getItem("alliance:invite")).not.toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Join" }));
+
+  await waitFor(() =>
+    expect(sessionStorage.getItem("alliance:invite")).toBeNull(),
+  );
+});
+
+test("offers the tab's invitation on login", async () => {
+  sessionStorage.setItem(
+    "alliance:invite",
+    JSON.stringify({ explicit: null, saved: "good" }),
+  );
+  visit("/login");
+
+  const accept = await screen.findByRole("link", { name: "Accept invite" });
+  expect(accept.getAttribute("href")).toBe("/signup?ref=good");
+});
+
+test("offers no invitation on the signup it leads to", async () => {
+  sessionStorage.setItem(
+    "alliance:invite",
+    JSON.stringify({ explicit: null, saved: "good" }),
+  );
+  visit("/signup?ref=good");
+
+  await screen.findByRole("link", { name: /Log In/ });
+  expect(screen.queryByRole("link", { name: "Accept invite" })).toBeNull();
 });

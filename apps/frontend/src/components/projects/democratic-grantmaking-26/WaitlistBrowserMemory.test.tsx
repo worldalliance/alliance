@@ -9,6 +9,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { InviteSessionProvider } from "../../../site/invite/InviteSession";
 import { WaitlistSignupForm } from "./WaitlistSignupForm";
 
 let browser: WaitlistBrowserDto;
@@ -21,6 +22,13 @@ serveApi(
     "GET /waitlist/referral": () => new Response(null, { status: 500 }),
     "GET /waitlist/mail-config": () => Response.json({ enabled: true }),
     "GET /waitlist/browser": () => browserReply(),
+    "GET /user/referrerProfile/:code": () =>
+      Response.json({
+        kind: "user",
+        displayName: "Inviter",
+        profilePicture: null,
+      }),
+    "GET /user/onetimeInvite/:code": () => new Response(null, { status: 404 }),
     "DELETE /waitlist/browser": () => {
       forgotten += 1;
       return forgetReply();
@@ -40,7 +48,14 @@ beforeEach(() => {
   browserReply = () => Response.json(browser);
   forgetReply = () => new Response(null, { status: 204 });
   forgotten = 0;
+  sessionStorage.clear();
 });
+
+const saveInvite = (code: string) =>
+  sessionStorage.setItem(
+    "alliance:invite",
+    JSON.stringify({ explicit: null, saved: code }),
+  );
 
 afterEach(cleanup);
 
@@ -48,7 +63,9 @@ const renderForm = () =>
   render(
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter initialEntries={["/projects/democratic-grantmaking-26"]}>
-        <WaitlistSignupForm />
+        <InviteSessionProvider>
+          <WaitlistSignupForm />
+        </InviteSessionProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -83,8 +100,8 @@ test("tells a remembered mobilized entry it was invited, without an invite link"
   ).toBeNull();
 });
 
-test("offers signup through a remembered invite", async () => {
-  browser = { entry: null, inviteCode: "invite/1" };
+test("offers signup through the tab's invitation", async () => {
+  saveInvite("invite/1");
   renderForm();
 
   const link = await screen.findByRole("link", { name: /Continue signing up/ });
@@ -92,12 +109,14 @@ test("offers signup through a remembered invite", async () => {
   expect(screen.getByLabelText("Email or mobile number")).toBeTruthy();
 });
 
-test("forgets the browser and shows the form again", async () => {
+test("forgets the browser and the tab's invitation, and shows the form again", async () => {
   browser = {
     entry: { shareCode: "abc123", mobilized: false },
-    inviteCode: "invite1",
+    inviteCode: null,
   };
+  saveInvite("invite1");
   renderForm();
+  await screen.findByRole("link", { name: /Continue signing up/ });
 
   fireEvent.click(await forgetButton());
 
@@ -106,6 +125,20 @@ test("forgets the browser and shows the form again", async () => {
   expect(
     screen.queryByRole("link", { name: /Continue signing up/ }),
   ).toBeNull();
+  expect(sessionStorage.getItem("alliance:invite")).toBeNull();
+});
+
+test("keeps the tab's invitation when forgetting the browser fails", async () => {
+  saveInvite("invite1");
+  forgetReply = () => new Response(null, { status: 500 });
+  renderForm();
+
+  fireEvent.click(await forgetButton());
+
+  await screen.findByText("We couldn’t forget this browser. Please try again.");
+  expect(
+    screen.getByRole("link", { name: /Continue signing up/ }),
+  ).toBeTruthy();
 });
 
 test("keeps the remembered state and says so when forgetting fails", async () => {

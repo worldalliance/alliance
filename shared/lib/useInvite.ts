@@ -18,6 +18,14 @@ export const INVITE_REFUSAL_HEADING: Record<InviteRefusal, string> = {
   [InviteRefusal.Unapproved]: "This invite link isn’t active.",
 };
 
+export enum InviteAvailability {
+  Checking = "checking",
+  Available = "available",
+  Unavailable = "unavailable",
+  /** No code, or a lookup failed; signup still checks the code. */
+  Unknown = "unknown",
+}
+
 const nullIfRefused = <T>(lookup: Promise<{ data: T }>): Promise<T | null> =>
   lookup.then(
     (res) => res.data,
@@ -76,10 +84,19 @@ export function useInvite(referralCode: string | null) {
   const unresolved =
     Boolean(referralCode) && !pending && !failed && !referrer && !invite;
 
+  const availability = (() => {
+    if (refusal || unresolved) return InviteAvailability.Unavailable;
+    if (invite || (invite === null && referrer)) {
+      return InviteAvailability.Available;
+    }
+    return pending ? InviteAvailability.Checking : InviteAvailability.Unknown;
+  })();
+
   return {
     refusal,
     pending,
     unresolved,
+    availability,
     inviter: refusal ? null : namedInviter(referrer ?? null),
   };
 }
