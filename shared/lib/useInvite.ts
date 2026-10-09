@@ -6,6 +6,7 @@ import {
   type ReferrerProfileDto,
 } from "../client";
 import { queryKeys } from "./queryKeys";
+import { isRefused } from "./retryQuery";
 
 export enum InviteRefusal {
   Used = "used",
@@ -17,6 +18,23 @@ export const INVITE_REFUSAL_HEADING: Record<InviteRefusal, string> = {
   [InviteRefusal.Unapproved]: "This invite link isn’t active.",
 };
 
+export enum InviteAvailability {
+  Checking = "checking",
+  Available = "available",
+  Unavailable = "unavailable",
+  /** No code, or a lookup failed; signup still checks the code. */
+  Unknown = "unknown",
+}
+
+const nullIfRefused = <T>(lookup: Promise<{ data: T }>): Promise<T | null> =>
+  lookup.then(
+    (res) => res.data,
+    (error: unknown) => {
+      if (isRefused(error)) return null;
+      throw error;
+    },
+  );
+
 /**
  * Who the code names, and why it can't start a signup, if it can't.
  * Resolution goes through `referrerProfile` rather than the invite itself, so
@@ -25,37 +43,60 @@ export const INVITE_REFUSAL_HEADING: Record<InviteRefusal, string> = {
  * comes from that lookup.
  */
 export function useInvite(referralCode: string | null) {
-  const { data: referrer, isPending: referrerPending } = useQuery({
+  const referrerQuery = useQuery({
     queryKey: queryKeys.referrerProfile(referralCode),
     queryFn: () =>
-      userReferrerProfile({ path: { code: referralCode! } }).then(
-        (res) => res.data ?? null,
+      nullIfRefused(
+        userReferrerProfile({
+          path: { code: referralCode! },
+          throwOnError: true,
+        }),
       ),
     enabled: Boolean(referralCode),
     retry: false,
   });
+  const referrer = referrerQuery.data;
 
-  const { data: invite, isPending: invitePending } = useQuery({
+  const inviteQuery = useQuery({
     queryKey: queryKeys.onetimeInvite(referralCode),
     queryFn: () =>
-      userOnetimeInvite({ path: { code: referralCode! } }).then(
-        (res) => res.data ?? null,
+      nullIfRefused(
+        userOnetimeInvite({
+          path: { code: referralCode! },
+          throwOnError: true,
+        }),
       ),
     enabled: Boolean(referralCode),
     retry: false,
   });
+  const invite = inviteQuery.data;
 
   const refusal = invite ? REFUSAL_BY_STATUS[invite.status] : null;
-  const pending = Boolean(referralCode) && (invitePending || referrerPending);
+  const pending =
+    Boolean(referralCode) && (inviteQuery.isPending || referrerQuery.isPending);
+  // A failed refetch keeps the answer it had; only a lookup with none fails.
+  const failed =
+    (inviteQuery.isError && invite === undefined) ||
+    (referrerQuery.isError && referrer === undefined);
   // Both lookups empty is the only proof the code names nothing. Neither
   // settles it alone: an invite whose inviter is gone has no referrer, and a
   // campaign or personal referral code has no onetime invite behind it.
-  const unresolved = Boolean(referralCode) && !pending && !referrer && !invite;
+  const unresolved =
+    Boolean(referralCode) && !pending && !failed && !referrer && !invite;
+
+  const availability = (() => {
+    if (refusal || unresolved) return InviteAvailability.Unavailable;
+    if (invite || (invite === null && referrer)) {
+      return InviteAvailability.Available;
+    }
+    return pending ? InviteAvailability.Checking : InviteAvailability.Unknown;
+  })();
 
   return {
     refusal,
     pending,
     unresolved,
+    availability,
     inviter: refusal ? null : namedInviter(referrer ?? null),
   };
 }

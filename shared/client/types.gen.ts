@@ -4517,17 +4517,6 @@ export type RememberedWaitlistEntryDto = {
 
 export type WaitlistBrowserDto = {
     entry: RememberedWaitlistEntryDto | null;
-    /**
-     * A signup invite this browser opened that is still claimable
-     */
-    inviteCode: string | null;
-};
-
-export type RememberInviteDto = {
-    /**
-     * A signup invite code this browser opened
-     */
-    code: string;
 };
 
 export type WaitlistLinkRequestDto = {
@@ -14184,30 +14173,6 @@ export type WaitlistBrowserResponses = {
 };
 
 export type WaitlistBrowserResponse = WaitlistBrowserResponses[keyof WaitlistBrowserResponses];
-
-export type WaitlistRememberInviteData = {
-    body: RememberInviteDto;
-    path?: never;
-    query?: never;
-    url: '/waitlist/browser/invite';
-};
-
-export type WaitlistRememberInviteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type WaitlistRememberInviteError = WaitlistRememberInviteErrors[keyof WaitlistRememberInviteErrors];
-
-export type WaitlistRememberInviteResponses = {
-    204: {
-        [key: string]: never;
-    };
-};
-
-export type WaitlistRememberInviteResponse = WaitlistRememberInviteResponses[keyof WaitlistRememberInviteResponses];
 
 export type WaitlistRequestLinkData = {
     body: WaitlistLinkRequestDto;

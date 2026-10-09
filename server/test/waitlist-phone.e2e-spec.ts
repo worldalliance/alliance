@@ -160,7 +160,7 @@ describe("Waitlist phone contact (e2e)", () => {
         unsubscribedAt: new Date("2026-01-01T00:00:00Z"),
       });
       const state = await browser.get("/waitlist/browser").expect(200);
-      expect(state.body).toEqual({ entry: null, inviteCode: null });
+      expect(state.body).toEqual({ entry: null });
     });
 
     it("records one entry for concurrent submissions of a number", async () => {

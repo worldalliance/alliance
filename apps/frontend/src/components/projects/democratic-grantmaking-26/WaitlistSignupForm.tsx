@@ -22,6 +22,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { RotateCw } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { ACCOUNT_BUTTON } from "../../../onboarding/chrome";
+import { useInviteSession } from "../../../site/invite/InviteSession";
 import { SiteArrow } from "../../../site/ui";
 import {
   useWaitlistBrowser,
@@ -84,6 +85,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
   } = useWaitlistReferral();
   const mailEnabled = useWaitlistMailEnabled();
   const browser = useWaitlistBrowser();
+  const { signupHref: inviteSignupHref } = useInviteSession();
   const [contact, setContact] = useState("");
   const [country, setCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY);
   const [contactError, setContactError] = useState<string | null>(null);
@@ -107,11 +109,10 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
   // into their confirmation. An error falls through to a usable form.
   const restoring = browser.isPending;
   const remembered = browser.data?.entry ?? null;
-  const inviteCode = browser.data?.inviteCode ?? null;
   const browserMemory = (
     <>
-      {inviteCode && <RememberedInvite code={inviteCode} />}
-      {(remembered || inviteCode) && (
+      {inviteSignupHref && <RememberedInvite signupHref={inviteSignupHref} />}
+      {(remembered || inviteSignupHref) && (
         <ForgetBrowser
           onForgotten={() => {
             submit.reset();

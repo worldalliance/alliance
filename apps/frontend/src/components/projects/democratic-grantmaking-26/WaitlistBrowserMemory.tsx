@@ -5,15 +5,16 @@ import {
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { href, Link } from "react-router";
+import { Link } from "react-router";
+import { useInviteSession } from "../../../site/invite/InviteSession";
 import { SiteArrow } from "../../../site/ui";
 
 const FORGET_FALLBACK = "We couldn’t forget this browser. Please try again.";
 
-export function RememberedInvite({ code }: { code: string }) {
+export function RememberedInvite({ signupHref }: { signupHref: string }) {
   return (
     <Link
-      to={`${href("/signup")}?ref=${encodeURIComponent(code)}`}
+      to={signupHref}
       className="flex items-center gap-2 font-medium underline underline-offset-2"
     >
       You have an invitation. Continue signing up
@@ -22,15 +23,17 @@ export function RememberedInvite({ code }: { code: string }) {
   );
 }
 
+/** Ends the session's waitlist confirmation and the tab's invitation. */
 export function ForgetBrowser({ onForgotten }: { onForgotten: () => void }) {
   const queryClient = useQueryClient();
+  const invite = useInviteSession();
   const forget = useMutation({
     mutationFn: () => waitlistForgetBrowser({ throwOnError: true }),
     onSuccess: () => {
       queryClient.setQueryData(queryKeys.waitlistBrowser(), {
         entry: null,
-        inviteCode: null,
       } satisfies WaitlistBrowserDto);
+      invite.forget();
       onForgotten();
     },
   });

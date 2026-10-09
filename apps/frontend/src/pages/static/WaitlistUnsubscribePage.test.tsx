@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../../lib/AuthContext";
+import { InviteSessionProvider } from "../../site/invite/InviteSession";
 import { authValue } from "../../testing/authValue";
 import WaitlistUnsubscribePage from "./WaitlistUnsubscribePage";
 
@@ -31,7 +32,9 @@ const renderPage = (url: string) =>
     <QueryClientProvider client={new QueryClient()}>
       <AuthContext.Provider value={authValue()}>
         <MemoryRouter initialEntries={[url]}>
-          <WaitlistUnsubscribePage />
+          <InviteSessionProvider>
+            <WaitlistUnsubscribePage />
+          </InviteSessionProvider>
         </MemoryRouter>
       </AuthContext.Provider>
     </QueryClientProvider>,

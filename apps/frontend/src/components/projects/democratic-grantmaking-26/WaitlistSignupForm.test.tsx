@@ -14,6 +14,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { InviteSessionProvider } from "../../../site/invite/InviteSession";
 import { WaitlistSignupForm } from "./WaitlistSignupForm";
 
 let referral: (url: URL) => Response;
@@ -25,8 +26,7 @@ serveApi(
   routes({
     "GET /waitlist/referral": ({ request }) => referral(new URL(request.url)),
     "GET /waitlist/mail-config": () => Response.json({ enabled: mailEnabled }),
-    "GET /waitlist/browser": () =>
-      Response.json({ entry: null, inviteCode: null }),
+    "GET /waitlist/browser": () => Response.json({ entry: null }),
     "POST /waitlist/entries": async ({ request }) => {
       const body: CreateWaitlistEntryDto = await request.json();
       sent.push(body);
@@ -56,14 +56,15 @@ const organizationReferral = (entryCount: number): WaitlistReferralDto => ({
 const renderForm = (search = "", client = new QueryClient()) => {
   client.setQueryData(queryKeys.waitlistBrowser(), {
     entry: null,
-    inviteCode: null,
   } satisfies WaitlistBrowserDto);
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter
         initialEntries={[`/projects/democratic-grantmaking-26${search}`]}
       >
-        <WaitlistSignupForm />
+        <InviteSessionProvider>
+          <WaitlistSignupForm />
+        </InviteSessionProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );

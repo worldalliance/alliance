@@ -2828,17 +2828,6 @@ export class UserService {
     });
   }
 
-  async isInviteClaimable(code: string): Promise<boolean> {
-    const invite = await this.onetimeInviteRepository.findOneBy({
-      code,
-      ...CLAIMABLE_INVITE,
-    });
-    return (
-      invite !== null &&
-      !(await this.inviteHasClaimant(this.dataSource.manager, invite.id))
-    );
-  }
-
   async findAllOnetimeInvites(
     query: PaginationQueryDto,
   ): Promise<OnetimeInviteList> {

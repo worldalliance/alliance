@@ -3,7 +3,7 @@ import { View } from "react-native";
 import QrCodeCard from "./system/QrCodeCard";
 
 export type ReferralQrSectionProps = {
-  /** User's referral signup URL, or null if not available. */
+  /** User's referral landing URL, or null if not available. */
   referralLink: string | null;
   /** Optional QR size. */
   size?: number;
