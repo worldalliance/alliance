@@ -21,6 +21,8 @@ mkdir -p "docs/provenance/${UUID_V7}-${FEATURE_NAME}"
 
 UUIDv7 makes directory listings sort by creation time. Inside, two files: `REQUIREMENTS.md` and `DECISIONS.md`. These are intended to live in the repo.
 
+References flow one way: `DECISIONS.md` may reference `REQUIREMENTS.md`; `REQUIREMENTS.md` stands independently and never references `DECISIONS.md`.
+
 ## REQUIREMENTS.md
 
 Open with frontmatter naming the user and the task. Use `git config user.name` for the user field. Do not redact this field.
