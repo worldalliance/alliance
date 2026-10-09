@@ -43,6 +43,18 @@ export function userActionNotifsEnabled_text(
   );
 }
 
+export function newGroupMemberTextsEnabled(
+  user: Pick<
+    User,
+    | "textsForNewGroupMembers"
+    | "turnedOffAllNotifs"
+    | "phoneNumber"
+    | "phoneNumberUnsubscribed"
+  >,
+): boolean {
+  return user.textsForNewGroupMembers && textable(user);
+}
+
 export function userActionNotifsEnabled_push(
   user: Pick<User, "turnedOffAllNotifs" | "pushNotifsForActions">,
 ): boolean {

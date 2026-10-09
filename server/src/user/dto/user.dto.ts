@@ -242,6 +242,8 @@ export class UserDto extends PickType(User, [
   "pushesForFriendRequests",
   "pushesForMessages",
   "pushesForActionUpdates",
+  "pushesForNewGroupMembers",
+  "textsForNewGroupMembers",
   "phoneNumber",
   "communities",
   "profilePicture",
@@ -323,6 +325,8 @@ export class UserDto extends PickType(User, [
     this.pushesForFriendRequests = user.pushesForFriendRequests;
     this.pushesForMessages = user.pushesForMessages;
     this.pushesForActionUpdates = user.pushesForActionUpdates;
+    this.pushesForNewGroupMembers = user.pushesForNewGroupMembers;
+    this.textsForNewGroupMembers = user.textsForNewGroupMembers;
     this.undergoingGroupAssignment = user.undergoingGroupAssignment;
     this.remindAboutUncompletedGroupMembers =
       user.remindAboutUncompletedGroupMembers;
@@ -527,6 +531,8 @@ export class UpdateProfileDto extends PartialType(
     "pushesForFriendRequests",
     "pushesForMessages",
     "pushesForActionUpdates",
+    "pushesForNewGroupMembers",
+    "textsForNewGroupMembers",
   ]),
 ) {
   @IsOptional()

@@ -54,6 +54,8 @@ export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   leaderOfIds: [],
   receiveReplyNotifications: false,
   pushesForActionUpdates: false,
+  pushesForNewGroupMembers: false,
+  textsForNewGroupMembers: false,
   clusterId: null,
   hasPassword: true,
 };
