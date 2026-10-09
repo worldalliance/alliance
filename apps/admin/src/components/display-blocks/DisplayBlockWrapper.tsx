@@ -33,53 +33,17 @@ import type { OutputBlockOption } from "../form-fields/conditions/ContextRules";
 import { useTypedExpression } from "../form-fields/conditions/expressionBuffers";
 import { ElementConditions } from "../form-fields/conditions/VisibilityConditions";
 import { BlockPreviewAllowed } from "./BlockPreview";
+import {
+  baseManualContentFromBlock,
+  landingIn,
+  stripIdentityFields,
+  writeBlockFor,
+  type BlockWriteLanding,
+  type LandingFor,
+} from "./perUserContent";
 import { usePerViewerOptionsAllowed } from "./PerViewerOptionsContext";
 
 type ManualUserListEntry = Pick<UserDto, "id" | "name" | "hasActiveContract">;
-
-const stripManualFields = (
-  updates: Partial<DisplayBlock>,
-): Partial<DisplayBlock> => {
-  const {
-    manualPerUser: _manualPerUser,
-    manualUserContent: _manualUserContent,
-    ...rest
-  } = updates as Partial<DisplayBlock>;
-  return rest;
-};
-
-const stripIdentityFields = <T extends Record<string, unknown>>(
-  value: T,
-): Omit<T, "kind" | "id" | "type"> => {
-  const { kind: _kind, id: _id, type: _type, ...rest } = value;
-  return rest;
-};
-
-const baseManualContentFromBlock = (
-  block: DisplayBlock,
-): ManualDisplayBlockContent =>
-  stripIdentityFields(
-    stripManualFields({
-      ...block,
-      manualPerUser: undefined,
-      manualUserContent: undefined,
-    }) as Record<string, unknown>,
-  ) as ManualDisplayBlockContent;
-
-/**
- * Where a write landed. `userId` is null for the default content, which is
- * where a write meant for one user goes once the block stops holding per-user
- * content. Null once the form no longer holds the block at all.
- */
-export type BlockWriteLanding = { userId: string | null } | null;
-
-export type LandingFor = (userId: string | null) => BlockWriteLanding;
-
-const landingIn = (
-  current: DisplayBlock | null | undefined,
-  userId: string | null,
-): BlockWriteLanding =>
-  current ? { userId: current.manualPerUser && userId ? userId : null } : null;
 
 /** Names a write's target inside a sentence, null being the default content. */
 export type TargetLabel = (userId: string | null) => string;
@@ -424,39 +388,10 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     (
       userId: string | null,
       update: (current: T) => Partial<T>,
-    ): BlockWriteLanding => {
-      if (!block) return null;
-
-      const updatesFor = (current: T): Partial<T> => {
-        if (!current.manualPerUser || !userId) return update(current);
-
-        const existingManualContent = current.manualUserContent ?? {};
-        const existingContent =
-          existingManualContent[userId] ?? baseManualContentFromBlock(current);
-
-        const nextManualContent: Record<string, ManualDisplayBlockContent> = {
-          ...existingManualContent,
-          [userId]: stripIdentityFields({
-            ...existingContent,
-            ...(stripManualFields(
-              update(resolveDisplayBlockForUser(current, userId)),
-            ) as Record<string, unknown>),
-          }) as ManualDisplayBlockContent,
-        };
-
-        return { manualUserContent: nextManualContent } as Partial<T>;
-      };
-
-      // `updateCurrent` addresses this same block by its id, so what it hands
-      // back is the T this wrapper was rendered with.
-      if (updateCurrent) {
-        const wrote = updateCurrent((current) => updatesFor(current as T));
-        return landingIn(wrote, userId);
-      }
-      if (!onUpdate) return null;
-      onUpdate(updatesFor(block));
-      return landingIn(block, userId);
-    },
+    ): BlockWriteLanding =>
+      block
+        ? writeBlockFor({ block, userId, update, updateCurrent, onUpdate })
+        : null,
     [block, onUpdate, updateCurrent],
   );
 
