@@ -29,7 +29,7 @@ Only what the user actually said: requirements, constraints, preferences, select
 
 Each entry must make sense without the task transcript. When the user refers to a proposal, finding, numbered step, or other shorthand, include the part needed to interpret the statement and label who wrote it. User approval does not turn agent-authored context into human-origin information.
 
-Replace every credential or secret with `[redacted]`. Do the same for personal information unrelated to the requirement. Do not redct the user frontmatter field.
+Replace every credential or secret with `[redacted]`. Do the same for personal information unrelated to the requirement. Do not redact the user frontmatter field.
 
 Never infer user intent from existing code, prior agent decisions, or agent proposals; existing code proves only that the behavior existed.
 
