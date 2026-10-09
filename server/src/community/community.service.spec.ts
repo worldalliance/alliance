@@ -25,6 +25,14 @@ describe("CommunityService", () => {
   let notifsService: jest.Mocked<NotifsService>;
   let transaction: jest.Mock;
   let transactionManager: EntityManager;
+  let addAndRemove: jest.Mock;
+
+  const membershipWrite = (params: {
+    communityId: number;
+    relation: "users" | "leaders";
+    add?: number[];
+    remove?: number[];
+  }) => ({ add: [], remove: [], ...params });
 
   const leader1 = { id: 10, name: "Leader One" } as User;
   const leader2 = { id: 11, name: "Leader Two" } as User;
@@ -51,7 +59,42 @@ describe("CommunityService", () => {
       getRepository: jest.fn((entity) =>
         entity === Community ? communityRepository : userRepository,
       ),
+      connection: {
+        getMetadata: () => ({
+          findRelationWithPropertyPath: (relation: string) => ({
+            junctionEntityMetadata: {
+              target: relation,
+              ownerColumns: [{ propertyName: "communityId" }],
+              inverseColumns: [{ propertyName: "userId" }],
+            },
+          }),
+        }),
+      },
+      createQueryBuilder: jest.fn(() => ({
+        insert: () => ({
+          into: (relation: string) => ({
+            values: (rows: { communityId: number; userId: number }[]) => ({
+              orIgnore: () => ({
+                execute: () =>
+                  addAndRemove({
+                    communityId: rows[0].communityId,
+                    relation,
+                    add: rows.map((row) => row.userId),
+                    remove: [],
+                  }),
+              }),
+            }),
+          }),
+        }),
+        relation: (_target: unknown, relation: string) => ({
+          of: (communityId: number) => ({
+            remove: (remove: number[]) =>
+              addAndRemove({ communityId, relation, add: [], remove }),
+          }),
+        }),
+      })),
     } as unknown as EntityManager;
+    addAndRemove = jest.fn().mockResolvedValue(undefined);
     transaction = jest.fn(
       (callback: (manager: EntityManager) => Promise<unknown>) =>
         callback(transactionManager),
@@ -126,7 +169,7 @@ describe("CommunityService", () => {
         }),
       ).rejects.toThrow(BadRequestException);
 
-      expect(communityRepository.save).not.toHaveBeenCalled();
+      expect(addAndRemove).not.toHaveBeenCalled();
       expect(notifsService.sendNotifs).not.toHaveBeenCalled();
     });
 
@@ -143,7 +186,7 @@ describe("CommunityService", () => {
         }),
       ).rejects.toThrow(BadRequestException);
 
-      expect(communityRepository.save).not.toHaveBeenCalled();
+      expect(addAndRemove).not.toHaveBeenCalled();
       expect(notifsService.sendNotifs).not.toHaveBeenCalled();
     });
 
@@ -190,10 +233,13 @@ describe("CommunityService", () => {
       });
 
       expect(userRepository.createQueryBuilder).not.toHaveBeenCalled();
-      expect(communityRepository.save).toHaveBeenCalledWith({
-        id: community.id,
-        users: [user],
-      });
+      expect(addAndRemove).toHaveBeenCalledWith(
+        membershipWrite({
+          communityId: community.id,
+          relation: "users",
+          add: [user.id],
+        }),
+      );
     });
 
     it("adds user to community, sends notifs, and syncs conversation", async () => {
@@ -215,11 +261,13 @@ describe("CommunityService", () => {
         notifForLeader: notifFactory,
       });
 
-      // saves the community with the new user appended
-      expect(communityRepository.save).toHaveBeenCalledWith({
-        id: community.id,
-        users: [user],
-      });
+      expect(addAndRemove).toHaveBeenCalledWith(
+        membershipWrite({
+          communityId: community.id,
+          relation: "users",
+          add: [user.id],
+        }),
+      );
 
       // clears user's pending state
       expect(userRepository.save).toHaveBeenCalledWith([
@@ -317,7 +365,7 @@ describe("CommunityService", () => {
         });
 
       expect(result).toBe(community);
-      expect(communityRepository.save).not.toHaveBeenCalled();
+      expect(addAndRemove).not.toHaveBeenCalled();
       expect(notifsService.sendNotifs).not.toHaveBeenCalled();
     });
 
@@ -344,12 +392,22 @@ describe("CommunityService", () => {
         saveAsPendingCommunity: false,
       });
 
-      // saves community with user removed from both members and leaders
-      expect(communityRepository.save).toHaveBeenCalledWith({
-        id: community.id,
-        users: [leader2],
-        leaders: [leader2],
-      });
+      expect(addAndRemove.mock.calls).toEqual([
+        [
+          membershipWrite({
+            communityId: community.id,
+            relation: "users",
+            remove: [user.id],
+          }),
+        ],
+        [
+          membershipWrite({
+            communityId: community.id,
+            relation: "leaders",
+            remove: [user.id],
+          }),
+        ],
+      ]);
 
       // notifs sent only to remaining leaders (leader2)
       const sentNotifs = notifsService.sendNotifs.mock.calls[0][0];
@@ -375,11 +433,15 @@ describe("CommunityService", () => {
         saveAsPendingCommunity: false,
       });
 
-      expect(communityRepository.save).toHaveBeenCalledWith({
-        id: community.id,
-        users: [leader1, leader2],
-        leaders: [leader1, leader2],
-      });
+      expect(addAndRemove.mock.calls).toEqual([
+        [
+          membershipWrite({
+            communityId: community.id,
+            relation: "users",
+            remove: [user.id],
+          }),
+        ],
+      ]);
     });
 
     it("saves user pendingCommunity when saveAsPendingCommunity is true", async () => {
@@ -464,9 +526,21 @@ describe("CommunityService", () => {
       await move({ user, sourceCommunity, destinationCommunity });
 
       expect(transaction).toHaveBeenCalledTimes(1);
-      expect(communityRepository.save).toHaveBeenCalledWith([
-        { id: sourceCommunity.id, users: [leader1] },
-        { id: destinationCommunity.id, users: [leader2, user] },
+      expect(addAndRemove.mock.calls).toEqual([
+        [
+          membershipWrite({
+            communityId: sourceCommunity.id,
+            relation: "users",
+            remove: [user.id],
+          }),
+        ],
+        [
+          membershipWrite({
+            communityId: destinationCommunity.id,
+            relation: "users",
+            add: [user.id],
+          }),
+        ],
       ]);
       expect(userRepository.save).toHaveBeenCalledWith({
         id: user.id,
@@ -505,7 +579,7 @@ describe("CommunityService", () => {
 
     it("does not announce a move when its membership write fails", async () => {
       const communities = setUpMove();
-      communityRepository.save.mockRejectedValueOnce(new Error("db is down"));
+      addAndRemove.mockRejectedValueOnce(new Error("db is down"));
 
       await expect(move(communities)).rejects.toThrow("db is down");
 
@@ -572,9 +646,13 @@ describe("CommunityService", () => {
       });
 
       expect(transaction).toHaveBeenCalledTimes(1);
-      expect(communityRepository.save).toHaveBeenCalledWith([
-        { id: destinationCommunity.id, users: [leader2, user] },
-      ]);
+      expect(addAndRemove).toHaveBeenCalledWith(
+        membershipWrite({
+          communityId: destinationCommunity.id,
+          relation: "users",
+          add: [user.id],
+        }),
+      );
       expect(
         conversationService.syncCommunityConversationMembers,
       ).toHaveBeenCalledWith(destinationCommunity.id);

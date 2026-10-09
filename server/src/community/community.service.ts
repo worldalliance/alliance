@@ -36,6 +36,7 @@ import {
 } from "src/user/entities/user.entity";
 import type { Relations } from "src/utils/Repository";
 import { DeepPartial, In, IsNull, type Repository } from "typeorm";
+import { changeMembers } from "./change-members";
 import { acceptsPublicJoin, acceptsStaffAssignment } from "./community.utils";
 import { CreateCommunityDto, UpdateCommunityDto } from "./dto/community.dto";
 import {
@@ -219,7 +220,7 @@ export class CommunityService {
           users: (Pick<User, "id" | "name"> & DeepPartial<User>)[];
         }
     ),
-  ): Promise<Community> {
+  ): Promise<void> {
     const {
       user,
       users: usersParam,
@@ -244,20 +245,22 @@ export class CommunityService {
       .leaders!.map((leader) => notifForLeader({ leader }))
       .filter((notif) => !!notif);
 
-    const updatedCommunityP = run(async () => {
-      const updates = await this.communityRepository.save({
-        id: community.id,
-        users: [...community.users, ...users],
-      });
+    const membershipP = run(async () => {
+      await this.communityRepository.manager.transaction((em) =>
+        changeMembers({
+          manager: em,
+          communityId: community.id,
+          relation: "users",
+          add: users.map((added) => added.id),
+        }),
+      );
 
       await this.conversationService.syncCommunityConversationMembers(
         community.id,
       );
-
-      return { ...community, ...updates };
     });
-    const [updated] = await Promise.all([
-      updatedCommunityP,
+    await Promise.all([
+      membershipP,
       this.notifsService.sendNotifs(notifs),
       this.userRepository.save(
         users.map((user) => ({
@@ -267,8 +270,6 @@ export class CommunityService {
         })),
       ),
     ]);
-
-    return updated;
   }
 
   /**
@@ -347,16 +348,29 @@ export class CommunityService {
       .filter((notif) => !!notif);
 
     const updatedCommunityP = run(async () => {
-      const updates = await this.communityRepository.save({
-        id: community.id,
-        users: newMembers,
-        leaders: newLeaders,
+      await this.communityRepository.manager.transaction(async (em) => {
+        await changeMembers({
+          manager: em,
+          communityId: community.id,
+          relation: "users",
+          remove: community.users
+            .filter((member) => !newMembers.includes(member))
+            .map((member) => member.id),
+        });
+        await changeMembers({
+          manager: em,
+          communityId: community.id,
+          relation: "leaders",
+          remove: community
+            .leaders!.filter((leader) => !newLeaders.includes(leader))
+            .map((leader) => leader.id),
+        });
       });
       await this.conversationService.syncCommunityConversationMembers(
         community.id,
       );
 
-      return { ...community, ...updates };
+      return { ...community, users: newMembers, leaders: newLeaders };
     });
 
     const [updatedCommunity] = await Promise.all([
@@ -407,7 +421,7 @@ export class CommunityService {
       throw new BadRequestException("Community is full");
     }
 
-    const [addedCommunity] = await Promise.all([
+    await Promise.all([
       this.addUsersToCommunityAndRefreshConversation({
         user,
         community,
@@ -445,7 +459,7 @@ export class CommunityService {
       ),
     ]);
 
-    return addedCommunity;
+    return { ...community, users: [...community.users, user] };
   }
 
   async updateCommunity(
@@ -760,18 +774,20 @@ export class CommunityService {
 
         await this.assertUsersHaveActiveContracts([user]);
         const destinationUsers = [...destinationCommunity.users, user];
-        const communityUpdates: DeepPartial<Community>[] = [
-          { id: destinationCommunity.id, users: destinationUsers },
-        ];
         if (sourceCommunity) {
-          communityUpdates.unshift({
-            id: sourceCommunity.id,
-            users: sourceCommunity.users.filter(
-              (member) => member.id !== userId,
-            ),
+          await changeMembers({
+            manager,
+            communityId: sourceCommunity.id,
+            relation: "users",
+            remove: [userId],
           });
         }
-        await communityRepository.save(communityUpdates);
+        await changeMembers({
+          manager,
+          communityId: destinationCommunity.id,
+          relation: "users",
+          add: [userId],
+        });
         await userRepository.save({
           id: user.id,
           undergoingGroupAssignment: false,
@@ -885,17 +901,35 @@ export class CommunityService {
       this.userRepository.findOneOrFail({ where: { id: userId } }),
     ]);
 
-    if (!community.users.some((existing) => existing.id === userId)) {
-      community.users.push(user);
-    }
+    const isMember = community.users.some((existing) => existing.id === userId);
+    const isLeader = community.leaders!.some(
+      (existing) => existing.id === userId,
+    );
+    await this.communityRepository.manager.transaction(async (manager) => {
+      if (!isMember) {
+        await changeMembers({
+          manager,
+          communityId,
+          relation: "users",
+          add: [userId],
+        });
+      }
+      if (!isLeader) {
+        await changeMembers({
+          manager,
+          communityId,
+          relation: "leaders",
+          add: [userId],
+        });
+      }
+    });
+    if (!isMember) community.users.push(user);
+    if (!isLeader) community.leaders!.push(user);
 
-    if (!community.leaders!.some((existing) => existing.id === userId)) {
-      community.leaders!.push(user);
-    }
-
-    const updated = await this.communityRepository.save(community);
-    await this.conversationService.syncCommunityConversationMembers(updated.id);
-    return updated;
+    await this.conversationService.syncCommunityConversationMembers(
+      communityId,
+    );
+    return community;
   }
 
   async removeLeaderAdmin(
@@ -904,13 +938,22 @@ export class CommunityService {
   ): Promise<Community> {
     const community = await this.findOneOrFail(communityId);
 
+    await this.communityRepository.manager.transaction((manager) =>
+      changeMembers({
+        manager,
+        communityId,
+        relation: "leaders",
+        remove: [userId],
+      }),
+    );
     community.leaders = (community.leaders ?? []).filter(
       (leader) => leader.id !== userId,
     );
 
-    const updated = await this.communityRepository.save(community);
-    await this.conversationService.syncCommunityConversationMembers(updated.id);
-    return updated;
+    await this.conversationService.syncCommunityConversationMembers(
+      communityId,
+    );
+    return community;
   }
 
   async findUserCommunities(userId: number): Promise<Community[]> {
