@@ -10,7 +10,10 @@ import {
 import { User } from "src/user/entities/user.entity";
 import type { EntityManager, Repository } from "typeorm";
 import { CommunityService, ContractRefusalAudience } from "./community.service";
-import { CommunityInvite } from "./entities/community-invite.entity";
+import {
+  CommunityInvite,
+  CommunityInviteStatus,
+} from "./entities/community-invite.entity";
 import { Community } from "./entities/community.entity";
 
 describe("CommunityService", () => {
@@ -41,6 +44,7 @@ describe("CommunityService", () => {
   beforeEach(() => {
     communityInviteRepository = {
       save: jest.fn().mockResolvedValue(undefined),
+      findOneOrFail: jest.fn(),
     } as unknown as jest.Mocked<Repository<CommunityInvite>>;
 
     transactionManager = {
@@ -262,6 +266,39 @@ describe("CommunityService", () => {
 
       const sentNotifs = notifsService.sendNotifs.mock.calls[0][0];
       expect(sentNotifs).toHaveLength(1);
+    });
+  });
+
+  describe("acceptCommunityInvite", () => {
+    it("writes nothing when the invitee has no active contract", async () => {
+      const invitee = {
+        id: 5,
+        name: "Unsigned User",
+        communities: [buildCommunity({ id: 2, leaders: [] })],
+      } as User;
+      communityInviteRepository.findOneOrFail.mockResolvedValue(
+        Object.assign(new CommunityInvite(), {
+          id: 7,
+          status: CommunityInviteStatus.InviteePending,
+          invitedUser: invitee,
+          invitingUser: leader1,
+          community: buildCommunity(),
+          notifs: [],
+        }),
+      );
+      communityRepository.findOneOrFail.mockResolvedValue(buildCommunity());
+      signedUserIds = [];
+      const leave = jest.spyOn(
+        service,
+        "removeUserFromCommunityAndRefreshConversation",
+      );
+
+      await expect(
+        service.acceptCommunityInvite(7, invitee.id),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(communityInviteRepository.save).not.toHaveBeenCalled();
+      expect(leave).not.toHaveBeenCalled();
     });
   });
 
