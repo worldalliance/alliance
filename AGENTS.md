@@ -130,7 +130,7 @@ Icon-only controls carry a tooltip or `aria-label`. Destructive or irreversible 
 
 Secrets stay in the environment, out of context. Read `.env*` files through a filter that redacts values; to use a secret, pipe it into the command from a script.
 
-Never write secrets or real personally identifiable information into any repo file, including provenance, ignored files, and `.scratch/` artifacts. Redact sensitive values as `[redacted]` before writing text or capturing artifacts; use synthetic data for fixtures and examples. Before handing off, check every file you created or changed for secrets and personal information.
+Preserve identifying information deliberately used for authorship, credit, or project responsibility. Redact secrets and incidental personal information as `[redacted]` before writing repo files or capturing artifacts, including provenance, ignored files, and `.scratch/` artifacts. Use synthetic data for fixtures and examples. Before handing off, check every file you created or changed for secrets and incidental personal information.
 
 ## Working files
 
