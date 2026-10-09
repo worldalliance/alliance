@@ -217,7 +217,7 @@ describe("an editor in the settings sidebar", () => {
     expect(panel().queryByText("Remove all conditions")).toBeNull();
   });
 
-  it("keeps a block's preview while it holds a user's content", async () => {
+  it("previews a block's per-user content only once a user is picked", async () => {
     renderSidebar({
       id: "b",
       type: "display",
@@ -226,6 +226,8 @@ describe("an editor in the settings sidebar", () => {
       manualPerUser: true,
       manualUserContent: { "7": { text: "Dear Ana" } },
     });
+    expect(screen.queryByText("Show preview")).toBeNull();
+    fireEvent.click(screen.getAllByRole("button", { name: "Next" }).at(-1)!);
     expect(await screen.findByText("Show preview")).toBeTruthy();
   });
 

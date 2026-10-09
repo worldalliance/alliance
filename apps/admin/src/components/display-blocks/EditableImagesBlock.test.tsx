@@ -282,6 +282,7 @@ describe("EditableImagesBlock", () => {
   it("lands the pictures on the user they were picked for", async () => {
     render(<PerUserForm />, queryWrapper());
     await act(async () => {});
+    await nextUser();
     await pick(["a.png"]);
     await editDefault();
 
@@ -299,6 +300,7 @@ describe("EditableImagesBlock", () => {
     it(`names the target by the name the user list answers with, through ${name}`, async () => {
       users = [{ id: 1, name: "Alice", hasActiveContract: true }];
       render(<PerUserForm addressed={addressed} />, queryWrapper());
+      await nextUser();
       await pick(["a.png"]);
       await act(async () => {});
       await editDefault();
@@ -313,6 +315,7 @@ describe("EditableImagesBlock", () => {
   it("falls back to the id for a target the list gives no name", async () => {
     users = [{ id: 1, name: "", hasActiveContract: true }];
     render(<PerUserForm />, queryWrapper());
+    await nextUser();
     await pick(["a.png"]);
     await act(async () => {});
     await editDefault();
@@ -326,6 +329,7 @@ describe("EditableImagesBlock", () => {
   it("names the target of a part-failed batch that landed off screen", async () => {
     render(<PerUserForm />, queryWrapper());
     await act(async () => {});
+    await nextUser();
     await pick(["a.png", "b.png"]);
     await editDefault();
 
@@ -361,6 +365,7 @@ describe("EditableImagesBlock", () => {
     users = [{ id: 1, name: "Alice", hasActiveContract: true }];
     render(<PerUserForm />, queryWrapper());
     await act(async () => {});
+    await nextUser();
     await pick(["a.png"]);
     await editDefault();
 
@@ -376,6 +381,7 @@ describe("EditableImagesBlock", () => {
     users = [{ id: 1, name: "Alice", hasActiveContract: true }];
     render(<PerUserForm />, queryWrapper());
     await act(async () => {});
+    await nextUser();
     await pick(["a.png", "b.png"]);
     await editDefault();
 
@@ -396,6 +402,7 @@ describe("EditableImagesBlock", () => {
   it("says nothing when the pictures land in view", async () => {
     render(<PerUserForm />, queryWrapper());
     await act(async () => {});
+    await nextUser();
     await pick(["a.png"]);
 
     await settle(reads, R.success("data:image/png;base64,aaa"));
@@ -411,6 +418,7 @@ describe("EditableImagesBlock", () => {
     users = [{ id: 1, name: "Alice", hasActiveContract: true }];
     render(<PerUserForm />, queryWrapper());
     await act(async () => {});
+    await nextUser();
     await pick(["a.png"]);
     await settle(reads, R.success("data:image/png;base64,aaa"));
 
@@ -429,6 +437,7 @@ describe("EditableImagesBlock", () => {
       users = [{ id: 1, name: "Alice", hasActiveContract: true }];
       render(<PerUserForm addressed={addressed} />, queryWrapper());
       await act(async () => {});
+      await nextUser();
       await pick(["a.png", "b.png"]);
 
       await settle(reads, R.success("data:image/png;base64,aaa"));
@@ -448,6 +457,7 @@ describe("EditableImagesBlock", () => {
     users = [{ id: 1, name: "Alice", hasActiveContract: true }];
     render(<PerUserForm />, queryWrapper());
     await act(async () => {});
+    await nextUser();
     await pick(["a.png"]);
     await settle(reads, R.success("data:image/png;base64,aaa"));
 
@@ -481,6 +491,7 @@ describe("EditableImagesBlock", () => {
   it("keeps an override written after the row left the screen", async () => {
     render(<PerUserForm addressed />, queryWrapper());
     await act(async () => {});
+    await nextUser();
     await pick(["a.png"]);
     await settle(reads, R.success("data:image/png;base64,aaa"));
 
@@ -504,6 +515,7 @@ describe("EditableImagesBlock", () => {
     users = [{ id: 1, name: "Alice", hasActiveContract: true }];
     render(<PerUserForm initial={noOverrideBlock} />, queryWrapper());
     await screen.findByText("0 set / 1 total");
+    await nextUser();
     await pick(["a.png"]);
     await editDefault();
 

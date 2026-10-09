@@ -139,10 +139,8 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     ? "Unable to load users"
     : null;
   const refetchUsers = () => void usersQuery.refetch({ cancelRefetch: false });
-  const [activeManualUserId, setActiveManualUserId] = useState<string | null>(
-    null,
-  );
-  const [hasUserSelectedTarget, setHasUserSelectedTarget] = useState(false);
+  const [selectedUserId, selectManualTarget] = useState<string | null>(null);
+  const activeManualUserId = manualPerUserEnabled ? selectedUserId : null;
   const [isUserListOpen, setIsUserListOpen] = useState(false);
   const [userSearch, setUserSearch] = useState("");
   const manualTargetList = useMemo(
@@ -192,16 +190,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     });
   }, [sortedManualUsers, userSearch]);
 
-  const selectManualTarget = useCallback(
-    (userId: string | null, markSelection = true) => {
-      if (markSelection) {
-        setHasUserSelectedTarget(true);
-      }
-      setActiveManualUserId(userId);
-    },
-    [],
-  );
-
   useEffect(() => {
     if (!isMenuOpen) return;
 
@@ -234,32 +222,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       setShowConditionalVisibilityControl(true);
     }
   }, [block, showConditionalVisibilityControl]);
-
-  useEffect(() => {
-    if (!manualPerUserEnabled) {
-      selectManualTarget(null, false);
-      setHasUserSelectedTarget(false);
-      return;
-    }
-    if (hasUserSelectedTarget) {
-      return;
-    }
-    const firstManualKey = manualContentKeys[0];
-    if (firstManualKey) {
-      selectManualTarget(firstManualKey, false);
-      return;
-    }
-    if (manualUsers.length > 0) {
-      selectManualTarget(String(manualUsers[0].id), false);
-    }
-  }, [
-    activeManualUserId,
-    hasUserSelectedTarget,
-    manualPerUserEnabled,
-    manualContentKeys,
-    selectManualTarget,
-    manualUsers,
-  ]);
 
   const effectiveBlock = useMemo(() => {
     if (!block) return block;
@@ -359,8 +321,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   const handleManualToggle = (checked: boolean) => {
     if (!onUpdate) return;
     if (!checked) {
-      selectManualTarget(null, false);
-      setHasUserSelectedTarget(false);
+      selectManualTarget(null);
       setIsUserListOpen(false);
     }
     onUpdate({ manualPerUser: checked } as Partial<T>);
