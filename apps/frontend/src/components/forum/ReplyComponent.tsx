@@ -192,23 +192,27 @@ const ReplyContent = ({
           </div>
         ) : (
           <div className="text-sm">
-            <LikeSummary
-              likeTargetType="comment"
-              likeTargetId={reply.id}
-              liked={reply.likedByMe ?? false}
-              likesCount={reply.likesCount}
-              likers={reply.likes}
-              className="mb-1.5"
-            />
+            {!reply.deleted && (
+              <LikeSummary
+                likeTargetType="comment"
+                likeTargetId={reply.id}
+                liked={reply.likedByMe ?? false}
+                likesCount={reply.likesCount}
+                likers={reply.likes}
+                className="mb-1.5"
+              />
+            )}
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <LikeActionButton
-                  compact
-                  liked={reply.likedByMe ?? false}
-                  onLike={() =>
-                    ctx.onLikeReply(reply.id, reply.likedByMe ?? false)
-                  }
-                />
+                {!reply.deleted && (
+                  <LikeActionButton
+                    compact
+                    liked={reply.likedByMe ?? false}
+                    onLike={() =>
+                      ctx.onLikeReply(reply.id, reply.likedByMe ?? false)
+                    }
+                  />
+                )}
                 {user && canNest && (
                   <button
                     onClick={() => {

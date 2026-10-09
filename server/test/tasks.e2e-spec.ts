@@ -44,8 +44,10 @@ import {
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { FormResponseDraft } from "src/tasks/entities/formresponsedraft.entity";
+import { formSchemaOf } from "src/tasks/form-snapshot-schema";
 import type { FormSummaryDto } from "src/tasks/form.dto";
 import { TasksModule } from "src/tasks/tasks.module";
+import { TasksService } from "src/tasks/tasks.service";
 import {
   ContractEvent,
   ContractEventType,
@@ -547,6 +549,50 @@ describe("Tasks (e2e)", () => {
         .send({ formIds: [1] })
         .expect(401);
     });
+  });
+
+  it("serves an uploaded video saved as a storage url by its key", async () => {
+    const { body } = await request(ctx.app.getHttpServer())
+      .post("/tasks/createForm")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({
+        title: "Video form",
+        schema: {
+          pages: [
+            {
+              id: "page-1",
+              fields: [
+                {
+                  id: "uploaded",
+                  type: "display",
+                  kind: "video",
+                  src: "https://dj92mxbdjuclo.cloudfront.net/videos/1777426220647",
+                  videoId: 7,
+                },
+                {
+                  id: "external",
+                  type: "display",
+                  kind: "video",
+                  src: "https://elsewhere.test/videos/1777426220647",
+                },
+              ],
+            },
+          ],
+          outputViews: [],
+        } satisfies FormSchema,
+      })
+      .expect(201);
+
+    const form = await ctx.app.get(TasksService).getForm(body.id);
+
+    expect(
+      formSchemaOf(form.formSnapshot).pages[0].fields.map((field) =>
+        field.kind === "video" ? field.src : null,
+      ),
+    ).toEqual([
+      "videos/1777426220647",
+      "https://elsewhere.test/videos/1777426220647",
+    ]);
   });
 
   it("rejects a stale form update that would clobber another edit", async () => {

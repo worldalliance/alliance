@@ -1,9 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsOptional } from "class-validator";
+import { Allow, IsEmpty, IsOptional } from "class-validator";
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { Community } from "src/community/entities/community.entity";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { Notification } from "src/notifs/entities/notification.entity";
 import type { Relation } from "src/utils/Repository";
 import { WaitlistEntry } from "src/waitlist/entities/waitlist-entry.entity";
@@ -83,10 +86,11 @@ export class OnetimeInvite {
   @Allow()
   status: OnetimeInviteStatus;
 
-  @Column({ type: "timestamptz", nullable: true })
+  @DeleteDateColumnTz()
   @ApiProperty({ type: Date, nullable: true })
   @Type(() => Date)
   @IsOptional()
+  @IsEmpty()
   deletedAt: Date | null;
 
   @Column({ type: "timestamptz", nullable: true })

@@ -1,4 +1,7 @@
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -44,4 +47,7 @@ export class WaitlistEmailBatch {
 
   @CreateDateColumnTz()
   createdAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

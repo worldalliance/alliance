@@ -1487,6 +1487,107 @@ describe("Users (e2e)", () => {
       ).toBe(true);
     });
 
+    it("keeps a deleted invite's group placement", async () => {
+      const inviter = await userRepo.save(
+        userRepo.create({
+          name: "Placing Inviter",
+          email: "placing.inviter@example.com",
+          password: "Password123!",
+        }),
+      );
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: "Placing Group",
+          description: "Placing",
+          leaders: [inviter],
+          users: [inviter],
+        }),
+      );
+      const invite = await onetimeInviteRepo.save(
+        onetimeInviteRepo.create({
+          invitee: "Placed",
+          code: "PLACED-CODE",
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser: inviter,
+          community,
+        }),
+      );
+      const placed = await authService.register({
+        name: "Placed Member",
+        email: "placed.member@example.com",
+        password: "Password123!",
+        mode: TokenMode.Header,
+        timeZone: "America/Los_Angeles",
+        referralCode: invite.code,
+      });
+
+      await request(ctx.app.getHttpServer())
+        .delete(`/user/onetimeInvites/${invite.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      await contractService.signContract({
+        userId: placed.id,
+        signedName: "Placed Member",
+        viaTaskForm: false,
+        contractId: ctx.defaultContractId,
+      });
+
+      expect(
+        await userRepo.findOneOrFail({
+          where: { id: placed.id },
+          relations: { communities: true },
+        }),
+      ).toMatchObject({
+        communities: [expect.objectContaining({ id: community.id })],
+      });
+    });
+
+    it("shows a deleted invite's live inviter in the admin user detail", async () => {
+      const inviter = await userRepo.save(
+        userRepo.create({
+          name: "Detail Inviter",
+          email: "detail.inviter@example.com",
+          password: "Password123!",
+        }),
+      );
+      const invite = await onetimeInviteRepo.save(
+        onetimeInviteRepo.create({
+          invitee: "Detail",
+          code: "DETAIL-CODE",
+          status: OnetimeInviteStatus.LINK_USED,
+          invitingUser: inviter,
+        }),
+      );
+      const invited = await userRepo.save(
+        userRepo.create({
+          name: "Detail Invited",
+          email: "detail.invited@example.com",
+          password: "Password123!",
+          referredByInvite: invite,
+          referralSource: ReferralSource.OnetimeInvite,
+        }),
+      );
+      const invitedBy = async () =>
+        (
+          await request(ctx.app.getHttpServer())
+            .get(`/user/userdetail/${invited.id}`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .expect(200)
+        ).body.invitedBy;
+
+      await request(ctx.app.getHttpServer())
+        .delete(`/user/onetimeInvites/${invite.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      expect(await invitedBy()).toMatchObject({
+        kind: "user",
+        userId: inviter.id,
+      });
+
+      await userRepo.softDelete(inviter.id);
+      expect(await invitedBy()).toMatchObject({ kind: "unknown" });
+    });
+
     it("joins the community selected by a reusable invite link", async () => {
       const inviter = await userRepo.save(
         userRepo.create({
@@ -1636,7 +1737,7 @@ describe("Users (e2e)", () => {
           "Doomed community invite",
           doomed.id,
         );
-      await communityRepo.delete(doomed.id);
+      await ctx.dataSource.manager.delete(Community, [doomed.id]);
 
       const newUser = await signUpThroughInvite({
         name: "Deleted Group Invitee",
@@ -1681,7 +1782,7 @@ describe("Users (e2e)", () => {
       });
       expect(newUser.inviteAssignmentCommunityId).toBe(doomed.id);
 
-      await communityRepo.delete(doomed.id);
+      await ctx.dataSource.manager.delete(Community, [doomed.id]);
 
       await contractService.signContract({
         userId: newUser.id,
@@ -2792,8 +2893,9 @@ describe("Users (e2e)", () => {
             .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
             .expect(200);
 
-          const deleted = await onetimeInviteRepo.findOneByOrFail({
-            id: invite.id,
+          const deleted = await onetimeInviteRepo.findOneOrFail({
+            where: { id: invite.id },
+            withDeleted: true,
           });
           expect(deleted.deletedAt).not.toBeNull();
         });
@@ -2817,8 +2919,9 @@ describe("Users (e2e)", () => {
             .set("Authorization", `Bearer ${userAToken}`)
             .expect(200);
 
-          const deleted = await onetimeInviteRepo.findOneByOrFail({
-            id: invite.id,
+          const deleted = await onetimeInviteRepo.findOneOrFail({
+            where: { id: invite.id },
+            withDeleted: true,
           });
           expect(deleted.deletedAt).not.toBeNull();
         });

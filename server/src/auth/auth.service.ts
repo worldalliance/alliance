@@ -27,14 +27,15 @@ import { UserService } from "../user/user.service";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { Guest } from "./entities/guest.entity";
 import type { OAuthProfile } from "./oauth/oauth-client";
+import { SessionService } from "./session.service";
 import {
   ACCESS_COOKIE,
-  accessTokenPayload,
   GUEST_COOKIE,
   guestJwtPayloadSchema,
   JWTTokenType,
   REFRESH_COOKIE,
   sessionFromRequest,
+  sessionTokenPayload,
   verifyMailedToken,
   type GuestJwtPayload,
   type JwtPayload,
@@ -56,6 +57,7 @@ export class AuthService {
     private usersService: UserService,
     private jwtService: JwtService,
     private mailService: MailService,
+    private sessionService: SessionService,
     @InjectRepository(Guest)
     private guestRepository: Repository<Guest>,
   ) {}
@@ -134,11 +136,16 @@ export class AuthService {
   }
 
   async getAuthenticatedSession(req: Request): Promise<JwtPayload | null> {
-    try {
-      return await sessionFromRequest(this.jwtService, req);
-    } catch {
-      return null;
-    }
+    const session = await R.fromPromise(
+      sessionFromRequest(this.jwtService, req),
+    );
+    if (!session.ok) return null;
+    const current = await R.fromPromise(
+      this.sessionService.assertCurrent(session.value),
+    );
+    if (current.ok) return session.value;
+    if (current.error instanceof UnauthorizedException) return null;
+    throw current.error;
   }
 
   async getAuthenticatedUserId(req: Request): Promise<number | null> {
@@ -361,12 +368,11 @@ export class AuthService {
     user: User,
     isImpersonation = false,
   ): Promise<string> {
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
+    const payload = sessionTokenPayload({
+      user,
       tokenType: JWTTokenType.refresh,
-      ...(isImpersonation && { isImpersonation: true }),
-    };
+      isImpersonation,
+    });
     const token = await this.jwtService.signAsync(payload, {
       expiresIn: "14d",
       secret: process.env.JWT_REFRESH_SECRET,
@@ -378,7 +384,11 @@ export class AuthService {
     user: User,
     isImpersonation = false,
   ): Promise<string> {
-    const payload = accessTokenPayload({ user, isImpersonation });
+    const payload = sessionTokenPayload({
+      user,
+      tokenType: JWTTokenType.access,
+      isImpersonation,
+    });
     return this.jwtService.signAsync(payload, { expiresIn: "1d" });
   }
 
@@ -396,8 +406,8 @@ export class AuthService {
     };
   }
 
-  async getProfile(email: string): Promise<User> {
-    const user = await this.usersService.findOneByEmail(email, {
+  async getProfile(userId: number): Promise<User> {
+    const user = await this.usersService.findOne(userId, {
       communities: true,
       contractEvents: true,
       city: true,

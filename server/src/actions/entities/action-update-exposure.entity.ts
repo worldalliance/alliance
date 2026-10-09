@@ -1,4 +1,7 @@
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { Mail } from "src/mail/mail.entity";
 import { Mms } from "src/mms/mms.entity";
 import { ExperimentArm } from "src/notifs/entities/experiment-assignment.entity";
@@ -142,4 +145,7 @@ export class ActionUpdateExposure {
 
   @CreateDateColumnTz()
   createdAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

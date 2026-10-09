@@ -267,7 +267,9 @@ ORDER BY pp.total_session_duration_seconds DESC
       },
     });
 
-    const createdInvites = await this.onetimeInviteRepository.count();
+    const createdInvites = await this.onetimeInviteRepository.count({
+      withDeleted: true,
+    });
     const acceptedInvites = await this.onetimeInviteRepository
       .createQueryBuilder("invite")
       .where(inviteAcceptedSql("invite"))
@@ -1013,8 +1015,11 @@ ORDER BY pp.total_session_duration_seconds DESC
               ) AS "firstSentAt"
             FROM "action_event_notif" notif
             LEFT JOIN "mail" mail ON mail."id" = notif."mailId"
+              AND mail."deletedAt" IS NULL
             LEFT JOIN "mms" mms ON mms."id" = notif."mmsId"
-            WHERE notif."sent" AND notif."reminderGroupId" = ANY($1::int[])
+              AND mms."deletedAt" IS NULL
+            WHERE notif."sent" AND notif."deletedAt" IS NULL
+              AND notif."reminderGroupId" = ANY($1::int[])
             GROUP BY notif."reminderGroupId"
           `,
           [groupIds],
@@ -1510,6 +1515,7 @@ ORDER BY pp.total_session_duration_seconds DESC
         { status: OnetimeInviteStatus.LINK_UNUSED, ...dateFilter },
         { status: OnetimeInviteStatus.LINK_USED, ...dateFilter },
       ],
+      withDeleted: true,
     });
 
     // 2. Invites used (signup)

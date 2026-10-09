@@ -371,6 +371,7 @@ export class ActionUpdateRecognitionService {
         SELECT id FROM action_update_exposure
         WHERE "preparedAt" IS NOT NULL
           AND "deliveredAt" IS NULL
+          AND "deletedAt" IS NULL
           AND (
             "deliveryClaimedAt" IS NULL
             OR "deliveryClaimedAt" < now() - interval '10 minutes'

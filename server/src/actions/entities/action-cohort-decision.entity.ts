@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -64,4 +65,7 @@ export class ActionCohortDecision {
     (correction) => correction.decision,
   )
   corrections?: Relation<ActionCohortDecisionCorrection[]>;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

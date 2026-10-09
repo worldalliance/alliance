@@ -22,6 +22,7 @@ import { CommunityInvite } from "src/community/entities/community-invite.entity"
 import { Community } from "src/community/entities/community.entity";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { City } from "src/geo/city.entity";
@@ -120,6 +121,10 @@ export class User {
   @IsNotEmpty()
   @IsEmail()
   email: string;
+
+  /** Credentials carry this, and one carrying another generation is refused. */
+  @Column({ type: "int", default: 0 })
+  sessionGeneration: number;
 
   @Column({
     type: "varchar",
@@ -671,6 +676,9 @@ export class User {
     }
     return this._leaderOfIdSet;
   }
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }
 
 /**
@@ -685,7 +693,8 @@ export function sqlUserHasActiveContractAt(
 ): string {
   return `(
     SELECT ce."type" FROM "contract_event" ce
-    WHERE ce."userId" = ${userIdExpr} AND ce."date" <= ${contractAtExpr}
+    WHERE ce."userId" = ${userIdExpr} AND ce."deletedAt" IS NULL
+      AND ce."date" <= ${contractAtExpr}
     ORDER BY ce."date" DESC, ce."id" DESC
     LIMIT 1
   ) = '${ContractEventType.SIGNED}'`;

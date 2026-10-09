@@ -190,6 +190,27 @@ describe("orderByDecisionReads", () => {
 
     expect(orderByDecisionReads([a, b])).toHaveLength(2);
   });
+
+  it("decides a cycle's lowest id last, whatever order it is listed in", () => {
+    const a = item(1, [2]);
+    const b = item(2, [1]);
+
+    expect(orderByDecisionReads([a, b])).toEqual([b, a]);
+    expect(orderByDecisionReads([b, a])).toEqual([b, a]);
+  });
+
+  it("breaks a cycle at its lowest id when a lower id outside it reads into it", () => {
+    const outside = item(1, [3]);
+    const low = item(2, [3]);
+    const high = item(3, [2]);
+
+    expect(orderByDecisionReads([outside, low, high])).toEqual([
+      high,
+      low,
+      outside,
+    ]);
+    expect(orderByDecisionReads([low, high])).toEqual([high, low]);
+  });
 });
 
 describe("findReadClosedEnrollments", () => {
@@ -205,7 +226,7 @@ describe("findReadClosedEnrollments", () => {
     },
   });
 
-  it("follows reads through closed actions and orders each after the ones it reads", async () => {
+  it("follows reads through closed actions", async () => {
     const reader = closedAction(2, [3]);
     const read = closedAction(3, []);
     const byId = new Map([reader, read].map((action) => [action.id, action]));
@@ -222,7 +243,7 @@ describe("findReadClosedEnrollments", () => {
       now: NOW,
     });
 
-    expect(closed.map(({ action }) => action)).toEqual([read, reader]);
+    expect(closed.map(({ action }) => action)).toEqual([reader, read]);
     expect(loaded).toEqual([[2], [3]]);
   });
 });

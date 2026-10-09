@@ -1,4 +1,7 @@
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { Check, Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
 
 /** A staff-kept list of waitlist entries; nothing joins it automatically. */
@@ -14,4 +17,7 @@ export class WaitlistTag {
 
   @CreateDateColumnTz()
   createdAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

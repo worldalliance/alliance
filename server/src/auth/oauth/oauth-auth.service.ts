@@ -19,7 +19,7 @@ import { Not, type Repository } from "typeorm";
 import { z } from "zod";
 import { AuthService } from "../auth.service";
 import { SpentTokenService } from "../spent-token.service";
-import { JWTTokenType } from "../tokens";
+import { generationOf, JWTTokenType } from "../tokens";
 import {
   decryptIdentity,
   encryptIdentity,
@@ -63,6 +63,9 @@ export type OAuthState = {
 const handoffSchema = z.object({
   tokenType: z.literal(JWTTokenType.oauthHandoff),
   userId: z.number(),
+  /** Absent from handoffs signed before generations existed; drop once they
+   * expire. */
+  sessionGeneration: z.number().int().optional(),
   provider: z.enum(OAuthProvider),
   outcome: z.enum(OAuthOutcome),
   proofHash: z.string(),
@@ -231,7 +234,11 @@ export class OAuthAuthService {
     };
   }
 
-  signHandoff(handoff: Omit<OAuthHandoff, "tokenType">): Promise<string> {
+  signHandoff(
+    handoff: Omit<OAuthHandoff, "tokenType" | "sessionGeneration"> & {
+      sessionGeneration: number;
+    },
+  ): Promise<string> {
     return this.jwtService.signAsync(
       { ...handoff, tokenType: JWTTokenType.oauthHandoff },
       { expiresIn: HANDOFF_LIFETIME_MS / 1000 },
@@ -265,6 +272,7 @@ export class OAuthAuthService {
     }
     const user = await this.userRepository.findOneBy({
       id: handoff.value.userId,
+      sessionGeneration: generationOf(handoff.value),
     });
     if (!user) {
       return R.failure(OAuthError.Failed);
@@ -469,7 +477,10 @@ export class OAuthAuthService {
     const { provider, subject, email } = params.profile;
     await this.accountRepository.upsert(
       { userId: params.userId, provider, subject, email },
-      ["userId", "provider"],
+      {
+        conflictPaths: ["userId", "provider"],
+        indexPredicate: '"deletedAt" IS NULL',
+      },
     );
     return R.success(await this.usersService.findOneOrFail(params.userId));
   }

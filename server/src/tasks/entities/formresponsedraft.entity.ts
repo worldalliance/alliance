@@ -6,7 +6,8 @@ import { R } from "@alliance/common/result";
 import { Logger } from "@nestjs/common";
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsDefined, IsOptional } from "class-validator";
+import { Allow, IsDefined, IsEmpty, IsOptional } from "class-validator";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -93,6 +94,11 @@ export class FormResponseDraft {
   @Allow()
   @Type(() => Date)
   updatedAt: Date;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 export interface ParsedFormResponseDraft extends FormResponseDraft {

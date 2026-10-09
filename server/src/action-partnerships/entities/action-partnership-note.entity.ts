@@ -1,8 +1,15 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import {
+  Allow,
+  IsEmpty,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -63,4 +70,9 @@ export class ActionPartnershipNote {
   @Allow()
   @Type(() => Date)
   updatedAt: Date;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

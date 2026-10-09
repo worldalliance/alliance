@@ -1397,6 +1397,7 @@ describe("Community (e2e)", () => {
     expect(res.status).toBe(200);
     const found = await communityInviteRepo.findOneOrFail({
       where: { id: invite.id },
+      withDeleted: true,
     });
     expect(found.deletedAt).not.toBeNull();
   });
@@ -1425,6 +1426,7 @@ describe("Community (e2e)", () => {
     expect(res.status).toBe(200);
     const found = await communityInviteRepo.findOneOrFail({
       where: { id: invite.id },
+      withDeleted: true,
     });
     expect(found.deletedAt).not.toBeNull();
   });
@@ -1453,6 +1455,7 @@ describe("Community (e2e)", () => {
     expect(res.status).toBe(200);
     const found = await communityInviteRepo.findOneOrFail({
       where: { id: invite.id },
+      withDeleted: true,
     });
     expect(found.deletedAt).not.toBeNull();
   });

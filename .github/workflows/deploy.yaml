@@ -279,6 +279,9 @@ jobs:
             [ -n "$DOMAIN" ] || { echo "DOMAIN_NAME is unset for this environment"; exit 1; }
             [ -n "$ALT_DOMAIN" ] || { echo "ALT_DOMAIN_NAME is unset for this environment"; exit 1; }
             sudo mkdir -p /var/www/certbot
+            # nginx creates the video cache directory, owned by its workers,
+            # only inside a parent that exists.
+            sudo mkdir -p /var/cache/nginx
             # alliance.conf owns the port 80 default, so clearing the packaged
             # default.conf belongs with it, not with the admin panel.
             sudo rm -f /etc/nginx/conf.d/default.conf

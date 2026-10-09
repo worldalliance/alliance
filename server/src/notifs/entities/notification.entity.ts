@@ -4,6 +4,7 @@ import { ActionUpdate } from "src/actions/entities/action-update.entity";
 import { CommunityInvite } from "src/community/entities/community-invite.entity";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { Comment } from "src/forum/entities/comment.entity";
@@ -224,4 +225,7 @@ export class Notification {
   @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   cid: string | null;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

@@ -1,8 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsDefined, IsOptional } from "class-validator";
+import { Allow, IsDefined, IsEmpty, IsOptional } from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { Notification } from "src/notifs/entities/notification.entity";
@@ -59,10 +60,11 @@ export class CommunityInvite {
   @Type(() => Date)
   updatedAt: Date;
 
-  @Column({ type: "timestamptz", nullable: true })
+  @DeleteDateColumnTz()
   @ApiProperty({ type: Date, nullable: true })
   @Type(() => Date)
   @IsOptional()
+  @IsEmpty()
   deletedAt: Date | null;
 
   // Relations

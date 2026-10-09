@@ -9,11 +9,13 @@ function serve(params: {
   body: Readable | undefined;
   storedType?: string;
   contentType?: string;
+  maxAgeSeconds?: number;
 }) {
   const s3 = new S3Client({ region: "us-west-2" });
   jest.spyOn(s3, "send").mockImplementation(async () => ({
     Body: params.body,
     ContentType: params.storedType,
+    ETag: '"stored"',
     $metadata: {},
   }));
   const app = express();
@@ -24,6 +26,7 @@ function serve(params: {
       key: "dir/file.png",
       res,
       contentType: params.contentType,
+      maxAgeSeconds: params.maxAgeSeconds,
     }).catch((err) =>
       res.status(err instanceof NotFoundException ? 404 : 500).end(),
     );
@@ -43,6 +46,19 @@ describe("pipeS3Object", () => {
       'inline; filename="file.png"',
     );
     expect(res.body.toString()).toBe("png");
+    expect(res.headers["cache-control"]).toBe(
+      "public, max-age=31536000, immutable",
+    );
+    expect(res.headers.etag).toBeUndefined();
+  });
+
+  it("caches an object briefly when asked to", async () => {
+    const res = await serve({
+      body: Readable.from([Buffer.from("m3u8")]),
+      maxAgeSeconds: 60,
+    });
+    expect(res.headers["cache-control"]).toBe("public, max-age=60");
+    expect(res.headers.etag).toBeUndefined();
   });
 
   it("prefers the caller's content type over the stored one", async () => {
@@ -66,14 +82,48 @@ describe("pipeS3Object", () => {
     log.mockRestore();
   });
 
-  it("ends the response when the body fails mid-stream", async () => {
+  it("aborts the response when the body fails mid-stream", async () => {
+    const log = jest.spyOn(console, "error").mockImplementation(() => {});
+    let sent = false;
+    // The second read comes once the first chunk is on its way out.
     const body = new Readable({
       read() {
-        this.push("par");
+        if (sent) {
+          this.destroy(new Error("reset"));
+        } else {
+          sent = true;
+          this.push("par");
+        }
+      },
+    });
+    const failure = await serve({ body, storedType: "image/png" }).then(
+      () => null,
+      (err: Error) => err,
+    );
+    expect(failure).toBeInstanceOf(Error);
+    expect(log).toHaveBeenCalledWith(
+      "Error streaming %s:",
+      '"dir/file.png"',
+      expect.any(Error),
+    );
+    log.mockRestore();
+  });
+
+  it("answers an uncacheable 500 when the body fails before any bytes", async () => {
+    const log = jest.spyOn(console, "error").mockImplementation(() => {});
+    const body = new Readable({
+      read() {
         this.destroy(new Error("reset"));
       },
     });
-    const res = await serve({ body, storedType: "image/png" });
-    expect(res.status).toBe(200);
+    const res = await serve({ body, maxAgeSeconds: 60 });
+    expect(res.status).toBe(500);
+    expect(res.headers["cache-control"]).toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      "Error streaming %s:",
+      '"dir/file.png"',
+      expect.any(Error),
+    );
+    log.mockRestore();
   });
 });

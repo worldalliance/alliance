@@ -822,4 +822,58 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       }
     });
   });
+
+  describe("rows of a deleted recipient", () => {
+    const deletedUser = async () => {
+      const user = await createUser();
+      await ctx.dataSource.manager.softDelete(User, [user.id]);
+      return user;
+    };
+    const due = () => new Date(Date.now() - milliseconds({ minutes: 1 }));
+
+    it("claims a live member's notification beside a deleted member's", async () => {
+      const make = (user: User) =>
+        notifRepo.save(
+          notifRepo.create({
+            format: NotificationFormat.Legacy,
+            user,
+            message: "Due",
+            category: NotificationCategory.ActionEvent,
+            webAppLocation: "/test",
+            mobileAppLocation: "/test",
+            shouldPush: true,
+            sendTime: due(),
+          }),
+        );
+      const live = await make(await createUser());
+      const orphan = await make(await deletedUser());
+
+      await dispatcher.findNotificationPushes("deleted-recipient-notif");
+
+      expect(await notifRepo.findOneByOrFail({ id: live.id })).toMatchObject({
+        pushClaimedBy: "deleted-recipient-notif",
+      });
+      expect(await notifRepo.findOneByOrFail({ id: orphan.id })).toMatchObject({
+        pushClaimedBy: null,
+      });
+    });
+
+    it("skips a deleted member's unread entry", async () => {
+      const orphan = await unreadContentRepo.save(
+        unreadContentRepo.create({
+          user: await deletedUser(),
+          contentType: UnreadContentType.ActionUpdate,
+          contentId: 1,
+          sendTime: due(),
+          shouldPush: true,
+        }),
+      );
+
+      await dispatcher.findUnreadContentPushes("deleted-recipient-uc");
+
+      expect(
+        await unreadContentRepo.findOneByOrFail({ id: orphan.id }),
+      ).toMatchObject({ pushClaimedBy: null });
+    });
+  });
 });

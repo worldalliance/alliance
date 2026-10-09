@@ -1,3 +1,4 @@
+import { uploadedVideoKey } from "@alliance/common/video-src";
 import { useCallback, useMemo, useState } from "react";
 
 export const VIDEO_LOAD_FAILED_MESSAGE = "Could not load video.";
@@ -33,6 +34,19 @@ type UseVideoSourceParams = {
   apiUrl: string;
 };
 
+export function videoManifestUrl({
+  src,
+  videoId,
+  apiUrl,
+}: UseVideoSourceParams): string | null {
+  const uploaded = uploadedVideoKey(src) !== undefined;
+  if (!uploaded && src.startsWith("http")) return `${src}/playlist.m3u8`;
+  if (videoId !== undefined) {
+    return `${apiUrl}/videos/${videoId}/playlist.m3u8`;
+  }
+  return uploaded ? null : src || null;
+}
+
 export const useVideoSource = ({
   src,
   videoId,
@@ -40,13 +54,10 @@ export const useVideoSource = ({
 }: UseVideoSourceParams) => {
   const sourceKey = `${videoId ?? ""}:${src}`;
 
-  const manifestUrl = useMemo(() => {
-    if (src.startsWith("http")) return `${src}/playlist.m3u8`;
-    if (videoId !== undefined) {
-      return `${apiUrl}/videos/${videoId}/playlist.m3u8`;
-    }
-    return src || null;
-  }, [src, videoId, apiUrl]);
+  const manifestUrl = useMemo(
+    () => videoManifestUrl({ src, videoId, apiUrl }),
+    [src, videoId, apiUrl],
+  );
 
   const [load, setLoad] = useState<Load>(() => freshLoad(sourceKey));
   // Reset during render so a source change never renders a frame of stale state.

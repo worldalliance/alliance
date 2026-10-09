@@ -184,7 +184,7 @@ export class ShareUrlsService {
 
   async updateInviteMessageTemplate(template: string): Promise<string> {
     await this.inviteMessageTemplateRepository.upsert(
-      { id: INVITE_MESSAGE_TEMPLATE_ID, template },
+      { id: INVITE_MESSAGE_TEMPLATE_ID, template, deletedAt: null },
       ["id"],
     );
     return template;

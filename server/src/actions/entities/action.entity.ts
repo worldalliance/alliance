@@ -9,6 +9,7 @@ import {
   ArrayUnique,
   IsArray,
   IsDefined,
+  IsEmpty,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -17,6 +18,7 @@ import {
 import { millisecondsInWeek } from "date-fns/constants";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
@@ -453,6 +455,11 @@ export class Action {
       return Math.floor(deadline.getTime() / millisecondsInWeek);
     }
   }
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 /**

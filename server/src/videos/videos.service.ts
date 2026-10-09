@@ -265,18 +265,3 @@ export function findUnsupportedVideoCodec(
   }
   return null;
 }
-
-export function getVideoSource(key: string): string {
-  // An empty/whitespace key must not become a bare-origin URL like
-  // `https://<cloudfront-domain>/` — the player would then append
-  // `/playlist.m3u8` and request a nonexistent bucket-root object (403).
-  if (typeof key !== "string" || key.trim() === "") return "";
-
-  if (key.startsWith("http")) return key;
-
-  if (process.env.USE_CLOUDFRONT === "true" && process.env.CLOUDFRONT_DOMAIN) {
-    return `https://${process.env.CLOUDFRONT_DOMAIN}/${key}`;
-  }
-
-  return key;
-}

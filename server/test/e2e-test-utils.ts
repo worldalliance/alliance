@@ -9,7 +9,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import type { Expo } from "expo-server-sdk";
-import { accessTokenPayload } from "src/auth/tokens";
+import { JWTTokenType, sessionTokenPayload } from "src/auth/tokens";
 import { Contract } from "src/contract/entities/contract.entity";
 import { testConnectionOptions } from "src/datasources/dataSourceTest";
 import { ForumModule } from "src/forum/forum.module";
@@ -97,22 +97,42 @@ export function waitForLockWait(dataSource: DataSource): Promise<unknown> {
   );
 }
 
+type TokenSubject = { id: number; email: string; sessionGeneration?: number };
+
+const withDefaultGeneration = (user: TokenSubject) => ({
+  ...user,
+  sessionGeneration: user.sessionGeneration ?? 0,
+});
+
 export function signAccessToken(
   jwtService: JwtService,
-  user: { id: number; email: string },
+  user: TokenSubject,
 ): string {
-  return jwtService.sign(accessTokenPayload({ user }), {
-    secret: process.env.JWT_SECRET,
-  });
+  return jwtService.sign(
+    sessionTokenPayload({
+      user: withDefaultGeneration(user),
+      tokenType: JWTTokenType.access,
+    }),
+    {
+      secret: process.env.JWT_SECRET,
+    },
+  );
 }
 
 export function signImpersonationToken(
   jwtService: JwtService,
-  user: { id: number; email: string },
+  user: TokenSubject,
 ): string {
-  return jwtService.sign(accessTokenPayload({ user, isImpersonation: true }), {
-    secret: process.env.JWT_SECRET,
-  });
+  return jwtService.sign(
+    sessionTokenPayload({
+      user: withDefaultGeneration(user),
+      tokenType: JWTTokenType.access,
+      isImpersonation: true,
+    }),
+    {
+      secret: process.env.JWT_SECRET,
+    },
+  );
 }
 
 export async function createTestApp(

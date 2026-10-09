@@ -1,5 +1,9 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
-import { useVideoSource, VideoLoadState } from "./useVideoSource";
+import {
+  useVideoSource,
+  VideoLoadState,
+  videoManifestUrl,
+} from "./useVideoSource";
 
 const API_URL = "https://api.test";
 
@@ -14,7 +18,7 @@ function mountSource(props: { src: string; videoId?: number }) {
 describe("useVideoSource", () => {
   afterEach(cleanup);
 
-  it("resolves the manifest from the video id, preferring an absolute src", () => {
+  it("resolves the manifest from the video id, preferring an external absolute src", () => {
     const { result: byId } = mountSource({ src: "videos/abc", videoId: 7 });
     expect(byId.current.manifestUrl).toBe(`${API_URL}/videos/7/playlist.m3u8`);
 
@@ -25,6 +29,40 @@ describe("useVideoSource", () => {
     expect(byUrl.current.manifestUrl).toBe(
       "https://cdn.test/v/abc/playlist.m3u8",
     );
+  });
+
+  it("plays an uploaded video through the api even from a saved storage url", () => {
+    for (const src of [
+      "videos/1777426220647",
+      "https://dj92mxbdjuclo.cloudfront.net/videos/1777426220647",
+      "https://dj92mxbdjuclo.cloudfront.net/videos/1777426220647/",
+    ]) {
+      expect(videoManifestUrl({ src, videoId: 7, apiUrl: API_URL })).toBe(
+        `${API_URL}/videos/7/playlist.m3u8`,
+      );
+    }
+  });
+
+  it("refuses to play an uploaded video straight from storage without its id", () => {
+    for (const src of [
+      "videos/1777426220647",
+      "https://dj92mxbdjuclo.cloudfront.net/videos/1777426220647",
+    ]) {
+      expect(videoManifestUrl({ src, apiUrl: API_URL })).toBeNull();
+    }
+  });
+
+  it("leaves a url that only resembles an upload on its own path", () => {
+    for (const src of [
+      "https://elsewhere.test/videos/1777426220647",
+      "https://dj92mxbdjuclo.cloudfront.net.evil.test/videos/1777426220647",
+      "https://dj92mxbdjuclo.cloudfront.net/videos/1777426220647/extra",
+      "http://dj92mxbdjuclo.cloudfront.net/videos/1777426220647",
+    ]) {
+      expect(videoManifestUrl({ src, videoId: 7, apiUrl: API_URL })).toBe(
+        `${src}/playlist.m3u8`,
+      );
+    }
   });
 
   it("fails with nothing to retry when the block has no video at all", () => {

@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
@@ -32,4 +33,7 @@ export class Video {
 
   @UpdateDateColumnTz()
   dateUpdated: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

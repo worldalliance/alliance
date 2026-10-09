@@ -1,5 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
@@ -73,4 +74,7 @@ export class ActionReviewer {
   @Column({ type: "int" })
   @ApiProperty({ description: "Display order within the action" })
   position: number;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

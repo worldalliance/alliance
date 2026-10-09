@@ -19,7 +19,7 @@ export async function recordEntryChange(params: {
   const rows: unknown[] = await params.manager.query(
     `WITH changed AS (
        UPDATE waitlist_entry SET ${params.set}
-       WHERE id = ANY($1) AND ${params.differs}
+       WHERE id = ANY($1) AND "deletedAt" IS NULL AND ${params.differs}
        RETURNING id
      )
      INSERT INTO waitlist_entry_action ("entryId", kind, "staffUserId")

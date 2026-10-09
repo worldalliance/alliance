@@ -13,6 +13,7 @@ import {
   OnetimeInviteStatus,
 } from "../src/user/entities/onetime-invite.entity";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
+import { WaitlistEmailBatch } from "../src/waitlist/entities/waitlist-email-batch.entity";
 import {
   WaitlistEmailRecipient,
   WaitlistEmailRecipientStatus,
@@ -565,7 +566,12 @@ describe("Waitlist email admin (e2e)", () => {
 
       await inviteRepo.update(first.id, { deletedAt: new Date() });
       await send(content);
-      expect(await inviteRepo.countBy({ waitlistEntryId: entry.id })).toBe(2);
+      expect(
+        await inviteRepo.count({
+          where: { waitlistEntryId: entry.id },
+          withDeleted: true,
+        }),
+      ).toBe(2);
     });
 
     it("keeps a reused invite's group after its organization's changes", async () => {
@@ -604,6 +610,26 @@ describe("Waitlist email admin (e2e)", () => {
       expect(await recipientsOf(first.id)).toHaveLength(1);
       expect(sentTo(entry.email)).toHaveLength(1);
       expect(sentTo(other.email)).toHaveLength(0);
+    });
+
+    it("answers 404 for a repeated request id whose batch is deleted", async () => {
+      const entry = await saveEntry();
+      const requestId = crypto.randomUUID();
+      const first = await send({ entryIds: [entry.id], requestId });
+      await ctx.dataSource
+        .getRepository(WaitlistEmailBatch)
+        .softDelete(first.id);
+
+      await asAdmin(request(server()).post("/waitlist/admin/emails"))
+        .send({
+          subject: "Hi #{name}",
+          body: "Welcome",
+          includeClaimed: false,
+          mobilize: false,
+          entryIds: [entry.id],
+          requestId,
+        })
+        .expect(404);
     });
 
     it("rechecks suppression when sending, and skips claimed invites unless included", async () => {
@@ -995,7 +1021,12 @@ describe("Waitlist email admin (e2e)", () => {
         spy.mockRestore();
       }
       expect(
-        (await inviteRepo.findOneByOrFail({ id: invite.id })).deletedAt,
+        (
+          await inviteRepo.findOneOrFail({
+            where: { id: invite.id },
+            withDeleted: true,
+          })
+        ).deletedAt,
       ).toBeNull();
     });
 

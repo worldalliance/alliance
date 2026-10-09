@@ -311,14 +311,16 @@ export class WaitlistEmailService {
       const [row] = inserted.raw;
       if (!row) {
         return (
-          await manager.findOneByOrFail(WaitlistEmailBatch, {
-            requestId: dto.requestId,
+          await manager.findOneOrFail(WaitlistEmailBatch, {
+            where: { requestId: dto.requestId },
+            withDeleted: true,
           })
         ).id;
       }
       await manager.query(
         `INSERT INTO waitlist_email_recipient ("batchId", "entryId")
-         SELECT $1, id FROM waitlist_entry WHERE id = ANY($2)`,
+         SELECT $1, id FROM waitlist_entry
+         WHERE id = ANY($2) AND "deletedAt" IS NULL`,
         [row.id, dto.entryIds],
       );
       return row.id;

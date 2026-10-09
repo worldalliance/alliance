@@ -248,24 +248,7 @@ export class ForumService {
       .where("post.actionId = :actionId", { actionId })
       .orderBy("post.updatedAt", "DESC");
     this.addPostVisibilityFilter(qb, "post", requestingUserId);
-    const posts = (await qb.getMany()).map(parsePost);
-
-    const postsWithComments = await Promise.all(
-      posts.map(async (post) => {
-        const comments = await this.commentRepository.find({
-          where: {
-            parentObjectId: post.id,
-            parentObjectType: CommentParentObject.Post,
-          },
-        });
-        return {
-          ...post,
-          replies: [],
-          replyCount: comments.length,
-        };
-      }),
-    );
-    return postsWithComments;
+    return (await qb.getMany()).map(parsePost);
   }
 
   private async findOneVisiblePost(
@@ -694,9 +677,11 @@ export class ForumService {
       editableContent: content,
     });
 
-    await this.postRepository.update(createCommentDto.parentObjectId, {
-      updatedAt: new Date(),
-    });
+    if (createCommentDto.parentObjectType === CommentParentObject.Post) {
+      await this.postRepository.update(createCommentDto.parentObjectId, {
+        updatedAt: new Date(),
+      });
+    }
 
     await this.commentRepository.save(reply);
 
@@ -734,13 +719,14 @@ export class ForumService {
   async sendNotifsForNewComment(comment: Comment): Promise<void> {
     const usersToNotify: User[] = [];
 
+    // A deleted parent's author is not told about replies to it.
     let parentAuthor: User | undefined;
     if (comment.parentId) {
-      const parentReply = await this.commentRepository.findOneOrFail({
+      const parentReply = await this.commentRepository.findOne({
         where: { id: comment.parentId, deleted: false },
         relations: { author: { contractEvents: true } },
       });
-      parentAuthor = parentReply.author;
+      parentAuthor = parentReply?.author;
     }
 
     if (comment.parentObjectType === CommentParentObject.Post) {
@@ -854,7 +840,7 @@ export class ForumService {
     userId: number,
   ): Promise<Comment> {
     const reply = await this.commentRepository.findOne({
-      where: { id },
+      where: { id, deleted: false },
       relations: { author: true, editableContent: true },
     });
 
@@ -913,11 +899,11 @@ export class ForumService {
     const object =
       type === "comment"
         ? await this.commentRepository.findOne({
-            where: { id },
+            where: { id, deleted: false },
             relations: { likes: true, author: true, editableContent: true },
           })
         : await this.postRepository.findOne({
-            where: { id },
+            where: { id, deleted: false },
             relations: { likes: true, author: true, authors: true },
           });
 
@@ -1074,7 +1060,7 @@ export class ForumService {
       await this.notifRepository.delete(notification.id);
     }
 
-    await this.commentRepository.update(id, { deleted: true });
+    await this.commentRepository.update(id, { deleted: true, pinned: false });
   }
 
   async findPostsByUser(params: {
@@ -1342,12 +1328,15 @@ export class ForumService {
   }
 
   async togglePinComment(commentId: number): Promise<Comment> {
-    await this.commentRepository
+    const { affected } = await this.commentRepository
       .createQueryBuilder()
       .update(Comment)
       .set({ pinned: () => `NOT "pinned"` })
-      .where("id = :commentId", { commentId })
+      .where('id = :commentId AND NOT "deleted"', { commentId })
       .execute();
+    if (!affected) {
+      throw new NotFoundException(`Comment with ID "${commentId}" not found`);
+    }
 
     return this.commentRepository.findOneOrFail({
       where: { id: commentId },
