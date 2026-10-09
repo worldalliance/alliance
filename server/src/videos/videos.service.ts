@@ -11,6 +11,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { updateLive } from "src/datasources/soft-delete";
 import type { Repository } from "src/utils/Repository";
 import type { VideoDetailResponse } from "./dto/video-response.dto";
 import { Video } from "./entities/video.entity";
@@ -186,7 +187,12 @@ export class VideosService {
     );
 
     video.dateUpdated = new Date();
-    return this.videoRepository.save(video);
+    const updated = await updateLive(this.videoRepository.manager, {
+      target: Video,
+      id,
+      changes: { dateUpdated: video.dateUpdated },
+    });
+    return updated ? video : null;
   }
 
   async deleteVideo(id: number): Promise<boolean> {

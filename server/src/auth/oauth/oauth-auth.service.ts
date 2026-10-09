@@ -16,7 +16,7 @@ import { JwtService, TokenExpiredError } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { writeUnderLive } from "src/datasources/soft-delete";
+import { updateLive, writeUnderLive } from "src/datasources/soft-delete";
 import { hasPassword, User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { requestContext } from "src/utils/request-context";
@@ -428,7 +428,11 @@ export class OAuthAuthService {
       if (!linked.ok) {
         return linked;
       }
-      await this.userRepository.update(byEmail.id, { emailVerified: true });
+      await updateLive(this.userRepository.manager, {
+        target: User,
+        id: byEmail.id,
+        changes: { emailVerified: true },
+      });
       return R.success({
         user: await this.usersService.findOneOrFail(byEmail.id),
         outcome: OAuthOutcome.Linked,

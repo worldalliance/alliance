@@ -19,14 +19,19 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
-import { assertLive, lockLive, lockLiveIds } from "src/datasources/soft-delete";
+import {
+  assertLive,
+  lockLive,
+  lockLiveIds,
+  updateLive,
+} from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
 import { Friend, FriendStatus } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
 import { UserEvents, type FriendsAcceptedPayload } from "src/user/user.events";
 import type { Relations } from "src/utils/Repository";
 import { isUniqueViolation } from "src/utils/db-errors";
-import { In, type EntityManager, type Repository } from "typeorm";
+import { In, IsNull, type EntityManager, type Repository } from "typeorm";
 import {
   ConversationAdminSummaryDto,
   ConversationDto,
@@ -475,9 +480,13 @@ export class ConversationService {
       return this.buildConversationDto(conversationId, userId);
     }
 
-    participant.state = ParticipantState.Joined;
-    participant.joinedAt = new Date();
-    await this.participantRepository.save(participant);
+    const { affected } = await this.participantRepository.update(
+      { id: participant.id, deletedAt: IsNull() },
+      { state: ParticipantState.Joined, joinedAt: new Date() },
+    );
+    if (!affected) {
+      throw notInConversation();
+    }
     await this.touchConversation(conversationId);
 
     const conversation = await this.getConversationEntity(conversationId);
@@ -527,12 +536,13 @@ export class ConversationService {
       return;
     }
 
-    const now = new Date();
-    for (const participant of invitedParticipants) {
-      participant.state = ParticipantState.Joined;
-      participant.joinedAt = now;
-    }
-    await this.participantRepository.save(invitedParticipants);
+    await this.participantRepository.update(
+      {
+        id: In(invitedParticipants.map((participant) => participant.id)),
+        deletedAt: IsNull(),
+      },
+      { state: ParticipantState.Joined, joinedAt: new Date() },
+    );
     await this.touchConversation(conversation.id);
 
     const hydrated = await this.getConversationEntity(conversation.id);
@@ -582,7 +592,15 @@ export class ConversationService {
         await this.imagesService.processAndUploadProfileImage(dto.photo);
     }
 
-    await this.conversationRepository.save(conversation);
+    if (
+      !(await updateLive(this.conversationRepository.manager, {
+        target: Conversation,
+        id: conversationId,
+        changes: { title: conversation.title, photo: conversation.photo },
+      }))
+    ) {
+      throw new NotFoundException("Conversation not found");
+    }
     await this.emitConversationUpdate(conversation);
     return new ConversationDto({ conversation, contextUserId: userId });
   }
@@ -756,9 +774,14 @@ export class ConversationService {
       const needsUpdate =
         conversation.title !== community.name || conversation.photo !== photo;
       if (needsUpdate) {
-        conversation.title = community.name;
-        conversation.photo = photo;
-        await this.conversationRepository.save(conversation);
+        // An update, not a save, so a group deletion committed since the load stays.
+        const { affected } = await this.conversationRepository.update(
+          { id: conversation.id, deletedAt: IsNull() },
+          { title: community.name, photo },
+        );
+        if (!affected) {
+          throw new NotFoundException("Community not found.");
+        }
       }
     }
 
@@ -799,7 +822,15 @@ export class ConversationService {
         }
         if (shouldUpdate) {
           existing.joinedAt = existing.joinedAt ?? now;
-          await this.participantRepository.save(existing);
+          // An update, not a save, so a removal committed since the load stays.
+          await this.participantRepository.update(
+            { id: existing.id, deletedAt: IsNull() },
+            {
+              role: existing.role,
+              state: existing.state,
+              joinedAt: existing.joinedAt,
+            },
+          );
         }
       } else {
         await this.participantRepository.manager.transaction(
@@ -892,11 +923,10 @@ export class ConversationService {
       ? ParticipantRole.Admin
       : ParticipantRole.Member;
     if (existingParticipant) {
-      await participantRepository.save({
-        ...existingParticipant,
-        role,
-        state: ParticipantState.Joined,
-      });
+      await participantRepository.update(
+        { id: existingParticipant.id, deletedAt: IsNull() },
+        { role, state: ParticipantState.Joined },
+      );
       return;
     }
 
@@ -923,8 +953,10 @@ export class ConversationService {
     const lastMessage = await this.findLastMessage(conversationId);
 
     if (lastMessage) {
-      participant.lastReadMessage = lastMessage;
-      await this.participantRepository.save(participant);
+      await this.participantRepository.update(
+        { id: participant.id, deletedAt: IsNull() },
+        { lastReadMessage: { id: lastMessage.id } },
+      );
     }
 
     const conversation = await this.getConversationEntity(conversationId);

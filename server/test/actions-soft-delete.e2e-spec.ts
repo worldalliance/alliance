@@ -210,6 +210,33 @@ describe("Action writers under a deleted parent (e2e)", () => {
     ).toBe(0);
   });
 
+  it("leaves a form deleted after an edit loads it unedited", async () => {
+    const { form: parent } = await form();
+    const tasks = ctx.app.get(TasksService);
+    const forms = ctx.dataSource.getRepository(Form);
+    const load = tasks.getForm.bind(tasks);
+    jest
+      .spyOn(tasks, "getForm")
+      .mockImplementationOnce(
+        deleteAfter(load, () => forms.softDelete(parent.id)),
+      );
+
+    await expect(
+      tasks.updateForm(parent.id, {
+        title: "Edited",
+        schema: { pages: [], outputViews: [] },
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(
+      (
+        await forms.findOneOrFail({
+          where: { id: parent.id },
+          withDeleted: true,
+        })
+      ).title,
+    ).toBe(parent.title);
+  });
+
   it("refuses a reminder group for an event deleted after it loads", async () => {
     const action = await createAction();
     const events = ctx.dataSource.getRepository(ActionEvent);
@@ -330,6 +357,21 @@ describe("Action writers under a deleted parent (e2e)", () => {
     ).toMatchObject({ suite: null });
   });
 
+  it("refuses to archive a deleted action and leaves it deleted", async () => {
+    const action = await createAction();
+    await actionRepo.softDelete(action.id);
+
+    await expect(actions.archive(action.id)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(
+      await actionRepo.findOneOrFail({
+        where: { id: action.id },
+        withDeleted: true,
+      }),
+    ).toMatchObject({ archived: false, deletedAt: expect.any(Date) });
+  });
+
   it("creates no follow-up form for a form deleted after it loads", async () => {
     const action = await createAction();
     const { form: parent } = await form();
@@ -381,6 +423,59 @@ describe("Action writers under a deleted parent (e2e)", () => {
         .getRepository(GeneralUpdate)
         .count({ where: { name: "Tagged update" }, withDeleted: true }),
     ).toBe(0);
+  });
+
+  it("keeps an action deleted after an edit loads it", async () => {
+    const action = await createAction();
+    const repo = ctx.app.get<Repository<Action>>(getRepositoryToken(Action));
+    const load = repo.findOne.bind(repo);
+    jest
+      .spyOn(repo, "findOne")
+      .mockImplementationOnce(
+        deleteAfter(load, () => actionRepo.softDelete(action.id)),
+      );
+
+    await expect(
+      actions.update(action.id, { name: "Renamed" }, ctx.adminUserId),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(
+      await actionRepo.findOneOrFail({
+        where: { id: action.id },
+        withDeleted: true,
+      }),
+    ).toMatchObject({ name: "Parent action", deletedAt: expect.any(Date) });
+  });
+
+  it("keeps a follow-up form deleted after an edit loads it", async () => {
+    const action = await createAction();
+    const { form: parent } = await form();
+    const followUps = ctx.dataSource.getRepository(FollowUpForm);
+    const followUp = await followUps.save(
+      followUps.create({
+        actionId: action.id,
+        formId: parent.id,
+        name: "Follow-up",
+      }),
+    );
+    const repo = ctx.app.get<Repository<FollowUpForm>>(
+      getRepositoryToken(FollowUpForm),
+    );
+    const load = repo.findOneOrFail.bind(repo);
+    jest
+      .spyOn(repo, "findOneOrFail")
+      .mockImplementationOnce(
+        deleteAfter(load, () => followUps.softDelete(followUp.id)),
+      );
+
+    await expect(
+      actions.updateFollowUpForm(followUp.id, { name: "Renamed" }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(
+      await followUps.findOneOrFail({
+        where: { id: followUp.id },
+        withDeleted: true,
+      }),
+    ).toMatchObject({ name: "Follow-up", deletedAt: expect.any(Date) });
   });
 
   describe("form variants", () => {
@@ -436,6 +531,38 @@ describe("Action writers under a deleted parent (e2e)", () => {
         variants.updateVariant(variant.id, { name: "Renamed" }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
+
+    it("keeps a variant deleted after an edit loads it", async () => {
+      const action = await createAction();
+      const { form: parent } = await form();
+      const variant = await variantRepo.save(
+        variantRepo.create({
+          actionId: action.id,
+          formId: parent.id,
+          name: "Variant",
+          splitValue: 0.5,
+        }),
+      );
+      const repo = ctx.app.get<Repository<ActionFormVariant>>(
+        getRepositoryToken(ActionFormVariant),
+      );
+      const load = repo.findOne.bind(repo);
+      jest
+        .spyOn(repo, "findOne")
+        .mockImplementationOnce(
+          deleteAfter(load, () => variantRepo.softDelete(variant.id)),
+        );
+
+      await expect(
+        variants.updateVariant(variant.id, { name: "Renamed" }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(
+        await variantRepo.findOneOrFail({
+          where: { id: variant.id },
+          withDeleted: true,
+        }),
+      ).toMatchObject({ name: "Variant", deletedAt: expect.any(Date) });
+    });
   });
 
   describe("projects", () => {
@@ -470,6 +597,28 @@ describe("Action writers under a deleted parent (e2e)", () => {
             projects.assign({ actionId: action.id, projectId: project.id }),
         }),
       ).toBeInstanceOf(NotFoundException);
+    });
+
+    it("waits for a project being deleted before renaming it", async () => {
+      const project = await projectRepo.save({ name: "Unrenamed project" });
+
+      expect(
+        await writeDuringDeletion({
+          dataSource: ctx.dataSource,
+          target: Project,
+          id: project.id,
+          write: () => projects.update({ id: project.id, name: "Renamed" }),
+        }),
+      ).toBeInstanceOf(NotFoundException);
+      expect(
+        await projectRepo.findOneOrFail({
+          where: { id: project.id },
+          withDeleted: true,
+        }),
+      ).toMatchObject({
+        name: "Unrenamed project",
+        deletedAt: expect.any(Date),
+      });
     });
 
     it("waits for an action being deleted before assigning it", async () => {
@@ -533,6 +682,32 @@ describe("Action writers under a deleted parent (e2e)", () => {
     beforeAll(() => {
       reminders = ctx.app.get(ActionEventReminderService);
       groups = ctx.dataSource.getRepository(ReminderGroup);
+    });
+
+    it("keeps a reminder group deleted after an edit loads it", async () => {
+      const group = await liveGroup();
+      const repo = ctx.app.get<Repository<ReminderGroup>>(
+        getRepositoryToken(ReminderGroup),
+      );
+      const load = repo.findOneOrFail.bind(repo);
+      jest
+        .spyOn(repo, "findOneOrFail")
+        .mockImplementationOnce(
+          deleteAfter(load, () => groups.softDelete(group.id)),
+        );
+
+      await expect(
+        reminders.updateReminderGroup(group.id, {
+          ...reminderDto(),
+          name: "Renamed",
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(
+        await groups.findOneOrFail({
+          where: { id: group.id },
+          withDeleted: true,
+        }),
+      ).toMatchObject({ name: "Reminder", deletedAt: expect.any(Date) });
     });
 
     it("refuses to point a reminder group at a tag deleted after it loads", async () => {
@@ -628,6 +803,44 @@ describe("Action writers under a deleted parent (e2e)", () => {
         withDeleted: true,
       }),
     ).toBe(0);
+  });
+
+  it("keeps an action's authors through create and update", async () => {
+    const users = ctx.dataSource.getRepository(User);
+    const [first, second] = await Promise.all(
+      ["first", "second"].map((name) =>
+        users.save(
+          users.create({
+            name: `Kept ${name} author`,
+            email: `kept-${name}-author@example.com`,
+            password: "password",
+          }),
+        ),
+      ),
+    );
+    const created = await actions.create({
+      ...actionDto("Authored action"),
+      authorIds: [first.id],
+    });
+    const authorIds = async () =>
+      (
+        await actionRepo.findOneOrFail({
+          where: { id: created.id },
+          relations: { authors: true },
+        })
+      ).authors
+        ?.map((author) => author.id)
+        .sort((a, b) => a - b);
+
+    expect(await authorIds()).toEqual([first.id]);
+    await actions.update(
+      created.id,
+      { authorIds: [first.id, second.id] },
+      ctx.adminUserId,
+    );
+    expect(await authorIds()).toEqual(
+      [first.id, second.id].sort((a, b) => a - b),
+    );
   });
 
   it("refuses to point an update at a deleted tag", async () => {

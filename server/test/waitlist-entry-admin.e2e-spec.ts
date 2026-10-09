@@ -530,6 +530,26 @@ describe("Waitlist entry admin (e2e)", () => {
         .expect(404);
       await admin("delete", `/${tag.body.id}`).expect(404);
     });
+    it("keeps a tag deleted while it is renamed", async () => {
+      const tags = ctx.dataSource.getRepository(WaitlistTag);
+      const tag = await admin("post", "").send({ name: "Gone" }).expect(201);
+
+      const res = await writeDuringDeletion({
+        dataSource: ctx.dataSource,
+        target: WaitlistTag,
+        id: tag.body.id,
+        write: async () =>
+          admin("patch", `/${tag.body.id}`).send({ name: "Renamed" }),
+      });
+
+      expect(res).toMatchObject({ status: 404 });
+      expect(
+        await tags.findOneOrFail({
+          where: { id: tag.body.id },
+          withDeleted: true,
+        }),
+      ).toMatchObject({ name: "Gone", deletedAt: expect.any(Date) });
+    });
 
     it("tags no entry with a tag deleted while it is added", async () => {
       const entry = await saveEntry({ reason: "Tagged with a deleted tag" });

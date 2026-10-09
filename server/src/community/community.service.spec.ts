@@ -8,7 +8,7 @@ import {
   type CreateNotifParams,
 } from "src/notifs/notifs.service";
 import { User } from "src/user/entities/user.entity";
-import { In, type EntityManager, type Repository } from "typeorm";
+import { In, IsNull, type EntityManager, type Repository } from "typeorm";
 import { CommunityService, ContractRefusalAudience } from "./community.service";
 import {
   CommunityInvite,
@@ -148,7 +148,6 @@ describe("CommunityService", () => {
     };
 
     userRepository = {
-      save: jest.fn().mockResolvedValue(undefined),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
       findOneOrFail: jest.fn(),
       createQueryBuilder: jest.fn(() => contractCheck),
@@ -289,13 +288,10 @@ describe("CommunityService", () => {
       );
 
       // clears user's pending state
-      expect(userRepository.save).toHaveBeenCalledWith([
-        {
-          id: user.id,
-          undergoingGroupAssignment: false,
-          pendingCommunity: null,
-        },
-      ]);
+      expect(userRepository.update).toHaveBeenCalledWith(
+        { id: In([user.id]), deletedAt: IsNull() },
+        { undergoingGroupAssignment: false, pendingCommunity: null },
+      );
 
       // sends one notif per leader
       expect(notifsService.sendNotifs).toHaveBeenCalledTimes(1);
@@ -478,7 +474,7 @@ describe("CommunityService", () => {
       });
 
       expect(userRepository.update).toHaveBeenCalledWith(
-        { id: In([user.id]) },
+        { id: In([user.id]), deletedAt: IsNull() },
         { pendingCommunity: { id: community.id } },
       );
     });
@@ -559,11 +555,10 @@ describe("CommunityService", () => {
           }),
         ],
       ]);
-      expect(userRepository.save).toHaveBeenCalledWith({
-        id: user.id,
-        undergoingGroupAssignment: false,
-        pendingCommunity: null,
-      });
+      expect(userRepository.update).toHaveBeenCalledWith(
+        { id: user.id, deletedAt: IsNull() },
+        { undergoingGroupAssignment: false, pendingCommunity: null },
+      );
       expect(
         conversationService.placeCommunityConversationParticipant,
       ).toHaveBeenCalledWith({

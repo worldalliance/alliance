@@ -4,7 +4,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { assertLive } from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
 import { User } from "src/user/entities/user.entity";
-import type { Repository } from "typeorm";
+import { IsNull, type Repository } from "typeorm";
 import { ConversationService } from "./conversation.service";
 import {
   ConversationMessagesQueryDto,
@@ -100,8 +100,15 @@ export class MessageService {
         });
 
         const saved = await manager.save(message);
-        participant.lastReadMessage = saved;
-        await manager.save(participant);
+        await manager.update(
+          Participant,
+          { id: participant.id, deletedAt: IsNull() },
+          {
+            lastReadMessage: { id: saved.id },
+            state: participant.state,
+            joinedAt: participant.joinedAt,
+          },
+        );
         await manager.update(Conversation, participant.conversation.id, {
           updatedAt: new Date(),
         });

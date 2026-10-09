@@ -1,4 +1,5 @@
-import { writeUnderLive } from "src/datasources/soft-delete";
+import { NotFoundException } from "@nestjs/common";
+import { updateLive, writeUnderLive } from "src/datasources/soft-delete";
 import { User } from "src/user/entities/user.entity";
 import type { EntityManager } from "typeorm";
 import { CommunityInvite } from "./entities/community-invite.entity";
@@ -18,4 +19,19 @@ export function saveInviteOfLiveParents(
     ],
     write: (em) => em.save(invite),
   });
+}
+
+export async function setLiveInviteStatus(
+  manager: EntityManager,
+  invite: CommunityInvite,
+): Promise<void> {
+  if (
+    !(await updateLive(manager, {
+      target: CommunityInvite,
+      id: invite.id,
+      changes: { status: invite.status },
+    }))
+  ) {
+    throw new NotFoundException("Invite not found");
+  }
 }

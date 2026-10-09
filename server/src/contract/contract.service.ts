@@ -8,7 +8,7 @@ import {
   isCommunityLedBy,
 } from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
-import { writeUnderLive } from "src/datasources/soft-delete";
+import { updateLive, writeUnderLive } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
@@ -190,7 +190,11 @@ export class ContractService {
       (event) => event.type === ContractEventType.SIGNED && !event.viaTaskForm,
     );
     if (!viaTaskForm && !signedOutsideTaskForm) {
-      await this.userRepository.update(userId, { name: signedName });
+      await updateLive(this.userRepository.manager, {
+        target: User,
+        id: userId,
+        changes: { name: signedName },
+      });
       user.name = signedName;
     }
 
@@ -208,8 +212,10 @@ export class ContractService {
       : null;
     const promises: Promise<unknown>[] = [];
     const notifs: CreateNotifParams[] = [];
-    const userUpdate: Partial<User> = {
-      id: user.id,
+    const userUpdate: {
+      pendingCommunity: null;
+      undergoingGroupAssignment?: boolean;
+    } = {
       pendingCommunity: null,
     };
     if (!firstSigning) {
@@ -323,7 +329,11 @@ export class ContractService {
     }
 
     await Promise.all([
-      this.userRepository.save(userUpdate),
+      updateLive(this.userRepository.manager, {
+        target: User,
+        id: user.id,
+        changes: userUpdate,
+      }),
       this.notifsService.sendNotifs(notifs),
       this.eventLogService.sendMessage({
         type: EventType.ContractSigned,

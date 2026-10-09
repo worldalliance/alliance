@@ -6,7 +6,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { assertLive } from "src/datasources/soft-delete";
 import { isUniqueViolation } from "src/utils/db-errors";
-import { Repository } from "typeorm";
+import { type EntityManager, Repository } from "typeorm";
 import type { ActionCategory } from "./action-category";
 import { Action } from "./entities/action.entity";
 import { Project } from "./entities/project.entity";
@@ -57,11 +57,18 @@ export class ProjectsService {
     name?: string;
     category?: ActionCategory[];
   }): Promise<Project> {
-    const project = await this.projectRepository.findOneBy({ id: params.id });
-    if (!project) throw new NotFoundException(`Project ${params.id} not found`);
-    if (params.name !== undefined) project.name = params.name;
-    if (params.category !== undefined) project.category = params.category;
-    return this.saveName(project);
+    return this.projectRepository.manager.transaction(async (em) => {
+      const project = await em.findOne(Project, {
+        where: { id: params.id },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (!project) {
+        throw new NotFoundException(`Project ${params.id} not found`);
+      }
+      if (params.name !== undefined) project.name = params.name;
+      if (params.category !== undefined) project.category = params.category;
+      return this.saveName(project, em);
+    });
   }
 
   async remove(id: number): Promise<void> {
@@ -99,9 +106,12 @@ export class ProjectsService {
     });
   }
 
-  private async saveName(project: Project): Promise<Project> {
+  private async saveName(
+    project: Project,
+    em: EntityManager = this.projectRepository.manager,
+  ): Promise<Project> {
     try {
-      return await this.projectRepository.save(project);
+      return await em.save(project);
     } catch (error) {
       if (isUniqueViolation(error)) {
         throw new ConflictException(

@@ -64,7 +64,10 @@ import {
 import { MissedSuitePlanService } from "./missed-suite-plans.service";
 import { NotifsService } from "./notifs.service";
 import { buildReminderMessage } from "./reminder-message";
-import { saveForLiveRecipient } from "./save-for-live-recipient";
+import {
+  recordDelivery,
+  saveForLiveRecipient,
+} from "./save-for-live-recipient";
 
 export type UncompletedTaskSummary = {
   id: number;
@@ -316,7 +319,7 @@ export class ActionEventNotifWorker {
       push: { screen: "/", idempotencyKey: plan.group.id.toString() },
     });
     if (sendingAnyNotif) {
-      await this.actionEventNotifsRepository.save(notif);
+      await recordDelivery(this.dataSource.manager, notif);
     }
   }
 
@@ -409,7 +412,8 @@ export class ActionEventNotifWorker {
     }
     // An opening of the text reads this entry through notificationId, even
     // when a later send fails.
-    if (notif.notification) await this.actionEventNotifsRepository.save(notif);
+    if (notif.notification)
+      await recordDelivery(this.dataSource.manager, notif);
     await this.deliver({
       notif,
       user: plan.user,
@@ -422,7 +426,7 @@ export class ActionEventNotifWorker {
         notification: notif.notification,
       },
     });
-    await this.actionEventNotifsRepository.save(notif);
+    await recordDelivery(this.dataSource.manager, notif);
   }
 
   private async assignFirstMissArm(userId: number): Promise<ExperimentArm> {

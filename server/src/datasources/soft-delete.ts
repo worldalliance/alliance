@@ -3,6 +3,7 @@ import {
   type EntityManager,
   type EntityTarget,
   type ObjectLiteral,
+  type QueryDeepPartialEntity,
 } from "typeorm";
 
 type RowId = number | string;
@@ -32,6 +33,27 @@ export async function assertLive(
   params: { rows: LiveRow[]; gone: () => Error },
 ): Promise<void> {
   if (await firstGone(manager, params.rows)) throw params.gone();
+}
+
+/** Updates the row only while it is live, since a save of a loaded copy would
+ * undo a deletion committed since the load. Reports whether it was live. */
+export async function updateLive<
+  T extends ObjectLiteral & { deletedAt: Date | null },
+>(
+  manager: EntityManager,
+  params: {
+    target: new () => T;
+    id: RowId;
+    changes: QueryDeepPartialEntity<T>;
+  },
+): Promise<boolean> {
+  const { affected } = await manager
+    .createQueryBuilder()
+    .update(params.target)
+    .set(params.changes)
+    .where('id = :id AND "deletedAt" IS NULL', { id: params.id })
+    .execute();
+  return affected === 1;
 }
 
 // Outside a transaction the lock ends with its own statement.
@@ -104,29 +126,44 @@ export async function liveOrNull<T extends { id?: RowId }>(params: {
 }
 
 /**
- * Runs `write` once every parent is {@link lockLive | locked live}.
+ * Runs `write` once every parent is {@link lockLive | locked live} and
+ * `saved`, the row a save of a loaded copy writes back, is locked
+ * `FOR UPDATE` (or its `lock` mode): that save would otherwise undo a deletion
+ * committed since the load. Parents are locked before `saved`, the order a
+ * cascading deletion takes them.
  *
- * Joins the manager's transaction, or opens one. A gone parent throws
+ * Joins the manager's transaction, or opens one. A gone row throws
  * `NotFoundException` with its own `notFound` message, else the shared one,
  * else one naming the gone row's entity.
  */
 export function writeUnderLive<T>(
   manager: EntityManager,
   params: {
-    parents: Array<LiveRow & { notFound?: string }>;
+    parents?: Array<LiveRow & { notFound?: string }>;
     notFound?: string;
+    saved?: LiveRow & {
+      notFound?: string;
+      lock?: "pessimistic_write" | "for_no_key_update";
+    };
     write: (manager: EntityManager) => Promise<T>;
   },
 ): Promise<T> {
-  const { parents, notFound, write } = params;
+  const { parents = [], notFound, saved, write } = params;
+  const notFoundFor = (em: EntityManager, row: LiveRow, message?: string) =>
+    new NotFoundException(
+      message ?? `${em.connection.getMetadata(row.target).name} not found`,
+    );
   const guarded = async (em: EntityManager): Promise<T> => {
     const gone = await firstGone(em, parents);
-    if (gone) {
-      throw new NotFoundException(
-        gone.notFound ??
-          notFound ??
-          `${em.connection.getMetadata(gone.target).name} not found`,
-      );
+    if (gone) throw notFoundFor(em, gone, gone.notFound ?? notFound);
+    if (
+      saved &&
+      !(await em.exists(saved.target, {
+        where: { id: saved.id },
+        lock: { mode: saved.lock ?? "pessimistic_write" },
+      }))
+    ) {
+      throw notFoundFor(em, saved, saved.notFound ?? notFound);
     }
     return write(em);
   };

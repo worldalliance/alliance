@@ -1,4 +1,6 @@
+import { ConversationType } from "@alliance/common/conversationType";
 import { OAuthError, OAuthProvider } from "@alliance/common/oauth";
+import { ParticipantRole } from "@alliance/common/participantRole";
 import { R } from "@alliance/common/result";
 import { NotFoundException } from "@nestjs/common";
 import { getRepositoryToken } from "@nestjs/typeorm";
@@ -7,10 +9,23 @@ import { Guest } from "src/auth/entities/guest.entity";
 import { OAuthAccount } from "src/auth/oauth/oauth-account.entity";
 import { OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
 import { CommunityService } from "src/community/community.service";
+import {
+  CommunityInvite,
+  CommunityInviteStatus,
+} from "src/community/entities/community-invite.entity";
 import { Community } from "src/community/entities/community.entity";
 import { ContractService } from "src/contract/contract.service";
 import { lockLiveIds } from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
+import { ConversationService } from "src/messaging/conversation.service";
+import { Conversation } from "src/messaging/entities/conversation.entity";
+import { Message } from "src/messaging/entities/message.entity";
+import {
+  Participant,
+  ParticipantState,
+} from "src/messaging/entities/participant.entity";
+import { Notification } from "src/notifs/entities/notification.entity";
+import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { Push } from "src/push/push.entity";
 import { PushService } from "src/push/push.service";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
@@ -18,7 +33,10 @@ import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import { AwayRangeEditor } from "src/user/away-range-history";
 import { AmbassadorProgramMember } from "src/user/entities/ambassador-program-member.entity";
 import { ContractEvent } from "src/user/entities/contract-event.entity";
-import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
+import {
+  OnetimeInvite,
+  OnetimeInviteStatus,
+} from "src/user/entities/onetime-invite.entity";
 import { Tag } from "src/user/entities/tag.entity";
 import {
   UserAwayRange,
@@ -33,6 +51,7 @@ import {
   giveActiveContract,
   TestContext,
   waitForLockWait,
+  writeDuringDeletion,
 } from "./e2e-test-utils";
 
 describe("Writers beside a deletion (e2e)", () => {
@@ -133,6 +152,70 @@ describe("Writers beside a deletion (e2e)", () => {
     ).toEqual([]);
   });
 
+  describe("an away range deleted after an edit loads it", () => {
+    const deleteRangeAfterLoad = async (startDate: Date) => {
+      const user = await member();
+      const ranges = ctx.dataSource.getRepository(UserAwayRange);
+      const range = await ranges.save({
+        userId: user.id,
+        startDate,
+        endDate: new Date(Date.now() + 7 * 86_400_000),
+        reason: UserAwayRangeReason.VACATION,
+      });
+      const repo = ctx.app.get<Repository<UserAwayRange>>(
+        getRepositoryToken(UserAwayRange),
+      );
+      const findOne = repo.findOne.bind(repo);
+      jest.spyOn(repo, "findOne").mockImplementationOnce(async (options) => {
+        const loaded = await findOne(options);
+        await ranges.softDelete(range.id);
+        return loaded;
+      });
+      return { user, range, ranges };
+    };
+
+    it("stays deleted through an edit", async () => {
+      const { user, range, ranges } = await deleteRangeAfterLoad(
+        new Date(Date.now() + 86_400_000),
+      );
+
+      await expect(
+        userService.updateAwayRange({
+          userId: user.id,
+          awayRangeId: range.id,
+          data: { reason: UserAwayRangeReason.OTHER, note: "Edited" },
+          editor: AwayRangeEditor.Admin,
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(
+        await ranges.findOneOrFail({
+          where: { id: range.id },
+          withDeleted: true,
+        }),
+      ).toMatchObject({ deletedAt: expect.any(Date) });
+    });
+
+    it("stays deleted when a member ends it early", async () => {
+      const { user, range, ranges } = await deleteRangeAfterLoad(
+        new Date(Date.now() - 86_400_000),
+      );
+
+      await expect(
+        userService.deleteAwayRange({
+          userId: user.id,
+          awayRangeId: range.id,
+          editor: AwayRangeEditor.Member,
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(
+        await ranges.findOneOrFail({
+          where: { id: range.id },
+          withDeleted: true,
+        }),
+      ).toMatchObject({ deletedAt: expect.any(Date) });
+    });
+  });
+
   it("refuses a one-time invite from an inviter deleted after it loads", async () => {
     const inviter = await member();
     deleteAfterUserLoad(inviter);
@@ -149,6 +232,43 @@ describe("Writers beside a deletion (e2e)", () => {
         withDeleted: true,
       }),
     ).toEqual([]);
+  });
+
+  it("leaves a group chat deleted while its info is edited", async () => {
+    const admin = await member();
+    const conversations = ctx.dataSource.getRepository(Conversation);
+    const conversation = await conversations.save({
+      type: ConversationType.Multiple,
+      title: "Before",
+    });
+    await ctx.dataSource.getRepository(Participant).save({
+      conversation,
+      user: admin,
+      role: ParticipantRole.Admin,
+      state: ParticipantState.Joined,
+      joinedAt: new Date(),
+    });
+    jest
+      .spyOn(ctx.app.get(ImagesService), "processAndUploadProfileImage")
+      .mockImplementationOnce(async () => {
+        await conversations.softDelete(conversation.id);
+        return "chat-photo-key";
+      });
+
+    await expect(
+      ctx.app
+        .get(ConversationService)
+        .updateConversation(conversation.id, admin.id, {
+          title: "After",
+          photo: "data:image/png;base64,AAAA",
+        }),
+    ).rejects.toThrow(NotFoundException);
+    expect(
+      await conversations.findOneOrFail({
+        where: { id: conversation.id },
+        withDeleted: true,
+      }),
+    ).toMatchObject({ title: "Before", deletedAt: expect.any(Date) });
   });
 
   it("founds no group for an account deleted after it loads", async () => {
@@ -198,6 +318,36 @@ describe("Writers beside a deletion (e2e)", () => {
     ).toEqual([]);
   });
 
+  it("registers a new device when the one holding the token goes before the reassignment", async () => {
+    const previous = await member();
+    const next = await member();
+    const devices = ctx.dataSource.getRepository(UserDevice);
+    const expoPushToken = `ExponentPushToken[reassigned-${previous.id}]`;
+    const device = await devices.save({ user: previous, expoPushToken });
+    const repo = ctx.app.get<Repository<UserDevice>>(
+      getRepositoryToken(UserDevice),
+    );
+    const findOne = repo.findOne.bind(repo);
+    jest.spyOn(repo, "findOne").mockImplementationOnce(async (options) => {
+      const loaded = await findOne(options);
+      await devices.delete(device.id);
+      return loaded;
+    });
+
+    const registered = await userService.registerDevice(next.id, {
+      deviceType: "ios",
+      expoPushToken,
+    });
+
+    expect(registered).not.toBe(device.id);
+    expect(
+      await devices.findOneOrFail({
+        where: { id: registered },
+        relations: { user: true },
+      }),
+    ).toMatchObject({ expoPushToken, user: { id: next.id } });
+  });
+
   it("enrolls no account deleted after it loads in the ambassador program", async () => {
     const user = await member();
     deleteAfterUserLoad(user);
@@ -214,6 +364,102 @@ describe("Writers beside a deletion (e2e)", () => {
         withDeleted: true,
       }),
     ).toEqual([]);
+  });
+
+  it("keeps a group's pending placement off a deleted account", async () => {
+    const [leader, removed] = await Promise.all([member(), member()]);
+    const community = await ctx.dataSource.getRepository(Community).save({
+      name: "Pending group",
+      description: "Pending",
+      leaders: [leader],
+      users: [leader, removed],
+    });
+    await userRepo.softDelete(removed.id);
+
+    await ctx.app
+      .get(CommunityService)
+      .removeUserFromCommunityAndRefreshConversation({
+        user: removed,
+        community,
+        removeAsLeader: false,
+        notifForLeader: () => null,
+        saveAsPendingCommunity: true,
+      });
+
+    const row = await userRepo.findOneOrFail({
+      where: { id: removed.id },
+      withDeleted: true,
+      loadRelationIds: { relations: ["pendingCommunity"] },
+    });
+    expect(row.pendingCommunity).toBeNull();
+  });
+
+  it("leaves a group invite deleted while its invitee declines it", async () => {
+    const [inviter, invitee] = await Promise.all([member(), member()]);
+    const community = await ctx.dataSource.getRepository(Community).save({
+      name: "Invite group",
+      description: "Invite",
+      leaders: [inviter],
+      users: [inviter],
+    });
+    const invites = ctx.dataSource.getRepository(CommunityInvite);
+    const invite = await invites.save({
+      invitingUser: inviter,
+      invitedUser: invitee,
+      community,
+      status: CommunityInviteStatus.InviteePending,
+    });
+    const findInvite = invites.findOneOrFail.bind(invites);
+    jest
+      .spyOn(invites, "findOneOrFail")
+      .mockImplementationOnce(async (options) => {
+        const loaded = await findInvite(options);
+        await invites.softDelete(invite.id);
+        return loaded;
+      });
+
+    await expect(
+      ctx.app
+        .get(CommunityService)
+        .rejectCommunityInvite(invite.id, invitee.id),
+    ).rejects.toThrow(NotFoundException);
+    expect(
+      await invites.findOneOrFail({
+        where: { id: invite.id },
+        withDeleted: true,
+      }),
+    ).toMatchObject({
+      status: CommunityInviteStatus.InviteePending,
+      deletedAt: expect.any(Date),
+    });
+  });
+
+  it("leaves an invite link deleted while its owner edits it", async () => {
+    const owner = await member();
+    const shareUrls = ctx.app.get(ShareUrlsService);
+    const link = await shareUrls.createDuplicateInviteForUser(
+      owner.id,
+      "Before",
+      null,
+    );
+    const rows = ctx.dataSource.getRepository(ShareUrl);
+    const findRow = rows.findOne.bind(rows);
+    jest.spyOn(rows, "findOne").mockImplementationOnce(async (options) => {
+      const loaded = await findRow(options);
+      await rows.softDelete(link.id);
+      return loaded;
+    });
+
+    await expect(
+      shareUrls.updateInviteForUser({
+        id: link.id,
+        userId: owner.id,
+        label: "After",
+      }),
+    ).rejects.toThrow(NotFoundException);
+    expect(
+      await rows.findOneOrFail({ where: { id: link.id }, withDeleted: true }),
+    ).toMatchObject({ label: "Before", deletedAt: expect.any(Date) });
   });
 
   it("links no provider account to an account deleted mid-link", async () => {
@@ -315,6 +561,50 @@ describe("Writers beside a deletion (e2e)", () => {
       [tagged.id],
     );
     expect(count).toBe(0);
+  });
+
+  it("leaves an invite request deleted while its leader approves it", async () => {
+    const leader = await member();
+    const community = await ctx.dataSource.getRepository(Community).save({
+      name: "Approving group",
+      description: "Approving",
+      leaders: [leader],
+      users: [leader],
+    });
+    const invites = ctx.app.get<Repository<OnetimeInvite>>(
+      getRepositoryToken(OnetimeInvite),
+    );
+    const request = await invites.save(
+      invites.create({
+        invitee: "Requested invitee",
+        code: `request-${emails++}`,
+        status: OnetimeInviteStatus.REQUEST_PENDING,
+        community: { id: community.id },
+      }),
+    );
+    const findInvite = invites.findOneOrFail.bind(invites);
+    jest
+      .spyOn(invites, "findOneOrFail")
+      .mockImplementationOnce(async (options) => {
+        const loaded = await findInvite(options);
+        await invites.softDelete(request.id);
+        return loaded;
+      });
+
+    await expect(
+      userService.approveOrRejectOnetimeInviteRequest({
+        userId: leader.id,
+        inviteId: request.id,
+        newStatus: "approve",
+        message: "Approved [USER]",
+      }),
+    ).rejects.toThrow(NotFoundException);
+    const stored = await invites.findOneOrFail({
+      where: { id: request.id },
+      withDeleted: true,
+    });
+    expect(stored.deletedAt).not.toBeNull();
+    expect(stored.status).toBe(OnetimeInviteStatus.REQUEST_PENDING);
   });
 
   it("drops a referrer deleted before the signup lands", async () => {
@@ -538,5 +828,180 @@ describe("Writers beside a deletion (e2e)", () => {
         withDeleted: true,
       }),
     ).toBe(0);
+  });
+
+  it("leaves an account deleted while its profile is edited", async () => {
+    const user = await member({ name: "Before" });
+    deleteAfterUserLoad(user);
+
+    await expect(
+      userService.update(user.id, { name: "After" }),
+    ).rejects.toThrow(NotFoundException);
+    expect(
+      await userRepo.findOneOrFail({
+        where: { id: user.id },
+        withDeleted: true,
+      }),
+    ).toMatchObject({ name: "Before", deletedAt: expect.any(Date) });
+  });
+
+  it("leaves a group deleted while it is edited", async () => {
+    const communities = ctx.dataSource.getRepository(Community);
+    const community = await communities.save({
+      name: "Before",
+      description: "Edited",
+    });
+    const images = ctx.app.get(ImagesService);
+    const resolvePhotoUpdate = images.resolvePhotoUpdate.bind(images);
+    jest
+      .spyOn(images, "resolvePhotoUpdate")
+      .mockImplementationOnce(async (photo) => {
+        await communities.softDelete(community.id);
+        return resolvePhotoUpdate(photo);
+      });
+
+    await expect(
+      ctx.app
+        .get(CommunityService)
+        .updateCommunity(community.id, { name: "After" }, ctx.adminUserId),
+    ).rejects.toThrow(NotFoundException);
+    expect(
+      await communities.findOneOrFail({
+        where: { id: community.id },
+        withDeleted: true,
+      }),
+    ).toMatchObject({ name: "Before", deletedAt: expect.any(Date) });
+  });
+
+  it("adds a like to a fresh notification when the unread one goes mid-like", async () => {
+    const [owner, first, second] = await Promise.all([
+      member(),
+      member(),
+      member(),
+    ]);
+    const likes = ctx.app.get(LikeNotificationService);
+    const like = (liker: User) =>
+      likes.createOrUpdate({
+        owner,
+        liker,
+        targetType: "post",
+        targetId: owner.id,
+        webAppLocation: "/forum",
+        targetContent: "Liked post",
+      });
+    await like(first);
+    const notifs = ctx.dataSource.getRepository(Notification);
+    const original = await notifs.findOneByOrFail({ user: { id: owner.id } });
+
+    await writeDuringDeletion({
+      dataSource: ctx.dataSource,
+      target: Notification,
+      id: original.id,
+      write: () => like(second),
+    });
+
+    expect(
+      await notifs.find({
+        where: { user: { id: owner.id } },
+        relations: { associatedUsers: true },
+        withDeleted: true,
+        order: { id: "ASC" },
+      }),
+    ).toMatchObject([
+      { id: original.id, deletedAt: expect.any(Date) },
+      { deletedAt: null, associatedUsers: [{ id: second.id }] },
+    ]);
+  });
+
+  describe("a chat participant deleted after a write loads it", () => {
+    const setUp = async () => {
+      const [leader, invitee] = await Promise.all([member(), member()]);
+      const community = await ctx.dataSource.getRepository(Community).save({
+        name: "Chatting group",
+        description: "Chatting",
+        leaders: [leader],
+        users: [leader, invitee],
+      });
+      const conversations = ctx.app.get(ConversationService);
+      const conversation = await conversations.syncCommunityConversationMembers(
+        community.id,
+      );
+      await ctx.dataSource
+        .getRepository(Message)
+        .save({ body: "Hello", author: leader, conversation });
+      const participants = ctx.dataSource.getRepository(Participant);
+      const participant = await participants.findOneByOrFail({
+        conversation: { id: conversation.id },
+        user: { id: invitee.id },
+      });
+      await participants.update(participant.id, {
+        state: ParticipantState.Invited,
+      });
+      const stored = () =>
+        participants.findOneOrFail({
+          where: { id: participant.id },
+          withDeleted: true,
+        });
+      return {
+        conversations,
+        community,
+        conversationId: conversation.id,
+        invitee,
+        deleteParticipant: () => participants.softDelete(participant.id),
+        stored,
+      };
+    };
+
+    const unchanged = {
+      state: ParticipantState.Invited,
+      lastReadMessageId: null,
+      deletedAt: expect.any(Date),
+    };
+
+    it.each([
+      ["accepting its invite", "acceptInvite"],
+      ["marking the chat read", "markConversationRead"],
+    ] as const)("stays deleted through %s", async (_, write) => {
+      const {
+        conversations,
+        conversationId,
+        invitee,
+        deleteParticipant,
+        stored,
+      } = await setUp();
+      const load = conversations.getParticipantOrFail.bind(conversations);
+      jest
+        .spyOn(conversations, "getParticipantOrFail")
+        .mockImplementationOnce(async (lookup) => {
+          const loaded = await load(lookup);
+          await deleteParticipant();
+          return loaded;
+        });
+
+      await expect(
+        conversations[write](conversationId, invitee.id),
+      ).rejects.toThrow();
+      expect(await stored()).toMatchObject(unchanged);
+    });
+
+    it("stays deleted through a membership sync", async () => {
+      const { conversations, community, deleteParticipant, stored } =
+        await setUp();
+      const repo = ctx.app.get<Repository<Conversation>>(
+        getRepositoryToken(Conversation),
+      );
+      const load = repo.findOneOrFail.bind(repo);
+      jest
+        .spyOn(repo, "findOneOrFail")
+        .mockImplementationOnce(async (options) => {
+          const loaded = await load(options);
+          await deleteParticipant();
+          return loaded;
+        });
+
+      await conversations.syncCommunityConversationMembers(community.id);
+
+      expect(await stored()).toMatchObject(unchanged);
+    });
   });
 });

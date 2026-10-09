@@ -9,7 +9,11 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { lockLiveIds, writeUnderLive } from "src/datasources/soft-delete";
+import {
+  lockLiveIds,
+  updateLive,
+  writeUnderLive,
+} from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
 import { ConversationService } from "src/messaging/conversation.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
@@ -45,7 +49,7 @@ import {
   CommunityInviteStatus,
 } from "./entities/community-invite.entity";
 import { Community } from "./entities/community.entity";
-import { saveInviteOfLiveParents } from "./invite-writes";
+import { saveInviteOfLiveParents, setLiveInviteStatus } from "./invite-writes";
 
 /**
  * The check constraints on {@link Community}, applied before the write so a row
@@ -276,12 +280,9 @@ export class CommunityService {
     await Promise.all([
       membershipP,
       this.notifsService.sendNotifs(notifs),
-      this.userRepository.save(
-        users.map((user) => ({
-          id: user.id,
-          undergoingGroupAssignment: false,
-          pendingCommunity: null,
-        })),
+      this.userRepository.update(
+        { id: In(users.map((user) => user.id)), deletedAt: IsNull() },
+        { undergoingGroupAssignment: false, pendingCommunity: null },
       ),
     ]);
   }
@@ -390,7 +391,7 @@ export class CommunityService {
             if (saveAsPendingCommunity) {
               await em.update(
                 User,
-                { id: In(users.map((user) => user.id)) },
+                { id: In(users.map((user) => user.id)), deletedAt: IsNull() },
                 { pendingCommunity: { id: community.id } },
               );
             }
@@ -512,9 +513,28 @@ export class CommunityService {
 
     assertCommunityAccessRules(community);
 
-    const updated = await this.communityRepository.save(community);
-    await this.conversationService.syncCommunityConversationMembers(updated.id);
-    return updated;
+    // The access rules go together, as validated, so concurrent edits cannot
+    // combine into a set that breaks them.
+    const updated = await updateLive(this.communityRepository.manager, {
+      target: Community,
+      id: communityId,
+      changes: {
+        ...updateData,
+        name: community.name,
+        photo: community.photo,
+        public: community.public,
+        allowMemberInvites: community.allowMemberInvites,
+        allowStaffAssignments: community.allowStaffAssignments,
+        maxCapacity: community.maxCapacity,
+      },
+    });
+    if (!updated) {
+      throw new NotFoundException();
+    }
+    await this.conversationService.syncCommunityConversationMembers(
+      communityId,
+    );
+    return this.findOneOrFail(communityId);
   }
 
   async removeUserFromCommunity(params: {
@@ -811,11 +831,10 @@ export class CommunityService {
           relation: "users",
           add: [userId],
         });
-        await userRepository.save({
-          id: user.id,
-          undergoingGroupAssignment: false,
-          pendingCommunity: null,
-        });
+        await userRepository.update(
+          { id: user.id, deletedAt: IsNull() },
+          { undergoingGroupAssignment: false, pendingCommunity: null },
+        );
         await this.conversationService.placeCommunityConversationParticipant({
           manager,
           user,
@@ -1269,7 +1288,7 @@ export class CommunityService {
     );
 
     invite.status = CommunityInviteStatus.InviteePending;
-    const savedInvite = await this.communityInviteRepository.save(invite);
+    await setLiveInviteStatus(this.communityInviteRepository.manager, invite);
 
     await this.notifsService.sendNotifs([
       {
@@ -1301,7 +1320,10 @@ export class CommunityService {
         : []),
     ]);
 
-    return savedInvite;
+    return this.communityInviteRepository.findOneOrFail({
+      where: { id: inviteId },
+      relations: { invitingUser: true, invitedUser: true, community: true },
+    });
   }
 
   async rejectCommunityInviteRequest(
@@ -1314,7 +1336,7 @@ export class CommunityService {
     );
 
     invite.status = CommunityInviteStatus.RequestRejected;
-    await this.communityInviteRepository.save(invite);
+    await setLiveInviteStatus(this.communityInviteRepository.manager, invite);
 
     if (invite.invitingUser) {
       await this.notifsService.sendNotif({
@@ -1398,9 +1420,8 @@ export class CommunityService {
     );
 
     invite.status = CommunityInviteStatus.InviteeAccepted;
-
+    await setLiveInviteStatus(this.communityInviteRepository.manager, invite);
     await Promise.all([
-      this.communityInviteRepository.save(invite),
       this.addUsersToCommunityAndRefreshConversation({
         user: invite.invitedUser,
         community,
@@ -1480,8 +1501,8 @@ export class CommunityService {
       throw new BadRequestException();
     }
     invite.status = CommunityInviteStatus.InviteeRejected;
+    await setLiveInviteStatus(this.communityInviteRepository.manager, invite);
     await Promise.all([
-      this.communityInviteRepository.save(invite),
       ...invite.notifs!.map((notif) =>
         this.notifsService.setRead(notif.id, userId),
       ),

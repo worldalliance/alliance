@@ -6,14 +6,20 @@ import { Friend } from "./entities/friend.entity";
 import { OnetimeInvite } from "./entities/onetime-invite.entity";
 import { User } from "./entities/user.entity";
 
+/** A loaded friendship is saved only while it is still live, since its
+ * save would otherwise undo a deletion committed since the load. */
 export function saveFriendOfLiveUsers(
   manager: EntityManager,
-  params: { rel: Friend; userIds: number[] },
+  params: { rel: Friend; userIds: number[]; notFound: string },
 ): Promise<Friend> {
-  const { rel, userIds } = params;
+  const { rel, userIds, notFound } = params;
   return writeUnderLive(manager, {
     parents: userIds.map((id) => ({ target: User, id })),
     notFound: "User not found",
+    saved:
+      rel.id === undefined
+        ? undefined
+        : { target: Friend, id: rel.id, notFound },
     write: (em) => em.save(Friend, rel),
   });
 }

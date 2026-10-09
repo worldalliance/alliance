@@ -1,5 +1,6 @@
 import { EventLog, EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
+import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { User } from "../src/user/entities/user.entity";
@@ -133,5 +134,25 @@ describe("Admin role toggles (e2e)", () => {
     expect(
       (await userRepo.findOneOrFail({ where: { id: target.id } })).admin,
     ).toBe(false);
+  });
+
+  it("records nothing when the account is deleted before its role changes", async () => {
+    const target = await createTarget("deleted-mid-grant@example.com");
+    const userService = ctx.app.get(UserService);
+    const findOneOrFail = userService.findOneOrFail.bind(userService);
+    const load = jest
+      .spyOn(userService, "findOneOrFail")
+      .mockImplementation(async (id, relations) => {
+        const user = await findOneOrFail(id, relations);
+        if (id === target.id) await userRepo.softDelete(id);
+        return user;
+      });
+
+    try {
+      expect((await patchRoles(target.id, { admin: true })).status).toBe(404);
+    } finally {
+      load.mockRestore();
+    }
+    expect(await roleChangeEntries(target.id)).toEqual([]);
   });
 });

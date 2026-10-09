@@ -837,6 +837,7 @@ export class TasksService {
         .update(Form)
         .set({ title: nextTitle, formSnapshotId: nextSnapshotId })
         .where("id = :formId", { formId })
+        .andWhere('"deletedAt" IS NULL')
         .andWhere(
           expected === undefined ? "1 = 1" : '"formSnapshotId" = :expected',
           expected === undefined ? {} : { expected },
@@ -844,6 +845,9 @@ export class TasksService {
         .execute();
 
       if (result.affected === 0) {
+        if (!(await em.exists(Form, { where: { id: formId } }))) {
+          throw new NotFoundException("Form not found");
+        }
         throw new ConflictException(
           "This form was changed by someone else since you opened it.",
         );

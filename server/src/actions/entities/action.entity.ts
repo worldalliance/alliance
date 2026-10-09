@@ -397,7 +397,7 @@ export class Action {
   @IsOptional()
   project?: Relation<Project> | null;
 
-  @ManyToMany(() => User, (user) => user.authoredActions, { cascade: true })
+  @ManyToMany(() => User, (user) => user.authoredActions)
   @JoinTable()
   @ApiPropertyOptional({ type: () => User, isArray: true })
   @Type(() => User)

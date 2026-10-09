@@ -24,6 +24,7 @@ import {
   MessageSource,
   MessageTracking,
 } from "src/link-tracking/message-tracking.entity";
+import { MmsService } from "src/mms/mms.service";
 import { ActionEventNotifWorker } from "src/notifs/action-event-notif.worker";
 import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
@@ -389,6 +390,49 @@ describe("ActionEventNotifWorker (e2e)", () => {
         withDeleted: true,
       }),
     ).toBe(0);
+  });
+
+  it("records a reminder sent while its group is deleted, detached from the group", async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
+    const { memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName("deleted-mid-delivery-action"),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
+    });
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      { sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })) },
+    );
+    const mms = ctx.app.get(MmsService);
+    const send = mms.sendMms.bind(mms);
+    let deliveries = 0;
+    const delivering = jest
+      .spyOn(mms, "sendMms")
+      .mockImplementation(async (...args) => {
+        deliveries++;
+        await ctx.dataSource.manager.delete(ReminderGroup, [reminderGroup.id]);
+        return send(...args);
+      });
+
+    try {
+      await dispatch();
+    } finally {
+      delivering.mockRestore();
+    }
+
+    expect(deliveries).toBe(1);
+    expect(
+      await notifRepo.query(
+        `SELECT "reminderGroupId", sent, "mmsId" IS NOT NULL AS "hasMms" FROM action_event_notif WHERE idempotency_key = $1`,
+        [`reminder:${reminderGroup.id}:${user.id}`],
+      ),
+    ).toEqual([{ reminderGroupId: null, sent: true, hasMms: true }]);
   });
 
   it("does not send reminders older than the 3 hour lookback window", async () => {

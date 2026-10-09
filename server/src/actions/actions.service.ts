@@ -59,7 +59,11 @@ import { milliseconds } from "date-fns";
 import { groupBy } from "es-toolkit";
 import { CommunityService } from "src/community/community.service";
 import { Community } from "src/community/entities/community.entity";
-import { assertLive, writeUnderLive } from "src/datasources/soft-delete";
+import {
+  assertLive,
+  updateLive,
+  writeUnderLive,
+} from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import {
@@ -2056,6 +2060,12 @@ export class ActionsService {
           : [{ target: Form, id: rest.taskFormId }]),
       ],
       notFound: ACTION_PARENT_GONE,
+      saved: {
+        target: Action,
+        id,
+        notFound: "Action not found",
+        lock: "for_no_key_update",
+      },
       write: async (em) => {
         if (reviewers !== undefined) {
           await em.delete(ActionReviewer, { actionId: id });
@@ -2210,6 +2220,11 @@ export class ActionsService {
     return writeUnderLive(this.followUpFormRepository.manager, {
       parents:
         dto.formId === undefined ? [] : [{ target: Form, id: dto.formId }],
+      saved: {
+        target: FollowUpForm,
+        id: followUpFormId,
+        notFound: "Follow-up form not found",
+      },
       write: async (em) => parseFollowUpForm(await em.save(followUpForm)),
     });
   }
@@ -3126,22 +3141,34 @@ export class ActionsService {
     });
   }
 
-  async archive(id: number): Promise<ParsedAction> {
-    const action = await this.actionRepository.findOneOrFail({
-      where: { id },
-      relations: { reviewers: true, events: true },
-    });
-    action.archived = true;
-    return parseAction(await this.actionRepository.save(action));
+  archive(id: number): Promise<ParsedAction> {
+    return this.setArchived({ id, archived: true });
   }
 
-  async unarchive(id: number): Promise<ParsedAction> {
-    const action = await this.actionRepository.findOneOrFail({
-      where: { id },
-      relations: { reviewers: true, events: true },
-    });
-    action.archived = false;
-    return parseAction(await this.actionRepository.save(action));
+  unarchive(id: number): Promise<ParsedAction> {
+    return this.setArchived({ id, archived: false });
+  }
+
+  private async setArchived(params: {
+    id: number;
+    archived: boolean;
+  }): Promise<ParsedAction> {
+    const { id, archived } = params;
+    if (
+      !(await updateLive(this.actionRepository.manager, {
+        target: Action,
+        id,
+        changes: { archived },
+      }))
+    ) {
+      throw new NotFoundException("Action not found");
+    }
+    return parseAction(
+      await this.actionRepository.findOneOrFail({
+        where: { id },
+        relations: { reviewers: true, events: true },
+      }),
+    );
   }
 
   async createActionUpdate(

@@ -332,6 +332,43 @@ describe("Messaging soft deletion (e2e)", () => {
     expect(await messageRepo.countBy({ body: "raced" })).toBe(0);
   });
 
+  it("refuses to accept an invite withdrawn while it accepts", async () => {
+    const [initiator, invitee] = await Promise.all(
+      [0, 1].map(() =>
+        userRepo.save(
+          userRepo.create({
+            name: `Chat Member ${users}`,
+            email: `messaging-soft-delete-${users++}@example.com`,
+            password: "password",
+          }),
+        ),
+      ),
+    );
+    const { id: conversationId } = await ctx.app
+      .get(ConversationService)
+      .createDirectConversation(initiator.id, { targetUserId: invitee.id });
+    const deletion = ctx.dataSource.createQueryRunner();
+    await deletion.startTransaction();
+    try {
+      await deletion.manager.delete(Participant, {
+        conversation: { id: conversationId },
+        user: { id: invitee.id },
+      });
+      const accepting = request(server())
+        .post(`/messaging/conversations/${conversationId}/accept`)
+        .set(
+          "Authorization",
+          `Bearer ${signAccessToken(ctx.jwtService, invitee)}`,
+        )
+        .then((res) => res.status);
+      await waitForLockWait(ctx.dataSource);
+      await deletion.commitTransaction();
+      expect(await accepting).toBe(403);
+    } finally {
+      await deletion.release();
+    }
+  });
+
   it("refuses a reply to a message whose author is deleted while it sends", async () => {
     const chat = await createChat();
     const quoted = await sent({
