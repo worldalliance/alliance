@@ -17,6 +17,11 @@ export enum SidebarSection {
 
 export const ALL_SECTIONS = Object.values(SidebarSection);
 
+export const UNCONDITIONAL_SECTIONS = [
+  SidebarSection.Content,
+  SidebarSection.Advanced,
+];
+
 const SECTION_LABELS: Record<SidebarSection, string> = {
   [SidebarSection.Content]: "Content",
   [SidebarSection.Conditions]: "Conditions",
@@ -35,9 +40,9 @@ const SidebarSectionsContext = createContext<SidebarSectionsValue | null>(null);
 
 /**
  * The settings sidebar's sections, for the editor of the selected element;
- * null elsewhere, where editors render as cards. Section panels provide null
- * to what they hold, so nested editors (list sub-fields, accordion blocks)
- * stay cards.
+ * null elsewhere, as in Output View, where display blocks render as cards.
+ * Section panels provide null to what they hold, so an editor inside one
+ * doesn't claim the sidebar's sections.
  */
 export const useSidebarSections = () => useContext(SidebarSectionsContext);
 

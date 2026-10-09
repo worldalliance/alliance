@@ -44,7 +44,6 @@ type EditableChoiceFieldProps = BaseFieldProps<ChoiceField>;
 export function EditableChoiceField({
   field,
   onUpdate,
-  onRemove,
   previousFields,
   laterFields,
 }: EditableChoiceFieldProps) {
@@ -54,7 +53,6 @@ export function EditableChoiceField({
       onUpdate={onUpdate}
       previousFields={previousFields}
       laterFields={laterFields}
-      onRemove={onRemove}
     >
       <FieldLabelEditor
         value={field.label}

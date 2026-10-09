@@ -11,7 +11,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import z from "zod";
-import { selectElement } from "../lib/testing/formCanvas";
+import { openSection, selectElement } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 import { resetCustomValidatorsCache } from "./form-fields/CommonControls";
 
@@ -71,8 +71,8 @@ describe("FormBuilder save with a draft validator", () => {
   it("saves a list sub-field's draft validator under its created id", async () => {
     renderFormBuilder(withList, 1);
 
-    selectElement("L");
-    fireEvent.click(screen.getByRole("button", { name: "Extra form options" }));
+    selectElement("Text Field: S");
+    openSection("Advanced");
     fireEvent.click(screen.getByLabelText("Use custom validator"));
     const option = await screen.findByRole("option", {
       name: "Has phone number",

@@ -7,7 +7,6 @@ import type { BaseFieldProps } from "./types";
 export function EditableTimezoneField({
   field,
   onUpdate,
-  onRemove,
   previousFields,
   laterFields,
 }: BaseFieldProps<TimezoneField>) {
@@ -17,7 +16,6 @@ export function EditableTimezoneField({
       onUpdate={onUpdate}
       previousFields={previousFields}
       laterFields={laterFields}
-      onRemove={onRemove}
     >
       <FieldLabelEditor
         value={field.label}

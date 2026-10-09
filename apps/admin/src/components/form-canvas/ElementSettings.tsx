@@ -1,19 +1,21 @@
-import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import {
   isQuestionField,
   type PageItem,
 } from "@alliance/common/forms/form-schema";
 import { Copy, FileJson, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { describeHeading } from "./canvasSelection";
 import {
   SettingsAction,
   SettingsActions,
   SettingsMoveActions,
 } from "./SettingsActions";
 import { SettingsSidebar } from "./SettingsSidebar";
-import { ALL_SECTIONS, SidebarSection } from "./sidebarSections";
-
-const DISPLAY_ONLY_SECTIONS = [SidebarSection.Content, SidebarSection.Advanced];
+import {
+  ALL_SECTIONS,
+  SidebarSection,
+  UNCONDITIONAL_SECTIONS,
+} from "./sidebarSections";
 
 /** The selected element's settings, around its editor. */
 export function ElementSettings({
@@ -46,14 +48,11 @@ export function ElementSettings({
 }) {
   return (
     <SettingsSidebar
-      heading={elementInternalDescriptor(element, {
-        typeQualified: true,
-        maxTextLength: 60,
-      })}
+      heading={describeHeading(element)}
       headingActions={
         <SettingsMoveActions onMoveUp={onMoveUp} onMoveDown={onMoveDown} />
       }
-      sections={displayOnly ? DISPLAY_ONLY_SECTIONS : ALL_SECTIONS}
+      sections={displayOnly ? UNCONDITIONAL_SECTIONS : ALL_SECTIONS}
       section={section}
       onSection={onSection}
       focusPending={focusPending}

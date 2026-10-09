@@ -29,3 +29,23 @@ export function ConditionsIndicator({
     </button>
   );
 }
+
+export function ElementConditionsIndicator({
+  summary,
+  onOpen,
+}: {
+  summary: string;
+  onOpen: () => void;
+}) {
+  return (
+    <ConditionsIndicator
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen();
+      }}
+      label={`Edit conditions: shown when ${summary}`}
+      title={`Shown when ${summary}`}
+      className="absolute -right-2 -top-2 z-10 shadow-sm"
+    />
+  );
+}

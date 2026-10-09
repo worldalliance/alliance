@@ -25,6 +25,7 @@ import {
   CARD_ID_KEY,
   cardSubFields,
   defaultCardCount,
+  listCardLimits,
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
@@ -855,11 +856,7 @@ export function RenderField({
     case "list": {
       const listField = field as ListField;
       const defaultCount = defaultCardCount(listField);
-      const minCards = Math.max(0, Math.floor(Number(listField.min || 0)));
-      const maxCards =
-        typeof listField.max === "number" && listField.max >= 0
-          ? Math.floor(listField.max)
-          : Infinity;
+      const { minCards, maxCards } = listCardLimits(listField);
       const cards = resolveCards({ value, defaultCardCount: defaultCount });
       const canDelete = cards.length > minCards;
       const { addCard, removeCard, updateCard } = listCardWriters({

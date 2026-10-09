@@ -8,7 +8,8 @@ import {
   within,
 } from "@testing-library/react";
 import {
-  canvas,
+  canvasOrder,
+  heading,
   insertElement,
   openSection,
   selectElement,
@@ -51,11 +52,6 @@ const schema: FormSchema = {
   aggregateViews: [],
 };
 
-const heading = () => settings().getAllByRole("heading")[0]?.textContent;
-const canvasOrder = () =>
-  canvas()
-    .getAllByRole("button", { name: /^Select / })
-    .map((button) => button.getAttribute("aria-label"));
 const button = (name: string) =>
   screen.getByRole<HTMLButtonElement>("button", { name });
 
@@ -274,10 +270,10 @@ describe("the form canvas", () => {
         },
       ],
     });
-    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(button("Contents of Section: More"));
     const link = screen.getByRole("link", { name: "Away" });
     expect(fireEvent.click(link)).toBe(false);
-    expect(heading()).toBe("Accordion Block: More");
+    expect(heading()).toBe("Text Block: [Away](https://example.com)");
   });
 
   it("keeps a form inside an accordion from submitting", () => {
@@ -310,7 +306,7 @@ describe("the form canvas", () => {
         },
       ],
     });
-    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(button("Contents of Section: More"));
     const form = within(button("Select Accordion Block: More").parentElement!)
       .getByRole("button", { name: "Go" })
       .closest("form")!;
@@ -557,34 +553,25 @@ describe("the form canvas in a narrow window", () => {
 
   it("leaves the drawer open when Escape closes a menu inside it", () => {
     renderFormBuilder({
-      pages: [
+      ...schema,
+      variables: [
         {
-          id: "p1",
-          fields: [
-            {
-              id: "kids",
-              type: "input",
-              kind: "list",
-              label: "Kids",
-              fields: [
-                { id: "name", type: "input", kind: "text", label: "Name" },
-              ],
-            },
-          ],
+          name: "town",
+          inputs: { input1: { kind: "field", fieldId: "town" } },
+          formula: "input1",
         },
       ],
-      outputViews: [],
-      aggregateViews: [],
     });
-    selectElement("Kids");
-    const menu = settings().getByRole("button", {
-      name: "Extra form options",
+    selectElement("Town");
+    fireEvent.click(
+      settings().getByRole("button", { name: "Insert a variable" }),
+    );
+    expect(settings().getByRole("listbox")).toBeTruthy();
+    fireEvent.keyDown(settings().getByPlaceholderText("Enter field label"), {
+      key: "Escape",
     });
-    fireEvent.click(menu);
-    expect(menu.getAttribute("aria-expanded")).toBe("true");
-    fireEvent.keyDown(menu, { key: "Escape" });
-    expect(menu.getAttribute("aria-expanded")).toBe("false");
-    expect(heading()).toBe("List Field: Kids");
+    expect(settings().queryByRole("listbox")).toBeNull();
+    expect(heading()).toBe("Text Field: Town");
   });
 
   it("focuses an inserted element's first control in the drawer it opens", async () => {

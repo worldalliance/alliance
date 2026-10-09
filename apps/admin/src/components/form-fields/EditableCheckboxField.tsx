@@ -7,7 +7,6 @@ import type { BaseFieldProps } from "./types";
 export function EditableCheckboxField({
   field,
   onUpdate,
-  onRemove,
   previousFields,
   laterFields,
 }: BaseFieldProps<CheckboxField>) {
@@ -17,7 +16,6 @@ export function EditableCheckboxField({
       onUpdate={onUpdate}
       previousFields={previousFields}
       laterFields={laterFields}
-      onRemove={onRemove}
     >
       <FieldLabelEditor
         label="Checkbox Label"

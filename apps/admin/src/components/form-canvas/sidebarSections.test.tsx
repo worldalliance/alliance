@@ -19,6 +19,7 @@ import {
   VisibilityGroupContext,
   VisibilityGroupRoleKind,
 } from "../VisibilityGroupContext";
+import { SelectChildProvider } from "./ChildRows";
 import {
   ALL_SECTIONS,
   SidebarSection,
@@ -43,9 +44,11 @@ function Sidebar({ initial }: { initial: PageItem }) {
       onSelect={setSection}
       actions={<button type="button">Delete question</button>}
     >
-      {element.type === "display"
-        ? renderBlockEditor({ block: element, ...props })
-        : renderFieldEditor({ field: element, ...props })}
+      <SelectChildProvider value={() => {}}>
+        {element.type === "display"
+          ? renderBlockEditor({ block: element, ...props })
+          : renderFieldEditor({ field: element, ...props })}
+      </SelectChildProvider>
     </SidebarSections>
   );
 }
@@ -89,14 +92,10 @@ const openSection = (name: string) =>
   fireEvent.click(screen.getByRole("tab", { name }));
 
 describe("an editor in the settings sidebar", () => {
-  it("splits a question's settings across sections, without its card", () => {
+  it("splits a question's settings across sections", () => {
     renderSidebar({ id: "t", type: "input", kind: "text", label: "Town" });
 
     expect(panel().getByPlaceholderText("Enter placeholder text")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Extra form options" })).toBe(
-      null,
-    );
-    expect(screen.queryByTitle("Remove field")).toBeNull();
 
     openSection("Conditions");
     expect(panel().getByRole("button", { name: "Add rule" })).toBeTruthy();
@@ -104,7 +103,6 @@ describe("an editor in the settings sidebar", () => {
     openSection("Advanced");
     expect(panel().getByLabelText("Use custom validator")).toBeTruthy();
     expect(panel().getByText("Delete question")).toBeTruthy();
-    expect(panel().queryByLabelText("Use conditional visibility")).toBeNull();
   });
 
   it("moves between sections with the arrow keys", () => {
@@ -122,7 +120,7 @@ describe("an editor in the settings sidebar", () => {
     );
   });
 
-  it("keeps a list's sub-fields as cards", () => {
+  it("lists a list's sub-fields as rows rather than their editors", () => {
     renderSidebar({
       id: "l",
       type: "input",
@@ -131,8 +129,9 @@ describe("an editor in the settings sidebar", () => {
       fields: [{ id: "s", type: "input", kind: "text", label: "Name" }],
     });
     expect(
-      panel().getAllByRole("button", { name: "Extra form options" }),
-    ).toHaveLength(1);
+      panel().getByRole("button", { name: "Text Field: Name" }),
+    ).toBeTruthy();
+    expect(panel().queryByPlaceholderText("Enter placeholder text")).toBeNull();
   });
 
   it("drops a block's own preview, which the canvas already shows", () => {

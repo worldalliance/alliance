@@ -1,3 +1,4 @@
+import { ChevronLeft } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { SidebarSection, SidebarSections } from "./sidebarSections";
 
@@ -10,6 +11,7 @@ const EDITING_CONTROL =
  * element, whether the sidebar was already showing or appeared with it.
  */
 export function SettingsSidebar({
+  parent,
   heading,
   headingActions,
   sections,
@@ -20,6 +22,7 @@ export function SettingsSidebar({
   onFocused,
   children,
 }: {
+  parent?: { label: string; onSelect: () => void };
   heading: string;
   headingActions?: ReactNode;
   sections: readonly SidebarSection[];
@@ -43,6 +46,18 @@ export function SettingsSidebar({
 
   return (
     <div ref={ref}>
+      {parent && (
+        <button
+          type="button"
+          onClick={parent.onSelect}
+          aria-label={`Back to ${parent.label}`}
+          title={`Back to ${parent.label}`}
+          className="mx-2 mt-2 flex max-w-full items-center gap-1 rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          <ChevronLeft className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="truncate">{parent.label}</span>
+        </button>
+      )}
       <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
         <h2 className="min-w-0 truncate text-sm font-semibold text-gray-900">
           {heading}

@@ -38,7 +38,11 @@ import {
 import { withCount } from "@alliance/common/plural";
 import { parseTimeToMinutes } from "@alliance/shared/forms/timeUtils";
 import { dropUnuploadedFileAnswers } from "./forms/fileAnswers";
-import { defaultCardCount, resolveCards } from "./forms/listCards";
+import {
+  defaultCardCount,
+  listCardLimits,
+  resolveCards,
+} from "./forms/listCards";
 import { dropUnknownOptionAnswers } from "./forms/optionAnswers";
 
 /** Indices into `pages` of the currently visible pages. */
@@ -613,11 +617,7 @@ export function validateFieldValue(
     case "list": {
       const listField = field as ListField;
       const listValTyped = asCards(valueToCheck) ?? [];
-      const minCards = Math.max(0, Math.floor(Number(listField.min || 0)));
-      const maxCards =
-        typeof listField.max === "number" && listField.max >= 0
-          ? Math.floor(listField.max)
-          : Infinity;
+      const { minCards, maxCards } = listCardLimits(listField);
       if (required && listValTyped.length === 0) {
         return "Add at least one item.";
       }

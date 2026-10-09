@@ -9,6 +9,7 @@ import {
   SegmentKind,
   type VisibilityGroups,
 } from "../../lib/visibilityGroups";
+import { selectionRing } from "./CanvasContent";
 import { CanvasElement } from "./CanvasElement";
 import {
   CanvasTargetKind,
@@ -59,23 +60,32 @@ export function FormCanvas({
     element: PageItem,
     index: number,
     inGroup: boolean,
-  ) => (
-    <CanvasElement
-      key={element.id || index}
-      element={element}
-      label={describeElement(element)}
-      selected={
-        selected.kind === CanvasTargetKind.Element && selected.index === index
-      }
-      onSelect={(section) => onSelect(elementTarget(element, index), section)}
-      conditionSummary={
-        !displayOnly && !inGroup && element.visibleIfFormula
-          ? summarize(element.visibleIfFormula)
-          : null
-      }
-      drag={dragFor(page.id, index)}
-    />
-  );
+  ) => {
+    const target =
+      selected.kind === CanvasTargetKind.Element && selected.index === index
+        ? selected
+        : null;
+    return (
+      <CanvasElement
+        key={element.id || index}
+        element={element}
+        label={describeElement(element)}
+        selected={target !== null && !target.child}
+        selectedChild={target?.child}
+        onSelect={(section) => onSelect(elementTarget(element, index), section)}
+        onSelectChild={(child, section) =>
+          onSelect({ ...elementTarget(element, index), child }, section)
+        }
+        summarize={summarize}
+        conditionSummary={
+          !displayOnly && !inGroup && element.visibleIfFormula
+            ? summarize(element.visibleIfFormula)
+            : null
+        }
+        drag={dragFor(page.id, index)}
+      />
+    );
+  };
 
   const segments = pageSegments(fields, groups);
   const pageSelected = selected.kind === CanvasTargetKind.Page;
@@ -97,9 +107,7 @@ export function FormCanvas({
             aria-pressed={pageSelected}
             className={cn(
               "-mx-3 flex-1 rounded-md px-3 py-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-              pageSelected
-                ? "ring-2 ring-blue-500"
-                : "hover:ring-1 hover:ring-blue-200",
+              selectionRing(pageSelected),
             )}
           >
             <span

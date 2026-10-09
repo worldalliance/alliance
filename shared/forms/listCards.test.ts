@@ -8,6 +8,7 @@ import type { ListRowContext } from "../useFormRenderer";
 import {
   CARD_ID_KEY,
   cardSubFields,
+  listCardLimits,
   listCardWriters,
   newCardId,
   resolveCards,
@@ -84,6 +85,32 @@ describe("resolveCards", () => {
 
   it("falls back to no cards when the answer is not a list of cards", () => {
     expect(resolveCards({ value: "nope", defaultCardCount: 2 })).toEqual([]);
+  });
+});
+
+describe("listCardLimits", () => {
+  const list = (limits: Partial<ListField>): ListField => ({
+    id: "kids",
+    type: "input",
+    kind: "list",
+    label: "Kids",
+    fields: [],
+    ...limits,
+  });
+
+  it("allows any number of cards without limits", () => {
+    expect(listCardLimits(list({}))).toEqual({
+      minCards: 0,
+      maxCards: Infinity,
+    });
+  });
+
+  it("rounds the limits down and ignores a negative max", () => {
+    expect(listCardLimits(list({ min: 1.5, max: 3.7 }))).toEqual({
+      minCards: 1,
+      maxCards: 3,
+    });
+    expect(listCardLimits(list({ max: -1 })).maxCards).toBe(Infinity);
   });
 });
 

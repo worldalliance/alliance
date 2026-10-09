@@ -12,7 +12,6 @@ import type { BaseFieldProps } from "./types";
 export function EditableRangeField({
   field,
   onUpdate,
-  onRemove,
   previousFields,
   laterFields,
 }: BaseFieldProps<RangeField>) {
@@ -49,7 +48,6 @@ export function EditableRangeField({
       onUpdate={onUpdate}
       previousFields={previousFields}
       laterFields={laterFields}
-      onRemove={onRemove}
     >
       <FieldLabelEditor
         value={field.label}

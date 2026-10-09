@@ -77,12 +77,18 @@ it("gives each list sub-field its own expression text", async () => {
       },
     ]),
   );
-  selectElement("People");
+  selectElement("First");
+  openSection("Conditions");
   editAsExpression();
   await typeExpression("c1 AND");
+  selectElement("Second");
+  openSection("Conditions");
   editAsExpression();
+  expect(expressions().map((box) => box.value)).toEqual(["c1"]);
 
-  expect(expressions().map((box) => box.value)).toEqual(["c1 AND", "c1"]);
+  selectElement("First");
+  openSection("Conditions");
+  expect(expressions().map((box) => box.value)).toEqual(["c1 AND"]);
 });
 
 it("keeps an output block's expression text across tabs", async () => {

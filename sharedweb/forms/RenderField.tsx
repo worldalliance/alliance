@@ -23,6 +23,7 @@ import {
   CARD_ID_KEY,
   cardSubFields,
   defaultCardCount,
+  listCardLimits,
   listCardWriters,
   resolveCards,
 } from "@alliance/shared/forms/listCards";
@@ -42,7 +43,7 @@ import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import type { FieldConditionContext } from "@alliance/shared/useFormRenderer";
 import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
-import { ChevronDown, Plus, X } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import {
   Fragment,
   useEffect,
@@ -59,7 +60,6 @@ import Card from "../ui/Card";
 import CharacterLimitNotice from "../ui/CharacterLimitNotice";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import ImageLightbox from "../ui/ImageLightbox";
-import NewButton, { ButtonColor, ButtonSize } from "../ui/NewButton";
 import PhoneNumberInput from "../ui/PhoneNumberInput";
 import YesNoToggle from "../ui/YesNoToggle";
 import CityAutosuggest from "./CityAutosuggest";
@@ -69,6 +69,12 @@ import {
   dropdownIconsPadding,
 } from "./ClearSelection";
 import { getCustomComponentById } from "./components";
+import {
+  ListAddButton,
+  ListCard,
+  ListHiddenNote,
+  ListRemoveButton,
+} from "./ListCard";
 import MultiSelectDropdown from "./MultiSelectDropdown";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { CheckboxSection } from "./optionPicker";
@@ -1010,11 +1016,7 @@ export function RenderField({
     case "list": {
       const listField = field as ListField;
       const defaultCount = defaultCardCount(listField);
-      const minCards = Math.max(0, Math.floor(Number(listField.min || 0)));
-      const maxCards =
-        typeof listField.max === "number" && listField.max >= 0
-          ? Math.floor(listField.max)
-          : Infinity;
+      const { minCards, maxCards } = listCardLimits(listField);
 
       const cards = resolveCards({ value, defaultCardCount: defaultCount });
       const canDelete = cards.length > minCards;
@@ -1051,89 +1053,68 @@ export function RenderField({
                 return null;
               }
               return (
-                <Card
+                <ListCard
                   key={cardId}
-                  style={CardStyle.WhiteBorder}
-                  className="gap-4"
-                >
-                  <div className="flex flex-row gap-x-4 justify-between">
-                    <div className="w-full space-y-6">
-                      {fields.map((sub) => {
-                        const isHiddenInOutput = hiddenInOutputIds.has(sub.id);
-                        return (
-                          <div key={sub.id}>
-                            <RenderField
-                              field={sub}
-                              value={card[sub.id]}
-                              onChange={
-                                onChange
-                                  ? (val) =>
-                                      updateCard({
-                                        cardId,
-                                        subFieldId: sub.id,
-                                        value: val,
-                                      })
-                                  : undefined
-                              }
-                              disabled={disabled}
-                              isOutputView={isOutputView}
-                              isPreview={isPreview}
-                              fileUpload={fileUpload}
-                              fileUploadSlot={{
-                                kind: "listCard",
-                                fieldId: field.id,
-                                cardId,
-                                subFieldId: sub.id,
-                                defaultCardCount: defaultCount,
-                              }}
-                              error={
-                                fieldErrors?.[
-                                  `${field.id}:${cardIndex}:${sub.id}`
-                                ] ?? null
-                              }
-                              randomizationKey={randomizationKey}
-                              disableOptionRandomization={
-                                disableOptionRandomization
-                              }
-                              user={user}
-                              fieldContext={row}
-                            />
-                            {!disabled &&
-                              isHiddenInOutput &&
-                              !responseHiddenFromOthers && (
-                                <p className="text-xs text-gray-500">
-                                  This will not be shown to other members.
-                                </p>
-                              )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {!disabled && (
-                      <NewButton
+                  remove={
+                    !disabled && (
+                      <ListRemoveButton
                         onClick={() => removeCard(cardId)}
-                        disabled={disabled || !canDelete}
-                        color={ButtonColor.Red}
-                        size={ButtonSize.Small}
-                        iconLeft={X}
+                        disabled={!canDelete}
                       />
-                    )}
-                  </div>
-                </Card>
+                    )
+                  }
+                >
+                  {fields.map((sub) => {
+                    const isHiddenInOutput = hiddenInOutputIds.has(sub.id);
+                    return (
+                      <div key={sub.id}>
+                        <RenderField
+                          field={sub}
+                          value={card[sub.id]}
+                          onChange={
+                            onChange
+                              ? (val) =>
+                                  updateCard({
+                                    cardId,
+                                    subFieldId: sub.id,
+                                    value: val,
+                                  })
+                              : undefined
+                          }
+                          disabled={disabled}
+                          isOutputView={isOutputView}
+                          isPreview={isPreview}
+                          fileUpload={fileUpload}
+                          fileUploadSlot={{
+                            kind: "listCard",
+                            fieldId: field.id,
+                            cardId,
+                            subFieldId: sub.id,
+                            defaultCardCount: defaultCount,
+                          }}
+                          error={
+                            fieldErrors?.[
+                              `${field.id}:${cardIndex}:${sub.id}`
+                            ] ?? null
+                          }
+                          randomizationKey={randomizationKey}
+                          disableOptionRandomization={
+                            disableOptionRandomization
+                          }
+                          user={user}
+                          fieldContext={row}
+                        />
+                        {!disabled &&
+                          isHiddenInOutput &&
+                          !responseHiddenFromOthers && <ListHiddenNote />}
+                      </div>
+                    );
+                  })}
+                </ListCard>
               );
             })}
             {!disabled && cards.length < maxCards && (
-              <NewButton
-                type="button"
-                onClick={addCard}
-                disabled={disabled}
-                color={ButtonColor.LightHover}
-                iconLeft={Plus}
-                centerIcon
-                className="w-full"
-              >
-                {listField.addButtonLabel?.trim() ?? "Add item"}
-              </NewButton>
+              <ListAddButton listField={listField} onClick={addCard} />
             )}
           </div>
           {renderValidationMessage()}

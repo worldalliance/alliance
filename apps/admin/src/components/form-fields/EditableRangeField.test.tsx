@@ -3,6 +3,7 @@ import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { EditorSidebar } from "../../lib/testing/EditorSidebar";
 import { CustomValidatorDraftsContext } from "./customValidatorDrafts";
 import { EditableRangeField } from "./EditableRangeField";
 
@@ -22,17 +23,18 @@ function renderEditor(optionCount: number | undefined) {
               createDraftId: () => -1,
             }}
           >
-            <EditableRangeField
-              field={{
-                id: "scale",
-                type: "input",
-                kind: "range",
-                label: "Scale",
-                optionCount,
-              }}
-              onUpdate={() => {}}
-              onRemove={() => {}}
-            />
+            <EditorSidebar>
+              <EditableRangeField
+                field={{
+                  id: "scale",
+                  type: "input",
+                  kind: "range",
+                  label: "Scale",
+                  optionCount,
+                }}
+                onUpdate={() => {}}
+              />
+            </EditorSidebar>
           </CustomValidatorDraftsContext.Provider>
         </SiteAppProvider>
       </MemoryRouter>
