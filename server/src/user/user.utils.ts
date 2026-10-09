@@ -14,6 +14,20 @@ export function userActionNotifsEnabled_email(
   );
 }
 
+function textable(
+  user: Pick<
+    User,
+    "turnedOffAllNotifs" | "phoneNumber" | "phoneNumberUnsubscribed"
+  >,
+): boolean {
+  return (
+    !user.turnedOffAllNotifs &&
+    user.phoneNumber !== null &&
+    isCanonicalE164(user.phoneNumber) &&
+    !user.phoneNumberUnsubscribed
+  );
+}
+
 export function userActionNotifsEnabled_text(
   user: Pick<
     User,
@@ -25,12 +39,7 @@ export function userActionNotifsEnabled_text(
   >,
 ): boolean {
   return Boolean(
-    user.textNotifsForActions &&
-    !user.turnedOffAllNotifs &&
-    user.phoneNumber !== null &&
-    isCanonicalE164(user.phoneNumber) &&
-    user.hasActiveContract &&
-    !user.phoneNumberUnsubscribed,
+    user.textNotifsForActions && user.hasActiveContract && textable(user),
   );
 }
 
