@@ -41,7 +41,10 @@ export function ProjectTimeline({
   className?: string;
 }) {
   return (
-    <section className={className} aria-label="Timeline">
+    <section
+      className={cn("lg:[container-type:inline-size]", className)}
+      aria-label="Timeline"
+    >
       <BandHeading
         onDark
         size={BandHeadingSize.Section}
@@ -49,7 +52,7 @@ export function ProjectTimeline({
       >
         Timeline
       </BandHeading>
-      <ol className="site-sans relative flex flex-col gap-4 text-sm lg:mx-[5.5px] lg:grid lg:grid-cols-[repeat(5,minmax(0,1fr))_0] lg:gap-0 lg:[container-type:inline-size] lg:before:absolute lg:before:top-[5.5px] lg:before:right-0 lg:before:left-0 lg:before:h-px lg:before:bg-white/35">
+      <ol className="site-sans relative flex flex-col gap-4 text-sm lg:mx-[min(5rem,6cqw)] lg:grid lg:grid-cols-[repeat(5,minmax(0,1fr))_0] lg:gap-0 lg:before:absolute lg:before:top-[5.5px] lg:before:right-0 lg:before:left-0 lg:before:h-px lg:before:bg-white/35">
         {PHASES.map((phase, idx) => {
           const current = idx === currentIdx;
           const last = idx === PHASES.length - 1;
@@ -57,7 +60,7 @@ export function ProjectTimeline({
             <li
               key={phase.label}
               aria-current={current ? "step" : undefined}
-              className="relative flex gap-3.5 lg:flex-col lg:items-start lg:gap-3 lg:text-center lg:first:text-left lg:last:text-right lg:first:[&>div:last-child]:-ml-[5.5px] lg:first:[&>div:last-child]:translate-x-0 lg:last:[&>div:last-child]:ml-[5.5px] lg:last:[&>div:last-child]:-translate-x-full"
+              className="relative flex gap-3.5 lg:flex-col lg:items-start lg:gap-3 lg:text-center"
             >
               <div className="flex h-5 items-center gap-1 lg:h-auto lg:-translate-x-1/2">
                 <span
