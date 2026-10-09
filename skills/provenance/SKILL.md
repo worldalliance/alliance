@@ -5,7 +5,7 @@ description: Read before implementing a feature or behavior change.
 
 # Provenance
 
-These files let a reviewer tell what the user asked for from what the agent decided while implementing. Create them at the start of a task and update them as it runs.
+These files hold the current requirements and agent decisions, with their origins distinguished. Create them at the start of a task and revise them in place as requirements change.
 
 ## When
 
@@ -25,9 +25,11 @@ UUIDv7 makes directory listings sort by creation time. Inside, two files: `REQUI
 
 Open with frontmatter naming the user and the task. Use `git config user.name` for the user field. Do not redact this field.
 
-Only what the user actually said: requirements, constraints, preferences, selections, clarifications. Copy or closely paraphrase only the minimum text needed to preserve meaning.
+State the current user requirements, constraints, preferences, and approved selections directly. Incorporate clarifications into the affected entries and remove superseded requirements. Keep conversation history, approval quotes, and interview question numbers out of the files.
 
-Each entry must make sense without the task transcript. When the user refers to a proposal, finding, numbered step, or other shorthand, include the part needed to interpret the statement and label who wrote it. User approval does not turn agent-authored context into human-origin information.
+Make each requirement self-contained: expand shorthand and include the exact behavior, values, and message copy needed to implement it. Omit references to unavailable attachments or the task transcript. Accessible supporting links may supplement the requirements.
+
+Distinguish user-originated requirements from agent-proposed, user-approved selections with concise origin labels. Origin is metadata, not a narrative of how the requirement was negotiated.
 
 Replace every credential or secret with `[redacted]`. Do the same for personal information unrelated to the requirement. Do not redact the user frontmatter field.
 
@@ -35,8 +37,8 @@ Never infer user intent from existing code, prior agent decisions, or agent prop
 
 ## DECISIONS.md
 
-Decisions, assumptions, interpretations, and implementation choices made by agents, each with its rationale. These are not authoritative merely for existing; a later agent may reconsider them unless REQUIREMENTS.md or an external requirement constrains them.
+State current agent decisions, assumptions, interpretations, and implementation choices, each with its rationale. Replace superseded choices in place. Reference requirements rather than duplicating them. These decisions are not authoritative merely for existing; a later agent may reconsider them within the constraints in REQUIREMENTS.md.
 
 ## Unclear provenance
 
-Record it as unknown rather than guessing. Delegation is not origin: if the agent proposes PostgreSQL and the user says something similar to "go with your recommendation" or "yes", the approval belongs in REQUIREMENTS.md and the choice of PostgreSQL in DECISIONS.md. "Use PostgreSQL" puts it in REQUIREMENTS.md. Existing code using PostgreSQL establishes usage, not user intent or rationale.
+Record unknown origins explicitly. Approval makes an agent proposal an approved requirement, not a user-originated idea. For example, an approved agent recommendation to use PostgreSQL is a direct requirement labeled agent-proposed and user-approved; the implementation rationale belongs in DECISIONS.md.
