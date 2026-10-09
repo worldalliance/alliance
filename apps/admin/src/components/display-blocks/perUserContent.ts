@@ -1,6 +1,8 @@
 import type {
   DisplayBlock,
   ManualDisplayBlockContent,
+  ManualImportClipboardPayload,
+  ManualImportField,
 } from "@alliance/common/forms/display-blocks";
 import { resolveDisplayBlockForUser } from "@alliance/shared/formrenderer";
 import type { AddressedWrite } from "../../lib/displayBlockById";
@@ -16,14 +18,14 @@ const stripManualFields = (
   return rest;
 };
 
-export const stripIdentityFields = <T extends Record<string, unknown>>(
+const stripIdentityFields = <T extends Record<string, unknown>>(
   value: T,
 ): Omit<T, "kind" | "id" | "type"> => {
   const { kind: _kind, id: _id, type: _type, ...rest } = value;
   return rest;
 };
 
-export const baseManualContentFromBlock = (
+const baseManualContentFromBlock = (
   block: DisplayBlock,
 ): ManualDisplayBlockContent =>
   stripIdentityFields(
@@ -107,4 +109,53 @@ export function writeBlockFor<T extends DisplayBlock>({
   if (!onUpdate) return null;
   onUpdate(updatesFor({ current: block, userId, update }));
   return landingIn(block, userId);
+}
+
+/**
+ * `block`'s per-user content with each entry's text set as that user's
+ * `field`, counting the users it changes and those whose differing text it
+ * replaces.
+ */
+export function importManualContent({
+  block,
+  field,
+  entries,
+}: {
+  block: DisplayBlock;
+  field: ManualImportField;
+  entries: ManualImportClipboardPayload;
+}): {
+  manualUserContent: Record<string, ManualDisplayBlockContent>;
+  imported: number;
+  overwritten: number;
+} {
+  const baseContent = baseManualContentFromBlock(block);
+  const manualUserContent: Record<string, ManualDisplayBlockContent> = {
+    ...block.manualUserContent,
+  };
+  let imported = 0;
+  let overwritten = 0;
+  for (const [userId, value] of Object.entries(entries)) {
+    const existingContent = manualUserContent[userId] ?? baseContent;
+    const existingValue = (
+      existingContent as Record<string, unknown> | undefined
+    )?.[field];
+    if (manualUserContent[userId] && existingValue === value) {
+      continue;
+    }
+    if (
+      manualUserContent[userId] &&
+      typeof existingValue === "string" &&
+      existingValue.length > 0 &&
+      existingValue !== value
+    ) {
+      overwritten++;
+    }
+    manualUserContent[userId] = stripIdentityFields({
+      ...existingContent,
+      [field]: value,
+    }) as ManualDisplayBlockContent;
+    imported++;
+  }
+  return { manualUserContent, imported, overwritten };
 }

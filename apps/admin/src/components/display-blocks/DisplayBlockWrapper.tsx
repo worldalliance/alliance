@@ -16,6 +16,7 @@ import { CheckCircle2, Circle } from "lucide-react";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -34,9 +35,8 @@ import { useTypedExpression } from "../form-fields/conditions/expressionBuffers"
 import { ElementConditions } from "../form-fields/conditions/VisibilityConditions";
 import { BlockPreviewAllowed } from "./BlockPreview";
 import {
-  baseManualContentFromBlock,
+  importManualContent,
   landingIn,
-  stripIdentityFields,
   writeBlockFor,
   type BlockWriteLanding,
   type LandingFor,
@@ -405,6 +405,12 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     [activeManualUserId, updateBlockFor],
   );
 
+  // An import awaits the clipboard before counting what it would replace.
+  const latestBlock = useRef(block);
+  useLayoutEffect(() => {
+    latestBlock.current = block;
+  });
+
   const handleImportFromClipboard = useCallback(async () => {
     if (!onUpdate || !block || !manualImportField) return;
     let clipboardText: string;
@@ -428,53 +434,28 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       toastError('Expected a JSON object like {"42": "text for user 42"}.');
       return;
     }
-    const parsed = parseResult.data;
+    const entries = parseResult.data;
 
-    const baseContent = baseManualContentFromBlock(block);
-
-    const nextManualContent: Record<string, ManualDisplayBlockContent> = {
-      ...manualUserContent,
-    };
-
-    const parsedEntries = Object.entries(parsed);
-    let importedCount = 0;
-    let overwriteCount = 0;
-    for (const [userId, value] of parsedEntries) {
-      const existingContent = nextManualContent[userId] ?? baseContent;
-      const existingValue = (
-        existingContent as Record<string, unknown> | undefined
-      )?.[manualImportField];
-      if (nextManualContent[userId] && existingValue === value) {
-        continue;
-      }
-      if (
-        nextManualContent[userId] &&
-        typeof existingValue === "string" &&
-        existingValue.length > 0 &&
-        existingValue !== value
-      ) {
-        overwriteCount++;
-      }
-      nextManualContent[userId] = stripIdentityFields({
-        ...existingContent,
-        [manualImportField]: value,
-      }) as ManualDisplayBlockContent;
-      importedCount++;
-    }
-
-    if (parsedEntries.length === 0) {
+    if (Object.keys(entries).length === 0) {
       toastError("No string entries found in clipboard JSON.");
       return;
     }
-    if (importedCount === 0) {
+    const readBlock = latestBlock.current;
+    if (!readBlock) return;
+    const { imported, overwritten } = importManualContent({
+      block: readBlock,
+      field: manualImportField,
+      entries,
+    });
+    if (imported === 0) {
       toastError("Clipboard content already matches existing per-user values.");
       return;
     }
 
-    if (overwriteCount > 0) {
+    if (overwritten > 0) {
       const ok = await confirm({
         title: "Overwrite existing per-user content?",
-        message: `${withCount(overwriteCount, "user")} already ${pickForCount(overwriteCount, "has", "have")} a different ${manualImportField} value. Continue and replace ${pickForCount(overwriteCount, "it", "them")}?`,
+        message: `${withCount(overwritten, "user")} already ${pickForCount(overwritten, "has", "have")} a different ${manualImportField} value. Continue and replace ${pickForCount(overwritten, "it", "them")}?`,
         confirmLabel: "Overwrite",
         cancelLabel: "Cancel",
         mode: ConfirmMode.Fullscreen,
@@ -482,21 +463,37 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       if (!ok) return;
     }
 
-    onUpdate({
-      manualPerUser: true,
-      manualUserContent: nextManualContent,
-    } as Partial<T>);
+    // The form can change while the clipboard is read or the admin confirms.
+    const landing = writeBlockFor({
+      block,
+      userId: null,
+      update: (current) =>
+        ({
+          manualPerUser: true,
+          manualUserContent: importManualContent({
+            block: current,
+            field: manualImportField,
+            entries,
+          }).manualUserContent,
+        }) as Partial<T>,
+      updateCurrent,
+      onUpdate,
+    });
 
     setIsMenuOpen(false);
-    success(`Imported content for ${withCount(importedCount, "user")}.`);
+    if (!landing) {
+      toastError("The block was deleted before its content was imported.");
+      return;
+    }
+    success(`Imported content for ${withCount(imported, "user")}.`);
   }, [
     block,
     confirm,
     manualImportField,
-    manualUserContent,
     onUpdate,
     success,
     toastError,
+    updateCurrent,
   ]);
 
   const clearContentForActiveUser = () => {
