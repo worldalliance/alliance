@@ -2,6 +2,7 @@
 import { isMaxCapacityRequired } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { changedPhoto } from "@alliance/common/image-src";
+import { R } from "@alliance/common/result";
 import {
   communityGetCommunityInvites,
   communityGetMemberContactInfo,
@@ -30,7 +31,7 @@ import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
 import { LegendList } from "@legendapp/list";
 import { useQuery } from "@tanstack/react-query";
 import { keyBy } from "es-toolkit";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { ChevronDown, Settings, Trash2, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -59,6 +60,7 @@ import { SimplePageTitle } from "../../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../../components/system/Text";
 import UserActivityCard from "../../../components/UserActivityCard";
 import { useAuth } from "../../../lib/AuthContext";
+import { resolveGroupsLink } from "../../../lib/groupsLink";
 import { Anchor, WalkthroughAnchor } from "../../../lib/onboarding/walkthrough";
 import { pickImageDataUri } from "../../../lib/pickImageDataUri";
 import { colors } from "../../../lib/style/colors";
@@ -71,6 +73,9 @@ const TAB_DISPLAY_NAMES: Record<Tab, string> = {
   invites: "Invites",
   settings: "Settings",
 };
+
+const isTab = (value: string | undefined): value is Tab =>
+  value !== undefined && Object.hasOwn(TAB_DISPLAY_NAMES, value);
 
 export default function GroupsScreen() {
   const { user } = useAuth();
@@ -88,6 +93,8 @@ export default function GroupsScreen() {
   );
   const [tab, setTab] = useState<Tab>("activity");
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
+  const { tab: tabParam, communityId: communityIdParam } =
+    useLocalSearchParams<{ tab?: string; communityId?: string }>();
 
   // Keep the selected group valid as communities load or change.
   useEffect(() => {
@@ -97,6 +104,52 @@ export default function GroupsScreen() {
       return communities[0]?.id ?? null;
     });
   }, [communities]);
+
+  const hasLinkParams =
+    tabParam !== undefined || communityIdParam !== undefined;
+  const [linkRefreshed, setLinkRefreshed] = useState(false);
+
+  // The cached list can predate the join a link announces.
+  useEffect(() => {
+    if (!hasLinkParams) return;
+    let cancelled = false;
+    void refreshCommunities().then(() => {
+      if (!cancelled) setLinkRefreshed(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasLinkParams, refreshCommunities]);
+
+  // Cleared once applied, so a later visit with the same link applies it again.
+  useEffect(() => {
+    if (!linkRefreshed || isFetching || didFail) return;
+    R.match(
+      resolveGroupsLink({
+        communityIds: communities.map((c) => c.id),
+        isTab,
+        tabParam,
+        communityIdParam,
+      }),
+      {
+        success: ({ communityId, tab }) => {
+          if (communityId !== null) setSelectedCommunityId(communityId);
+          if (tab !== null) setTab(tab);
+        },
+        failure: () =>
+          Alert.alert("Group unavailable", "You're not in that group."),
+      },
+    );
+    setLinkRefreshed(false);
+    router.setParams({ tab: undefined, communityId: undefined });
+  }, [
+    linkRefreshed,
+    isFetching,
+    didFail,
+    communities,
+    tabParam,
+    communityIdParam,
+  ]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
