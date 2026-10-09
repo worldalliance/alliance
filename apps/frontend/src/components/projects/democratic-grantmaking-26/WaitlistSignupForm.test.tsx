@@ -26,8 +26,7 @@ serveApi(
   routes({
     "GET /waitlist/referral": ({ request }) => referral(new URL(request.url)),
     "GET /waitlist/mail-config": () => Response.json({ enabled: mailEnabled }),
-    "GET /waitlist/browser": () =>
-      Response.json({ entry: null, inviteCode: null }),
+    "GET /waitlist/browser": () => Response.json({ entry: null }),
     "POST /waitlist/entries": async ({ request }) => {
       const body: CreateWaitlistEntryDto = await request.json();
       sent.push(body);
@@ -57,7 +56,6 @@ const organizationReferral = (entryCount: number): WaitlistReferralDto => ({
 const renderForm = (search = "", client = new QueryClient()) => {
   client.setQueryData(queryKeys.waitlistBrowser(), {
     entry: null,
-    inviteCode: null,
   } satisfies WaitlistBrowserDto);
   return render(
     <QueryClientProvider client={client}>

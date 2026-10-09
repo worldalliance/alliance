@@ -27,7 +27,6 @@ import { EmailType } from "src/mail/mail.entity";
 import { OnlyThrottle } from "src/utils/throttle";
 import {
   CreateWaitlistEntryDto,
-  RememberInviteDto,
   WaitlistBrowserDto,
   WaitlistCountDto,
   WaitlistEntryResultDto,
@@ -108,18 +107,9 @@ export class WaitlistController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<WaitlistBrowserDto> {
-    return new WaitlistBrowserDto(await this.browserService.find(req, res));
-  }
-
-  @Post("browser/invite")
-  @Public()
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiNoContentResponse()
-  async rememberInvite(
-    @Body() dto: RememberInviteDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<void> {
-    await this.browserService.rememberInvite({ res, code: dto.code });
+    return new WaitlistBrowserDto(
+      await this.browserService.findEntry(req, res),
+    );
   }
 
   @Delete("browser")

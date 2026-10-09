@@ -32,7 +32,6 @@ export function ForgetBrowser({ onForgotten }: { onForgotten: () => void }) {
     onSuccess: () => {
       queryClient.setQueryData(queryKeys.waitlistBrowser(), {
         entry: null,
-        inviteCode: null,
       } satisfies WaitlistBrowserDto);
       invite.forget();
       onForgotten();
