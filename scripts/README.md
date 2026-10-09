@@ -25,6 +25,11 @@ Pulls a `pg_dump` of staging over SSH into `./db_dumps`. Override `SSH_HOST_ALIA
 `restore_staging_data.sh <dump-file>`
 Drops and recreates the local db named by `server/.env`, then restores the dump. `RESET_LOCAL_DB=0` skips the drop; `LOCAL_DB_NAME` and the `LOCAL_PG*` vars override the target.
 
+## Deploy
+
+`deploy_backend.sh`
+Run by `deploy.yaml` on the backend host, not locally. Swaps `~/nest-build.zip` in as `~/nest-backend`, migrates, and rolls back to the old release on failure. A release that applies RemoveStreakRecognition stops the backend first and reverts the removal if the new backend fails; if that revert fails, the backend is left stopped and the job fails with an `::error::`.
+
 ## Other
 
 `check-gitignore.sh`

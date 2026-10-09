@@ -38,17 +38,3 @@ export async function assignExperimentArms(
   });
   return new Map(assignments.map(({ userId, arm }) => [userId, arm]));
 }
-
-export async function assignExperimentArm(
-  em: EntityManager,
-  params: { experiment: Experiment; userId: number },
-): Promise<ExperimentArm> {
-  const { experiment, userId } = params;
-  const arm = (
-    await assignExperimentArms(em, { experiment, userIds: [userId] })
-  ).get(userId);
-  if (arm === undefined) {
-    throw new Error(`no ${experiment} arm for user ${userId}`);
-  }
-  return arm;
-}

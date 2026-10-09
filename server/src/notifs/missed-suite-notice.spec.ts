@@ -103,10 +103,8 @@ describe("resolveMissedSuitePlan", () => {
   const outcome = (suiteId: number): SuiteOutcome => ({
     suiteId,
     closedAt: new Date(0),
-    onboarding: false,
     actions: [{ id: 1, name: "Task" }],
     missedActionIdsByUser: new Map([[5, [1]]]),
-    completedUserIds: new Set(),
   });
   const resolve = (
     overrides: Partial<Pick<ReminderGroup, "actionSuite" | "emailMessage">>,

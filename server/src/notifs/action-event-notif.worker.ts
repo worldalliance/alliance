@@ -8,10 +8,7 @@ import {
   cohortNotifiesRecipientPersonally,
   ReminderCohortType,
 } from "src/actions/entities/reminder-group.entity";
-import {
-  type MissedSuiteStanding,
-  type SuiteOutcome,
-} from "src/actions/missed-suite-streak";
+import { type MissedSuiteStanding } from "src/actions/missed-suite-streak";
 import {
   NOTIF_SOURCE,
   reminderContext,
@@ -21,6 +18,7 @@ import { EmailStatus } from "src/mail/mail.entity";
 import { MailService, processKeywordReplacements } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { PushService } from "src/push/push.service";
+import { tasksUrl } from "src/search/approutes";
 import type { User } from "src/user/entities/user.entity";
 import {
   userActionNotifsEnabled_email,
@@ -44,10 +42,14 @@ import {
 } from "./entities/action-event-notif.entity";
 import {
   Experiment,
+  ExperimentArm,
   ExperimentAssignment,
 } from "./entities/experiment-assignment.entity";
-import { type Notification } from "./entities/notification.entity";
-import { assignExperimentArm } from "./experiment-assignment";
+import {
+  NotificationCategory,
+  type Notification,
+} from "./entities/notification.entity";
+import { assignExperimentArms } from "./experiment-assignment";
 import { LOCK_KEYS } from "./lock-keys";
 import { withPgAdvisoryLock } from "./lock-utils";
 import {
@@ -61,12 +63,7 @@ import {
 } from "./missed-suite-notice";
 import { MissedSuitePlanService } from "./missed-suite-plans.service";
 import { NotifsService } from "./notifs.service";
-import { sendReminderInAppEntry } from "./reminder-in-app-entry";
-import {
-  STREAK_COPY_RECOGNIZES,
-  streakRecognitionTemplates,
-} from "./streak-recognition";
-import { StreakRecognitionService } from "./streak-recognition.service";
+import { buildReminderMessage } from "./reminder-message";
 
 export type UncompletedTaskSummary = {
   id: number;
@@ -110,7 +107,6 @@ export class ActionEventNotifWorker {
     private readonly notifsService: NotifsService,
     @InjectRepository(ExperimentAssignment)
     private readonly experimentAssignmentRepository: Repository<ExperimentAssignment>,
-    private readonly streakRecognitions: StreakRecognitionService,
   ) {}
 
   @Cron("*/3 * * * *")
@@ -132,11 +128,10 @@ export class ActionEventNotifWorker {
         const duePlans = await this.missedSuitePlans.dropClaimedPlans(
           await this.reminderService.evaluateNotifications(windowStart, now),
         );
-        const closedSuites = await this.missedSuitePlans.findClosedSuitesFor({
-          plans: duePlans,
+        const closedSuites = await this.missedSuitePlans.findClosedSuitesFor(
+          duePlans,
           now,
-          forStreakRecognition: true,
-        });
+        );
         const skippedByGroup = new Map<
           number,
           { problem: string; count: number }
@@ -154,7 +149,7 @@ export class ActionEventNotifWorker {
           });
           switch (resolution.kind) {
             case MissedSuitePlanKind.Ordinary:
-              await this.processOne(plan, closedSuites);
+              await this.processOne(plan);
               break;
             case MissedSuitePlanKind.NoSuite:
               skip(plan, "has no suite");
@@ -238,10 +233,7 @@ export class ActionEventNotifWorker {
     });
   }
 
-  private async processOne(
-    plan: NotificationPlan,
-    closedSuites: SuiteOutcome[],
-  ) {
+  private async processOne(plan: NotificationPlan) {
     let uncompletedTasks = await this.findUncompletedTasksForPlan(plan);
 
     if (plan.group.excludePreviouslyNotified) {
@@ -272,10 +264,6 @@ export class ActionEventNotifWorker {
     }
 
     const idempotency_key = `reminder:${plan.group.id}:${plan.user.id}`;
-    const recognition = await this.streakRecognitions.resolve(
-      plan,
-      closedSuites,
-    );
 
     // Group-leads nudges are about *other* users' tasks, so they don't get
     // the event stamp or covered-task record and never count toward
@@ -300,10 +288,6 @@ export class ActionEventNotifWorker {
       sent: false,
       type: ActionEventNotifType.Reminder,
       idempotency_key,
-      actionSuite: recognition ? plan.group.actionSuite : undefined,
-      streakCount: recognition?.count ?? null,
-      streakRunSuiteId: recognition?.runSuiteId ?? null,
-      streakRecognitionCopy: recognition?.copy ?? null,
     } satisfies Partial<ActionEventNotif>);
 
     let notif: ActionEventNotif;
@@ -317,44 +301,16 @@ export class ActionEventNotifWorker {
       throw error;
     }
 
-    const templates = recognition
-      ? streakRecognitionTemplates({
-          copy: recognition.copy,
-          group: plan.group,
-          streakCount: recognition.count,
-        })
-      : plan.group;
-    const render = (template: string) =>
-      this.processCustomReminderText(template, plan, uncompletedTasks);
-    const recognized = recognition
-      ? STREAK_COPY_RECOGNIZES[recognition.copy]
-      : false;
-    if (recognized) {
-      notif.notification =
-        (await sendReminderInAppEntry(this.notifsService, {
-          plan,
-          template: templates.pushMessage,
-          render,
-          tasks: uncompletedTasks,
-        })) ?? undefined;
-      notif.sent = !!notif.notification;
-      if (notif.notification) {
-        await this.actionEventNotifsRepository.save(notif);
-      }
-    }
     const sendingAnyNotif = await this.deliver({
       notif,
       user: plan.user,
       tracking: reminderTracking(plan, notif),
-      templates,
-      render,
-      push: {
-        screen: "/",
-        idempotencyKey: plan.group.id.toString(),
-        notification: notif.notification,
-      },
+      templates: plan.group,
+      render: (template) =>
+        this.processCustomReminderText(template, plan, uncompletedTasks),
+      push: { screen: "/", idempotencyKey: plan.group.id.toString() },
     });
-    if (sendingAnyNotif || recognized) {
+    if (sendingAnyNotif) {
       await this.actionEventNotifsRepository.save(notif);
     }
   }
@@ -377,15 +333,7 @@ export class ActionEventNotifWorker {
           standing,
           copy:
             standing.missNumber === 1
-              ? FIRST_MISS_COPY[
-                  await assignExperimentArm(
-                    this.experimentAssignmentRepository.manager,
-                    {
-                      experiment: Experiment.MissedSuiteFirstNotice,
-                      userId: plan.user.id,
-                    },
-                  )
-                ]
+              ? FIRST_MISS_COPY[await this.assignFirstMissArm(plan.user.id)]
               : MissedSuiteNoticeCopy.SecondMissReportV1,
         }
       : null;
@@ -429,14 +377,30 @@ export class ActionEventNotifWorker {
         notice.standing,
       );
 
-    notif.notification =
-      (await sendReminderInAppEntry(this.notifsService, {
-        plan,
-        template: templates.pushMessage,
-        render,
-        tasks: notice.standing.missedActions,
-      })) ?? undefined;
-    notif.sent = !!notif.notification;
+    const inAppMessage = await buildReminderMessage({
+      template: templates.pushMessage,
+      renderText: render,
+      recipient: plan.user,
+      action: plan.group.memberActionEvent.action,
+      tasks: notice.standing.missedActions,
+    });
+    if (inAppMessage.text.trim()) {
+      notif.notification = await this.notifsService.sendNotif({
+        user: plan.user,
+        category: NotificationCategory.ActionEvent,
+        message: inAppMessage,
+        destination: null,
+        webAppLocation: tasksUrl(),
+        mobileAppLocation: tasksUrl(),
+        associatedUsers: [],
+        shouldPush: false,
+      });
+      notif.sent = true;
+    } else {
+      this.logger.error(
+        `missed-suite reminder group ${plan.group.id} has blank push copy; skipped its in-app entry`,
+      );
+    }
     // An opening of the text reads this entry through notificationId, even
     // when a later send fails.
     if (notif.notification) await this.actionEventNotifsRepository.save(notif);
@@ -453,6 +417,19 @@ export class ActionEventNotifWorker {
       },
     });
     await this.actionEventNotifsRepository.save(notif);
+  }
+
+  private async assignFirstMissArm(userId: number): Promise<ExperimentArm> {
+    const arm = (
+      await assignExperimentArms(this.experimentAssignmentRepository.manager, {
+        experiment: Experiment.MissedSuiteFirstNotice,
+        userIds: [userId],
+      })
+    ).get(userId);
+    if (arm === undefined) {
+      throw new Error(`no first-miss arm for user ${userId}`);
+    }
+    return arm;
   }
 
   /** Sends on each channel the member enabled; true if any was attempted. */

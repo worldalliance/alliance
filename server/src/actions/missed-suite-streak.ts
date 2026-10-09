@@ -16,11 +16,8 @@ export type SuiteOutcomeAction = {
 export type SuiteOutcome = {
   suiteId: number;
   closedAt: Date;
-  onboarding: boolean;
   actions: SuiteOutcomeAction[];
   missedActionIdsByUser: Map<number, number[]>;
-  /** Members of `missedActionIdsByUser` whose latest terminal activity on some action is a completion. */
-  completedUserIds: Set<number>;
 };
 
 /**
