@@ -722,6 +722,7 @@ jobs:
             server/tsconfig.json \
             server/src \
             server/migrations \
+            server/scripts \
             scripts/deploy_backend.sh \
             scripts/sync_prod_to_staging.sh \
             scripts/anonymize \

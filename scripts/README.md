@@ -28,7 +28,7 @@ Drops and recreates the local db named by `server/.env`, then restores the dump.
 ## Deploy
 
 `deploy_backend.sh`
-Run by `deploy.yaml` on the backend host, not locally. Swaps `~/nest-build.zip` in as `~/nest-backend`, migrates, and rolls back to the old release on failure.
+Run by `deploy.yaml` on the backend host, not locally. Swaps `~/nest-build.zip` in as `~/nest-backend`, migrates, and rolls back to the old release on failure. A release that applies RemoveStreakRecognition stops the backend first and reverts the removal if the new backend fails; if that revert fails, the backend is left stopped and the job fails with an `::error::`.
 
 ## Other
 
