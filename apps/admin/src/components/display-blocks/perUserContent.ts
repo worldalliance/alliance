@@ -4,8 +4,30 @@ import type {
   ManualImportClipboardPayload,
   ManualImportField,
 } from "@alliance/common/forms/display-blocks";
+import type { UserDto } from "@alliance/shared/client";
 import { resolveDisplayBlockForUser } from "@alliance/shared/formrenderer";
+import { createContext } from "react";
 import type { AddressedWrite } from "../../lib/displayBlockById";
+
+/**
+ * The user whose content the form builder shows and edits for the selected
+ * block, null for the default content. Without it, a block editor keeps its
+ * own.
+ */
+export type OverrideTarget = {
+  userId: string | null;
+  select: (userId: string | null) => void;
+};
+
+export const OverrideTargetContext = createContext<OverrideTarget | null>(null);
+
+export const userLabel = (
+  users: readonly Pick<UserDto, "id" | "name">[],
+  userId: string,
+): string =>
+  // An empty name would otherwise leave the sentence naming nobody.
+  users.find((candidate) => String(candidate.id) === userId)?.name ||
+  `User ${userId}`;
 
 const stripManualFields = (
   updates: Partial<DisplayBlock>,

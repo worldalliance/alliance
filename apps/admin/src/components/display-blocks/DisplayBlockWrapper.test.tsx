@@ -5,6 +5,7 @@ import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import {
   canvas,
   canvasButton,
+  formJson,
   openSection,
   selectElement,
 } from "../../lib/testing/formCanvas";
@@ -20,13 +21,6 @@ serveApi(
     () => Response.json([]),
   ),
 );
-
-const formJson = () => {
-  fireEvent.click(screen.getByRole("button", { name: "Edit form JSON" }));
-  return screen.getByRole<HTMLTextAreaElement>("textbox", {
-    name: "Form JSON",
-  }).value;
-};
 
 const hasCity: VisibleIfFormula = {
   conditions: { c1: { kind: "userHasCity", userHasCity: true } },

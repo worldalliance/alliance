@@ -15,6 +15,7 @@ import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { CheckCircle2, Circle } from "lucide-react";
 import {
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -37,6 +38,8 @@ import { BlockPreviewAllowed } from "./BlockPreview";
 import {
   importManualContent,
   landingIn,
+  OverrideTargetContext,
+  userLabel,
   writeBlockFor,
   type BlockWriteLanding,
   type LandingFor,
@@ -139,7 +142,12 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     ? "Unable to load users"
     : null;
   const refetchUsers = () => void usersQuery.refetch({ cancelRefetch: false });
-  const [selectedUserId, selectManualTarget] = useState<string | null>(null);
+  const builderTarget = useContext(OverrideTargetContext);
+  const [localUserId, setLocalUserId] = useState<string | null>(null);
+  const selectedUserId = builderTarget ? builderTarget.userId : localUserId;
+  const selectManualTarget = builderTarget
+    ? builderTarget.select
+    : setLocalUserId;
   const activeManualUserId = manualPerUserEnabled ? selectedUserId : null;
   const [isUserListOpen, setIsUserListOpen] = useState(false);
   const [userSearch, setUserSearch] = useState("");
@@ -244,14 +252,8 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     [activeManualUserId, manualPerUserEnabled, manualUsers],
   );
   const targetLabel = useCallback<TargetLabel>(
-    (userId) => {
-      if (!userId) return "the default content";
-      const name = manualUsers.find(
-        (candidate) => String(candidate.id) === userId,
-      )?.name;
-      // An empty name would otherwise leave the sentence naming nobody.
-      return name || `User ${userId}`;
-    },
+    (userId) =>
+      userId ? userLabel(manualUsers, userId) : "the default content",
     [manualUsers],
   );
   const usersWithContent = useMemo(
@@ -318,12 +320,14 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     }
   };
 
+  // Undo turns per-user content off without going through its toggle.
+  useEffect(() => {
+    if (!manualPerUserEnabled) selectManualTarget(null);
+  }, [manualPerUserEnabled, selectManualTarget]);
+
   const handleManualToggle = (checked: boolean) => {
     if (!onUpdate) return;
-    if (!checked) {
-      selectManualTarget(null);
-      setIsUserListOpen(false);
-    }
+    if (!checked) setIsUserListOpen(false);
     onUpdate({ manualPerUser: checked } as Partial<T>);
   };
 
@@ -487,11 +491,8 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
           updateBlockWide,
         })
       : children;
-  // The sidebar's canvas renders the block, but only its default content.
   const renderContent = (
-    <BlockPreviewAllowed.Provider
-      value={!sidebar || (manualPerUserEnabled && !!activeManualUserId)}
-    >
+    <BlockPreviewAllowed.Provider value={!sidebar}>
       {editorContent}
     </BlockPreviewAllowed.Provider>
   );
@@ -688,7 +689,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
           <div>
             <p className="text-sm font-semibold">
               {activeManualUserId
-                ? `Editing ${targetLabel(activeManualUserId)}`
+                ? `Editing content for ${targetLabel(activeManualUserId)}`
                 : "Editing default content"}
             </p>
             <p className="text-xs">
