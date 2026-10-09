@@ -1,0 +1,52 @@
+name: Seed Load Check
+
+on:
+  pull_request:
+    branches: [main, production]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  seed-load-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Load seed after all migrations
+        id: load
+        shell: bash
+        run: bun citesting/src/seed-database.ts 2>&1 | tee "$RUNNER_TEMP/seed-load.log"
+
+      - name: Explain failure
+        if: failure() && steps.load.outcome == 'failure'
+        run: |
+          log="$RUNNER_TEMP/seed-load.log"
+          if grep -q "Loading seed dump" "$log" && ! grep -q "Shifting timestamps" "$log"; then
+            echo "::error file=citesting/fixtures/seed_dataonly.sql::The seed dump no longer loads after all migrations. Run citesting/scripts/reseed.sh and commit the result; see its --help for when to pass --revert N."
+          fi
