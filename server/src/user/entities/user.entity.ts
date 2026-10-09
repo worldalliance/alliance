@@ -331,6 +331,16 @@ export class User {
   @Allow()
   pushesForActionUpdates: boolean;
 
+  @Column({ default: true })
+  @ApiProperty()
+  @Allow()
+  pushesForNewGroupMembers: boolean;
+
+  @Column({ default: false })
+  @ApiProperty()
+  @Allow()
+  textsForNewGroupMembers: boolean;
+
   @Column({ default: false })
   @ApiProperty()
   @Allow()

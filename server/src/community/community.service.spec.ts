@@ -12,6 +12,7 @@ import type { EntityManager, Repository } from "typeorm";
 import { CommunityService, ContractRefusalAudience } from "./community.service";
 import { CommunityInvite } from "./entities/community-invite.entity";
 import { Community } from "./entities/community.entity";
+import { GroupJoinNotifsService } from "./group-join-notifs.service";
 
 describe("CommunityService", () => {
   let service: CommunityService;
@@ -20,6 +21,7 @@ describe("CommunityService", () => {
   let userRepository: jest.Mocked<Repository<User>>;
   let conversationService: jest.Mocked<ConversationService>;
   let notifsService: jest.Mocked<NotifsService>;
+  let groupJoinNotifsService: jest.Mocked<GroupJoinNotifsService>;
   let transaction: jest.Mock;
   let transactionManager: EntityManager;
 
@@ -99,6 +101,10 @@ describe("CommunityService", () => {
       sendNotifs: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<NotifsService>;
 
+    groupJoinNotifsService = {
+      notify: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<GroupJoinNotifsService>;
+
     service = new CommunityService(
       communityInviteRepository,
       communityRepository,
@@ -106,6 +112,7 @@ describe("CommunityService", () => {
       conversationService,
       {} as ImagesService,
       notifsService,
+      groupJoinNotifsService,
     );
   });
 
@@ -235,6 +242,55 @@ describe("CommunityService", () => {
       expect(
         conversationService.syncCommunityConversationMembers,
       ).toHaveBeenCalledWith(community.id);
+    });
+
+    it("announces the join to the members and leaders it was loaded with", async () => {
+      const user = { id: 5, name: "New User" } as User;
+      const existing = { id: 7, name: "Existing Member" } as User;
+      const community = buildCommunity({ users: [existing, leader1] });
+
+      await service.addUsersToCommunityAndRefreshConversation({
+        user,
+        community,
+        notifForLeader: () => null,
+      });
+
+      expect(groupJoinNotifsService.notify).toHaveBeenCalledWith({
+        community,
+        joiners: [user],
+        audience: [existing, leader1, leader2],
+      });
+    });
+
+    it("announces the join to a supplied audience instead", async () => {
+      const user = { id: 5, name: "New User" } as User;
+      const community = buildCommunity();
+
+      await service.addUsersToCommunityAndRefreshConversation({
+        user,
+        community,
+        notifForLeader: () => null,
+        groupJoinAudience: [leader2],
+      });
+
+      expect(groupJoinNotifsService.notify).toHaveBeenCalledWith(
+        expect.objectContaining({ audience: [leader2] }),
+      );
+    });
+
+    it("does not announce a join whose membership write fails", async () => {
+      const user = { id: 5, name: "New User" } as User;
+      communityRepository.save.mockRejectedValueOnce(new Error("db is down"));
+
+      await expect(
+        service.addUsersToCommunityAndRefreshConversation({
+          user,
+          community: buildCommunity(),
+          notifForLeader: () => null,
+        }),
+      ).rejects.toThrow("db is down");
+
+      expect(groupJoinNotifsService.notify).not.toHaveBeenCalled();
     });
 
     it("filters out null notifs from the leader notif factory", async () => {
@@ -476,6 +532,19 @@ describe("CommunityService", () => {
         conversationService.syncCommunityConversationMembers,
       ).not.toHaveBeenCalled();
       expect(notifsService.sendNotifs).not.toHaveBeenCalled();
+      expect(groupJoinNotifsService.notify).not.toHaveBeenCalled();
+    });
+
+    it("announces the move to the destination's existing members", async () => {
+      const communities = setUpMove();
+
+      await move(communities);
+
+      expect(groupJoinNotifsService.notify).toHaveBeenCalledWith({
+        community: communities.destinationCommunity,
+        joiners: [communities.user],
+        audience: [leader2],
+      });
     });
 
     it("does not commit the placement when participant authorization cannot be updated", async () => {

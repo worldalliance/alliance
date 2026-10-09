@@ -191,6 +191,36 @@ export default function NotificationSettings({
         </div>
       </div>
 
+      <p className="!font-medium mt-6 mb-2">New group members</p>
+      <div className="flex flex-col divide-y divide-zinc-200 border-t border-zinc-200">
+        <div className="flex flex-row items-center justify-between gap-x-4 py-3">
+          <span className="font-medium">Push</span>
+          <YesNoToggle
+            value={editableUser.pushesForNewGroupMembers ?? false}
+            onChange={(next) =>
+              updateEditableUser({ pushesForNewGroupMembers: next })
+            }
+            ariaLabel="Push notifications for new group members"
+            yesLabel="On"
+            noLabel="Off"
+            yesColor={ButtonColor.Green}
+          />
+        </div>
+        <div className="flex flex-row items-center justify-between gap-x-4 py-3">
+          <span className="font-medium">Text/SMS</span>
+          <YesNoToggle
+            value={editableUser.textsForNewGroupMembers ?? false}
+            onChange={(next) =>
+              updateEditableUser({ textsForNewGroupMembers: next })
+            }
+            ariaLabel="Text/SMS notifications for new group members"
+            yesLabel="On"
+            noLabel="Off"
+            yesColor={ButtonColor.Green}
+          />
+        </div>
+      </div>
+
       <div className="flex flex-col md:flex-row gap-y-2 gap-x-12 font-medium mt-6 pt-6 border-t border-zinc-200">
         <div>
           <p className=" mb-1">Preferred reminder time:</p>

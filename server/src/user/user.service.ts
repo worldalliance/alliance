@@ -40,8 +40,12 @@ import {
 import { CampaignService } from "src/campaign/campaign.service";
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { CommunityService } from "src/community/community.service";
-import { getStaffAssignableSlots } from "src/community/community.utils";
+import {
+  getStaffAssignableSlots,
+  isCommunityLedBy,
+} from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
+import { membersAndLeaders } from "src/community/group-join-notifs.service";
 import { EventType } from "src/eventlog/event-log.entity";
 import {
   EventLogMessage,
@@ -3069,6 +3073,20 @@ export class UserService {
       assignments.map(({ user }) => user),
     );
 
+    // Taken before the loop, less the batch's members (who leave every group
+    // they don't lead), so none of them hears of another whatever the order.
+    const batchUserIds = new Set(userIds);
+    const groupJoinAudiences = new Map(
+      assignments.map(({ community }) => [
+        community.id,
+        membersAndLeaders(community).filter(
+          (member) =>
+            !batchUserIds.has(member.id) ||
+            isCommunityLedBy(community, member.id),
+        ),
+      ]),
+    );
+
     const userNotifs: CreateNotifParams[] = [];
     for (const { user, community } of assignments) {
       // Remove user from old communities (except ones they lead)
@@ -3108,6 +3126,7 @@ export class UserService {
       await this.communityService.addUsersToCommunityAndRefreshConversation({
         user,
         community: freshCommunity,
+        groupJoinAudience: groupJoinAudiences.get(community.id),
         notifForLeader: ({ leader }) => ({
           user: leader,
           category: NotificationCategory.CommunityAssigned,

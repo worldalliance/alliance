@@ -59,6 +59,8 @@ export const user = (
   pushesForFriendRequests: false,
   pushesForMessages: false,
   pushesForActionUpdates: false,
+  pushesForNewGroupMembers: false,
+  textsForNewGroupMembers: false,
   undergoingGroupAssignment: false,
   remindAboutUncompletedGroupMembers: false,
   receiveReplyNotifications: false,

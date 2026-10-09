@@ -37,6 +37,7 @@ export enum NotificationCategory {
   MemberJoinedCommunity = "member_joined_community",
   CommunityAssigned = "community_assigned",
   NewMemberReferred = "new_member_referred",
+  GroupMemberJoined = "group_member_joined",
 
   // Legacy
   CommunityInviteCreated = "community_invite_created",
@@ -69,6 +70,7 @@ export const NOTIFICATION_CATEGORY_PRIORITIES = {
   [NotificationCategory.MemberJoinedCommunity]: NotifPriority.High,
   [NotificationCategory.CommunityAssigned]: NotifPriority.High,
   [NotificationCategory.NewMemberReferred]: NotifPriority.High,
+  [NotificationCategory.GroupMemberJoined]: NotifPriority.High,
 
   // Legacy
   [NotificationCategory.CommunityInviteCreated]: NotifPriority.Low,

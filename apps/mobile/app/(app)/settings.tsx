@@ -346,6 +346,26 @@ export default function SettingsPage() {
               />
             </View>
 
+            <Text className="mb-2" weight={FontWeight.Medium}>
+              New group members
+            </Text>
+            <View className="gap-3 mb-4">
+              <SettingsToggleRow
+                label="Push"
+                value={editableUser.pushesForNewGroupMembers ?? false}
+                onChange={(value) =>
+                  updateEditableUser({ pushesForNewGroupMembers: value })
+                }
+              />
+              <SettingsToggleRow
+                label="Text/SMS"
+                value={editableUser.textsForNewGroupMembers ?? false}
+                onChange={(value) =>
+                  updateEditableUser({ textsForNewGroupMembers: value })
+                }
+              />
+            </View>
+
             <View className="mb-4">
               <Text className="mb-2" weight={FontWeight.Medium}>
                 Preferred reminder time:

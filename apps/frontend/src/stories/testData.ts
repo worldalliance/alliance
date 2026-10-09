@@ -155,6 +155,8 @@ export const testAuthUser: UserDto = {
   leaderOfIds: [],
   pushesForMessages: true,
   pushesForActionUpdates: true,
+  pushesForNewGroupMembers: true,
+  textsForNewGroupMembers: false,
   clusterId: null,
   hasPassword: true,
 };

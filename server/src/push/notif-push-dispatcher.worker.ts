@@ -118,6 +118,8 @@ export class NotifPushDispatcherWorker {
         [NotificationCategory.MemberSuspendedRemovedFromCommunity]: true,
         [NotificationCategory.CommunityAssigned]: true,
         [NotificationCategory.NewMemberReferred]: true,
+        [NotificationCategory.GroupMemberJoined]:
+          notif.user.pushesForNewGroupMembers && !notif.user.turnedOffAllNotifs,
         [NotificationCategory.OnetimeInviteRequestCreated]: true,
         [NotificationCategory.OnetimeInviteRequestApproved]: true,
         [NotificationCategory.OnetimeInviteRequestRejected]: true,

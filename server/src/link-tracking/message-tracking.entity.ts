@@ -34,6 +34,7 @@ export enum MessageSource {
   WaitlistCampaign = "waitlist_campaign",
   ActionUpdate = "action_update",
   ContractReminder = "contract_reminder",
+  GroupJoin = "group_join",
 }
 
 export const NOTIF_SOURCE: Record<ActionEventNotifType, MessageSource> = {

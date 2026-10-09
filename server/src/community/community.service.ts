@@ -43,6 +43,10 @@ import {
   CommunityInviteStatus,
 } from "./entities/community-invite.entity";
 import { Community } from "./entities/community.entity";
+import {
+  GroupJoinNotifsService,
+  membersAndLeaders,
+} from "./group-join-notifs.service";
 
 /**
  * The check constraints on {@link Community}, applied before the write so a row
@@ -109,6 +113,7 @@ export class CommunityService {
     private readonly conversationService: ConversationService,
     private readonly imagesService: ImagesService,
     private readonly notifsService: NotifsService,
+    private readonly groupJoinNotifsService: GroupJoinNotifsService,
   ) {}
 
   async findOneOrFail(
@@ -209,14 +214,17 @@ export class CommunityService {
       contractBeingSigned?: boolean;
       /** Defaults to staff; the self-service joins add the requester. */
       contractRefusalAudience?: ContractRefusalAudience;
+      /** Defaults to the group's members and leaders as loaded. */
+      groupJoinAudience?: User[];
     } & (
       | {
-          user: Pick<User, "id" | "name"> & DeepPartial<User>;
+          user: Pick<User, "id" | "name" | "anonymous"> & DeepPartial<User>;
           users?: undefined;
         }
       | {
           user?: undefined;
-          users: (Pick<User, "id" | "name"> & DeepPartial<User>)[];
+          users: (Pick<User, "id" | "name" | "anonymous"> &
+            DeepPartial<User>)[];
         }
     ),
   ): Promise<Community> {
@@ -227,6 +235,7 @@ export class CommunityService {
       notifForLeader,
       contractBeingSigned = false,
       contractRefusalAudience = ContractRefusalAudience.Staff,
+      groupJoinAudience: audience = membersAndLeaders(community),
     } = params;
     const users = usersParam ?? [user];
 
@@ -244,11 +253,12 @@ export class CommunityService {
       .leaders!.map((leader) => notifForLeader({ leader }))
       .filter((notif) => !!notif);
 
+    const savedP = this.communityRepository.save({
+      id: community.id,
+      users: [...community.users, ...users],
+    });
     const updatedCommunityP = run(async () => {
-      const updates = await this.communityRepository.save({
-        id: community.id,
-        users: [...community.users, ...users],
-      });
+      const updates = await savedP;
 
       await this.conversationService.syncCommunityConversationMembers(
         community.id,
@@ -258,6 +268,13 @@ export class CommunityService {
     });
     const [updated] = await Promise.all([
       updatedCommunityP,
+      savedP.then(() =>
+        this.groupJoinNotifsService.notify({
+          community,
+          joiners: users,
+          audience,
+        }),
+      ),
       this.notifsService.sendNotifs(notifs),
       this.userRepository.save(
         users.map((user) => ({
@@ -849,6 +866,15 @@ export class CommunityService {
             memberNotif,
           ]),
       },
+      {
+        description: `send group join notifications for user ${user.id}`,
+        run: () =>
+          this.groupJoinNotifsService.notify({
+            community: destinationCommunity,
+            joiners: [user],
+            audience: membersAndLeaders(destinationCommunity),
+          }),
+      },
     ]);
 
     return { ...destinationCommunity, users: destinationUsers };
@@ -885,7 +911,9 @@ export class CommunityService {
       this.userRepository.findOneOrFail({ where: { id: userId } }),
     ]);
 
-    if (!community.users.some((existing) => existing.id === userId)) {
+    const audience = membersAndLeaders(community);
+    const joined = !community.users.some((existing) => existing.id === userId);
+    if (joined) {
       community.users.push(user);
     }
 
@@ -894,7 +922,15 @@ export class CommunityService {
     }
 
     const updated = await this.communityRepository.save(community);
-    await this.conversationService.syncCommunityConversationMembers(updated.id);
+    await Promise.all([
+      joined &&
+        this.groupJoinNotifsService.notify({
+          community,
+          joiners: [user],
+          audience,
+        }),
+      this.conversationService.syncCommunityConversationMembers(updated.id),
+    ]);
     return updated;
   }
 
