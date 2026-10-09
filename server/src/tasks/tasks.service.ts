@@ -94,8 +94,10 @@ import { assertNotInStaffPreview } from "src/actions/staff-preview";
 import { AiDetectionQueryService } from "src/ai-detection/ai-detection-query.service";
 import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
 import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
+import { Guest } from "src/auth/entities/guest.entity";
 import { ContractService } from "src/contract/contract.service";
 import { ContractDto } from "src/contract/dto/contract.dto";
+import { writeUnderLive } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { ForumService } from "src/forum/forum.service";
@@ -826,32 +828,36 @@ export class TasksService {
       }
     }
 
-    // Conditional UPDATE rejects stale saves atomically.
+    // Conditional UPDATE rejects stale saves atomically, and its row lock
+    // holds off a deletion until the history row is in.
     const expected = updateFormDto.expectedFormSnapshotId;
-    const result = await this.formRepository
-      .createQueryBuilder()
-      .update(Form)
-      .set({ title: nextTitle, formSnapshotId: nextSnapshotId })
-      .where("id = :formId", { formId })
-      .andWhere(
-        expected === undefined ? "1 = 1" : '"formSnapshotId" = :expected',
-        expected === undefined ? {} : { expected },
-      )
-      .execute();
+    await this.formRepository.manager.transaction(async (em) => {
+      const result = await em
+        .createQueryBuilder()
+        .update(Form)
+        .set({ title: nextTitle, formSnapshotId: nextSnapshotId })
+        .where("id = :formId", { formId })
+        .andWhere(
+          expected === undefined ? "1 = 1" : '"formSnapshotId" = :expected',
+          expected === undefined ? {} : { expected },
+        )
+        .execute();
 
-    if (result.affected === 0) {
-      throw new ConflictException(
-        "This form was changed by someone else since you opened it.",
-      );
-    }
+      if (result.affected === 0) {
+        throw new ConflictException(
+          "This form was changed by someone else since you opened it.",
+        );
+      }
 
-    if (snapshotChanged) {
-      await this.formSnapshotService.recordHistorical({
-        owner: SnapshotHistoryOwner.Form,
-        ownerId: formId,
-        snapshotId: nextSnapshotId,
-      });
-    }
+      if (snapshotChanged) {
+        await this.formSnapshotService.recordHistorical({
+          owner: SnapshotHistoryOwner.Form,
+          ownerId: formId,
+          snapshotId: nextSnapshotId,
+          em,
+        });
+      }
+    });
 
     return this.getForm(formId);
   }
@@ -1306,10 +1312,18 @@ export class TasksService {
       user,
       guest: guestId ? { id: guestId } : undefined,
     });
-    const savedForm: ParsedFormResponse = Object.assign(
-      await this.formResponseRepository.save(formResponse),
-      { visibilityValidatorResults: validatorResults, formulaChoices },
-    );
+    const saved = await writeUnderLive(this.formResponseRepository.manager, {
+      parents: [
+        { target: Form, id: formId },
+        ...(user ? [{ target: User, id: user.id }] : []),
+        ...(guestId ? [{ target: Guest, id: guestId }] : []),
+      ],
+      write: (manager) => manager.save(formResponse),
+    });
+    const savedForm: ParsedFormResponse = Object.assign(saved, {
+      visibilityValidatorResults: validatorResults,
+      formulaChoices,
+    });
     await this.aiDetectionQueueService.addDetectJob({
       entityType: DetectableEntity.FormResponse,
       entityId: savedForm.id,
@@ -1769,9 +1783,17 @@ export class TasksService {
       currentPageIndex: dto.currentPageIndex ?? 0,
       updatedAt: new Date(),
     };
-    await this.formResponseDraftRepository.upsert(draft, {
-      conflictPaths: ["userId", "formId"],
-      indexPredicate: '"deletedAt" IS NULL',
+    await writeUnderLive(this.formResponseDraftRepository.manager, {
+      parents: [
+        { target: Action, id: dto.actionId },
+        { target: Form, id: formId },
+        { target: User, id: userId },
+      ],
+      write: (manager) =>
+        manager.getRepository(FormResponseDraft).upsert(draft, {
+          conflictPaths: ["userId", "formId"],
+          indexPredicate: '"deletedAt" IS NULL',
+        }),
     });
     return draft;
   }

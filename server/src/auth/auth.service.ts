@@ -10,6 +10,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import type { Request, Response } from "express";
 import { Campaign } from "src/campaign/entities/campaign.entity";
+import { lockLive } from "src/datasources/soft-delete";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import {
   inviteAssignmentFromColumns,
@@ -169,12 +170,18 @@ export class AuthService {
     // Claim the guest atomically; only the first merger succeeds. Guest form
     // responses stay attached to the guest and are surfaced to the user as
     // drafts via TasksService.getLinkedGuestDraftFormResponse.
-    await this.guestRepository
-      .createQueryBuilder()
-      .update(Guest)
-      .set({ linkedUser: { id: userId } })
-      .where('id = :guestId AND "linkedUserId" IS NULL', { guestId })
-      .execute();
+    await this.guestRepository.manager.transaction(async (manager) => {
+      if (!(await lockLive(manager, [{ target: User, id: userId }]))) return;
+      await manager
+        .createQueryBuilder()
+        .update(Guest)
+        .set({ linkedUser: { id: userId } })
+        .where(
+          'id = :guestId AND "linkedUserId" IS NULL AND "deletedAt" IS NULL',
+          { guestId },
+        )
+        .execute();
+    });
   }
 
   async mergeGuestFromToken(
@@ -313,8 +320,8 @@ export class AuthService {
       inviteAssignment,
     );
 
-    if (referringUser) {
-      await this.usersService.makeFriendsAutomated(referringUser.id, user.id);
+    if (user.referredBy) {
+      await this.usersService.makeFriendsAutomated(user.referredBy.id, user.id);
     }
 
     // The user row is already committed; a mail failure must not fail the signup.

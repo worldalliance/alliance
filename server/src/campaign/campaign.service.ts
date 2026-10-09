@@ -6,7 +6,9 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { isForeignKeyViolation, isUniqueViolation } from "src/utils/db-errors";
+import { Community } from "src/community/entities/community.entity";
+import { assertLive } from "src/datasources/soft-delete";
+import { isUniqueViolation } from "src/utils/db-errors";
 import { randomToken } from "src/utils/random";
 import type { Repository } from "src/utils/Repository";
 import { WaitlistEntry } from "src/waitlist/entities/waitlist-entry.entity";
@@ -27,6 +29,8 @@ const MAX_CODE_GENERATION_ATTEMPTS = 5;
 function generateCampaignCode(): string {
   return randomToken(12);
 }
+
+const GROUP_MISSING = "That group does not exist";
 
 @Injectable()
 export class CampaignService {
@@ -96,6 +100,14 @@ export class CampaignService {
     }
     try {
       return await this.repository.manager.transaction(async (manager) => {
+        // Before the campaign: a group's deletion locks the group, then the
+        // campaigns pointing at it.
+        if (dto.communityId != null) {
+          await assertLive(manager, {
+            rows: [{ target: Community, id: dto.communityId }],
+            gone: () => new BadRequestException(GROUP_MISSING),
+          });
+        }
         const campaign = await manager.findOne(Campaign, {
           where: { id },
           lock: { mode: "pessimistic_write" },
@@ -131,9 +143,6 @@ export class CampaignService {
         throw new ConflictException(
           "That group already belongs to another organization",
         );
-      }
-      if (isForeignKeyViolation(err)) {
-        throw new BadRequestException("That group does not exist");
       }
       throw err;
     }

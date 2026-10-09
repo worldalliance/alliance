@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { lockLive, lockLiveIds } from "src/datasources/soft-delete";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
@@ -206,11 +207,30 @@ export class ActionFormVariantService {
 
     const chosenVariantId = this.pickVariantForNewUser(variants);
     try {
-      await this.assignmentRepo.insert({
-        actionId,
-        userId,
-        variantId: chosenVariantId,
-      });
+      const inserted = await this.assignmentRepo.manager.transaction(
+        async (em) => {
+          // An assignment to an action or variant deleted meanwhile would
+          // stay live and never be re-randomized. Locks in the order an
+          // action's deletion does.
+          if (
+            !(await lockLive(em, [
+              { target: Action, id: actionId },
+              ...(chosenVariantId === null
+                ? []
+                : [{ target: ActionFormVariant, id: chosenVariantId }]),
+            ]))
+          ) {
+            return false;
+          }
+          await em.insert(ActionFormAssignment, {
+            actionId,
+            userId,
+            variantId: chosenVariantId,
+          });
+          return true;
+        },
+      );
+      if (!inserted) return null;
     } catch (err) {
       if (
         !(err instanceof QueryFailedError) ||
@@ -295,12 +315,30 @@ export class ActionFormVariantService {
     // ON CONFLICT DO NOTHING for the live-row (actionId, userId) unique
     // index — a parallel request may have inserted first. After the upsert,
     // re-read to learn the canonical assignment for the conflicted rows.
-    await this.assignmentRepo
-      .createQueryBuilder()
-      .insert()
-      .values(inserts)
-      .orIgnore()
-      .execute();
+    await this.assignmentRepo.manager.transaction(async (em) => {
+      // Actions before variants, the order an action's deletion locks them.
+      const liveActions = await lockLiveIds(em, {
+        target: Action,
+        ids: [...new Set(inserts.map((i) => i.actionId))],
+      });
+      const liveVariants = await lockLiveIds(em, {
+        target: ActionFormVariant,
+        ids: [...new Set(inserts.flatMap((i) => i.variantId ?? []))],
+      });
+      const live = inserts.filter(
+        (i) =>
+          liveActions.has(i.actionId) &&
+          (i.variantId === null || liveVariants.has(i.variantId)),
+      );
+      if (live.length === 0) return;
+      await em
+        .createQueryBuilder()
+        .insert()
+        .into(ActionFormAssignment)
+        .values(live)
+        .orIgnore()
+        .execute();
+    });
 
     const insertedActionIds = inserts.map((i) => i.actionId);
     const finalAssignments = await this.assignmentRepo.find({
@@ -311,7 +349,10 @@ export class ActionFormVariantService {
 
     for (const i of inserts) {
       const final = finalByAction.get(i.actionId);
-      if (!final) continue;
+      if (!final) {
+        result.delete(i.actionId);
+        continue;
+      }
       const variants = variantsByAction.get(i.actionId);
       if (!variants) continue;
       if (final.variantId === null) {
@@ -439,12 +480,15 @@ export class ActionFormVariantService {
     em: EntityManager,
     actionId: number,
   ): Promise<void> {
-    await em
+    const action = await em
       .getRepository(Action)
       .createQueryBuilder("a")
       .setLock("pessimistic_write")
       .where("a.id = :id", { id: actionId })
       .getOne();
+    if (!action) {
+      throw new NotFoundException(`Action ${actionId} not found`);
+    }
   }
 
   private async assertSplitTotalValid(

@@ -8,7 +8,7 @@ import {
   type CreateNotifParams,
 } from "src/notifs/notifs.service";
 import { User } from "src/user/entities/user.entity";
-import type { EntityManager, Repository } from "typeorm";
+import { In, type EntityManager, type Repository } from "typeorm";
 import { CommunityService, ContractRefusalAudience } from "./community.service";
 import {
   CommunityInvite,
@@ -56,11 +56,13 @@ describe("CommunityService", () => {
     } as unknown as jest.Mocked<Repository<CommunityInvite>>;
 
     transactionManager = {
+      queryRunner: { isTransactionActive: true },
       getRepository: jest.fn((entity) =>
         entity === Community ? communityRepository : userRepository,
       ),
       connection: {
         getMetadata: () => ({
+          primaryColumns: [{ type: Number }],
           findRelationWithPropertyPath: (relation: string) => ({
             junctionEntityMetadata: {
               target: relation,
@@ -70,29 +72,45 @@ describe("CommunityService", () => {
           }),
         }),
       },
-      createQueryBuilder: jest.fn(() => ({
-        insert: () => ({
-          into: (relation: string) => ({
-            values: (rows: { communityId: number; userId: number }[]) => ({
-              orIgnore: () => ({
-                execute: () =>
-                  addAndRemove({
-                    communityId: rows[0].communityId,
-                    relation,
-                    add: rows.map((row) => row.userId),
-                    remove: [],
-                  }),
+      createQueryBuilder: jest.fn(() => {
+        let ids: unknown[] = [];
+        const qb = {
+          // Every row a live check locks is live.
+          select: () => qb,
+          where: (_sql: string, params: { ids: unknown[] }) => {
+            ids = params.ids;
+            return qb;
+          },
+          orderBy: () => qb,
+          setLock: () => qb,
+          getRawMany: () => Promise.resolve(ids.map((id) => ({ id }))),
+          insert: () => ({
+            into: (relation: string) => ({
+              values: (rows: { communityId: number; userId: number }[]) => ({
+                orIgnore: () => ({
+                  execute: () =>
+                    addAndRemove({
+                      communityId: rows[0].communityId,
+                      relation,
+                      add: rows.map((row) => row.userId),
+                      remove: [],
+                    }),
+                }),
               }),
             }),
           }),
-        }),
-        relation: (_target: unknown, relation: string) => ({
-          of: (communityId: number) => ({
-            remove: (remove: number[]) =>
-              addAndRemove({ communityId, relation, add: [], remove }),
+          relation: (_target: unknown, relation: string) => ({
+            of: (communityId: number) => ({
+              remove: (remove: number[]) =>
+                addAndRemove({ communityId, relation, add: [], remove }),
+            }),
           }),
-        }),
-      })),
+        };
+        return qb;
+      }),
+      update: jest.fn((_target, criteria, partial) =>
+        userRepository.update(criteria, partial),
+      ),
     } as unknown as EntityManager;
     addAndRemove = jest.fn().mockResolvedValue(undefined);
     transaction = jest.fn(
@@ -131,6 +149,7 @@ describe("CommunityService", () => {
 
     userRepository = {
       save: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
       findOneOrFail: jest.fn(),
       createQueryBuilder: jest.fn(() => contractCheck),
     } as unknown as jest.Mocked<Repository<User>>;
@@ -458,12 +477,10 @@ describe("CommunityService", () => {
         saveAsPendingCommunity: true,
       });
 
-      expect(userRepository.save).toHaveBeenCalledWith([
-        {
-          id: user.id,
-          pendingCommunity: { id: community.id },
-        },
-      ]);
+      expect(userRepository.update).toHaveBeenCalledWith(
+        { id: In([user.id]) },
+        { pendingCommunity: { id: community.id } },
+      );
     });
 
     it("does not save pendingCommunity when saveAsPendingCommunity is false", async () => {
@@ -480,7 +497,7 @@ describe("CommunityService", () => {
         saveAsPendingCommunity: false,
       });
 
-      expect(userRepository.save).not.toHaveBeenCalled();
+      expect(userRepository.update).not.toHaveBeenCalled();
     });
   });
 

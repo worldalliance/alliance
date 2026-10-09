@@ -12,6 +12,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Action } from "src/actions/entities/action.entity";
 import { Community } from "src/community/entities/community.entity";
+import { assertLive, writeUnderLive } from "src/datasources/soft-delete";
 import { InviteFeedEvents } from "src/invite-feed.events";
 import {
   generateCIDForExternalTarget,
@@ -38,6 +39,7 @@ import {
   type StoredInviteAssignment,
   StoredInviteAssignmentKind,
 } from "./invite-assignment";
+import { lockOwner } from "./share-url-locks";
 import { shareUrlPublicUrl } from "./share-url-public-url";
 import type {
   ReusableInviteFeedItem,
@@ -164,8 +166,6 @@ export class ShareUrlsService {
   constructor(
     @InjectRepository(ShareUrl)
     private readonly shareUrlRepository: Repository<ShareUrl>,
-    @InjectRepository(Action)
-    private readonly actionRepository: Repository<Action>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(Community)
@@ -492,7 +492,13 @@ export class ShareUrlsService {
       row.inviteAssignmentKind = columns.inviteAssignmentKind;
       row.inviteAssignmentCommunityId = columns.inviteAssignmentCommunityId;
     }
-    return this.shareUrlRepository.save(row);
+    return writeUnderLive(this.shareUrlRepository.manager, {
+      parents:
+        communityId === undefined || communityId === null
+          ? []
+          : [{ target: Community, id: communityId }],
+      write: (manager) => manager.save(row),
+    });
   }
 
   async deleteInviteForUser(id: string, userId: number): Promise<void> {
@@ -692,7 +698,16 @@ export class ShareUrlsService {
     manager: EntityManager,
     input: BuildRowInput,
   ): Promise<ShareUrl> {
+    if (!manager.queryRunner?.isTransactionActive) {
+      return manager.transaction((m) => this.buildAndSaveRow(m, input));
+    }
     const repo = manager.getRepository(ShareUrl);
+    // An account locks before the group its link places members in, a
+    // campaign after it: the orders their deletions take them in.
+    const ownerFirst = input.owner.type === "user";
+    if (ownerFirst && !(await lockOwner(manager, input.owner))) {
+      throw new NotFoundException(NOT_FOUND_MESSAGE[input.kind]);
+    }
     const built = await run(
       async (): Promise<{
         sid: string;
@@ -702,8 +717,9 @@ export class ShareUrlsService {
       }> => {
         switch (input.kind) {
           case ShareUrlKind.Action: {
-            const action = await this.actionRepository.findOne({
+            const action = await manager.findOne(Action, {
               where: { id: input.actionId },
+              lock: { mode: "for_key_share" },
             });
             if (!action) {
               throw new NotFoundException(NOT_FOUND_MESSAGE[input.kind]);
@@ -731,6 +747,16 @@ export class ShareUrlsService {
           }
           case ShareUrlKind.Invite: {
             const sid = generateCIDForShareUrl();
+            const assignment = input.inviteAssignment;
+            if (
+              assignment?.kind === StoredInviteAssignmentKind.Community &&
+              assignment.communityId !== null
+            ) {
+              await assertLive(manager, {
+                rows: [{ target: Community, id: assignment.communityId }],
+                gone: () => new NotFoundException("Community not found"),
+              });
+            }
             return {
               sid,
               url: withRef(signupUrl(true), sid),
@@ -745,6 +771,10 @@ export class ShareUrlsService {
         }
       },
     );
+
+    if (!ownerFirst && !(await lockOwner(manager, input.owner))) {
+      throw new NotFoundException(NOT_FOUND_MESSAGE[input.kind]);
+    }
 
     const shareUrl = repo.create({
       url: built.url,
@@ -762,16 +792,6 @@ export class ShareUrlsService {
       label: input.label ?? null,
     });
 
-    try {
-      return await repo.save(shareUrl);
-    } catch (err) {
-      if (
-        err instanceof QueryFailedError &&
-        (err as { code?: string }).code === "23503"
-      ) {
-        throw new NotFoundException(NOT_FOUND_MESSAGE[input.kind]);
-      }
-      throw err;
-    }
+    return repo.save(shareUrl);
   }
 }

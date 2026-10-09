@@ -1,5 +1,6 @@
 import request from "supertest";
 import type { Repository } from "typeorm";
+import { CampaignService } from "../src/campaign/campaign.service";
 import {
   Campaign,
   CampaignKind,
@@ -8,6 +9,7 @@ import { Community } from "../src/community/entities/community.entity";
 import { ExternalShareTarget } from "../src/share-urls/entities/external-share-target.entity";
 import { ShareUrl } from "../src/share-urls/entities/share-url.entity";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
+import { UserService } from "../src/user/user.service";
 import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistLink } from "../src/waitlist/entities/waitlist-link.entity";
 import { createTestApp, TestContext, waitForLockWait } from "./e2e-test-utils";
@@ -129,6 +131,32 @@ describe("Campaigns (e2e)", () => {
       expect(user.referredByCampaign?.id).toBe(campaign.id);
       expect(user.referredBy).toBeNull();
     });
+
+    it("leaves a campaign deleted while the signup resolves its code out of the attribution", async () => {
+      const campaign = await createCampaign("Deleted mid-signup");
+      const users = ctx.app.get(UserService);
+      const resolveReferral = users.resolveReferral.bind(users);
+      const resolve = jest
+        .spyOn(users, "resolveReferral")
+        .mockImplementation(async (...args) => {
+          const resolution = await resolveReferral(...args);
+          await campaignRepo.softDelete(campaign.id);
+          return resolution;
+        });
+
+      try {
+        await registerWith("campaign-deleted@example.com", campaign.code);
+      } finally {
+        resolve.mockRestore();
+      }
+
+      const user = await findUser("campaign-deleted@example.com");
+      expect(user.referralSource).toBe(ReferralSource.Campaign);
+      expect(user.referredByCampaign).toBeNull();
+      expect(
+        (await userRepo.findOneByOrFail({ id: user.id })).referredByCampaignId,
+      ).toBeNull();
+    });
   });
 
   describe("create-duplicate owner validation", () => {
@@ -138,6 +166,22 @@ describe("Campaigns (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({ externalTargetId: target.id })
         .expect(400);
+    });
+
+    it("refuses a deleted campaign", async () => {
+      const campaign = await createCampaign("Deleted owner");
+      await campaignRepo.softDelete(campaign.id);
+      await request(server())
+        .post("/share-urls/create-duplicate")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ campaignId: campaign.id, externalTargetId: target.id })
+        .expect(404);
+      expect(
+        await shareUrlRepo.find({
+          where: { campaignId: campaign.id },
+          withDeleted: true,
+        }),
+      ).toEqual([]);
     });
 
     it("rejects when both userId and campaignId are given", async () => {
@@ -353,10 +397,60 @@ describe("Campaigns (e2e)", () => {
         await patch(organization.id, { kind: null }).expect(400);
       });
 
+      it("refuses a deleted group", async () => {
+        const organization = await saveCampaign(
+          CampaignKind.Organization,
+          null,
+        );
+        const group = await saveGroup();
+        await ctx.dataSource.getRepository(Community).softDelete(group.id);
+        await patch(organization.id, { communityId: group.id }).expect(400);
+        const row = await campaignRepo.findOneByOrFail({ id: organization.id });
+        expect(row.communityId).toBeNull();
+      });
+
       it("refuses a null name", async () => {
         const campaign = await createCampaign("Keeps its name");
         await patch(campaign.id, { name: null }).expect(400);
       });
     });
+  });
+
+  it("does not deadlock re-saving an organization's group while it is deleted", async () => {
+    const group = await ctx.dataSource
+      .getRepository(Community)
+      .save({ name: "Doomed org group" });
+    const campaigns = ctx.dataSource.getRepository(Campaign);
+    const org = await campaigns.save(
+      campaigns.create({
+        name: "Org with a doomed group",
+        code: `code-${Math.random()}`,
+        kind: CampaignKind.Organization,
+        communityId: group.id,
+      }),
+    );
+    const deletion = ctx.dataSource.createQueryRunner();
+    await deletion.startTransaction();
+    try {
+      // What `DELETE FROM community` takes first.
+      await deletion.query(
+        "SELECT id FROM community WHERE id = $1 FOR UPDATE",
+        [group.id],
+      );
+      const updated = ctx.app
+        .get(CampaignService)
+        .update(org.id, { name: "Renamed", communityId: group.id })
+        .then(
+          () => "updated",
+          (err: Error) => err.message,
+        );
+      await waitForLockWait(ctx.dataSource);
+      await deletion.query("DELETE FROM community WHERE id = $1", [group.id]);
+      await deletion.commitTransaction();
+
+      expect(await updated).toBe("That group does not exist");
+    } finally {
+      await deletion.release();
+    }
   });
 });

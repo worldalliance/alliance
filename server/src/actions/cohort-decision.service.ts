@@ -2,9 +2,10 @@ import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { countBy, partition } from "es-toolkit";
+import { lockLiveIds } from "src/datasources/soft-delete";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
-import type { User } from "src/user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { In, type Repository } from "typeorm";
 import {
@@ -729,17 +730,29 @@ export class CohortDecisionService {
 
   /**
    * All or nothing, so a later pass never skips a half-backfilled action. A
-   * concurrent writer's row wins; decisions are final once written.
+   * concurrent writer's row wins; decisions are final once written. Rows for
+   * an action or account deleted since the pass loaded them are dropped.
    */
   private async insert(rows: DecisionRow[]): Promise<void> {
     if (rows.length === 0) return;
     await this.decisionRepository.manager.transaction(async (manager) => {
-      for (let i = 0; i < rows.length; i += INSERT_CHUNK_SIZE) {
+      const liveActionIds = await lockLiveIds(manager, {
+        target: Action,
+        ids: [...new Set(rows.map((row) => row.actionId))],
+      });
+      const liveUserIds = await lockLiveIds(manager, {
+        target: User,
+        ids: [...new Set(rows.map((row) => row.userId))],
+      });
+      const live = rows.filter(
+        (row) => liveActionIds.has(row.actionId) && liveUserIds.has(row.userId),
+      );
+      for (let i = 0; i < live.length; i += INSERT_CHUNK_SIZE) {
         await manager
           .createQueryBuilder()
           .insert()
           .into(ActionCohortDecision)
-          .values(rows.slice(i, i + INSERT_CHUNK_SIZE))
+          .values(live.slice(i, i + INSERT_CHUNK_SIZE))
           .orIgnore()
           .execute();
       }

@@ -1,6 +1,6 @@
 import { Logger } from "@nestjs/common";
 import request from "supertest";
-import type { Repository } from "typeorm";
+import type { EntityManager, Repository } from "typeorm";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
 import { Action } from "../src/actions/entities/action.entity";
@@ -101,6 +101,55 @@ describe("CohortDecisionService (e2e)", () => {
       reason: CohortDecisionReason.Launch,
     });
     expect(decisions.has(unsigned.id)).toBe(false);
+  });
+
+  it("decides no member deleted after the pass loads them", async () => {
+    const staying = await createUser({ signedAt });
+    const departing = await createUser({ signedAt });
+    const action = await createAction({
+      start: addDays(now, -1),
+      deadline: addDays(now, 3),
+    });
+    const manager = ctx.dataSource.manager;
+    const transaction = manager.transaction.bind(manager);
+    const spy = jest
+      .spyOn(manager, "transaction")
+      .mockImplementation(
+        async (...args: Parameters<EntityManager["transaction"]>) => {
+          await userRepo.softDelete(departing.id);
+          return transaction(...args);
+        },
+      );
+
+    await service.resolveAll(now);
+    spy.mockRestore();
+
+    const decisions = await decisionsFor(action.id);
+    expect(decisions.has(staying.id)).toBe(true);
+    expect(decisions.has(departing.id)).toBe(false);
+  });
+
+  it("decides nothing for an action deleted after the pass loads it", async () => {
+    const member = await createUser({ signedAt });
+    const window = { start: addDays(now, -1), deadline: addDays(now, 3) };
+    const staying = await createAction(window);
+    const departing = await createAction(window);
+    const manager = ctx.dataSource.manager;
+    const transaction = manager.transaction.bind(manager);
+    const spy = jest
+      .spyOn(manager, "transaction")
+      .mockImplementation(
+        async (...args: Parameters<EntityManager["transaction"]>) => {
+          await actionRepo.softDelete(departing.id);
+          return transaction(...args);
+        },
+      );
+
+    await service.resolveAll(now);
+    spy.mockRestore();
+
+    expect((await decisionsFor(staying.id)).has(member.id)).toBe(true);
+    expect((await decisionsFor(departing.id)).size).toBe(0);
   });
 
   it("leaves future actions undecided", async () => {

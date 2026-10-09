@@ -8,6 +8,7 @@ import {
   isCommunityLedBy,
 } from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
+import { writeUnderLive } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
@@ -180,7 +181,10 @@ export class ContractService {
       viaTaskForm,
       contract: { id: contractId },
     });
-    const saveContractEventP = this.contractEventRepository.save(contractEvent);
+    await writeUnderLive(this.userRepository.manager, {
+      parents: [{ target: User, id: userId }],
+      write: (em) => em.save(contractEvent),
+    });
 
     const signedOutsideTaskForm = user.contractEvents!.some(
       (event) => event.type === ContractEventType.SIGNED && !event.viaTaskForm,
@@ -191,7 +195,6 @@ export class ContractService {
     }
 
     if (switchingContracts) {
-      await saveContractEventP;
       return contractEvent.date;
     }
 
@@ -320,7 +323,6 @@ export class ContractService {
     }
 
     await Promise.all([
-      saveContractEventP,
       this.userRepository.save(userUpdate),
       this.notifsService.sendNotifs(notifs),
       this.eventLogService.sendMessage({
@@ -390,7 +392,10 @@ export class ContractService {
     );
 
     await Promise.all([
-      this.contractEventRepository.save(contractEvent),
+      writeUnderLive(this.userRepository.manager, {
+        parents: [{ target: User, id: userId }],
+        write: (em) => em.save(contractEvent),
+      }),
       communitiesP,
     ]);
 

@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { assertLive } from "src/datasources/soft-delete";
 import { isUniqueViolation } from "src/utils/db-errors";
 import { Repository } from "typeorm";
 import type { ActionCategory } from "./action-category";
@@ -77,18 +78,24 @@ export class ProjectsService {
     projectId: number | null;
   }): Promise<void> {
     const { actionId, projectId } = params;
-    const [actionExists, projectExists] = await Promise.all([
-      this.actionRepository.existsBy({ id: actionId }),
-      projectId === null || this.projectRepository.existsBy({ id: projectId }),
-    ]);
-    if (!actionExists) {
-      throw new NotFoundException(`Action ${actionId} not found`);
-    }
-    if (!projectExists) {
-      throw new NotFoundException(`Project ${projectId} not found`);
-    }
-    await this.actionRepository.update(actionId, {
-      project: projectId === null ? null : { id: projectId },
+    await this.actionRepository.manager.transaction(async (em) => {
+      // Locked so a deletion of either cannot commit before the assignment.
+      const actionExists = await em.exists(Action, {
+        where: { id: actionId },
+        lock: { mode: "for_no_key_update" },
+      });
+      if (!actionExists) {
+        throw new NotFoundException(`Action ${actionId} not found`);
+      }
+      if (projectId !== null) {
+        await assertLive(em, {
+          rows: [{ target: Project, id: projectId }],
+          gone: () => new NotFoundException(`Project ${projectId} not found`),
+        });
+      }
+      await em.update(Action, actionId, {
+        project: projectId === null ? null : { id: projectId },
+      });
     });
   }
 

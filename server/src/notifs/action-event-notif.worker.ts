@@ -64,6 +64,7 @@ import {
 import { MissedSuitePlanService } from "./missed-suite-plans.service";
 import { NotifsService } from "./notifs.service";
 import { buildReminderMessage } from "./reminder-message";
+import { saveForLiveRecipient } from "./save-for-live-recipient";
 
 export type UncompletedTaskSummary = {
   id: number;
@@ -290,9 +291,12 @@ export class ActionEventNotifWorker {
       idempotency_key,
     } satisfies Partial<ActionEventNotif>);
 
-    let notif: ActionEventNotif;
+    let notif: ActionEventNotif | null;
     try {
-      notif = await this.actionEventNotifsRepository.save(plannedNotif);
+      notif = await saveForLiveRecipient(this.dataSource, {
+        plan,
+        notif: plannedNotif,
+      });
     } catch (error) {
       if (error instanceof QueryFailedError) {
         this.logger.error(`skipping duplicate notif: ${error.message}`);
@@ -300,6 +304,7 @@ export class ActionEventNotifWorker {
       }
       throw error;
     }
+    if (!notif) return;
 
     const sendingAnyNotif = await this.deliver({
       notif,
@@ -338,10 +343,11 @@ export class ActionEventNotifWorker {
         }
       : null;
 
-    let notif: ActionEventNotif;
+    let notif: ActionEventNotif | null;
     try {
-      notif = await this.actionEventNotifsRepository.save(
-        this.actionEventNotifsRepository.create({
+      notif = await saveForLiveRecipient(this.dataSource, {
+        plan,
+        notif: this.actionEventNotifsRepository.create({
           user: plan.user,
           reminderGroup: plan.group,
           memberActionEvent: cohortNotifiesRecipientPersonally(
@@ -358,7 +364,7 @@ export class ActionEventNotifWorker {
           missNumber: standing?.missNumber ?? null,
           missedSuiteCopy: notice?.copy ?? null,
         } satisfies Partial<ActionEventNotif>),
-      );
+      });
     } catch (error) {
       if (isUniqueViolation(error)) {
         this.logger.log(`skipping duplicate missed-suite notice`);
@@ -366,7 +372,7 @@ export class ActionEventNotifWorker {
       }
       throw error;
     }
-    if (!notice) return;
+    if (!notif || !notice) return;
 
     const templates = missedSuiteNoticeTemplates(notice.copy, plan.group);
     const render = (template: string) =>

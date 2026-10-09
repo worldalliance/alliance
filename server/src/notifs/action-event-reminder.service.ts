@@ -27,6 +27,7 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
+import { writeUnderLive } from "src/datasources/soft-delete";
 import { EmailType } from "src/mail/mail.entity";
 import { MailService, processKeywordReplacements } from "src/mail/mail.service";
 import { Tag } from "src/user/entities/tag.entity";
@@ -46,6 +47,7 @@ import {
   ActionEventNotif,
   ActionEventNotifType,
 } from "./entities/action-event-notif.entity";
+import { reminderGroupParents } from "./reminder-group-parents";
 import { testUser } from "./test-users";
 
 export interface MissedDeadlineCandidate {
@@ -58,6 +60,8 @@ export interface MissedDeadlineCandidate {
 }
 
 export const NOTIFICATION_LOOKBACK_WINDOW_MS = milliseconds({ hours: 3 });
+
+const REMINDER_GROUP_PARENT_GONE = "That event, suite, tag or member is gone";
 
 @Injectable()
 export class ActionEventReminderService {
@@ -576,9 +580,18 @@ export class ActionEventReminderService {
       timingAnchorEvent,
     });
 
-    const withDeadline = await this.attachDeadlineEvent(group);
+    return this.saveUnderLiveParents(group);
+  }
 
-    return this.reminderGroupRepository.save(withDeadline);
+  private async saveUnderLiveParents(
+    group: ReminderGroup,
+  ): Promise<ReminderGroup> {
+    const withDeadline = await this.attachDeadlineEvent(group);
+    return writeUnderLive(this.reminderGroupRepository.manager, {
+      parents: reminderGroupParents(withDeadline),
+      notFound: REMINDER_GROUP_PARENT_GONE,
+      write: (em) => em.save(ReminderGroup, withDeadline),
+    });
   }
 
   async updateReminderGroup(
@@ -614,9 +627,7 @@ export class ActionEventReminderService {
     // clears a previously set anchor instead of silently keeping it.
     group.timingAnchorEvent = timingAnchorEvent;
 
-    const withDeadline = await this.attachDeadlineEvent(group);
-
-    return this.reminderGroupRepository.save(withDeadline);
+    return this.saveUnderLiveParents(group);
   }
 
   async deleteReminderGroup(groupId: number): Promise<void> {

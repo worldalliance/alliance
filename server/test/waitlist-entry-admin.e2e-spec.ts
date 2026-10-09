@@ -33,8 +33,14 @@ import {
   WaitlistSpamStatus,
 } from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistLink } from "../src/waitlist/entities/waitlist-link.entity";
+import { WaitlistTag } from "../src/waitlist/entities/waitlist-tag.entity";
 import { WaitlistModule } from "../src/waitlist/waitlist.module";
-import { createTestApp, TestContext, waitForLockWait } from "./e2e-test-utils";
+import {
+  createTestApp,
+  TestContext,
+  waitForLockWait,
+  writeDuringDeletion,
+} from "./e2e-test-utils";
 
 describe("Waitlist entry admin (e2e)", () => {
   let ctx: TestContext;
@@ -523,6 +529,26 @@ describe("Waitlist entry admin (e2e)", () => {
         .send({ entryIds: [entry.id] })
         .expect(404);
       await admin("delete", `/${tag.body.id}`).expect(404);
+    });
+
+    it("tags no entry with a tag deleted while it is added", async () => {
+      const entry = await saveEntry({ reason: "Tagged with a deleted tag" });
+      const tag = await admin("post", "").send({ name: "Going" }).expect(201);
+
+      const res = await writeDuringDeletion({
+        dataSource: ctx.dataSource,
+        target: WaitlistTag,
+        id: tag.body.id,
+        write: async () =>
+          admin("post", `/${tag.body.id}/add`).send({ entryIds: [entry.id] }),
+      });
+
+      expect(res).toMatchObject({ status: 404 });
+      const [{ count }] = await ctx.dataSource.query(
+        `SELECT count(*)::int AS count FROM waitlist_entry_tag WHERE "tagId" = $1`,
+        [tag.body.id],
+      );
+      expect(count).toBe(0);
     });
   });
 

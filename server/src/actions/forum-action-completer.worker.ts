@@ -4,7 +4,7 @@ import {
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
@@ -298,6 +298,26 @@ export class ForumActionCompleterWorker {
               `Skipping duplicate completion for action ${action.id} user ${userId}: ${error.message}`,
             );
             continue;
+          }
+          // completeAction also 404s for a live action the user cannot open,
+          // such as an archived one, which must not be marked computed.
+          if (error instanceof NotFoundException) {
+            if (!(await this.actionRepository.existsBy({ id: action.id }))) {
+              this.logger.warn(
+                `Stopping completions for action ${action.id}, deleted since the run loaded it`,
+              );
+              return plannedUsers;
+            }
+            if (
+              !(await this.dataSource
+                .getRepository(User)
+                .existsBy({ id: userId }))
+            ) {
+              this.logger.warn(
+                `Skipping completion for action ${action.id} user ${userId}, deleted since the run loaded them`,
+              );
+              continue;
+            }
           }
           throw error;
         }

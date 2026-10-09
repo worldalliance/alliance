@@ -42,6 +42,11 @@ import { Campaign } from "src/campaign/entities/campaign.entity";
 import { CommunityService } from "src/community/community.service";
 import { getStaffAssignableSlots } from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
+import {
+  liveOrNull,
+  lockLive,
+  writeUnderLive,
+} from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import {
   EventLogMessage,
@@ -78,8 +83,11 @@ import {
   type StoredInviteAssignment,
 } from "src/share-urls/invite-assignment";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
-import { findReferredByInvite } from "src/user/user-soft-delete";
-import { isForeignKeyViolation, isUniqueViolation } from "src/utils/db-errors";
+import {
+  findReferredByInvite,
+  saveFriendOfLiveUsers,
+} from "src/user/user-soft-delete";
+import { isUniqueViolation } from "src/utils/db-errors";
 import { PaginationQueryDto } from "src/utils/pagination.dto";
 import type {
   Relations,
@@ -304,8 +312,42 @@ export class UserService {
    * so a failed insert leaves the invite usable and only one signup can claim it.
    */
   async create(data: DeepPartial<User>): Promise<User> {
-    const inviteId = data.referredByInvite?.id;
+    return this.insertUser({ data });
+  }
+
+  private async insertUser(params: {
+    data: DeepPartial<User>;
+    assignment?: StoredInviteAssignment | null;
+  }): Promise<User> {
+    const { data: input, assignment } = params;
     const user = await this.dataSource.transaction(async (manager) => {
+      // A referral deleted before signup is dropped and the account keeps its
+      // referralSource, as when a referrer is deleted after signup. The
+      // referrer locks before the invite's group, which locks before the
+      // campaign and share link: the orders their deletions take them in.
+      const referredBy = await liveOrNull({
+        manager,
+        target: User,
+        row: input.referredBy,
+      });
+      const data = {
+        ...input,
+        ...(assignment === undefined
+          ? {}
+          : await this.inviteAssignmentSnapshot(manager, assignment)),
+        referredBy,
+        referredByCampaign: await liveOrNull({
+          manager,
+          target: Campaign,
+          row: input.referredByCampaign,
+        }),
+        referredByShareUrl: await liveOrNull({
+          manager,
+          target: ShareUrl,
+          row: input.referredByShareUrl,
+        }),
+      };
+      const inviteId = data.referredByInvite?.id;
       if (inviteId !== undefined) await this.claimInvite(manager, inviteId);
       return manager.save(manager.create(User, data));
     });
@@ -618,51 +660,28 @@ export class UserService {
    * Snapshot columns for the group placement an invite link carries.
    *
    * A `community` target whose group is already gone keeps its kind but drops
-   * the id, matching the state the `ON DELETE SET NULL` FK leaves behind when
-   * the group is deleted after signup — otherwise the stale id, which nothing
-   * prunes from `share_url.data`, fails that FK and the signup 500s.
+   * the id, matching the state the group's deletion leaves behind when it is
+   * deleted after signup. The group stays locked until the signup commits, so
+   * a deletion cannot land between this check and the insert.
    */
-  async inviteAssignmentSnapshot(
+  private async inviteAssignmentSnapshot(
+    manager: EntityManager,
     assignment: StoredInviteAssignment | null,
   ): Promise<InviteAssignmentColumns> {
     const columns = inviteAssignmentColumns(assignment);
     const { inviteAssignmentCommunityId: communityId } = columns;
     if (communityId === null) return columns;
-    const communityExists = await this.communityRepository.exists({
-      where: { id: communityId },
-    });
-    return communityExists
+    return (await lockLive(manager, [{ target: Community, id: communityId }]))
       ? columns
       : { ...columns, inviteAssignmentCommunityId: null };
   }
 
-  /**
-   * Create a user carrying the group placement their invite link named.
-   *
-   * The snapshot checks the group and writes it in two steps, so a group
-   * deleted in between still fails the FK. Confirm it is actually gone before
-   * retrying without it — any other foreign key is a real error, not this race.
-   */
+  /** Create a user carrying the group placement their invite link named. */
   async createWithInviteAssignment(
     data: DeepPartial<User>,
     assignment: StoredInviteAssignment | null,
   ): Promise<User> {
-    const columns = await this.inviteAssignmentSnapshot(assignment);
-    const { inviteAssignmentCommunityId: communityId } = columns;
-    try {
-      return await this.create({ ...data, ...columns });
-    } catch (error) {
-      if (communityId === null || !isForeignKeyViolation(error)) throw error;
-      const communityExists = await this.communityRepository.exists({
-        where: { id: communityId },
-      });
-      if (communityExists) throw error;
-      return this.create({
-        ...data,
-        ...columns,
-        inviteAssignmentCommunityId: null,
-      });
-    }
+    return this.insertUser({ data, assignment });
   }
 
   async remove(id: number): Promise<void> {
@@ -881,7 +900,10 @@ export class UserService {
         sentNotif: this.createFriendRequestNotif(requester, addressee),
       });
     }
-    return this.friendRepository.save(rel);
+    return saveFriendOfLiveUsers(this.dataSource.manager, {
+      rel,
+      userIds: [requesterId, addresseeId],
+    });
   }
 
   private createFriendRequestNotif(requester: User, addressee: User) {
@@ -937,9 +959,9 @@ export class UserService {
       }
     }
 
-    const saved = await this.friendRepository.save({
-      ...rel,
-      sentNotif: undefined,
+    const saved = await saveFriendOfLiveUsers(this.dataSource.manager, {
+      rel: { ...rel, sentNotif: undefined },
+      userIds: [requesterId, addresseeId],
     });
 
     if (status === FriendStatus.Accepted) {
@@ -1231,7 +1253,10 @@ export class UserService {
       status: FriendStatus.Accepted,
     });
 
-    await this.friendRepository.save(rel);
+    await saveFriendOfLiveUsers(this.dataSource.manager, {
+      rel,
+      userIds: [requesterId, addresseeId],
+    });
     this.emitFriendsAccepted(requesterId, addresseeId);
   }
 
@@ -1631,7 +1656,10 @@ export class UserService {
       createdAt: now,
     });
 
-    return this.userAwayRangeRepository.save(awayRange);
+    return writeUnderLive(this.dataSource.manager, {
+      parents: [{ target: User, id: userId }],
+      write: (manager) => manager.save(awayRange),
+    });
   }
 
   async getAwayRanges(userId: number): Promise<UserAwayRange[]> {
@@ -1672,7 +1700,7 @@ export class UserService {
       );
     }
     awayRange.endDate = now;
-    await this.userAwayRangeRepository.save(awayRange);
+    await this.saveLiveAwayRange(awayRange);
   }
 
   async updateAwayRange(params: {
@@ -1762,7 +1790,15 @@ export class UserService {
       { validateStartDate: false },
     );
 
-    return this.userAwayRangeRepository.save(awayRange);
+    return this.saveLiveAwayRange(awayRange);
+  }
+
+  private saveLiveAwayRange(awayRange: UserAwayRange): Promise<UserAwayRange> {
+    return writeUnderLive(this.dataSource.manager, {
+      parents: [{ target: User, id: awayRange.userId }],
+      notFound: "Away range not found.",
+      write: (manager) => manager.save(awayRange),
+    });
   }
 
   private resolveAwayRangeEdit(params: {
@@ -1824,7 +1860,13 @@ export class UserService {
       relations: { users: true },
     });
     tag.users = [...loadedTagUsers(tag), await this.findOneOrFail(userId)];
-    return this.tagRepository.save(tag);
+    return writeUnderLive(this.dataSource.manager, {
+      parents: [
+        { target: Tag, id: tagId },
+        { target: User, id: userId },
+      ],
+      write: (em) => em.save(tag),
+    });
   }
 
   async removeUserFromTag(tagId: string, userId: number): Promise<Tag> {
@@ -1998,7 +2040,10 @@ export class UserService {
       member.activeParticipant = body.activeParticipant;
     }
 
-    await this.ambassadorProgramMemberRepository.save(member);
+    await writeUnderLive(this.dataSource.manager, {
+      parents: [{ target: User, id: body.userId }],
+      write: (manager) => manager.save(member),
+    });
     return this.findAmbassadorProgramMemberOrFail(body.userId);
   }
 
@@ -2035,14 +2080,19 @@ export class UserService {
       throw new BadRequestException("Interaction text is required");
     }
 
-    await this.ambassadorProgramInteractionRepository.save(
-      this.ambassadorProgramInteractionRepository.create({
-        programMember: member,
-        createdBy,
-        text,
-        interactionDate: body.interactionDate,
-      }),
-    );
+    const interaction = this.ambassadorProgramInteractionRepository.create({
+      programMember: member,
+      createdBy,
+      text,
+      interactionDate: body.interactionDate,
+    });
+    await writeUnderLive(this.dataSource.manager, {
+      parents: [
+        { target: User, id: createdBy.id },
+        { target: AmbassadorProgramMember, id: member.id },
+      ],
+      write: (manager) => manager.save(interaction),
+    });
 
     return this.findAmbassadorProgramMemberOrFail(body.userId);
   }
@@ -2097,7 +2147,13 @@ export class UserService {
       community: community ?? null,
       status: OnetimeInviteStatus.LINK_UNUSED,
     });
-    const savedInvite = await this.onetimeInviteRepository.save(invite);
+    const savedInvite = await writeUnderLive(this.dataSource.manager, {
+      parents: [
+        { target: User, id: invitingUser.id },
+        ...(community ? [{ target: Community, id: community.id }] : []),
+      ],
+      write: (manager) => manager.save(invite),
+    });
     this.eventEmitter.emit(InviteFeedEvents.Created);
     return savedInvite;
   }
@@ -2120,14 +2176,16 @@ export class UserService {
       dueAt,
     });
 
-    return this.ambassadorInviteGoalRepository.save(
-      this.ambassadorInviteGoalRepository.create({
-        ambassador: user,
-        targetSuccessfulRecruits: body.targetSuccessfulRecruits,
-        startAt,
-        dueAt,
-      }),
-    );
+    const goal = this.ambassadorInviteGoalRepository.create({
+      ambassador: user,
+      targetSuccessfulRecruits: body.targetSuccessfulRecruits,
+      startAt,
+      dueAt,
+    });
+    return writeUnderLive(this.dataSource.manager, {
+      parents: [{ target: User, id: userId }],
+      write: (manager) => manager.save(goal),
+    });
   }
 
   async updateAmbassadorInviteGoal(
@@ -2660,12 +2718,17 @@ export class UserService {
     if (invitee !== undefined && !trimmedInvitee) {
       throw new BadRequestException("Invitee name cannot be empty");
     }
-    await this.onetimeInviteRepository.save({
-      id: inviteId,
-      ...(trimmedInvitee !== undefined && { invitee: trimmedInvitee }),
-      ...(communityId !== undefined && {
-        community: communityId === null ? null : { id: communityId },
-      }),
+    await writeUnderLive(this.dataSource.manager, {
+      parents:
+        communityId != null ? [{ target: Community, id: communityId }] : [],
+      write: (manager) =>
+        manager.save(OnetimeInvite, {
+          id: inviteId,
+          ...(trimmedInvitee !== undefined && { invitee: trimmedInvitee }),
+          ...(communityId !== undefined && {
+            community: communityId === null ? null : { id: communityId },
+          }),
+        }),
     });
     return this.onetimeInviteRepository.findOneOrFail({
       where: { id: inviteId },
@@ -2711,15 +2774,20 @@ export class UserService {
 
     const code = Math.random().toString(36).substring(2, 15);
 
-    const savedInvite = await this.onetimeInviteRepository.save(
-      this.onetimeInviteRepository.create({
-        ...rest,
-        code,
-        invitingUser: user,
-        community,
-        status: OnetimeInviteStatus.REQUEST_PENDING,
-      }),
-    );
+    const invite = this.onetimeInviteRepository.create({
+      ...rest,
+      code,
+      invitingUser: user,
+      community,
+      status: OnetimeInviteStatus.REQUEST_PENDING,
+    });
+    const savedInvite = await writeUnderLive(this.dataSource.manager, {
+      parents: [
+        { target: User, id: userId },
+        { target: Community, id: community.id },
+      ],
+      write: (manager) => manager.save(invite),
+    });
 
     sendNotificationToLeaders: {
       const communityWithLeaders = await this.communityRepository.findOne({
@@ -3192,9 +3260,13 @@ export class UserService {
       if (existingByToken) {
         if (existingByToken.user?.id !== userId) {
           console.log("Reassigning device by expo push token to user", userId);
-          await this.userDeviceRepository.update(existingByToken.id, {
-            user: { id: userId },
-            deviceType: body.deviceType ?? existingByToken.deviceType,
+          await writeUnderLive(this.dataSource.manager, {
+            parents: [{ target: User, id: userId }],
+            write: (manager) =>
+              manager.update(UserDevice, existingByToken.id, {
+                user: { id: userId },
+                deviceType: body.deviceType ?? existingByToken.deviceType,
+              }),
           });
         }
         return existingByToken.id;
@@ -3206,7 +3278,10 @@ export class UserService {
       expoPushToken: body.expoPushToken,
       user,
     });
-    const savedDevice = await this.userDeviceRepository.save(device);
+    const savedDevice = await writeUnderLive(this.dataSource.manager, {
+      parents: [{ target: User, id: userId }],
+      write: (manager) => manager.save(device),
+    });
     return savedDevice.id;
   }
 

@@ -343,6 +343,54 @@ describe("ActionEventNotifWorker (e2e)", () => {
     expect(notif.mms?.body).toMatch(new RegExp(`\\?cid=${notif.mms?.cid}$`));
   });
 
+  it("stops sending a group's planned reminders once the group is deleted", async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
+    const { memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName("deleted-mid-run-action"),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
+    });
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      { sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })) },
+    );
+    const reminders = ctx.app.get(ActionEventReminderService);
+    const evaluate = reminders.evaluateNotifications.bind(reminders);
+    let plannedCount = 0;
+    const planned = jest
+      .spyOn(reminders, "evaluateNotifications")
+      .mockImplementation(async (...window) => {
+        const plans = await evaluate(...window);
+        plannedCount += plans.filter(
+          (plan) => plan.group.id === reminderGroup.id,
+        ).length;
+        await ctx.dataSource.manager.softDelete(ReminderGroup, [
+          reminderGroup.id,
+        ]);
+        return plans;
+      });
+
+    try {
+      await dispatch();
+    } finally {
+      planned.mockRestore();
+    }
+
+    expect(plannedCount).toBe(1);
+    expect(
+      await notifRepo.count({
+        where: { idempotency_key: `reminder:${reminderGroup.id}:${user.id}` },
+        withDeleted: true,
+      }),
+    ).toBe(0);
+  });
+
   it("does not send reminders older than the 3 hour lookback window", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();

@@ -7,11 +7,16 @@ import {
 } from "@alliance/common/oauth";
 import type { PosthogContext } from "@alliance/common/posthog";
 import { R, type Result } from "@alliance/common/result";
-import { BadRequestException, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { JwtService, TokenExpiredError } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { writeUnderLive } from "src/datasources/soft-delete";
 import { hasPassword, User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { requestContext } from "src/utils/request-context";
@@ -475,13 +480,25 @@ export class OAuthAuthService {
     }
 
     const { provider, subject, email } = params.profile;
-    await this.accountRepository.upsert(
-      { userId: params.userId, provider, subject, email },
-      {
-        conflictPaths: ["userId", "provider"],
-        indexPredicate: '"deletedAt" IS NULL',
-      },
+    const written = await R.fromPromise(
+      writeUnderLive(this.accountRepository.manager, {
+        parents: [{ target: User, id: params.userId }],
+        write: (manager) =>
+          manager.getRepository(OAuthAccount).upsert(
+            { userId: params.userId, provider, subject, email },
+            {
+              conflictPaths: ["userId", "provider"],
+              indexPredicate: '"deletedAt" IS NULL',
+            },
+          ),
+      }),
     );
+    if (!written.ok) {
+      if (written.error instanceof NotFoundException) {
+        return R.failure(OAuthError.Failed);
+      }
+      throw written.error;
+    }
     return R.success(await this.usersService.findOneOrFail(params.userId));
   }
 

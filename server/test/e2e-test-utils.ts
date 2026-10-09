@@ -31,7 +31,7 @@ import { configureApp } from "src/utils/configure-app";
 import { ALL_THROTTLERS } from "src/utils/throttle";
 import supertest from "supertest";
 import TestAgent from "supertest/lib/agent";
-import { DataSource } from "typeorm";
+import { DataSource, type EntityTarget, type ObjectLiteral } from "typeorm";
 import { ActionsModule } from "../src/actions/actions.module";
 import { AuthModule } from "../src/auth/auth.module";
 import { ContractModule } from "../src/contract/contract.module";
@@ -84,17 +84,53 @@ export function stubExpoClient(ctx: TestContext): void {
     );
 }
 
-/** Resolves once some query in the test database waits on a row lock. */
-export function waitForLockWait(dataSource: DataSource): Promise<unknown> {
+/** Resolves once `queries` queries in the test database wait on a row lock. */
+export function waitForLockWait(
+  dataSource: DataSource,
+  queries = 1,
+): Promise<unknown> {
   return eventually(
     (): Promise<{ waiting: number }[]> =>
       dataSource.query(
         `SELECT count(*)::int AS waiting FROM pg_stat_activity
          WHERE datname = current_database() AND wait_event_type = 'Lock'`,
       ),
-    ([row]) => row.waiting > 0,
-    "a query to wait on a lock",
+    ([row]) => row.waiting >= queries,
+    `${queries} queries to wait on a lock`,
   );
+}
+
+/**
+ * Starts `write` while another transaction holds the row `FOR UPDATE`, as a
+ * deletion does, then soft-deletes the row and commits. Resolves to what
+ * `write` resolved or rejected with.
+ */
+export async function writeDuringDeletion(params: {
+  dataSource: DataSource;
+  target: EntityTarget<ObjectLiteral>;
+  id: number | string;
+  write: () => Promise<unknown>;
+}): Promise<unknown> {
+  const { dataSource, target, id, write } = params;
+  const runner = dataSource.createQueryRunner();
+  await runner.startTransaction();
+  try {
+    await runner.manager
+      .createQueryBuilder(target, "row")
+      .where("row.id = :id", { id })
+      .setLock("pessimistic_write")
+      .getOne();
+    const settled = write().then(
+      (value) => value,
+      (err: unknown) => err,
+    );
+    await waitForLockWait(dataSource);
+    await runner.manager.softDelete(target, id);
+    await runner.commitTransaction();
+    return await settled;
+  } finally {
+    await runner.release();
+  }
 }
 
 type TokenSubject = { id: number; email: string; sessionGeneration?: number };

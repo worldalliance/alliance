@@ -1,11 +1,13 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { PickType } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { Expo, ExpoPushMessage, ExpoPushTicket } from "expo-server-sdk";
 import { randomUUID } from "node:crypto";
+import { writeUnderLive } from "src/datasources/soft-delete";
 import { UserDevice } from "src/user/entities/user-device.entity";
+import { User } from "src/user/entities/user.entity";
 import {
   In,
   IsNull,
@@ -98,10 +100,16 @@ export class PushService {
         user: { id: message.userId },
       });
       try {
-        pushEntity = await this.pushRepository.save(pushEntity);
+        const unsaved = pushEntity;
+        pushEntity = await writeUnderLive(this.pushRepository.manager, {
+          parents: [{ target: User, id: message.userId }],
+          write: (em) => em.save(unsaved),
+        });
       } catch (error) {
         if (error instanceof QueryFailedError) {
           console.error(`skipping duplicate push: ${error.message}`);
+        } else if (error instanceof NotFoundException) {
+          console.warn(`skipping push to deleted user ${message.userId}`);
         }
         continue;
       }

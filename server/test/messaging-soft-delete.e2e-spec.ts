@@ -1,3 +1,4 @@
+import { NotFoundException } from "@nestjs/common";
 import { Community } from "src/community/entities/community.entity";
 import { ConversationService } from "src/messaging/conversation.service";
 import {
@@ -6,11 +7,20 @@ import {
   MessageDto,
 } from "src/messaging/dto/messaging.dto";
 import { Message } from "src/messaging/entities/message.entity";
+import {
+  Participant,
+  ParticipantState,
+} from "src/messaging/entities/participant.entity";
 import { MessagingModule } from "src/messaging/messaging.module";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  createTestApp,
+  signAccessToken,
+  TestContext,
+  waitForLockWait,
+} from "./e2e-test-utils";
 
 describe("Messaging soft deletion (e2e)", () => {
   let ctx: TestContext;
@@ -151,6 +161,48 @@ describe("Messaging soft deletion (e2e)", () => {
     }).expect(400);
   });
 
+  it("takes concurrent messages in one conversation", async () => {
+    const chat = await createChat();
+
+    const responses = await Promise.all(
+      [
+        chat.leaderToken,
+        chat.memberToken,
+        chat.leaderToken,
+        chat.memberToken,
+      ].map((token, index) =>
+        send({ token, conversationId: chat.conversationId, body: `${index}` }),
+      ),
+    );
+
+    expect(responses.map((response) => response.status)).toEqual([
+      201, 201, 201, 201,
+    ]);
+  });
+
+  it("joins an invited participant who sends a message", async () => {
+    const chat = await createChat();
+    const participantRepo = ctx.dataSource.getRepository(Participant);
+    const where = {
+      conversation: { id: chat.conversationId },
+      user: { id: chat.member.id },
+    };
+    await participantRepo.update(
+      (await participantRepo.findOneByOrFail(where)).id,
+      { state: ParticipantState.Invited, joinedAt: new Date(0) },
+    );
+
+    await sent({
+      token: chat.memberToken,
+      conversationId: chat.conversationId,
+      body: "accepting",
+    });
+
+    const participant = await participantRepo.findOneByOrFail(where);
+    expect(participant.state).toBe(ParticipantState.Joined);
+    expect(participant.joinedAt.getTime()).toBeGreaterThan(0);
+  });
+
   it("keeps already-read messages read when the last-read one is hidden", async () => {
     const chat = await createChat();
     const memberSays = (body: string) =>
@@ -220,5 +272,98 @@ describe("Messaging soft deletion (e2e)", () => {
     expect(
       summaries.find((summary) => summary.id === chat.conversationId),
     ).toMatchObject({ messageCount: 1, lastMessage: { id: shown } });
+  });
+
+  it("refuses to start a conversation with an account deleted meanwhile", async () => {
+    const [initiator, target] = await Promise.all(
+      [0, 1].map(() =>
+        userRepo.save(
+          userRepo.create({
+            name: `Chat Member ${users}`,
+            email: `messaging-soft-delete-${users++}@example.com`,
+            password: "password",
+          }),
+        ),
+      ),
+    );
+    const deletion = ctx.dataSource.createQueryRunner();
+    await deletion.startTransaction();
+    try {
+      await deletion.manager.delete(User, [target.id]);
+      const started = ctx.app
+        .get(ConversationService)
+        .createDirectConversation(initiator.id, { targetUserId: target.id });
+      const outcome = started.then(
+        () => "started",
+        (error: unknown) => error,
+      );
+      await waitForLockWait(ctx.dataSource);
+      await deletion.commitTransaction();
+      expect(await outcome).toBeInstanceOf(NotFoundException);
+    } finally {
+      await deletion.release();
+    }
+
+    expect(
+      await ctx.dataSource
+        .getRepository(Participant)
+        .countBy({ user: { id: initiator.id } }),
+    ).toBe(0);
+  });
+
+  it("refuses a message from an account deleted while it sends", async () => {
+    const chat = await createChat();
+    const deletion = ctx.dataSource.createQueryRunner();
+    await deletion.startTransaction();
+    try {
+      await deletion.manager.delete(User, [chat.member.id]);
+      const sending = send({
+        token: chat.memberToken,
+        conversationId: chat.conversationId,
+        body: "raced",
+      }).then((res) => res.status);
+      await waitForLockWait(ctx.dataSource);
+      await deletion.commitTransaction();
+      expect(await sending).toBe(403);
+    } finally {
+      await deletion.release();
+    }
+
+    expect(await messageRepo.countBy({ body: "raced" })).toBe(0);
+  });
+
+  it("refuses a reply to a message whose author is deleted while it sends", async () => {
+    const chat = await createChat();
+    const quoted = await sent({
+      token: chat.leaderToken,
+      conversationId: chat.conversationId,
+      body: "quoted",
+    });
+    await request(server())
+      .post(`/messaging/conversations/${chat.conversationId}/read`)
+      .set("Authorization", `Bearer ${chat.memberToken}`)
+      .expect(201);
+    const deletion = ctx.dataSource.createQueryRunner();
+    await deletion.startTransaction();
+    try {
+      // The lock an account deletion's cascade takes on its messages.
+      await deletion.query(`SELECT 1 FROM message WHERE id = $1 FOR UPDATE`, [
+        quoted,
+      ]);
+      const replying = send({
+        token: chat.memberToken,
+        conversationId: chat.conversationId,
+        body: "raced",
+        replyToId: quoted,
+      }).then((res) => res.status);
+      await waitForLockWait(ctx.dataSource);
+      await deletion.manager.delete(User, [chat.leader.id]);
+      await deletion.commitTransaction();
+      expect(await replying).toBe(400);
+    } finally {
+      await deletion.release();
+    }
+
+    expect(await userRepo.existsBy({ id: chat.leader.id })).toBe(false);
   });
 });

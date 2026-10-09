@@ -12,6 +12,7 @@ import { assertNotInStaffPreview } from "src/actions/staff-preview";
 import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
 import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
 import { findWithDeletedRoot } from "src/datasources/find-with-deleted-root";
+import { assertLive } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { FacepileService } from "src/likes/facepile.service";
@@ -29,7 +30,7 @@ import {
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_text,
 } from "src/user/user.utils";
-import { isForeignKeyViolation, isUniqueViolation } from "src/utils/db-errors";
+import { isUniqueViolation } from "src/utils/db-errors";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import {
   In,
@@ -60,6 +61,11 @@ import { EditableContent } from "./entities/editablecontent.entity";
 import { PostTag } from "./entities/post-tag.entity";
 import { parsePost, Post, type ParsedPost } from "./entities/post.entity";
 import { flattenComments } from "./flatten-comments";
+import {
+  lockCommentDiscussion,
+  lockLiveAction,
+  lockLiveAuthor,
+} from "./forum-locks";
 import { hiddenCommentIds } from "./hidden-comments";
 import { filterVisiblePosts } from "./post-visibility";
 
@@ -79,8 +85,6 @@ export class ForumService {
     private postRepository: Repository<Post>,
     @InjectRepository(Comment)
     private commentRepository: Repository<Comment>,
-    @InjectRepository(Notification)
-    private notifRepository: Repository<Notification>,
     @InjectRepository(Action)
     private actionRepository: Repository<Action>,
     @InjectRepository(User)
@@ -89,8 +93,6 @@ export class ForumService {
     private actionActivityRepository: Repository<ActionActivity>,
     @InjectRepository(EditableContent)
     private editableContentRepository: TypedRepository<EditableContent>,
-    @InjectRepository(PostTag)
-    private postTagRepository: Repository<PostTag>,
     private readonly likeNotificationService: LikeNotificationService,
     private readonly eventLogService: EventLogService,
     private readonly notifsService: NotifsService,
@@ -107,11 +109,6 @@ export class ForumService {
     const user = await this.userRepository.findOneOrFail({
       where: { id: userId },
     });
-    const content = this.editableContentRepository.create({
-      body: createPostDto.editableContent.body,
-      attachments: createPostDto.editableContent.attachments ?? [],
-    });
-    await this.editableContentRepository.save(content);
     let visibleAt = new Date();
     if (
       createPostDto.visibleAt &&
@@ -119,16 +116,28 @@ export class ForumService {
     ) {
       visibleAt = new Date(createPostDto.visibleAt);
     }
-    const post = this.postRepository.create({
-      title: createPostDto.title,
-      actionId: createPostDto.actionId,
-      author: user,
-      authorId: user.id,
-      editableContent: content,
-      visibleAt,
-      likes: [],
+    return this.postRepository.manager.transaction(async (manager) => {
+      await lockLiveAuthor(manager, userId);
+      if (createPostDto.actionId != null) {
+        await lockLiveAction(manager, createPostDto.actionId);
+      }
+      const content = await manager.save(
+        manager.create(EditableContent, {
+          body: createPostDto.editableContent.body,
+          attachments: createPostDto.editableContent.attachments ?? [],
+        }),
+      );
+      const post = manager.create(Post, {
+        title: createPostDto.title,
+        actionId: createPostDto.actionId,
+        author: user,
+        authorId: user.id,
+        editableContent: content,
+        visibleAt,
+        likes: [],
+      });
+      return parsePost(await manager.save(post));
     });
-    return parsePost(await this.postRepository.save(post));
   }
 
   addPostVisibilityFilter<T extends ObjectLiteral>(
@@ -585,10 +594,20 @@ export class ForumService {
       throw new NotFoundException("You can only edit your own posts");
     }
 
-    await this.postRepository.update(id, {
-      title: updatePostDto.title ?? post.title,
-      actionId: updatePostDto.actionId ?? post.actionId,
-      visibleAt: updatePostDto.visibleAt ?? post.visibleAt,
+    await this.postRepository.manager.transaction(async (manager) => {
+      if (
+        updatePostDto.actionId != null &&
+        updatePostDto.actionId !== post.actionId
+      ) {
+        await lockLiveAction(manager, updatePostDto.actionId);
+      }
+      await manager.update(Post, id, {
+        title: updatePostDto.title ?? post.title,
+        ...(updatePostDto.actionId != null && {
+          actionId: updatePostDto.actionId,
+        }),
+        visibleAt: updatePostDto.visibleAt ?? post.visibleAt,
+      });
     });
     if (updatePostDto.editableContent && post.editableContent) {
       const ec = await this.editableContentRepository.findOneBy({
@@ -650,6 +669,7 @@ export class ForumService {
   }
 
   private async resolveCommentTag(
+    manager: EntityManager,
     createCommentDto: CreateCommentDto,
   ): Promise<number | null> {
     if (
@@ -659,7 +679,7 @@ export class ForumService {
       return null;
     }
 
-    const tags = await this.postTagRepository.find({
+    const tags = await manager.find(PostTag, {
       where: { postId: createCommentDto.parentObjectId },
     });
 
@@ -687,55 +707,51 @@ export class ForumService {
       await this.assertPostVisible(createCommentDto.parentObjectId, userId);
     }
 
-    // Validate parent reply if provided
-    let parentReply: Comment | null = null;
-    if (createCommentDto.parentId) {
-      parentReply = await this.commentRepository.findOne({
-        where: {
-          id: createCommentDto.parentId,
-          parentObjectId: createCommentDto.parentObjectId,
-        },
-        relations: { author: true },
-        withDeleted: true,
-      });
+    const reply = await this.commentRepository.manager.transaction(
+      async (manager) => {
+        await lockLiveAuthor(manager, userId);
+        await lockCommentDiscussion({
+          manager,
+          parent: {
+            parentObjectType: createCommentDto.parentObjectType,
+            parentObjectId: createCommentDto.parentObjectId,
+            parentId: createCommentDto.parentId ?? null,
+          },
+        });
 
-      if (!parentReply || (await this.isHiddenFromThread(parentReply.id))) {
-        throw new NotFoundException(
-          `Parent reply with ID "${createCommentDto.parentId}" not found`,
+        if (
+          !createCommentDto.editableContent.body &&
+          (!createCommentDto.editableContent.attachments ||
+            createCommentDto.editableContent.attachments.length === 0)
+        ) {
+          throw new BadRequestException("Reply cannot be empty");
+        }
+
+        const tagId = await this.resolveCommentTag(manager, createCommentDto);
+
+        const content = await manager.save(
+          manager.create(EditableContent, {
+            body: createCommentDto.editableContent.body,
+            attachments: createCommentDto.editableContent.attachments ?? [],
+          }),
         );
-      }
-    }
 
-    if (
-      !createCommentDto.editableContent.body &&
-      (!createCommentDto.editableContent.attachments ||
-        createCommentDto.editableContent.attachments.length === 0)
-    ) {
-      throw new BadRequestException("Reply cannot be empty");
-    }
+        if (createCommentDto.parentObjectType === CommentParentObject.Post) {
+          await manager.update(Post, createCommentDto.parentObjectId, {
+            updatedAt: new Date(),
+          });
+        }
 
-    const tagId = await this.resolveCommentTag(createCommentDto);
-
-    const content = this.editableContentRepository.create({
-      body: createCommentDto.editableContent.body,
-      attachments: createCommentDto.editableContent.attachments ?? [],
-    });
-    await this.editableContentRepository.save(content);
-
-    const reply = this.commentRepository.create({
-      ...createCommentDto,
-      tagId,
-      authorId: userId,
-      editableContent: content,
-    });
-
-    if (createCommentDto.parentObjectType === CommentParentObject.Post) {
-      await this.postRepository.update(createCommentDto.parentObjectId, {
-        updatedAt: new Date(),
-      });
-    }
-
-    await this.commentRepository.save(reply);
+        return manager.save(
+          manager.create(Comment, {
+            ...createCommentDto,
+            tagId,
+            authorId: userId,
+            editableContent: content,
+          }),
+        );
+      },
+    );
 
     // TODO: notify action authors in app?
     if (
@@ -768,13 +784,6 @@ export class ForumService {
     return replyWithAuthor;
   }
 
-  /** Whether a deleted account wrote the comment or any comment above it. */
-  private async isHiddenFromThread(commentId: number): Promise<boolean> {
-    return (await hiddenCommentIds(this.commentRepository.manager)).includes(
-      commentId,
-    );
-  }
-
   async sendNotifsForNewComment(comment: Comment): Promise<void> {
     const usersToNotify: User[] = [];
 
@@ -789,24 +798,28 @@ export class ForumService {
     }
 
     if (comment.parentObjectType === CommentParentObject.Post) {
-      const post = await this.postRepository.findOneOrFail({
+      const post = await this.postRepository.findOne({
         where: { id: comment.parentObjectId },
         relations: { author: true, authors: true },
       });
-      if (!post.author) {
-        throw new Error(`Post ${post.id} was loaded without author`);
-      }
-      usersToNotify.push(post.author);
-      if (post.authors?.length) {
-        usersToNotify.push(...post.authors);
+      if (post) {
+        if (!post.author) {
+          throw new Error(`Post ${post.id} was loaded without author`);
+        }
+        usersToNotify.push(post.author);
+        if (post.authors?.length) {
+          usersToNotify.push(...post.authors);
+        }
       }
     }
     if (comment.parentObjectType === CommentParentObject.Activity) {
-      const activity = await this.actionActivityRepository.findOneOrFail({
+      const activity = await this.actionActivityRepository.findOne({
         where: { id: comment.parentObjectId },
         relations: { user: true, action: { reviewers: true } },
       });
-      usersToNotify.push(activity.user);
+      if (activity) {
+        usersToNotify.push(activity.user);
+      }
     }
 
     const seenIds = new Set<number>();
@@ -840,7 +853,7 @@ export class ForumService {
 
       // special text/email notifs
       if (comment.parentObjectType === CommentParentObject.Post) {
-        const post = await this.postRepository.findOneOrFail({
+        const post = await this.postRepository.findOne({
           where: { id: comment.parentObjectId },
           select: {
             id: true,
@@ -848,7 +861,7 @@ export class ForumService {
             notifyForReplies: true,
           },
         });
-        if (post.notifyForReplies && parentAuthor.receiveReplyNotifications) {
+        if (post?.notifyForReplies && parentAuthor.receiveReplyNotifications) {
           const url = commentUrl(comment, undefined, true);
           const tracking: TrackedMessage = {
             owner: { userId: parentAuthor.id },
@@ -1117,7 +1130,10 @@ export class ForumService {
     }
 
     for (const notification of reply.notifications) {
-      await this.notifRepository.delete(notification.id);
+      await this.commentRepository.manager.delete(
+        Notification,
+        notification.id,
+      );
     }
 
     await this.commentRepository.update(
@@ -1246,23 +1262,22 @@ export class ForumService {
     const { manager, postId, relation, userIds, currentIds } = params;
     const next = new Set(userIds);
     const current = new Set(currentIds);
-    try {
-      await manager
-        .createQueryBuilder()
-        .relation(Post, relation)
-        .of(postId)
-        .addAndRemove(
-          [...next].filter((id) => !current.has(id)),
-          [...current].filter((id) => !next.has(id)),
-        );
-    } catch (error) {
-      // The caller holds the post row locked, so the join row's other foreign
-      // key is the only one a save can break.
-      if (!isForeignKeyViolation(error)) throw error;
-      throw new BadRequestException(
-        `Cannot set ${relation}: one of those users no longer exists`,
+    const added = [...next].filter((id) => !current.has(id));
+    await assertLive(manager, {
+      rows: added.map((id) => ({ target: User, id })),
+      gone: () =>
+        new BadRequestException(
+          `Cannot set ${relation}: one of those users no longer exists`,
+        ),
+    });
+    await manager
+      .createQueryBuilder()
+      .relation(Post, relation)
+      .of(postId)
+      .addAndRemove(
+        added,
+        [...current].filter((id) => !next.has(id)),
       );
-    }
   }
 
   /** Locked so two writers cannot both diff against the same pre-state and

@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { Action } from "src/actions/entities/action.entity";
 import { Community } from "src/community/entities/community.entity";
 import { User } from "src/user/entities/user.entity";
 import { ExternalShareTarget } from "./entities/external-share-target.entity";
@@ -18,7 +17,6 @@ import { ShareUrlsService } from "./share-urls.service";
     TypeOrmModule.forFeature([
       ShareUrl,
       ExternalShareTarget,
-      Action,
       User,
       Community,
       InviteMessageTemplate,

@@ -4329,6 +4329,40 @@ describe("Actions (e2e)", () => {
         { name: "Bob" },
       ]);
     });
+
+    it("refuses to paste an action whose author is deleted", async () => {
+      const action = await createAction("Pasted Authors Action", []);
+      const [live, deleted] = await Promise.all(
+        ["live", "deleted"].map((name) =>
+          userRepo.save(
+            userRepo.create({
+              name: `Pasted ${name} author`,
+              email: `pasted-${name}-author@example.com`,
+              password: "Password123!",
+            }),
+          ),
+        ),
+      );
+      await userRepo.softDelete(deleted.id);
+      const exported = await request(ctx.app.getHttpServer())
+        .get(`/actions/export/${action.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const before = await actionRepo.count();
+      await request(ctx.app.getHttpServer())
+        .post("/actions/pasteJson")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          body: JSON.stringify({
+            ...exported.body,
+            authors: [{ id: live.id }, { id: deleted.id }],
+          }),
+        })
+        .expect(404);
+
+      expect(await actionRepo.count()).toBe(before);
+    });
   });
 
   describe("Cohort expression exposure", () => {

@@ -1,6 +1,8 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { NotFoundException } from "@nestjs/common";
 import { addMinutes } from "date-fns";
+import { ActionsService } from "src/actions/actions.service";
 import { CohortDecisionService } from "src/actions/cohort-decision.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ActionCohortDecision } from "src/actions/entities/action-cohort-decision.entity";
@@ -412,6 +414,65 @@ describe("ForumActionCompleterWorker (e2e)", () => {
       })
     ).map((activity) => activity.userId);
     expect(completionIds).toContain(responder.id);
+  });
+
+  it("retries an archived action instead of skipping members it hides", async () => {
+    const { action } = await createUndecidedForumAction(new Date());
+    await actionRepo.update(action.id, { archived: true });
+
+    await expect(worker.autocompleteForumActions()).rejects.toThrow(
+      NotFoundException,
+    );
+
+    expect(
+      (await actionRepo.findOneOrFail({ where: { id: action.id } }))
+        .computedAutocompleteAt,
+    ).toBeNull();
+  });
+
+  it("marks an action computed past a member deleted mid-run", async () => {
+    const { action, responder } = await createUndecidedForumAction(new Date());
+    const actionsService = ctx.app.get(ActionsService);
+    const completeAction = actionsService.completeAction.bind(actionsService);
+    const complete = jest
+      .spyOn(actionsService, "completeAction")
+      .mockImplementation(async (...args) => {
+        await userRepo.softDelete(responder.id);
+        return completeAction(...args);
+      });
+
+    await worker.autocompleteForumActions();
+    complete.mockRestore();
+
+    expect(await activityRepo.findBy({ actionId: action.id })).toHaveLength(0);
+    expect(
+      (await actionRepo.findOneOrFail({ where: { id: action.id } }))
+        .computedAutocompleteAt,
+    ).toBeInstanceOf(Date);
+  });
+
+  it("stops at an action deleted mid-run without marking it computed", async () => {
+    const { action } = await createUndecidedForumAction(new Date());
+    const actionsService = ctx.app.get(ActionsService);
+    const completeAction = actionsService.completeAction.bind(actionsService);
+    const complete = jest
+      .spyOn(actionsService, "completeAction")
+      .mockImplementation(async (...args) => {
+        await actionRepo.softDelete(action.id);
+        return completeAction(...args);
+      });
+
+    await worker.autocompleteForumActions();
+    complete.mockRestore();
+
+    expect(
+      (
+        await actionRepo.findOneOrFail({
+          where: { id: action.id },
+          withDeleted: true,
+        })
+      ).computedAutocompleteAt,
+    ).toBeNull();
   });
 
   it("retries an action whose cohort fails to decide", async () => {

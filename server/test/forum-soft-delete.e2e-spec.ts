@@ -1,21 +1,29 @@
+import { NotFoundException } from "@nestjs/common";
 import {
   GlobalFeedItemDto,
   GlobalFeedItemType,
 } from "src/actions/dto/action.dto";
+import { ActionStatus } from "src/actions/entities/action-event.entity";
 import { Action } from "src/actions/entities/action.entity";
 import { Cluster } from "src/cluster/entities/cluster.entity";
 import { CommentDto } from "src/forum/dto/comment.dto";
-import { PostDto } from "src/forum/dto/post.dto";
+import type { PostDto, UpdatePostSettingsDto } from "src/forum/dto/post.dto";
 import {
   Comment,
   CommentParentObject,
 } from "src/forum/entities/comment.entity";
+import { Post } from "src/forum/entities/post.entity";
 import { ForumService } from "src/forum/forum.service";
 import { UnreadContent } from "src/notifs/entities/unread-content.entity";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
-import { createTestApp, signAccessToken, TestContext } from "./e2e-test-utils";
+import {
+  createTestApp,
+  signAccessToken,
+  TestContext,
+  waitForLockWait,
+} from "./e2e-test-utils";
 
 describe("Forum soft deletion (e2e)", () => {
   let ctx: TestContext;
@@ -440,6 +448,80 @@ describe("Forum soft deletion (e2e)", () => {
     ).toBe(2);
   });
 
+  it("refuses a post naming a deleted action", async () => {
+    const actions = ctx.dataSource.getRepository(Action);
+    const action = await actions.save(
+      actions.create({
+        name: "Deleted action",
+        category: [],
+        body: "Deleted",
+        status: ActionStatus.MemberAction,
+        cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+      }),
+    );
+    await actions.softDelete(action.id);
+    const postId = await createPost(ctx.accessToken);
+
+    await request(server())
+      .post("/forum/posts")
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .send({
+        title: "About a deleted action",
+        editableContent: { body: "Post body", attachments: [] },
+        actionId: action.id,
+      })
+      .expect(404);
+    await request(server())
+      .patch(`/forum/posts/${postId}`)
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .send({ actionId: action.id })
+      .expect(404);
+  });
+
+  it("edits a post whose action was deleted when the edit keeps that action", async () => {
+    const actions = ctx.dataSource.getRepository(Action);
+    const action = await actions.save(
+      actions.create({
+        name: "Action deleted after posting",
+        category: [],
+        body: "Deleted",
+        status: ActionStatus.MemberAction,
+        cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+      }),
+    );
+    const postId = (
+      await request(server())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "About an action",
+          editableContent: { body: "Post body", attachments: [] },
+          actionId: action.id,
+        })
+        .expect(201)
+    ).body.id;
+    await actions.softDelete(action.id);
+
+    await request(server())
+      .patch(`/forum/posts/${postId}`)
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .send({ title: "Retitled", actionId: action.id })
+      .expect(200);
+  });
+
+  it("takes concurrent comments on one post", async () => {
+    const postId = await createPost(ctx.accessToken);
+    const commenters = await Promise.all([1, 2, 3, 4, 5].map(() => member()));
+
+    const responses = await Promise.all(
+      commenters.map((commenter) => comment({ ...commenter, postId })),
+    );
+
+    expect(responses.map((response) => response.status)).toEqual(
+      commenters.map(() => 201),
+    );
+  });
+
   it("takes comments on a scheduled post only from those who can see it", async () => {
     const author = await member();
     const outsider = await member();
@@ -494,5 +576,73 @@ describe("Forum soft deletion (e2e)", () => {
         ),
       ).toEqual([{ deleted: true, hidden: true }]);
     }
+  });
+
+  it.each(["expertIds", "authorIds"] as const)(
+    "refuses a deleted account in a post's %s",
+    async (key) => {
+      const author = await member();
+      const postId = await createPost(author.token);
+      const departed = await member();
+      await userRepo.softDelete(departed.user.id);
+
+      await request(server())
+        .patch(`/forum/admin/posts/${postId}/settings`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          expertIds: [],
+          authorIds: [author.user.id],
+          qaMode: false,
+          [key]: [author.user.id, departed.user.id],
+        } satisfies UpdatePostSettingsDto)
+        .expect(400);
+    },
+  );
+
+  it("refuses a post or comment by an account deleted while it waits", async () => {
+    const author = await member();
+    const postId = await createPost(ctx.accessToken);
+    const forum = ctx.app.get(ForumService);
+    const deletion = ctx.dataSource.createQueryRunner();
+    await deletion.startTransaction();
+    try {
+      await deletion.manager.delete(User, [author.user.id]);
+      const settle = (write: Promise<unknown>) =>
+        write.then(
+          () => "written",
+          (error: unknown) => error,
+        );
+      const posted = settle(
+        forum.createPost(
+          {
+            title: "Raced",
+            editableContent: { body: "Raced", attachments: [] },
+          },
+          author.user.id,
+        ),
+      );
+      const commented = settle(
+        forum.createComment(
+          {
+            parentObjectType: CommentParentObject.Post,
+            parentObjectId: postId,
+            editableContent: { body: "Raced", attachments: [] },
+          },
+          author.user.id,
+        ),
+      );
+      await waitForLockWait(ctx.dataSource, 2);
+      await deletion.commitTransaction();
+      expect(await posted).toBeInstanceOf(NotFoundException);
+      expect(await commented).toBeInstanceOf(NotFoundException);
+    } finally {
+      await deletion.release();
+    }
+
+    expect(
+      await ctx.dataSource
+        .getRepository(Post)
+        .countBy({ authorId: author.user.id }),
+    ).toBe(0);
   });
 });

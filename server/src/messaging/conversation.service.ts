@@ -19,6 +19,7 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
+import { assertLive, lockLive, lockLiveIds } from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
 import { Friend, FriendStatus } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
@@ -42,6 +43,7 @@ import {
 import { Message } from "./entities/message.entity";
 import { Participant, ParticipantState } from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
+import { notInConversation } from "./not-in-conversation";
 import { loadHiddenReadCursors, UNREAD_SQL } from "./read-cursor";
 
 type ParticipantLookup = {
@@ -49,6 +51,7 @@ type ParticipantLookup = {
   userId: number;
   relations?: Relations<Participant>;
 };
+const PARTICIPANTS_MISSING = "One or more participants were not found.";
 
 @Injectable()
 export class ConversationService {
@@ -292,30 +295,46 @@ export class ConversationService {
     const involvesAdmin = initiator.admin || target.admin;
     const autoJoin = areFriends || involvesAdmin;
 
-    const conversation = await this.conversationRepository.save(
-      this.conversationRepository.create({
-        title: dto.title?.trim() || "Direct message",
-        type: ConversationType.Direct,
-      }),
+    const conversation = await this.conversationRepository.manager.transaction(
+      async (manager) => {
+        const live = await lockLiveIds(manager, {
+          target: User,
+          ids: [initiator.id, target.id],
+        });
+        if (!live.has(target.id)) {
+          throw new NotFoundException("Recipient not found.");
+        }
+        if (!live.has(initiator.id)) {
+          throw new NotFoundException("User not found.");
+        }
+        const created = await manager.save(
+          manager.create(Conversation, {
+            title: dto.title?.trim() || "Direct message",
+            type: ConversationType.Direct,
+          }),
+        );
+        const now = new Date();
+        await manager.save([
+          manager.create(Participant, {
+            conversation: created,
+            user: initiator,
+            role: ParticipantRole.Member,
+            state: ParticipantState.Joined,
+            joinedAt: now,
+          }),
+          manager.create(Participant, {
+            conversation: created,
+            user: target,
+            role: ParticipantRole.Member,
+            state: autoJoin
+              ? ParticipantState.Joined
+              : ParticipantState.Invited,
+            joinedAt: now,
+          }),
+        ]);
+        return created;
+      },
     );
-
-    const now = new Date();
-    await this.participantRepository.save([
-      this.participantRepository.create({
-        conversation,
-        user: initiator,
-        role: ParticipantRole.Member,
-        state: ParticipantState.Joined,
-        joinedAt: now,
-      }),
-      this.participantRepository.create({
-        conversation,
-        user: target,
-        role: ParticipantRole.Member,
-        state: autoJoin ? ParticipantState.Joined : ParticipantState.Invited,
-        joinedAt: now,
-      }),
-    ]);
 
     const hydratedConversation = await this.getConversationEntity(
       conversation.id,
@@ -388,38 +407,50 @@ export class ConversationService {
     }
 
     if (participants.length !== uniqueParticipantIds.length) {
-      throw new NotFoundException("One or more participants were not found.");
+      throw new NotFoundException(PARTICIPANTS_MISSING);
     }
 
     const photo = await this.imagesService.resolvePhotoUpdate(dto.photo);
 
-    const conversation = await this.conversationRepository.save(
-      this.conversationRepository.create({
-        title: dto.title,
-        photo: photo ?? null,
-        type: ConversationType.Multiple,
-      }),
+    const conversation = await this.conversationRepository.manager.transaction(
+      async (manager) => {
+        const memberIds = [owner.id, ...uniqueParticipantIds];
+        const live = await lockLiveIds(manager, {
+          target: User,
+          ids: memberIds,
+        });
+        if (memberIds.some((id) => !live.has(id))) {
+          throw new NotFoundException(PARTICIPANTS_MISSING);
+        }
+        const created = await manager.save(
+          manager.create(Conversation, {
+            title: dto.title,
+            photo: photo ?? null,
+            type: ConversationType.Multiple,
+          }),
+        );
+        const now = new Date();
+        await manager.save([
+          manager.create(Participant, {
+            conversation: created,
+            user: owner,
+            role: ParticipantRole.Owner,
+            state: ParticipantState.Joined,
+            joinedAt: now,
+          }),
+          ...participants.map((user) =>
+            manager.create(Participant, {
+              conversation: created,
+              user,
+              role: ParticipantRole.Member,
+              state: ParticipantState.Invited,
+              joinedAt: now,
+            }),
+          ),
+        ]);
+        return created;
+      },
     );
-
-    const now = new Date();
-    await this.participantRepository.save([
-      this.participantRepository.create({
-        conversation,
-        user: owner,
-        role: ParticipantRole.Owner,
-        state: ParticipantState.Joined,
-        joinedAt: now,
-      }),
-      ...participants.map((user) =>
-        this.participantRepository.create({
-          conversation,
-          user,
-          role: ParticipantRole.Member,
-          state: ParticipantState.Invited,
-          joinedAt: now,
-        }),
-      ),
-    ]);
 
     const hydratedConversation = await this.getConversationEntity(
       conversation.id,
@@ -584,16 +615,29 @@ export class ConversationService {
       throw new NotFoundException("User not found.");
     }
 
-    const participant = this.participantRepository.create({
-      conversation: adminParticipant.conversation,
-      user,
-      role: ParticipantRole.Member,
-      state: ParticipantState.Invited,
-      joinedAt: new Date(),
-    });
-
     try {
-      await this.participantRepository.save(participant);
+      await this.participantRepository.manager.transaction(async (manager) => {
+        await assertLive(manager, {
+          rows: [{ target: Conversation, id: conversationId }],
+          gone: () => new NotFoundException("Conversation not found."),
+        });
+        const live = await lockLiveIds(manager, {
+          target: User,
+          ids: [user.id],
+        });
+        if (!live.has(user.id)) {
+          throw new NotFoundException("User not found.");
+        }
+        await manager.save(
+          manager.create(Participant, {
+            conversation: adminParticipant.conversation,
+            user,
+            role: ParticipantRole.Member,
+            state: ParticipantState.Invited,
+            joinedAt: new Date(),
+          }),
+        );
+      });
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
       return this.buildConversationDto(conversationId, actingUserId);
@@ -691,13 +735,22 @@ export class ConversationService {
     const photo = community.photo ?? null;
 
     if (!conversation) {
-      conversation = await this.conversationRepository.save(
-        this.conversationRepository.create({
-          title: community.name,
-          photo,
-          type: ConversationType.Community,
-          community,
-        }),
+      conversation = await this.conversationRepository.manager.transaction(
+        async (manager) => {
+          // A group deleted since it was read would otherwise get a live chat.
+          await assertLive(manager, {
+            rows: [{ target: Community, id: community.id }],
+            gone: () => new NotFoundException("Community not found."),
+          });
+          return manager.save(
+            manager.create(Conversation, {
+              title: community.name,
+              photo,
+              type: ConversationType.Community,
+              community,
+            }),
+          );
+        },
       );
     } else {
       const needsUpdate =
@@ -749,14 +802,30 @@ export class ConversationService {
           await this.participantRepository.save(existing);
         }
       } else {
-        await this.participantRepository.save(
-          this.participantRepository.create({
-            conversation,
-            user,
-            role,
-            state: ParticipantState.Joined,
-            joinedAt: now,
-          }),
+        await this.participantRepository.manager.transaction(
+          async (manager) => {
+            if (
+              !(await lockLive(manager, [
+                { target: Conversation, id: conversation.id },
+              ]))
+            ) {
+              return;
+            }
+            const live = await lockLiveIds(manager, {
+              target: User,
+              ids: [userId],
+            });
+            if (!live.has(userId)) return;
+            await manager.save(
+              manager.create(Participant, {
+                conversation,
+                user,
+                role,
+                state: ParticipantState.Joined,
+                joinedAt: now,
+              }),
+            );
+          },
         );
       }
     }
@@ -943,7 +1012,7 @@ export class ConversationService {
     });
 
     if (!participant) {
-      throw new ForbiddenException("You are not part of this conversation.");
+      throw notInConversation();
     }
 
     return participant;

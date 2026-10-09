@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { writeUnderLive } from "src/datasources/soft-delete";
 import type {
   Repository as TypedRepository,
   WithRelationsExact,
@@ -47,19 +48,18 @@ export class ActionPartnershipsService {
     responseId: number,
     dto: CreateActionPartnershipNoteDto,
   ): Promise<ActionPartnershipNote> {
-    const response = await this.responseRepository.findOne({
-      where: { id: responseId },
+    return writeUnderLive(this.noteRepository.manager, {
+      parents: [{ target: ActionPartnershipResponse, id: responseId }],
+      notFound: "Action partnership response not found",
+      write: (manager) =>
+        manager.save(
+          manager.create(ActionPartnershipNote, {
+            responseId,
+            noteDate: dto.noteDate ? new Date(dto.noteDate) : new Date(),
+            body: dto.body,
+          }),
+        ),
     });
-    if (!response) {
-      throw new NotFoundException("Action partnership response not found");
-    }
-
-    const note = this.noteRepository.create({
-      responseId: response.id,
-      noteDate: dto.noteDate ? new Date(dto.noteDate) : new Date(),
-      body: dto.body,
-    });
-    return this.noteRepository.save(note);
   }
 
   async deleteResponseAdmin(responseId: number): Promise<void> {
