@@ -11,10 +11,16 @@ import { LessThan, MoreThan } from "typeorm";
 import type { WaitlistBrowserDtoArgs } from "./dto/waitlist.dto";
 import { WaitlistBrowser } from "./entities/waitlist-browser.entity";
 
-export const WAITLIST_BROWSER_COOKIE = "waitlist_browser";
+export const WAITLIST_SESSION_COOKIE = "waitlist_session";
 export const REMEMBERED_INVITE_COOKIE = "remembered_invite";
 
+/** A persistent cookie older clients were given; read only to expire it. */
+const LEGACY_BROWSER_COOKIE = "waitlist_browser";
+
 const REMEMBER_MS = milliseconds({ days: 30 });
+
+/** The browser session ends the cookie sooner; this bounds a restored one. */
+const SESSION_MAX_MS = milliseconds({ days: 30 });
 
 const cookieOptions = (): CookieOptions => ({
   httpOnly: true,
@@ -32,8 +38,9 @@ const cookie = (req: Request, name: string): string | undefined => {
 };
 
 /**
- * What this browser may see again: its entry's confirmation, and a signup
- * invite it opened. Neither cookie grants anything beyond that.
+ * What this browser may see again: its entry's confirmation for the browser
+ * session, and a signup invite it opened. Neither cookie grants anything
+ * beyond that.
  */
 @Injectable()
 export class WaitlistBrowserService {
@@ -43,6 +50,7 @@ export class WaitlistBrowserService {
     private readonly userService: UserService,
   ) {}
 
+  /** A session cookie: no `Max-Age` or `Expires`. */
   async rememberEntry(params: {
     res: Response;
     entryId: number;
@@ -51,12 +59,9 @@ export class WaitlistBrowserService {
     await this.browserRepository.insert({
       tokenHash: hashToken(token),
       entryId: params.entryId,
-      expiresAt: new Date(Date.now() + REMEMBER_MS),
+      expiresAt: new Date(Date.now() + SESSION_MAX_MS),
     });
-    params.res.cookie(WAITLIST_BROWSER_COOKIE, token, {
-      ...cookieOptions(),
-      maxAge: REMEMBER_MS,
-    });
+    params.res.cookie(WAITLIST_SESSION_COOKIE, token, cookieOptions());
   }
 
   async rememberInvite(params: { res: Response; code: string }): Promise<void> {
@@ -68,9 +73,17 @@ export class WaitlistBrowserService {
     }
   }
 
+  private async expireLegacyBrowser(req: Request, res: Response) {
+    const legacy = cookie(req, LEGACY_BROWSER_COOKIE);
+    if (!legacy) return;
+    await this.browserRepository.delete({ tokenHash: hashToken(legacy) });
+    res.clearCookie(LEGACY_BROWSER_COOKIE, cookieOptions());
+  }
+
   /** Clears each cookie that no longer names anything. */
   async find(req: Request, res: Response): Promise<WaitlistBrowserDtoArgs> {
-    const token = cookie(req, WAITLIST_BROWSER_COOKIE);
+    await this.expireLegacyBrowser(req, res);
+    const token = cookie(req, WAITLIST_SESSION_COOKIE);
     const browser = token
       ? await this.browserRepository.findOne({
           where: {
@@ -86,7 +99,7 @@ export class WaitlistBrowserService {
       (await this.userService.isInviteClaimable(inviteCode));
 
     if (token && !browser) {
-      res.clearCookie(WAITLIST_BROWSER_COOKIE, cookieOptions());
+      res.clearCookie(WAITLIST_SESSION_COOKIE, cookieOptions());
     }
     if (inviteCode && !claimable) {
       res.clearCookie(REMEMBERED_INVITE_COOKIE, cookieOptions());
@@ -99,11 +112,12 @@ export class WaitlistBrowserService {
 
   /** Leaves the entry, its invites, and any account session alone. */
   async forget(req: Request, res: Response): Promise<void> {
-    const token = cookie(req, WAITLIST_BROWSER_COOKIE);
+    await this.expireLegacyBrowser(req, res);
+    const token = cookie(req, WAITLIST_SESSION_COOKIE);
     if (token) {
       await this.browserRepository.delete({ tokenHash: hashToken(token) });
     }
-    res.clearCookie(WAITLIST_BROWSER_COOKIE, cookieOptions());
+    res.clearCookie(WAITLIST_SESSION_COOKIE, cookieOptions());
     res.clearCookie(REMEMBERED_INVITE_COOKIE, cookieOptions());
   }
 
