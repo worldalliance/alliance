@@ -511,7 +511,6 @@ function humanizeReferralSource(source: ReferralSource) {
 
 export class UpdateProfileDto extends PartialType(
   PickType(User, [
-    "name",
     "anonymous",
     "emailNotifsForActions",
     "pushNotifsForActions",
@@ -530,6 +529,13 @@ export class UpdateProfileDto extends PartialType(
     "pushesForActionUpdates",
   ]),
 ) {
+  @IsOptional()
+  @ApiPropertyOptional({ type: String })
+  @IsString()
+  @IsNotEmpty()
+  @Transform(trim)
+  name?: string;
+
   @ApiPropertyOptional({ type: Number, nullable: true })
   @IsOptional()
   cityId?: number | null;

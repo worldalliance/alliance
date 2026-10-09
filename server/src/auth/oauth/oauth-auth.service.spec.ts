@@ -13,9 +13,40 @@ const email = "ada@example.com";
 describe("OAuthAuthService.authenticate", () => {
   afterEach(() => jest.restoreAllMocks());
 
-  it("keeps the email out of the log when signup fails a query", async () => {
+  const serviceWith = (
+    createReferredUser: AuthService["createReferredUser"],
+  ): OAuthAuthService => {
     const authService = {} as AuthService;
-    authService.createReferredUser = () =>
+    authService.createReferredUser = createReferredUser;
+    const usersService = {} as UserService;
+    usersService.findOneByEmail = () => Promise.resolve(null);
+    const accountRepository = {} as Repository<OAuthAccount>;
+    accountRepository.findOne = () => Promise.resolve(null);
+    return new OAuthAuthService(
+      authService,
+      usersService,
+      {} as JwtService,
+      accountRepository,
+      {} as Repository<User>,
+      {} as SpentTokenService,
+    );
+  };
+
+  const signUp = (service: OAuthAuthService, name: string | null) =>
+    service.authenticate({
+      profile: {
+        provider: OAuthProvider.Google,
+        subject: "subject",
+        email,
+        emailVerified: true,
+        name,
+      },
+      referralCode: "invite",
+      timeZone: null,
+    });
+
+  it("keeps the email out of the log when signup fails a query", async () => {
+    const service = serviceWith(() =>
       Promise.reject(
         new QueryFailedError(
           'INSERT INTO "user" ("email") VALUES ($1)',
@@ -27,35 +58,28 @@ describe("OAuthAuthService.authenticate", () => {
             { detail: `Key (email)=(${email}) already exists.` },
           ),
         ),
-      );
-    const usersService = {} as UserService;
-    usersService.findOneByEmail = () => Promise.resolve(null);
-    const accountRepository = {} as Repository<OAuthAccount>;
-    accountRepository.findOne = () => Promise.resolve(null);
-    const service = new OAuthAuthService(
-      authService,
-      usersService,
-      {} as JwtService,
-      accountRepository,
-      {} as Repository<User>,
-      {} as SpentTokenService,
+      ),
     );
     const logged = jest.spyOn(console, "error").mockImplementation(() => {});
 
-    const result = await service.authenticate({
-      profile: {
-        provider: OAuthProvider.Google,
-        subject: "subject",
-        email,
-        emailVerified: true,
-        name: null,
-      },
-      referralCode: "invite",
-      timeZone: null,
-    });
+    const result = await signUp(service, null);
 
     expect(result).toEqual({ ok: false, error: OAuthError.Failed });
     expect(logged).toHaveBeenCalled();
     expect(JSON.stringify(logged.mock.calls)).not.toContain(email);
+  });
+
+  it.each([
+    ["  Ada Lovelace  ", "Ada Lovelace"],
+    ["   ", email],
+    [null, email],
+  ])("signs up provider name %j as %j", async (name, expected) => {
+    const createReferredUser = jest.fn(() => Promise.resolve(new User()));
+
+    await signUp(serviceWith(createReferredUser), name);
+
+    expect(createReferredUser).toHaveBeenCalledWith(
+      expect.objectContaining({ name: expected }),
+    );
   });
 });
