@@ -6,6 +6,8 @@ import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula
 import { cn } from "@alliance/shared/styles/util";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { GripVertical } from "lucide-react";
+import type { ReactNode } from "react";
+import type { AddressedWrite } from "../../lib/displayBlockById";
 import { CanvasAccordion, CanvasList } from "./CanvasContainers";
 import {
   CanvasContent,
@@ -17,19 +19,40 @@ import {
 import type { ChildTarget, ResolvedChild } from "./canvasSelection";
 import { ElementConditionsIndicator } from "./ConditionsIndicator";
 import { DropLine } from "./DropLine";
+import {
+  EditTextButton,
+  inlineTextFor,
+  ITEM_PENCIL,
+  startOnEnter,
+  type InlineEditing,
+} from "./InlineText";
 import { SidebarSection } from "./sidebarSections";
 import type { ListDrag } from "./useListDrag";
+
+type ContentProps = {
+  element: PageItem;
+  selectedChild: ResolvedChild | undefined;
+  onSelectChild: (child: ChildTarget, section: SidebarSection) => void;
+  summarize: (formula: VisibleIfFormula) => string;
+  onUpdate: (updates: Partial<PageItem>) => void;
+  /** Writes the element as the form holds it, where the form can address it. */
+  updateCurrent: AddressedWrite | undefined;
+  /** Null unless the selection is this element or inside it. */
+  inline: InlineEditing | null;
+};
 
 function ElementContent({
   element,
   selectedChild,
   onSelectChild,
   summarize,
-}: {
-  element: PageItem;
-  selectedChild: ResolvedChild | undefined;
-  onSelectChild: (child: ChildTarget, section: SidebarSection) => void;
-  summarize: (formula: VisibleIfFormula) => string;
+  onUpdate,
+  updateCurrent,
+  inline,
+  textEditor,
+}: ContentProps & {
+  /** The element's own text, open in place of its rendering. */
+  textEditor: ReactNode;
 }) {
   if (element.kind === "list") {
     return (
@@ -38,6 +61,9 @@ function ElementContent({
         selectedChild={selectedChild}
         onSelectChild={onSelectChild}
         summarize={summarize}
+        onUpdate={onUpdate}
+        inline={inline}
+        labelEditor={textEditor}
       />
     );
   }
@@ -47,9 +73,13 @@ function ElementContent({
         block={element}
         selectedChild={selectedChild}
         onSelectChild={onSelectChild}
+        onUpdate={onUpdate}
+        updateCurrent={updateCurrent}
+        inline={inline}
       />
     );
   }
+  if (textEditor) return textEditor;
   return isQuestionField(element) ? (
     <CanvasContent interactive={false}>
       <CanvasQuestion field={element} />
@@ -71,18 +101,26 @@ export function CanvasElement({
   summarize,
   conditionSummary,
   drag,
-}: {
-  element: PageItem;
+  onUpdate,
+  updateCurrent,
+  inline,
+}: ContentProps & {
   label: string;
   selected: boolean;
-  selectedChild: ResolvedChild | undefined;
   onSelect: (section: SidebarSection) => void;
-  onSelectChild: (child: ChildTarget, section: SidebarSection) => void;
-  summarize: (formula: VisibleIfFormula) => string;
   /** Null when the element shows unconditionally, or through its group. */
   conditionSummary: string | null;
   drag: ListDrag;
 }) {
+  const editing = selected ? inline : null;
+  const text =
+    editing &&
+    inlineTextFor({
+      item: element,
+      onChange: (next) =>
+        onUpdate(isQuestionField(element) ? { label: next } : { text: next }),
+      onStop: editing.stop,
+    });
   return (
     <div
       className={cn(
@@ -106,6 +144,7 @@ export function CanvasElement({
         type="button"
         aria-label={`Select ${label}`}
         aria-pressed={selected}
+        onKeyDown={editing && text ? startOnEnter(editing) : undefined}
         className={SELECT_OVERLAY}
       />
       <ElementContent
@@ -113,7 +152,18 @@ export function CanvasElement({
         selectedChild={selectedChild}
         onSelectChild={onSelectChild}
         summarize={summarize}
+        onUpdate={onUpdate}
+        updateCurrent={updateCurrent}
+        inline={inline}
+        textEditor={editing?.editing && text ? text.editor : null}
       />
+      {editing && !editing.editing && text && (
+        <EditTextButton
+          label={text.editLabel}
+          onClick={editing.start}
+          className={ITEM_PENCIL}
+        />
+      )}
       <span
         draggable
         onDragStart={drag.onDragStart}

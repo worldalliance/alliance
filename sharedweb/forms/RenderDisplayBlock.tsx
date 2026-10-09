@@ -28,6 +28,7 @@ import {
 } from "./accordionStyles";
 import BigLinkDisplay from "./BigLinkDisplay";
 import CopyTextDisplay from "./CopyTextDisplay";
+import { headerClassName, headerLevel } from "./headerStyles";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
 import VideoPlayer from "./VideoPlayer";
 
@@ -215,20 +216,9 @@ export default function RenderDisplayBlock({
 }: Props) {
   switch (block.kind) {
     case "header":
-      const headerLevel = block.level || 2;
-      const headerClass = {
-        1: "text-3xl",
-        2: "text-2xl",
-        3: "text-xl",
-        4: "text-lg",
-        5: "text-base",
-        6: "",
-      }[headerLevel];
       return React.createElement(
-        `h${headerLevel}`,
-        {
-          className: cn("!font-semibold text-zinc-900", headerClass),
-        },
+        `h${headerLevel(block)}`,
+        { className: headerClassName(block) },
         block.text,
       );
 

@@ -1,7 +1,4 @@
-import type {
-  AccordionSection,
-  NestedDisplayBlock,
-} from "@alliance/common/forms/display-blocks";
+import type { AccordionSection } from "@alliance/common/forms/display-blocks";
 import type {
   ListSubField,
   PageItem,
@@ -20,13 +17,12 @@ import type {
   FieldOfKind,
 } from "../form-fields/types";
 import { VariableTextField } from "../VariableTextField";
+import { accordionWrites } from "./accordionWrites";
 import {
-  addressOf,
   ChildKind,
   describeElement,
   describeHeading,
   describeSection,
-  findAddressed,
   sectionBlockChild,
   sectionChild,
   subFieldChild,
@@ -213,28 +209,14 @@ function childView({
       const sections = element.sections;
       const sectionIndex = child.section;
       const section = sections[sectionIndex]!;
-      // A nested upload lands after the render that started it, so writes
-      // read the accordion as it stands.
-      const writeSections = (
-        update: (current: AccordionSection[]) => AccordionSection[],
-      ) => {
-        if (!updateCurrent) return onUpdate({ sections: update(sections) });
-        updateCurrent((current) => {
-          if (current.kind !== "accordion") {
-            throw new Error(`accordion became ${current.kind}`);
-          }
-          return { sections: update(current.sections) };
-        });
-      };
+      const {
+        writeSections,
+        updateSection: updateSectionAt,
+        blockWrite,
+      } = accordionWrites({ sections, onUpdate, updateCurrent });
       const updateSection = (
         update: (current: AccordionSection) => Partial<AccordionSection>,
-      ) =>
-        writeSections((current) => {
-          const at = findAddressed(current, addressOf(section, sectionIndex));
-          return current.map((candidate, i) =>
-            i === at ? { ...candidate, ...update(candidate) } : candidate,
-          );
-        });
+      ) => updateSectionAt(sectionIndex, update);
       if (child.kind === ChildKind.Section) {
         return {
           heading: describeSection(section),
@@ -278,27 +260,7 @@ function childView({
         updateSection(() => ({
           blocks: blocks.filter((_, i) => i !== blockIndex),
         }));
-      const updateCurrentBlock: AddressedWrite = (update) => {
-        let wrote: NestedDisplayBlock | null = null;
-        updateSection((current) => {
-          const at = findAddressed(
-            current.blocks,
-            addressOf(block, blockIndex),
-          );
-          return {
-            blocks: current.blocks.map((candidate, i) => {
-              if (i !== at) return candidate;
-              wrote = candidate;
-              // Safe: `update` answers with fields of `candidate`'s own kind.
-              return {
-                ...candidate,
-                ...update(candidate),
-              } as NestedDisplayBlock;
-            }),
-          };
-        });
-        return wrote;
-      };
+      const updateCurrentBlock = blockWrite({ sectionIndex, blockIndex });
       return {
         heading: describeHeading(block),
         sections: UNCONDITIONAL_SECTIONS,

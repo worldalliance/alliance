@@ -2240,6 +2240,11 @@ export function FormBuilder(props: FormBuilderProps) {
                         invalidIds={invalidIds}
                         renderInsertPoint={renderInsertPoint}
                         onMove={moveElement}
+                        onUpdateElement={(index, updates) =>
+                          updateElementAt(index)(updates)
+                        }
+                        onUpdateBlockById={updateBlockById}
+                        onUpdatePage={updateCurrentPage}
                       />
                     }
                     settings={renderSettings()}

@@ -159,6 +159,14 @@ As implemented:
 
 Checks: inline editing of a label containing a variable token.
 
+As implemented:
+
+- The canvas already rendered formatting with tokens as authored: labels, text, and quotes through Markdown, headers and label blocks as plain text, all uninterpolated since PR 3. This PR keeps that rendering and adds a test for it.
+- Editable targets are question labels (top-level, lists, and list sub-fields), header/text/quote/label blocks (top-level and inside accordion sections), accordion section titles, and the page title. A contract's or custom component's label doesn't show on the canvas, so neither offers inline editing; a table per kind (`LABEL_ON_CANVAS`, `BLOCK_TEXT_LINES`) decides.
+- A selected target shows a pencil button ("Edit label", "Edit text", "Edit section title", "Edit page title") on its top edge beside the condition indicator, or in the row for a section title or page title. Enter on the selected target's select button opens it too. The editor is the sidebar's `VariableTextField`, so variable suggestions and unknown-variable warnings come along, except for the page title: the form never interpolates page titles, and the sidebar edits them as plain text, so the canvas does too. The editor replaces the rendered text in place, styled like it; a question keeps rendering its input below, without its label. The canvas clears the label rather than relying on `hideLabel` alone, since a checkbox ignores `hideLabel` and making it honor that would change respondents' previous-answer blocks, which pass it.
+- Edits write the draft through the same writes as the sidebar (`updateElementAt`, `updateCurrentPage`, `updateListSubField`, and for an accordion's sections and blocks `accordionWrites`, which reads the accordion as the form holds it when the write lands), so typing while the editor keeps focus is one step through draft history's text runs. Escape, or Enter in a single-line editor, closes it and returns focus to the target's select button; leaving it closes it without moving focus. Blurring because the window lost focus keeps it open. A selection change closes it.
+- Inline edits write a block's default content. PR 7 addresses user overrides.
+
 ## PR 7: Personalized content
 
 - Default authoring uses default block content. Selecting a user override in the selected block's sidebar changes the canvas to that override and visibly names the user. The builder holds the override target per block; its setter bails out on an unchanged value. The existing default/override selection and import affordances remain available.
