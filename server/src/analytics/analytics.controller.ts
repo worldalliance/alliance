@@ -21,6 +21,7 @@ import { InviteFunnelDto } from "./invite-funnel.dto";
 import { MemberCompletionRetentionCohortDto } from "./member-completion-retention.dto";
 import { MemberReliabilityWindowDto } from "./member-reliability-window.dto";
 import { MissedActionsDto } from "./missed-actions.dto";
+import { PlatformTenureAnalyticsService } from "./platform-tenure-analytics.service";
 import { PlatformTenureCohortStatsDto } from "./platform-tenure-cohort.dto";
 import { PosthogTimeSpentService } from "./posthog-time-spent.service";
 import { ReminderGroupClickRatePointDto } from "./reminder-group-click-rates.dto";
@@ -32,6 +33,7 @@ export class AnalyticsController {
   constructor(
     private readonly analyticsService: AnalyticsService,
     private readonly actionStatsAnalyticsService: ActionStatsAnalyticsService,
+    private readonly platformTenureAnalyticsService: PlatformTenureAnalyticsService,
     private readonly posthogTimeSpentService: PosthogTimeSpentService,
   ) {}
 
@@ -167,7 +169,9 @@ export class AnalyticsController {
       throw new BadRequestException("weeksOnPlatform must be a whole number");
     }
     const stats =
-      await this.analyticsService.getPlatformTenureCohortStats(parsedWeeks);
+      await this.platformTenureAnalyticsService.getPlatformTenureCohortStats(
+        parsedWeeks,
+      );
     return new PlatformTenureCohortStatsDto(stats);
   }
 

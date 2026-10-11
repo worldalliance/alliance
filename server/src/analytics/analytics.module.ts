@@ -15,6 +15,7 @@ import { ActionStatsRecord } from "./actionstats.entity";
 import { AnalyticsController } from "./analytics.controller";
 import { AnalyticsService } from "./analytics.service";
 import { DailyStatsRecord } from "./dailystats.entity";
+import { PlatformTenureAnalyticsService } from "./platform-tenure-analytics.service";
 import { PosthogTimeSpentService } from "./posthog-time-spent.service";
 
 @Module({
@@ -39,6 +40,7 @@ import { PosthogTimeSpentService } from "./posthog-time-spent.service";
     AnalyticsService,
     PosthogTimeSpentService,
     ActionStatsAnalyticsService,
+    PlatformTenureAnalyticsService,
   ],
 })
 export class AnalyticsModule {}

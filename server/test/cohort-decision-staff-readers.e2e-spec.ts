@@ -7,6 +7,7 @@ import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { Action } from "../src/actions/entities/action.entity";
 import { AnalyticsModule } from "../src/analytics/analytics.module";
 import { AnalyticsService } from "../src/analytics/analytics.service";
+import { PlatformTenureAnalyticsService } from "../src/analytics/platform-tenure-analytics.service";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
   UserActionRelationPillStatus,
@@ -262,7 +263,7 @@ describe("Staff-facing reads of cohort decisions (e2e)", () => {
       const { us, nonUs } = await decideClosedThenMove();
 
       const { actions } = await ctx.app
-        .get(AnalyticsService)
+        .get(PlatformTenureAnalyticsService)
         .getPlatformTenureCohortStats(Math.floor(signedDaysAgo / 7));
 
       expect(actions).toContainEqual(
