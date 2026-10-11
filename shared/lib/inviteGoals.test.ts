@@ -166,6 +166,10 @@ test("dateToInputValue formats the local calendar date", () => {
   expect(dateToInputValue(new Date(2026, 0, 5, 23, 30))).toBe("2026-01-05");
 });
 
+test("dateToInputValue pads a year still being typed to four digits", () => {
+  expect(dateToInputValue(new Date("0002-09-01T00:00"))).toBe("0002-09-01");
+});
+
 test("daysUntil rounds a partial day up and never goes negative", () => {
   expect(daysUntil(new Date(now.getTime() + 1), now)).toBe(1);
   expect(daysUntil(new Date(now.getTime() - 1), now)).toBe(0);

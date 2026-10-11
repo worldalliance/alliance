@@ -17,7 +17,7 @@ const padDatePart = (value: number) => String(value).padStart(2, "0");
 export const dateToInputValue = (value: string | Date) => {
   const date = new Date(value);
   return [
-    date.getFullYear(),
+    String(date.getFullYear()).padStart(4, "0"),
     padDatePart(date.getMonth() + 1),
     padDatePart(date.getDate()),
   ].join("-");
