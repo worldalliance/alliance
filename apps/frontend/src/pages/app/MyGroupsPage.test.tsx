@@ -172,6 +172,18 @@ it("closes the leave dialog and says when reassignment from it fails", async () 
   expect(screen.queryByText(/Are you sure you want to leave/)).toBeNull();
 });
 
+it.each([{ answer: offline }, { answer: failed }])(
+  "says when leaving a group fails with $answer.name",
+  async ({ answer }) => {
+    myGroups = async () => Response.json([group(1, "My group")]);
+    api.alsoServing({ "POST /community/:communityId/leave": answer });
+    renderPage();
+    fireEvent.click(await screen.findByText("Leave"));
+    fireEvent.click(screen.getByText("Leave group"));
+    await screen.findByText("Unable to leave that group right now.");
+  },
+);
+
 it("holds Leave group while its request is in flight", async () => {
   myGroups = async () => Response.json([group(1, "My group")]);
   const { promise, resolve } = Promise.withResolvers<Response>();

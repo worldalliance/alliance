@@ -169,19 +169,22 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
     async (community: CommunityDto) => {
       setIsLeavingGroup(true);
       try {
-        const response = await communityLeave({
+        await communityLeave({
           path: { communityId: community.id },
+          throwOnError: true,
         });
-        if (response.data) {
-          onSelectCommunity(null);
-          setLeavingCommunityId(null);
-          removeCommunity(community.id);
-        }
+      } catch (err) {
+        console.error("Failed to leave group", err);
+        showError("Unable to leave that group right now.");
+        return;
       } finally {
         setIsLeavingGroup(false);
       }
+      onSelectCommunity(null);
+      setLeavingCommunityId(null);
+      removeCommunity(community.id);
     },
-    [onSelectCommunity, removeCommunity],
+    [onSelectCommunity, removeCommunity, showError],
   );
 
   const { join, leave } = useGroupAssignment({ onChanged: refreshUser });
