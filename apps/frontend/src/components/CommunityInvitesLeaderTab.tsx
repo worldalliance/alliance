@@ -1,12 +1,5 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  communityCreateCommunityInvite,
-  communityDeleteCommunityInvite,
-  communityGetCommunityInvites,
-  CommunityInviteDto,
-  CreateOnetimeInviteDto,
-  ProfileDto,
-} from "@alliance/shared/client";
+import { CreateOnetimeInviteDto, ProfileDto } from "@alliance/shared/client";
 import {
   deleteInviteConfirmation,
   inviteBuckets,
@@ -16,6 +9,7 @@ import {
   bucketCommunityInvitesByActionability,
   bucketOnetimeInvitesByActionability,
 } from "@alliance/shared/lib/inviteUtils";
+import { useCommunityInvites } from "@alliance/shared/lib/useCommunityInvites";
 import { useCommunityOnetimeInvites } from "@alliance/shared/lib/useCommunityOnetimeInvites";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -64,9 +58,15 @@ const CommunityInvitesLeaderTab = ({
     rejectInvite,
     deleteInvite,
   } = useCommunityOnetimeInvites(communityId);
-  const [communityInvites, setCommunityInvites] = useState<
-    CommunityInviteDto[]
-  >([]);
+  const {
+    invites: communityInvites,
+    didFail: communityInvitesDidFail,
+    createInvite: createCommunityInvite,
+    deleteInvite: deleteCommunityInvite,
+  } = useCommunityInvites(communityId);
+  const [deletingCommunityInviteIds, setDeletingCommunityInviteIds] = useState<
+    ReadonlySet<number>
+  >(new Set());
   const [copiedInviteId, setCopiedInviteId] = useState<number | null>(null);
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { error: errorToast, confirm } = useToast();
@@ -96,16 +96,6 @@ const CommunityInvitesLeaderTab = ({
   );
 
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    communityGetCommunityInvites({ path: { communityId } }).then((response) => {
-      if (response.data) {
-        setCommunityInvites(response.data);
-      } else {
-        setError("Failed to load existing member invites");
-      }
-    });
-  }, [communityId]);
 
   const leaderCommunityIds = useMemo(() => {
     return new Set([communityId]);
@@ -193,22 +183,13 @@ const CommunityInvitesLeaderTab = ({
       return;
     }
     setCreatingInvite(true);
-    communityCreateCommunityInvite({
-      body: { invitedUserId: selectedUser.id, communityId },
-    })
-      .then((response) => {
-        if (response.data) {
-          setCommunityInvites((prev) => [response.data, ...prev]);
-          setSelectedUser(null);
-          setError(null);
-        } else {
-          setError(
-            errorMessage({
-              error: response.error,
-              fallback: "Failed to invite user",
-            }),
-          );
-        }
+    createCommunityInvite(selectedUser.id)
+      .then(() => {
+        setSelectedUser(null);
+        setError(null);
+      })
+      .catch((error: unknown) => {
+        setError(errorMessage({ error, fallback: "Failed to invite user" }));
       })
       .finally(() => {
         setCreatingInvite(false);
@@ -250,13 +231,18 @@ const CommunityInvitesLeaderTab = ({
   };
 
   const handleDeleteCommunityInvite = (inviteId: number) => {
-    communityDeleteCommunityInvite({ path: { inviteId } }).then((response) => {
-      if (response.data) {
-        setCommunityInvites((prev) =>
-          prev.filter((invite) => invite.id !== inviteId),
-        );
-      }
-    });
+    setDeletingCommunityInviteIds((prev) => new Set(prev).add(inviteId));
+    deleteCommunityInvite(inviteId)
+      .catch(() => {
+        errorToast("Failed to delete invite");
+      })
+      .finally(() => {
+        setDeletingCommunityInviteIds((prev) => {
+          const next = new Set(prev);
+          next.delete(inviteId);
+          return next;
+        });
+      });
   };
 
   return (
@@ -328,6 +314,11 @@ const CommunityInvitesLeaderTab = ({
             Failed to load new member invites
           </p>
         )}
+        {communityInvitesDidFail && (
+          <p className="text-red-500 text-sm">
+            Failed to load existing member invites
+          </p>
+        )}
         {error && <p className="text-red-500 text-sm">{error}</p>}
       </div>
 
@@ -361,6 +352,7 @@ const CommunityInvitesLeaderTab = ({
                 key={invite.id}
                 invite={invite}
                 selfInvited={!!(user && user.id === invite.invitingUser?.id)}
+                deleting={deletingCommunityInviteIds.has(invite.id)}
                 onDelete={handleDeleteCommunityInvite}
               />
             ))}
@@ -419,6 +411,7 @@ const CommunityInvitesLeaderTab = ({
                 key={invite.id}
                 invite={invite}
                 selfInvited={!!(user && user.id === invite.invitingUser?.id)}
+                deleting={deletingCommunityInviteIds.has(invite.id)}
                 onDelete={handleDeleteCommunityInvite}
               />
             ))}

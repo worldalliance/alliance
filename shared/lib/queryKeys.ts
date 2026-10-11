@@ -58,6 +58,8 @@ export const queryKeys = {
     ["userGetAmbassadorInviteDashboard"] as const,
   communityCompletedActionsCount: (communityId: number | null) =>
     ["actionsCommunityCompletedActionsCount", communityId] as const,
+  communityInvites: (communityId: number) =>
+    ["communityGetCommunityInvites", communityId] as const,
   communityMemberInfo: (
     communityId: number | undefined,
     userId: number | undefined,
