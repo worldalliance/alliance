@@ -56,7 +56,7 @@ import {
   getEffectiveContractEventsInRange,
   isContractActiveAt,
 } from "./contract-event.entity";
-import { Friend, FriendStatus } from "./friend.entity";
+import { Friend } from "./friend.entity";
 import { OnetimeInvite } from "./onetime-invite.entity";
 import { Tag } from "./tag.entity";
 import { UserAwayRange } from "./user-away-range.entity";
@@ -537,30 +537,6 @@ export class User {
   @Expose()
   get hasActiveContract(): boolean {
     return this.hasActiveContractAt(new Date());
-  }
-
-  get friends(): User[] {
-    const sentAccepted =
-      this.sentFriendRequests
-        ?.filter(
-          (
-            f,
-          ): f is typeof f & {
-            addressee: User;
-          } => f.status === FriendStatus.Accepted && !!f.addressee,
-        )
-        .map((f) => f.addressee) || [];
-    const receivedAccepted =
-      this.receivedFriendRequests
-        ?.filter(
-          (
-            f,
-          ): f is typeof f & {
-            requester: User;
-          } => f.status === FriendStatus.Accepted && !!f.requester,
-        )
-        .map((f) => f.requester) || [];
-    return [...sentAccepted, ...receivedAccepted];
   }
 
   constructor(data: Partial<User> = {}) {
