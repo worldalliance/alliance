@@ -1,4 +1,4 @@
-import type { OnetimeInviteDto, ShareUrlMineDto } from "../client";
+import type { ShareUrlMineDto } from "../client";
 import { automaticInviteNote, inviteDestination } from "./copy";
 import {
   automaticInviteReason,
@@ -7,6 +7,7 @@ import {
   inviteDestinationSelection,
   reusableInviteNotes,
 } from "./inviteUtils";
+import { makeOnetimeInvite } from "./testFixtures";
 
 describe("inviteDestinationLabel", () => {
   const link = (overrides: Partial<ShareUrlMineDto> = {}): ShareUrlMineDto => ({
@@ -205,15 +206,11 @@ describe("automaticInviteReason", () => {
 });
 
 describe("bucketOnetimeInvitesByActionability", () => {
-  const invite: OnetimeInviteDto = {
-    id: 1,
+  const invite = makeOnetimeInvite({
     invitee: "Invitee",
     code: "code",
-    createdAt: "2026-01-01T00:00:00.000Z",
     status: "link_used",
-    invitedUserId: null,
-    accepted: false,
-  };
+  });
 
   it("buckets nothing without a user", () => {
     expect(

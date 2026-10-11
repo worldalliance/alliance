@@ -1,10 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type {
-  OnetimeInviteDto,
-  OnetimeInviteStatus,
-  ReferrerProfileDto,
-} from "../client";
+import type { OnetimeInviteStatus, ReferrerProfileDto } from "../client";
 import { queryKeys } from "./queryKeys";
+import { makeOnetimeInvite } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import {
@@ -59,15 +56,13 @@ serveApi(
     "GET /user/onetimeInvite/:code": ({ params }) =>
       inviteStatus !== 200
         ? Response.json({}, { status: inviteStatus })
-        : Response.json({
-            id: 1,
-            invitee: "Sam",
-            code: params.code,
-            createdAt: new Date().toISOString(),
-            status,
-            invitedUserId: null,
-            accepted: false,
-          } satisfies OnetimeInviteDto),
+        : Response.json(
+            makeOnetimeInvite({
+              code: params.code,
+              createdAt: new Date().toISOString(),
+              status,
+            }),
+          ),
   }),
 );
 

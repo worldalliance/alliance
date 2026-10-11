@@ -1,4 +1,4 @@
-import type { OnetimeInviteDto } from "@alliance/shared/client";
+import { makeOnetimeInvite } from "@alliance/shared/lib/testFixtures";
 import {
   cleanup,
   fireEvent,
@@ -11,15 +11,7 @@ import OnetimeInviteListItem from "./OnetimeInviteListItem";
 
 afterEach(cleanup);
 
-const invite: OnetimeInviteDto = {
-  id: 7,
-  invitee: "Sam",
-  code: "abc123",
-  createdAt: "2026-01-01T00:00:00.000Z",
-  status: "link_unused",
-  invitedUserId: null,
-  accepted: false,
-};
+const invite = makeOnetimeInvite({ id: 7 });
 
 it.each([
   [true, [[7]]],

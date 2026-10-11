@@ -1,11 +1,12 @@
 import { act, renderHook } from "@testing-library/react";
-import type { OnetimeInviteDto, ShareUrlMineDto } from "../client";
+import type { ShareUrlMineDto } from "../client";
 import {
   onetimeInviteSettings,
   reusableInviteSettings,
   useInviteSettingsDraft,
   type InviteSettingsTarget,
 } from "./inviteSettings";
+import { makeOnetimeInvite } from "./testFixtures";
 
 const link = (overrides: Partial<ShareUrlMineDto> = {}): ShareUrlMineDto => ({
   id: "share-url-id",
@@ -73,15 +74,7 @@ describe("reusableInviteSettings", () => {
 });
 
 describe("onetimeInviteSettings", () => {
-  const invite: OnetimeInviteDto = {
-    id: 12,
-    invitee: "Ada",
-    code: "abc",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    status: "link_unused",
-    invitedUserId: null,
-    accepted: false,
-  };
+  const invite = makeOnetimeInvite({ id: 12, invitee: "Ada", code: "abc" });
 
   it("links to the invite's signup page and requires a name", () => {
     const settings = onetimeInviteSettings({

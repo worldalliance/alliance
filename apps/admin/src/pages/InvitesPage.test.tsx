@@ -1,4 +1,5 @@
 import type { OnetimeInviteListDto } from "@alliance/shared/client";
+import { makeOnetimeInvite } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as config from "@alliance/sharedweb/lib/config";
@@ -22,17 +23,7 @@ serveApi(
   routes({
     "GET /user/onetimeInvites": ({ request }) =>
       Response.json({
-        items: [
-          {
-            id: 1,
-            invitee: "Sam",
-            code: "abc123",
-            createdAt: "2026-01-02T00:00:00.000Z",
-            status: "link_unused",
-            invitedUserId: null,
-            accepted: false,
-          },
-        ],
+        items: [makeOnetimeInvite({ createdAt: "2026-01-02T00:00:00.000Z" })],
         totalCount: 51,
         page: Number(new URL(request.url).searchParams.get("page")),
         limit: 50,
