@@ -10,6 +10,7 @@ import type {
   ParticipantDto,
   ParticipantRole,
   ProfileDto,
+  TagDto,
   UserActionStatusDto,
   UserDto,
 } from "../client/types.gen";
@@ -128,6 +129,19 @@ export function makeProfile(id: number): ProfileDto {
     displayName: `User ${id}`,
     hasActiveContract: true,
     isCommunityLeader: false,
+  };
+}
+
+export function makeTag(overrides: Partial<TagDto> = {}): TagDto {
+  return {
+    id: "tag-1",
+    name: "Volunteers",
+    description: "",
+    publicDisplayName: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    users: [],
+    ...overrides,
   };
 }
 

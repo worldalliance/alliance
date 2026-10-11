@@ -1,4 +1,5 @@
-import type { CreateTagDto, TagDto } from "@alliance/shared/client";
+import type { CreateTagDto } from "@alliance/shared/client";
+import { makeTag } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
@@ -13,15 +14,11 @@ import TagManagement from "./TagManagement";
 
 afterEach(cleanup);
 
-const tag: TagDto = {
-  id: "tag-1",
+const tag = makeTag({
   name: "Volunteers",
   description: "People who volunteer",
   publicDisplayName: "Helpers",
-  createdAt: "2026-01-01T00:00:00.000Z",
-  updatedAt: "2026-01-01T00:00:00.000Z",
-  users: [],
-};
+});
 
 let creates: CreateTagDto[] = [];
 let updates: CreateTagDto[] = [];
