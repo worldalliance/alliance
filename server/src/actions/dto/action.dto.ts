@@ -48,6 +48,7 @@ import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { Form } from "src/tasks/entities/form.entity";
 import {
   FormResponse,
+  loadedFormResponseSnapshot,
   type ParsedFormResponse,
 } from "src/tasks/entities/formresponse.entity";
 import { SubmitFormDto } from "src/tasks/form.dto";
@@ -776,7 +777,7 @@ export class FormResponseOutputDto extends PickType(FormResponse, [
     this.visibilityValidatorResults = formResponse.visibilityValidatorResults;
     this.deviceType = formResponse.deviceType;
     this.publicAnswers = formResponse.publicAnswers;
-    this.schemaSnapshot = formResponse.formSnapshot.schema;
+    this.schemaSnapshot = loadedFormResponseSnapshot(formResponse).schema;
   }
 }
 

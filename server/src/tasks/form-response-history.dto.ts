@@ -2,7 +2,10 @@ import { ApiProperty, PickType } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsDefined } from "class-validator";
 import { Form } from "./entities/form.entity";
-import { FormResponse } from "./entities/formresponse.entity";
+import {
+  FormResponse,
+  loadedFormResponseSnapshot,
+} from "./entities/formresponse.entity";
 
 export class FormResponseHistoryEntryDto extends PickType(FormResponse, [
   "id",
@@ -19,7 +22,7 @@ export class FormResponseHistoryEntryDto extends PickType(FormResponse, [
     this.id = input.id;
     this.answers = input.answers;
     this.formulaChoices = input.formulaChoices;
-    this.schemaSnapshot = input.formSnapshot.schema;
+    this.schemaSnapshot = loadedFormResponseSnapshot(input).schema;
   }
 }
 
