@@ -44,8 +44,7 @@ export class Message {
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "conversationId" })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  conversation: Relation<Conversation>;
+  conversation?: Relation<Conversation>;
 
   @CreateDateColumnTz()
   @ApiProperty({ type: Date })
