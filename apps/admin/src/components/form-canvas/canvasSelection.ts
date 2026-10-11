@@ -191,6 +191,34 @@ export function placeTarget(
   }
 }
 
+/** Where the question `child` sits, or null when `child` isn't a question. */
+export function childPlace({
+  pageIndex,
+  index,
+  child,
+}: {
+  pageIndex: number;
+  index: number;
+  child: ResolvedChild;
+}): FormPlace | null {
+  switch (child.kind) {
+    case ChildKind.SubField:
+      return {
+        kind: PlaceKind.SubField,
+        pageIndex,
+        index,
+        subIndex: child.index,
+      };
+    case ChildKind.Section:
+    case ChildKind.SectionBlock:
+      return null;
+    default:
+      throw new Error(
+        `unknown child: ${JSON.stringify(child satisfies never)}`,
+      );
+  }
+}
+
 /**
  * Where `address` sits in `items`, or -1. The stored position wins while it
  * holds the id, so of items sharing an id the selected one stays selected.

@@ -56,6 +56,14 @@ const schema: FormSchema = {
 const button = (name: string) =>
   screen.getByRole<HTMLButtonElement>("button", { name });
 
+/** Confirms deleting Town, which Pet's visibility reads. */
+const confirmDeletion = () =>
+  fireEvent.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: "Delete question",
+    }),
+  );
+
 describe("the form canvas", () => {
   it("starts on the first page's settings", () => {
     renderFormBuilder(schema);
@@ -398,6 +406,7 @@ describe("the form canvas", () => {
     const remove = button("Delete question");
     remove.focus();
     fireEvent.click(remove);
+    confirmDeletion();
     expect(heading()).toBe("Page settings");
     expect(
       screen
@@ -588,6 +597,7 @@ describe("the form canvas in a narrow window", () => {
     const remove = button("Delete question");
     remove.focus();
     fireEvent.click(remove);
+    confirmDeletion();
     expect(heading()).toBe("Page settings");
     const drawer = screen.getByRole("complementary", { name: "Settings" });
     expect(drawer.contains(document.activeElement)).toBe(true);

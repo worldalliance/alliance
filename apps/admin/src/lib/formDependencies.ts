@@ -168,3 +168,42 @@ export function groupDependents({
   }
   return entries;
 }
+
+const within = (place: FormPlace, container: FormPlace): boolean => {
+  if (place.pageIndex !== container.pageIndex) return false;
+  switch (container.kind) {
+    case PlaceKind.Page:
+      return true;
+    case PlaceKind.Element:
+      return place.kind !== PlaceKind.Page && place.index === container.index;
+    case PlaceKind.SubField:
+      return (
+        place.kind === PlaceKind.SubField &&
+        place.index === container.index &&
+        place.subIndex === container.subIndex
+      );
+    default:
+      throw new Error(
+        `unknown place: ${JSON.stringify(container satisfies never)}`,
+      );
+  }
+};
+
+/**
+ * What outside `container` reads a question at or inside it, unless a
+ * question outside carries the same id and still answers it.
+ */
+export function dependentsOutside(
+  pages: readonly Page[],
+  container: FormPlace,
+): Dependent[] {
+  const ids = new Set<string>();
+  const kept = new Set<string>();
+  for (const { place, question } of conditionHolders(pages)) {
+    if (question) (within(place, container) ? ids : kept).add(question.id);
+  }
+  for (const id of kept) ids.delete(id);
+  return dependentsOf(pages, ids).filter(
+    ({ place }) => !within(place, container),
+  );
+}

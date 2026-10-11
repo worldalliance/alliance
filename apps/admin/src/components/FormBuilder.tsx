@@ -5,6 +5,7 @@ import {
   type DisplayKind,
 } from "@alliance/common/forms/display-blocks";
 import {
+  PlaceKind,
   type ConditionHolder,
   type FormPlace,
 } from "@alliance/common/forms/form-conditions";
@@ -88,6 +89,7 @@ import { DisplayOnlyPreview } from "./DisplayOnlyPreview";
 import {
   CanvasTargetKind,
   ChildKind,
+  childPlace,
   elementTarget,
   followElement,
   forgetPositions,
@@ -123,6 +125,7 @@ import { extendSelection, type Span } from "./form-canvas/rangeSelection";
 import { RangeSettings } from "./form-canvas/RangeSettings";
 import { SettingsSidebar } from "./form-canvas/SettingsSidebar";
 import { SidebarSection } from "./form-canvas/sidebarSections";
+import { useGuardedDeletion } from "./form-canvas/useGuardedDeletion";
 import type { ListMove } from "./form-canvas/useListDrag";
 import { useOverrideTarget } from "./form-canvas/useOverrideTarget";
 import { VisibilityGroupSettings } from "./form-canvas/VisibilityGroupSettings";
@@ -677,6 +680,10 @@ export function FormBuilder(props: FormBuilderProps) {
   const currentPage = schema.pages[selectedPageIndex] ??
     schema.pages?.[0] ?? { id: "page-1", title: "Page 1", fields: [] };
   const canvasGroups = displayOnly ? NO_VISIBILITY_GROUPS : visibilityGroups;
+  const { guard: guardDeletion, dialog: deletionDialog } = useGuardedDeletion({
+    pages: schema.pages,
+    groups: canvasGroups,
+  });
   const resolvedTarget = resolveTarget({
     page: currentPage,
     groups: canvasGroups,
@@ -1665,6 +1672,12 @@ export function FormBuilder(props: FormBuilderProps) {
     replaceFields(currentPage.fields.filter((_, i) => i !== index));
   };
 
+  const deleteElement = (index: number) =>
+    guardDeletion(
+      { kind: PlaceKind.Element, pageIndex: selectedPageIndex, index },
+      () => removeElement(index),
+    );
+
   const moveElement = (
     { from, dropIndex, position }: ListMove,
     pageIndex = selectedPageIndex,
@@ -1786,7 +1799,7 @@ export function FormBuilder(props: FormBuilderProps) {
     const commonProps = {
       onUpdate: updateField,
       updateCurrent: addressedWrite(field, updateBlockById),
-      onRemove: () => removeElement(index),
+      onRemove: () => deleteElement(index),
       previousFields,
       laterFields,
     };
@@ -1911,7 +1924,11 @@ export function FormBuilder(props: FormBuilderProps) {
             onCopy={() => copyPage(selectedPageIndex)}
             onDelete={
               schema.pages.length > 1
-                ? () => removePage(selectedPageIndex)
+                ? () =>
+                    guardDeletion(
+                      { kind: PlaceKind.Page, pageIndex: selectedPageIndex },
+                      () => removePage(selectedPageIndex),
+                    )
                 : null
             }
             dependencies={renderDependencies(currentPage, null)}
@@ -1958,6 +1975,14 @@ export function FormBuilder(props: FormBuilderProps) {
                 onFocused={focused}
                 editorKey={`${selectionKey}-${schemaLoads}`}
                 dependencies={sub && renderDependencies(sub, sub.id)}
+                guardDelete={(run) => {
+                  const place = childPlace({
+                    pageIndex: selectedPageIndex,
+                    index,
+                    child,
+                  });
+                  return place ? guardDeletion(place, run) : run();
+                }}
               />
             </ElementExpressionScope>
           );
@@ -1989,7 +2014,7 @@ export function FormBuilder(props: FormBuilderProps) {
               })
             }
             onDuplicate={() => duplicateElement(index)}
-            onDelete={() => removeElement(index)}
+            onDelete={() => deleteElement(index)}
             dependencies={renderDependencies(
               element,
               isQuestionField(element) ? element.id : null,
@@ -2115,6 +2140,7 @@ export function FormBuilder(props: FormBuilderProps) {
           void saveForm();
         }}
       />
+      {deletionDialog}
       {jsonScope && (
         <FormJsonModal
           scope={jsonScope}

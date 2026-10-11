@@ -13,6 +13,7 @@ interface ConfirmDialogProps {
   isOpen: boolean;
   title: string;
   message: string;
+  confirmLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
   isLoading?: boolean;
@@ -22,6 +23,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   isOpen,
   title,
   message,
+  confirmLabel = "Confirm",
   onConfirm,
   onCancel,
   isLoading = false,
@@ -80,7 +82,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             onClick={onConfirm}
             disabled={isLoading}
           >
-            {isLoading ? "Updating..." : "Confirm"}
+            {isLoading ? "Updating..." : confirmLabel}
           </Button>
         </ModalActions>
       </ModalFooter>

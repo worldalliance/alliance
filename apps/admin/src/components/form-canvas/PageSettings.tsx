@@ -1,3 +1,4 @@
+import { PlaceKind } from "@alliance/common/forms/form-conditions";
 import type { AnyField, Page } from "@alliance/common/forms/form-schema";
 import { Copy, FileJson, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -10,6 +11,7 @@ import {
 } from "./SettingsActions";
 import { SettingsSidebar } from "./SettingsSidebar";
 import { ALL_SECTIONS, SectionPanels, SidebarSection } from "./sidebarSections";
+import { DELETION } from "./useGuardedDeletion";
 
 /** The selected page's settings, around its editor. */
 export function PageSettingsSidebar({
@@ -71,7 +73,7 @@ export function PageSettingsSidebar({
             disabled={!onDelete}
             onClick={() => onDelete?.()}
           >
-            Delete page
+            {DELETION[PlaceKind.Page].action}
           </SettingsAction>
         </SettingsActions>
       }

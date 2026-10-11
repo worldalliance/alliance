@@ -3,6 +3,7 @@ import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import {
+  canvas,
   canvasButton,
   heading,
   inNarrowWindow,
@@ -305,5 +306,75 @@ describe("FormBuilder dependency links", () => {
     expect(
       screen.getByText("No conditions on this form read this question."),
     ).toBeTruthy();
+  });
+});
+
+describe("FormBuilder deleting a source", () => {
+  const dialog = () => within(screen.getByRole("dialog"));
+  const deleteFromAdvanced = (name: string) => {
+    openSection("Advanced");
+    fireEvent.click(settings().getByRole("button", { name }));
+  };
+
+  it("lists what reads a question before deleting it, then undoes", () => {
+    renderFormBuilder(schema);
+    selectElement("Label a");
+    deleteFromAdvanced("Delete question");
+    expect(
+      dialog().getByText(
+        /Shared visibility · 2 elements: Text Field: Label b, Text Field: Label c/,
+      ),
+    ).toBeTruthy();
+    expect(dialog().getByText(/Page: Two/)).toBeTruthy();
+
+    fireEvent.click(dialog().getByRole("button", { name: "Cancel" }));
+    expect(canvasButton("Select Text Field: Label a")).toBeTruthy();
+
+    deleteFromAdvanced("Delete question");
+    fireEvent.click(dialog().getByRole("button", { name: "Delete question" }));
+    expect(
+      canvas().queryByRole("button", { name: "Select Text Field: Label a" }),
+    ).toBeNull();
+
+    selectElement("Label b");
+    openSection("Conditions");
+    expect(links("Depends on").getByText(/Missing question/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(canvasButton("Select Text Field: Label a")).toBeTruthy();
+  });
+
+  it("deletes an unread question at once", () => {
+    renderFormBuilder(schema);
+    selectElement("Label e");
+    deleteFromAdvanced("Delete question");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(
+      canvas().queryByRole("button", { name: "Select Text Field: Label e" }),
+    ).toBeNull();
+  });
+
+  it("lists the sub-fields reading a deleted sub-field", () => {
+    renderFormBuilder(listSchema);
+    selectElement("Text Field: Name");
+    deleteFromAdvanced("Delete question");
+    expect(
+      dialog().getByText(/List Field: Kids › Number Field: Age/),
+    ).toBeTruthy();
+    fireEvent.click(dialog().getByRole("button", { name: "Delete question" }));
+    expect(heading()).toBe("List Field: Kids");
+  });
+
+  it("names the page deletion and what outside the page reads it", () => {
+    renderFormBuilder({
+      ...schema,
+      pages: [{ id: "p0", title: "Zero", fields: [] }, ...schema.pages],
+    });
+    fireEvent.click(outline().getByRole("button", { name: "One" }));
+    deleteFromAdvanced("Delete page");
+    expect(dialog().getByText(/Page: Two/)).toBeTruthy();
+    expect(dialog().queryByText(/Label b/)).toBeNull();
+    fireEvent.click(dialog().getByRole("button", { name: "Delete page" }));
+    expect(outline().queryByRole("button", { name: "One" })).toBeNull();
   });
 });

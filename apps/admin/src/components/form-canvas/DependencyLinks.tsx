@@ -35,7 +35,10 @@ const ROLE_LABELS: Record<DependencyRole, string> = {
   [DependencyRole.Required]: "required if",
 };
 
-function describePlace(pages: readonly Page[], place: FormPlace): string {
+export function describePlace(
+  pages: readonly Page[],
+  place: FormPlace,
+): string {
   const resolved = resolvePlace(pages, place);
   switch (resolved.kind) {
     case PlaceKind.Page:

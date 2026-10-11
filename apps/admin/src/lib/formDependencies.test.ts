@@ -5,6 +5,7 @@ import {
   DependencyRole,
   DependentEntryKind,
   dependentsOf,
+  dependentsOutside,
   findQuestion,
   groupDependents,
   sourcesOf,
@@ -174,5 +175,68 @@ describe("formDependencies", () => {
       { kind: PlaceKind.Element, pageIndex: 0, index: 2 },
       { kind: PlaceKind.Element, pageIndex: 0, index: 3 },
     ]);
+  });
+});
+
+describe("dependentsOutside", () => {
+  it("lists what reads a deleted question, apart from itself", () => {
+    expect(
+      dependentsOutside(pages, {
+        kind: PlaceKind.Element,
+        pageIndex: 0,
+        index: 0,
+      }).map(({ place }) => place),
+    ).toEqual([
+      { kind: PlaceKind.Element, pageIndex: 0, index: 2 },
+      { kind: PlaceKind.Element, pageIndex: 0, index: 3 },
+      { kind: PlaceKind.Element, pageIndex: 0, index: 4 },
+      { kind: PlaceKind.Page, pageIndex: 1 },
+    ]);
+  });
+
+  it("leaves out readers deleted with their source", () => {
+    expect(
+      dependentsOutside(pages, { kind: PlaceKind.Page, pageIndex: 0 }).map(
+        ({ place }) => place,
+      ),
+    ).toEqual([{ kind: PlaceKind.Page, pageIndex: 1 }]);
+    expect(
+      dependentsOutside(pages, {
+        kind: PlaceKind.Element,
+        pageIndex: 0,
+        index: 1,
+      }),
+    ).toEqual([]);
+  });
+
+  it("lists sibling sub-fields reading a deleted sub-field", () => {
+    expect(
+      dependentsOutside(pages, {
+        kind: PlaceKind.SubField,
+        pageIndex: 0,
+        index: 1,
+        subIndex: 0,
+      }).map(({ place }) => place),
+    ).toEqual([
+      { kind: PlaceKind.SubField, pageIndex: 0, index: 1, subIndex: 1 },
+    ]);
+  });
+
+  it("leaves out readers of an id another question still carries", () => {
+    expect(
+      dependentsOutside(
+        [
+          {
+            id: "p",
+            fields: [
+              text("a"),
+              text("a"),
+              text("b", { visibleIfFormula: reads("a") }),
+            ],
+          },
+        ],
+        { kind: PlaceKind.Element, pageIndex: 0, index: 0 },
+      ),
+    ).toEqual([]);
   });
 });

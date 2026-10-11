@@ -1,4 +1,5 @@
 import type { AccordionSection } from "@alliance/common/forms/display-blocks";
+import { PlaceKind } from "@alliance/common/forms/form-conditions";
 import type {
   ListSubField,
   PageItem,
@@ -42,6 +43,7 @@ import {
   SidebarSection,
   UNCONDITIONAL_SECTIONS,
 } from "./sidebarSections";
+import { DELETION } from "./useGuardedDeletion";
 
 type ListSubFieldKind = ListSubField["kind"];
 
@@ -100,6 +102,7 @@ export function ChildSettings({
   onFocused,
   editorKey,
   dependencies,
+  guardDelete,
 }: {
   element: PageItem;
   child: ResolvedChild;
@@ -115,6 +118,8 @@ export function ChildSettings({
   /** Changes to remount the editor, as after undo. */
   editorKey: string;
   dependencies: ReactNode;
+  /** Runs a deletion, or holds it for confirmation when something reads the child. */
+  guardDelete: (run: () => void) => void;
 }) {
   const view = childView({
     element,
@@ -123,12 +128,13 @@ export function ChildSettings({
     updateCurrent,
     onReselect,
   });
-  const remove = () => {
-    view.remove();
-    if (view.parent) onReselect(view.parent);
-    else onSelectParent();
-    onSection(SidebarSection.Content);
-  };
+  const remove = () =>
+    guardDelete(() => {
+      view.remove();
+      if (view.parent) onReselect(view.parent);
+      else onSelectParent();
+      onSection(SidebarSection.Content);
+    });
   return (
     <SettingsSidebar
       parent={{ label: describeElement(element), onSelect: onSelectParent }}
@@ -186,7 +192,7 @@ function childView({
         }),
         idLabel: "Element ID",
         id: sub.id,
-        deleteLabel: "Delete question",
+        deleteLabel: DELETION[PlaceKind.SubField].action,
         remove,
         parent: null,
         editor: (
