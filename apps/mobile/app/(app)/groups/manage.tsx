@@ -25,7 +25,7 @@ import {
   isLedBy,
   publicGroupJoinState,
 } from "@alliance/shared/lib/communityUtils";
-import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
+import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
 import { useGroupAssignment } from "@alliance/shared/lib/useGroupAssignment";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
@@ -60,10 +60,7 @@ const sortByName = (a: CommunityDto, b: CommunityDto) =>
 const INITIAL_COMMUNITY: CreateCommunityDto = {
   name: "",
   description: "",
-  public: false,
-  allowMemberInvites: true,
-  allowStaffAssignments: true,
-  maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
+  ...NEW_COMMUNITY_SETTINGS,
 };
 
 export default function GroupManageScreen() {

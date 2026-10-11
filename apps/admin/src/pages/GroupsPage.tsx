@@ -10,7 +10,7 @@ import type {
   CreateCommunityDto,
 } from "@alliance/shared/client/types.gen";
 import { getMemberCount } from "@alliance/shared/lib/communityUtils";
-import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
+import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -31,10 +31,7 @@ import {
 const INITIAL_COMMUNITY: CreateCommunityDto = {
   name: "",
   description: "",
-  public: false,
-  allowMemberInvites: true,
-  allowStaffAssignments: true,
-  maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
+  ...NEW_COMMUNITY_SETTINGS,
 };
 
 const GroupsPage: React.FC = () => {

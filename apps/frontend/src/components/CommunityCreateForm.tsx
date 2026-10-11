@@ -11,7 +11,7 @@ import {
   CreateCommunityDto,
   communityCreateCommunity,
 } from "@alliance/shared/client";
-import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
+import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
@@ -57,10 +57,7 @@ const CommunityCreateForm = ({
       description: firstName
         ? `Reminder and discussion group for ${firstName}'s friends`
         : "",
-      public: false,
-      maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
-      allowMemberInvites: true,
-      allowStaffAssignments: true,
+      ...NEW_COMMUNITY_SETTINGS,
     };
   }, [name]);
 
