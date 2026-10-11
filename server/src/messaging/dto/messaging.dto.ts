@@ -28,7 +28,7 @@ import {
   Conversation,
   loadedConversationParticipants,
 } from "../entities/conversation.entity";
-import { Message } from "../entities/message.entity";
+import { loadedMessageAuthor, Message } from "../entities/message.entity";
 import {
   loadedParticipantUser,
   Participant,
@@ -47,7 +47,7 @@ export class MessageReferenceDto extends PickType(Message, [
   constructor(message: Message) {
     super();
     Object.assign(this, message);
-    this.author = new ProfileDto(message.author);
+    this.author = new ProfileDto(loadedMessageAuthor(message));
   }
 }
 
@@ -84,7 +84,7 @@ export class MessageDto extends PickType(Message, [
     );
     this.createdAt = message.createdAt;
     this.deletedAt = message.deletedAt;
-    this.author = new ProfileDto(message.author);
+    this.author = new ProfileDto(loadedMessageAuthor(message));
     this.conversationId = conversationId;
     this.replyTo = message.replyTo
       ? new MessageReferenceDto(message.replyTo)

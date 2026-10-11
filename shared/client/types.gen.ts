@@ -683,7 +683,7 @@ export type Message = {
      * Image keys attached to the content
      */
     attachments: Array<string>;
-    author: User;
+    author?: User;
     createdAt: string;
     deletedAt: string | null;
     replyTo?: Message | null;
