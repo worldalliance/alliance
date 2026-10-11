@@ -489,13 +489,13 @@ const copyElementWithUniqueIds = (
 };
 
 const GROUP_SECTIONS = [SidebarSection.Content, SidebarSection.Conditions];
-const RANGE_SECTIONS = [SidebarSection.Content];
+const RANGE_SECTIONS = [SidebarSection.Content, SidebarSection.Conditions];
 
 const SECTION_ON_SELECT: Record<CanvasTargetKind, SidebarSection> = {
   [CanvasTargetKind.Page]: SidebarSection.Content,
   [CanvasTargetKind.Element]: SidebarSection.Content,
   [CanvasTargetKind.Group]: SidebarSection.Conditions,
-  [CanvasTargetKind.Range]: SidebarSection.Content,
+  [CanvasTargetKind.Range]: SidebarSection.Conditions,
 };
 
 export function FormBuilder(props: FormBuilderProps) {
@@ -1976,13 +1976,23 @@ export function FormBuilder(props: FormBuilderProps) {
             onFocused={focused}
           >
             <RangeSettings
-              members={currentPage.fields.slice(start, end)}
-              onSelectMember={(offset) =>
+              key={`${selectionKey}-${schemaLoads}`}
+              schema={schema}
+              pageIndex={selectedPageIndex}
+              start={start}
+              end={end}
+              groups={visibilityGroups}
+              applyGrouped={applyGrouped}
+              summarize={summarize}
+              onSelectGroup={(key) =>
                 select(
-                  elementTarget(
-                    currentPage.fields[start + offset]!,
-                    start + offset,
-                  ),
+                  { kind: CanvasTargetKind.Group, key },
+                  SidebarSection.Conditions,
+                )
+              }
+              onSelectMember={(index) =>
+                select(
+                  elementTarget(currentPage.fields[index]!, index),
                   SidebarSection.Content,
                 )
               }

@@ -5,14 +5,17 @@ import {
   canvas,
   canvasGroups,
   heading,
+  openSection,
   outline,
   selectElement,
+  selectGroup,
   settings,
 } from "../lib/testing/formCanvas";
 import {
   renderDisplayOnlyBuilder,
   renderFormBuilder,
 } from "../lib/testing/renderFormBuilder";
+import { addRule } from "./form-fields/conditions/conditionEditorTesting";
 
 afterEach(cleanup);
 
@@ -43,10 +46,20 @@ const pressed = () =>
   canvas()
     .getAllByRole("button", { pressed: true })
     .map((button) => button.getAttribute("aria-label"));
-const selectedMembers = () =>
-  settings()
+const selectedMembers = () => {
+  openSection("Content");
+  return within(settings().getByRole("list", { name: "Selected elements" }))
     .getAllByRole("listitem")
     .map((item) => item.textContent);
+};
+const button = (name: string | RegExp) =>
+  screen.getByRole<HTMLButtonElement>("button", { name });
+const groupSummaries = () =>
+  canvasGroups().map(
+    (group) =>
+      within(group).getByRole("button", { name: /^Shared visibility/ })
+        .textContent,
+  );
 const checkbox = (label: string) =>
   outline().getByRole<HTMLInputElement>("checkbox", {
     name: `Include Text Field: ${label} in the selection`,
@@ -196,5 +209,153 @@ describe("FormBuilder range selection", () => {
     shiftSelect("Text Block: Second");
     expect(heading()).toBe("Text Block: Second");
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+  });
+});
+
+describe("FormBuilder sharing visibility across a selection", () => {
+  const differing = () =>
+    schemaWith([
+      text("q"),
+      text("a", shownWhen("q")),
+      text("b"),
+      text("c", shownWhen("a")),
+    ]);
+  const selectAtoC = () => {
+    selectElement("Label a");
+    shiftSelect("Text Field: Label c");
+  };
+
+  it("lists each member's rules and shares the one chosen", () => {
+    renderFormBuilder(differing());
+    selectAtoC();
+    expect(
+      settings()
+        .getAllByRole("listitem")
+        .filter((item) => item.closest('[aria-label="Current visibility"]'))
+        .map((item) => item.textContent),
+    ).toEqual([
+      "Share: shown when Label q is answeredNow on Text Field: Label a",
+      'Share: shown when Label a is answeredNow on Text Field: Label cCan\'t share: Visibility of "a" depends on its own answer.',
+      "Always shown now: Text Field: Label b",
+    ]);
+    expect(button(/^Share: shown when Label a is answered/).disabled).toBe(
+      true,
+    );
+
+    fireEvent.click(button(/^Share: shown when Label q is answered/));
+    expect(groupSummaries()).toEqual([
+      "Shared visibility · 3 elementsShown when Label q is answered",
+    ]);
+    expect(heading()).toBe("Shared visibility");
+    expect(button(/No changes|Save Form/).textContent).toBe("Save Form");
+
+    fireEvent.click(button("Undo"));
+    expect(canvasGroups()).toHaveLength(0);
+    expect(button(/No changes|Save Form/).textContent).toBe("No changes");
+    fireEvent.click(button("Redo"));
+    expect(groupSummaries()).toHaveLength(1);
+  });
+
+  it("refuses a rule that would close a visibility cycle", () => {
+    renderFormBuilder(
+      schemaWith([
+        text("a", shownWhen("z")),
+        text("b"),
+        text("z", shownWhen("b")),
+      ]),
+    );
+    selectElement("Label a");
+    shiftSelect("Text Field: Label b");
+    const choice = button(/^Share: shown when Label z is answered/);
+    expect(choice.disabled).toBe(true);
+    expect(choice.textContent).toContain(
+      "Can't share: Visibility conditions form a cycle: b -> z -> b.",
+    );
+  });
+
+  it("opens a member chosen from the selection", () => {
+    renderFormBuilder(schemaWith(["q", "a", "b"].map((id) => text(id))));
+    selectElement("Label a");
+    shiftSelect("Text Field: Label b");
+    openSection("Content");
+    fireEvent.click(
+      settings().getByRole("button", { name: "Text Field: Label b" }),
+    );
+    expect(heading()).toBe("Text Field: Label b");
+  });
+
+  it("shares newly written rules", async () => {
+    renderFormBuilder(schemaWith([text("a"), text("b")]));
+    selectElement("Label a");
+    shiftSelect("Text Field: Label b");
+    expect(button("Share new rules").disabled).toBe(true);
+    await addRule("Device");
+    fireEvent.click(button("Share new rules"));
+    expect(canvasGroups()).toHaveLength(1);
+    expect(
+      within(canvasGroups()[0]!).getByText("Shared visibility · 2 elements"),
+    ).toBeTruthy();
+  });
+
+  it("refuses newly written rules that would close a visibility cycle", async () => {
+    renderFormBuilder(
+      schemaWith([text("a"), text("b"), text("z", shownWhen("b"))]),
+    );
+    selectElement("Label a");
+    shiftSelect("Text Field: Label b");
+    await addRule("Answer on this form");
+    fireEvent.change(screen.getByRole("combobox", { name: "Question" }), {
+      target: { value: "z" },
+    });
+    expect(button("Share new rules").disabled).toBe(true);
+    expect(
+      settings().getByText(
+        "Can't share: Visibility conditions form a cycle: b -> z -> b.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("splits a shared selection out of the group it was part of", () => {
+    const X = shownWhen("q");
+    renderFormBuilder(
+      schemaWith([text("q"), text("a", X), text("b", X), text("c", X)]),
+    );
+    selectElement("Label b");
+    shiftSelect("Text Field: Label c");
+    fireEvent.click(button(/^Share: shown when Label q is answered/));
+    expect(groupSummaries()).toEqual([
+      "Shared visibility · 2 elementsShown when Label q is answered",
+    ]);
+  });
+
+  it("says a selection holding a block without an id can't share", () => {
+    renderFormBuilder(
+      schemaWith([
+        text("a"),
+        { type: "display", kind: "text", text: "Legacy" },
+        text("b"),
+      ]),
+    );
+    selectElement("Label a");
+    shiftSelect("Text Field: Label b");
+    expect(
+      settings().getByText(/^Blocks without an ID can't share visibility/)
+        .textContent,
+    ).toContain("Text Block: Legacy");
+    expect(settings().queryByRole("button", { name: /^Share/ })).toBeNull();
+  });
+
+  it("points a selection that is already a group to its settings", () => {
+    const X = shownWhen("q");
+    renderFormBuilder(schemaWith([text("q"), text("a", X), text("b", X)]));
+    selectGroup(canvasGroups()[0]!);
+    fireEvent.click(checkbox("Label b"));
+    expect(heading()).toBe("Text Field: Label a");
+    shiftSelect("Text Field: Label b");
+    expect(
+      settings().getByText("These elements already share visibility."),
+    ).toBeTruthy();
+    fireEvent.click(button("Open group settings"));
+    expect(heading()).toBe("Shared visibility");
   });
 });
