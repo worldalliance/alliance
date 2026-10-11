@@ -1,5 +1,4 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { ActionActivityType } from "@alliance/common/actionActivity";
 import {
   hasAwayRangeEnded,
   isAwayRangeActiveAt,
@@ -31,7 +30,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { millisecondsInDay } from "date-fns/constants";
 import { countBy } from "es-toolkit";
-import { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { PrerequisiteProgressService } from "src/actions/prerequisite-progress.service";
 import {
   JWTTokenType,
   type MailedJwtPayload,
@@ -291,8 +290,6 @@ export class UserService {
     private readonly contractEventRepository: Repository<ContractEvent>,
     @InjectRepository(UserDevice)
     private readonly userDeviceRepository: Repository<UserDevice>,
-    @InjectRepository(ActionActivity)
-    private readonly actionActivityRepository: Repository<ActionActivity>,
     private readonly shareUrlsService: ShareUrlsService,
     private readonly campaignService: CampaignService,
     private readonly jwtService: JwtService,
@@ -303,6 +300,7 @@ export class UserService {
     private readonly notifsService: NotifsService,
     private readonly communityService: CommunityService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly prerequisiteProgressService: PrerequisiteProgressService,
   ) {}
 
   /**
@@ -1319,15 +1317,9 @@ export class UserService {
     return firstSigned?.date ?? null;
   }
 
-  /**
-   * How many actions the user has completed. `USER_COMPLETED` activities are
-   * deduplicated per action (see `ALLOW_DUPLICATE`), so this is a count of
-   * distinct actions.
-   */
   async getCompletedActionCount(userId: number): Promise<number> {
-    return this.actionActivityRepository.count({
-      where: { userId, type: ActionActivityType.USER_COMPLETED },
-    });
+    return (await this.prerequisiteProgressService.loadCompletions({ userId }))
+      .length;
   }
 
   /**

@@ -144,9 +144,11 @@ import {
 } from "typeorm";
 import { UserService } from "../user/user.service";
 import {
+  findLatestTerminalActivities,
   findLatestTerminalActivity,
   isTerminalActivity,
   resolveUserActionRelation,
+  sqlIsLatestCompletion,
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
 import { ActionFormVariantService } from "./action-form-variant.service";
@@ -739,8 +741,8 @@ export class ActionsService {
    *
    *   base recipients (assigned)
    *   − away at any point during the member-action window
-   *   − withdrawn (USER_WONT_COMPLETE)
-   *   + everyone with a USER_COMPLETED activity
+   *   − everyone whose latest terminal activity is a withdrawal
+   *   + everyone whose latest terminal activity is a completion
    *
    * i.e. "could this user have done it at all?"
    *
@@ -788,7 +790,7 @@ export class ActionsService {
     });
     const completionsByAction = new Map<number, number[]>();
     const withdrawalsByAction = new Map<number, Set<number>>();
-    for (const act of allActivities.filter(isTerminalActivity)) {
+    for (const act of findLatestTerminalActivities(allActivities)) {
       switch (act.type) {
         case ActionActivityType.USER_COMPLETED:
           if (!completionsByAction.has(act.actionId)) {
@@ -853,14 +855,10 @@ export class ActionsService {
 
     const joinedUserIds = await this.findParticipantIdsForAction(action);
 
-    const completedActivities = await this.actionActivityRepository.find({
-      where: {
-        actionId,
-        type: ActionActivityType.USER_COMPLETED,
-      },
-      select: { userId: true },
+    const completions = await this.prerequisiteProgressService.loadCompletions({
+      actionId,
     });
-    const completedUserIds = new Set(completedActivities.map((a) => a.userId));
+    const completedUserIds = new Set(completions.map((a) => a.userId));
 
     const incompleteUserIds = joinedUserIds.filter(
       (id) => !completedUserIds.has(id),
@@ -900,20 +898,15 @@ export class ActionsService {
       }[]
     >(
       `
-        WITH latest AS (
-          SELECT DISTINCT ON ("userId", "actionId") id, "userId", "actionId", "createdAt", type
-          FROM action_activity
-          WHERE "actionId" = ANY($1::int[]) AND type::text = ANY($4::text[])
-          ORDER BY "userId", "actionId", "createdAt" DESC, id DESC
-        )
         SELECT activity."userId", activity."actionId", activity.id AS "activityId",
           activity."createdAt" AS "completedAt", COUNT(staff_liker.id) AS "staffLikeCount"
-        FROM latest activity
+        FROM action_activity activity
         LEFT JOIN action_activity_likes_user activity_like
           ON activity_like."actionActivityId" = activity.id
         LEFT JOIN "user" staff_liker
           ON staff_liker.id = activity_like."userId" AND staff_liker.staff = true
-        WHERE activity.type = $2
+        WHERE activity."actionId" = ANY($1::int[])
+        AND ${sqlIsLatestCompletion("activity")}
         AND ${sqlUserHasEverSigned('activity."userId"')}
         AND NOT EXISTS (
           SELECT 1
@@ -931,7 +924,6 @@ export class ActionsService {
         actionIds,
         ActionActivityType.USER_COMPLETED,
         CommentParentObject.Activity,
-        TERMINAL_ACTIVITY_TYPES,
       ],
     );
     const rowsByUser = groupBy(rows, (row) => row.userId);
@@ -2715,9 +2707,7 @@ export class ActionsService {
         'cuu."userId" = activity.userId AND cuu."communityId" = :communityId',
         { communityId },
       )
-      .where("activity.type = :type", {
-        type: ActionActivityType.USER_COMPLETED,
-      })
+      .where(sqlIsLatestCompletion("activity"))
       .getCount();
   }
 

@@ -3,6 +3,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { millisecondsInDay, millisecondsInHour } from "date-fns/constants";
+import { sqlIsLatestCompletion } from "src/actions/action-activity-status";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ActionStatus } from "src/actions/entities/action-event.entity";
 import { Action, parseAction } from "src/actions/entities/action.entity";
@@ -296,14 +297,15 @@ export class ActionStatsAnalyticsService {
     }
 
     const eligibleActionIds = eligibleActions.map((record) => record.actionId);
-    const completionActivities = await this.actionActivityRepository.find({
-      where: {
-        actionId: In(eligibleActionIds),
-        type: ActionActivityType.USER_COMPLETED,
-      },
-      select: { actionId: true, createdAt: true },
-      order: { createdAt: "ASC" },
-    });
+    const completionActivities = await this.actionActivityRepository
+      .createQueryBuilder("activity")
+      .select(["activity.id", "activity.actionId", "activity.createdAt"])
+      .where("activity.actionId IN (:...actionIds)", {
+        actionIds: eligibleActionIds,
+      })
+      .andWhere(sqlIsLatestCompletion("activity"))
+      .orderBy("activity.createdAt", "ASC")
+      .getMany();
 
     const completionsByActionId = new Map<number, Date[]>();
     for (const activity of completionActivities) {

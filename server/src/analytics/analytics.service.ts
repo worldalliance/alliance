@@ -1,8 +1,10 @@
-import { ActionActivityType } from "@alliance/common/actionActivity";
 import { Injectable } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
-import { TERMINAL_ACTIVITY_TYPES } from "src/actions/action-activity-status";
+import {
+  sqlIsLatestCompletion,
+  TERMINAL_ACTIVITY_TYPES,
+} from "src/actions/action-activity-status";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ActionStatus } from "src/actions/entities/action-event.entity";
 import {
@@ -84,11 +86,10 @@ export class AnalyticsService {
         ) && user.hasActiveContract === false,
     ).length;
 
-    const completionActivities = await this.actionActivityRepository.count({
-      where: {
-        type: ActionActivityType.USER_COMPLETED,
-      },
-    });
+    const completionActivities = await this.actionActivityRepository
+      .createQueryBuilder("activity")
+      .where(sqlIsLatestCompletion("activity"))
+      .getCount();
 
     const anonFormSubmissions = await this.formResponseRepository.count({
       where: {
@@ -389,9 +390,7 @@ export class AnalyticsService {
       .createQueryBuilder("activity")
       .select("activity.userId", "userId")
       .addSelect("COUNT(DISTINCT activity.actionId)", "completedActions")
-      .where("activity.type = :type", {
-        type: ActionActivityType.USER_COMPLETED,
-      })
+      .where(sqlIsLatestCompletion("activity"))
       .andWhere("activity.userId IN (:...userIds)", {
         userIds: invitedUserIds,
       })

@@ -4,8 +4,9 @@ import { actionsCommunityCompletedActionsCount } from "../client";
 import { queryKeys } from "./queryKeys";
 import { useOnNextDeadline } from "./useOnNextDeadline";
 
-/** Completions recorded by a community's current members; refetched as each
- * of `actions`' member-action deadlines passes. */
+/** (member, action) pairs among a community's current members whose latest
+ * completion or withdrawal is a completion; refetched as each of `actions`'
+ * member-action deadlines passes. */
 export function useCommunityCompletedActionsCount({
   communityId,
   actions,

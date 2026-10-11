@@ -1,5 +1,5 @@
-import { ActionActivityType } from "@alliance/common/actionActivity";
 import { Injectable } from "@nestjs/common";
+import { sqlIsLatestCompletion } from "src/actions/action-activity-status";
 import { sqlUserHasEverSigned } from "src/user/entities/user.entity";
 import { inviteClaimantSql } from "src/user/invite-claim";
 import { DataSource } from "typeorm";
@@ -191,7 +191,7 @@ export class WaitlistMetricsService {
            SELECT 1 FROM action_activity activity
            JOIN action ON action.id = activity."actionId"
            WHERE activity."userId" = claim."userId"
-             AND activity.type = '${ActionActivityType.USER_COMPLETED}'
+             AND ${sqlIsLatestCompletion("activity")}
              AND NOT action."isContractSigningAction"
          ))::int AS "firstAction"
        FROM claim

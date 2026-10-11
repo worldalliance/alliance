@@ -1,5 +1,18 @@
 import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
-import { memberActionDeadlinePassed } from "./actionTaskPanel";
+import { renderHook } from "@testing-library/react";
+import {
+  memberActionDeadlinePassed,
+  useTaskFormHandlers,
+} from "./actionTaskPanel";
+import { queryKeys } from "./queryKeys";
+import { queryWrapper } from "./testing/queryWrapper";
+import { routes, serveApi } from "./testing/serveApi";
+
+serveApi(
+  routes({
+    "POST /tasks/optout/3": () => Response.json({}),
+  }),
+);
 
 const refusal = (status: number, message: string) => ({
   response: new Response(null, { status }),
@@ -23,4 +36,31 @@ describe("memberActionDeadlinePassed", () => {
       ),
     ).toBe(false);
   });
+});
+
+it("a withdrawal invalidates the visibility context", async () => {
+  const { client, wrapper } = queryWrapper();
+  client.setQueryData(queryKeys.myVisibilityContext(), {});
+  const onOptOutAction = jest.fn();
+  const handlers = renderHook(
+    () =>
+      useTaskFormHandlers({
+        action: { id: 7, taskFormId: 3 },
+        onCompleteAction: () => true,
+        onOptOutAction,
+      }),
+    { wrapper },
+  );
+
+  await handlers.result.current.handleAbandonAction({
+    outOfTime: true,
+    isMoral: false,
+    reason: "",
+    partialFormData: { answers: {}, actionId: 7, deviceType: "desktop" },
+  });
+
+  expect(onOptOutAction).toHaveBeenCalled();
+  expect(
+    client.getQueryState(queryKeys.myVisibilityContext())?.isInvalidated,
+  ).toBe(true);
 });

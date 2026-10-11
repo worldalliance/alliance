@@ -90,6 +90,7 @@ import {
   FollowUpForm,
   parseFollowUpForm,
 } from "src/actions/entities/follow-up-form.entity";
+import { PrerequisiteProgressService } from "src/actions/prerequisite-progress.service";
 import { SingleMemberCohortService } from "src/actions/single-member-cohort.service";
 import { assertNotInStaffPreview } from "src/actions/staff-preview";
 import { AiDetectionQueryService } from "src/ai-detection/ai-detection-query.service";
@@ -293,6 +294,7 @@ export class TasksService {
     private formSnapshotService: FormSnapshotService,
     private actionFormVariantService: ActionFormVariantService,
     private singleMemberCohortService: SingleMemberCohortService,
+    private prerequisiteProgressService: PrerequisiteProgressService,
   ) {}
 
   /** Returns true if value satisfies required validation for the field. Used for both top-level and list sub-field validation. */
@@ -1108,20 +1110,18 @@ export class TasksService {
     submitFollowUpFormDto: SubmitFollowUpFormDto,
   ): Promise<ParsedFormResponse> {
     const fetchedFollowUpForm = await this.followUpFormRepository.findOne({
-      where: {
-        id: followUpFormId,
-        action: {
-          activities: {
-            type: ActionActivityType.USER_COMPLETED,
-            user: { id: userId },
-          },
-        },
-      },
+      where: { id: followUpFormId },
       relations: {
         form: { formSnapshot: true },
       },
     });
-    if (!fetchedFollowUpForm) {
+    const completions = fetchedFollowUpForm
+      ? await this.prerequisiteProgressService.loadCompletions({
+          actionId: fetchedFollowUpForm.actionId,
+          userId,
+        })
+      : [];
+    if (!fetchedFollowUpForm || completions.length === 0) {
       throw new NotFoundException("Follow-up form not found");
     }
     const { form } = fetchedFollowUpForm;

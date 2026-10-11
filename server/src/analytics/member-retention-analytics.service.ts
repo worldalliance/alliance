@@ -1,6 +1,6 @@
-import { ActionActivityType } from "@alliance/common/actionActivity";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { sqlIsLatestCompletion } from "src/actions/action-activity-status";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
 import {
@@ -70,10 +70,11 @@ export class MemberRetentionAnalyticsService {
       return [];
     }
 
-    const completionActivities = await this.actionActivityRepository.find({
-      where: { type: ActionActivityType.USER_COMPLETED },
-      select: { userId: true, actionId: true },
-    });
+    const completionActivities = await this.actionActivityRepository
+      .createQueryBuilder("activity")
+      .select(["activity.id", "activity.userId", "activity.actionId"])
+      .where(sqlIsLatestCompletion("activity"))
+      .getMany();
 
     const completedLookup = new Set<string>();
     for (const activity of completionActivities) {
