@@ -114,4 +114,28 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
       ).toBe(completed ? 1 : 0);
     },
   );
+
+  it.each(orders)(
+    "counts a member who $order as a participant: $completed",
+    async ({ types, completed }) => {
+      const { member, action } = await setUp(types);
+      const actionsService = ctx.app.get(ActionsService);
+
+      const [participantIds, incomplete, stored] = await Promise.all([
+        actionsService.findParticipantIdsForActionById(action.id),
+        actionsService.findIncompleteUsersForAction(action.id),
+        ctx.dataSource.getRepository(Action).findOneByOrFail({ id: action.id }),
+      ]);
+
+      expect({
+        participant: participantIds.includes(member.id),
+        incomplete: incomplete.map((user) => user.id),
+        usersJoined: stored.usersJoined,
+      }).toEqual({
+        participant: completed,
+        incomplete: [],
+        usersJoined: completed ? 1 : 0,
+      });
+    },
+  );
 });

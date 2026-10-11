@@ -144,6 +144,7 @@ import {
 } from "typeorm";
 import { UserService } from "../user/user.service";
 import {
+  findLatestTerminalActivities,
   findLatestTerminalActivity,
   isTerminalActivity,
   resolveUserActionRelation,
@@ -740,8 +741,8 @@ export class ActionsService {
    *
    *   base recipients (assigned)
    *   − away at any point during the member-action window
-   *   − withdrawn (USER_WONT_COMPLETE)
-   *   + everyone with a USER_COMPLETED activity
+   *   − everyone whose latest terminal activity is a withdrawal
+   *   + everyone whose latest terminal activity is a completion
    *
    * i.e. "could this user have done it at all?"
    *
@@ -789,7 +790,7 @@ export class ActionsService {
     });
     const completionsByAction = new Map<number, number[]>();
     const withdrawalsByAction = new Map<number, Set<number>>();
-    for (const act of allActivities.filter(isTerminalActivity)) {
+    for (const act of findLatestTerminalActivities(allActivities)) {
       switch (act.type) {
         case ActionActivityType.USER_COMPLETED:
           if (!completionsByAction.has(act.actionId)) {
@@ -854,14 +855,10 @@ export class ActionsService {
 
     const joinedUserIds = await this.findParticipantIdsForAction(action);
 
-    const completedActivities = await this.actionActivityRepository.find({
-      where: {
-        actionId,
-        type: ActionActivityType.USER_COMPLETED,
-      },
-      select: { userId: true },
+    const completions = await this.prerequisiteProgressService.loadCompletions({
+      actionId,
     });
-    const completedUserIds = new Set(completedActivities.map((a) => a.userId));
+    const completedUserIds = new Set(completions.map((a) => a.userId));
 
     const incompleteUserIds = joinedUserIds.filter(
       (id) => !completedUserIds.has(id),

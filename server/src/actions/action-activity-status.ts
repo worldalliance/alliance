@@ -79,6 +79,15 @@ export function findLatestTerminalActivity<
   );
 }
 
+/** Each (user, action) pair's latest terminal activity. */
+export function findLatestTerminalActivities<
+  T extends Pick<ActionActivity, "type" | "createdAt" | "userId" | "actionId">,
+>(activities: T[]): (T & { type: TerminalActivityType })[] {
+  return [
+    ...Map.groupBy(activities, (a) => `${a.userId}:${a.actionId}`).values(),
+  ].flatMap((pair) => findLatestTerminalActivity(pair) ?? []);
+}
+
 /**
  * Each (user, action) pair's latest terminal activity, kept only where it is a
  * completion.
@@ -86,12 +95,9 @@ export function findLatestTerminalActivity<
 export function findLatestCompletions<
   T extends Pick<ActionActivity, "type" | "createdAt" | "userId" | "actionId">,
 >(activities: T[]): T[] {
-  return [
-    ...Map.groupBy(activities, (a) => `${a.userId}:${a.actionId}`).values(),
-  ].flatMap((pair) => {
-    const latest = findLatestTerminalActivity(pair);
-    return latest?.type === ActionActivityType.USER_COMPLETED ? [latest] : [];
-  });
+  return findLatestTerminalActivities(activities).filter(
+    (latest) => latest.type === ActionActivityType.USER_COMPLETED,
+  );
 }
 
 /**
