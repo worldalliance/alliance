@@ -20,8 +20,9 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
 import { ImagesService } from "src/images/images.service";
-import { Friend, FriendStatus } from "src/user/entities/friend.entity";
+import { Friend } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
+import { acceptedFriendship, friendshipBetween } from "src/user/friendship";
 import { UserEvents, type FriendsAcceptedPayload } from "src/user/user.events";
 import type { Relations } from "src/utils/Repository";
 import { isUniqueViolation } from "src/utils/db-errors";
@@ -115,21 +116,9 @@ export class ConversationService {
     userIdA: number,
     userIdB: number,
   ): Promise<boolean> {
-    const friendship = await this.friendRepository.findOne({
-      where: [
-        {
-          requester: { id: userIdA },
-          addressee: { id: userIdB },
-          status: FriendStatus.Accepted,
-        },
-        {
-          requester: { id: userIdB },
-          addressee: { id: userIdA },
-          status: FriendStatus.Accepted,
-        },
-      ],
+    return this.friendRepository.exists({
+      where: { ...friendshipBetween(userIdA, userIdB), ...acceptedFriendship },
     });
-    return friendship !== null;
   }
 
   private conversationListQuery() {

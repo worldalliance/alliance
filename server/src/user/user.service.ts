@@ -168,6 +168,12 @@ import {
   sqlUserHasActiveContractAt,
   User,
 } from "./entities/user.entity";
+import {
+  acceptedFriendshipsOf,
+  acceptedFriendshipSql,
+  friendOf,
+  friendshipBetween,
+} from "./friendship";
 import { CLAIMABLE_INVITE, inviteAcceptedSql } from "./invite-claim";
 import { type FriendsAcceptedPayload, UserEvents } from "./user.events";
 import { referralLabel } from "./user.utils";
@@ -445,7 +451,7 @@ export class UserService {
       .createQueryBuilder("f")
       .select("f.requesterId", "requesterId")
       .addSelect("f.addresseeId", "addresseeId")
-      .where("f.status = :status", { status: FriendStatus.Accepted })
+      .where(acceptedFriendshipSql("f"))
       .getRawMany<{ requesterId: number; addresseeId: number }>();
 
     const byUser = new Map<number, number[]>();
@@ -951,10 +957,7 @@ export class UserService {
   /** Cancel a request OR un-friend an accepted friend in either direction. */
   async removeFriend(userId: number, targetUserId: number): Promise<void> {
     const rel = await this.friendRepository.findOne({
-      where: [
-        { requester: { id: userId }, addressee: { id: targetUserId } },
-        { requester: { id: targetUserId }, addressee: { id: userId } },
-      ],
+      where: friendshipBetween(userId, targetUserId),
       relations: {
         requester: true,
         addressee: true,
@@ -977,19 +980,14 @@ export class UserService {
 
   async findFriends(userId: number): Promise<User[]> {
     const rels = await this.friendRepository.find({
-      where: [
-        { requester: { id: userId }, status: FriendStatus.Accepted },
-        { addressee: { id: userId }, status: FriendStatus.Accepted },
-      ],
+      where: acceptedFriendshipsOf(userId),
       relations: {
         requester: { contractEvents: true },
         addressee: { contractEvents: true },
       },
     });
 
-    return rels.map((r) =>
-      r.requester!.id === userId ? r.addressee! : r.requester!,
-    );
+    return rels.map((r) => friendOf(r, userId));
   }
 
   private async findFriendUsersWithProfilePictures(
@@ -1000,7 +998,7 @@ export class UserService {
       .createQueryBuilder("f")
       .innerJoinAndSelect("f.requester", "req")
       .innerJoinAndSelect("f.addressee", "addr")
-      .where("f.status = :status", { status: FriendStatus.Accepted })
+      .where(acceptedFriendshipSql("f"))
       .andWhere("(f.requesterId = :inviterId OR f.addresseeId = :inviterId)", {
         inviterId,
       })
@@ -1017,9 +1015,7 @@ export class UserService {
       )
       .setParameter("contractAt", contractAt)
       .getMany();
-    const others = rels.map((r) =>
-      r.requester!.id === inviterId ? r.addressee! : r.requester!,
-    );
+    const others = rels.map((r) => friendOf(r, inviterId));
     return others.sort((a, b) => a.id - b.id);
   }
 
@@ -1145,10 +1141,7 @@ export class UserService {
 
     const [rels, staff, communityUsers] = await Promise.all([
       this.friendRepository.find({
-        where: [
-          { requester: { id: userId }, status: FriendStatus.Accepted },
-          { addressee: { id: userId }, status: FriendStatus.Accepted },
-        ],
+        where: acceptedFriendshipsOf(userId),
         relations: { requester: true, addressee: true },
       }),
 
@@ -1178,9 +1171,7 @@ export class UserService {
         .getMany(),
     ]);
 
-    const friends = rels.map((r) =>
-      r.requester!.id === userId ? r.addressee! : r.requester!,
-    );
+    const friends = rels.map((r) => friendOf(r, userId));
 
     const byId = new Map<number, User>();
     for (const u of [...staff, ...communityUsers, ...friends]) {
@@ -1251,15 +1242,10 @@ export class UserService {
     userId: number,
     targetUserId: number,
   ): Promise<FriendStatusDtoArgs> {
-    const rel =
-      (await this.friendRepository.findOne({
-        where: { requester: { id: userId }, addressee: { id: targetUserId } },
-        relations: { requester: true, addressee: true },
-      })) ||
-      (await this.friendRepository.findOne({
-        where: { requester: { id: targetUserId }, addressee: { id: userId } },
-        relations: { requester: true, addressee: true },
-      }));
+    const rel = await this.friendRepository.findOne({
+      where: friendshipBetween(userId, targetUserId),
+      relations: { requester: true, addressee: true },
+    });
 
     const status = rel ? rel.status : FriendStatus.None;
     return {
@@ -2909,7 +2895,7 @@ export class UserService {
       .createQueryBuilder("friend")
       .select("friend.requesterId", "userAId")
       .addSelect("friend.addresseeId", "userBId")
-      .where("friend.status = :status", { status: FriendStatus.Accepted })
+      .where(acceptedFriendshipSql("friend"))
       .andWhere(sqlUserHasActiveContractAt("friend.requesterId", "NOW()"))
       .andWhere(sqlUserHasActiveContractAt("friend.addresseeId", "NOW()"))
       .getRawMany<FriendGraphEdge>();

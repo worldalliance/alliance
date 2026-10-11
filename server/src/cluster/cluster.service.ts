@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { sqlUserHasActiveContractAt } from "src/user/entities/user.entity";
+import { acceptedFriendshipSql } from "src/user/friendship";
 import type { Repository } from "src/utils/Repository";
 import { DataSource, EntityManager } from "typeorm";
 import { bulkAssign, type ClusterUser } from "./cluster.algorithm";
@@ -117,7 +118,7 @@ async function loadClusterUsers(
     { requesterId: number; addresseeId: number }[]
   >(
     `SELECT "requesterId", "addresseeId" FROM friend
-     WHERE status = 'accepted'
+     WHERE ${acceptedFriendshipSql("friend")}
      AND "requesterId" = ANY($1::int[]) AND "addresseeId" = ANY($1::int[])`,
     [ids],
   );
