@@ -22,6 +22,7 @@ import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
+import { ActionFormAssignment } from "src/actions/entities/action-form-assignment.entity";
 import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { FollowUpForm } from "src/actions/entities/follow-up-form.entity";
@@ -137,6 +138,7 @@ describe("Tasks (e2e)", () => {
     jest.restoreAllMocks();
     await formResponseDraftRepo.query("DELETE FROM form_response_draft");
     await formResponseRepo.query("DELETE FROM form_response");
+    await variantRepo.query("DELETE FROM action_form_assignment");
     // Before the forms it points at; the variant -> form FK is RESTRICT.
     await variantRepo.query("DELETE FROM action_form_variant");
     await formRepo.query("DELETE FROM form");
@@ -1663,6 +1665,49 @@ describe("Tasks (e2e)", () => {
       expect(fetched.body.draft).toBeUndefined();
 
       await saveDraft({ "full-name": "Too Late" }).expect(400);
+    });
+
+    it("turns away a member who submitted another of the action's forms", async () => {
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${draftFormId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { "full-name": "Submitted" },
+          formSnapshotId: draftSnapshotId,
+          actionId: draftActionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+      const variantForm = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Variant", schema: sampleSchema })
+        .expect(201);
+      const variant = await variantRepo.save(
+        variantRepo.create({
+          actionId: draftActionId,
+          formId: variantForm.body.id,
+          name: "B",
+          splitValue: 1,
+        }),
+      );
+      await ctx.dataSource.getRepository(ActionFormAssignment).insert({
+        actionId: draftActionId,
+        userId: ctx.testUserId,
+        variantId: variant.id,
+      });
+
+      const refused = await request(ctx.app.getHttpServer())
+        .put(`/tasks/formDraft/${variantForm.body.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          actionId: draftActionId,
+          formSnapshotId: variantForm.body.formSnapshotId,
+          answers: { "full-name": "Second try" },
+        })
+        .expect(400);
+
+      expect(refused.body.message).toBe("Form already submitted");
     });
 
     it("turns away a form that isn't the action's", async () => {

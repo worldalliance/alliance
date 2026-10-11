@@ -1,3 +1,4 @@
+import { actionFormIds } from "@alliance/common/cohort-expression";
 import {
   BadRequestException,
   Injectable,
@@ -59,6 +60,43 @@ export class ActionFormVariantService {
       where: { actionId },
       order: { id: "ASC" },
     });
+  }
+
+  /** Each action's form the member submitted: its task form or a variant's. */
+  async findSubmittedFormIds(params: {
+    actionIds: number[];
+    userId: number;
+  }): Promise<Map<number, number>> {
+    const { actionIds, userId } = params;
+    const [actions, variants] = await Promise.all([
+      this.actionRepo.find({
+        where: { id: In(actionIds) },
+        select: { id: true, taskFormId: true },
+      }),
+      this.variantRepo.find({ where: { actionId: In(actionIds) } }),
+    ]);
+    const actionIdByFormId = new Map<number, number>();
+    for (const action of actions) {
+      const formIds = actionFormIds({
+        taskFormId: action.taskFormId,
+        variantFormIds: variants
+          .filter((v) => v.actionId === action.id)
+          .map((v) => v.formId),
+      });
+      for (const formId of formIds) actionIdByFormId.set(formId, action.id);
+    }
+    if (actionIdByFormId.size === 0) return new Map();
+
+    const responses = await this.variantRepo.manager.find(FormResponse, {
+      where: { formId: In([...actionIdByFormId.keys()]), user: { id: userId } },
+      select: { formId: true },
+    });
+    const submitted = new Map<number, number>();
+    for (const { formId } of responses) {
+      const actionId = actionIdByFormId.get(formId);
+      if (actionId !== undefined) submitted.set(actionId, formId);
+    }
+    return submitted;
   }
 
   async createVariant(
