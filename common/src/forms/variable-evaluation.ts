@@ -10,10 +10,10 @@ import {
 import {
   compileVariableExpression,
   evaluateVariableExpression,
-  type ExprNode,
   type ExprRecord,
   type ExprValue,
 } from "./variable-expression";
+import type { ExprNode } from "./variable-expression-ast";
 import {
   isListInput,
   type VariableAggregateInput,

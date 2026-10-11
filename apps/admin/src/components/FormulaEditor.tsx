@@ -3,9 +3,9 @@ import { evaluateOptionsExpression } from "@alliance/common/forms/formula-option
 import { evaluateVariableText } from "@alliance/common/forms/variable-evaluation";
 import {
   compileVariableExpression,
-  type ExprNode,
   type ExprValue,
 } from "@alliance/common/forms/variable-expression";
+import type { ExprNode } from "@alliance/common/forms/variable-expression-ast";
 import {
   checkOptionsFormulaType,
   checkVariableFormulaType,
