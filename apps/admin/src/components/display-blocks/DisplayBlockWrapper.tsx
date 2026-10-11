@@ -15,7 +15,9 @@ import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { CheckCircle2, Circle } from "lucide-react";
 import {
   useCallback,
+  useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -33,53 +35,18 @@ import type { OutputBlockOption } from "../form-fields/conditions/ContextRules";
 import { useTypedExpression } from "../form-fields/conditions/expressionBuffers";
 import { ElementConditions } from "../form-fields/conditions/VisibilityConditions";
 import { BlockPreviewAllowed } from "./BlockPreview";
+import {
+  importManualContent,
+  landingIn,
+  OverrideTargetContext,
+  userLabel,
+  writeBlockFor,
+  type BlockWriteLanding,
+  type LandingFor,
+} from "./perUserContent";
 import { usePerViewerOptionsAllowed } from "./PerViewerOptionsContext";
 
 type ManualUserListEntry = Pick<UserDto, "id" | "name" | "hasActiveContract">;
-
-const stripManualFields = (
-  updates: Partial<DisplayBlock>,
-): Partial<DisplayBlock> => {
-  const {
-    manualPerUser: _manualPerUser,
-    manualUserContent: _manualUserContent,
-    ...rest
-  } = updates as Partial<DisplayBlock>;
-  return rest;
-};
-
-const stripIdentityFields = <T extends Record<string, unknown>>(
-  value: T,
-): Omit<T, "kind" | "id" | "type"> => {
-  const { kind: _kind, id: _id, type: _type, ...rest } = value;
-  return rest;
-};
-
-const baseManualContentFromBlock = (
-  block: DisplayBlock,
-): ManualDisplayBlockContent =>
-  stripIdentityFields(
-    stripManualFields({
-      ...block,
-      manualPerUser: undefined,
-      manualUserContent: undefined,
-    }) as Record<string, unknown>,
-  ) as ManualDisplayBlockContent;
-
-/**
- * Where a write landed. `userId` is null for the default content, which is
- * where a write meant for one user goes once the block stops holding per-user
- * content. Null once the form no longer holds the block at all.
- */
-export type BlockWriteLanding = { userId: string | null } | null;
-
-export type LandingFor = (userId: string | null) => BlockWriteLanding;
-
-const landingIn = (
-  current: DisplayBlock | null | undefined,
-  userId: string | null,
-): BlockWriteLanding =>
-  current ? { userId: current.manualPerUser && userId ? userId : null } : null;
 
 /** Names a write's target inside a sentence, null being the default content. */
 export type TargetLabel = (userId: string | null) => string;
@@ -175,10 +142,13 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     ? "Unable to load users"
     : null;
   const refetchUsers = () => void usersQuery.refetch({ cancelRefetch: false });
-  const [activeManualUserId, setActiveManualUserId] = useState<string | null>(
-    null,
-  );
-  const [hasUserSelectedTarget, setHasUserSelectedTarget] = useState(false);
+  const builderTarget = useContext(OverrideTargetContext);
+  const [localUserId, setLocalUserId] = useState<string | null>(null);
+  const selectedUserId = builderTarget ? builderTarget.userId : localUserId;
+  const selectManualTarget = builderTarget
+    ? builderTarget.select
+    : setLocalUserId;
+  const activeManualUserId = manualPerUserEnabled ? selectedUserId : null;
   const [isUserListOpen, setIsUserListOpen] = useState(false);
   const [userSearch, setUserSearch] = useState("");
   const manualTargetList = useMemo(
@@ -228,16 +198,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     });
   }, [sortedManualUsers, userSearch]);
 
-  const selectManualTarget = useCallback(
-    (userId: string | null, markSelection = true) => {
-      if (markSelection) {
-        setHasUserSelectedTarget(true);
-      }
-      setActiveManualUserId(userId);
-    },
-    [],
-  );
-
   useEffect(() => {
     if (!isMenuOpen) return;
 
@@ -271,32 +231,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     }
   }, [block, showConditionalVisibilityControl]);
 
-  useEffect(() => {
-    if (!manualPerUserEnabled) {
-      selectManualTarget(null, false);
-      setHasUserSelectedTarget(false);
-      return;
-    }
-    if (hasUserSelectedTarget) {
-      return;
-    }
-    const firstManualKey = manualContentKeys[0];
-    if (firstManualKey) {
-      selectManualTarget(firstManualKey, false);
-      return;
-    }
-    if (manualUsers.length > 0) {
-      selectManualTarget(String(manualUsers[0].id), false);
-    }
-  }, [
-    activeManualUserId,
-    hasUserSelectedTarget,
-    manualPerUserEnabled,
-    manualContentKeys,
-    selectManualTarget,
-    manualUsers,
-  ]);
-
   const effectiveBlock = useMemo(() => {
     if (!block) return block;
     if (manualPerUserEnabled && activeManualUserId) {
@@ -318,14 +252,8 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     [activeManualUserId, manualPerUserEnabled, manualUsers],
   );
   const targetLabel = useCallback<TargetLabel>(
-    (userId) => {
-      if (!userId) return "the default content";
-      const name = manualUsers.find(
-        (candidate) => String(candidate.id) === userId,
-      )?.name;
-      // An empty name would otherwise leave the sentence naming nobody.
-      return name || `User ${userId}`;
-    },
+    (userId) =>
+      userId ? userLabel(manualUsers, userId) : "the default content",
     [manualUsers],
   );
   const usersWithContent = useMemo(
@@ -392,13 +320,14 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     }
   };
 
+  // Undo turns per-user content off without going through its toggle.
+  useEffect(() => {
+    if (!manualPerUserEnabled) selectManualTarget(null);
+  }, [manualPerUserEnabled, selectManualTarget]);
+
   const handleManualToggle = (checked: boolean) => {
     if (!onUpdate) return;
-    if (!checked) {
-      selectManualTarget(null, false);
-      setHasUserSelectedTarget(false);
-      setIsUserListOpen(false);
-    }
+    if (!checked) setIsUserListOpen(false);
     onUpdate({ manualPerUser: checked } as Partial<T>);
   };
 
@@ -424,39 +353,10 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     (
       userId: string | null,
       update: (current: T) => Partial<T>,
-    ): BlockWriteLanding => {
-      if (!block) return null;
-
-      const updatesFor = (current: T): Partial<T> => {
-        if (!current.manualPerUser || !userId) return update(current);
-
-        const existingManualContent = current.manualUserContent ?? {};
-        const existingContent =
-          existingManualContent[userId] ?? baseManualContentFromBlock(current);
-
-        const nextManualContent: Record<string, ManualDisplayBlockContent> = {
-          ...existingManualContent,
-          [userId]: stripIdentityFields({
-            ...existingContent,
-            ...(stripManualFields(
-              update(resolveDisplayBlockForUser(current, userId)),
-            ) as Record<string, unknown>),
-          }) as ManualDisplayBlockContent,
-        };
-
-        return { manualUserContent: nextManualContent } as Partial<T>;
-      };
-
-      // `updateCurrent` addresses this same block by its id, so what it hands
-      // back is the T this wrapper was rendered with.
-      if (updateCurrent) {
-        const wrote = updateCurrent((current) => updatesFor(current as T));
-        return landingIn(wrote, userId);
-      }
-      if (!onUpdate) return null;
-      onUpdate(updatesFor(block));
-      return landingIn(block, userId);
-    },
+    ): BlockWriteLanding =>
+      block
+        ? writeBlockFor({ block, userId, update, updateCurrent, onUpdate })
+        : null,
     [block, onUpdate, updateCurrent],
   );
 
@@ -469,6 +369,12 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     (updates: Partial<T>) => updateBlockFor(activeManualUserId, () => updates),
     [activeManualUserId, updateBlockFor],
   );
+
+  // An import awaits the clipboard before counting what it would replace.
+  const latestBlock = useRef(block);
+  useLayoutEffect(() => {
+    latestBlock.current = block;
+  });
 
   const handleImportFromClipboard = useCallback(async () => {
     if (!onUpdate || !block || !manualImportField) return;
@@ -493,53 +399,28 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       toastError('Expected a JSON object like {"42": "text for user 42"}.');
       return;
     }
-    const parsed = parseResult.data;
+    const entries = parseResult.data;
 
-    const baseContent = baseManualContentFromBlock(block);
-
-    const nextManualContent: Record<string, ManualDisplayBlockContent> = {
-      ...manualUserContent,
-    };
-
-    const parsedEntries = Object.entries(parsed);
-    let importedCount = 0;
-    let overwriteCount = 0;
-    for (const [userId, value] of parsedEntries) {
-      const existingContent = nextManualContent[userId] ?? baseContent;
-      const existingValue = (
-        existingContent as Record<string, unknown> | undefined
-      )?.[manualImportField];
-      if (nextManualContent[userId] && existingValue === value) {
-        continue;
-      }
-      if (
-        nextManualContent[userId] &&
-        typeof existingValue === "string" &&
-        existingValue.length > 0 &&
-        existingValue !== value
-      ) {
-        overwriteCount++;
-      }
-      nextManualContent[userId] = stripIdentityFields({
-        ...existingContent,
-        [manualImportField]: value,
-      }) as ManualDisplayBlockContent;
-      importedCount++;
-    }
-
-    if (parsedEntries.length === 0) {
+    if (Object.keys(entries).length === 0) {
       toastError("No string entries found in clipboard JSON.");
       return;
     }
-    if (importedCount === 0) {
+    const readBlock = latestBlock.current;
+    if (!readBlock) return;
+    const { imported, overwritten } = importManualContent({
+      block: readBlock,
+      field: manualImportField,
+      entries,
+    });
+    if (imported === 0) {
       toastError("Clipboard content already matches existing per-user values.");
       return;
     }
 
-    if (overwriteCount > 0) {
+    if (overwritten > 0) {
       const ok = await confirm({
         title: "Overwrite existing per-user content?",
-        message: `${withCount(overwriteCount, "user")} already ${pickForCount(overwriteCount, "has", "have")} a different ${manualImportField} value. Continue and replace ${pickForCount(overwriteCount, "it", "them")}?`,
+        message: `${withCount(overwritten, "user")} already ${pickForCount(overwritten, "has", "have")} a different ${manualImportField} value. Continue and replace ${pickForCount(overwritten, "it", "them")}?`,
         confirmLabel: "Overwrite",
         cancelLabel: "Cancel",
         mode: ConfirmMode.Fullscreen,
@@ -547,21 +428,37 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
       if (!ok) return;
     }
 
-    onUpdate({
-      manualPerUser: true,
-      manualUserContent: nextManualContent,
-    } as Partial<T>);
+    // The form can change while the clipboard is read or the admin confirms.
+    const landing = writeBlockFor({
+      block,
+      userId: null,
+      update: (current) =>
+        ({
+          manualPerUser: true,
+          manualUserContent: importManualContent({
+            block: current,
+            field: manualImportField,
+            entries,
+          }).manualUserContent,
+        }) as Partial<T>,
+      updateCurrent,
+      onUpdate,
+    });
 
     setIsMenuOpen(false);
-    success(`Imported content for ${withCount(importedCount, "user")}.`);
+    if (!landing) {
+      toastError("The block was deleted before its content was imported.");
+      return;
+    }
+    success(`Imported content for ${withCount(imported, "user")}.`);
   }, [
     block,
     confirm,
     manualImportField,
-    manualUserContent,
     onUpdate,
     success,
     toastError,
+    updateCurrent,
   ]);
 
   const clearContentForActiveUser = () => {
@@ -594,11 +491,8 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
           updateBlockWide,
         })
       : children;
-  // The sidebar's canvas renders the block, but only its default content.
   const renderContent = (
-    <BlockPreviewAllowed.Provider
-      value={!sidebar || (manualPerUserEnabled && !!activeManualUserId)}
-    >
+    <BlockPreviewAllowed.Provider value={!sidebar}>
       {editorContent}
     </BlockPreviewAllowed.Provider>
   );
@@ -795,7 +689,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
           <div>
             <p className="text-sm font-semibold">
               {activeManualUserId
-                ? `Editing ${targetLabel(activeManualUserId)}`
+                ? `Editing content for ${targetLabel(activeManualUserId)}`
                 : "Editing default content"}
             </p>
             <p className="text-xs">

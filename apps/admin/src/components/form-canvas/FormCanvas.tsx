@@ -15,7 +15,7 @@ import {
   type VisibilityGroups,
 } from "../../lib/visibilityGroups";
 import { selectionRing } from "./CanvasContent";
-import { CanvasElement } from "./CanvasElement";
+import { CanvasElement, type ContentOverride } from "./CanvasElement";
 import {
   CanvasTargetKind,
   describeElement,
@@ -54,6 +54,8 @@ type FormCanvasProps = {
   onUpdateElement: (index: number, updates: Partial<PageItem>) => void;
   onUpdateBlockById: BlockWriteById;
   onUpdatePage: (updates: Partial<Page>) => void;
+  /** The user whose content the selected block shows. */
+  override: ContentOverride | null;
 };
 
 /** The selected page as respondents see it, with selection and editing overlays. */
@@ -70,6 +72,7 @@ export function FormCanvas({
   onUpdateElement,
   onUpdateBlockById,
   onUpdatePage,
+  override,
 }: FormCanvasProps) {
   const fields = page.fields;
   const { acceptDrop, drop, dragFor } = useListDrag<string>((_, move) =>
@@ -114,6 +117,7 @@ export function FormCanvas({
         onUpdate={(updates) => onUpdateElement(index, updates)}
         updateCurrent={addressedWrite(element, onUpdateBlockById)}
         inline={target ? inline : null}
+        override={target && !target.child ? override : null}
         conditionSummary={
           !displayOnly && !inGroup && element.visibleIfFormula
             ? summarize(element.visibleIfFormula)

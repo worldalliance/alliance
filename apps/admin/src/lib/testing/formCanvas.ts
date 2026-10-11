@@ -14,6 +14,15 @@ export const canvasOrder = (name = /^Select /) =>
     .getAllByRole("button", { name })
     .map((button) => button.getAttribute("aria-label"));
 
+export const formJson = () => {
+  fireEvent.click(screen.getByRole("button", { name: "Edit form JSON" }));
+  const json = screen.getByRole<HTMLTextAreaElement>("textbox", {
+    name: "Form JSON",
+  }).value;
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  return json;
+};
+
 export const outline = () => within(screen.getByLabelText("Outline"));
 
 /** Selects the canvas element whose label or text ends with `text`. */

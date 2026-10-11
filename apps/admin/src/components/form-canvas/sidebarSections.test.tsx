@@ -217,7 +217,7 @@ describe("an editor in the settings sidebar", () => {
     expect(panel().queryByText("Remove all conditions")).toBeNull();
   });
 
-  it("keeps a block's preview while it holds a user's content", async () => {
+  it("leaves a user's content to the canvas, as it does the default", async () => {
     renderSidebar({
       id: "b",
       type: "display",
@@ -226,7 +226,10 @@ describe("an editor in the settings sidebar", () => {
       manualPerUser: true,
       manualUserContent: { "7": { text: "Dear Ana" } },
     });
-    expect(await screen.findByText("Show preview")).toBeTruthy();
+    expect(screen.queryByText("Show preview")).toBeNull();
+    fireEvent.click(screen.getAllByRole("button", { name: "Next" }).at(-1)!);
+    expect(await screen.findByText("Editing content for User 7")).toBeTruthy();
+    expect(screen.queryByText("Show preview")).toBeNull();
   });
 
   it("mounts a section when first opened, and keeps it through a switch", () => {

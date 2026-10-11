@@ -3,11 +3,13 @@ import {
   type PageItem,
 } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
+import { resolveDisplayBlockForUser } from "@alliance/shared/formrenderer";
 import { cn } from "@alliance/shared/styles/util";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { GripVertical } from "lucide-react";
 import type { ReactNode } from "react";
 import type { AddressedWrite } from "../../lib/displayBlockById";
+import { writeBlockFor } from "../display-blocks/perUserContent";
 import { CanvasAccordion, CanvasList } from "./CanvasContainers";
 import {
   CanvasContent,
@@ -91,8 +93,10 @@ function ElementContent({
   );
 }
 
+export type ContentOverride = { userId: string; label: string };
+
 export function CanvasElement({
-  element,
+  element: authored,
   label,
   selected,
   selectedChild,
@@ -104,6 +108,7 @@ export function CanvasElement({
   onUpdate,
   updateCurrent,
   inline,
+  override,
 }: ContentProps & {
   label: string;
   selected: boolean;
@@ -111,14 +116,31 @@ export function CanvasElement({
   /** Null when the element shows unconditionally, or through its group. */
   conditionSummary: string | null;
   drag: ListDrag;
+  /** Null for the default content. An element without per-user content ignores it. */
+  override: ContentOverride | null;
 }) {
+  const shown =
+    override && !isQuestionField(authored) && authored.manualPerUser
+      ? { override, block: authored }
+      : null;
+  const element = shown
+    ? resolveDisplayBlockForUser(shown.block, shown.override.userId)
+    : authored;
   const editing = selected ? inline : null;
   const text =
     editing &&
     inlineTextFor({
       item: element,
       onChange: (next) =>
-        onUpdate(isQuestionField(element) ? { label: next } : { text: next }),
+        isQuestionField(authored)
+          ? onUpdate({ label: next })
+          : writeBlockFor({
+              block: authored,
+              userId: shown?.override.userId ?? null,
+              update: () => ({ text: next }),
+              updateCurrent,
+              onUpdate,
+            }),
       onStop: editing.stop,
     });
   return (
@@ -177,6 +199,11 @@ export function CanvasElement({
       >
         <GripVertical className="h-4 w-4" />
       </span>
+      {shown && (
+        <span className="absolute -top-2.5 left-3 z-10 max-w-[70%] truncate rounded bg-blue-600 px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm">
+          Editing content for {shown.override.label}
+        </span>
+      )}
       {conditionSummary && (
         <ElementConditionsIndicator
           summary={conditionSummary}

@@ -174,6 +174,14 @@ As implemented:
 
 Checks: editing a user override, switching targets, and undoing without changing another user's content.
 
+As implemented:
+
+- The builder holds one override target (`useOverrideTarget`): the selected block's selection key and a user id. Selecting anything else drops it, so that block returns to its default content. The canvas shows at most one user's content, always on the selected block beside the badge naming that user. A target kept per block would leave unselected blocks showing a user's content. The context value is memoized on the user id and selection key, so a call that changes neither changes nothing downstream. No effect writes the target.
+- Block editors read the target through `OverrideTargetContext`. Editors outside the builder's sidebar (Output View cards) keep their own. A block with per-user content opens on its default content, in the sidebar and in Output View cards, rather than on the first user with an override.
+- The canvas renders the selected block through `resolveDisplayBlockForUser` with an "Editing content for <name>" badge. The sidebar heading reads the same. Names come from the admin user list, falling back to "User <id>". The sidebar never previews a block, since the canvas shows whichever content is targeted.
+- Inline text and the sidebar's editors write through `writeBlockFor` (`perUserContent.ts`). This is the wrapper's existing per-user write, moved out so both can call it. It writes the target's content into the block as the form holds it, so an inline edit is one coalesced step like any other, and undo restores only the content it changed.
+- Image uploads already landed on the target they started under (`updateFor`). A video's upload writes through the handler made when its files were picked, which holds that user and addresses the block by id. Clipboard import awaited the clipboard and the overwrite confirmation, then wrote content it had computed beforehand through the builder's `onUpdate`, which spreads the form it rendered with. An edit that landed in between was lost. Import now counts the content it would replace once the clipboard is read, then recomputes against the current block and writes through the block's addressed write. If the block was deleted in the meantime, import reports an error instead of success.
+
 ## PR 8: Shared visibility by selection
 
 - Groups remain editor metadata over consecutive top-level page elements. Save the shared formula on each member using the existing schema. Derive groups from consecutive equal formulas on load; identify each group by its summary and element count.

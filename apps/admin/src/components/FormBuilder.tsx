@@ -76,6 +76,7 @@ import { AggregateBuilder } from "./AggregateBuilder";
 import ConfirmDialog from "./ConfirmDialog";
 import { createDisplayBlock, PerViewerOptions } from "./display-blocks";
 import { renderBlockEditor } from "./display-blocks/blockEditors";
+import { OverrideTargetContext } from "./display-blocks/perUserContent";
 import { DisplayOnlyPreview } from "./DisplayOnlyPreview";
 import {
   CanvasTargetKind,
@@ -111,6 +112,7 @@ import { PageSettings, PageSettingsSidebar } from "./form-canvas/PageSettings";
 import { SettingsSidebar } from "./form-canvas/SettingsSidebar";
 import { SidebarSection } from "./form-canvas/sidebarSections";
 import type { ListMove } from "./form-canvas/useListDrag";
+import { useOverrideTarget } from "./form-canvas/useOverrideTarget";
 import { VisibilityGroupSettings } from "./form-canvas/VisibilityGroupSettings";
 import { ElementExpressionScope } from "./form-fields/conditions/expressionBuffers";
 import { isDraftValidatorId } from "./form-fields/customValidatorDrafts";
@@ -666,6 +668,8 @@ export function FormBuilder(props: FormBuilderProps) {
     groups: canvasGroups,
     selection,
   });
+  const selectionKey = targetKey(currentPage, resolvedTarget);
+  const { target: overrideTarget, override } = useOverrideTarget(selectionKey);
 
   const applyInsert = (item: PageItem, loc: InsertLoc) => {
     const { index, groupKey } = loc;
@@ -1868,7 +1872,7 @@ export function FormBuilder(props: FormBuilderProps) {
                 onSection={setSection}
                 focusPending={focusPending}
                 onFocused={focused}
-                editorKey={`${targetKey(currentPage, resolvedTarget)}-${schemaLoads}`}
+                editorKey={`${selectionKey}-${schemaLoads}`}
               />
             </ElementExpressionScope>
           );
@@ -1903,7 +1907,9 @@ export function FormBuilder(props: FormBuilderProps) {
             onDelete={() => removeElement(index)}
           >
             <div key={`${element.id || index}-${schemaLoads}`}>
-              {renderElementEditor(index)}
+              <OverrideTargetContext.Provider value={overrideTarget}>
+                {renderElementEditor(index)}
+              </OverrideTargetContext.Provider>
             </div>
           </ElementSettings>
         );
@@ -2210,7 +2216,7 @@ export function FormBuilder(props: FormBuilderProps) {
                         displayOnly={displayOnly}
                         pageIndex={selectedPageIndex}
                         selected={resolvedTarget}
-                        selectionKey={targetKey(currentPage, resolvedTarget)}
+                        selectionKey={selectionKey}
                         onSelect={(pageIndex, target) =>
                           selectFromOutline({
                             page: schema.pages[pageIndex]!,
@@ -2228,7 +2234,7 @@ export function FormBuilder(props: FormBuilderProps) {
                     revealPending={revealPending}
                     onRevealed={revealed}
                     canvasKey={currentPage.id}
-                    settingsKey={targetKey(currentPage, resolvedTarget)}
+                    settingsKey={selectionKey}
                     canvas={
                       <FormCanvas
                         page={currentPage}
@@ -2245,6 +2251,7 @@ export function FormBuilder(props: FormBuilderProps) {
                         }
                         onUpdateBlockById={updateBlockById}
                         onUpdatePage={updateCurrentPage}
+                        override={override}
                       />
                     }
                     settings={renderSettings()}

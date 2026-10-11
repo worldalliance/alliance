@@ -35,12 +35,8 @@ import { GripVertical, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { VariableTextField } from "../VariableTextField";
 import { BlockPreview } from "./BlockPreview";
-import {
-  DisplayBlockWrapper,
-  type BlockWriteLanding,
-  type LandingFor,
-  type TargetLabel,
-} from "./DisplayBlockWrapper";
+import { DisplayBlockWrapper, type TargetLabel } from "./DisplayBlockWrapper";
+import type { BlockWriteLanding, LandingFor } from "./perUserContent";
 import type { BaseDisplayBlockProps } from "./types";
 
 function newItemId(): string {
