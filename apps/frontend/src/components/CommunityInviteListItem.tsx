@@ -12,6 +12,7 @@ type CommunityInviteListItemProps = {
   showCommunityLabel?: boolean;
   communityLabel?: string | null;
   selfInvited: boolean;
+  deleting?: boolean;
   onDelete?: (inviteId: number, event?: React.MouseEvent<HTMLElement>) => void;
 };
 
@@ -39,6 +40,7 @@ const CommunityInviteListItem = ({
   showCommunityLabel,
   communityLabel,
   selfInvited,
+  deleting = false,
   onDelete,
 }: CommunityInviteListItemProps) => {
   const statusStyle = STATUS_STYLE[invite.status];
@@ -101,6 +103,7 @@ const CommunityInviteListItem = ({
           {onDelete && SHOW_DELETE_BUTTON[invite.status] && (
             <Button
               color={ButtonColor.Black}
+              disabled={deleting}
               onClick={(event) => onDelete(invite.id, event)}
             >
               Delete
