@@ -231,8 +231,8 @@ const CommunityDetailPage: React.FC = () => {
         allowMemberInvites: formValues.allowMemberInvites,
         allowStaffAssignments: formValues.allowStaffAssignments,
       };
-      if (!payload.name || !payload.description) {
-        setError("Name and description are required.");
+      if (!payload.name) {
+        setError("Name is required.");
         return;
       }
       setError(null);

@@ -111,8 +111,8 @@ const GroupsPage: React.FC = () => {
         }
         normalizedMaxCapacity = newCommunity.maxCapacity;
       }
-      if (!name || !description) {
-        setCreateError("Name and description are required.");
+      if (!name) {
+        setCreateError("Name is required.");
         return;
       }
       setCreateError(null);

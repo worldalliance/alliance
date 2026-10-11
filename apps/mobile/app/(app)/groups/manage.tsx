@@ -172,8 +172,8 @@ export default function GroupManageScreen() {
       normalizedMaxCapacity = newCommunity.maxCapacity;
     }
 
-    if (!name || !description) {
-      setError("Name and description are required.");
+    if (!name) {
+      setError("Name is required.");
       return;
     }
 
