@@ -1,5 +1,4 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -206,12 +205,9 @@ export class ActionEventRecipientService {
         if (!actionId) return Promise.resolve(new Set());
         let pending = session.completedActionUserIds.get(actionId);
         if (!pending) {
-          pending = this.actionActivityRepository
-            .find({
-              where: { actionId, type: ActionActivityType.USER_COMPLETED },
-              select: { userId: true },
-            })
-            .then((activities) => new Set(activities.map((a) => a.userId)));
+          pending = this.prerequisiteProgressService
+            .loadCompletions({ actionId })
+            .then((completions) => new Set(completions.map((c) => c.userId)));
           session.completedActionUserIds.set(actionId, pending);
         }
         return pending;

@@ -80,6 +80,21 @@ export function findLatestTerminalActivity<
 }
 
 /**
+ * Each (user, action) pair's latest terminal activity, kept only where it is a
+ * completion.
+ */
+export function findLatestCompletions<
+  T extends Pick<ActionActivity, "type" | "createdAt" | "userId" | "actionId">,
+>(activities: T[]): T[] {
+  return [
+    ...Map.groupBy(activities, (a) => `${a.userId}:${a.actionId}`).values(),
+  ].flatMap((pair) => {
+    const latest = findLatestTerminalActivity(pair);
+    return latest?.type === ActionActivityType.USER_COMPLETED ? [latest] : [];
+  });
+}
+
+/**
  * Resolves a user's self-view relation to one action, selecting that user's
  * activities from a {@link CachedFilter}.
  *
