@@ -1,9 +1,13 @@
 import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { makeUser } from "@alliance/shared/lib/testFixtures";
+import { makeFormResponse, makeUser } from "@alliance/shared/lib/testFixtures";
 import { recordExceptions } from "@alliance/shared/lib/testing/recordExceptions";
-import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import {
+  routes,
+  serveApi,
+  type RouteTable,
+} from "@alliance/shared/lib/testing/serveApi";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -119,10 +123,13 @@ it("shows a form with no timezone field before the session loads", async () => {
   expect(await screen.findByRole("textbox")).toBeTruthy();
 });
 
-const submitRefusedWith = async (
-  refusal: { statusCode: number; message: string },
-  onDeadlinePassed: () => void = () => {},
-) => {
+const renderMemberNoteForm = ({
+  serving,
+  onDeadlinePassed = () => {},
+}: {
+  serving: RouteTable;
+  onDeadlinePassed?: () => void;
+}) => {
   api.alsoServing({
     "GET /tasks/slug/:id": () =>
       Response.json({
@@ -143,8 +150,7 @@ const submitRefusedWith = async (
       }),
     "GET /tasks/draft/:id": () => Response.json({}),
     "GET /tasks/formDraft/:id": () => Response.json({}),
-    "POST /tasks/submitForm/:id": () =>
-      Response.json(refusal, { status: refusal.statusCode }),
+    ...serving,
   });
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -165,6 +171,19 @@ const submitRefusedWith = async (
       </MemoryRouter>
     </QueryClientProvider>,
   );
+};
+
+const submitRefusedWith = async (
+  refusal: { statusCode: number; message: string },
+  onDeadlinePassed: () => void = () => {},
+) => {
+  renderMemberNoteForm({
+    serving: {
+      "POST /tasks/submitForm/:id": () =>
+        Response.json(refusal, { status: refusal.statusCode }),
+    },
+    onDeadlinePassed,
+  });
 
   fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
 };
@@ -190,4 +209,17 @@ it("refetches the action, unreported, when the deadline passed before the submit
   expect(await screen.findByText(MEMBER_ACTION_DEADLINE_PASSED)).toBeTruthy();
   expect(onDeadlinePassed).toHaveBeenCalledTimes(1);
   expect(reported).toEqual([]);
+});
+
+it("prefills a member's form with the draft they left as a guest", async () => {
+  renderMemberNoteForm({
+    serving: {
+      "GET /tasks/draft/:id": () =>
+        Response.json({
+          draft: makeFormResponse({ answers: { note: "from my guest visit" } }),
+        }),
+    },
+  });
+
+  expect(await screen.findByDisplayValue("from my guest visit")).toBeTruthy();
 });
