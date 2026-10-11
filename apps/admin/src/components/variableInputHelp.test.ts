@@ -1,9 +1,9 @@
 import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
 import {
-  compileVariableExpression,
   evaluateVariableExpression,
   type ExprValue,
 } from "@alliance/common/forms/variable-expression";
+import { compileVariableExpression } from "@alliance/common/forms/variable-expression-compile";
 import {
   checkOptionsFormulaType,
   checkVariableFormulaType,

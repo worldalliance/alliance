@@ -8,12 +8,12 @@ import {
   type VariableAggregateCounts,
 } from "./variable-aggregates";
 import {
-  compileVariableExpression,
   evaluateVariableExpression,
   type ExprRecord,
   type ExprValue,
 } from "./variable-expression";
 import type { ExprNode } from "./variable-expression-ast";
+import { compileVariableExpression } from "./variable-expression-compile";
 import {
   isListInput,
   type VariableAggregateInput,

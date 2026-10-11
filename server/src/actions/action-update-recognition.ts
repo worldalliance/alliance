@@ -13,7 +13,7 @@ import {
   evaluateVariableText,
   prepareFormula,
 } from "@alliance/common/forms/variable-evaluation";
-import { compileVariableExpression } from "@alliance/common/forms/variable-expression";
+import { compileVariableExpression } from "@alliance/common/forms/variable-expression-compile";
 import { nameParts } from "@alliance/common/nameParts";
 import { R, type Result } from "@alliance/common/result";
 import { milliseconds } from "date-fns";
