@@ -35,9 +35,8 @@ export class Message {
 
   @ManyToOne(() => User, { nullable: false, onDelete: "CASCADE" })
   @JoinColumn()
-  @ApiProperty({ type: () => User })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  author: Relation<User>;
+  @ApiPropertyOptional({ type: () => User })
+  author?: Relation<User>;
 
   @ManyToOne(() => Conversation, (conversation) => conversation.messages, {
     nullable: false,
@@ -66,4 +65,11 @@ export class Message {
 
   @OneToMany(() => Message, (message) => message.replyTo)
   replies?: Relation<Message>[];
+}
+
+export function loadedMessageAuthor(message: Message): Relation<User> {
+  if (!message.author) {
+    throw new Error(`author of message ${message.id} not loaded`);
+  }
+  return message.author;
 }

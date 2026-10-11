@@ -21,6 +21,7 @@ import type { EditableContent } from "src/forum/entities/editablecontent.entity"
 import type { City } from "src/geo/city.entity";
 import type { Mail } from "src/mail/mail.entity";
 import type { Conversation } from "src/messaging/entities/conversation.entity";
+import type { Message } from "src/messaging/entities/message.entity";
 import type { Participant } from "src/messaging/entities/participant.entity";
 import type { Mms } from "src/mms/mms.entity";
 import type { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
@@ -89,6 +90,7 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<GeneralUpdateActivity>>
   | Assert<EntityShape<Guest>>
   | Assert<EntityShape<Mail>>
+  | Assert<EntityShape<Message>>
   | Assert<EntityShape<Mms>>
   | Assert<EntityShape<Notification>>
   | Assert<EntityShape<OnetimeInvite>>
