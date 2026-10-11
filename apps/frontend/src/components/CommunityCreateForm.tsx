@@ -2,6 +2,7 @@ import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
   isMaxCapacityRequired,
+  validateCommunitySettings,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { nameParts } from "@alliance/common/nameParts";
@@ -10,7 +11,7 @@ import {
   CreateCommunityDto,
   communityCreateCommunity,
 } from "@alliance/shared/client";
-import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
+import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
@@ -56,10 +57,7 @@ const CommunityCreateForm = ({
       description: firstName
         ? `Reminder and discussion group for ${firstName}'s friends`
         : "",
-      public: false,
-      maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
-      allowMemberInvites: true,
-      allowStaffAssignments: true,
+      ...NEW_COMMUNITY_SETTINGS,
     };
   }, [name]);
 
@@ -72,17 +70,13 @@ const CommunityCreateForm = ({
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = useCallback(async () => {
-    if (!formValues.name.trim()) {
-      setError("Name is required");
+    const validated = validateCommunitySettings({
+      settings: formValues,
+      memberCount: 0,
+    });
+    if (!validated.ok) {
+      setError(validated.error);
       return;
-    }
-    let normalizedMaxCapacity: number | null = null;
-    if (useMaxCapacity) {
-      if (!formValues.maxCapacity || formValues.maxCapacity <= 0) {
-        setError("Capacity is required");
-        return;
-      }
-      normalizedMaxCapacity = formValues.maxCapacity;
     }
 
     setIsSubmitting(true);
@@ -92,7 +86,7 @@ const CommunityCreateForm = ({
         body: {
           ...formValues,
           photo: photoUrl ?? undefined,
-          maxCapacity: normalizedMaxCapacity,
+          maxCapacity: validated.value.maxCapacity,
         },
       });
       if (response.data) {
@@ -111,7 +105,7 @@ const CommunityCreateForm = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [useMaxCapacity, formValues, photoUrl, onSuccess]);
+  }, [formValues, photoUrl, onSuccess]);
 
   useEffect(() => {
     if (!submitRef) {

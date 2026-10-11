@@ -1,4 +1,16 @@
+import type { CreateCommunityDto } from "../client";
+
 export const GROUP_MAX_CAPACITY_DEFAULT = 10;
+
+export const NEW_COMMUNITY_SETTINGS: Pick<
+  CreateCommunityDto,
+  "public" | "allowMemberInvites" | "allowStaffAssignments" | "maxCapacity"
+> = {
+  public: false,
+  allowMemberInvites: true,
+  allowStaffAssignments: true,
+  maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
+};
 
 /** Alliance-wide member count target shown on invites and growth messaging. */
 export const MEMBER_GOAL = 250;

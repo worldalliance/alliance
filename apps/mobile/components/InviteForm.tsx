@@ -11,7 +11,7 @@ import {
   communityCreateCommunity,
   userCreateOnetimeInvite,
 } from "@alliance/shared/client";
-import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
+import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { useInvitePlacement } from "@alliance/shared/lib/useInvitePlacement";
@@ -105,10 +105,7 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
         body: {
           name,
           description: newGroupDescription.trim() || "",
-          public: false,
-          allowMemberInvites: true,
-          allowStaffAssignments: true,
-          maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
+          ...NEW_COMMUNITY_SETTINGS,
         },
       });
       if (response.data) {

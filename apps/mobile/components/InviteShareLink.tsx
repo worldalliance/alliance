@@ -6,7 +6,7 @@ import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
 import type { ShareUrlMineDto } from "@alliance/shared/client";
 import { communityCreateCommunity } from "@alliance/shared/client";
-import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
+import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
 import {
   reusableInviteSettings,
@@ -91,10 +91,7 @@ export default function InviteShareLink() {
         body: {
           name,
           description: newGroupDescription.trim(),
-          public: false,
-          allowMemberInvites: true,
-          allowStaffAssignments: true,
-          maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
+          ...NEW_COMMUNITY_SETTINGS,
         },
       });
       if (!response.data) {

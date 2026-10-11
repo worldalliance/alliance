@@ -1,0 +1,5 @@
+## Decisions
+
+- **The description is optional everywhere.** The server accepts an empty description (no `@IsNotEmpty`, column default `""`), the web create and edit forms and the mobile edit form never required one, and the mobile inline creators send `""`. The requirement in the admin forms (3033579d7, c220ad7f2) was copied into mobile create (fb75b0af0) without a server counterpart.
+- **The server's access rules move to `common`.** `checkCommunityAccessRules` returns the server's 400 message as a `Result`; the server throws it, and the client validator calls the same function, so client and server refuse with one message.
+- **A leader cannot set a capacity below the group's current member count; admins can.** The web edit form added the floor deliberately (2b289a158) and mobile edit copied it. The server does not enforce it: consensual placements already push groups past their capacity (`server/src/community/community.utils.ts`), so an over-capacity group is a valid state, and staff lowering a cap to stop automated placement is a legitimate action. The admin edit form passes no member count to the shared validator, with that reason at the call site.

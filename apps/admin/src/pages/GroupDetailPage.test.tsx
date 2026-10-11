@@ -197,6 +197,34 @@ it("shows the saved details", async () => {
   ).toBeTruthy();
 });
 
+it("saves the details with the description cleared", async () => {
+  renderPage();
+  fireEvent.change(await screen.findByDisplayValue("A group"), {
+    target: { value: "" },
+  });
+  fireEvent.change(screen.getByDisplayValue("North"), {
+    target: { value: "Northwest" },
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+  expect(
+    await screen.findByRole("heading", { level: 1, name: "Northwest" }),
+  ).toBeTruthy();
+});
+
+it("saves a capacity below the member count", async () => {
+  listed = { ...north, users: [sam, ada, lee] };
+  renderPage();
+  fireEvent.change(await screen.findByDisplayValue("10"), {
+    target: { value: "1" },
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+  expect(await screen.findByText("Group updated")).toBeTruthy();
+});
+
 it("drops a removed leader", async () => {
   renderPage();
   fireEvent.click(await screen.findByRole("button", { name: "Remove leader" }));

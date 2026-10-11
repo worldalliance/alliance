@@ -104,3 +104,15 @@ it("keeps loading while offline rather than saying there are no groups", async (
   expect(screen.queryByText("No groups yet.")).toBeNull();
   expect(screen.queryByText("Unused capacity")).toBeNull();
 });
+
+it("creates a group without a description", async () => {
+  renderPage();
+  await screen.findByText("North");
+
+  fireEvent.change(screen.getByLabelText("Name"), {
+    target: { value: "South" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Create group" }));
+
+  expect(await screen.findByText("South")).toBeTruthy();
+});

@@ -3,6 +3,7 @@ import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
   isMaxCapacityRequired,
+  validateCommunitySettings,
 } from "@alliance/common/community";
 import { withCount } from "@alliance/common/plural";
 import {
@@ -215,37 +216,28 @@ const CommunityDetailPage: React.FC = () => {
       if (!community) {
         return;
       }
-      let normalizedMaxCapacity: number | null = null;
-      if (requiresMaxCapacity) {
-        if (!formValues.maxCapacity || formValues.maxCapacity <= 0) {
-          setError("Member capacity is required.");
-          return;
-        }
-        normalizedMaxCapacity = formValues.maxCapacity;
+      const validated = validateCommunitySettings({
+        settings: formValues,
+        // Staff may cap a group below its size to stop automated placement;
+        // consensual placements already take groups past their capacity.
+        memberCount: null,
+      });
+      if (!validated.ok) {
+        setError(validated.error);
+        return;
       }
       const payload: UpdateCommunityDto = {
-        name: formValues.name.trim(),
+        name: validated.value.name,
         description: formValues.description.trim(),
         public: formValues.public,
-        maxCapacity: normalizedMaxCapacity,
+        maxCapacity: validated.value.maxCapacity,
         allowMemberInvites: formValues.allowMemberInvites,
         allowStaffAssignments: formValues.allowStaffAssignments,
       };
-      if (!payload.name || !payload.description) {
-        setError("Name and description are required.");
-        return;
-      }
       setError(null);
       updateCommunity({ communityId, body: payload });
     },
-    [
-      community,
-      communityId,
-      formValues,
-      requiresMaxCapacity,
-      updateCommunity,
-      setError,
-    ],
+    [community, communityId, formValues, updateCommunity, setError],
   );
 
   const mutateMembers = useCallback(
