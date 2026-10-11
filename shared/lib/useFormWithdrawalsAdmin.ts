@@ -1,4 +1,5 @@
-import { skipToken, useQuery } from "@tanstack/react-query";
+import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
 import { actionsGetWithdrawalsAdmin } from "../client";
 import type { ActionWithdrawalDto } from "../client/types.gen";
 import { queryKeys } from "./queryKeys";
@@ -10,8 +11,14 @@ const byUserId = (withdrawals: ActionWithdrawalDto[]) =>
 
 /** Withdrawals from the action that owns `formId`, keyed by user id. */
 export function useFormWithdrawalsAdmin(formId: number | undefined) {
-  const { data } = useQuery({
-    queryKey: queryKeys.formWithdrawalsAdmin(formId ?? null),
+  const queryClient = useQueryClient();
+  const queryKey = useMemo(
+    () => queryKeys.formWithdrawalsAdmin(formId ?? null),
+    [formId],
+  );
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey,
     queryFn:
       formId === undefined
         ? skipToken
@@ -23,5 +30,15 @@ export function useFormWithdrawalsAdmin(formId: number | undefined) {
     select: byUserId,
   });
 
-  return { withdrawnUserMap: data ?? NO_WITHDRAWALS };
+  const refresh = useCallback(
+    () => queryClient.invalidateQueries({ queryKey }),
+    [queryClient, queryKey],
+  );
+
+  return {
+    withdrawnUserMap: data ?? NO_WITHDRAWALS,
+    isLoading,
+    isError,
+    refresh,
+  };
 }
