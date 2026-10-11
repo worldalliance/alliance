@@ -2,6 +2,7 @@ import { ActionActivityType } from "@alliance/common/actionActivity";
 import { ActionsService } from "../src/actions/actions.service";
 import { Action } from "../src/actions/entities/action.entity";
 import { SingleMemberCohortService } from "../src/actions/single-member-cohort.service";
+import { Community } from "../src/community/entities/community.entity";
 import { ActionEventRecipientService } from "../src/notifs/action-event-recipient.service";
 import { TasksModule } from "../src/tasks/tasks.module";
 import { UserService } from "../src/user/user.service";
@@ -136,6 +137,24 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
         incomplete: [],
         usersJoined: completed ? 1 : 0,
       });
+    },
+  );
+
+  it.each(orders)(
+    "counts a member who $order in their community's completed actions: $completed",
+    async ({ types, completed }) => {
+      const { member } = await setUp(types);
+      const communityRepo = ctx.dataSource.getRepository(Community);
+      const community = await communityRepo.save(
+        communityRepo.create({ name: "Completion rule", users: [member] }),
+      );
+
+      const count = await ctx.app
+        .get(ActionsService)
+        .countCommunityCompletedActions(member.id, community.id);
+      await communityRepo.delete(community.id);
+
+      expect(count).toBe(completed ? 1 : 0);
     },
   );
 });

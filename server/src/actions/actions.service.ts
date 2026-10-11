@@ -2707,9 +2707,7 @@ export class ActionsService {
         'cuu."userId" = activity.userId AND cuu."communityId" = :communityId',
         { communityId },
       )
-      .where("activity.type = :type", {
-        type: ActionActivityType.USER_COMPLETED,
-      })
+      .where(sqlIsLatestCompletion("activity"))
       .getCount();
   }
 

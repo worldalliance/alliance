@@ -530,7 +530,7 @@ export class ActionsController {
   @UseGuards(AuthGuard)
   @ApiOperation({
     summary:
-      "Count of member action completions for current members of a community",
+      "Count of (member, action) pairs among a community's current members whose latest completion or withdrawal is a completion",
   })
   @ApiOkResponse({ type: CommunityCompletedActionsCountDto })
   @ApiQuery({ name: "communityId", type: Number })
