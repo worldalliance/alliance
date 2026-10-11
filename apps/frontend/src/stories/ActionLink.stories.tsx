@@ -1,4 +1,5 @@
 import { ActionDto } from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { Meta, StoryObj } from "@storybook/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -40,14 +41,14 @@ const previewActions: ActionDto[] = [
 
 /**
  * Seed the query cache so the hover preview renders the example actions
- * without a live backend. The key must match `ActionLink`'s queryKey.
+ * without a live backend.
  */
 function makeSeededClient() {
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
   });
   for (const action of previewActions) {
-    client.setQueryData(["actionLinkPreview", action.id], action);
+    client.setQueryData(queryKeys.action(action.id), action);
   }
   return client;
 }
