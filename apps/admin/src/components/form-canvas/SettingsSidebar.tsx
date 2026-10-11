@@ -18,6 +18,7 @@ export function SettingsSidebar({
   section,
   onSection,
   actions,
+  dependencies,
   focusPending,
   onFocused,
   children,
@@ -29,6 +30,7 @@ export function SettingsSidebar({
   section: SidebarSection;
   onSection: (section: SidebarSection) => void;
   actions?: ReactNode;
+  dependencies?: ReactNode;
   focusPending: boolean;
   onFocused: () => void;
   children: ReactNode;
@@ -73,6 +75,7 @@ export function SettingsSidebar({
         active={sections.includes(section) ? section : sections[0]!}
         onSelect={onSection}
         actions={actions}
+        dependencies={dependencies}
       >
         {children}
       </SidebarSections>

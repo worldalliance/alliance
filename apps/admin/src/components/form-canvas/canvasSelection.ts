@@ -3,10 +3,15 @@ import type {
   NestedDisplayBlock,
 } from "@alliance/common/forms/display-blocks";
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
-import type {
-  ListSubField,
-  Page,
-  PageItem,
+import {
+  PlaceKind,
+  type FormPlace,
+} from "@alliance/common/forms/form-conditions";
+import {
+  type ListField,
+  type ListSubField,
+  type Page,
+  type PageItem,
 } from "@alliance/common/forms/form-schema";
 import {
   pageSegments,
@@ -118,6 +123,73 @@ export const sectionBlockChild = ({
   section: addressOf(section, sectionIndex),
   block: addressOf(block, blockIndex),
 });
+
+type ResolvedPlace =
+  | { kind: PlaceKind.Page; page: Page }
+  | { kind: PlaceKind.Element; element: PageItem; index: number }
+  | {
+      kind: PlaceKind.SubField;
+      list: ListField;
+      index: number;
+      sub: ListSubField;
+      subIndex: number;
+    };
+
+/** The page, element, or list and sub-field at `place`. */
+export function resolvePlace(
+  pages: readonly Page[],
+  place: FormPlace,
+): ResolvedPlace {
+  const page = pages[place.pageIndex]!;
+  switch (place.kind) {
+    case PlaceKind.Page:
+      return { kind: place.kind, page };
+    case PlaceKind.Element:
+      return {
+        kind: place.kind,
+        element: page.fields[place.index]!,
+        index: place.index,
+      };
+    case PlaceKind.SubField: {
+      const list = page.fields[place.index]!;
+      if (list.kind !== "list") throw new Error("a sub-field outside a list");
+      return {
+        kind: place.kind,
+        list,
+        index: place.index,
+        sub: list.fields[place.subIndex]!,
+        subIndex: place.subIndex,
+      };
+    }
+    default:
+      throw new Error(
+        `unknown place: ${JSON.stringify(place satisfies never)}`,
+      );
+  }
+}
+
+/** The target showing `place`, on its page. */
+export function placeTarget(
+  pages: readonly Page[],
+  place: FormPlace,
+): CanvasTarget {
+  const resolved = resolvePlace(pages, place);
+  switch (resolved.kind) {
+    case PlaceKind.Page:
+      return { kind: CanvasTargetKind.Page };
+    case PlaceKind.Element:
+      return elementTarget(resolved.element, resolved.index);
+    case PlaceKind.SubField:
+      return {
+        ...elementTarget(resolved.list, resolved.index),
+        child: subFieldChild(resolved.sub, resolved.subIndex),
+      };
+    default:
+      throw new Error(
+        `unknown place: ${JSON.stringify(resolved satisfies never)}`,
+      );
+  }
+}
 
 /**
  * Where `address` sits in `items`, or -1. The stored position wins while it
@@ -368,6 +440,8 @@ export function targetKey(page: Page, target: ResolvedTarget): string {
       );
   }
 }
+
+export const pageTitle = (page: Page): string => page.title || "Untitled page";
 
 export const sectionTitle = (section: AccordionSection): string =>
   section.title || "Untitled section";

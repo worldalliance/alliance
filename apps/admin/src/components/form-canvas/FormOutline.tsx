@@ -13,6 +13,7 @@ import {
   ChildKind,
   describeElement,
   elementTarget,
+  pageTitle,
   targetKey,
   type CanvasTarget,
   type ResolvedChild,
@@ -316,7 +317,7 @@ export function FormOutline({
               return (
                 <OutlineEntry
                   key={page.id}
-                  label={page.title || "Untitled page"}
+                  label={pageTitle(page)}
                   current={
                     index === pageIndex &&
                     selected.kind === CanvasTargetKind.Page

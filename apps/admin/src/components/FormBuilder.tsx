@@ -4,6 +4,7 @@ import {
   type DisplayBlock,
   type DisplayKind,
 } from "@alliance/common/forms/display-blocks";
+import { type ConditionHolder } from "@alliance/common/forms/form-conditions";
 import {
   fieldHasOptions,
   isQuestionField,
@@ -81,6 +82,7 @@ import { OverrideTargetContext } from "./display-blocks/perUserContent";
 import { DisplayOnlyPreview } from "./DisplayOnlyPreview";
 import {
   CanvasTargetKind,
+  ChildKind,
   elementTarget,
   followElement,
   forgetPositions,
@@ -97,6 +99,7 @@ import {
 } from "./form-canvas/CanvasWorkspace";
 import { SelectChildProvider } from "./form-canvas/ChildRows";
 import { ChildSettings } from "./form-canvas/ChildSettings";
+import { DependencyLinks } from "./form-canvas/DependencyLinks";
 import { ElementSettings } from "./form-canvas/ElementSettings";
 import { FormCanvas } from "./form-canvas/FormCanvas";
 import { FormOutline } from "./form-canvas/FormOutline";
@@ -732,17 +735,19 @@ export function FormBuilder(props: FormBuilderProps) {
     page,
     pageIndex,
     target,
+    section: nextSection = SECTION_ON_SELECT[target.kind],
     keepOutline = false,
   }: {
     page: Page;
     pageIndex: number;
     target: CanvasTarget;
+    section?: SidebarSection;
     /** For adding to a selection, which takes more than one entry. */
     keepOutline?: boolean;
   }) => {
     setSelectedPageIndex(pageIndex);
     setSelection({ pageId: page.id, target });
-    setSection(SECTION_ON_SELECT[target.kind]);
+    setSection(nextSection);
     setRevealPending(true);
     if (!keepOutline) setDrawer(wideCanvas ? null : DrawerKind.Settings);
   };
@@ -1789,6 +1794,28 @@ export function FormBuilder(props: FormBuilderProps) {
   const summarize = (formula: VisibleIfFormula) =>
     summarizeVisibility(formula, conditionFieldOf);
 
+  const renderDependencies = (
+    item: ConditionHolder["formulas"],
+    questionId: string | null,
+  ) =>
+    !displayOnly && (
+      <DependencyLinks
+        pages={schema.pages}
+        groups={canvasGroups}
+        item={item}
+        questionId={questionId}
+        fieldOf={conditionFieldOf}
+        onSelect={(pageIndex, target) =>
+          selectFromOutline({
+            page: schema.pages[pageIndex]!,
+            pageIndex,
+            target,
+            section: SidebarSection.Conditions,
+          })
+        }
+      />
+    );
+
   const renderInsertPoint = (loc: InsertLoc, options?: { prominent: true }) => (
     <InsertPoint
       loc={loc}
@@ -1853,6 +1880,7 @@ export function FormBuilder(props: FormBuilderProps) {
                 ? () => removePage(selectedPageIndex)
                 : null
             }
+            dependencies={renderDependencies(currentPage, null)}
           >
             <PageSettings
               key={`${currentPage.id}-${schemaLoads}`}
@@ -1867,6 +1895,10 @@ export function FormBuilder(props: FormBuilderProps) {
         const { index, child } = resolvedTarget;
         const element = currentPage.fields[index]!;
         if (child) {
+          const sub =
+            child.kind === ChildKind.SubField && element.kind === "list"
+              ? element.fields[child.index]
+              : undefined;
           return (
             <ElementExpressionScope
               parent={`element:${currentPage.id}`}
@@ -1891,6 +1923,7 @@ export function FormBuilder(props: FormBuilderProps) {
                 focusPending={focusPending}
                 onFocused={focused}
                 editorKey={`${selectionKey}-${schemaLoads}`}
+                dependencies={sub && renderDependencies(sub, sub.id)}
               />
             </ElementExpressionScope>
           );
@@ -1923,6 +1956,10 @@ export function FormBuilder(props: FormBuilderProps) {
             }
             onDuplicate={() => duplicateElement(index)}
             onDelete={() => removeElement(index)}
+            dependencies={renderDependencies(
+              element,
+              isQuestionField(element) ? element.id : null,
+            )}
           >
             <div key={`${element.id || index}-${schemaLoads}`}>
               <OverrideTargetContext.Provider value={overrideTarget}>
@@ -1941,6 +1978,13 @@ export function FormBuilder(props: FormBuilderProps) {
             onSection={setSection}
             focusPending={focusPending}
             onFocused={focused}
+            dependencies={renderDependencies(
+              {
+                visibleIfFormula:
+                  currentPage.fields[resolvedTarget.start]?.visibleIfFormula,
+              },
+              null,
+            )}
           >
             <VisibilityGroupSettings
               key={`${resolvedTarget.key}-${schemaLoads}`}

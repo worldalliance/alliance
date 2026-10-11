@@ -30,6 +30,7 @@ export function ElementSettings({
   onEditJson,
   onDuplicate,
   onDelete,
+  dependencies,
   children,
 }: {
   element: PageItem;
@@ -44,6 +45,7 @@ export function ElementSettings({
   onEditJson: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  dependencies: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -57,6 +59,7 @@ export function ElementSettings({
       onSection={onSection}
       focusPending={focusPending}
       onFocused={onFocused}
+      dependencies={dependencies}
       actions={
         <SettingsActions idLabel="Element ID" id={element.id}>
           <SettingsAction Icon={FileJson} onClick={onEditJson}>

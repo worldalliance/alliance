@@ -34,6 +34,11 @@ type SidebarSectionsValue = {
   idPrefix: string;
   /** Builder actions closing the Advanced section, after the editor's own settings. */
   actions: ReactNode;
+  /**
+   * Closes the Conditions section, after the editor's own settings, or Content
+   * for a selection without Conditions, which conditions can still read.
+   */
+  dependencies: ReactNode;
 };
 
 const SidebarSectionsContext = createContext<SidebarSectionsValue | null>(null);
@@ -56,12 +61,14 @@ export function SidebarSections({
   active,
   onSelect,
   actions,
+  dependencies,
   children,
 }: {
   sections: readonly SidebarSection[];
   active: SidebarSection;
   onSelect: (section: SidebarSection) => void;
   actions?: ReactNode;
+  dependencies?: ReactNode;
   children: ReactNode;
 }) {
   const idPrefix = useId();
@@ -84,7 +91,7 @@ export function SidebarSections({
 
   return (
     <SidebarSectionsContext.Provider
-      value={{ sections, active, idPrefix, actions }}
+      value={{ sections, active, idPrefix, actions, dependencies }}
     >
       <div
         ref={tabsRef}
@@ -135,8 +142,11 @@ export function SectionPanels(
   if (!context) {
     throw new Error("SectionPanels renders inside SidebarSections");
   }
-  const { sections, active, idPrefix, actions } = context;
+  const { sections, active, idPrefix, actions, dependencies } = context;
   if (!visited.has(active)) setVisited(new Set([...visited, active]));
+  const dependenciesSection = sections.includes(SidebarSection.Conditions)
+    ? SidebarSection.Conditions
+    : SidebarSection.Content;
   return sections.map((section) => (
     <div
       key={section}
@@ -152,6 +162,7 @@ export function SectionPanels(
             {panels[section]}
           </SidebarSectionsContext.Provider>
           {section === SidebarSection.Advanced && actions}
+          {section === dependenciesSection && dependencies}
         </>
       )}
     </div>

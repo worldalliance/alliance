@@ -23,6 +23,7 @@ export function PageSettingsSidebar({
   onEditJson,
   onCopy,
   onDelete,
+  dependencies,
   children,
 }: {
   pageId: string;
@@ -37,6 +38,7 @@ export function PageSettingsSidebar({
   onCopy: () => void;
   /** Null where the page can't be deleted. */
   onDelete: (() => void) | null;
+  dependencies: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -54,6 +56,7 @@ export function PageSettingsSidebar({
       onSection={onSection}
       focusPending={focusPending}
       onFocused={onFocused}
+      dependencies={dependencies}
       actions={
         <SettingsActions idLabel="Page ID" id={pageId}>
           <SettingsAction Icon={FileJson} onClick={onEditJson}>

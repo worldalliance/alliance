@@ -99,6 +99,7 @@ export function ChildSettings({
   focusPending,
   onFocused,
   editorKey,
+  dependencies,
 }: {
   element: PageItem;
   child: ResolvedChild;
@@ -113,6 +114,7 @@ export function ChildSettings({
   onFocused: () => void;
   /** Changes to remount the editor, as after undo. */
   editorKey: string;
+  dependencies: ReactNode;
 }) {
   const view = childView({
     element,
@@ -137,6 +139,7 @@ export function ChildSettings({
       onSection={onSection}
       focusPending={focusPending}
       onFocused={onFocused}
+      dependencies={dependencies}
       actions={
         <SettingsActions idLabel={view.idLabel} id={view.id}>
           <SettingsAction Icon={Trash2} destructive onClick={remove}>
