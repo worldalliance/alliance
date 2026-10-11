@@ -151,6 +151,8 @@ export const queryKeys = {
     ["actionPartnershipsFindAllResponsesAdmin"] as const,
   reminderGroupClickRatesAdmin: () =>
     ["analyticsGetReminderGroupClickRatesAdmin"] as const,
+  responseSnapshotMigrationAdmin: (formId: number | null) =>
+    ["tasksGetResponseSnapshotMigrationAdmin", formId] as const,
   scheduledPlansAdmin: () => ["actionsScheduledPlansAdmin"] as const,
   staffDirectoryAdmin: () => ["userStaffDirectoryAdmin"] as const,
   tagsAdmin: () => ["userGetTagsAdmin"] as const,
