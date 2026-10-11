@@ -245,8 +245,8 @@ describe("Forum (e2e)", () => {
       expect(response.body.actionId).toBe(testAction.id);
     });
 
-    const addTestPost = async () => {
-      await request(ctx.app.getHttpServer())
+    const addTestPost = async (): Promise<number> => {
+      const { body } = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
@@ -258,6 +258,7 @@ describe("Forum (e2e)", () => {
           visibleAt: new Date(),
         } satisfies CreatePostDto)
         .expect(201);
+      return body.id;
     };
 
     it("should get all posts", async () => {
@@ -271,6 +272,41 @@ describe("Forum (e2e)", () => {
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("lists pinned posts first, then by latest comment or update", async () => {
+      const commentedId = await addTestPost();
+      const updatedId = await addTestPost();
+      const pinnedId = await addTestPost();
+      const daysAgo = (days: number) =>
+        new Date(Date.now() - milliseconds({ days }));
+      const setPost = (id: number, updatedAt: Date, pinned: boolean) =>
+        ctx.dataSource.query(
+          `update post set "updatedAt" = $2, pinned = $3 where id = $1`,
+          [id, updatedAt, pinned],
+        );
+      await setPost(commentedId, daysAgo(3), false);
+      await setPost(updatedId, daysAgo(2), false);
+      await setPost(pinnedId, daysAgo(4), true);
+      await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "Bump", attachments: [] },
+          parentObjectId: commentedId,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      const response = await request(ctx.app.getHttpServer())
+        .get("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const ids = [pinnedId, commentedId, updatedId];
+      expect(
+        response.body.map(({ id }) => id).filter((id) => ids.includes(id)),
+      ).toEqual(ids);
     });
 
     it("should get posts by action", async () => {
