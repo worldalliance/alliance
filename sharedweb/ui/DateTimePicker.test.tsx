@@ -23,3 +23,9 @@ it("reads the offset in force at the instant, not now", () => {
 it("formats no date as a blank input", () => {
   expect(formatLocalDateTime(null, "minute")).toBe("");
 });
+
+it("pads a year still being typed to four digits", () => {
+  expect(formatLocalDateTime(new Date("0099-03-10T07:03"), "minute")).toBe(
+    "0099-03-10T07:03",
+  );
+});
