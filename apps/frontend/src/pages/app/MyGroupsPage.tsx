@@ -58,6 +58,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
   const [leavingCommunityId, setLeavingCommunityId] = useState<number | null>(
     null,
   );
+  const [isLeavingGroup, setIsLeavingGroup] = useState(false);
   const justOpenedDialogRef = useRef(false);
   const { confirm, error: showError, success } = useToast();
   const handleCloseLeaveGroupConfirmation = useCallback(() => {
@@ -166,13 +167,18 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
 
   const onConfirmLeaveGroup = useCallback(
     async (community: CommunityDto) => {
-      const response = await communityLeave({
-        path: { communityId: community.id },
-      });
-      if (response.data) {
-        onSelectCommunity(null);
-        setLeavingCommunityId(null);
-        removeCommunity(community.id);
+      setIsLeavingGroup(true);
+      try {
+        const response = await communityLeave({
+          path: { communityId: community.id },
+        });
+        if (response.data) {
+          onSelectCommunity(null);
+          setLeavingCommunityId(null);
+          removeCommunity(community.id);
+        }
+      } finally {
+        setIsLeavingGroup(false);
       }
     },
     [onSelectCommunity, removeCommunity],
@@ -490,6 +496,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
                         <Button
                           color={ButtonColor.Red}
                           size="small"
+                          disabled={isLeavingGroup}
                           onClick={() => {
                             onConfirmLeaveGroup(community);
                           }}
