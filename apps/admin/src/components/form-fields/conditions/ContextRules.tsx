@@ -7,6 +7,10 @@ import {
   USER_VALUE_PROPERTY_LABELS,
 } from "@alliance/common/forms/user-properties";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
+import {
+  formatLocalDateTime,
+  resolveDateValue,
+} from "@alliance/sharedweb/ui/DateTimePicker";
 import { INPUT_CLASS } from "./styles";
 
 type ConditionOf<K extends Condition["kind"]> = Extract<Condition, { kind: K }>;
@@ -44,18 +48,6 @@ function SetSelect({
       <option value="false">is not set</option>
     </select>
   );
-}
-
-/** Format an ISO datetime for a datetime-local input (local wall-clock). */
-function isoToDatetimeLocalValue(iso: string): string {
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) {
-    return "";
-  }
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(
-    parsed.getDate(),
-  )}T${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
 }
 
 export function DeviceRule({ condition, onChange }: RuleProps<"deviceType">) {
@@ -163,7 +155,7 @@ export function FirstContractSignedRule({
         type="datetime-local"
         aria-label="Date"
         className={INPUT_CLASS}
-        value={isoToDatetimeLocalValue(condition.date)}
+        value={formatLocalDateTime(resolveDateValue(condition.date), "minute")}
         onChange={(event) => {
           const parsed = new Date(event.target.value);
           if (Number.isNaN(parsed.getTime())) return;

@@ -1,3 +1,4 @@
+import { formatLocalDateTime } from "@alliance/sharedweb/ui/DateTimePicker";
 import { Settings2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useEventLogWebSocket } from "../lib/useEventLogWebSocket";
@@ -10,18 +11,13 @@ type FeedSettings = {
   startAt: string;
 };
 
-function toLocalInputValue(date: Date): string {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return [
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
-    `${pad(date.getHours())}:${pad(date.getMinutes())}`,
-  ].join("T");
-}
-
 function defaultSettings(): FeedSettings {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
-  return { numbered: true, startAt: toLocalInputValue(startOfToday) };
+  return {
+    numbered: true,
+    startAt: formatLocalDateTime(startOfToday, "minute"),
+  };
 }
 
 function loadSettings(): FeedSettings {
