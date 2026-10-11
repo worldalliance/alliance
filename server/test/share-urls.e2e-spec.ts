@@ -869,6 +869,40 @@ describe("Share URLs (e2e)", () => {
         .send({ userId: ctx.testUserId, externalTargetId: 999999 })
         .expect(404);
     });
+
+    it("names the missing campaign, not the target, when the owner is gone", async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .post("/share-urls/create-duplicate")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ campaignId: 999999, externalTargetId: target.id })
+        .expect(404);
+      expect(res.body.message).toBe("specified campaign not found");
+    });
+
+    it("names the missing user, not the action, when the owner is gone", async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .post("/share-urls/create-duplicate")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ userId: 999999, actionId: action.id })
+        .expect(404);
+      expect(res.body.message).toBe("specified user not found");
+    });
+
+    it("names the action when it is deleted between lookup and save", async () => {
+      const findOne = jest
+        .spyOn(actionRepo, "findOne")
+        .mockResolvedValueOnce(actionRepo.create({ id: 999999 }));
+      try {
+        const res = await request(ctx.app.getHttpServer())
+          .post("/share-urls/create-duplicate")
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({ userId: ctx.testUserId, actionId: action.id })
+          .expect(404);
+        expect(res.body.message).toBe("specified action not found");
+      } finally {
+        findOne.mockRestore();
+      }
+    });
   });
 
   describe("GET /share-urls/for-user/:userId", () => {

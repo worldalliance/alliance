@@ -19,6 +19,7 @@ import {
 } from "src/notifs/notif-utils";
 import { actionUrl, signupUrl, withRef, withSid } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
+import { isForeignKeyViolation } from "src/utils/db-errors";
 import {
   EntityManager,
   type FindOptionsWhere,
@@ -50,6 +51,14 @@ const NOT_FOUND_MESSAGE: Record<ShareUrlKind, string> = {
   [ShareUrlKind.ExternalTarget]: "specified share target not found",
   [ShareUrlKind.Invite]: "invite share link could not be created",
 } as const;
+
+const OWNER_NOT_FOUND: Record<
+  ShareUrlOwner["type"],
+  { column: keyof ShareUrl; message: string }
+> = {
+  user: { column: "userId", message: "specified user not found" },
+  campaign: { column: "campaignId", message: "specified campaign not found" },
+};
 
 async function lockExternalTarget(
   manager: EntityManager,
@@ -765,11 +774,18 @@ export class ShareUrlsService {
     try {
       return await repo.save(shareUrl);
     } catch (err) {
-      if (
-        err instanceof QueryFailedError &&
-        (err as { code?: string }).code === "23503"
-      ) {
-        throw new NotFoundException(NOT_FOUND_MESSAGE[input.kind]);
+      if (isForeignKeyViolation(err)) {
+        const owner = OWNER_NOT_FOUND[input.owner.type];
+        // node-postgres names the violated constraint on the thrown error.
+        const constraint = (err as { constraint?: string }).constraint;
+        const violated = repo.metadata.foreignKeys.find(
+          (fk) => fk.name === constraint,
+        );
+        throw new NotFoundException(
+          violated?.columnNames.includes(owner.column)
+            ? owner.message
+            : NOT_FOUND_MESSAGE[input.kind],
+        );
       }
       throw err;
     }
