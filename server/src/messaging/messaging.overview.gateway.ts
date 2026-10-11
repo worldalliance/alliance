@@ -15,7 +15,10 @@ import { DetachedWorkTracker } from "src/utils/detached-work";
 import type { Repository } from "typeorm";
 import { ConversationService } from "./conversation.service";
 import { MessageDto } from "./dto/messaging.dto";
-import { Participant } from "./entities/participant.entity";
+import {
+  loadedParticipantUser,
+  Participant,
+} from "./entities/participant.entity";
 import { socketAuthMiddleware } from "./gateway.utils";
 import { MessagingEvents } from "./messaging.events";
 
@@ -115,10 +118,7 @@ export class MessagingOverviewGateway
 
     await Promise.all(
       participants.map(async (participant) => {
-        const userId = participant.user?.id;
-        if (!userId) {
-          return;
-        }
+        const userId = loadedParticipantUser(participant).id;
 
         try {
           const conversation =
@@ -152,8 +152,7 @@ export class MessagingOverviewGateway
 
     await Promise.all(
       participants.map(async (participant) => {
-        const userId = participant.user?.id;
-        if (!userId) return;
+        const userId = loadedParticipantUser(participant).id;
         try {
           const conversation =
             await this.conversationService.getConversationForUser(
