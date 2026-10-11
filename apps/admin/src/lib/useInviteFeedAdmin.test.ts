@@ -20,6 +20,8 @@ const onetimeInvite = (
   ({
     id,
     invitee: "Alex",
+    inviteeDescription: null,
+    info: null,
     code: `code-${id}`,
     createdAt,
     status,
