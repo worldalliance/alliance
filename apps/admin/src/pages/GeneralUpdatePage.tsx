@@ -12,11 +12,12 @@ import {
   CreateGeneralUpdateDto,
   GeneralUpdateAdminDto,
   UpdateGeneralUpdateDto,
-  userMembers,
 } from "@alliance/shared/client";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { cn } from "@alliance/shared/styles/util";
-import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
+import UserSelect, {
+  useSelectableUsers,
+} from "@alliance/sharedweb/ui/UserSelect";
 import { X } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
@@ -69,8 +70,8 @@ const GeneralUpdatePage: React.FC = () => {
   const { tags: availableTags, isLoading: tagsLoading } = useTagsAdmin();
   const [availableSuites, setAvailableSuites] = useState<ActionSuiteDto[]>([]);
   const [suitesLoading, setSuitesLoading] = useState<boolean>(true);
-  const [availableUsers, setAvailableUsers] = useState<UserSelectUser[]>([]);
-  const [usersLoading, setUsersLoading] = useState<boolean>(true);
+  const { users: availableUsers, isLoading: usersLoading } =
+    useSelectableUsers();
 
   useEffect(() => {
     if (!isNew) return;
@@ -85,7 +86,7 @@ const GeneralUpdatePage: React.FC = () => {
     );
   }, [isNew, searchParams]);
 
-  // Load suites, users
+  // Load suites
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -96,32 +97,6 @@ const GeneralUpdatePage: React.FC = () => {
         console.error("Failed to load suites:", err);
       } finally {
         if (!cancelled) setSuitesLoading(false);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const response = await userMembers();
-        if (!cancelled && response.data) {
-          setAvailableUsers(
-            response.data.map<UserSelectUser>((user) => ({
-              id: user.id,
-              name: user.displayName,
-              profilePicture: user.profilePicture,
-            })),
-          );
-        }
-      } catch (err) {
-        console.error("Failed to load users:", err);
-      } finally {
-        if (!cancelled) setUsersLoading(false);
       }
     };
     load();

@@ -20,7 +20,6 @@ import {
   tasksCreateFormAdmin,
   tasksGetForm,
   tasksGetFormResponsesAdmin,
-  userMembers,
 } from "@alliance/shared/client";
 import type {
   ActionStatsWithOnboardingDto,
@@ -32,6 +31,7 @@ import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
+import { useMembers } from "@alliance/shared/lib/useMembers";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -43,7 +43,7 @@ import Card from "@alliance/sharedweb/ui/Card";
 import Dropdown from "@alliance/sharedweb/ui/Dropdown";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
+import { useSelectableUsers } from "@alliance/sharedweb/ui/UserSelect";
 import { milliseconds } from "date-fns";
 import { secondsInMinute } from "date-fns/constants";
 import {
@@ -234,11 +234,16 @@ const ActionDashboard: React.FC = () => {
   const [suitesLoading, setSuitesLoading] = useState<boolean>(true);
   const [cohortExpression, setCohortExpression] =
     useState<CohortExpression | null>(null);
-  const [availableUsers, setAvailableUsers] = useState<UserSelectUser[]>([]);
-  const [activeContractUserIds, setActiveContractUserIds] = useState<
-    Set<number>
-  >(new Set());
-  const [usersLoading, setUsersLoading] = useState<boolean>(true);
+  const { users: availableUsers, isLoading: usersLoading } =
+    useSelectableUsers();
+  const { data: members } = useMembers();
+  const activeContractUserIds = useMemo(
+    () =>
+      new Set(
+        (members ?? []).filter((m) => m.hasActiveContract).map((m) => m.id),
+      ),
+    [members],
+  );
 
   const [shareUrlStats, setShareUrlStats] = useState<ShareUrlStatsDto[]>([]);
   const [shareUrlStatsLoading, setShareUrlStatsLoading] = useState(false);
@@ -270,41 +275,6 @@ const ActionDashboard: React.FC = () => {
     };
 
     loadSuites();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadUsers = async () => {
-      try {
-        const response = await userMembers();
-        if (!cancelled && response.data) {
-          const mappedUsers = response.data.map<UserSelectUser>((user) => ({
-            id: user.id,
-            name: user.displayName,
-            profilePicture: user.profilePicture,
-          }));
-          setAvailableUsers(mappedUsers);
-          setActiveContractUserIds(
-            new Set(
-              response.data.filter((u) => u.hasActiveContract).map((u) => u.id),
-            ),
-          );
-        }
-      } catch (err) {
-        console.error("Failed to load users:", err);
-      } finally {
-        if (!cancelled) {
-          setUsersLoading(false);
-        }
-      }
-    };
-
-    loadUsers();
 
     return () => {
       cancelled = true;
