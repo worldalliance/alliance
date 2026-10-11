@@ -1118,10 +1118,7 @@ export class UserService {
   }
 
   async findMessageableUsers(userId: number): Promise<User[]> {
-    const user = await this.findOneOrFail(userId, {
-      communities: true,
-      leaderOf: true,
-    });
+    const user = await this.findOneOrFail(userId, { communities: true });
 
     if (user.staff) {
       return this.userRepository.find({
@@ -1130,7 +1127,7 @@ export class UserService {
     }
 
     const memberCommunityIds = user.communities.map((c) => c.id);
-    const leaderCommunityIds = user.leaderOf.map((c) => c.id);
+    const leaderCommunityIds = user.leaderOfIds;
 
     const [rels, staff, communityUsers] = await Promise.all([
       this.friendRepository.find({

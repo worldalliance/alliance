@@ -494,8 +494,7 @@ export class User {
     onDelete: "CASCADE",
   })
   @Type(() => Community)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  leaderOf: Relation<Community>[];
+  leaderOf?: Relation<Community>[];
 
   @RelationId((user: User) => user.leaderOf)
   @ApiProperty({ type: Number, isArray: true })

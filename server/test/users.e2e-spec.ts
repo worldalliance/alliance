@@ -2330,7 +2330,7 @@ describe("Users (e2e)", () => {
         updatedLeader?.communities.some((c) => c.id === ownCommunity.id),
       ).toBe(true);
       expect(
-        updatedLeader?.leaderOf.some((c) => c.id === ownCommunity.id),
+        updatedLeader?.leaderOf?.some((c) => c.id === ownCommunity.id),
       ).toBe(true);
     });
 
