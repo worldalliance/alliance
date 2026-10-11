@@ -1,4 +1,5 @@
 import type { UserDto } from "@alliance/shared/client";
+import { makeOnetimeInvite } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { useInvite } from "@alliance/shared/lib/useInvite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -27,15 +28,15 @@ const found = () =>
   Response.json({ kind: "user", displayName: "Inviter", profilePicture: null });
 const missing = () => new Response(null, { status: 404 });
 const usedInvite = () =>
-  Response.json({
-    id: 1,
-    invitee: "Sam",
-    code: "used",
-    createdAt: new Date().toISOString(),
-    status: "link_used",
-    invitedUserId: 2,
-    accepted: true,
-  });
+  Response.json(
+    makeOnetimeInvite({
+      code: "used",
+      createdAt: new Date().toISOString(),
+      status: "link_used",
+      invitedUserId: 2,
+      accepted: true,
+    }),
+  );
 
 let referrers: Record<string, Reply>;
 let invites: Record<string, Reply>;

@@ -36,7 +36,10 @@ import {
   findLastContractEvent,
 } from "../entities/contract-event.entity";
 import { FriendStatus } from "../entities/friend.entity";
-import { OnetimeInvite } from "../entities/onetime-invite.entity";
+import {
+  loadedOnetimeInviteInvitingUser,
+  OnetimeInvite,
+} from "../entities/onetime-invite.entity";
 import { hasPassword, ReferralSource, User } from "../entities/user.entity";
 import type { ReferrerResolution } from "../user.service";
 
@@ -440,7 +443,7 @@ export type UserAdminDetail = User & {
   city?: City | null;
   referredBy?: User | null;
   referredByCampaign?: Campaign | null;
-  referredByInvite?: (OnetimeInvite & { invitingUser?: User | null }) | null;
+  referredByInvite?: OnetimeInvite | null;
   referredByShareUrl?: ShareUrl | null;
 };
 
@@ -476,10 +479,13 @@ function userAdminInvitedBy(user: UserAdminDetail) {
       campaign: user.referredByCampaign,
     });
   }
-  if (user.referredByInvite?.invitingUser) {
+  const inviter =
+    user.referredByInvite &&
+    loadedOnetimeInviteInvitingUser(user.referredByInvite);
+  if (inviter) {
     return new UserAdminInvitedByDto({
       kind: "user",
-      user: user.referredByInvite.invitingUser,
+      user: inviter,
       referralSource: user.referralSource,
     });
   }

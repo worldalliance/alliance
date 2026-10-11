@@ -6,6 +6,7 @@ import type {
   ConversationDto,
   ConversationType,
   FormResponseDto,
+  OnetimeInviteDto,
   ParticipantDto,
   ParticipantRole,
   ProfileDto,
@@ -258,6 +259,23 @@ export function makeFormResponse(
     sid: null,
     visibilityValidatorResults: {},
     formulaChoices: {},
+    ...overrides,
+  };
+}
+
+export function makeOnetimeInvite(
+  overrides: Partial<OnetimeInviteDto> = {},
+): OnetimeInviteDto {
+  return {
+    id: 1,
+    invitee: "Sam",
+    inviteeDescription: null,
+    info: null,
+    code: "abc123",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    status: "link_unused",
+    invitedUserId: null,
+    accepted: false,
     ...overrides,
   };
 }

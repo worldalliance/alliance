@@ -34,8 +34,11 @@ import { ProfileDto, UserDto } from "./user.dto";
 
 export class CreateOnetimeInviteDto extends PickType(OnetimeInvite, [
   "invitee",
-  "info",
 ]) {
+  @ApiPropertyOptional()
+  @IsOptional()
+  info?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   invitingUserId?: number;
@@ -241,8 +244,11 @@ export class OnetimeInviteEdgeDto {
 
 export class RequestOnetimeInviteDto extends PickType(OnetimeInvite, [
   "invitee",
-  "inviteeDescription",
 ]) {
+  @ApiPropertyOptional()
+  @IsOptional()
+  inviteeDescription?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   invitingUserId?: number;

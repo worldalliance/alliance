@@ -49,17 +49,15 @@ export class OnetimeInvite {
   @Allow()
   invitee: string;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  inviteeDescription?: string;
+  inviteeDescription: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  info?: string;
+  info: string | null;
 
   @ApiProperty()
   @Column()
@@ -100,12 +98,11 @@ export class OnetimeInvite {
   @ManyToOne(() => User, {
     onDelete: "SET NULL",
   })
-  @ApiProperty({ type: () => User, nullable: true })
+  @ApiPropertyOptional({ type: () => User, nullable: true })
   @Type(() => User)
   @JoinColumn({ name: "invitingUserId" })
   @IsOptional()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  invitingUser: Relation<User> | null;
+  invitingUser?: Relation<User> | null;
 
   @OneToOne(() => User, (user) => user.referredByInvite)
   @ApiPropertyOptional({ type: () => User, nullable: true })
@@ -166,4 +163,13 @@ export class OnetimeInvite {
   @ApiPropertyOptional({ type: () => Notification, isArray: true })
   @IsOptional()
   notifs?: Relation<Notification>[];
+}
+
+export function loadedOnetimeInviteInvitingUser(
+  invite: OnetimeInvite,
+): Relation<User> | null {
+  if (invite.invitingUser === undefined) {
+    throw new Error(`invitingUser of onetime invite ${invite.id} not loaded`);
+  }
+  return invite.invitingUser;
 }

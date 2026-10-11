@@ -15,7 +15,10 @@ import {
   inviteAssignmentFromColumns,
   type StoredInviteAssignment,
 } from "src/share-urls/invite-assignment";
-import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
+import {
+  loadedOnetimeInviteInvitingUser,
+  OnetimeInvite,
+} from "src/user/entities/onetime-invite.entity";
 import type { Repository } from "src/utils/Repository";
 import { MailService } from "../mail/mail.service";
 import {
@@ -219,7 +222,7 @@ export class AuthService {
         const { invite } = resolution;
         return {
           invite,
-          referringUser: invite.invitingUser,
+          referringUser: loadedOnetimeInviteInvitingUser(invite),
           referredByCampaign: null,
           referredByShareUrl: null,
           inviteAssignment: null,

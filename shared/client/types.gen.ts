@@ -641,14 +641,14 @@ export type Community = {
 export type OnetimeInvite = {
     id: number;
     invitee: string;
-    inviteeDescription?: string;
-    info?: string;
+    inviteeDescription: string | null;
+    info: string | null;
     code: string;
     createdAt: string;
     status: OnetimeInviteStatus;
     deletedAt: string | null;
     usedAt: string | null;
-    invitingUser: User | null;
+    invitingUser?: User | null;
     invitedUser?: User | null;
     invitedUserId: number | null;
     community?: Community | null;
@@ -1336,8 +1336,8 @@ export type CommunityDto = {
 export type OnetimeInviteDto = {
     id: number;
     invitee: string;
-    inviteeDescription?: string;
-    info?: string;
+    inviteeDescription: string | null;
+    info: string | null;
     code: string;
     createdAt: string;
     status: OnetimeInviteStatus;
