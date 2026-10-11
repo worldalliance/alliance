@@ -280,6 +280,32 @@ describe("FormBuilder visibility groups", () => {
     expect(saveButton().textContent).toBe("No changes");
   });
 
+  it("undoes splitting, detaching, and ungrouping", () => {
+    renderFormBuilder(schemaWith([text("a", X), text("b", X), text("c", X)]));
+    const undo = () =>
+      fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    const whole = ["Shared visibility · 3 elements"];
+
+    openGroup(0, "Content");
+    fireEvent.click(splitButtons()[0]!);
+    expect(memberCounts()).toEqual(["Shared visibility · 2 elements"]);
+    undo();
+    expect(memberCounts()).toEqual(whole);
+
+    openGroup(0, "Content");
+    fireEvent.click(detachButtons()[1]!);
+    expect(canvasGroups()).toHaveLength(0);
+    undo();
+    expect(memberCounts()).toEqual(whole);
+
+    openGroup(0);
+    fireEvent.click(screen.getByRole("button", { name: "Ungroup all" }));
+    expect(canvasGroups()).toHaveLength(0);
+    undo();
+    expect(memberCounts()).toEqual(whole);
+    expect(saveButton().textContent).toBe("No changes");
+  });
+
   it("flags a group's errors on the canvas, and lists them in its settings", () => {
     renderFormBuilder(
       schemaWith([text("a", shownWhen("a")), text("b", shownWhen("a"))]),
