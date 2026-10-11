@@ -358,4 +358,49 @@ describe("FormBuilder sharing visibility across a selection", () => {
     fireEvent.click(button("Open group settings"));
     expect(heading()).toBe("Shared visibility");
   });
+
+  it("adds a neighbor to a group under the rule chosen", () => {
+    const X = shownWhen("q");
+    renderFormBuilder(
+      schemaWith([
+        text("q"),
+        text("a", X),
+        text("b", X),
+        text("c", shownWhen("b")),
+      ]),
+    );
+    selectGroup(canvasGroups()[0]!);
+    shiftSelect("Text Field: Label c");
+    fireEvent.click(button(/^Share: shown when Label q is answered/));
+    expect(groupSummaries()).toEqual([
+      "Shared visibility · 3 elementsShown when Label q is answered",
+    ]);
+  });
+
+  it("rejoins a split group, back to no changes", () => {
+    const X = shownWhen("q");
+    renderFormBuilder(
+      schemaWith([text("q"), ...["a", "b", "c", "d"].map((id) => text(id, X))]),
+    );
+    selectGroup(canvasGroups()[0]!);
+    openSection("Content");
+    fireEvent.click(
+      settings().getByRole("button", {
+        name: "Split group before Text Field: Label c",
+      }),
+    );
+    expect(canvasGroups()).toHaveLength(2);
+    selectGroup(canvasGroups()[0]!);
+    fireEvent.click(
+      within(canvasGroups()[1]!).getByRole("button", {
+        name: /^Shared visibility/,
+      }),
+      { shiftKey: true },
+    );
+    fireEvent.click(button(/^Share: shown when Label q is answered/));
+    expect(groupSummaries()).toEqual([
+      "Shared visibility · 4 elementsShown when Label q is answered",
+    ]);
+    expect(button(/No changes|Save Form/).textContent).toBe("No changes");
+  });
 });

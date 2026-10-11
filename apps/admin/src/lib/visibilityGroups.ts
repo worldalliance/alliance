@@ -236,52 +236,6 @@ export function shareVisibility({
   };
 }
 
-/**
- * The element adopts its neighbor's condition and joins the neighbor's group,
- * or forms a new one with a conditional neighbor outside any group.
- */
-export function joinNeighbor({
-  pages,
-  groups,
-  element,
-  neighbor,
-}: GroupedPages & { element: PageItem; neighbor: PageItem }): GroupedPages {
-  if (!element.id || !neighbor.id || !neighbor.visibleIfFormula) {
-    throw new Error(
-      "join needs two elements with ids and a neighbor condition",
-    );
-  }
-  const key = groups.get(neighbor.id) ?? newGroupKey();
-  return {
-    pages: withVisibility({
-      pages,
-      ids: new Set([element.id]),
-      formula: neighbor.visibleIfFormula,
-    }),
-    groups: new Map(groups).set(neighbor.id, key).set(element.id, key),
-  };
-}
-
-export function mergeGroups({
-  pages,
-  groups,
-  previousKey,
-  nextKey,
-  formula,
-}: GroupedPages & {
-  previousKey: string;
-  nextKey: string;
-  formula: VisibleIfFormula;
-}): GroupedPages {
-  const ids = new Set([
-    ...groupMemberIds(groups, previousKey),
-    ...groupMemberIds(groups, nextKey),
-  ]);
-  const next = new Map(groups);
-  for (const id of ids) next.set(id, previousKey);
-  return { pages: withVisibility({ pages, ids, formula }), groups: next };
-}
-
 /** The fields from `from` through `to` along `deps`, or null if none reach it. */
 function pathBetween({
   deps,

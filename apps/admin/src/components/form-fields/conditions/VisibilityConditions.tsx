@@ -1,6 +1,5 @@
 import { useState, type ComponentProps } from "react";
 import {
-  JoinVisibilityButtons,
   SharedVisibilityNotice,
   useVisibilityGroupMember,
 } from "../../VisibilityGroupContext";
@@ -42,7 +41,7 @@ export function VisibilityConditions(
 
 /**
  * An element's Conditions in the sidebar: its group's shared visibility while
- * it belongs to one, or its own rules and the joins its neighbors offer.
+ * it belongs to one, or else its own rules.
  */
 export function ElementConditions(
   props: ComponentProps<typeof ConditionalVisibility>,
@@ -51,12 +50,5 @@ export function ElementConditions(
   if (groupMember) {
     return <SharedVisibilityNotice detach={groupMember.detach} />;
   }
-  return (
-    <>
-      <div className="flex items-center gap-1 empty:hidden">
-        <JoinVisibilityButtons elementId={props.field.id} />
-      </div>
-      <VisibilityConditions {...props} />
-    </>
-  );
+  return <VisibilityConditions {...props} />;
 }

@@ -134,7 +134,7 @@ import { ShareableTextBuilder } from "./ShareableTextBuilder";
 import { VariableBuilder } from "./VariableBuilder";
 import {
   VisibilityGroupContext,
-  visibilityGroupRole,
+  visibilityGroupMember,
 } from "./VisibilityGroupContext";
 
 type FormEditorTab =
@@ -1760,13 +1760,10 @@ export function FormBuilder(props: FormBuilderProps) {
           value={
             displayOnly
               ? null
-              : visibilityGroupRole({
-                  pages: schema.pages,
-                  pageIndex: selectedPageIndex,
-                  index,
+              : visibilityGroupMember({
+                  elementId: field.id,
                   groups: visibilityGroups,
                   setGroups,
-                  applyGrouped,
                 })
           }
         >
@@ -1954,12 +1951,6 @@ export function FormBuilder(props: FormBuilderProps) {
                   elementTarget(currentPage.fields[memberIndex]!, memberIndex),
                   SidebarSection.Content,
                 )
-              }
-              onRekey={(key) =>
-                setSelection({
-                  pageId: currentPage.id,
-                  target: { kind: CanvasTargetKind.Group, key },
-                })
               }
             />
           </SettingsSidebar>

@@ -8,8 +8,6 @@ import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula
 import {
   deriveVisibilityGroups,
   detachMember,
-  joinNeighbor,
-  mergeGroups,
   newVisibilityCycle,
   normalizeVisibilityGroups,
   pageSegments,
@@ -220,62 +218,6 @@ describe("shareVisibility", () => {
       Y,
       Y,
     ]);
-  });
-});
-
-describe("joining and merging", () => {
-  it("adopts only the destination group's condition", () => {
-    const pages: Page[] = [
-      { id: "p", fields: [text("A", X), text("B", X), text("C", Y)] },
-    ];
-    const groups = deriveVisibilityGroups(pages);
-    const [, , joining] = pages[0].fields;
-    const joined = joinNeighbor({
-      pages,
-      groups,
-      element: joining,
-      neighbor: pages[0].fields[1],
-    });
-    const normalized = normalizeVisibilityGroups(joined.pages, joined.groups);
-    expect(memberLists(joined.pages, normalized)).toEqual([["A", "B", "C"]]);
-    expect(formulaOf(joined.pages, "C")).toEqual(X);
-  });
-
-  it("forms a new group with a conditional element outside any group", () => {
-    const pages: Page[] = [{ id: "p", fields: [text("A"), text("B", Y)] }];
-    const joined = joinNeighbor({
-      pages,
-      groups: new Map(),
-      element: pages[0].fields[0],
-      neighbor: pages[0].fields[1],
-    });
-    expect(
-      memberLists(
-        joined.pages,
-        normalizeVisibilityGroups(joined.pages, joined.groups),
-      ),
-    ).toEqual([["A", "B"]]);
-  });
-
-  it("merges adjacent groups under the chosen condition", () => {
-    const pages: Page[] = [
-      {
-        id: "p",
-        fields: [text("A", X), text("B", X), text("C", Y), text("D", Y)],
-      },
-    ];
-    const groups = deriveVisibilityGroups(pages);
-    const merged = mergeGroups({
-      pages,
-      groups,
-      previousKey: keyOf(groups, "A"),
-      nextKey: keyOf(groups, "C"),
-      formula: Y,
-    });
-    expect(memberLists(merged.pages, merged.groups)).toEqual([
-      ["A", "B", "C", "D"],
-    ]);
-    expect(formulaOf(merged.pages, "A")).toEqual(Y);
   });
 });
 
@@ -495,33 +437,5 @@ describe("per-user display content", () => {
       formula: Y,
     });
     expect(userFormula(shared.pages, "a")).toEqual(Y);
-  });
-
-  it("takes the condition it adopts by joining or merging", () => {
-    const pages = page([perUser("a", X), label("b", Y)]);
-    const [element, neighbor] = pages[0].fields;
-    const joined = joinNeighbor({
-      pages,
-      groups: new Map(),
-      element,
-      neighbor,
-    });
-    expect(userFormula(joined.pages, "a")).toEqual(Y);
-
-    const four = page([
-      perUser("a", X),
-      label("b", X),
-      label("c", Y),
-      label("d", Y),
-    ]);
-    const groups = deriveVisibilityGroups(four);
-    const merged = mergeGroups({
-      pages: four,
-      groups,
-      previousKey: keyOf(groups, "a"),
-      nextKey: keyOf(groups, "c"),
-      formula: Y,
-    });
-    expect(userFormula(merged.pages, "a")).toEqual(Y);
   });
 });

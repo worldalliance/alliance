@@ -5,8 +5,6 @@ import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula
 import { conditionSourceFields } from "../../lib/conditionSourceFields";
 import {
   detachMember,
-  mergeGroups,
-  NeighborDirection,
   pageSegments,
   SegmentKind,
   setGroupVisibility,
@@ -29,8 +27,6 @@ type VisibilityGroupSettingsProps = {
   summarize: (formula: VisibleIfFormula) => string;
   validationErrors: FormSchemaValidationError[];
   onSelectMember: (index: number) => void;
-  /** The group goes on under `key`, as after merging into the previous one. */
-  onRekey: (key: string) => void;
 };
 
 export function VisibilityGroupSettings({
@@ -43,15 +39,12 @@ export function VisibilityGroupSettings({
   summarize,
   validationErrors,
   onSelectMember,
-  onRekey,
 }: VisibilityGroupSettingsProps) {
   const fields = schema.pages[pageIndex]?.fields ?? [];
-  const segments = pageSegments(fields, groups);
-  const segmentIndex = segments.findIndex(
+  const segment = pageSegments(fields, groups).find(
     (candidate) =>
       candidate.kind === SegmentKind.Group && candidate.key === groupKey,
   );
-  const segment = segments[segmentIndex];
   if (segment?.kind !== SegmentKind.Group) {
     throw new Error(`no visibility group ${groupKey} on page ${pageIndex}`);
   }
@@ -61,23 +54,6 @@ export function VisibilityGroupSettings({
   if (!formula) throw new Error(`visibility group ${key} has no condition`);
   const memberById = new Map(members.map((member) => [member.id, member]));
 
-  const neighborAt = (neighborIndex: number) => {
-    const neighbor = segments[neighborIndex];
-    const neighborFormula =
-      neighbor?.kind === SegmentKind.Group
-        ? fields[neighbor.start]?.visibleIfFormula
-        : undefined;
-    return neighbor?.kind === SegmentKind.Group && neighborFormula
-      ? { key: neighbor.key, formula: neighborFormula }
-      : null;
-  };
-  const previous = neighborAt(segmentIndex - 1);
-  const next = neighborAt(segmentIndex + 1);
-  const candidate = (neighbor: typeof previous) =>
-    neighbor && {
-      formula: neighbor.formula,
-      summary: summarize(neighbor.formula),
-    };
   const { previousFields, laterFields } = conditionSourceFields({
     pages: schema.pages,
     pageIndex,
@@ -98,7 +74,6 @@ export function VisibilityGroupSettings({
               splitGroup(groups, { fields, key, index: start + offset }),
             ),
         }))}
-        formula={formula}
         summary={summarize(formula)}
         previousFields={previousFields}
         laterFields={laterFields}
@@ -113,28 +88,6 @@ export function VisibilityGroupSettings({
           )
         }
         onUngroup={() => setGroups(ungroup(groups, key))}
-        mergeCandidates={{
-          [NeighborDirection.Previous]: candidate(previous),
-          [NeighborDirection.Next]: candidate(next),
-        }}
-        onMerge={({ direction, formula: mergedFormula }) => {
-          const pair = {
-            [NeighborDirection.Previous]: previous && [previous.key, key],
-            [NeighborDirection.Next]: next && [key, next.key],
-          }[direction];
-          if (!pair) return;
-          const [previousKey, nextKey] = pair;
-          applyGrouped(
-            mergeGroups({
-              pages: schema.pages,
-              groups,
-              previousKey,
-              nextKey,
-              formula: mergedFormula,
-            }),
-          );
-          if (previousKey !== key) onRekey(previousKey);
-        }}
         errors={validationErrors.flatMap((error) => {
           const member = memberById.get(error.blockId);
           return member
