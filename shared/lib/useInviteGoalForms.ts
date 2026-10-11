@@ -1,14 +1,13 @@
 import { R, type Result } from "@alliance/common/result";
 import { useCallback, useEffect, useState } from "react";
 import type { AmbassadorInviteGoalWithStatsDto } from "../client";
+import { dateToInputValue, todayDateInputValue } from "./dateInput";
 import {
   dateInputToEndOfDayIso,
   dateInputToStartOfDayIso,
-  dateToInputValue,
   inviteGoalErrorMessage,
   inviteGoalIsUp,
   oneMonthFromTodayDateInputValue,
-  todayDateInputValue,
 } from "./inviteGoals";
 import type { useAmbassadorInviteDashboard } from "./useAmbassadorInviteDashboard";
 

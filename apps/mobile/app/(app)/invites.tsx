@@ -7,8 +7,8 @@ import {
   inviteBuckets,
   roleBadges,
 } from "@alliance/shared/lib/copy";
+import { dateToInputValue } from "@alliance/shared/lib/dateInput";
 import {
-  dateToInputValue,
   inviteGoalProgressPercent,
   inviteGoalStatus,
   inviteGoalSummary,
