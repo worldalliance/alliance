@@ -1,13 +1,11 @@
 import {
-  actionsGetWithdrawalsAdmin,
   actionsShareLinksForFormAdmin,
   tasksGetForm,
   tasksGetFormResponsesAdmin,
-  type ActionWithdrawalDto,
   type FormResponseDto,
   type ProfileDto,
 } from "@alliance/shared/client";
-import { useQuery } from "@tanstack/react-query";
+import { useFormWithdrawalsAdmin } from "@alliance/shared/lib/useFormWithdrawalsAdmin";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router";
 import FormResponsesView, {
@@ -33,21 +31,9 @@ const FormResponses: React.FC = () => {
     return { numericFormId, isFormIdValid };
   }, [formId]);
 
-  const { data: withdrawnUserMap = new Map<number, ActionWithdrawalDto>() } =
-    useQuery({
-      queryKey: ["actionsGetWithdrawalsAdmin", numericFormId],
-      queryFn: async () => {
-        const res = await actionsGetWithdrawalsAdmin({
-          path: { formId: numericFormId },
-        });
-        const map = new Map<number, ActionWithdrawalDto>();
-        for (const withdrawal of res.data ?? []) {
-          map.set(withdrawal.userId, withdrawal);
-        }
-        return map;
-      },
-      enabled: isFormIdValid,
-    });
+  const { withdrawnUserMap } = useFormWithdrawalsAdmin(
+    isFormIdValid ? numericFormId : undefined,
+  );
 
   useEffect(() => {
     if (form) {
