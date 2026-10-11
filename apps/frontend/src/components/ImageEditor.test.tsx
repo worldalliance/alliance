@@ -154,10 +154,10 @@ const dismiss = async () => {
   await modalClosed();
 };
 
-const rotateRight = async () => {
+const rotate = async (name: "Rotate left" | "Rotate right") => {
   const previous = encoded;
   encoded = ROTATED;
-  fireEvent.click(screen.getByRole("button", { name: "Rotate right" }));
+  fireEvent.click(screen.getByRole("button", { name }));
   await waitFor(() =>
     expect(screen.getByAltText<HTMLImageElement>("Profile to crop").src).toBe(
       ROTATED,
@@ -250,7 +250,7 @@ describe("ImageEditor", () => {
 
     pick("first");
     await loadPreview();
-    await rotateRight();
+    await rotate("Rotate right");
     expect(await apply()).toEqual([90]);
     expect(applied).toEqual([CROPPED]);
 
@@ -260,6 +260,15 @@ describe("ImageEditor", () => {
 
     await reopen();
     expect(await apply()).toEqual([90]);
+  });
+
+  test("crops a photo rotated left at 270 degrees", async () => {
+    editor(null);
+
+    pick("first");
+    await loadPreview();
+    await rotate("Rotate left");
+    expect(await apply()).toEqual([270]);
   });
 
   test("keeps the crop its photo was applied at when a pick is dismissed", async () => {
@@ -288,7 +297,7 @@ describe("ImageEditor", () => {
     expect(await apply()).toEqual([0]);
 
     await reopen();
-    await rotateRight();
+    await rotate("Rotate right");
     await dismiss();
 
     await reopen();
