@@ -40,7 +40,11 @@ import {
   loadedConversationParticipants,
 } from "./entities/conversation.entity";
 import { Message } from "./entities/message.entity";
-import { Participant, ParticipantState } from "./entities/participant.entity";
+import {
+  loadedParticipantConversation,
+  Participant,
+  ParticipantState,
+} from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
 
 type ParticipantLookup = {
@@ -556,11 +560,12 @@ export class ConversationService {
       conversationId,
       actingUserId,
     );
+    const conversation = loadedParticipantConversation(adminParticipant);
 
-    this.ensureMembersEditable(adminParticipant.conversation);
+    this.ensureMembersEditable(conversation);
 
     const alreadyParticipant = loadedConversationParticipants(
-      adminParticipant.conversation,
+      conversation,
     ).some((participant) => participant.user.id === dto.userId);
 
     if (alreadyParticipant) {
@@ -576,7 +581,7 @@ export class ConversationService {
     }
 
     const participant = this.participantRepository.create({
-      conversation: adminParticipant.conversation,
+      conversation,
       user,
       role: ParticipantRole.Member,
       state: ParticipantState.Invited,
@@ -609,7 +614,7 @@ export class ConversationService {
       actingUserId,
     );
 
-    this.ensureMembersEditable(adminParticipant.conversation);
+    this.ensureMembersEditable(loadedParticipantConversation(adminParticipant));
 
     const targetParticipant = await this.participantRepository.findOne({
       where: {
@@ -649,7 +654,8 @@ export class ConversationService {
       conversationId,
       userId,
     });
-    if (!conversationTypesUsersCanLeave[participant.conversation.type]) {
+    const conversation = loadedParticipantConversation(participant);
+    if (!conversationTypesUsersCanLeave[conversation.type]) {
       throw new ForbiddenException("This conversation can't be left.");
     }
     await this.participantRepository.remove(participant);

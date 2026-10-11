@@ -32,8 +32,7 @@ export class Participant {
     nullable: false,
     onDelete: "CASCADE",
   })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  conversation: Relation<Conversation>;
+  conversation?: Relation<Conversation>;
 
   @ManyToOne(() => User, (user) => user.participants, {
     nullable: false,
@@ -69,4 +68,13 @@ export class Participant {
 
   @UpdateDateColumnTz()
   updatedAt: Date;
+}
+
+export function loadedParticipantConversation(
+  participant: Participant,
+): Relation<Conversation> {
+  if (!participant.conversation) {
+    throw new Error(`conversation of participant ${participant.id} not loaded`);
+  }
+  return participant.conversation;
 }
