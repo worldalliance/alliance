@@ -1057,10 +1057,7 @@ export class ForumService {
   }
 
   async deleteReply(id: number, userId: number): Promise<void> {
-    const reply = await this.commentRepository.findOne({
-      where: { id },
-      relations: { notifications: true },
-    });
+    const reply = await this.commentRepository.findOne({ where: { id } });
 
     if (!reply) {
       throw new NotFoundException("That reply is no longer here");
@@ -1070,9 +1067,7 @@ export class ForumService {
       throw new NotFoundException("You can only delete your own replies");
     }
 
-    for (const notification of reply.notifications) {
-      await this.notifRepository.delete(notification.id);
-    }
+    await this.notifRepository.delete({ comment: { id } });
 
     await this.commentRepository.update(id, { deleted: true });
   }

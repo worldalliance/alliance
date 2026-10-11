@@ -112,10 +112,9 @@ export class Comment {
   children: Relation<Comment>[];
 
   @OneToMany(() => Notification, (notification) => notification.comment)
-  @Allow()
+  @IsOptional()
   @Type(() => Notification)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  notifications: Relation<Notification>[];
+  notifications?: Relation<Notification>[];
 
   @Column({ default: false })
   @ApiProperty()
