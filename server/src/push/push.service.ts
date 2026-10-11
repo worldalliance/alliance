@@ -1,3 +1,4 @@
+import type { TaskBadgePushData } from "@alliance/common/taskBadge";
 import { Inject, Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { PickType } from "@nestjs/swagger";
@@ -41,6 +42,14 @@ export class CreatePushMessage extends PickType(Push, [
 ]) {
   userId: number;
   screen?: string;
+}
+
+function isValidExpoPushToken(token: string): boolean {
+  const valid = Expo.isExpoPushToken(token);
+  if (!valid) {
+    console.error(`Push token ${token} is not a valid Expo push token`);
+  }
+  return valid;
 }
 
 @Injectable()
@@ -94,10 +103,7 @@ export class PushService {
     const pushEntities: Push[] = [];
 
     for (const message of messages) {
-      if (!Expo.isExpoPushToken(message.expoPushToken)) {
-        console.error(
-          `Push token ${message.expoPushToken} is not a valid Expo push token`,
-        );
+      if (!isValidExpoPushToken(message.expoPushToken)) {
         continue;
       }
       let pushEntity = this.pushRepository.create({
@@ -183,15 +189,7 @@ export class PushService {
         console.error(`expo push error: ${ticket.details?.error}`);
         console.error(`expo push error: ${ticket.message}`);
         if (ticket.details?.error === "DeviceNotRegistered") {
-          const userDevice = await this.userDeviceRepository.findOne({
-            where: { expoPushToken: pushEntities[i].expoPushToken },
-          });
-          if (userDevice) {
-            await softDeleteCascade(this.userDeviceRepository.manager, {
-              target: UserDevice,
-              ids: [userDevice.id],
-            });
-          }
+          await this.removeUnregisteredDevice(pushEntities[i].expoPushToken);
         }
       }
     }
@@ -210,6 +208,63 @@ export class PushService {
       });
     }
     return pushEntities;
+  }
+
+  private async removeUnregisteredDevice(expoPushToken: string) {
+    const userDevice = await this.userDeviceRepository.findOne({
+      where: { expoPushToken },
+    });
+    if (userDevice) {
+      await softDeleteCascade(this.userDeviceRepository.manager, {
+        target: UserDevice,
+        ids: [userDevice.id],
+      });
+    }
+  }
+
+  /**
+   * Quiet badge-only pushes: no title, body, or sound, so iOS applies `badge`
+   * without showing anything and Android delivers a data-only message to the
+   * app's background task. Returns the tokens whose send failed; an invalid
+   * token is skipped, not returned, since resending can't fix it.
+   */
+  async sendTaskBadge(params: {
+    expoPushTokens: string[];
+    count: number;
+  }): Promise<string[]> {
+    const { expoPushTokens, count } = params;
+    const messages: ExpoPushMessage[] = expoPushTokens
+      .filter(isValidExpoPushToken)
+      .map((to) => ({
+        to,
+        badge: count,
+        priority: "normal",
+        data: { taskBadgeCount: count } satisfies TaskBadgePushData,
+      }));
+
+    const rejected: string[] = [];
+    for (const chunk of this.expo.chunkPushNotifications(messages)) {
+      let tickets: ExpoPushTicket[];
+      try {
+        tickets = await this.expo.sendPushNotificationsAsync(chunk);
+      } catch (error) {
+        console.error(error);
+        rejected.push(...chunk.flatMap((message) => message.to));
+        continue;
+      }
+      for (const [i, ticket] of tickets.entries()) {
+        const { to } = chunk[i];
+        if (typeof to !== "string" || ticket.status === "ok") {
+          continue;
+        }
+        rejected.push(to);
+        console.error(`expo badge push error: ${ticket.message}`);
+        if (ticket.details?.error === "DeviceNotRegistered") {
+          await this.removeUnregisteredDevice(to);
+        }
+      }
+    }
+    return rejected;
   }
 
   @Cron(CronExpression.EVERY_MINUTE)

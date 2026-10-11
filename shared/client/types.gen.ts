@@ -1427,6 +1427,10 @@ export type RegisterDeviceDto = {
     deviceType: string;
     expoPushToken: string;
     deviceId?: string;
+    /**
+     * The build handles badge-only pushes quietly
+     */
+    taskBadgePushes?: boolean;
 };
 
 export type UserDeviceDto = {

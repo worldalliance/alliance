@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 type TaskBadgeStatus =
   | "draft"
   | "planned"
@@ -86,3 +88,8 @@ export function countsTowardTaskBadge(
 export function countTaskBadge(actions: TaskBadgeAction[], now: Date): number {
   return actions.filter((action) => countsTowardTaskBadge(action, now)).length;
 }
+
+export const taskBadgePushDataSchema = z.object({
+  taskBadgeCount: z.number().int().nonnegative(),
+});
+export type TaskBadgePushData = z.infer<typeof taskBadgePushDataSchema>;
