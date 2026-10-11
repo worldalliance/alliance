@@ -2120,9 +2120,8 @@ export class ActionsService {
     followUpFormId: number,
     dto: UpdateFollowUpFormDto,
   ): Promise<ParsedFollowUpForm> {
-    const followUpForm = await this.followUpFormRepository.findOneOrFail({
-      where: { id: followUpFormId },
-      relations: { form: true, action: true },
+    const followUpForm = await this.followUpFormRepository.findOneByOrFail({
+      id: followUpFormId,
     });
     if (dto.cohortExpression != null) {
       dto.cohortExpression = await this.parseCohortExpressionForSaveOrThrow(

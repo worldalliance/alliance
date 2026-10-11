@@ -2208,6 +2208,30 @@ describe("Actions (e2e)", () => {
       expect(stored.name).toBeNull();
       expect(stored.instructions).toBe("Tell us how it went");
     });
+
+    it("admin update moves a follow-up form to another form", async () => {
+      const { action } = await createPublishedAction("Follow-up Move");
+      const form = await createTargetForm("Follow-up Move Form");
+      const otherForm = await createTargetForm("Follow-up Move Other Form");
+
+      const createRes = await request(ctx.app.getHttpServer())
+        .post(`/actions/${action.id}/follow-up-forms`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ actionId: action.id, formId: form.id });
+      expect(createRes.status).toBe(201);
+
+      const updateRes = await request(ctx.app.getHttpServer())
+        .patch(`/actions/follow-up-forms/${createRes.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ formId: otherForm.id });
+      expect(updateRes.status).toBe(200);
+      expect(updateRes.body.formId).toBe(otherForm.id);
+
+      const stored = await followUpFormRepo().findOneByOrFail({
+        id: createRes.body.id,
+      });
+      expect(stored.formId).toBe(otherForm.id);
+    });
   });
 
   describe("Additional endpoints", () => {
