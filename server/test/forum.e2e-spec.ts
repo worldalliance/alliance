@@ -383,6 +383,80 @@ describe("Forum (e2e)", () => {
         .expect(404);
     });
 
+    it("refuses likes and comment reads on a post scheduled for later", async () => {
+      const { body: post } = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "Scheduled Post With A Comment",
+          editableContent: { body: "Scheduled in the future", attachments: [] },
+          visibleAt: new Date(Date.now() + milliseconds({ days: 1 })),
+        } satisfies CreatePostDto)
+        .expect(201);
+      const { body: comment } = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          editableContent: { body: "Early comment", attachments: [] },
+          parentObjectId: post.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+      const server = ctx.app.getHttpServer();
+      const asMember = (req: request.Test) =>
+        req.set("Authorization", `Bearer ${ctx.accessToken}`);
+
+      await asMember(
+        request(server).post(`/forum/posts/${post.id}/like`),
+      ).expect(404);
+      const { body: commentLike } = await asMember(
+        request(server).post(`/forum/comments/${comment.id}/like`),
+      ).expect(404);
+      expect(commentLike.message).toBe(
+        `comment with ID "${comment.id}" not found`,
+      );
+      await asMember(
+        request(server).get(`/forum/posts/${post.id}/comments`),
+      ).expect(404);
+      await request(server).get(`/forum/posts/${post.id}/comments`).expect(404);
+
+      const { body: adminComments } = await request(server)
+        .get(`/forum/posts/${post.id}/comments`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      expect(adminComments.map((c) => c.id)).toEqual([comment.id]);
+    });
+
+    it("refuses comment reads on a deleted post", async () => {
+      const server = ctx.app.getHttpServer();
+      const { body: post } = await request(server)
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Post Deleted After A Comment",
+          editableContent: { body: "Soon gone", attachments: [] },
+        } satisfies CreatePostDto)
+        .expect(201);
+      await request(server)
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: {
+            body: "Comment on a doomed post",
+            attachments: [],
+          },
+          parentObjectId: post.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+      await request(server)
+        .delete(`/forum/posts/${post.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      await request(server).get(`/forum/posts/${post.id}/comments`).expect(404);
+    });
+
     it("should let admins see future-scheduled posts by other users", async () => {
       const futureVisibleAt = new Date(Date.now() + milliseconds({ hours: 1 }));
       const createResponse = await request(ctx.app.getHttpServer())
