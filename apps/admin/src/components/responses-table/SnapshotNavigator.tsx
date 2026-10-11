@@ -1,8 +1,7 @@
 import { withCount } from "@alliance/common/plural";
-import { tasksGetResponseSnapshotMigrationAdmin } from "@alliance/shared/client";
+import { useResponseSnapshotMigrationsAdmin } from "@alliance/shared/lib/useResponseSnapshotMigrationAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useQueries } from "@tanstack/react-query";
 import { GitCompare } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import ReactDiffViewer, { DiffMethod } from "react-diff-viewer-continued";
@@ -83,24 +82,14 @@ const SnapshotNavigator: React.FC<SnapshotNavigatorProps> = ({
 }) => {
   const [compared, setCompared] = useState<number[]>([]);
 
-  const metaQueries = useQueries({
-    queries: formIds.map((formId) => ({
-      queryKey: ["tasksGetResponseSnapshotMigrationAdmin", formId],
-      queryFn: async () => {
-        const result = await tasksGetResponseSnapshotMigrationAdmin({
-          path: { formId },
-        });
-        return result.data ?? null;
-      },
-      enabled: open,
-      staleTime: 60_000,
-    })),
-  });
+  const {
+    migrations,
+    isPending: metaPending,
+    isError: metaFailed,
+  } = useResponseSnapshotMigrationsAdmin(formIds, { enabled: open });
 
   const snapshotCreatedAt = new Map<number, string>();
-  for (const query of metaQueries) {
-    const data = query.data;
-    if (!data) continue;
+  for (const data of migrations) {
     snapshotCreatedAt.set(
       data.latestSnapshot.id,
       data.latestSnapshot.createdAt,
@@ -109,9 +98,6 @@ const SnapshotNavigator: React.FC<SnapshotNavigatorProps> = ({
       snapshotCreatedAt.set(group.snapshot.id, group.snapshot.createdAt);
     }
   }
-
-  const metaPending = metaQueries.some((query) => query.isPending);
-  const metaFailed = metaQueries.some((query) => query.isError);
 
   const toggleCompared = (snapshotId: number) => {
     setCompared((current) => {
