@@ -41,6 +41,7 @@ let campaigns = [campaign(7, "Spring fundraiser")];
 let createCampaignStatus = 200;
 let actionsGate = Promise.resolve();
 let targetsGate = Promise.resolve();
+let membersStatus = 200;
 
 serveApi(
   routes({
@@ -83,20 +84,22 @@ serveApi(
     "GET /share-urls/for-user/:userId": () => Response.json([]),
     "GET /share-urls/for-campaign/:campaignId": () => Response.json([]),
     "GET /user/members": () =>
-      Response.json([
-        {
-          id: 5,
-          admin: false,
-          staff: false,
-          ambassador: false,
-          profilePicture: null,
-          profileDescription: null,
-          anonymous: false,
-          displayName: "Test Member",
-          hasActiveContract: true,
-          isCommunityLeader: false,
-        } satisfies ProfileDto,
-      ]),
+      membersStatus !== 200
+        ? Response.json({}, { status: membersStatus })
+        : Response.json([
+            {
+              id: 5,
+              admin: false,
+              staff: false,
+              ambassador: false,
+              profilePicture: null,
+              profileDescription: null,
+              anonymous: false,
+              displayName: "Test Member",
+              hasActiveContract: true,
+              isCommunityLeader: false,
+            } satisfies ProfileDto,
+          ]),
   }),
 );
 
@@ -108,6 +111,19 @@ beforeEach(() => {
   createCampaignStatus = 200;
   actionsGate = Promise.resolve();
   targetsGate = Promise.resolve();
+  membersStatus = 200;
+});
+
+it("says the users failed to load instead of offering none", async () => {
+  membersStatus = 500;
+  render(
+    <ToastProvider>
+      <ShareLinksPage />
+    </ToastProvider>,
+    queryWrapper(),
+  );
+
+  expect(await screen.findByText("Failed to load users.")).toBeTruthy();
 });
 
 const pickOwner = async (query = queryWrapper()) => {

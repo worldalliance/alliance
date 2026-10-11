@@ -57,7 +57,8 @@ interface CohortExpressionBuilderProps {
   actionsLoading: boolean;
   actionsError: boolean;
   availableUsers: UserSelectUser[];
-  usersLoading?: boolean;
+  usersLoading: boolean;
+  usersError: boolean;
   activeContractUserIds?: Set<number>;
   onboarding?: boolean;
   /** @internal used to thread selected expression to nested editors */
@@ -164,13 +165,15 @@ const ManualEditor: React.FC<{
   value: ManualCondition;
   onChange: (v: ManualCondition) => void;
   availableUsers: UserSelectUser[];
-  usersLoading?: boolean;
-}> = ({ value, onChange, availableUsers, usersLoading }) => (
+  usersLoading: boolean;
+  usersError: boolean;
+}> = ({ value, onChange, availableUsers, usersLoading, usersError }) => (
   <UserSelect
     users={availableUsers}
     selectedUserIds={value.userIds}
     onChange={(ids) => onChange({ ...value, userIds: ids })}
     loading={usersLoading}
+    loadFailed={usersError}
     label="Select users"
   />
 );
@@ -502,6 +505,7 @@ const LeafConditionEditor: React.FC<{
           onChange={onChange}
           availableUsers={props.availableUsers}
           usersLoading={props.usersLoading}
+          usersError={props.usersError}
         />
       );
     case "CompletedAction":

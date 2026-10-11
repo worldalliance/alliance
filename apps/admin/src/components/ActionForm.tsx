@@ -52,7 +52,8 @@ interface ActionFormProps {
   availableSuites?: ActionSuiteDto[];
   suitesLoading: boolean;
   availableUsers?: UserSelectUser[];
-  usersLoading?: boolean;
+  usersLoading: boolean;
+  usersError: boolean;
   activeContractUserIds?: Set<number>;
   onboarding?: boolean;
   cohortExpression: CohortExpression | null | undefined;
@@ -130,7 +131,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
   availableSuites = [],
   suitesLoading = false,
   availableUsers = [],
-  usersLoading = false,
+  usersLoading,
+  usersError,
   activeContractUserIds,
   onboarding = false,
   cohortExpression,
@@ -651,6 +653,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
             selectedUserIds={authorIds}
             onChange={onAuthorsChange}
             loading={usersLoading}
+            loadFailed={usersError}
             label="Action Authors"
           />
           {/* External (non-user) reviewers */}
@@ -805,6 +808,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
           actionsError={allActionsLoadFailed}
           availableUsers={availableUsers}
           usersLoading={usersLoading}
+          usersError={usersError}
           activeContractUserIds={activeContractUserIds}
           onboarding={onboarding}
         />

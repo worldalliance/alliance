@@ -25,7 +25,7 @@ import List from "@alliance/sharedweb/ui/List";
 import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import UserSelect, {
   UserSelectUser,
-  useSelectableUserIds,
+  useSelectableUsers,
 } from "@alliance/sharedweb/ui/UserSelect";
 import { milliseconds } from "date-fns";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -71,7 +71,11 @@ const CommunityInvitesLeaderTab = ({
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { error: errorToast, confirm } = useToast();
 
-  const allUsers = useSelectableUserIds();
+  const {
+    users: allUsers,
+    isLoading: usersLoading,
+    isLoadingError: usersError,
+  } = useSelectableUsers();
 
   const selectableUsers = useMemo(
     () =>
@@ -302,6 +306,8 @@ const CommunityInvitesLeaderTab = ({
                         null,
                     )
                   }
+                  loading={usersLoading}
+                  loadFailed={usersError}
                   label={null}
                   single={true}
                 />
