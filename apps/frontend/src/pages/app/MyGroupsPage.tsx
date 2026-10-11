@@ -58,6 +58,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
   const [leavingCommunityId, setLeavingCommunityId] = useState<number | null>(
     null,
   );
+  const [isLeavingGroup, setIsLeavingGroup] = useState(false);
   const justOpenedDialogRef = useRef(false);
   const { confirm, error: showError, success } = useToast();
   const handleCloseLeaveGroupConfirmation = useCallback(() => {
@@ -166,16 +167,24 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
 
   const onConfirmLeaveGroup = useCallback(
     async (community: CommunityDto) => {
-      const response = await communityLeave({
-        path: { communityId: community.id },
-      });
-      if (response.data) {
-        onSelectCommunity(null);
-        setLeavingCommunityId(null);
-        removeCommunity(community.id);
+      setIsLeavingGroup(true);
+      try {
+        await communityLeave({
+          path: { communityId: community.id },
+          throwOnError: true,
+        });
+      } catch (err) {
+        console.error("Failed to leave group", err);
+        showError("Unable to leave that group right now.");
+        return;
+      } finally {
+        setIsLeavingGroup(false);
       }
+      onSelectCommunity(null);
+      setLeavingCommunityId(null);
+      removeCommunity(community.id);
     },
-    [onSelectCommunity, removeCommunity],
+    [onSelectCommunity, removeCommunity, showError],
   );
 
   const { join, leave } = useGroupAssignment({ onChanged: refreshUser });
@@ -490,6 +499,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
                         <Button
                           color={ButtonColor.Red}
                           size="small"
+                          disabled={isLeavingGroup}
                           onClick={() => {
                             onConfirmLeaveGroup(community);
                           }}

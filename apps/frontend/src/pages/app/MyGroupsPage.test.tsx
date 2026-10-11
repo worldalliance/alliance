@@ -25,7 +25,7 @@ let invitedTo: CommunityDto[] = [];
 
 let groupAssignment = async () => Response.json({});
 
-serveApi(
+const api = serveApi(
   routes({
     "POST /user/groupAssignment/join": () => groupAssignment(),
     "POST /user/groupAssignment/leave": () => groupAssignment(),
@@ -170,6 +170,44 @@ it("closes the leave dialog and says when reassignment from it fails", async () 
   fireEvent.click(dialogButtons[dialogButtons.length - 1]);
   await screen.findByText("Unable to request group assignment right now.");
   expect(screen.queryByText(/Are you sure you want to leave/)).toBeNull();
+});
+
+it.each([{ answer: offline }, { answer: failed }])(
+  "says when leaving a group fails with $answer.name",
+  async ({ answer }) => {
+    myGroups = async () => Response.json([group(1, "My group")]);
+    api.alsoServing({ "POST /community/:communityId/leave": answer });
+    renderPage();
+    fireEvent.click(await screen.findByText("Leave"));
+    fireEvent.click(screen.getByText("Leave group"));
+    await screen.findByText("Unable to leave that group right now.");
+  },
+);
+
+it("holds Leave group while its request is in flight", async () => {
+  myGroups = async () => Response.json([group(1, "My group")]);
+  const { promise, resolve } = Promise.withResolvers<Response>();
+  api.alsoServing({ "POST /community/:communityId/leave": () => promise });
+  renderPage();
+  fireEvent.click(await screen.findByText("Leave"));
+  fireEvent.click(screen.getByText("Leave group"));
+  await waitFor(() => expect(isDisabled("Leave group")).toBe(true));
+
+  resolve(Response.json({}));
+  await waitFor(() => expect(screen.queryByText("My group")).toBeNull());
+});
+
+it("frees Leave group once a failed leave answers", async () => {
+  myGroups = async () => Response.json([group(1, "My group")]);
+  const { promise, resolve } = Promise.withResolvers<Response>();
+  api.alsoServing({ "POST /community/:communityId/leave": () => promise });
+  renderPage();
+  fireEvent.click(await screen.findByText("Leave"));
+  fireEvent.click(screen.getByText("Leave group"));
+  await waitFor(() => expect(isDisabled("Leave group")).toBe(true));
+
+  resolve(await failed());
+  await waitFor(() => expect(isDisabled("Leave group")).toBe(false));
 });
 
 it.each([requesting, cancelling])(
