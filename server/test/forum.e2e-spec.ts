@@ -383,7 +383,7 @@ describe("Forum (e2e)", () => {
         .expect(404);
     });
 
-    it("refuses likes and comment reads on a post scheduled for later", async () => {
+    it("refuses likes, comments, and comment reads on a post scheduled for later", async () => {
       const { body: post } = await request(ctx.app.getHttpServer())
         .post("/forum/posts")
         .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
@@ -419,6 +419,13 @@ describe("Forum (e2e)", () => {
         request(server).get(`/forum/posts/${post.id}/comments`),
       ).expect(404);
       await request(server).get(`/forum/posts/${post.id}/comments`).expect(404);
+      await asMember(request(server).post("/forum/comments"))
+        .send({
+          editableContent: { body: "Too early", attachments: [] },
+          parentObjectId: post.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(404);
 
       const { body: adminComments } = await request(server)
         .get(`/forum/posts/${post.id}/comments`)
@@ -427,7 +434,7 @@ describe("Forum (e2e)", () => {
       expect(adminComments.map((c) => c.id)).toEqual([comment.id]);
     });
 
-    it("refuses comment reads on a deleted post", async () => {
+    it("refuses comments and comment reads on a deleted post", async () => {
       const server = ctx.app.getHttpServer();
       const { body: post } = await request(server)
         .post("/forum/posts")
@@ -455,6 +462,15 @@ describe("Forum (e2e)", () => {
         .expect(200);
 
       await request(server).get(`/forum/posts/${post.id}/comments`).expect(404);
+      await request(server)
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "Comment after deletion", attachments: [] },
+          parentObjectId: post.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(404);
     });
 
     it("should let admins see future-scheduled posts by other users", async () => {

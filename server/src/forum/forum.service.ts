@@ -665,6 +665,9 @@ export class ForumService {
     userId: number,
   ): Promise<Comment> {
     await this.assertCommentParentNotInStaffPreview(createCommentDto);
+    if (createCommentDto.parentObjectType === CommentParentObject.Post) {
+      await this.assertPostVisible(createCommentDto.parentObjectId, userId);
+    }
 
     // Validate parent reply if provided
     let parentReply: Comment | null = null;
