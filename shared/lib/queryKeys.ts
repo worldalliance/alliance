@@ -72,6 +72,8 @@ export const queryKeys = {
     ["forumFindOnePost", postId] as const,
   generalUpdatesAll: () => ["actionsAllGeneralUpdates"] as const,
   generalUpdatesUnread: () => ["actions", "generalUpdates", "unread"] as const,
+  linkedGuestDraft: (taskFormId: number) =>
+    ["tasksGetLinkedGuestDraft", taskFormId] as const,
   linkPreview: (url: string) => ["linkPreviewGetPreview", url] as const,
   membersWithFriends: () => ["userMembersWithFriends"] as const,
   myAwayRanges: () => ["userGetAwayRanges"] as const,

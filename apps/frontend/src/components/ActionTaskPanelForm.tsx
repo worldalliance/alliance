@@ -5,7 +5,6 @@ import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options"
 import {
   FormResponseDto,
   SubmitFormDto,
-  tasksGetLinkedGuestDraft,
   tasksSubmitForm,
   tasksSubmitPublicForm,
 } from "@alliance/shared/client";
@@ -15,6 +14,7 @@ import {
   type ActionWithdrawal,
 } from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
+import { useLinkedGuestDraft } from "@alliance/shared/lib/useLinkedGuestDraft";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -24,7 +24,6 @@ import FormRenderer, {
 } from "@alliance/sharedweb/forms/FormRenderer";
 import Card from "@alliance/sharedweb/ui/Card";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { useQuery } from "@tanstack/react-query";
 import posthog from "posthog-js";
 import { useMemo, useState, type RefObject } from "react";
 import { useAuth } from "../lib/AuthContext";
@@ -79,16 +78,9 @@ const ActionTaskPanelForm = ({
 
   const draftEnabled =
     !formResponse && !disabled && !publicAction && !preview && isAuthenticated;
-  const { data: draftFormResponse } = useQuery({
-    queryKey: ["linkedGuestDraft", taskFormId],
-    queryFn: async () => {
-      const response = await tasksGetLinkedGuestDraft({
-        path: { id: taskFormId },
-      });
-      return response.data?.draft ?? null;
-    },
+  const { data: draftFormResponse } = useLinkedGuestDraft({
+    taskFormId,
     enabled: draftEnabled,
-    retry: false,
   });
 
   const handleSubmitForm = onCompleteAction
