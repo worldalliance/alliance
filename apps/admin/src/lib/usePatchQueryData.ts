@@ -5,8 +5,16 @@ import {
 } from "@tanstack/react-query";
 
 export const usePatchQueryData = <T>(queryKey: DataTag<QueryKey, T, Error>) => {
+  const patch = usePatchAnyQueryData();
+  return (update: (prev: T) => T) => patch(queryKey, update);
+};
+
+export const usePatchAnyQueryData = () => {
   const queryClient = useQueryClient();
-  return async (update: (prev: T) => T) => {
+  return async <T>(
+    queryKey: DataTag<QueryKey, T, Error>,
+    update: (prev: T) => T,
+  ) => {
     // A fetch started before the write would land the old data over it.
     await queryClient.cancelQueries({ queryKey });
     // With no data to patch (the first load was cancelled or failed), a fresh
