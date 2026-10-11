@@ -21,19 +21,23 @@ import { MemberCompletionRetentionCohortDto } from "./member-completion-retentio
 import { MemberReliabilityWindowDto } from "./member-reliability-window.dto";
 import { MissedActionsDto } from "./missed-actions.dto";
 import { PlatformTenureCohortStatsDto } from "./platform-tenure-cohort.dto";
+import { PosthogTimeSpentService } from "./posthog-time-spent.service";
 import { ReminderGroupClickRatePointDto } from "./reminder-group-click-rates.dto";
 import { TimeToChurnSampleDto } from "./time-to-churn.dto";
 import { TimeSpentForUserDto } from "./timespent.dto";
 
 @Controller("analytics")
 export class AnalyticsController {
-  constructor(private readonly analyticsService: AnalyticsService) {}
+  constructor(
+    private readonly analyticsService: AnalyticsService,
+    private readonly posthogTimeSpentService: PosthogTimeSpentService,
+  ) {}
 
   @Get("time-spent-per-user")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [TimeSpentForUserDto] })
   async getTimeSpentPerUserAdmin(): Promise<TimeSpentForUserDto[]> {
-    const entries = await this.analyticsService.getTimeSpentPerUser();
+    const entries = await this.posthogTimeSpentService.getTimeSpentPerUser();
     return entries.map((entry) => new TimeSpentForUserDto(entry));
   }
 
@@ -41,7 +45,8 @@ export class AnalyticsController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [TimeSpentForUserDto] })
   async getTimeSpentPerUserTotalAdmin(): Promise<TimeSpentForUserDto[]> {
-    const entries = await this.analyticsService.getTimeSpentPerUserTotal();
+    const entries =
+      await this.posthogTimeSpentService.getTimeSpentPerUserTotal();
     return entries.map((entry) => new TimeSpentForUserDto(entry));
   }
 
