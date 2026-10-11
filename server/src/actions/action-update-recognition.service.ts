@@ -1,4 +1,3 @@
-import { ActionActivityType } from "@alliance/common/actionActivity";
 import {
   CONTRIBUTION_FORMULA_KEY,
   contributionFormulaSchema,
@@ -30,7 +29,7 @@ import {
 import { DataSource, In, Raw, type EntityManager } from "typeorm";
 import type { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 import {
-  findLatestTerminalActivity,
+  findLatestCompletions,
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
 import {
@@ -131,13 +130,7 @@ export class ActionUpdateRecognitionService {
       },
       relations: { taskFormResponse: true },
     });
-    // A later withdrawal retracts a completion, as everywhere status is read.
-    const completions = [
-      ...Map.groupBy(terminal, (activity) => activity.userId).values(),
-    ].flatMap((activities) => {
-      const latest = findLatestTerminalActivity(activities);
-      return latest?.type === ActionActivityType.USER_COMPLETED ? [latest] : [];
-    });
+    const completions = findLatestCompletions(terminal);
     // A whole action shares a few snapshots, so each schema loads once.
     const snapshotIds = uniq(
       completions.flatMap((completion) =>

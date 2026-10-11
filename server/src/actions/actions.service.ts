@@ -252,6 +252,7 @@ import {
   trailingMissedSuiteIds,
   type SuiteOutcome,
 } from "./missed-suite-streak";
+import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 import {
   assertNotAPrerequisite,
   assertPrerequisitesValid,
@@ -395,6 +396,7 @@ export class ActionsService {
     private readonly cohortDecisionService: CohortDecisionService,
     private readonly cohortAdmissionService: CohortAdmissionService,
     private readonly actionVisibility: ActionVisibilityService,
+    private readonly prerequisiteProgressService: PrerequisiteProgressService,
   ) {}
 
   async applyAssignedFormIds(
@@ -680,12 +682,10 @@ export class ActionsService {
   }
 
   async findUsersCompletedForAction(actionId: number): Promise<number> {
-    return this.actionActivityRepository.count({
-      where: {
-        actionId,
-        type: ActionActivityType.USER_COMPLETED,
-      },
+    const completions = await this.prerequisiteProgressService.loadCompletions({
+      actionId,
     });
+    return completions.length;
   }
 
   async reloadUsersCompletedForAction(actionId: number): Promise<void> {
@@ -1874,8 +1874,10 @@ export class ActionsService {
     });
 
     await this.reloadUsersJoinedForAction(actionId);
-    if (type === ActionActivityType.USER_COMPLETED) {
+    if (isTerminalActivity(savedActivity)) {
       await this.reloadUsersCompletedForAction(actionId);
+    }
+    if (type === ActionActivityType.USER_COMPLETED) {
       if (!adminCreated) {
         this.posthogService.capture({
           event: AnalyticsEvent.ActionCompleted,

@@ -1,6 +1,9 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { CachedFilter } from "../utils/cached-filter";
-import { resolveUserActionRelation } from "./action-activity-status";
+import {
+  findLatestCompletions,
+  resolveUserActionRelation,
+} from "./action-activity-status";
 import { UserActionRelation } from "./dto/action.dto";
 
 const USER_ID = 123;
@@ -119,5 +122,32 @@ describe("resolveUserActionRelation", () => {
         ]),
       ).toBe(UserActionRelation.Declined);
     });
+  });
+});
+
+describe("findLatestCompletions", () => {
+  const activity = (
+    userId: number,
+    actionId: number,
+    type: ActionActivityType,
+    iso: string,
+  ): Activity => ({ type, createdAt: new Date(iso), userId, actionId });
+
+  it("decides each (user, action) pair by its own latest terminal activity", () => {
+    const kept = activity(
+      1,
+      10,
+      ActionActivityType.USER_COMPLETED,
+      "2026-01-01",
+    );
+    const completions = findLatestCompletions([
+      kept,
+      activity(1, 20, ActionActivityType.USER_COMPLETED, "2026-01-01"),
+      activity(1, 20, ActionActivityType.USER_WONT_COMPLETE, "2026-01-03"),
+      activity(2, 10, ActionActivityType.USER_COMPLETED, "2026-01-01"),
+      activity(2, 10, ActionActivityType.USER_WONT_COMPLETE, "2026-01-02"),
+    ]);
+
+    expect(completions).toEqual([kept]);
   });
 });

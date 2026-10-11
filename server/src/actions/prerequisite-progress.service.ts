@@ -2,7 +2,10 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import type { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { In, LessThan, type Repository } from "typeorm";
-import { TERMINAL_ACTIVITY_TYPES } from "./action-activity-status";
+import {
+  findLatestCompletions,
+  TERMINAL_ACTIVITY_TYPES,
+} from "./action-activity-status";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import { Action } from "./entities/action.entity";
@@ -160,6 +163,20 @@ export class PrerequisiteProgressService {
 
   loadTerminalUserIds(actionId: number, userId?: number): Promise<Set<number>> {
     return this.findTerminalUserIds(actionId, { userId });
+  }
+
+  /**
+   * The (member, action) pairs in scope whose latest terminal activity is a
+   * completion.
+   */
+  async loadCompletions(
+    scope: { actionId: number } | { userId: number },
+  ): Promise<Pick<ActionActivity, "userId" | "actionId">[]> {
+    const terminal = await this.actionActivityRepository.find({
+      where: { ...scope, type: In(TERMINAL_ACTIVITY_TYPES) },
+      select: { userId: true, actionId: true, type: true, createdAt: true },
+    });
+    return findLatestCompletions(terminal);
   }
 
   private async findTerminalUserIds(

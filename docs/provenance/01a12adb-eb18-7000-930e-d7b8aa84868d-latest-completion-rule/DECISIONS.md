@@ -1,0 +1,7 @@
+## Decisions
+
+- The shared lookup is `PrerequisiteProgressService.loadCompletions`, beside `loadTerminalUserIds`: both cohort services and `ActionsService` already reach `ActionVisibilityModule`, which provides it.
+- It loads the scope's terminal activities and keeps each (member, action) pair's latest with `findLatestCompletions` in `action-activity-status.ts`, built on `findLatestTerminalActivity`, the function behind the member's own status, rather than a second SQL rendering of the rule. Scopes are one action or one member, so the rows loaded stay small.
+- Update recognition (`ActionUpdateRecognitionService.plan`) applied the same rule inline; it now calls `findLatestCompletions` too, keeping its own query for its transaction and `taskFormResponse` relation.
+- `findIncompleteUsersForAction` stays unchanged: it subtracts completions from participants, and participants still re-add every member with any completion, so applying the rule there alone would list a member who completed then withdrew as not yet done. It moves with the participants follow-up.
+- A data migration, `RecountUsersCompleted`, recounts every action's stored `usersCompleted` under the rule, in its own commit after the code change: the app recounts an action only when a completion or withdrawal is written to it, so closed actions would otherwise keep the old count. It also corrects older drift from deleted activity rows; recounting on deletion stays out of scope (ALL-1495).
