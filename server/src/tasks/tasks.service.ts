@@ -1832,16 +1832,27 @@ export class TasksService {
     return { answered, output };
   }
 
-  async getLinkedGuestDraftFormResponse(
-    userId: number,
-    formId: number,
-  ): Promise<ParsedFormResponse | null> {
-    // If the user has already submitted this form as an authenticated user,
+  async getLinkedGuestDraftFormResponse(params: {
+    userId: number;
+    formId: number;
+    actionId: number;
+  }): Promise<ParsedFormResponse | null> {
+    const { userId, formId, actionId } = params;
+    const owners = await this.actionFormVariantService.findActionIdByFormId([
+      actionId,
+    ]);
+    if (owners.get(formId) !== actionId) {
+      throw new ForbiddenException(
+        "This form is not one of the action's forms",
+      );
+    }
+    // If the user has already submitted this action as an authenticated user,
     // any linked-guest draft is stale and shouldn't be surfaced as a prefill.
-    const userResponse = await this.formResponseRepository.findOne({
-      where: { formId, user: { id: userId } },
+    const submitted = await this.actionFormVariantService.findSubmittedFormIds({
+      actionIds: [actionId],
+      userId,
     });
-    if (userResponse) {
+    if (submitted.has(actionId)) {
       return null;
     }
     const draft = await this.formResponseRepository.findOne({

@@ -10,6 +10,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   Request,
   Res,
   UseGuards,
@@ -303,10 +304,15 @@ export class TasksController {
   @ApiOkResponse({ type: LinkedGuestDraftDto })
   async getLinkedGuestDraft(
     @Param("id", ParseIntPipe) id: number,
+    @Query("actionId", ParseIntPipe) actionId: number,
     @Request() req: JwtRequest,
   ): Promise<LinkedGuestDraftDto> {
     return new LinkedGuestDraftDto(
-      await this.tasksService.getLinkedGuestDraftFormResponse(req.user.sub, id),
+      await this.tasksService.getLinkedGuestDraftFormResponse({
+        userId: req.user.sub,
+        formId: id,
+        actionId,
+      }),
     );
   }
 

@@ -62,12 +62,10 @@ export class ActionFormVariantService {
     });
   }
 
-  /** Each action's form the member submitted: its task form or a variant's. */
-  async findSubmittedFormIds(params: {
-    actionIds: number[];
-    userId: number;
-  }): Promise<Map<number, number>> {
-    const { actionIds, userId } = params;
+  /** The action owning each form of these actions: its task form or a variant's. */
+  async findActionIdByFormId(
+    actionIds: number[],
+  ): Promise<Map<number, number>> {
     if (actionIds.length === 0) return new Map();
     const [actions, variants] = await Promise.all([
       this.actionRepo.find({
@@ -86,10 +84,22 @@ export class ActionFormVariantService {
       });
       for (const formId of formIds) actionIdByFormId.set(formId, action.id);
     }
+    return actionIdByFormId;
+  }
+
+  /** Each action's form the member submitted: its task form or a variant's. */
+  async findSubmittedFormIds(params: {
+    actionIds: number[];
+    userId: number;
+  }): Promise<Map<number, number>> {
+    const actionIdByFormId = await this.findActionIdByFormId(params.actionIds);
     if (actionIdByFormId.size === 0) return new Map();
 
     const responses = await this.variantRepo.manager.find(FormResponse, {
-      where: { formId: In([...actionIdByFormId.keys()]), user: { id: userId } },
+      where: {
+        formId: In([...actionIdByFormId.keys()]),
+        user: { id: params.userId },
+      },
       select: { formId: true },
     });
     const submitted = new Map<number, number>();

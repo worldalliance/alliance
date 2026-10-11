@@ -3,13 +3,15 @@ import { tasksGetLinkedGuestDraft } from "../client";
 import { queryKeys } from "./queryKeys";
 
 /** The latest response a guest left on this form before signing in as the
- * member; null when there is none or the member has submitted the form
+ * member; null when there is none or the member has submitted the action
  * themselves. */
 export function useLinkedGuestDraft({
   taskFormId,
+  actionId,
   enabled,
 }: {
   taskFormId: number;
+  actionId: number;
   enabled: boolean;
 }) {
   return useQuery({
@@ -17,6 +19,7 @@ export function useLinkedGuestDraft({
     queryFn: () =>
       tasksGetLinkedGuestDraft({
         path: { id: taskFormId },
+        query: { actionId },
         throwOnError: true,
       }).then((res) => res.data.draft ?? null),
     enabled,

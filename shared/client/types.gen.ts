@@ -13417,7 +13417,9 @@ export type TasksGetLinkedGuestDraftData = {
     path: {
         id: number;
     };
-    query?: never;
+    query: {
+        actionId: number;
+    };
     url: '/tasks/draft/{id}';
 };
 

@@ -80,6 +80,7 @@ const ActionTaskPanelForm = ({
     !formResponse && !disabled && !publicAction && !preview && isAuthenticated;
   const { data: draftFormResponse } = useLinkedGuestDraft({
     taskFormId,
+    actionId,
     enabled: draftEnabled,
   });
 
