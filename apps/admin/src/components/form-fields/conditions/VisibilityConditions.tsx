@@ -48,7 +48,7 @@ export function ElementConditions(
 ) {
   const groupMember = useVisibilityGroupMember(props.field.id);
   if (groupMember) {
-    return <SharedVisibilityNotice detach={groupMember.detach} />;
+    return <SharedVisibilityNotice {...groupMember} />;
   }
   return <VisibilityConditions {...props} />;
 }

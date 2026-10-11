@@ -67,7 +67,12 @@ const renderSidebar = (element: PageItem, groupMember = false) =>
               <VisibilityGroupContext.Provider
                 value={
                   groupMember && element.id
-                    ? { elementId: element.id, detach() {} }
+                    ? {
+                        elementId: element.id,
+                        summary: "Town is answered",
+                        openGroup() {},
+                        detach() {},
+                      }
                     : null
                 }
               >
@@ -203,9 +208,7 @@ describe("an editor in the settings sidebar", () => {
       true,
     );
     openSection("Conditions");
-    expect(
-      panel().getByText("Visibility is shared with its group."),
-    ).toBeTruthy();
+    expect(panel().getByText("Shown when Town is answered")).toBeTruthy();
     expect(panel().queryByRole("button", { name: "Add rule" })).toBeNull();
     expect(panel().queryByText("Remove all conditions")).toBeNull();
   });

@@ -1761,9 +1761,15 @@ export function FormBuilder(props: FormBuilderProps) {
             displayOnly
               ? null
               : visibilityGroupMember({
-                  elementId: field.id,
+                  element: field,
                   groups: visibilityGroups,
                   setGroups,
+                  summarize,
+                  onOpenGroup: (key) =>
+                    select(
+                      { kind: CanvasTargetKind.Group, key },
+                      SidebarSection.Conditions,
+                    ),
                 })
           }
         >

@@ -17,6 +17,7 @@ import { useState } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import {
   canvasGroups,
+  heading,
   insertElement,
   openSection,
   selectElement,
@@ -183,10 +184,17 @@ describe("FormBuilder visibility groups", () => {
     renderFormBuilder(schemaWith([text("a", X), text("b", X)]));
     selectElement("Label a");
     openSection("Conditions");
-    expect(
-      settings().getByText("Visibility is shared with its group."),
-    ).toBeTruthy();
+    expect(settings().getByText("Shown when Label q is answered")).toBeTruthy();
     expect(settings().queryByRole("button", { name: "Add rule" })).toBeNull();
+    fireEvent.click(
+      settings().getByRole("button", { name: "Edit in group settings" }),
+    );
+    expect(heading()).toBe("Shared visibility");
+    expect(
+      screen
+        .getByRole("tab", { name: "Conditions" })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
   });
 
   it("ungrouping or detaching keeps the form saved", () => {

@@ -24,6 +24,24 @@ type VisibilityGroupPanelProps = {
   errors: string[];
 };
 
+/** A group's shared rule, as its settings and its members' show it. */
+export function SharedRuleSummary({
+  heading,
+  summary,
+}: {
+  heading: string;
+  summary: string;
+}) {
+  return (
+    <div className="min-w-0 flex-1">
+      <p className="text-xs font-medium uppercase tracking-wide text-amber-800">
+        {heading}
+      </p>
+      <p className="break-words text-sm text-gray-700">Shown when {summary}</p>
+    </div>
+  );
+}
+
 export function VisibilityGroupPanel({
   firstMember,
   members,
@@ -78,14 +96,10 @@ export function VisibilityGroupPanel({
       conditions={
         <>
           <div className="flex items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-amber-800">
-                Shared visibility · {withCount(members.length, "element")}
-              </p>
-              <p className="break-words text-sm text-gray-700">
-                Shown when {summary}
-              </p>
-            </div>
+            <SharedRuleSummary
+              heading={`Shared visibility · ${withCount(members.length, "element")}`}
+              summary={summary}
+            />
             <div className="flex items-center gap-1">
               <button
                 type="button"
