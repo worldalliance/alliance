@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+import { execFile, spawn } from "child_process";
 import { milliseconds } from "date-fns";
 import process from "process";
 import { run } from "./run-command";
@@ -46,6 +46,26 @@ export const runCommand = (
   args: string[],
   options: SpawnOptions,
 ) => run(command, args, { ...options, onSpawn: trackChildProcess });
+
+export const execFileCapture = (
+  command: string,
+  args: string[],
+  options: SpawnOptions,
+) =>
+  new Promise<string>((resolve, reject) => {
+    execFile(
+      command,
+      args,
+      { cwd: options.cwd, env: options.env },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(stderr || error.message));
+          return;
+        }
+        resolve(stdout);
+      },
+    );
+  });
 
 const killProcess = async (child: ChildProcessHandle) => {
   if (!child.pid || child.killed) {
