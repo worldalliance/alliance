@@ -9,7 +9,7 @@ import { Type } from "class-transformer";
 import { IsOptional, ValidateNested } from "class-validator";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
-import { Comment } from "../entities/comment.entity";
+import { Comment, loadedCommentAuthor } from "../entities/comment.entity";
 import {
   CreateEditableContentDto,
   EditableContentDto,
@@ -73,7 +73,7 @@ export class CommentDto extends PickType(Comment, [
     this.deleted = comment.deleted;
     this.pinned = comment.pinned;
     this.tagId = comment.tagId;
-    this.author = new ProfileDto(comment.author);
+    this.author = new ProfileDto(loadedCommentAuthor(comment));
     this.children = comment.children
       ? comment.children.map(
           (child) => new CommentDto(child, { requestingUserId }),

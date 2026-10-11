@@ -52,7 +52,11 @@ import {
   UpdatePostDto,
   UpdatePostSettingsDto,
 } from "./dto/post.dto";
-import { Comment, CommentParentObject } from "./entities/comment.entity";
+import {
+  Comment,
+  CommentParentObject,
+  loadedCommentAuthor,
+} from "./entities/comment.entity";
 import { EditableContent } from "./entities/editablecontent.entity";
 import { PostTag } from "./entities/post-tag.entity";
 import { parsePost, Post, type ParsedPost } from "./entities/post.entity";
@@ -517,25 +521,17 @@ export class ForumService {
     if (replies.length === 0) {
       return [];
     }
-    // Create a map for quick lookup
-    const replyMap = new Map<number, Comment>();
+    const childrenById = new Map<number, Comment[]>(
+      replies.map((reply) => [reply.id, []]),
+    );
     const topLevelReplies: Comment[] = [];
-
-    // Initialize all replies with empty children arrays
-    replies.forEach((reply) => {
-      reply.children = [];
-      replyMap.set(reply.id, reply);
-    });
 
     // Organize into hierarchy
     replies.forEach((reply) => {
       if (reply.parentId === null) {
         topLevelReplies.push(reply);
       } else {
-        const parent = replyMap.get(reply.parentId);
-        if (parent) {
-          parent.children.push(reply);
-        }
+        childrenById.get(reply.parentId)?.push(reply);
       }
     });
 
@@ -549,7 +545,7 @@ export class ForumService {
         )
         .map((reply) => ({
           ...reply,
-          children: sortReplies(reply.children || []),
+          children: sortReplies(childrenById.get(reply.id) ?? []),
         }));
     };
 
@@ -756,7 +752,7 @@ export class ForumService {
         where: { id: comment.parentId, deleted: false },
         relations: { author: { contractEvents: true } },
       });
-      parentAuthor = parentReply.author;
+      parentAuthor = loadedCommentAuthor(parentReply);
     }
 
     if (comment.parentObjectType === CommentParentObject.Post) {
@@ -786,7 +782,7 @@ export class ForumService {
       seenIds.add(user.id);
       return true;
     });
-    const authorDto = new ProfileDto(comment.author);
+    const authorDto = new ProfileDto(loadedCommentAuthor(comment));
 
     await this.notifsService.sendUnreadContents(
       uniqueUsersToNotify
@@ -1032,7 +1028,7 @@ export class ForumService {
   }
 
   private async sendCommentLikeNotification(comment: Comment, liker: User) {
-    if (!comment.author || comment.authorId === liker.id) {
+    if (comment.authorId === liker.id) {
       return;
     }
     let actionIdForActivity: number | undefined;
@@ -1050,7 +1046,7 @@ export class ForumService {
       return;
     }
     await this.likeNotificationService.createOrUpdate({
-      owner: comment.author,
+      owner: loadedCommentAuthor(comment),
       liker,
       targetType: "comment",
       targetId: comment.id,
@@ -1074,7 +1070,7 @@ export class ForumService {
   }
 
   private async removeCommentLikeNotification(comment: Comment, unliker: User) {
-    if (!comment.author || comment.authorId === unliker.id) {
+    if (comment.authorId === unliker.id) {
       return;
     }
     await this.likeNotificationService.removeOnUnlike({
@@ -1086,10 +1082,7 @@ export class ForumService {
   }
 
   async deleteReply(id: number, userId: number): Promise<void> {
-    const reply = await this.commentRepository.findOne({
-      where: { id },
-      relations: { notifications: true },
-    });
+    const reply = await this.commentRepository.findOne({ where: { id } });
 
     if (!reply) {
       throw new NotFoundException("That reply is no longer here");
@@ -1099,9 +1092,7 @@ export class ForumService {
       throw new NotFoundException("You can only delete your own replies");
     }
 
-    for (const notification of reply.notifications) {
-      await this.notifRepository.delete(notification.id);
-    }
+    await this.notifRepository.delete({ comment: { id } });
 
     await this.commentRepository.update(id, { deleted: true });
   }

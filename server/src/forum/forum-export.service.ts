@@ -14,7 +14,7 @@ import remarkHtml from "remark-html";
 import { getImageSource } from "src/images/images.service";
 import { postUrl } from "src/search/approutes";
 import type { User } from "src/user/entities/user.entity";
-import type { Comment } from "./entities/comment.entity";
+import { type Comment, loadedCommentAuthor } from "./entities/comment.entity";
 import type { EditableContent } from "./entities/editablecontent.entity";
 import type { ParsedPost } from "./entities/post.entity";
 import { ForumService } from "./forum.service";
@@ -227,9 +227,10 @@ function renderComment(comment: Comment, input: PageInput): string {
     tag?.name,
   ].filter((badge): badge is string => badge !== undefined);
   const children = (comment.children ?? []).filter(isWorthRendering);
+  const author = loadedCommentAuthor(comment);
 
   return `<li class="comment">
-<p class="byline">${renderAvatar(comment.author, "comment")}<span class="author">${escapeHtml(publicDisplayName(comment.author))}</span> · ${escapeHtml(format(comment.createdAt, "d MMMM yyyy"))}${badges.map((badge) => ` <span class="badge">${escapeHtml(badge)}</span>`).join("")}${renderLikes(comment.likesCount)}</p>
+<p class="byline">${renderAvatar(author, "comment")}<span class="author">${escapeHtml(publicDisplayName(author))}</span> · ${escapeHtml(format(comment.createdAt, "d MMMM yyyy"))}${badges.map((badge) => ` <span class="badge">${escapeHtml(badge)}</span>`).join("")}${renderLikes(comment.likesCount)}</p>
 ${comment.deleted ? `<p class="deleted">Content has been deleted</p>` : renderContent(comment.editableContent, input)}
 ${children.length ? renderThread(children, input) : ""}
 </li>`;

@@ -5,6 +5,7 @@ import type {
 import { sdkStreamMixin } from "@smithy/util-stream";
 import { milliseconds } from "date-fns";
 import { ActionsService } from "src/actions/actions.service";
+import { GlobalFeedItemType } from "src/actions/dto/action.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
@@ -718,6 +719,23 @@ describe("Forum (e2e)", () => {
       testPostId = createResponse.body.id;
     });
 
+    const createReply = async (
+      body: string,
+      parentId?: number,
+    ): Promise<number> => {
+      const response = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body, attachments: [] },
+          parentObjectId: testPostId,
+          parentId,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+      return response.body.id;
+    };
+
     it("should create a reply", async () => {
       const response = await request(ctx.app.getHttpServer())
         .post("/forum/comments")
@@ -817,6 +835,36 @@ describe("Forum (e2e)", () => {
         });
 
       expect(reply.body.deleted).toBe(true);
+    });
+
+    it("deletes only the deleted reply's notifications", async () => {
+      const replyId = await createReply("Reply with notifications");
+      const keptReplyId = await createReply("Reply that stays");
+      const notifyAbout = (commentId: number) =>
+        notifRepo.save(
+          notifRepo.create({
+            user: { id: ctx.adminUserId },
+            category: NotificationCategory.ForumReply,
+            message: "Someone replied",
+            webAppLocation: `/forum/post/${testPostId}`,
+            comment: { id: commentId },
+          }),
+        );
+      const deleted = await Promise.all([
+        notifyAbout(replyId),
+        notifyAbout(replyId),
+      ]);
+      const kept = await notifyAbout(keptReplyId);
+
+      await request(ctx.app.getHttpServer())
+        .delete(`/forum/comments/${replyId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const remaining = await notifRepo.findBy({
+        id: In([...deleted, kept].map((notif) => notif.id)),
+      });
+      expect(remaining.map((notif) => notif.id)).toEqual([kept.id]);
     });
 
     it("should say a missing reply is gone", async () => {
@@ -992,6 +1040,33 @@ describe("Forum (e2e)", () => {
       parentReply.children.forEach((child) => {
         expect(child.parentId).toBe(parentReplyId);
       });
+    });
+
+    it("nests grandchildren and orders each level pinned first, then oldest", async () => {
+      const rootId = await createReply("Thread root");
+      const olderChildId = await createReply("Older child", rootId);
+      const pinnedChildId = await createReply("Pinned child", rootId);
+      const youngerChildId = await createReply("Younger child", rootId);
+      const grandchildId = await createReply("Grandchild", olderChildId);
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/comments/${pinnedChildId}/pin`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const response = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${testPostId}/comments`)
+        .expect(200);
+
+      const root = response.body.find(({ id }) => id === rootId);
+      expect(root.children.map(({ id }) => id)).toEqual([
+        pinnedChildId,
+        olderChildId,
+        youngerChildId,
+      ]);
+      expect(root.children[1].children.map(({ id }) => id)).toEqual([
+        grandchildId,
+      ]);
+      expect(root.children[1].children[0].children).toEqual([]);
     });
 
     it("does not notify parent author when they reply to their own post", async () => {
@@ -2588,6 +2663,88 @@ describe("Forum (e2e)", () => {
       expect(activityCommentNotifs[0].webAppLocation).toBe(
         `/actions/${testAction.id}/activity/${activityId}?replyId=${commentId}`,
       );
+    });
+
+    it("groups a post's recent comments by commenter in the global feed", async () => {
+      const createPost = async (title: string): Promise<number> => {
+        const response = await request(ctx.app.getHttpServer())
+          .post("/forum/posts")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({
+            title,
+            editableContent: { body: "Body", attachments: [] },
+            visibleAt: new Date(),
+          } satisfies CreatePostDto)
+          .expect(201);
+        return response.body.id;
+      };
+      const commentAs = async (params: {
+        token: string;
+        postId: number;
+        body: string;
+      }): Promise<number> => {
+        const response = await request(ctx.app.getHttpServer())
+          .post("/forum/comments")
+          .set("Authorization", `Bearer ${params.token}`)
+          .send({
+            editableContent: { body: params.body, attachments: [] },
+            parentObjectId: params.postId,
+            parentObjectType: CommentParentObject.Post,
+          } satisfies CreateCommentDto)
+          .expect(201);
+        return response.body.id;
+      };
+      const sharedPostId = await createPost("Post With Two Commenters");
+      await commentAs({
+        token: ctx.accessToken,
+        postId: sharedPostId,
+        body: "First",
+      });
+      await commentAs({
+        token: ctx.accessToken,
+        postId: sharedPostId,
+        body: "Second",
+      });
+      await commentAs({
+        token: ctx.adminAccessToken,
+        postId: sharedPostId,
+        body: "Third",
+      });
+      const soloPostId = await createPost("Post With One Commenter");
+      await commentAs({
+        token: ctx.accessToken,
+        postId: soloPostId,
+        body: "Older",
+      });
+      const newestSoloCommentId = await commentAs({
+        token: ctx.accessToken,
+        postId: soloPostId,
+        body: "Newer",
+      });
+
+      const feed = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 50 })
+        .expect(200);
+
+      const forumCommentsFor = (postId: number) =>
+        feed.body.find(
+          ({ type, forumComments }) =>
+            type === GlobalFeedItemType.ForumComments &&
+            forumComments.postId === postId,
+        )?.forumComments;
+      const shared = forumCommentsFor(sharedPostId);
+      expect(shared).toBeDefined();
+      expect(shared.count).toBe(2);
+      expect(shared.users.map(({ id }) => id)).toEqual([
+        ctx.adminUserId,
+        ctx.testUserId,
+      ]);
+      expect(shared.commentId).toBeUndefined();
+      const solo = forumCommentsFor(soloPostId);
+      expect(solo).toBeDefined();
+      expect(solo.count).toBe(1);
+      expect(solo.commentId).toBe(newestSoloCommentId);
     });
   });
 

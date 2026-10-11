@@ -48,11 +48,10 @@ export class Comment {
 
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn()
-  @ApiProperty()
-  @Allow()
+  @ApiPropertyOptional()
+  @IsOptional()
   @Type(() => User)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  author: Relation<User>;
+  author?: Relation<User>;
 
   @Column()
   @ApiProperty()
@@ -105,17 +104,15 @@ export class Comment {
   parentId: number | null;
 
   @OneToMany(() => Comment, (comment) => comment.parent)
-  @ApiProperty({ type: () => Comment, required: false, isArray: true })
-  @Allow()
+  @ApiPropertyOptional({ type: () => Comment, isArray: true })
+  @IsOptional()
   @Type(() => Comment)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  children: Relation<Comment>[];
+  children?: Relation<Comment>[];
 
   @OneToMany(() => Notification, (notification) => notification.comment)
-  @Allow()
+  @IsOptional()
   @Type(() => Notification)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  notifications: Relation<Notification>[];
+  notifications?: Relation<Notification>[];
 
   @Column({ default: false })
   @ApiProperty()
@@ -145,4 +142,11 @@ export class Comment {
   @ApiProperty({ type: Number, nullable: true })
   @IsOptional()
   tagId: number | null;
+}
+
+export function loadedCommentAuthor(comment: Comment): Relation<User> {
+  if (!comment.author) {
+    throw new Error(`author of comment ${comment.id} not loaded`);
+  }
+  return comment.author;
 }
