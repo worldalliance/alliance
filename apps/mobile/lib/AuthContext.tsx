@@ -19,6 +19,7 @@ import { authMe, UserDto, type SessionTokensDto } from "../../../shared/client";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
 import { signInWithProvider } from "./oauth";
 import { thrownFailure, type OAuthFailure } from "./oauthResult";
+import { unregisterDevice } from "./registeredDevice";
 import {
   getAccessToken,
   getRefreshToken,
@@ -108,6 +109,7 @@ export const AuthProvider: React.FC<
   }, []);
 
   const clearSession = useCallback(() => {
+    void unregisterDevice();
     const closed = closeSession(clearTokensAndReport);
     queryClient.clear();
     setUser(undefined);

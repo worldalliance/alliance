@@ -126,6 +126,7 @@ export enum ExceptionEvent {
   LinkOpeningRefused = "link_opening_refused",
   LinkOpeningsUnreadable = "link_openings_unreadable",
   LinkOpeningExpired = "link_opening_expired",
+  UnregisterDeviceFailed = "unregister_device_failed",
 }
 
 export const SLACK_PROPERTY = "send_to_slack";
@@ -225,4 +226,5 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [ExceptionEvent.LinkOpeningRefused]: false,
   [ExceptionEvent.LinkOpeningsUnreadable]: false,
   [ExceptionEvent.LinkOpeningExpired]: false,
+  [ExceptionEvent.UnregisterDeviceFailed]: false,
 };

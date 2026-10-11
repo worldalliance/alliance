@@ -20,8 +20,8 @@ Origin: agent decisions. These choices implement [the requirements](REQUIREMENTS
 
 ## Accounts
 
-- Logout calls the new `POST user/unregisterDevice`, which deletes the caller's own device row. The device id is held in memory (`apps/mobile/lib/registeredDevice.ts`), so the request starts before the session drops the auth header, as `closeSession` already does for its logout request. If that request fails, the next sign-in reassigns the device by push token.
-- A session dropped because the server refused its refresh token can't authenticate an unregister request. The device stays linked until the next sign-in reassigns it. Every session clear zeroes the app-icon badge.
+- Every session clear, a logout or a session the server refused, calls the new public `POST user/unregisterDevice` with the device id and push token stored at registration (`apps/mobile/lib/deviceLink.ts`). The server deletes the row only when both match, so an expired access token doesn't block the unlink; the endpoint is rate-limited per IP, loosely enough for a shared network and a phone's retries. Registrations and unlinks run one at a time in order, each reading the device id and token the last one stored, so an unlink can't miss a registration in flight and a late unlink can't delete the row a new session linked. The unlink is recorded as pending the moment the session clears. Each request has a 30-second deadline so a stalled one can't hold back the queue; a registration that lands past it is stored as the link while its session is open and it awaits a retry; after its session closed, it is unlinked and the session open since relinked. A failed unlink stays pending and is reported unless the phone is offline or the request timed out: the app retries it on launch and on returning to the foreground until the server confirms it or a new sign-in registers the device. A failed registration is retried the same way, ahead of a pending unlink, and dropped once its session closes. A registration whose response never arrives leaves a row the unlink can't name (ALL-1579).
+- Every session clear zeroes the app-icon badge.
 
 ## Delivery
 
@@ -36,7 +36,7 @@ Done:
 
 - Policy matrix: `common/src/taskBadge.test.ts`.
 - `contractGap`, including admin-optional plus gap and onboarding: `server/src/actions/user-action-status.spec.ts`.
-- Server sync, against a real database: `server/test/task-badge.e2e-spec.ts`. Covers the quiet payload, sending once per change, the decrease after dismissal, a newer claim winning, retry after a rejected push, account reassignment, and unregister ownership.
+- Server sync, against a real database: `server/test/task-badge.e2e-spec.ts`. Covers the quiet payload, sending once per change, the decrease after dismissal, a newer claim winning, retry after a rejected push, account reassignment, and unregistering only with the device's push token.
 - Client counting, failed refetch, deadline expiry, and a stale in-flight fetch after a confirmed withdrawal: `shared/lib/useTaskBadgeCount.test.ts`.
 
 Remaining, physical devices only:

@@ -508,4 +508,20 @@ describe("Task badge sync (e2e)", () => {
     await taskBadgeService.syncUser(second.user.id);
     expect(sentTo(first.expoPushToken)).toHaveLength(2);
   });
+
+  it("unregisters a device only given its push token, without a session", async () => {
+    const { device, expoPushToken } = await createMemberWithDevice();
+
+    await request(ctx.app.getHttpServer())
+      .post("/user/unregisterDevice")
+      .send({ deviceId: device.id, expoPushToken: "ExponentPushToken[other]" })
+      .expect(201);
+    expect(await deviceRepo.findOneBy({ id: device.id })).not.toBeNull();
+
+    await request(ctx.app.getHttpServer())
+      .post("/user/unregisterDevice")
+      .send({ deviceId: device.id, expoPushToken })
+      .expect(201);
+    expect(await deviceRepo.findOneBy({ id: device.id })).toBeNull();
+  });
 });

@@ -26,6 +26,7 @@ import {
   ApiQuery,
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
+import { ThrottlerGuard } from "@nestjs/throttler";
 import { IsNotEmpty, IsString } from "class-validator";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import { CommunityLeaderGuard } from "src/auth/guards/communityleader.guard";
@@ -34,9 +35,11 @@ import { MaybeUserLocationDto } from "src/geo/city.dto";
 import { PosthogService } from "src/posthog/posthog.service";
 import { PushDto } from "src/push/dto/push.dto";
 import { PaginationQueryDto } from "src/utils/pagination.dto";
+import { OnlyThrottle } from "src/utils/throttle";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { Public } from "../auth/public.decorator";
 import { AwayRangeEditor } from "./away-range-history";
+import { DEVICE_UNLINK_THROTTLE } from "./device-unlink-throttle.config";
 import {
   CreateAwayRangeDto,
   UpdateAwayRangeDto,
@@ -45,6 +48,7 @@ import {
 import {
   RegisterDeviceDto,
   TestPushNotificationDto,
+  UnregisterDeviceDto,
   UserDeviceDto,
 } from "./dto/device.dto";
 import { FriendGraphEdgeDto } from "./dto/friend-graph.dto";
@@ -1057,6 +1061,17 @@ export class UserController {
   ): Promise<UserDeviceDto> {
     const id = await this.userService.registerDevice(req.user.sub, body);
     return new UserDeviceDto(id);
+  }
+
+  // Public so a device whose session already lapsed can still unlink;
+  // holding both the device id and its push token proves it's that device.
+  @Post("unregisterDevice")
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @OnlyThrottle(DEVICE_UNLINK_THROTTLE)
+  @ApiOkResponse()
+  async unregisterDevice(@Body() body: UnregisterDeviceDto): Promise<void> {
+    await this.userService.unregisterDevice(body);
   }
 
   @Post("sendPushNotification")

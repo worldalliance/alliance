@@ -33,6 +33,17 @@ export class RegisterDeviceDto {
   taskBadgePushes?: boolean;
 }
 
+export class UnregisterDeviceDto {
+  @ApiProperty()
+  @IsUUID()
+  deviceId: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  expoPushToken: string;
+}
+
 export class UserDeviceDto extends PickType(UserDevice, ["id"]) {
   constructor(id: string) {
     super();

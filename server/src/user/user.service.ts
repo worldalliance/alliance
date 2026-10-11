@@ -3373,6 +3373,16 @@ export class UserService {
     return savedDevice.id;
   }
 
+  async unregisterDevice(params: {
+    deviceId: string;
+    expoPushToken: string;
+  }): Promise<void> {
+    await softDeleteWhere(this.userDeviceRepository.manager, {
+      target: UserDevice,
+      where: { id: params.deviceId, expoPushToken: params.expoPushToken },
+    });
+  }
+
   async testPushNotification(userId: number, message: string): Promise<Push> {
     const user = await this.findOneOrFail(userId, { devices: true });
     const device = user.devices?.[0];
