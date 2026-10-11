@@ -111,6 +111,52 @@ it("counts only active members by default once another filter shows the count", 
   expect(screen.getByText("3 matching filters", { exact: false })).toBeTruthy();
 });
 
+it("names the users when they fail to load", async () => {
+  api.alsoServing({
+    "GET /user/list-graph": () => Response.json({}, { status: 500 }),
+  });
+  render(<InviteGraphPage />, queryWrapper());
+
+  expect(
+    await screen.findByText("Could not load users.", { exact: false }),
+  ).toBeTruthy();
+});
+
+it("names the used invites when they fail to load", async () => {
+  api.alsoServing({
+    "GET /user/onetimeInvites/graphEdges": () =>
+      Response.json({}, { status: 500 }),
+  });
+  render(<InviteGraphPage />, queryWrapper());
+
+  expect(
+    await screen.findByText("Could not load used invites.", { exact: false }),
+  ).toBeTruthy();
+});
+
+it("waits for a fresh user list before drawing cached users", async () => {
+  let release = () => {};
+  const usersGate = new Promise<void>((resolve) => (release = resolve));
+  api.alsoServing({
+    "GET /user/list-graph": async () => {
+      await usersGate;
+      return Response.json([user({ id: 1, name: "ada" })]);
+    },
+  });
+  const query = queryWrapper();
+  query.client.setQueryData(queryKeys.graphUsersAdmin(), [
+    user({ id: 2, name: "sam" }),
+  ]);
+
+  const view = render(<InviteGraphPage />, query);
+  await act(async () => {});
+  expect(screen.getByText("Loading graph...")).toBeTruthy();
+
+  release();
+  await waitFor(() => drawnNode(view.container, "ada"));
+  expect(() => drawnNode(view.container, "sam")).toThrow();
+});
+
 it("names the campaigns when they fail to load", async () => {
   api.alsoServing({
     "GET /campaigns": () => Response.json({}, { status: 500 }),
@@ -199,9 +245,14 @@ it.each([
     (on: boolean) => onlineManager.setOnline(on),
     () => onlineManager.setOnline(true),
   ],
-])("keeps its campaigns when %s", async (_event, toggle, reset) => {
+])("keeps its users and campaigns when %s", async (_event, toggle, reset) => {
+  let userLoads = 0;
   let campaignLoads = 0;
   api.alsoServing({
+    "GET /user/list-graph": () => {
+      userLoads += 1;
+      return withCampaignMember["GET /user/list-graph"]();
+    },
     "GET /campaigns": () => {
       campaignLoads += 1;
       return Response.json([]);
@@ -216,5 +267,6 @@ it.each([
   await act(async () => {});
   reset();
 
+  expect(userLoads).toBe(1);
   expect(campaignLoads).toBe(1);
 });
