@@ -4,61 +4,10 @@
 // free DOM/SVG code; React mounts it once via useEffect. All listeners attach
 // with an AbortSignal so effect cleanup (and StrictMode double-invoke) is safe;
 // every chart clears its container before drawing.
-import DATA from "./data.json";
+import { createChartContext } from "./charts/context";
+import { D, type Person } from "./charts/data";
+import { E, T, mkSvg } from "./charts/svg";
 
-type Attrs = Record<string, string | number>;
-type CI = { m: number; lo: number; hi: number; n: number };
-type Person = {
-  c: number;
-  g: string | null;
-  a: string | null;
-  pre: string | null;
-  post: string | null;
-};
-
-const D = DATA as unknown as {
-  movementBandsMean: Record<
-    "reduction" | "comparison",
-    { days: CI[]; base: CI; avg: CI }
-  >;
-  difficultyGap: { labels: string[]; counts: number[]; n: number };
-  difficulties: { rows: { label: string; before: number; after: number }[] };
-  predictorPeople: Person[];
-  plan: { n: number; segments: { label: string; count: number }[] };
-};
-
-const NS = "http://www.w3.org/2000/svg";
-
-function E<K extends keyof SVGElementTagNameMap>(
-  tag: K,
-  attrs: Attrs,
-  parent?: Element,
-): SVGElementTagNameMap[K] {
-  const n = document.createElementNS(NS, tag);
-  for (const k in attrs) n.setAttribute(k, String(attrs[k]));
-  if (parent) parent.appendChild(n);
-  return n;
-}
-function T(
-  parent: Element,
-  x: number,
-  y: number,
-  str: string,
-  attrs?: Attrs,
-): SVGTextElement {
-  const t = E("text", { x, y, ...(attrs ?? {}) }, parent);
-  t.textContent = str;
-  return t;
-}
-function mkSvg(container: HTMLElement, w: number, h: number): SVGSVGElement {
-  const s = E("svg", {
-    viewBox: `0 0 ${w} ${h}`,
-    "aria-hidden": "true",
-    focusable: "false",
-  });
-  container.appendChild(s);
-  return s;
-}
 const fmt = (n: number): string => {
   const r = Math.round(n * 10) / 10;
   return r % 1 === 0 ? String(r) : r.toFixed(1);
@@ -73,9 +22,8 @@ const REDT = "#3ECF9F";
 const COMPT = "#9FB0C1"; // tooltip-legible tints of the two arms
 
 export function initCharts(signal: AbortSignal): void {
-  const $ = (id: string) => document.getElementById(id) as HTMLElement;
-  const tip = $("ir-tip");
-  const live = $("ir-live");
+  const { $, live, showTip, hideTip, vbPoint, wireRadios } =
+    createChartContext(signal);
   [
     "chart-hero",
     "chart-gap",
@@ -83,52 +31,6 @@ export function initCharts(signal: AbortSignal): void {
     "chart-dumbbell",
     "chart-plan",
   ].forEach((id) => $(id).replaceChildren());
-
-  function showTip(html: string, cx: number, cy: number) {
-    tip.innerHTML = html;
-    tip.style.display = "block";
-    const r = tip.getBoundingClientRect();
-    let x = cx + 14;
-    let y = cy + 16;
-    if (x + r.width > innerWidth - 8) x = cx - r.width - 12;
-    if (y + r.height > innerHeight - 8) y = cy - r.height - 14;
-    tip.style.left = `${x}px`;
-    tip.style.top = `${y}px`;
-  }
-  function hideTip() {
-    tip.style.display = "none";
-  }
-  function vbPoint(svg: SVGSVGElement, ev: PointerEvent, w: number) {
-    const r = svg.getBoundingClientRect();
-    return {
-      x: ((ev.clientX - r.left) * w) / r.width,
-      y: ((ev.clientY - r.top) * w) / r.width,
-    };
-  }
-  function wireRadios(
-    containerId: string,
-    onPick: (b: HTMLButtonElement) => void,
-  ) {
-    const btns = Array.from(
-      document.querySelectorAll<HTMLButtonElement>(
-        `#${containerId} button.chip`,
-      ),
-    );
-    btns.forEach((b) =>
-      b.addEventListener(
-        "click",
-        () => {
-          btns.forEach((o) => {
-            const on = String(o === b);
-            o.setAttribute("aria-pressed", on);
-            o.setAttribute("aria-checked", on);
-          });
-          onPick(b);
-        },
-        { signal },
-      ),
-    );
-  }
 
   /* ================= 1 · HERO: means, day by day ================= */
   (function hero() {
