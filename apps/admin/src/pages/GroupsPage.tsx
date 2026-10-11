@@ -212,7 +212,7 @@ const GroupsPage: React.FC = () => {
               Description
             </label>
             <textarea
-              id="community-description"
+              id="group-description"
               className="border border-zinc-300 rounded px-3 py-2 text-sm min-h-[80px]"
               value={newCommunity.description}
               maxLength={COMMUNITY_DESCRIPTION_MAX_LENGTH}

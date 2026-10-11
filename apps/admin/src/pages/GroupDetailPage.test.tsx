@@ -199,7 +199,7 @@ it("shows the saved details", async () => {
 
 it("saves the details with the description cleared", async () => {
   renderPage();
-  fireEvent.change(await screen.findByDisplayValue("A group"), {
+  fireEvent.change(await screen.findByLabelText("Description"), {
     target: { value: "" },
   });
   fireEvent.change(screen.getByDisplayValue("North"), {
@@ -249,7 +249,7 @@ it("says the id is not a number without waiting for the groups", async () => {
 
 it("keeps unsaved details when the group refetches with changes", async () => {
   const client = renderPage();
-  const description = await screen.findByDisplayValue("A group");
+  const description = await screen.findByLabelText("Description");
   fireEvent.change(description, { target: { value: "Unsaved edit" } });
 
   listed = { ...north, description: "Newer details", users: [sam, ada] };

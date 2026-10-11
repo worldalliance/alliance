@@ -53,7 +53,7 @@ const fillAndCreate = () => {
   fireEvent.change(screen.getByLabelText("Name"), {
     target: { value: "South" },
   });
-  fireEvent.change(screen.getByPlaceholderText("What is this group for?"), {
+  fireEvent.change(screen.getByLabelText("Description"), {
     target: { value: "A group" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Create group" }));
