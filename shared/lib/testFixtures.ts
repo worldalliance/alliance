@@ -30,6 +30,7 @@ export function makeViewer(
     assigned: true,
     optional: false,
     optionalReason: null,
+    contractGap: overrides.optionalReason === "contract_gap",
     canComplete: true,
     relation: "none",
     dismissed: false,

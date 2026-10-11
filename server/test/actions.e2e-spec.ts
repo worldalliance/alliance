@@ -1656,9 +1656,11 @@ describe("Actions (e2e)", () => {
       expect(lateAction!.shouldParticipate).toBe(true);
       expect(lateAction!.viewer?.optional).toBe(true);
       expect(lateAction!.viewer?.optionalReason).toBe("contract_gap");
+      expect(lateAction!.viewer?.contractGap).toBe(true);
       expect(eligibleAction).toBeDefined();
       expect(eligibleAction!.shouldParticipate).toBe(true);
       expect(eligibleAction!.viewer?.optional).toBe(false);
+      expect(eligibleAction!.viewer?.contractGap).toBe(false);
 
       await actionRepo.delete(action.id);
       await userRepo.delete(unsignedUser.id);

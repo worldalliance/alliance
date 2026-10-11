@@ -297,6 +297,9 @@ export class UserActionStatusDto {
   optionalReason: ViewerOptionalReason | null;
 
   @ApiProperty()
+  contractGap: boolean;
+
+  @ApiProperty()
   canComplete: boolean;
 
   @ApiProperty({
@@ -336,6 +339,7 @@ export class UserActionStatusDto {
     this.assigned = input.assigned;
     this.optional = input.optional;
     this.optionalReason = input.optionalReason;
+    this.contractGap = input.contractGap;
     this.canComplete = input.canComplete;
     this.relation = input.relation;
     this.withdrawal = input.withdrawal
