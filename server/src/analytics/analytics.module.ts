@@ -10,10 +10,15 @@ import { ContractEvent } from "src/user/entities/contract-event.entity";
 import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
+import { ActionStatsAnalyticsService } from "./action-stats-analytics.service";
 import { ActionStatsRecord } from "./actionstats.entity";
 import { AnalyticsController } from "./analytics.controller";
 import { AnalyticsService } from "./analytics.service";
+import { ContractAnalyticsService } from "./contract-analytics.service";
 import { DailyStatsRecord } from "./dailystats.entity";
+import { MemberRetentionAnalyticsService } from "./member-retention-analytics.service";
+import { PlatformTenureAnalyticsService } from "./platform-tenure-analytics.service";
+import { PosthogTimeSpentService } from "./posthog-time-spent.service";
 
 @Module({
   imports: [
@@ -33,6 +38,13 @@ import { DailyStatsRecord } from "./dailystats.entity";
     ]),
   ],
   controllers: [AnalyticsController],
-  providers: [AnalyticsService],
+  providers: [
+    AnalyticsService,
+    PosthogTimeSpentService,
+    ActionStatsAnalyticsService,
+    PlatformTenureAnalyticsService,
+    ContractAnalyticsService,
+    MemberRetentionAnalyticsService,
+  ],
 })
 export class AnalyticsModule {}

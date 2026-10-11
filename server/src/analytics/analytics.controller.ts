@@ -11,29 +11,41 @@ import {
 import { ApiOkResponse, ApiQuery } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import { ActionCompletionCurveDto } from "./action-completion-curve.dto";
+import { ActionStatsAnalyticsService } from "./action-stats-analytics.service";
 import { ActionStatsWithOnboardingDto } from "./actionstats-with-onboarding.dto";
 import { AggregateStatsDto } from "./aggregatestats.dto";
 import { AnalyticsService } from "./analytics.service";
+import { ContractAnalyticsService } from "./contract-analytics.service";
 import { ContractStatusPointDto } from "./contract-status-history.dto";
 import { DailyStatsDto } from "./dailystats.dto";
 import { InviteFunnelDto } from "./invite-funnel.dto";
 import { MemberCompletionRetentionCohortDto } from "./member-completion-retention.dto";
 import { MemberReliabilityWindowDto } from "./member-reliability-window.dto";
+import { MemberRetentionAnalyticsService } from "./member-retention-analytics.service";
 import { MissedActionsDto } from "./missed-actions.dto";
+import { PlatformTenureAnalyticsService } from "./platform-tenure-analytics.service";
 import { PlatformTenureCohortStatsDto } from "./platform-tenure-cohort.dto";
+import { PosthogTimeSpentService } from "./posthog-time-spent.service";
 import { ReminderGroupClickRatePointDto } from "./reminder-group-click-rates.dto";
 import { TimeToChurnSampleDto } from "./time-to-churn.dto";
 import { TimeSpentForUserDto } from "./timespent.dto";
 
 @Controller("analytics")
 export class AnalyticsController {
-  constructor(private readonly analyticsService: AnalyticsService) {}
+  constructor(
+    private readonly analyticsService: AnalyticsService,
+    private readonly actionStatsAnalyticsService: ActionStatsAnalyticsService,
+    private readonly contractAnalyticsService: ContractAnalyticsService,
+    private readonly memberRetentionAnalyticsService: MemberRetentionAnalyticsService,
+    private readonly platformTenureAnalyticsService: PlatformTenureAnalyticsService,
+    private readonly posthogTimeSpentService: PosthogTimeSpentService,
+  ) {}
 
   @Get("time-spent-per-user")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [TimeSpentForUserDto] })
   async getTimeSpentPerUserAdmin(): Promise<TimeSpentForUserDto[]> {
-    const entries = await this.analyticsService.getTimeSpentPerUser();
+    const entries = await this.posthogTimeSpentService.getTimeSpentPerUser();
     return entries.map((entry) => new TimeSpentForUserDto(entry));
   }
 
@@ -41,7 +53,8 @@ export class AnalyticsController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [TimeSpentForUserDto] })
   async getTimeSpentPerUserTotalAdmin(): Promise<TimeSpentForUserDto[]> {
-    const entries = await this.analyticsService.getTimeSpentPerUserTotal();
+    const entries =
+      await this.posthogTimeSpentService.getTimeSpentPerUserTotal();
     return entries.map((entry) => new TimeSpentForUserDto(entry));
   }
 
@@ -63,7 +76,7 @@ export class AnalyticsController {
   @Get("action-stats")
   @ApiOkResponse({ type: [ActionStatsWithOnboardingDto] })
   async getActionStatsAdmin(): Promise<ActionStatsWithOnboardingDto[]> {
-    const stats = await this.analyticsService.getActionStats();
+    const stats = await this.actionStatsAnalyticsService.getActionStats();
     return stats.map((stat) => new ActionStatsWithOnboardingDto(stat));
   }
 
@@ -83,7 +96,7 @@ export class AnalyticsController {
   async getActionStatsByIdAdmin(
     @Param("actionId") actionId: string,
   ): Promise<ActionStatsWithOnboardingDto> {
-    const stats = await this.analyticsService.getActionStatsById(
+    const stats = await this.actionStatsAnalyticsService.getActionStatsById(
       Number(actionId),
     );
     if (!stats) {
@@ -96,8 +109,8 @@ export class AnalyticsController {
   @Post("action-stats/recalculate")
   @ApiOkResponse({ type: [ActionStatsWithOnboardingDto] })
   async recalculateActionStatsAdmin(): Promise<ActionStatsWithOnboardingDto[]> {
-    await this.analyticsService.calculateActionStats();
-    const stats = await this.analyticsService.getActionStats();
+    await this.actionStatsAnalyticsService.calculateActionStats();
+    const stats = await this.actionStatsAnalyticsService.getActionStats();
     return stats.map((stat) => new ActionStatsWithOnboardingDto(stat));
   }
 
@@ -108,7 +121,7 @@ export class AnalyticsController {
     MemberCompletionRetentionCohortDto[]
   > {
     const cohorts =
-      await this.analyticsService.getMemberCompletionRetentionByCohort();
+      await this.memberRetentionAnalyticsService.getMemberCompletionRetentionByCohort();
     return cohorts.map(
       (cohort) => new MemberCompletionRetentionCohortDto(cohort),
     );
@@ -132,7 +145,9 @@ export class AnalyticsController {
       );
     }
     const stats =
-      await this.analyticsService.getMemberReliabilityWindow(parsedWeeks);
+      await this.memberRetentionAnalyticsService.getMemberReliabilityWindow(
+        parsedWeeks,
+      );
     return new MemberReliabilityWindowDto(stats);
   }
 
@@ -160,7 +175,9 @@ export class AnalyticsController {
       throw new BadRequestException("weeksOnPlatform must be a whole number");
     }
     const stats =
-      await this.analyticsService.getPlatformTenureCohortStats(parsedWeeks);
+      await this.platformTenureAnalyticsService.getPlatformTenureCohortStats(
+        parsedWeeks,
+      );
     return new PlatformTenureCohortStatsDto(stats);
   }
 
@@ -175,10 +192,11 @@ export class AnalyticsController {
   ): Promise<ActionCompletionCurveDto[]> {
     const parsedActionId = actionId ? Number(actionId) : undefined;
     const parsedGranularity = granularity === "hourly" ? "hourly" : "daily";
-    const curves = await this.analyticsService.getActionCompletionCurves(
-      parsedActionId,
-      parsedGranularity,
-    );
+    const curves =
+      await this.actionStatsAnalyticsService.getActionCompletionCurves(
+        parsedActionId,
+        parsedGranularity,
+      );
     return curves.map((curve) => new ActionCompletionCurveDto(curve));
   }
 
@@ -186,7 +204,7 @@ export class AnalyticsController {
   @Get("time-to-churn")
   @ApiOkResponse({ type: [TimeToChurnSampleDto] })
   async getTimeToChurnSamplesAdmin(): Promise<TimeToChurnSampleDto[]> {
-    const samples = await this.analyticsService.getTimeToChurnSamples();
+    const samples = await this.contractAnalyticsService.getTimeToChurnSamples();
     return samples.map((sample) => new TimeToChurnSampleDto(sample));
   }
 
@@ -194,7 +212,7 @@ export class AnalyticsController {
   @Get("aggregate-stats")
   @ApiOkResponse({ type: AggregateStatsDto })
   async getAggregateStatsAdmin(): Promise<AggregateStatsDto> {
-    const stats = await this.analyticsService.getAggregateStats();
+    const stats = await this.contractAnalyticsService.getAggregateStats();
     return new AggregateStatsDto(stats);
   }
 
@@ -221,7 +239,7 @@ export class AnalyticsController {
     @Query("startDate") startDate: string,
     @Query("endDate") endDate: string,
   ): Promise<ContractStatusPointDto[]> {
-    const points = await this.analyticsService.getContractStatusHistory(
+    const points = await this.contractAnalyticsService.getContractStatusHistory(
       startDate,
       endDate,
     );
