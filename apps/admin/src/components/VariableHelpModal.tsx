@@ -4,7 +4,7 @@ import {
   MATH_OBJECT_NAME,
   NUMBER_METHOD_NAMES,
   STRING_METHOD_NAMES,
-} from "@alliance/common/forms/variable-expression";
+} from "@alliance/common/forms/formula-allowlist";
 import {
   FIELD_KIND_VARIABLE_INPUT_MODE,
   VARIABLE_INPUT_TYPE,

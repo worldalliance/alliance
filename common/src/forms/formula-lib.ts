@@ -2,7 +2,7 @@
 // formula. Keep these signatures synchronized with the evaluator allowlists;
 // `formula-lib.test.ts` checks method names in both directions.
 
-import { MATH_FUNCTION_NAMES, MATH_OBJECT_NAME } from "./variable-expression";
+import { MATH_FUNCTION_NAMES, MATH_OBJECT_NAME } from "./formula-allowlist";
 
 // `noLib` still requires these intrinsic declarations to type-check a formula.
 const INTRINSICS = `

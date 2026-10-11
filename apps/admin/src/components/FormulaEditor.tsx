@@ -1,11 +1,9 @@
 import type { AnyField, FormValue } from "@alliance/common/forms/form-schema";
 import { evaluateOptionsExpression } from "@alliance/common/forms/formula-options";
 import { evaluateVariableText } from "@alliance/common/forms/variable-evaluation";
-import {
-  compileVariableExpression,
-  type ExprNode,
-  type ExprValue,
-} from "@alliance/common/forms/variable-expression";
+import type { ExprValue } from "@alliance/common/forms/variable-expression";
+import type { ExprNode } from "@alliance/common/forms/variable-expression-ast";
+import { compileVariableExpression } from "@alliance/common/forms/variable-expression-compile";
 import {
   checkOptionsFormulaType,
   checkVariableFormulaType,

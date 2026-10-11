@@ -24,9 +24,9 @@ import {
   evaluateVariableExpression,
   isExprArray,
   isExprRecord,
-  type ExprNode,
   type ExprValue,
 } from "./variable-expression";
+import type { ExprNode } from "./variable-expression-ast";
 import {
   variableHistoryFormIds,
   variableSourceFormIds,

@@ -2,7 +2,7 @@ import type {
   ArrayMethodName,
   NumberMethodName,
   StringMethodName,
-} from "./variable-expression";
+} from "./formula-allowlist";
 
 // Each node costs a step, each method call what it reads of its receiver plus
 // the length of its result, and each text `+` builds, list turned into text, or
