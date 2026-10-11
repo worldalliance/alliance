@@ -1376,8 +1376,7 @@ describe("Forum (e2e)", () => {
       expect(actionComments.body.length).toBeGreaterThan(0);
     });
 
-    it("leaves a post sharing a commented action's id unbumped", async () => {
-      const postRepo = ctx.dataSource.getRepository(Post);
+    const createActionAndPostSharingId = async () => {
       await ctx.dataSource.query(
         `SELECT setval(pg_get_serial_sequence('post', 'id'), next), setval(pg_get_serial_sequence('action', 'id'), next)
          FROM (SELECT GREATEST((SELECT MAX(id) FROM post), (SELECT MAX(id) FROM action)) AS next) ids`,
@@ -1395,12 +1394,18 @@ describe("Forum (e2e)", () => {
         date: new Date(Date.now() - milliseconds({ hours: 1 })),
         action,
       });
-      const post = await postRepo.save({
+      const post = await ctx.dataSource.getRepository(Post).save({
         title: "Shared Id Post",
         authorId: ctx.testUserId,
         editableContent: { body: "Body", attachments: [] },
       });
       expect(post.id).toBe(action.id);
+      return { action, post };
+    };
+
+    it("leaves a post sharing a commented action's id unbumped", async () => {
+      const postRepo = ctx.dataSource.getRepository(Post);
+      const { action, post } = await createActionAndPostSharingId();
 
       await request(ctx.app.getHttpServer())
         .post("/forum/comments")
@@ -1415,6 +1420,30 @@ describe("Forum (e2e)", () => {
       expect(
         (await postRepo.findOneByOrFail({ id: post.id })).updatedAt,
       ).toEqual(post.updatedAt);
+    });
+
+    it("refuses a post reply whose parent comment is on an action sharing the post's id", async () => {
+      const { action, post } = await createActionAndPostSharingId();
+      const actionComment = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "On the action", attachments: [] },
+          parentObjectId: action.id,
+          parentObjectType: CommentParentObject.Action,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "On the post", attachments: [] },
+          parentObjectId: post.id,
+          parentId: actionComment.body.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(404);
     });
 
     it("supports liking and unliking posts and comments", async () => {
