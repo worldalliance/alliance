@@ -7,7 +7,6 @@ import {
 import { errorMessage } from "@alliance/common/errorMessage";
 import { changedPhoto } from "@alliance/common/image-src";
 import {
-  actionsCommunityCompletedActionsCount,
   communityDelete,
   communityUpdate,
   conversationGetCommunityConversations,
@@ -19,11 +18,11 @@ import {
 import { getMemberCount, isLedBy } from "@alliance/shared/lib/communityUtils";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import { Features } from "@alliance/shared/lib/features";
+import { useCommunityCompletedActionsCount } from "@alliance/shared/lib/useCommunityCompletedActionsCount";
 import { useCommunityMemberContactInfo } from "@alliance/shared/lib/useCommunityMemberContactInfo";
 import { useCommunityMemberInfo } from "@alliance/shared/lib/useCommunityMemberInfo";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
-import { useOnNextDeadline } from "@alliance/shared/lib/useOnNextDeadline";
 import { cn } from "@alliance/shared/styles/util";
 import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
@@ -36,7 +35,6 @@ import CharacterLimitNotice from "@alliance/sharedweb/ui/CharacterLimitNotice";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
 import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
 import { MessageSquare } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -169,28 +167,11 @@ const CommunityPage = () => {
     amLeader: amLeader ?? false,
   });
 
-  const { data: communityCompletedActionsCount = 0 } = useQuery({
-    queryKey: ["communityCompletedActionsCount", community?.id ?? null],
-    queryFn: () =>
-      community
-        ? actionsCommunityCompletedActionsCount({
-            query: { communityId: community.id },
-          }).then((resp) => resp.data?.completedCount ?? 0)
-        : 0,
-    enabled: !!community,
-  });
-
-  const queryClient = useQueryClient();
-
-  useOnNextDeadline(
-    communityMemberInfo?.actions,
-    useCallback(() => {
-      if (community?.id == null) return;
-      void queryClient.invalidateQueries({
-        queryKey: ["communityCompletedActionsCount", community.id],
-      });
-    }, [queryClient, community?.id]),
-  );
+  const { data: communityCompletedActionsCount = 0 } =
+    useCommunityCompletedActionsCount({
+      communityId: community?.id,
+      actions: communityMemberInfo?.actions,
+    });
 
   const userActionRelations = useMemo(
     () =>
