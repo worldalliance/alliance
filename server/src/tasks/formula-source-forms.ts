@@ -3,7 +3,7 @@ import { formulaSourceFormIds } from "@alliance/common/forms/formula-options";
 import { storedQuestionFields } from "@alliance/common/forms/stored-schema";
 import { type SourceFormFields } from "@alliance/common/forms/variable-scope";
 import { In, type Repository } from "typeorm";
-import type { Form } from "./entities/form.entity";
+import { type Form, loadedFormSnapshot } from "./entities/form.entity";
 import { formSchemaOf } from "./form-snapshot-schema";
 
 /**
@@ -23,7 +23,9 @@ export async function loadFormulaSourceForms(params: {
   });
   return new Map(
     forms.flatMap((form) => {
-      const fields = storedQuestionFields(formSchemaOf(form.formSnapshot));
+      const fields = storedQuestionFields(
+        formSchemaOf(loadedFormSnapshot(form)),
+      );
       return fields.ok ? [[form.id, fields.value] as const] : [];
     }),
   );

@@ -7,7 +7,7 @@ import {
 } from "@alliance/common/forms/variable-aggregates";
 import { groupBy } from "es-toolkit";
 import { In, type EntityManager } from "typeorm";
-import { Form } from "./entities/form.entity";
+import { Form, loadedFormSnapshot } from "./entities/form.entity";
 import { formSchemaOf } from "./form-snapshot-schema";
 
 export type VariableAggregate = VariableAggregateSource & {
@@ -73,7 +73,7 @@ export async function countVariableAggregates(params: {
   });
   const optionsByKey = new Map<string, string[]>();
   for (const form of forms) {
-    const fields = storedQuestionFields(formSchemaOf(form.formSnapshot));
+    const fields = storedQuestionFields(formSchemaOf(loadedFormSnapshot(form)));
     if (!fields.ok) continue;
     for (const field of fields.value) {
       if (field.kind === "multiselect") {

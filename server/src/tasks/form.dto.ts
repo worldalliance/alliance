@@ -34,7 +34,7 @@ import { Action } from "src/actions/entities/action.entity";
 import { AiDetectionResultDto } from "src/ai-detection/dto/ai-detection-result.dto";
 import { AiDetectionResult } from "src/ai-detection/entities/ai-detection-result.entity";
 import { UserDto } from "src/user/dto/user.dto";
-import { Form } from "./entities/form.entity";
+import { Form, loadedFormSnapshot } from "./entities/form.entity";
 import {
   FormResponse,
   loadedFormResponseSnapshot,
@@ -159,7 +159,7 @@ export class FormDto extends PickType(Form, ["id", "title", "formSnapshotId"]) {
     this.id = form.id;
     this.title = form.title;
     this.formSnapshotId = form.formSnapshotId;
-    this.schema = form.formSnapshot.schema;
+    this.schema = loadedFormSnapshot(form).schema;
   }
 }
 
@@ -470,7 +470,7 @@ export class FormSnapshotMigrationDto {
 
   constructor(input: FormSnapshotMigration) {
     this.formTitle = input.form.title;
-    this.latestSnapshot = new FormSnapshotDto(input.form.formSnapshot);
+    this.latestSnapshot = new FormSnapshotDto(loadedFormSnapshot(input.form));
     this.groups = input.groups.map((g) => new SnapshotResponseGroupDto(g));
   }
 }

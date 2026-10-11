@@ -31,6 +31,7 @@ import type { Push } from "src/push/push.entity";
 import type { RecentSearch } from "src/search/recentsearch.entity";
 import type { ExternalShareTarget } from "src/share-urls/entities/external-share-target.entity";
 import type { CustomValidator } from "src/tasks/entities/customvalidator.entity";
+import type { Form } from "src/tasks/entities/form.entity";
 import type { FormResponse } from "src/tasks/entities/formresponse.entity";
 import type { FormSnapshot } from "src/tasks/entities/formsnapshot.entity";
 import type { AmbassadorInviteGoal } from "src/user/entities/ambassador-invite-goal.entity";
@@ -84,6 +85,7 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<EventLog>>
   | Assert<EntityShape<ExternalShareTarget>>
   | Assert<EntityShape<FollowUpForm>>
+  | Assert<EntityShape<Form>>
   | Assert<EntityShape<FormResponse>>
   | Assert<EntityShape<FormSnapshot>>
   | Assert<EntityShape<Friend>>
