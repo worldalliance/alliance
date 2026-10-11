@@ -10,6 +10,12 @@ import {
   scaleTime,
 } from "d3";
 import React, { useCallback, useMemo, useRef, useState } from "react";
+import {
+  CHART_MARGIN,
+  CHART_WIDTH,
+  YGrid,
+  dedupeTickLabels,
+} from "./time-series-chart/chartAxes";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -129,8 +135,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
     const { data, series } = props;
     if (data.length === 0) return null;
 
-    const width = 1000;
-    const margin = { top: 28, right: 32, bottom: 64, left: 72 };
+    const width = CHART_WIDTH;
+    const margin = CHART_MARGIN;
 
     const dateExtent = extent(data, (d) => d.date);
     if (!dateExtent[0] || !dateExtent[1]) return null;
@@ -175,18 +181,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
 
     const xTicks = xScale.ticks(Math.min(8, data.length));
     const rawYTicks = yScale.ticks(6);
-    const dedupeLabels = new Set<string>();
     const yTicks = props.yTickLabelDedup
-      ? rawYTicks.filter((tick) => {
-          const label = yAxisFormat ? yAxisFormat(tick) : String(tick);
-          const key = label ?? String(tick);
-          if (!key) return true;
-          if (!dedupeLabels.has(key)) {
-            dedupeLabels.add(key);
-            return true;
-          }
-          return false;
-        })
+      ? dedupeTickLabels(rawYTicks, yAxisFormat)
       : rawYTicks;
 
     const bisectDate = bisector<DataPoint, Date>((d) => d.date!).center;
@@ -214,8 +210,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
     const allData = multiLineData.flatMap((s) => s.data);
     if (allData.length === 0) return null;
 
-    const width = 1000;
-    const margin = { top: 28, right: 32, bottom: 64, left: 72 };
+    const width = CHART_WIDTH;
+    const margin = CHART_MARGIN;
 
     const xExtent = xRange
       ? [xRange.min, xRange.max]
@@ -246,18 +242,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
 
     const xTicks = xScale.ticks(Math.min(8, xExtent[1] - xExtent[0] + 1));
     const rawYTicks = yScale.ticks(6);
-    const dedupeLabels = new Set<string>();
     const yTicks = props.yTickLabelDedup
-      ? rawYTicks.filter((tick) => {
-          const label = yAxisFormat ? yAxisFormat(tick) : String(tick);
-          const key = label ?? String(tick);
-          if (!key) return true;
-          if (!dedupeLabels.has(key)) {
-            dedupeLabels.add(key);
-            return true;
-          }
-          return false;
-        })
+      ? dedupeTickLabels(rawYTicks, yAxisFormat)
       : rawYTicks;
 
     return {
@@ -454,27 +440,13 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
           >
             {/* Grid lines */}
             <g>
-              {dateGeometry.yTicks.map((tick) => (
-                <g key={`y-${tick}`}>
-                  <line
-                    x1={dateGeometry.margin.left}
-                    x2={dateGeometry.width - dateGeometry.margin.right}
-                    y1={dateGeometry.yScale(tick)}
-                    y2={dateGeometry.yScale(tick)}
-                    stroke="#e5e7eb"
-                    strokeDasharray="4 6"
-                  />
-                  <text
-                    x={dateGeometry.margin.left - 12}
-                    y={dateGeometry.yScale(tick)}
-                    textAnchor="end"
-                    dominantBaseline="middle"
-                    className="fill-gray-500 text-xs"
-                  >
-                    {yAxisFormat ? yAxisFormat(tick) : tick}
-                  </text>
-                </g>
-              ))}
+              <YGrid
+                ticks={dateGeometry.yTicks}
+                yScale={dateGeometry.yScale}
+                yAxisFormat={yAxisFormat}
+                width={dateGeometry.width}
+                margin={dateGeometry.margin}
+              />
               {dateGeometry.xTicks.map((tick) => (
                 <g key={`x-${tick.toISOString()}`}>
                   <line
@@ -618,27 +590,13 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
           >
             {/* Grid lines */}
             <g>
-              {numericGeometry.yTicks.map((tick) => (
-                <g key={`y-${tick}`}>
-                  <line
-                    x1={numericGeometry.margin.left}
-                    x2={numericGeometry.width - numericGeometry.margin.right}
-                    y1={numericGeometry.yScale(tick)}
-                    y2={numericGeometry.yScale(tick)}
-                    stroke="#e5e7eb"
-                    strokeDasharray="4 6"
-                  />
-                  <text
-                    x={numericGeometry.margin.left - 12}
-                    y={numericGeometry.yScale(tick)}
-                    textAnchor="end"
-                    dominantBaseline="middle"
-                    className="fill-gray-500 text-xs"
-                  >
-                    {yAxisFormat ? yAxisFormat(tick) : tick}
-                  </text>
-                </g>
-              ))}
+              <YGrid
+                ticks={numericGeometry.yTicks}
+                yScale={numericGeometry.yScale}
+                yAxisFormat={yAxisFormat}
+                width={numericGeometry.width}
+                margin={numericGeometry.margin}
+              />
               {numericGeometry.xTicks.map((tick) => (
                 <g key={`x-${tick}`}>
                   <line
