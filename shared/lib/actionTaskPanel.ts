@@ -7,6 +7,7 @@ import {
   tasksOptout,
 } from "../client";
 import type { SubmitResult } from "../forms/formulaChoices";
+import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
 export interface ActionTaskPanelPropsShared {
   action: ActionDto;
@@ -38,11 +39,11 @@ export const useTaskFormHandlers = ({
   action,
   onCompleteAction,
   onOptOutAction,
-}: Pick<
-  ActionTaskPanelPropsShared,
-  "action" | "onCompleteAction" | "onOptOutAction"
->) => {
+}: Pick<ActionTaskPanelPropsShared, "onCompleteAction" | "onOptOutAction"> & {
+  action: Pick<ActionDto, "id" | "taskFormId">;
+}) => {
   const [actionError, setActionError] = useState<string | null>(null);
+  const invalidateVisibilityContext = useInvalidateVisibilityContext();
 
   const handleComplete = useCallback(() => {
     setActionError(null);
@@ -67,9 +68,10 @@ export const useTaskFormHandlers = ({
         return;
       }
       setActionError(null);
+      invalidateVisibilityContext();
       onOptOutAction();
     },
-    [action, onOptOutAction],
+    [action, onOptOutAction, invalidateVisibilityContext],
   );
 
   return {

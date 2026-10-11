@@ -113,9 +113,9 @@ export function useVisibilityContext(
 /**
  * Drops the cached visibility context so the next form re-reads it.
  *
- * Call after anything that moves an account-derived value: completing an
- * action bumps `completedActionCount`, and signing a contract sets
- * `firstContractSignedAt`.
+ * Call after anything that moves an account-derived value: completing or
+ * withdrawing from an action moves `completedActionCount`, and signing a
+ * contract sets `firstContractSignedAt`.
  *
  * No-op for guests: the query is disabled without a logged-in user.
  */
