@@ -1,7 +1,10 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
-import { useResponseSnapshotMigrationAdmin } from "./useResponseSnapshotMigrationAdmin";
+import {
+  useResponseSnapshotMigrationAdmin,
+  useResponseSnapshotMigrationsAdmin,
+} from "./useResponseSnapshotMigrationAdmin";
 
 afterEach(cleanup);
 
@@ -15,13 +18,16 @@ const snapshot = (id: number) => ({
 let requested: string[] = [];
 let migrated: { formId: string; body: unknown }[] = [];
 let loadStatus = 200;
+let failingFormId: string | null = null;
 let migrateStatus = 200;
 
 serveApi(
   routes({
     "GET /tasks/forms/:formId/snapshotMigration": ({ params }) => {
       requested.push(params.formId);
-      if (loadStatus !== 200) return Response.json({}, { status: loadStatus });
+      if (loadStatus !== 200 || params.formId === failingFormId) {
+        return Response.json({}, { status: 500 });
+      }
       return Response.json({
         formTitle: "Survey",
         latestSnapshot: snapshot(9),
@@ -45,6 +51,7 @@ beforeEach(() => {
   requested = [];
   migrated = [];
   loadStatus = 200;
+  failingFormId = null;
   migrateStatus = 200;
 });
 
@@ -118,4 +125,32 @@ it("reports a refused reassignment and reloads the groups", async () => {
 
   await waitFor(() => expect(result.current.migrate.isError).toBe(true));
   expect(requested).toEqual(["5", "5"]);
+});
+
+it("loads every form's snapshot groups once enabled", async () => {
+  const { result, rerender } = renderHook(
+    ({ enabled }) => useResponseSnapshotMigrationsAdmin([5, 6], { enabled }),
+    { ...queryWrapper(), initialProps: { enabled: false } },
+  );
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(requested).toEqual([]);
+
+  rerender({ enabled: true });
+
+  await waitFor(() => expect(result.current.migrations).toHaveLength(2));
+  expect([...requested].sort()).toEqual(["5", "6"]);
+  expect(result.current.isPending).toBe(false);
+  expect(result.current.isError).toBe(false);
+});
+
+it("reports a failed load among several forms, keeping the forms that loaded", async () => {
+  failingFormId = "6";
+  const { result } = renderHook(
+    () => useResponseSnapshotMigrationsAdmin([5, 6], { enabled: true }),
+    queryWrapper(),
+  );
+
+  await waitFor(() => expect(result.current.isError).toBe(true));
+  await waitFor(() => expect(result.current.migrations).toHaveLength(1));
+  expect(result.current.isPending).toBe(false);
 });
