@@ -179,6 +179,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
   );
 
   const { join, leave } = useGroupAssignment({ onChanged: refreshUser });
+  const assignmentBusy = join.isPending || leave.isPending;
 
   const joinGroupAssignment = useCallback(() => {
     join.mutate(undefined, {
@@ -377,13 +378,18 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
             </p>
           </div>
           {user?.undergoingGroupAssignment ? (
-            <Button color={ButtonColor.Black} onClick={handleCancelAssignment}>
+            <Button
+              color={ButtonColor.Black}
+              disabled={assignmentBusy}
+              onClick={handleCancelAssignment}
+            >
               {assignmentLabels.cancelLabel}
             </Button>
           ) : nonLeaderCommunities.length ? (
             <Button
               className="justify-self-end"
               color={ButtonColor.Grey}
+              disabled={assignmentBusy}
               onClick={(event) =>
                 void handleRequestAssignment(event.currentTarget)
               }
@@ -472,6 +478,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
                           <Button
                             color={ButtonColor.Black}
                             size="small"
+                            disabled={assignmentBusy}
                             onClick={() => {
                               setLeavingCommunityId(null);
                               joinGroupAssignment();
@@ -507,6 +514,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
             {user && !user.undergoingGroupAssignment && (
               <Button
                 color={ButtonColor.Black}
+                disabled={assignmentBusy}
                 onClick={(event) =>
                   void handleRequestAssignment(event.currentTarget)
                 }

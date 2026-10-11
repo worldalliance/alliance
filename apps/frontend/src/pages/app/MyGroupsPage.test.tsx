@@ -171,3 +171,18 @@ it("closes the leave dialog and says when reassignment from it fails", async () 
   await screen.findByText("Unable to request group assignment right now.");
   expect(screen.queryByText(/Are you sure you want to leave/)).toBeNull();
 });
+
+it.each([requesting, cancelling])(
+  "holds $button while its request is in flight",
+  async ({ button, undergoingGroupAssignment }) => {
+    myGroups = async () => Response.json([]);
+    const { promise, resolve } = Promise.withResolvers<Response>();
+    groupAssignment = () => promise;
+    renderPage({ undergoingGroupAssignment });
+    fireEvent.click(await screen.findByText(button));
+    await waitFor(() => expect(isDisabled(button)).toBe(true));
+
+    resolve(Response.json({}));
+    await waitFor(() => expect(isDisabled(button)).toBe(false));
+  },
+);
