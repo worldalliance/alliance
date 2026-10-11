@@ -105,11 +105,10 @@ export class Comment {
   parentId: number | null;
 
   @OneToMany(() => Comment, (comment) => comment.parent)
-  @ApiProperty({ type: () => Comment, required: false, isArray: true })
-  @Allow()
+  @ApiPropertyOptional({ type: () => Comment, isArray: true })
+  @IsOptional()
   @Type(() => Comment)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  children: Relation<Comment>[];
+  children?: Relation<Comment>[];
 
   @OneToMany(() => Notification, (notification) => notification.comment)
   @IsOptional()

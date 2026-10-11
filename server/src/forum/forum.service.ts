@@ -504,25 +504,17 @@ export class ForumService {
     if (replies.length === 0) {
       return [];
     }
-    // Create a map for quick lookup
-    const replyMap = new Map<number, Comment>();
+    const childrenById = new Map<number, Comment[]>(
+      replies.map((reply) => [reply.id, []]),
+    );
     const topLevelReplies: Comment[] = [];
-
-    // Initialize all replies with empty children arrays
-    replies.forEach((reply) => {
-      reply.children = [];
-      replyMap.set(reply.id, reply);
-    });
 
     // Organize into hierarchy
     replies.forEach((reply) => {
       if (reply.parentId === null) {
         topLevelReplies.push(reply);
       } else {
-        const parent = replyMap.get(reply.parentId);
-        if (parent) {
-          parent.children.push(reply);
-        }
+        childrenById.get(reply.parentId)?.push(reply);
       }
     });
 
@@ -536,7 +528,7 @@ export class ForumService {
         )
         .map((reply) => ({
           ...reply,
-          children: sortReplies(reply.children || []),
+          children: sortReplies(childrenById.get(reply.id) ?? []),
         }));
     };
 
