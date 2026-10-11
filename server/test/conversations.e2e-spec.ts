@@ -855,6 +855,62 @@ describe("ConversationController (e2e)", () => {
 
       await sendMessage(conversationId, original.body.id).expect(400);
     });
+
+    it("returns the author of each message and of the message it replies to", async () => {
+      const { user: targetUser, token: targetToken } =
+        await createUserAndToken();
+      const conversationId = (
+        await request(ctx.app.getHttpServer())
+          .post("/messaging/conversations/direct")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({ targetUserId: targetUser.id })
+          .expect(201)
+      ).body.id;
+      const original = await request(ctx.app.getHttpServer())
+        .post("/messaging/messages")
+        .set("Authorization", `Bearer ${targetToken}`)
+        .send({ conversationId, body: "Hello" })
+        .expect(201);
+
+      const reply = await sendMessage(conversationId, original.body.id).expect(
+        201,
+      );
+      const messages = await request(ctx.app.getHttpServer())
+        .get(`/messaging/messages/${conversationId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      const conversations = await request(ctx.app.getHttpServer())
+        .get("/messaging/conversations")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      const read = await request(ctx.app.getHttpServer())
+        .post(`/messaging/conversations/${conversationId}/read`)
+        .set("Authorization", `Bearer ${targetToken}`)
+        .expect(201);
+
+      const expectAuthors = (message) => {
+        expect(message.author.id).toBe(ctx.testUserId);
+        expect(message.replyTo.author.id).toBe(targetUser.id);
+      };
+      expect(original.body.author.id).toBe(targetUser.id);
+      expectAuthors(reply.body);
+      expect(messages.body.map((message) => message.author.id)).toEqual([
+        targetUser.id,
+        ctx.testUserId,
+      ]);
+      expectAuthors(messages.body[1]);
+      expectAuthors(
+        conversations.body.find(
+          (conversation) => conversation.id === conversationId,
+        ).lastMessage,
+      );
+      expectAuthors(read.body.lastMessage);
+      expect(
+        read.body.participants.find(
+          (participant) => participant.user.id === targetUser.id,
+        ).lastReadMessage.author.id,
+      ).toBe(ctx.testUserId);
+    });
   });
 
   describe("unread counts", () => {
