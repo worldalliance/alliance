@@ -2,6 +2,7 @@ import type {
   CampaignDto,
   ExternalShareTargetDto,
   ProfileDto,
+  ShareUrlAdminDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
@@ -43,6 +44,27 @@ let actionsGate = Promise.resolve();
 let targetsGate = Promise.resolve();
 let membersStatus = 200;
 
+const shareLink = (id: string, label: string | null) =>
+  ({
+    id,
+    kind: "action",
+    sid: null,
+    url: `https://example.com/s/${id}`,
+    duplicate: true,
+    label,
+    userId: 5,
+    campaignId: null,
+    createdAt: "2026-01-02T00:00:00.000Z",
+    signupCount: 0,
+    action: { id: 1, name: "Call your rep" },
+  }) satisfies ShareUrlAdminDto;
+
+let userLinks: ShareUrlAdminDto[] = [];
+let userLinksStatus = 200;
+let labelStatus = 200;
+let duplicateStatus = 200;
+let deleteStatus = 200;
+
 serveApi(
   routes({
     "GET /actions/all": async () => {
@@ -81,7 +103,30 @@ serveApi(
       campaigns = [...campaigns, created];
       return Response.json(created);
     },
-    "GET /share-urls/for-user/:userId": () => Response.json([]),
+    "GET /share-urls/for-user/:userId": () =>
+      userLinksStatus === 200
+        ? Response.json(userLinks)
+        : Response.json({}, { status: userLinksStatus }),
+    "PATCH /share-urls/:id/label": async ({ request, params }) => {
+      if (labelStatus !== 200)
+        return Response.json(
+          { message: "Label is too long" },
+          { status: labelStatus },
+        );
+      const { label }: { label: string } = await request.json();
+      return Response.json(shareLink(params.id, label));
+    },
+    "DELETE /share-urls/:id": () =>
+      new Response(null, { status: deleteStatus }),
+    "POST /share-urls/create-duplicate": async ({ request }) => {
+      if (duplicateStatus !== 200)
+        return Response.json(
+          { message: "That action is archived" },
+          { status: duplicateStatus },
+        );
+      const { label }: { label?: string } = await request.json();
+      return Response.json(shareLink("dup", label ?? null));
+    },
     "GET /share-urls/for-campaign/:campaignId": () => Response.json([]),
     "GET /user/members": () =>
       membersStatus !== 200
@@ -112,6 +157,11 @@ beforeEach(() => {
   actionsGate = Promise.resolve();
   targetsGate = Promise.resolve();
   membersStatus = 200;
+  userLinks = [];
+  userLinksStatus = 200;
+  labelStatus = 200;
+  duplicateStatus = 200;
+  deleteStatus = 200;
 });
 
 it("says the users failed to load instead of offering none", async () => {
@@ -300,4 +350,104 @@ it("says the campaigns failed to load", async () => {
   campaignsStatus = 500;
   await pickCampaignKind();
   expect(await screen.findByText("Failed to load campaigns.")).toBeTruthy();
+});
+
+it("lists the owner's share links", async () => {
+  userLinks = [shareLink("a", "Newsletter")];
+  await pickOwner();
+  expect(await screen.findByText("Newsletter")).toBeTruthy();
+  expect(screen.getByText("https://example.com/s/a")).toBeTruthy();
+});
+
+it("says the share links failed to load instead of listing none", async () => {
+  userLinksStatus = 500;
+  await pickOwner();
+  expect(await screen.findByText("Failed to load share links.")).toBeTruthy();
+  expect(screen.queryByText(/has no share links yet/)).toBeNull();
+});
+
+it("lists a duplicate it creates", async () => {
+  userLinks = [shareLink("a", "Newsletter")];
+  fireEvent.focus(await pickOwner());
+  fireEvent.click(await screen.findByRole("button", { name: "Call your rep" }));
+  fireEvent.change(screen.getByPlaceholderText(/label/i), {
+    target: { value: "Flyer" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Create duplicate" }));
+
+  expect(await screen.findByText("Flyer")).toBeTruthy();
+  expect(screen.getByText("Newsletter")).toBeTruthy();
+});
+
+it("shows a renamed label", async () => {
+  userLinks = [shareLink("a", "Newsletter")];
+  await pickOwner();
+  fireEvent.click(await screen.findByRole("button", { name: "Edit label" }));
+  fireEvent.change(screen.getByDisplayValue("Newsletter"), {
+    target: { value: "Poster" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+  expect(await screen.findByText("Poster")).toBeTruthy();
+  expect(screen.getByText("Label updated")).toBeTruthy();
+});
+
+it("says why a label update was refused and keeps editing", async () => {
+  labelStatus = 400;
+  userLinks = [shareLink("a", "Newsletter")];
+  jest.spyOn(console, "error").mockImplementation(() => {});
+  await pickOwner();
+  fireEvent.click(await screen.findByRole("button", { name: "Edit label" }));
+  fireEvent.change(screen.getByDisplayValue("Newsletter"), {
+    target: { value: "Poster" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+  expect(await screen.findByText("Label is too long")).toBeTruthy();
+  expect(screen.getByDisplayValue("Poster")).toBeTruthy();
+});
+
+it("drops a link it deletes", async () => {
+  userLinks = [shareLink("a", "Newsletter"), shareLink("b", "Poster")];
+  await pickOwner();
+  await screen.findByText("Newsletter");
+  fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]);
+  await waitFor(() =>
+    expect(screen.getAllByRole("button", { name: "Delete" })).toHaveLength(3),
+  );
+  fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[2]);
+
+  expect(await screen.findByText("Share link deleted")).toBeTruthy();
+  expect(screen.queryByText("Newsletter")).toBeNull();
+  expect(screen.getByText("Poster")).toBeTruthy();
+});
+
+it("says why a duplicate was refused and keeps its label", async () => {
+  duplicateStatus = 400;
+  jest.spyOn(console, "error").mockImplementation(() => {});
+  fireEvent.focus(await pickOwner());
+  fireEvent.click(await screen.findByRole("button", { name: "Call your rep" }));
+  fireEvent.change(screen.getByPlaceholderText(/label/i), {
+    target: { value: "Flyer" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Create duplicate" }));
+
+  expect(await screen.findByText("That action is archived")).toBeTruthy();
+  expect(screen.getByDisplayValue("Flyer")).toBeTruthy();
+});
+
+it("says when it cannot delete a link and keeps it", async () => {
+  deleteStatus = 500;
+  userLinks = [shareLink("a", "Newsletter")];
+  jest.spyOn(console, "error").mockImplementation(() => {});
+  await pickOwner();
+  await screen.findByText("Newsletter");
+  fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+  await waitFor(() =>
+    expect(screen.getAllByRole("button", { name: "Delete" })).toHaveLength(2),
+  );
+  fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[1]);
+
+  expect(await screen.findByText("Failed to delete share link.")).toBeTruthy();
+  expect(screen.getByText("Newsletter")).toBeTruthy();
 });

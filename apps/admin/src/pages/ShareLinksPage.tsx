@@ -1,13 +1,6 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { withCount } from "@alliance/common/plural";
-import {
-  imagesUploadImage,
-  shareUrlsCreateDuplicateAdmin,
-  shareUrlsDeleteAdmin,
-  shareUrlsFindForCampaignAdmin,
-  shareUrlsFindForUserAdmin,
-  shareUrlsUpdateLabelAdmin,
-} from "@alliance/shared/client";
+import { imagesUploadImage } from "@alliance/shared/client";
 import type {
   CampaignDto,
   ShareUrlAdminDto,
@@ -43,6 +36,11 @@ import {
   useExternalShareTargetsAdmin,
 } from "../lib/useExternalShareTargetsAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
+import {
+  type ShareLinkOwner,
+  shareLinksLoadError,
+  useShareLinksAdmin,
+} from "../lib/useShareLinksAdmin";
 
 type TargetKind = "action" | "external" | "invite";
 type PickableKind = Exclude<TargetKind, "invite">;
@@ -100,42 +98,11 @@ const targetColumns = (
   }
 };
 
-type OwnerKind = "user" | "campaign";
+type OwnerKind = ShareLinkOwner["type"];
 
-type Owner =
-  | { type: "user"; id: number; name: string }
-  | { type: "campaign"; id: number; name: string };
+type Owner = ShareLinkOwner & { name: string };
 
 const ownerKey = (o: Owner): string => `${o.type}-${o.id}`;
-
-/** The owner identity to send to endpoints keyed by user/campaign id. */
-const ownerColumns = (
-  owner: Owner,
-): { userId?: number; campaignId?: number } => {
-  switch (owner.type) {
-    case "user":
-      return { userId: owner.id };
-    case "campaign":
-      return { campaignId: owner.id };
-    default:
-      throw new Error(`unknown owner type: ${owner satisfies never}`);
-  }
-};
-
-const loadShareUrlsForOwner = (
-  owner: Owner,
-): Promise<{ data?: ShareUrlAdminDto[] }> => {
-  switch (owner.type) {
-    case "user":
-      return shareUrlsFindForUserAdmin({ path: { userId: owner.id } });
-    case "campaign":
-      return shareUrlsFindForCampaignAdmin({
-        path: { campaignId: owner.id },
-      });
-    default:
-      throw new Error(`unknown owner type: ${owner satisfies never}`);
-  }
-};
 
 const ShareLinksPage: React.FC = () => {
   const {
@@ -172,8 +139,13 @@ const ShareLinksPage: React.FC = () => {
   }, [ownerKind, selectedUser, selectedCampaign]);
   const ownerName = owner?.name ?? "this owner";
 
-  const [rows, setRows] = useState<ShareUrlAdminDto[]>([]);
-  const [loadingRows, setLoadingRows] = useState(false);
+  const {
+    links,
+    updateLabel: { mutateAsync: updateLabel },
+    remove: { mutateAsync: removeLink },
+    createDuplicate: { mutateAsync: createDuplicate, isPending: creating },
+  } = useShareLinksAdmin(owner);
+  const rows = useMemo(() => links.data ?? [], [links.data]);
 
   const actions = useActionsAdmin();
   const externalTargets = useExternalShareTargetsAdmin();
@@ -181,7 +153,6 @@ const ShareLinksPage: React.FC = () => {
   const [selectedKind, setSelectedKind] = useState<TargetKind>("action");
   const [selectedTarget, setSelectedTarget] = useState<Target | null>(null);
   const [labelDraft, setLabelDraft] = useState<string>("");
-  const [creating, setCreating] = useState(false);
 
   const [newCampaignName, setNewCampaignName] = useState<string>("");
   const [newCampaignPicture, setNewCampaignPicture] = useState<string | null>(
@@ -202,36 +173,12 @@ const ShareLinksPage: React.FC = () => {
   const { error, success, confirm } = useToast();
   const refusalToast = useRefusalToast();
 
-  const loadRows = useCallback(
-    async (target: Owner) => {
-      const key = ownerKey(target);
-      setLoadingRows(true);
-      try {
-        const res = await loadShareUrlsForOwner(target);
-        if (ownerKeyRef.current !== key) return;
-        setRows(res.data ?? []);
-      } catch (err) {
-        if (ownerKeyRef.current !== key) return;
-        console.error("Failed to load share urls for owner", err);
-        error("Failed to load share links.");
-      } finally {
-        if (ownerKeyRef.current === key) setLoadingRows(false);
-      }
-    },
-    [error],
-  );
-
   useEffect(() => {
-    if (!owner) {
-      setRows([]);
-      setExpanded({});
-      setSelectedTarget(null);
-      setLabelDraft("");
-      setLoadingRows(false);
-      return;
-    }
-    void loadRows(owner);
-  }, [owner, loadRows]);
+    if (owner) return;
+    setExpanded({});
+    setSelectedTarget(null);
+    setLabelDraft("");
+  }, [owner]);
 
   const handleCampaignImageChange = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -401,28 +348,20 @@ const ShareLinksPage: React.FC = () => {
 
   const handleUpdateLabel = useCallback(
     async (id: string, label: string): Promise<boolean> => {
-      const requestKey = ownerKeyRef.current;
+      if (!owner) return false;
+      const requestKey = ownerKey(owner);
       try {
-        const res = await shareUrlsUpdateLabelAdmin({
-          path: { id },
-          body: { label },
-        });
+        await updateLabel({ owner, id, label });
         if (ownerKeyRef.current !== requestKey) return false;
-        const updated = res.data;
-        if (updated) {
-          setRows((prev) => prev.map((r) => (r.id === id ? updated : r)));
-          success("Label updated");
-          return true;
-        }
-        return false;
+        success("Label updated");
+        return true;
       } catch (err) {
         if (ownerKeyRef.current !== requestKey) return false;
-        console.error("Failed to update label", err);
-        error("Failed to update label.");
+        refusalToast(err, "Failed to update label.");
         return false;
       }
     },
-    [success, error],
+    [owner, updateLabel, success, refusalToast],
   );
 
   const handleDelete = useCallback(
@@ -435,55 +374,49 @@ const ShareLinksPage: React.FC = () => {
         anchorEl: event.currentTarget,
         placement: ToastPlacement.TopLeft,
       });
-      if (!ok) return;
-      const requestKey = ownerKeyRef.current;
+      if (!ok || !owner) return;
+      const requestKey = ownerKey(owner);
       try {
-        const res = await shareUrlsDeleteAdmin({ path: { id } });
+        await removeLink({ owner, id });
         if (ownerKeyRef.current !== requestKey) return;
-        if (res.error) {
-          throw res.error;
-        }
-        setRows((prev) => prev.filter((r) => r.id !== id));
         success("Share link deleted");
       } catch (err) {
         if (ownerKeyRef.current !== requestKey) return;
-        console.error("Failed to delete share link", err);
-        error("Failed to delete share link.");
+        refusalToast(err, "Failed to delete share link.");
       }
     },
-    [confirm, success, error],
+    [owner, confirm, removeLink, success, refusalToast],
   );
 
   const handleCreateDuplicate = useCallback(async () => {
     if (!owner || !selectedTarget) return;
     const requestKey = ownerKey(owner);
     const requestTarget = selectedTarget;
-    setCreating(true);
     try {
       const trimmed = labelDraft.trim();
-      const res = await shareUrlsCreateDuplicateAdmin({
-        body: {
-          ...ownerColumns(owner),
+      await createDuplicate({
+        owner,
+        target: {
           ...targetColumns(requestTarget),
           label: trimmed || undefined,
         },
       });
       if (ownerKeyRef.current !== requestKey) return;
-      const created = res.data;
-      if (created) {
-        setRows((prev) => [created, ...prev]);
-        setExpanded((prev) => ({ ...prev, [targetKey(requestTarget)]: true }));
-        setLabelDraft("");
-        success("Duplicate link created");
-      }
+      setExpanded((prev) => ({ ...prev, [targetKey(requestTarget)]: true }));
+      setLabelDraft("");
+      success("Duplicate link created");
     } catch (err) {
       if (ownerKeyRef.current !== requestKey) return;
-      console.error("Failed to create duplicate share link", err);
-      error("Failed to create duplicate.");
-    } finally {
-      setCreating(false);
+      refusalToast(err, "Failed to create duplicate.");
     }
-  }, [owner, selectedTarget, labelDraft, success, error]);
+  }, [
+    owner,
+    selectedTarget,
+    labelDraft,
+    createDuplicate,
+    success,
+    refusalToast,
+  ]);
 
   return (
     <div className="h-full p-5 pt-20 flex flex-col items-center gap-y-4">
@@ -661,7 +594,11 @@ const ShareLinksPage: React.FC = () => {
               <p className="font-semibold text-sm text-zinc-700 mt-2">
                 Existing share links
               </p>
-              {loadingRows ? (
+              {links.isError && !links.data ? (
+                <p className="text-sm text-red-500">
+                  {shareLinksLoadError(links.error)}
+                </p>
+              ) : links.isPending ? (
                 <p className="text-sm text-zinc-500">Loading…</p>
               ) : groups.length === 0 ? (
                 <Card className="w-full" style={CardStyle.White}>

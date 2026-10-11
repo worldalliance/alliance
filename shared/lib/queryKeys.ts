@@ -171,6 +171,12 @@ export const queryKeys = {
   responseSnapshotMigrationAdmin: (formId: number | null) =>
     ["tasksGetResponseSnapshotMigrationAdmin", formId] as const,
   scheduledPlansAdmin: () => ["actionsScheduledPlansAdmin"] as const,
+  shareLinksAdmin: (owner: { type: string; id: number } | null) =>
+    [
+      "shareUrlsFindForOwnerAdmin",
+      owner?.type ?? null,
+      owner?.id ?? null,
+    ] as const,
   staffDirectoryAdmin: () => ["userStaffDirectoryAdmin"] as const,
   tagsAdmin: () => ["userGetTagsAdmin"] as const,
   timeSpentPerUserAdmin: () => ["analyticsGetTimeSpentPerUserAdmin"] as const,
