@@ -514,10 +514,14 @@ const CommunityDetailPage: React.FC = () => {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-zinc-700">
+              <label
+                className="text-sm font-medium text-zinc-700"
+                htmlFor="group-description"
+              >
                 Description
               </label>
               <textarea
+                id="group-description"
                 className="border border-zinc-300 rounded px-3 py-2 text-sm min-h-[80px]"
                 value={formValues.description}
                 maxLength={COMMUNITY_DESCRIPTION_MAX_LENGTH}
