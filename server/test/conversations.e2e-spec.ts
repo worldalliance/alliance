@@ -540,6 +540,59 @@ describe("ConversationController (e2e)", () => {
       });
       expect(stillThere).toBeNull();
     });
+
+    it("refuses an admin removing the owner", async () => {
+      const { user: admin, token: adminToken } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "Guarded Chat", participantIds: [admin.id] })
+        .expect(201);
+      await participantRepo.update(
+        {
+          conversation: { id: createResponse.body.id },
+          user: { id: admin.id },
+        },
+        { role: ParticipantRole.Admin },
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .delete(
+          `/messaging/conversations/${createResponse.body.id}/participants/${ctx.testUserId}`,
+        )
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(403);
+
+      expect(response.body.message).toBe(
+        "Only owners can remove other owners.",
+      );
+    });
+
+    it("lets the owner remove themselves", async () => {
+      const { user: member } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "Abandoned Chat", participantIds: [member.id] })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .delete(
+          `/messaging/conversations/${createResponse.body.id}/participants/${ctx.testUserId}`,
+        )
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const stillThere = await participantRepo.findOne({
+        where: {
+          conversation: { id: createResponse.body.id },
+          user: { id: ctx.testUserId },
+        },
+      });
+      expect(stillThere).toBeNull();
+    });
   });
 
   describe("conversation info", () => {
