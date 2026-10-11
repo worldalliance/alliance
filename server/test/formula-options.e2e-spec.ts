@@ -412,7 +412,7 @@ describe("Options formulas (e2e)", () => {
     }).expect(400);
 
     expect(response.body.message).toBe(
-      "Field Picks allows selecting up to 1 options.",
+      "Field Picks allows selecting up to 1 option.",
     );
   });
 
