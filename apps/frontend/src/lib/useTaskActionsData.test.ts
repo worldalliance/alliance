@@ -44,7 +44,14 @@ it("keeps the general updates it had when a refetch fails", async () => {
   unreadUpdates = async () =>
     Response.json({ message: "Internal server error" }, { status: 500 });
   const cached = [
-    parseGeneralUpdate({ id: 1, name: "Update", priority: 0, schema: {} }),
+    parseGeneralUpdate({
+      id: 1,
+      name: "Update",
+      startDate: null,
+      endDate: null,
+      priority: 0,
+      schema: {},
+    }),
   ];
   const { client, wrapper } = queryWrapper();
   client.setQueryData(queryKeys.generalUpdatesUnread(), cached);

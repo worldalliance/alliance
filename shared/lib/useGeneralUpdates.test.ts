@@ -19,7 +19,14 @@ const api = serveApi(
 );
 
 const cached = [
-  parseGeneralUpdate({ id: 1, name: "Update", priority: 0, schema: {} }),
+  parseGeneralUpdate({
+    id: 1,
+    name: "Update",
+    startDate: null,
+    endDate: null,
+    priority: 0,
+    schema: {},
+  }),
 ];
 
 const generalUpdateHooks = [

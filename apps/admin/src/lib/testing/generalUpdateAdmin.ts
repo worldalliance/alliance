@@ -10,6 +10,8 @@ export const generalUpdateAdmin = (
   schemaSnapshotId: id,
   createdAt: "2026-01-02T00:00:00.000Z",
   updatedAt: "2026-01-02T00:00:00.000Z",
+  startDate: null,
+  endDate: null,
   useManualCohort: false,
   priority: 0,
   schema: {},

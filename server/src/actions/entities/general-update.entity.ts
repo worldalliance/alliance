@@ -72,20 +72,18 @@ export class GeneralUpdate {
   updatedAt: Date;
 
   @Column({ type: "timestamptz", nullable: true })
-  @ApiPropertyOptional()
+  @ApiProperty({ type: Date, nullable: true })
   @Type(() => Date)
   @Allow()
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  startDate?: Date;
+  startDate: Date | null;
 
   @Column({ type: "timestamptz", nullable: true })
-  @ApiPropertyOptional()
+  @ApiProperty({ type: Date, nullable: true })
   @Type(() => Date)
   @Allow()
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  endDate?: Date;
+  endDate: Date | null;
 
   @Column({ default: false })
   @ApiProperty()

@@ -157,6 +157,8 @@ describe("interleaveActionsAndUpdates", () => {
   const update: ParsedGeneralUpdate = {
     id: 1,
     name: "Weekly note",
+    startDate: null,
+    endDate: null,
     priority: 1,
     schema: null,
   };

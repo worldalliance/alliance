@@ -1,10 +1,10 @@
 export function startDatePriorityComparator(
   a: {
-    startDate?: Date;
+    startDate: Date | null;
     priority: number;
   },
   b: {
-    startDate?: Date;
+    startDate: Date | null;
     priority: number;
   },
 ): number {

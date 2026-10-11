@@ -1627,7 +1627,7 @@ export class ActionsService {
       },
     });
 
-    const isDateChanged = (current?: Date, next?: Date): boolean =>
+    const isDateChanged = (current: Date | null, next?: Date): boolean =>
       next !== undefined && current?.getTime() !== next.getTime();
 
     const dateUpdates = generalUpdates.flatMap((generalUpdate) => {

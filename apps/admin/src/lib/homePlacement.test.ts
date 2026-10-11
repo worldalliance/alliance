@@ -154,7 +154,10 @@ describe("actionHomePlacement", () => {
 });
 
 describe("generalUpdateHomePlacement", () => {
-  const placement = (startDate?: string, endDate?: string) =>
+  const placement = (
+    startDate: string | null = null,
+    endDate: string | null = null,
+  ) =>
     generalUpdateHomePlacement({ generalUpdate: { startDate, endDate }, now });
 
   it("reads its state from its dates", () => {
