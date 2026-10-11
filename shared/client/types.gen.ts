@@ -617,7 +617,7 @@ export type CommunityInvite = {
     updatedAt: string;
     deletedAt: string | null;
     invitingUser?: User;
-    invitedUser: User;
+    invitedUser?: User;
     community: Community;
     notifs?: Array<Notification>;
 };

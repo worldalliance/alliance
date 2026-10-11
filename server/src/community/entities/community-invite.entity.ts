@@ -78,12 +78,11 @@ export class CommunityInvite {
     nullable: false,
     onDelete: "CASCADE",
   })
-  @ApiProperty({ type: () => User })
+  @ApiPropertyOptional({ type: () => User })
   @Type(() => User)
   @JoinColumn({ name: "invitedUserId" })
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  invitedUser: Relation<User>;
+  @IsOptional()
+  invitedUser?: Relation<User>;
 
   @ManyToOne(() => Community, (community) => community.internalInvites, {
     nullable: false,
@@ -102,4 +101,13 @@ export class CommunityInvite {
   @Allow()
   @IsOptional()
   notifs?: Relation<Notification>[];
+}
+
+export function loadedCommunityInviteInvitedUser(
+  invite: CommunityInvite,
+): Relation<User> {
+  if (!invite.invitedUser) {
+    throw new Error(`invitedUser of community invite ${invite.id} not loaded`);
+  }
+  return invite.invitedUser;
 }
