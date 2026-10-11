@@ -11,6 +11,7 @@ import {
 import { ApiOkResponse, ApiQuery } from "@nestjs/swagger";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import { ActionCompletionCurveDto } from "./action-completion-curve.dto";
+import { ActionStatsAnalyticsService } from "./action-stats-analytics.service";
 import { ActionStatsWithOnboardingDto } from "./actionstats-with-onboarding.dto";
 import { AggregateStatsDto } from "./aggregatestats.dto";
 import { AnalyticsService } from "./analytics.service";
@@ -30,6 +31,7 @@ import { TimeSpentForUserDto } from "./timespent.dto";
 export class AnalyticsController {
   constructor(
     private readonly analyticsService: AnalyticsService,
+    private readonly actionStatsAnalyticsService: ActionStatsAnalyticsService,
     private readonly posthogTimeSpentService: PosthogTimeSpentService,
   ) {}
 
@@ -68,7 +70,7 @@ export class AnalyticsController {
   @Get("action-stats")
   @ApiOkResponse({ type: [ActionStatsWithOnboardingDto] })
   async getActionStatsAdmin(): Promise<ActionStatsWithOnboardingDto[]> {
-    const stats = await this.analyticsService.getActionStats();
+    const stats = await this.actionStatsAnalyticsService.getActionStats();
     return stats.map((stat) => new ActionStatsWithOnboardingDto(stat));
   }
 
@@ -88,7 +90,7 @@ export class AnalyticsController {
   async getActionStatsByIdAdmin(
     @Param("actionId") actionId: string,
   ): Promise<ActionStatsWithOnboardingDto> {
-    const stats = await this.analyticsService.getActionStatsById(
+    const stats = await this.actionStatsAnalyticsService.getActionStatsById(
       Number(actionId),
     );
     if (!stats) {
@@ -101,8 +103,8 @@ export class AnalyticsController {
   @Post("action-stats/recalculate")
   @ApiOkResponse({ type: [ActionStatsWithOnboardingDto] })
   async recalculateActionStatsAdmin(): Promise<ActionStatsWithOnboardingDto[]> {
-    await this.analyticsService.calculateActionStats();
-    const stats = await this.analyticsService.getActionStats();
+    await this.actionStatsAnalyticsService.calculateActionStats();
+    const stats = await this.actionStatsAnalyticsService.getActionStats();
     return stats.map((stat) => new ActionStatsWithOnboardingDto(stat));
   }
 
@@ -180,10 +182,11 @@ export class AnalyticsController {
   ): Promise<ActionCompletionCurveDto[]> {
     const parsedActionId = actionId ? Number(actionId) : undefined;
     const parsedGranularity = granularity === "hourly" ? "hourly" : "daily";
-    const curves = await this.analyticsService.getActionCompletionCurves(
-      parsedActionId,
-      parsedGranularity,
-    );
+    const curves =
+      await this.actionStatsAnalyticsService.getActionCompletionCurves(
+        parsedActionId,
+        parsedGranularity,
+      );
     return curves.map((curve) => new ActionCompletionCurveDto(curve));
   }
 

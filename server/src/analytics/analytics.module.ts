@@ -10,6 +10,7 @@ import { ContractEvent } from "src/user/entities/contract-event.entity";
 import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
+import { ActionStatsAnalyticsService } from "./action-stats-analytics.service";
 import { ActionStatsRecord } from "./actionstats.entity";
 import { AnalyticsController } from "./analytics.controller";
 import { AnalyticsService } from "./analytics.service";
@@ -34,6 +35,10 @@ import { PosthogTimeSpentService } from "./posthog-time-spent.service";
     ]),
   ],
   controllers: [AnalyticsController],
-  providers: [AnalyticsService, PosthogTimeSpentService],
+  providers: [
+    AnalyticsService,
+    PosthogTimeSpentService,
+    ActionStatsAnalyticsService,
+  ],
 })
 export class AnalyticsModule {}
