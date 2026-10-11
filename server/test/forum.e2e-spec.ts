@@ -729,6 +729,48 @@ describe("Forum (e2e)", () => {
       expect(reply.body.deleted).toBe(true);
     });
 
+    it("deletes only the deleted reply's notifications", async () => {
+      const createReply = async (body: string): Promise<number> => {
+        const response = await request(ctx.app.getHttpServer())
+          .post("/forum/comments")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({
+            editableContent: { body, attachments: [] },
+            parentObjectId: testPostId,
+            parentObjectType: CommentParentObject.Post,
+          } satisfies CreateCommentDto)
+          .expect(201);
+        return response.body.id;
+      };
+      const replyId = await createReply("Reply with notifications");
+      const keptReplyId = await createReply("Reply that stays");
+      const notifyAbout = (commentId: number) =>
+        notifRepo.save(
+          notifRepo.create({
+            user: { id: ctx.adminUserId },
+            category: NotificationCategory.ForumReply,
+            message: "Someone replied",
+            webAppLocation: `/forum/post/${testPostId}`,
+            comment: { id: commentId },
+          }),
+        );
+      const deleted = await Promise.all([
+        notifyAbout(replyId),
+        notifyAbout(replyId),
+      ]);
+      const kept = await notifyAbout(keptReplyId);
+
+      await request(ctx.app.getHttpServer())
+        .delete(`/forum/comments/${replyId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const remaining = await notifRepo.findBy({
+        id: In([...deleted, kept].map((notif) => notif.id)),
+      });
+      expect(remaining.map((notif) => notif.id)).toEqual([kept.id]);
+    });
+
     it("should say a missing reply is gone", async () => {
       const response = await request(ctx.app.getHttpServer())
         .delete("/forum/comments/999999")
