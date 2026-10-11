@@ -88,6 +88,7 @@ import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { Form } from "src/tasks/entities/form.entity";
 import {
   FormResponse,
+  loadedFormResponseSnapshot,
   parseFormResponse,
   type ParsedFormResponse,
 } from "src/tasks/entities/formresponse.entity";
@@ -2234,8 +2235,9 @@ export class ActionsService {
     const savedChoices: ResolvedOptions = new Map(
       Object.entries(response.formulaChoices),
     );
+    const snapshot = loadedFormResponseSnapshot(activity.taskFormResponse);
     const schema = schemaWithResolvedOptions(
-      formSchemaOf(activity.taskFormResponse.formSnapshot),
+      formSchemaOf(snapshot),
       savedChoices,
     );
     const outputAnswers = this.outputAnswers(schema, response);
@@ -2286,7 +2288,7 @@ export class ActionsService {
       visibilityValidatorResults: {},
       formulaChoices: shownChoices,
       formSnapshot: {
-        ...response.formSnapshot,
+        ...snapshot,
         schema: schemaWithSavedChoices(output.schema, shownChoices),
       },
     });

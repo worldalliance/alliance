@@ -126,6 +126,7 @@ import {
 import { Form } from "./entities/form.entity";
 import {
   FormResponse,
+  loadedFormResponseSnapshot,
   type ParsedFormResponse,
   parseFormResponse,
 } from "./entities/formresponse.entity";
@@ -1606,7 +1607,7 @@ export class TasksService {
         existing.responses.push(response);
       } else {
         groupsBySnapshotId.set(response.formSnapshotId, {
-          snapshot: response.formSnapshot,
+          snapshot: loadedFormResponseSnapshot(response),
           responses: [response],
         });
       }

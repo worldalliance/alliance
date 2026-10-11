@@ -37,6 +37,7 @@ import { UserDto } from "src/user/dto/user.dto";
 import { Form } from "./entities/form.entity";
 import {
   FormResponse,
+  loadedFormResponseSnapshot,
   type ParsedFormResponse,
 } from "./entities/formresponse.entity";
 import {
@@ -289,7 +290,7 @@ export class FormResponseDto extends PickType(FormResponse, [
     this.formId = response.formId;
     this.formSnapshotId = response.formSnapshotId;
     this.answers = response.answers;
-    this.schemaSnapshot = response.formSnapshot.schema;
+    this.schemaSnapshot = loadedFormResponseSnapshot(response).schema;
     this.visibilityValidatorResults = response.visibilityValidatorResults;
     this.formulaChoices = response.formulaChoices;
     this.publicAnswers = response.publicAnswers;
