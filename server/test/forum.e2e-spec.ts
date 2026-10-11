@@ -628,6 +628,23 @@ describe("Forum (e2e)", () => {
       testPostId = createResponse.body.id;
     });
 
+    const createReply = async (
+      body: string,
+      parentId?: number,
+    ): Promise<number> => {
+      const response = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body, attachments: [] },
+          parentObjectId: testPostId,
+          parentId,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+      return response.body.id;
+    };
+
     it("should create a reply", async () => {
       const response = await request(ctx.app.getHttpServer())
         .post("/forum/comments")
@@ -730,18 +747,6 @@ describe("Forum (e2e)", () => {
     });
 
     it("deletes only the deleted reply's notifications", async () => {
-      const createReply = async (body: string): Promise<number> => {
-        const response = await request(ctx.app.getHttpServer())
-          .post("/forum/comments")
-          .set("Authorization", `Bearer ${ctx.accessToken}`)
-          .send({
-            editableContent: { body, attachments: [] },
-            parentObjectId: testPostId,
-            parentObjectType: CommentParentObject.Post,
-          } satisfies CreateCommentDto)
-          .expect(201);
-        return response.body.id;
-      };
       const replyId = await createReply("Reply with notifications");
       const keptReplyId = await createReply("Reply that stays");
       const notifyAbout = (commentId: number) =>
@@ -944,6 +949,33 @@ describe("Forum (e2e)", () => {
       parentReply.children.forEach((child) => {
         expect(child.parentId).toBe(parentReplyId);
       });
+    });
+
+    it("nests grandchildren and orders each level pinned first, then oldest", async () => {
+      const rootId = await createReply("Thread root");
+      const olderChildId = await createReply("Older child", rootId);
+      const pinnedChildId = await createReply("Pinned child", rootId);
+      const youngerChildId = await createReply("Younger child", rootId);
+      const grandchildId = await createReply("Grandchild", olderChildId);
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/comments/${pinnedChildId}/pin`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const response = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${testPostId}/comments`)
+        .expect(200);
+
+      const root = response.body.find(({ id }) => id === rootId);
+      expect(root.children.map(({ id }) => id)).toEqual([
+        pinnedChildId,
+        olderChildId,
+        youngerChildId,
+      ]);
+      expect(root.children[1].children.map(({ id }) => id)).toEqual([
+        grandchildId,
+      ]);
+      expect(root.children[1].children[0].children).toEqual([]);
     });
 
     it("does not notify parent author when they reply to their own post", async () => {
