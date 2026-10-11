@@ -68,6 +68,7 @@ export class ActionFormVariantService {
     userId: number;
   }): Promise<Map<number, number>> {
     const { actionIds, userId } = params;
+    if (actionIds.length === 0) return new Map();
     const [actions, variants] = await Promise.all([
       this.actionRepo.find({
         where: { id: In(actionIds) },
@@ -242,7 +243,14 @@ export class ActionFormVariantService {
       return v?.formId ?? null;
     }
 
-    const chosenVariantId = this.pickVariantForNewUser(variants);
+    const submitted = await this.findSubmittedFormIds({
+      actionIds: [actionId],
+      userId,
+    });
+    const chosenVariantId = this.variantForNewAssignment({
+      variants,
+      submittedFormId: submitted.get(actionId),
+    });
     try {
       await this.assignmentRepo.insert({
         actionId,
@@ -301,6 +309,13 @@ export class ActionFormVariantService {
       assignmentByAction.set(a.actionId, a);
     }
 
+    const submitted = await this.findSubmittedFormIds({
+      actionIds: actionIds.filter(
+        (id) => variantsByAction.has(id) && !assignmentByAction.has(id),
+      ),
+      userId,
+    });
+
     const result = new Map<number, number>();
     const inserts: {
       actionId: number;
@@ -320,7 +335,10 @@ export class ActionFormVariantService {
         continue;
       }
 
-      const chosenVariantId = this.pickVariantForNewUser(variants);
+      const chosenVariantId = this.variantForNewAssignment({
+        variants,
+        submittedFormId: submitted.get(actionId),
+      });
       inserts.push({ actionId, userId, variantId: chosenVariantId });
       if (chosenVariantId !== null) {
         const v = variants.find((x) => x.id === chosenVariantId);
@@ -442,6 +460,17 @@ export class ActionFormVariantService {
     );
     if (assignedFormId === null) return action.taskFormId === formId;
     return assignedFormId === formId;
+  }
+
+  private variantForNewAssignment(params: {
+    variants: ActionFormVariant[];
+    submittedFormId: number | undefined;
+  }): number | null {
+    const { variants, submittedFormId } = params;
+    if (submittedFormId === undefined) {
+      return this.pickVariantForNewUser(variants);
+    }
+    return variants.find((v) => v.formId === submittedFormId)?.id ?? null;
   }
 
   private pickVariantForNewUser(variants: ActionFormVariant[]): number | null {
