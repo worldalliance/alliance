@@ -14,6 +14,7 @@ import type { Guest } from "src/auth/entities/guest.entity";
 import type { Campaign } from "src/campaign/entities/campaign.entity";
 import type { Cluster } from "src/cluster/entities/cluster.entity";
 import type { CommunityInvite } from "src/community/entities/community-invite.entity";
+import type { Community } from "src/community/entities/community.entity";
 import type { Contract } from "src/contract/entities/contract.entity";
 import type { EventLog } from "src/eventlog/event-log.entity";
 import type { Comment } from "src/forum/entities/comment.entity";
@@ -74,6 +75,7 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<City>>
   | Assert<EntityShape<Cluster>>
   | Assert<EntityShape<Comment>>
+  | Assert<EntityShape<Community>>
   | Assert<EntityShape<CommunityInvite>>
   | Assert<EntityShape<Contract>>
   | Assert<EntityShape<ContractEvent>>

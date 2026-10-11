@@ -111,12 +111,11 @@ export class Community {
   // Relations
 
   @ManyToMany(() => User, (user) => user.communities)
-  @ApiProperty({ type: () => User, isArray: true })
+  @ApiPropertyOptional({ type: () => User, isArray: true })
   @JoinTable()
   @Type(() => User)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  users: Relation<User>[];
+  @IsOptional()
+  users?: Relation<User>[];
 
   @ManyToMany(() => User, (user) => user.leaderOf)
   @ApiPropertyOptional({ type: () => User, isArray: true })
@@ -142,4 +141,11 @@ export class Community {
   @Type(() => CommunityInvite)
   @IsOptional()
   internalInvites?: Relation<CommunityInvite>[];
+}
+
+export function loadedCommunityUsers(community: Community): Relation<User>[] {
+  if (!community.users) {
+    throw new Error(`users of community ${community.id} not loaded`);
+  }
+  return community.users;
 }

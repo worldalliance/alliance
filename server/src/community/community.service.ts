@@ -48,7 +48,7 @@ import {
   loadedCommunityInviteCommunity,
   loadedCommunityInviteInvitedUser,
 } from "./entities/community-invite.entity";
-import { Community } from "./entities/community.entity";
+import { Community, loadedCommunityUsers } from "./entities/community.entity";
 import { GroupJoinNotifsService } from "./group-join-notifs.service";
 
 /**
@@ -233,8 +233,9 @@ export class CommunityService {
     } = params;
     const users = usersParam ?? [user];
 
+    const members = loadedCommunityUsers(community);
     const userIdSet = new Set(users.map((user) => user.id));
-    if (community.users.some((existing) => userIdSet.has(existing.id))) {
+    if (members.some((existing) => userIdSet.has(existing.id))) {
       throw new BadRequestException(
         `One or more users are already a member of community ${community.id}`,
       );
@@ -249,7 +250,7 @@ export class CommunityService {
 
     const savedP = this.communityRepository.save({
       id: community.id,
-      users: [...community.users, ...users],
+      users: [...members, ...users],
     });
     const updatedCommunityP = run(async () => {
       const updates = await savedP;
@@ -345,10 +346,11 @@ export class CommunityService {
     const toKeepSet = removeAsLeader
       ? new Set()
       : new Set(community.leaders!.map((l) => l.id));
-    const newMembers = community.users.filter(
+    const members = loadedCommunityUsers(community);
+    const newMembers = members.filter(
       (u) => !userIdSet.has(u.id) || toKeepSet.has(u.id),
     );
-    if (newMembers.length === community.users.length) {
+    if (newMembers.length === members.length) {
       // users are not removed, no further action needed
       return community;
     }
@@ -408,7 +410,9 @@ export class CommunityService {
       },
     });
 
-    if (community.users.some((existing) => existing.id === userId)) {
+    if (
+      loadedCommunityUsers(community).some((existing) => existing.id === userId)
+    ) {
       throw new BadRequestException(
         "User is already a member of this community",
       );
@@ -616,7 +620,9 @@ export class CommunityService {
         leaders: true,
       },
     });
-    const user = community.users.find((user) => user.id === userId);
+    const user = loadedCommunityUsers(community).find(
+      (user) => user.id === userId,
+    );
     if (!user) {
       throw new BadRequestException("User not found in community");
     }
@@ -663,7 +669,7 @@ export class CommunityService {
       throw new InternalServerErrorException("Multiple communities found");
     }
     const community = user.communities[0];
-    if (community.users.some((user) => user.id !== userId)) {
+    if (loadedCommunityUsers(community).some((user) => user.id !== userId)) {
       throw new BadRequestException(
         "User cannot delete community with other members",
       );
@@ -747,7 +753,9 @@ export class CommunityService {
 
         if (
           sourceCommunity &&
-          !sourceCommunity.users.some((member) => member.id === userId)
+          !loadedCommunityUsers(sourceCommunity).some(
+            (member) => member.id === userId,
+          )
         ) {
           throw new BadRequestException(
             `${user.name} is not a member of ${sourceCommunity.name}`,
@@ -758,7 +766,8 @@ export class CommunityService {
             "Group leaders cannot be moved without first removing their leader role",
           );
         }
-        if (destinationCommunity.users.some((member) => member.id === userId)) {
+        const destinationMembers = loadedCommunityUsers(destinationCommunity);
+        if (destinationMembers.some((member) => member.id === userId)) {
           throw new BadRequestException(
             `${user.name} is already a member of ${destinationCommunity.name}`,
           );
@@ -770,14 +779,14 @@ export class CommunityService {
         }
 
         await this.assertUsersHaveActiveContracts([user]);
-        const destinationUsers = [...destinationCommunity.users, user];
+        const destinationUsers = [...destinationMembers, user];
         const communityUpdates: DeepPartial<Community>[] = [
           { id: destinationCommunity.id, users: destinationUsers },
         ];
         if (sourceCommunity) {
           communityUpdates.unshift({
             id: sourceCommunity.id,
-            users: sourceCommunity.users.filter(
+            users: loadedCommunityUsers(sourceCommunity).filter(
               (member) => member.id !== userId,
             ),
           });
@@ -906,9 +915,10 @@ export class CommunityService {
     ]);
 
     const audience = membersAndLeaders(community);
-    const joined = !community.users.some((existing) => existing.id === userId);
+    const members = loadedCommunityUsers(community);
+    const joined = !members.some((existing) => existing.id === userId);
     if (joined) {
-      community.users.push(user);
+      members.push(user);
     }
 
     if (!community.leaders!.some((existing) => existing.id === userId)) {
@@ -1002,7 +1012,7 @@ export class CommunityService {
 
     const leader = await leaderP;
     const timeZone = leader?.timeZone ?? DEFAULT_TIME_ZONE;
-    return community.users.map((user) => ({ user, timeZone }));
+    return loadedCommunityUsers(community).map((user) => ({ user, timeZone }));
   }
 
   async createCommunityInvite(
@@ -1348,7 +1358,9 @@ export class CommunityService {
       loadedCommunityInviteCommunity(invite).id,
     );
 
-    if (community.users.some((user) => user.id === invitedUser.id)) {
+    if (
+      loadedCommunityUsers(community).some((user) => user.id === invitedUser.id)
+    ) {
       throw new BadRequestException();
     }
 
@@ -1481,7 +1493,9 @@ export class CommunityService {
       communities.flatMap((community) =>
         community
           .leaders!.filter((leader) =>
-            community.users.some((user) => user.id !== leader.id),
+            loadedCommunityUsers(community).some(
+              (user) => user.id !== leader.id,
+            ),
           )
           .map((leader) => leader.id),
       ),
