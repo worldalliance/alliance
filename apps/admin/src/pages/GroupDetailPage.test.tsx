@@ -186,7 +186,7 @@ it("never says a just-deleted group is missing", async () => {
 
 it("shows the saved details", async () => {
   renderPage();
-  fireEvent.change(await screen.findByDisplayValue("North"), {
+  fireEvent.change(await screen.findByLabelText("Name"), {
     target: { value: "Northwest" },
   });
 
@@ -202,7 +202,7 @@ it("saves the details with the description cleared", async () => {
   fireEvent.change(await screen.findByLabelText("Description"), {
     target: { value: "" },
   });
-  fireEvent.change(screen.getByDisplayValue("North"), {
+  fireEvent.change(screen.getByLabelText("Name"), {
     target: { value: "Northwest" },
   });
 
@@ -321,7 +321,7 @@ it("says why loading the group was refused", async () => {
 it("says why saving the details was refused, keeping the edit", async () => {
   updateStatus = 400;
   renderPage();
-  fireEvent.change(await screen.findByDisplayValue("North"), {
+  fireEvent.change(await screen.findByLabelText("Name"), {
     target: { value: "South" },
   });
 
