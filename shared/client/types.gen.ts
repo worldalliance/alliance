@@ -648,7 +648,7 @@ export type OnetimeInvite = {
     status: OnetimeInviteStatus;
     deletedAt: string | null;
     usedAt: string | null;
-    invitingUser: User | null;
+    invitingUser?: User | null;
     invitedUser?: User | null;
     invitedUserId: number | null;
     community?: Community | null;

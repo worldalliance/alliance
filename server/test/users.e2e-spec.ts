@@ -1,4 +1,5 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
+import { publicDisplayName } from "@alliance/common/displayName";
 import { toE164 } from "@alliance/common/phone";
 import { R } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
@@ -2560,6 +2561,69 @@ describe("Users (e2e)", () => {
 
     const refreshed = await userRepo.findOne({ where: { id: userAId } });
     expect(refreshed?.emailVerified).toBe(true);
+  });
+
+  describe("GET /user/referrerProfile/:code (onetime invite)", () => {
+    it("names the invite's inviter, and nobody for an invite without one", async () => {
+      const inviter = await userRepo.findOneByOrFail({ id: userAId });
+      await onetimeInviteRepo.save([
+        onetimeInviteRepo.create({
+          invitee: "Named",
+          code: "REFERRER-WITH-INVITER",
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser: inviter,
+        }),
+        onetimeInviteRepo.create({
+          invitee: "Unnamed",
+          code: "REFERRER-NO-INVITER",
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser: null,
+        }),
+      ]);
+
+      const named = await request(ctx.app.getHttpServer())
+        .get("/user/referrerProfile/REFERRER-WITH-INVITER")
+        .expect(200);
+      expect(named.body).toMatchObject({
+        kind: "user",
+        displayName: publicDisplayName(inviter),
+      });
+      await request(ctx.app.getHttpServer())
+        .get("/user/referrerProfile/REFERRER-NO-INVITER")
+        .expect(404);
+    });
+  });
+
+  describe("GET /user/userdetail/:id (invited by onetime invite)", () => {
+    it("names the inviter of the invite a user signed up through", async () => {
+      const invite = await onetimeInviteRepo.save(
+        onetimeInviteRepo.create({
+          invitee: "Invite-only referral",
+          code: "ADMIN-DETAIL-INVITE",
+          status: OnetimeInviteStatus.LINK_USED,
+          invitingUser: { id: userAId },
+        }),
+      );
+      const invited = await userRepo.save(
+        userRepo.create({
+          name: "Invite Only Referral",
+          email: "invite.only.referral@example.com",
+          password: "Password123!",
+          referredByInvite: invite,
+          referralSource: ReferralSource.OnetimeInvite,
+        }),
+      );
+
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/user/userdetail/${invited.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      expect(res.body.invitedBy).toMatchObject({
+        kind: "user",
+        userId: userAId,
+        referralSource: ReferralSource.OnetimeInvite,
+      });
+    });
   });
 
   describe("community invite permissions", () => {

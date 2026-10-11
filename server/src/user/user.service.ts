@@ -152,6 +152,7 @@ import {
 } from "./entities/contract-event.entity";
 import { Friend, FriendStatus } from "./entities/friend.entity";
 import {
+  loadedOnetimeInviteInvitingUser,
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "./entities/onetime-invite.entity";
@@ -588,10 +589,10 @@ export class UserService {
     const resolution = await this.resolveReferral(code);
     if (!resolution) return null;
     switch (resolution.kind) {
-      case "invite":
-        return resolution.invite.invitingUser
-          ? { kind: "user", user: resolution.invite.invitingUser }
-          : null;
+      case "invite": {
+        const invitingUser = loadedOnetimeInviteInvitingUser(resolution.invite);
+        return invitingUser ? { kind: "user", user: invitingUser } : null;
+      }
       case "campaign":
         return { kind: "campaign", campaign: resolution.campaign };
       case "user":
@@ -2619,7 +2620,7 @@ export class UserService {
       }),
       this.findOneOrFail(userId, { leaderOf: true }),
     ]);
-    if (invite.invitingUser?.id !== userId && !user.admin) {
+    if (loadedOnetimeInviteInvitingUser(invite)?.id !== userId && !user.admin) {
       throw new BadRequestException("Invite belongs to someone else");
     }
     if (invite.status !== OnetimeInviteStatus.LINK_UNUSED) {
@@ -2660,7 +2661,7 @@ export class UserService {
     const user = await this.findOneOrFail(userId);
     if (
       !(
-        invite.invitingUser?.id === userId ||
+        loadedOnetimeInviteInvitingUser(invite)?.id === userId ||
         canManageCommunity(user, invite.communityId)
       )
     ) {
@@ -2800,7 +2801,7 @@ export class UserService {
     }
     const savedInvite = await this.onetimeInviteRepository.save(request);
 
-    const { invitingUser } = savedInvite;
+    const invitingUser = loadedOnetimeInviteInvitingUser(savedInvite);
     if (invitingUser) {
       await this.notifsService.sendNotif({
         user: invitingUser,
