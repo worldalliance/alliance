@@ -48,7 +48,7 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
     return { member, action };
   };
 
-  it.each([
+  const orders = [
     {
       order: "completed then withdrew",
       types: [
@@ -65,7 +65,9 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
       ],
       completed: true,
     },
-  ])(
+  ];
+
+  it.each(orders)(
     "counts a member who $order as completed: $completed",
     async ({ types, completed }) => {
       const { member, action } = await setUp(types);
@@ -99,6 +101,17 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
         single: completed,
         usersCompleted: completed ? 1 : 0,
       });
+    },
+  );
+
+  it.each(orders)(
+    "counts a member who $order in their completed-action count: $completed",
+    async ({ types, completed }) => {
+      const { member } = await setUp(types);
+
+      expect(
+        await ctx.app.get(UserService).getCompletedActionCount(member.id),
+      ).toBe(completed ? 1 : 0);
     },
   );
 });

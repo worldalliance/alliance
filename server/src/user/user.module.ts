@@ -1,6 +1,7 @@
 import { Module, forwardRef } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { ActionVisibilityModule } from "src/actions/action-visibility.module";
 import { CampaignModule } from "src/campaign/campaign.module";
 import { CommunityModule } from "src/community/community.module";
 import { CommunityInvite } from "src/community/entities/community-invite.entity";
@@ -11,7 +12,6 @@ import { MailModule } from "src/mail/mail.module";
 import { NotifsModule } from "src/notifs/notifs.module";
 import { PushModule } from "src/push/push.module";
 import { ShareUrlsModule } from "src/share-urls/share-urls.module";
-import { ActionActivity } from "../actions/entities/action-activity.entity";
 import { Action } from "../actions/entities/action.entity";
 import { City } from "../geo/city.entity";
 import { Notification } from "../notifs/entities/notification.entity";
@@ -34,7 +34,6 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     TypeOrmModule.forFeature([
       User,
       Action,
-      ActionActivity,
       City,
       Community,
       CommunityInvite,
@@ -49,6 +48,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
       UserDevice,
       UserAwayRange,
     ]),
+    ActionVisibilityModule,
     JwtModule,
     ImagesModule,
     MailModule,

@@ -2156,7 +2156,7 @@ export const actionsUserFeed = <ThrowOnError extends boolean = false>(options: O
 };
 
 /**
- * Total count of a user's completed-action activities (independent of feed pagination)
+ * Count of actions the user has completed, by their latest completion or withdrawal on each (independent of feed pagination)
  */
 export const actionsUserCompletedCount = <ThrowOnError extends boolean = false>(options: Options<ActionsUserCompletedCountData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).get<ActionsUserCompletedCountResponse, ActionsUserCompletedCountError, ThrowOnError>({

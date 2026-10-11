@@ -800,7 +800,7 @@ export class ActionsController {
   @ApiOkResponse({ type: UserCompletedActionsCountDto })
   @ApiOperation({
     summary:
-      "Total count of a user's completed-action activities (independent of feed pagination)",
+      "Count of actions the user has completed, by their latest completion or withdrawal on each (independent of feed pagination)",
   })
   async userCompletedCount(
     @Param("id", ParseIntPipe) id: number,
