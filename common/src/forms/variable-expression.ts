@@ -2,14 +2,26 @@
 // Formulas use JavaScript coercion and comparison rules inside a closed
 // evaluator that throws past its step budget and where a native coercion
 // fails. Missing inputs propagate as `undefined`, member access on `undefined`
-// is safe, and only the globals, properties, methods, and AST node kinds
-// explicitly listed below are reachable.
+// is safe, and a formula reaches only the globals and methods in
+// `formula-allowlist.ts`, the length and items of lists and text, and own
+// record fields.
 
 import arrowPlugin, { type ArrowExpression } from "@jsep-plugin/arrow";
 import objectPlugin, { type ObjectExpression } from "@jsep-plugin/object";
 import jsep from "jsep";
 import { thrownMessage } from "../errorMessage";
 import { R, type Result } from "../result";
+import {
+  ARRAY_METHODS,
+  FORBIDDEN_PROPERTIES,
+  KNOWN_METHODS,
+  MATH_FUNCTION_NAMES,
+  MATH_FUNCTIONS,
+  MATH_OBJECT_NAME,
+  NUMBER_METHODS,
+  STRING_METHODS,
+  type NativeMethod,
+} from "./formula-allowlist";
 import {
   EvaluationTooLong,
   sizeOf,
@@ -124,63 +136,13 @@ export type ExprNode =
       args: ExprNode[];
     };
 
-export const MATH_OBJECT_NAME = "Math";
-
 const ARRAY_TEXT_SEPARATOR = ",";
 const RECORD_TEXT = "[object Object]";
 
 const LENGTH_PROPERTY = "length";
 
-// Property reads never touch a prototype. Reject these names at compile time so
-// attempts produce an error instead of `undefined`.
-export const FORBIDDEN_PROPERTIES: ReadonlySet<string> = new Set([
-  "__proto__",
-  "constructor",
-  "prototype",
-]);
-
 const MAX_TEXT_LENGTH = 10_000;
 const MAX_LIST_LENGTH = 10_000;
-
-// Keep this allowlist stable across browser and mobile runtimes. Runtime
-// discovery would make formulas compile differently as engines add methods.
-// `random` is nondeterministic; `sumPrecise` accepts an iterable, not numbers.
-export const MATH_FUNCTION_NAMES = [
-  "abs",
-  "acos",
-  "acosh",
-  "asin",
-  "asinh",
-  "atan",
-  "atan2",
-  "atanh",
-  "cbrt",
-  "ceil",
-  "clz32",
-  "cos",
-  "cosh",
-  "exp",
-  "expm1",
-  "floor",
-  "fround",
-  "hypot",
-  "imul",
-  "log",
-  "log10",
-  "log1p",
-  "log2",
-  "max",
-  "min",
-  "pow",
-  "round",
-  "sign",
-  "sin",
-  "sinh",
-  "sqrt",
-  "tan",
-  "tanh",
-  "trunc",
-] as const;
 
 const MATH_FUNCTION_ALLOWED: ReadonlySet<string> = new Set(MATH_FUNCTION_NAMES);
 
@@ -632,93 +594,6 @@ function toNumber(value: ExprValue): number {
   spendSteps(primitive.length);
   return Number(primitive);
 }
-
-// Use native implementations for JavaScript-compatible defaults and ordering.
-// Exclude locale-dependent methods and methods that return unsupported values.
-export const ARRAY_METHOD_NAMES = [
-  "map",
-  "filter",
-  "flatMap",
-  "find",
-  "findIndex",
-  "findLast",
-  "findLastIndex",
-  "some",
-  "every",
-  "reduce",
-  "sort",
-  "reverse",
-  "slice",
-  "concat",
-  "includes",
-  "indexOf",
-  "lastIndexOf",
-  "at",
-  "join",
-  "flat",
-] as const;
-
-export const STRING_METHOD_NAMES = [
-  "toLowerCase",
-  "toUpperCase",
-  "trim",
-  "trimStart",
-  "trimEnd",
-  "charAt",
-  "at",
-  "slice",
-  "substring",
-  "concat",
-  "includes",
-  "startsWith",
-  "endsWith",
-  "indexOf",
-  "lastIndexOf",
-  "split",
-  "replace",
-  "replaceAll",
-  "repeat",
-  "padStart",
-  "padEnd",
-] as const;
-
-export const NUMBER_METHOD_NAMES = ["toFixed", "toPrecision"] as const;
-
-export type ArrayMethodName = (typeof ARRAY_METHOD_NAMES)[number];
-export type StringMethodName = (typeof STRING_METHOD_NAMES)[number];
-export type NumberMethodName = (typeof NUMBER_METHOD_NAMES)[number];
-
-type NativeMethod = (this: unknown, ...args: unknown[]) => unknown;
-
-function nativeMethods(
-  prototype: object,
-  names: readonly string[],
-): ReadonlyMap<string, NativeMethod> {
-  return new Map(
-    names.flatMap((name) => {
-      const member: unknown = Reflect.get(prototype, name);
-      // Read by an allowlisted name from a built-in object, so the cast cannot
-      // expose arbitrary functions.
-      return typeof member === "function"
-        ? [[name, member as NativeMethod] as const]
-        : [];
-    }),
-  );
-}
-
-const MATH_FUNCTIONS = nativeMethods(Math, MATH_FUNCTION_NAMES);
-const ARRAY_METHODS = nativeMethods(Array.prototype, ARRAY_METHOD_NAMES);
-const STRING_METHODS = nativeMethods(String.prototype, STRING_METHOD_NAMES);
-const NUMBER_METHODS = nativeMethods(Number.prototype, NUMBER_METHOD_NAMES);
-
-// Taken from the names rather than from the tables above, so an engine missing
-// a newer method still compiles the same formula as every other engine. The
-// call blanks there rather than a form saving on one device and not another.
-const KNOWN_METHODS: ReadonlySet<string> = new Set([
-  ...ARRAY_METHOD_NAMES,
-  ...STRING_METHOD_NAMES,
-  ...NUMBER_METHOD_NAMES,
-]);
 
 // Native sort and reverse mutate their receiver; copy arrays to keep evaluation
 // pure.

@@ -1,10 +1,10 @@
-import { FORMULA_LIB, MATH_BINARY_FUNCTIONS } from "./formula-lib";
 import {
   MATH_FUNCTION_NAMES,
   type ArrayMethodName,
   type NumberMethodName,
   type StringMethodName,
-} from "./variable-expression";
+} from "./formula-allowlist";
+import { FORMULA_LIB, MATH_BINARY_FUNCTIONS } from "./formula-lib";
 import { variableFormulaType } from "./variable-formula-check";
 
 const ARRAY_CALLS: Record<ArrayMethodName, string> = {

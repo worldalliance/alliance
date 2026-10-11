@@ -1,9 +1,9 @@
 import { R } from "../result";
+import { MATH_FUNCTION_NAMES } from "./formula-allowlist";
 import {
   compileVariableExpression,
   evaluateVariableExpression,
   exprValueToText,
-  MATH_FUNCTION_NAMES,
   type ExprValue,
 } from "./variable-expression";
 

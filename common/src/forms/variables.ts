@@ -4,11 +4,11 @@ import { camelCase, deburr, isEqual } from "es-toolkit";
 import z from "zod";
 import { formatCityValue, parseCityValue } from "./city";
 import type { FieldKind, ListSubField } from "./form-schema";
+import { FORBIDDEN_PROPERTIES } from "./formula-allowlist";
 import type { OptionCategory } from "./options-schema";
 import { AGGREGATE_INPUT_TYPE } from "./variable-aggregates";
 import {
   exprValueToText,
-  FORBIDDEN_PROPERTIES,
   type ExprRecord,
   type ExprValue,
 } from "./variable-expression";
