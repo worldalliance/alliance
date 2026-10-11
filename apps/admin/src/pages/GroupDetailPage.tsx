@@ -495,8 +495,14 @@ const CommunityDetailPage: React.FC = () => {
         <Card style={CardStyle.White}>
           <form className="flex flex-col gap-4" onSubmit={handleUpdateDetails}>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-zinc-700">Name</label>
+              <label
+                className="text-sm font-medium text-zinc-700"
+                htmlFor="group-name"
+              >
+                Name
+              </label>
               <input
+                id="group-name"
                 type="text"
                 className="border border-zinc-300 rounded px-3 py-2 text-sm"
                 value={formValues.name}
