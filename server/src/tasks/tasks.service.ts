@@ -665,7 +665,7 @@ export class TasksService {
             const answer = effectiveAnswers[field.id];
             if (Array.isArray(answer) && answer.length > maxSelections) {
               throw new BadRequestException(
-                `Field ${elementInternalDescriptor(field)} allows selecting up to ${maxSelections} options.`,
+                `Field ${elementInternalDescriptor(field)} allows selecting up to ${withCount(maxSelections, "option")}.`,
               );
             }
           }
