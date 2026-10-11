@@ -231,6 +231,69 @@ describe("CohortDecisionService closed actions read by a follow-up (e2e)", () =>
     );
   });
 
+  it.each(["low", "high"] as const)(
+    "decides a read cycle in the pass's order when a backfilled action reads into it and the reader reads its %s id",
+    async (entry) => {
+      const deadline = new Date(now.getTime() - 60_000);
+      const closed = { start: addDays(now, -2), deadline };
+      const backfilled = await createAction({
+        ...closed,
+        start: addDays(now, -3),
+      });
+      const low = await createAction(closed);
+      const high = await createAction(closed);
+      const member = await createUser({ signedAt });
+      const decided = await createUser({ signedAt });
+      await decisionRepo.save(
+        [low, high].map(({ id }) => ({
+          actionId: id,
+          userId: decided.id,
+          included: true,
+          reason: CohortDecisionReason.Launch,
+          resolvedAt: closed.start,
+        })),
+      );
+      const missed = (...ids: number[]) => ({
+        type: "OR" as const,
+        children: ids.map((actionId) => ({
+          type: "MissedActionDeadline" as const,
+          actionId,
+        })),
+      });
+      await actionRepo.update(backfilled.id, {
+        cohortExpression: missed(high.id),
+      });
+      await actionRepo.update(low.id, {
+        cohortExpression: missed(backfilled.id, high.id),
+      });
+      await actionRepo.update(high.id, { cohortExpression: missed(low.id) });
+      const reader = await createAction({
+        start: deadline,
+        deadline: addDays(now, 3),
+        cohortExpression: missed({ low, high }[entry].id),
+      });
+
+      await service.decideOpenAction(
+        parseAction(
+          await actionRepo.findOneOrFail({
+            where: { id: reader.id },
+            relations: { events: true },
+          }),
+        ),
+        now,
+      );
+
+      const lowDecision = (await decisionsFor(low.id)).get(member.id);
+      const highDecision = (await decisionsFor(high.id)).get(member.id);
+      expect(lowDecision).toBeDefined();
+      expect(highDecision).toBeDefined();
+      expect(lowDecision!.id).toBeGreaterThan(highDecision!.id);
+      expect(
+        (await decisionsFor(backfilled.id)).get(member.id),
+      ).toBeUndefined();
+    },
+  );
+
   it("decides the follow-up from the dependent's decision when closed actions read each other", async () => {
     const deadline = new Date(now.getTime() - 60_000);
     const member = await createUser({ signedAt });

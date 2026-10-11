@@ -280,7 +280,7 @@ export class AuthController {
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: AuthMeResponseDto })
   async me(@Request() req: JwtRequest): Promise<AuthMeResponseDto> {
-    const profile = await this.authService.getProfile(req.user.email);
+    const profile = await this.authService.getProfile(req.user.sub);
     return new AuthMeResponseDto({
       user: profile,
       isImpersonation: req.user.isImpersonation ? true : undefined,

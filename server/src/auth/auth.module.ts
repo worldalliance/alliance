@@ -16,10 +16,12 @@ import { OAuthAuthService } from "./oauth/oauth-auth.service";
 import { OAuthClients } from "./oauth/oauth-clients";
 import { OAuthLinkController } from "./oauth/oauth-link.controller";
 import { OAuthController } from "./oauth/oauth.controller";
+import { SessionModule } from "./session.module";
 import { SpentTokenService } from "./spent-token.service";
 
 @Module({
   imports: [
+    SessionModule,
     UserModule,
     MailModule,
     JwtModule.registerAsync({

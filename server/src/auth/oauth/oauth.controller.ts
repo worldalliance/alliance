@@ -528,6 +528,7 @@ export class OAuthController {
           R.success(
             await this.oauth.signHandoff({
               userId: signedIn.value.user.id,
+              sessionGeneration: signedIn.value.user.sessionGeneration,
               provider,
               outcome: signedIn.value.outcome,
               proofHash: state.proofHash,
@@ -579,7 +580,7 @@ export class OAuthController {
       );
     }
     return new AuthMeResponseDto({
-      user: await this.authService.getProfile(unlinked.value.email),
+      user: await this.authService.getProfile(unlinked.value.id),
     });
   }
 

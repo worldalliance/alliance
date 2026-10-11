@@ -11,6 +11,8 @@ import {
   WebSocketServer,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
+import { SessionService } from "src/auth/session.service";
+import { type AccountDeletedPayload, UserEvents } from "src/user/user.events";
 import { DetachedWorkTracker } from "src/utils/detached-work";
 import type { Repository } from "typeorm";
 import { ConversationService } from "./conversation.service";
@@ -19,7 +21,7 @@ import {
   loadedParticipantUser,
   Participant,
 } from "./entities/participant.entity";
-import { socketAuthMiddleware } from "./gateway.utils";
+import { disconnectUserSockets, socketAuthMiddleware } from "./gateway.utils";
 import { MessagingEvents } from "./messaging.events";
 
 interface MessageCreatedPayload {
@@ -70,14 +72,26 @@ export class MessagingOverviewGateway
     );
   };
 
+  private readonly onAccountDeleted = ({ userId }: AccountDeletedPayload) => {
+    this.detachedWork.track(
+      disconnectUserSockets({
+        server: this.server,
+        userId,
+        logger: this.logger,
+      }),
+    );
+  };
+
   constructor(
     private readonly jwtService: JwtService,
+    private readonly sessionService: SessionService,
     private readonly eventEmitter: EventEmitter2,
     private readonly conversationService: ConversationService,
     @InjectRepository(Participant)
     private readonly participantRepository: Repository<Participant>,
   ) {
     this.eventEmitter.on(MessagingEvents.MessageCreated, this.onMessageCreated);
+    this.eventEmitter.on(UserEvents.AccountDeleted, this.onAccountDeleted);
     this.eventEmitter.on(
       MessagingEvents.ConversationUpdated,
       this.onConversationUpdated,
@@ -85,6 +99,7 @@ export class MessagingOverviewGateway
   }
 
   async onModuleDestroy() {
+    this.eventEmitter.off(UserEvents.AccountDeleted, this.onAccountDeleted);
     this.eventEmitter.off(
       MessagingEvents.MessageCreated,
       this.onMessageCreated,
@@ -97,7 +112,13 @@ export class MessagingOverviewGateway
   }
 
   afterInit(server: Server) {
-    server.use(socketAuthMiddleware(this.jwtService, this.logger));
+    server.use(
+      socketAuthMiddleware({
+        jwtService: this.jwtService,
+        sessionService: this.sessionService,
+        logger: this.logger,
+      }),
+    );
   }
 
   handleConnection(@ConnectedSocket() client: Socket) {

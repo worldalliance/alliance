@@ -8,6 +8,7 @@ import { Reflector } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
 import { isPublicRoute } from "../public.decorator";
+import { SessionService } from "../session.service";
 import { extractAccessToken } from "../tokens";
 import { attachAccessSession } from "./attach-session";
 
@@ -16,6 +17,7 @@ export class AuthGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
     private reflector: Reflector,
+    private sessionService: SessionService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -30,7 +32,12 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
 
-    await attachAccessSession({ jwtService: this.jwtService, request, token });
+    await attachAccessSession({
+      jwtService: this.jwtService,
+      sessionService: this.sessionService,
+      request,
+      token,
+    });
     return true;
   }
 }

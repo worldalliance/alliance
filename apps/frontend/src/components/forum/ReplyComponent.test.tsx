@@ -41,7 +41,10 @@ const reply = (id: number, children: CommentDto[] = []): CommentDto => ({
 
 const dismissed: number[] = [];
 
-const renderReply = (deleteErrorFor: (replyId: number) => string | null) => {
+const renderReply = (
+  deleteErrorFor: (replyId: number) => string | null,
+  root = reply(5, [reply(6)]),
+) => {
   dismissed.length = 0;
   const ctx = {
     user: undefined,
@@ -67,7 +70,7 @@ const renderReply = (deleteErrorFor: (replyId: number) => string | null) => {
       <MemoryRouter>
         <SiteAppProvider>
           <CommentsProvider value={ctx}>
-            <ReplyComponent reply={reply(5, [reply(6)])} />
+            <ReplyComponent reply={root} />
           </CommentsProvider>
         </SiteAppProvider>
       </MemoryRouter>
@@ -91,4 +94,15 @@ it("takes back the message the reader dismissed and no other", () => {
 
   expect(dismissals).toHaveLength(2);
   expect(dismissed).toEqual([6]);
+});
+
+it("offers no like on a deleted reply kept for the replies under it", () => {
+  renderReply(() => null, {
+    ...reply(5, [reply(6)]),
+    deleted: true,
+    likesCount: 2,
+  });
+
+  expect(screen.getAllByRole("button", { name: "Like" })).toHaveLength(1);
+  expect(screen.queryByText("2 others like this")).toBeNull();
 });

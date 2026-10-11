@@ -121,6 +121,10 @@ export class VideosController {
         : filename.endsWith(".ts")
           ? "video/MP2T"
           : undefined,
+      // Replacing a video rewrites its files under the same names, and a
+      // deleted video stops playing once this runs out twice: nginx caches a
+      // file this long, then a player keeps nginx's copy this long again.
+      maxAgeSeconds: 30,
     });
   }
 

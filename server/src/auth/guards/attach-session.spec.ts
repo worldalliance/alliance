@@ -5,6 +5,7 @@ import { JwtService } from "@nestjs/jwt";
 import type { Request } from "express";
 import { type RequestContext, requestContext } from "src/utils/request-context";
 import { Public } from "../public.decorator";
+import type { SessionService } from "../session.service";
 import { JWTTokenType } from "../tokens";
 import { attachSession } from "./attach-session";
 import { AuthGuard } from "./auth.guard";
@@ -40,6 +41,17 @@ describe("attachSession", () => {
   });
 });
 
+// The guards only call assertCurrent, and the private repository keeps a literal from being assignable.
+const currentSessions = {} as SessionService;
+currentSessions.assertCurrent = () => Promise.resolve();
+
+const endedSessions = {} as SessionService;
+endedSessions.assertCurrent = () => Promise.reject(new UnauthorizedException());
+
+const lookupError = new Error("connection terminated");
+const failingSessions = {} as SessionService;
+failingSessions.assertCurrent = () => Promise.reject(lookupError);
+
 describe("token-verifying guards", () => {
   const jwtService = new JwtService();
   const env = { ...process.env };
@@ -72,7 +84,11 @@ describe("token-verifying guards", () => {
 
     expect(
       await userIdAfter({
-        guard: new AuthOptionalGuard(jwtService, new Reflector()),
+        guard: new AuthOptionalGuard(
+          jwtService,
+          new Reflector(),
+          currentSessions,
+        ),
         headers: { authorization: `Bearer ${token}` },
       }),
     ).toBe(9);
@@ -86,11 +102,43 @@ describe("token-verifying guards", () => {
 
     expect(
       await userIdAfter({
-        guard: new RefreshTokenGuard(jwtService),
+        guard: new RefreshTokenGuard(jwtService, currentSessions),
         headers: { authorization: `Bearer ${token}` },
       }),
     ).toBe(9);
   });
+
+  it.each([
+    [
+      "AuthGuard",
+      new AuthGuard(jwtService, new Reflector(), failingSessions),
+      JWTTokenType.access,
+      "access-secret",
+    ],
+    [
+      "AuthOptionalGuard",
+      new AuthOptionalGuard(jwtService, new Reflector(), failingSessions),
+      JWTTokenType.access,
+      "access-secret",
+    ],
+    [
+      "RefreshTokenGuard",
+      new RefreshTokenGuard(jwtService, failingSessions),
+      JWTTokenType.refresh,
+      "refresh-secret",
+    ],
+  ] as const)(
+    "%s passes a failed session lookup on instead of refusing the token",
+    async (_name, guard, tokenType, secret) => {
+      const token = await jwtService.signAsync(
+        { ...session, tokenType },
+        { secret },
+      );
+      await expect(
+        userIdAfter({ guard, headers: { authorization: `Bearer ${token}` } }),
+      ).rejects.toBe(lookupError);
+    },
+  );
 
   describe("AuthGuard and AuthOptionalGuard", () => {
     @Public()
@@ -98,8 +146,16 @@ describe("token-verifying guards", () => {
 
     class PrivateController {}
 
-    const authGuard = new AuthGuard(jwtService, new Reflector());
-    const optionalGuard = new AuthOptionalGuard(jwtService, new Reflector());
+    const authGuard = new AuthGuard(
+      jwtService,
+      new Reflector(),
+      currentSessions,
+    );
+    const optionalGuard = new AuthOptionalGuard(
+      jwtService,
+      new Reflector(),
+      currentSessions,
+    );
     const guards = Object.entries({
       AuthGuard: authGuard,
       AuthOptionalGuard: optionalGuard,
@@ -137,6 +193,28 @@ describe("token-verifying guards", () => {
             guard,
             controller: PrivateController,
             headers: { authorization: "Bearer not-a-jwt" },
+          }),
+        ).rejects.toBeInstanceOf(UnauthorizedException);
+      },
+    );
+
+    it.each([
+      ["AuthGuard", new AuthGuard(jwtService, new Reflector(), endedSessions)],
+      [
+        "AuthOptionalGuard",
+        new AuthOptionalGuard(jwtService, new Reflector(), endedSessions),
+      ],
+    ] as const)(
+      "%s refuses a verified token whose session has ended",
+      async (_name, guard) => {
+        const token = await jwtService.signAsync(session, {
+          secret: "access-secret",
+        });
+        await expect(
+          activate({
+            guard,
+            controller: PrivateController,
+            headers: { authorization: `Bearer ${token}` },
           }),
         ).rejects.toBeInstanceOf(UnauthorizedException);
       },

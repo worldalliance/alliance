@@ -255,24 +255,7 @@ export class ForumService {
       .where("post.actionId = :actionId", { actionId })
       .orderBy("post.updatedAt", "DESC");
     this.addPostVisibilityFilter(qb, "post", requestingUserId);
-    const posts = (await qb.getMany()).map(parsePost);
-
-    const postsWithComments = await Promise.all(
-      posts.map(async (post) => {
-        const comments = await this.commentRepository.find({
-          where: {
-            parentObjectId: post.id,
-            parentObjectType: CommentParentObject.Post,
-          },
-        });
-        return {
-          ...post,
-          replies: [],
-          replyCount: comments.length,
-        };
-      }),
-    );
-    return postsWithComments;
+    return (await qb.getMany()).map(parsePost);
   }
 
   private visiblePostQuery(id: number, userId?: number) {
@@ -709,9 +692,11 @@ export class ForumService {
       editableContent: content,
     });
 
-    await this.postRepository.update(createCommentDto.parentObjectId, {
-      updatedAt: new Date(),
-    });
+    if (createCommentDto.parentObjectType === CommentParentObject.Post) {
+      await this.postRepository.update(createCommentDto.parentObjectId, {
+        updatedAt: new Date(),
+      });
+    }
 
     await this.commentRepository.save(reply);
 
