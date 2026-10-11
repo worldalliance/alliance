@@ -1,3 +1,4 @@
+import { dateToInputValue } from "@alliance/shared/lib/dateInput";
 import React, { useMemo } from "react";
 
 export type DatePrecision = "minute" | "second";
@@ -45,12 +46,9 @@ export function formatLocalDateTime(
     return "";
   }
   const pad = (n: number) => String(n).padStart(2, "0");
-  const yyyy = date.getFullYear();
-  const mm = pad(date.getMonth() + 1);
-  const dd = pad(date.getDate());
   const hh = pad(date.getHours());
   const min = pad(date.getMinutes());
-  const base = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+  const base = `${dateToInputValue(date)}T${hh}:${min}`;
   if (precision === "second") {
     const ss = pad(date.getSeconds());
     return `${base}:${ss}`;

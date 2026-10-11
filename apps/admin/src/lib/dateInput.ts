@@ -1,10 +1,10 @@
 import { R, type Result } from "@alliance/common/result";
+import { dateToInputValue } from "@alliance/shared/lib/dateInput";
 import { addDays, isValid, subDays } from "date-fns";
-import { formatDateAsLocal } from "./formatDateAsLocal";
 
 /** A date input's value for an instant, as a calendar date in local time. */
 export const toDateInput = (iso: string | null | undefined): string =>
-  iso ? formatDateAsLocal(new Date(iso)) : "";
+  iso ? dateToInputValue(new Date(iso)) : "";
 
 /** The server refuses a year past 9999, which a date input accepts. */
 const isoInstant = (date: Date, value: string): Result<string, string> =>
@@ -25,4 +25,4 @@ export const fromEndDateInput = (
   );
 
 export const toEndDateInput = (iso: string | null | undefined): string =>
-  iso ? formatDateAsLocal(subDays(new Date(iso), 1)) : "";
+  iso ? dateToInputValue(subDays(new Date(iso), 1)) : "";

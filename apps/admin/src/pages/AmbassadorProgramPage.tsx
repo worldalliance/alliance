@@ -5,6 +5,7 @@ import {
   AmbassadorProgramMemberDto,
   UserDto,
 } from "@alliance/shared/client";
+import { todayDateInputValue } from "@alliance/shared/lib/dateInput";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import {
@@ -50,14 +51,6 @@ const sectionConfig: Record<
     removeLabel: "Remove participant",
     icon: <UserCheck size={18} />,
   },
-};
-
-const todayInputValue = () => {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 };
 
 const memberDisplayName = (user: Pick<UserDto, "id" | "name" | "email">) =>
@@ -196,7 +189,7 @@ const InteractionForm: React.FC<{
   disabled?: boolean;
 }> = ({ userId, onAdd, disabled = false }) => {
   const [text, setText] = useState("");
-  const [interactionDate, setInteractionDate] = useState(todayInputValue());
+  const [interactionDate, setInteractionDate] = useState(todayDateInputValue());
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -206,7 +199,7 @@ const InteractionForm: React.FC<{
     }
     await onAdd({ userId, text: trimmed, interactionDate });
     setText("");
-    setInteractionDate(todayInputValue());
+    setInteractionDate(todayDateInputValue());
   };
 
   return (

@@ -15,6 +15,10 @@ import {
 } from "@alliance/shared/client";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { cn } from "@alliance/shared/styles/util";
+import {
+  formatLocalDateTime,
+  resolveDateValue,
+} from "@alliance/sharedweb/ui/DateTimePicker";
 import UserSelect, {
   useSelectableUsers,
 } from "@alliance/sharedweb/ui/UserSelect";
@@ -131,12 +135,14 @@ const GeneralUpdatePage: React.FC = () => {
         setUpdate(data);
         setForm({
           name: data.name,
-          startDate: data.startDate
-            ? new Date(data.startDate).toISOString().slice(0, 16)
-            : "",
-          endDate: data.endDate
-            ? new Date(data.endDate).toISOString().slice(0, 16)
-            : "",
+          startDate: formatLocalDateTime(
+            resolveDateValue(data.startDate),
+            "minute",
+          ),
+          endDate: formatLocalDateTime(
+            resolveDateValue(data.endDate),
+            "minute",
+          ),
           useManualCohort: data.useManualCohort,
           manualCohortUserIds: data.manualCohortUserIds ?? [],
           tagIds: data.tags?.map((t) => t.id) ?? [],

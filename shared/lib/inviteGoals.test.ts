@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { AmbassadorInviteGoalWithStatsDto } from "../client";
+import { dateToInputValue } from "./dateInput";
 import {
   dateInputToEndOfDayIso,
   dateInputToStartOfDayIso,
-  dateToInputValue,
   daysUntil,
   inviteGoalErrorMessage,
   inviteGoalIsUp,
@@ -160,10 +160,6 @@ test("oneMonthFromTodayDateInputValue clamps to the last day of a shorter month"
   expect(oneMonthFromTodayDateInputValue(new Date(2026, 2, 31))).toBe(
     "2026-04-30",
   );
-});
-
-test("dateToInputValue formats the local calendar date", () => {
-  expect(dateToInputValue(new Date(2026, 0, 5, 23, 30))).toBe("2026-01-05");
 });
 
 test("daysUntil rounds a partial day up and never goes negative", () => {

@@ -19,6 +19,10 @@ import {
 } from "@alliance/shared/lib/awayRangesFormatters";
 import { awayRangesDescription } from "@alliance/shared/lib/copy";
 import { formatLongDate } from "@alliance/shared/lib/dateFormatters";
+import {
+  dateToInputValue,
+  todayDateInputValue,
+} from "@alliance/shared/lib/dateInput";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useMyAwayRanges } from "@alliance/shared/lib/useMyAwayRanges";
 import { cn } from "@alliance/shared/styles/util";
@@ -32,14 +36,6 @@ const REASON_DROPDOWN_OPTIONS = {
   UNSELECTED: "Select a reason",
   ...AWAY_REASON_LABELS,
 };
-
-function formatDateForInput(date: Date | string): string {
-  const d = new Date(date);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 const AwayRangesSection: React.FC = () => {
   const {
@@ -160,8 +156,8 @@ const AwayRangesSection: React.FC = () => {
 
   const startEditing = (range: UserAwayRangeDto) => {
     const opened = {
-      start: formatDateForInput(range.startDate),
-      end: formatDateForInput(range.endDate),
+      start: dateToInputValue(range.startDate),
+      end: dateToInputValue(range.endDate),
     };
     setEditingId(range.id);
     setEditStartDate(opened.start);
@@ -260,7 +256,7 @@ const AwayRangesSection: React.FC = () => {
                         type="date"
                         value={editStartDate}
                         onChange={(e) => setEditStartDate(e.target.value)}
-                        min={formatDateForInput(new Date())}
+                        min={todayDateInputValue()}
                         disabled={isAwayRangeStartLocked(range)}
                       />
                     </div>
@@ -275,7 +271,7 @@ const AwayRangesSection: React.FC = () => {
                         onChange={(e) => setEditEndDate(e.target.value)}
                         min={
                           isAwayRangeStartLocked(range)
-                            ? formatDateForInput(new Date())
+                            ? todayDateInputValue()
                             : editStartDate
                         }
                         disabled={
@@ -395,7 +391,7 @@ const AwayRangesSection: React.FC = () => {
                 type="date"
                 value={startDateInput}
                 onChange={(e) => setStartDateInput(e.target.value)}
-                min={formatDateForInput(new Date())}
+                min={todayDateInputValue()}
               />
             </div>
             <div className="flex-1">
@@ -405,7 +401,7 @@ const AwayRangesSection: React.FC = () => {
                 type="date"
                 value={endDateInput}
                 onChange={(e) => setEndDateInput(e.target.value)}
-                min={startDateInput || formatDateForInput(new Date())}
+                min={startDateInput || todayDateInputValue()}
               />
             </div>
           </div>

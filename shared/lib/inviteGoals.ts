@@ -2,6 +2,7 @@ import { withCount } from "@alliance/common/plural";
 import { addMonths } from "date-fns";
 import { millisecondsInDay } from "date-fns/constants";
 import type { AmbassadorInviteGoalWithStatsDto } from "../client";
+import { dateToInputValue } from "./dateInput";
 
 export const daysUntil = (date: Date, now = new Date()) =>
   Math.max(0, Math.ceil((date.getTime() - now.getTime()) / millisecondsInDay));
@@ -11,19 +12,6 @@ export const dateInputToEndOfDayIso = (value: string) =>
 
 export const dateInputToStartOfDayIso = (value: string) =>
   new Date(`${value}T00:00:00`).toISOString();
-
-const padDatePart = (value: number) => String(value).padStart(2, "0");
-
-export const dateToInputValue = (value: string | Date) => {
-  const date = new Date(value);
-  return [
-    date.getFullYear(),
-    padDatePart(date.getMonth() + 1),
-    padDatePart(date.getDate()),
-  ].join("-");
-};
-
-export const todayDateInputValue = () => dateToInputValue(new Date());
 
 export const oneMonthFromTodayDateInputValue = (now = new Date()) =>
   dateToInputValue(addMonths(now, 1));

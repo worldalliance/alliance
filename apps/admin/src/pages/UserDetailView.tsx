@@ -41,6 +41,10 @@ import {
   changedAwayRangeDays,
   formatAwayReason,
 } from "@alliance/shared/lib/awayRangesFormatters";
+import {
+  dateToInputValue,
+  todayDateInputValue,
+} from "@alliance/shared/lib/dateInput";
 import { useAwayRanges } from "@alliance/shared/lib/useAwayRanges";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -481,8 +485,8 @@ const UserDetailView: React.FC = () => {
 
   const startAwayEdit = useCallback((range: UserAwayRangeDto) => {
     const opened = {
-      start: formatDateForInput(range.startDate),
-      end: formatDateForInput(range.endDate),
+      start: dateToInputValue(range.startDate),
+      end: dateToInputValue(range.endDate),
     };
     setEditingAwayRangeId(range.id);
     setEditAwayStartDate(opened.start);
@@ -1410,7 +1414,7 @@ const UserDetailView: React.FC = () => {
                     name="awayStartDate"
                     type="date"
                     value={awayStartDate}
-                    min={todayDateInput()}
+                    min={todayDateInputValue()}
                     onChange={(e) => setAwayStartDate(e.target.value)}
                   />
                 </label>
@@ -1420,7 +1424,7 @@ const UserDetailView: React.FC = () => {
                     name="awayEndDate"
                     type="date"
                     value={awayEndDate}
-                    min={awayStartDate || todayDateInput()}
+                    min={awayStartDate || todayDateInputValue()}
                     onChange={(e) => setAwayEndDate(e.target.value)}
                   />
                 </label>
@@ -1581,18 +1585,6 @@ function formatAwayDate(date: string) {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function formatDateForInput(date: string) {
-  const parsed = new Date(date);
-  const year = parsed.getFullYear();
-  const month = String(parsed.getMonth() + 1).padStart(2, "0");
-  const day = String(parsed.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function todayDateInput() {
-  return formatDateForInput(new Date().toISOString());
 }
 
 function formatAwayRange(range: UserAwayRangeDto) {

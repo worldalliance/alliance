@@ -24,6 +24,7 @@ import {
   ReminderGroupClickRatePointDto,
   TimeToChurnSampleDto,
 } from "@alliance/shared/client/types.gen";
+import { dateToInputValue } from "@alliance/shared/lib/dateInput";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
 import { useQuery } from "@tanstack/react-query";
@@ -57,7 +58,6 @@ import {
   type MultiLineSeries,
 } from "../components/TimeSeriesChart";
 import { defaultInviteFunnelRange } from "../lib/defaultInviteFunnelRange";
-import { formatDateAsLocal } from "../lib/formatDateAsLocal";
 import { useActionStats } from "../lib/useActionStats";
 
 type ParsedDailyStats = DailyStatsDto & { parsedDate: Date };
@@ -164,8 +164,8 @@ const getDefaultRange = () => {
   const start = new Date();
   start.setDate(end.getDate() - 29);
   return {
-    start: formatDateAsLocal(start),
-    end: formatDateAsLocal(end),
+    start: dateToInputValue(start),
+    end: dateToInputValue(end),
   };
 };
 
@@ -333,8 +333,8 @@ const StatsPage: React.FC = () => {
     const start = new Date();
     start.setMonth(start.getMonth() - 5);
     return {
-      start: formatDateAsLocal(start),
-      end: formatDateAsLocal(end),
+      start: dateToInputValue(start),
+      end: dateToInputValue(end),
     };
   });
   const [reminderClickRateRange, setReminderClickRateRange] = useState(() => {
@@ -342,8 +342,8 @@ const StatsPage: React.FC = () => {
     const start = new Date();
     start.setMonth(start.getMonth() - 5);
     return {
-      start: formatDateAsLocal(start),
-      end: formatDateAsLocal(end),
+      start: dateToInputValue(start),
+      end: dateToInputValue(end),
     };
   });
   const [inviteFunnel, setInviteFunnel] = useState<InviteFunnelDto | null>(
@@ -365,8 +365,8 @@ const StatsPage: React.FC = () => {
     const start = new Date();
     start.setMonth(start.getMonth() - 6);
     return {
-      start: formatDateAsLocal(start),
-      end: formatDateAsLocal(end),
+      start: dateToInputValue(start),
+      end: dateToInputValue(end),
     };
   });
 
@@ -725,7 +725,7 @@ const StatsPage: React.FC = () => {
 
       runningSum += action.completionRate;
       count += 1;
-      const dayKey = formatDateAsLocal(action.endDate);
+      const dayKey = dateToInputValue(action.endDate);
       const existingPoint = dataPoints[dataPoints.length - 1];
 
       if (existingPoint && existingPoint.dayKey === dayKey) {
@@ -830,7 +830,7 @@ const StatsPage: React.FC = () => {
       }
 
       const weekStart = getWeekStartDate(endDate);
-      const bucketKey = formatDateAsLocal(weekStart);
+      const bucketKey = dateToInputValue(weekStart);
       const existingBucket = weeklyBuckets.get(bucketKey) ?? {
         date: weekStart,
         actionCount: 0,
@@ -1384,8 +1384,8 @@ const StatsPage: React.FC = () => {
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate() - (days - 1));
-    const startValue = formatDateAsLocal(start);
-    const endValue = formatDateAsLocal(end);
+    const startValue = dateToInputValue(start);
+    const endValue = dateToInputValue(end);
     setStartInput(startValue);
     setEndInput(endValue);
     setQueryRange({ start: startValue, end: endValue });
@@ -1942,8 +1942,8 @@ const StatsPage: React.FC = () => {
                 const start = new Date();
                 start.setDate(end.getDate() - 7);
                 setInviteFunnelRange({
-                  start: formatDateAsLocal(start),
-                  end: formatDateAsLocal(end),
+                  start: dateToInputValue(start),
+                  end: dateToInputValue(end),
                 });
               }}
               className="px-3 py-1 rounded-md text-xs border border-gray-300 bg-white hover:border-gray-400"

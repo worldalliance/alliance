@@ -5,6 +5,7 @@ import type {
 } from "@alliance/shared/client/types.gen";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import { formatLocalDateTime } from "@alliance/sharedweb/ui/DateTimePicker";
 import React, { useMemo, useRef, useState } from "react";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import {
@@ -19,11 +20,8 @@ const formatDateTime = (value: string): string =>
     timeStyle: "short",
   });
 
-const getDefaultNoteDate = (): string => {
-  const now = new Date();
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-  return now.toISOString().slice(0, 16);
-};
+const getDefaultNoteDate = (): string =>
+  formatLocalDateTime(new Date(), "minute");
 
 const withoutId = (ids: Set<number>, id: number) => {
   const next = new Set(ids);
