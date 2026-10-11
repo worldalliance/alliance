@@ -228,6 +228,13 @@ describe("Waitlist entry admin (e2e)", () => {
           type === ContractEventType.SIGNED ? ctx.defaultContractId : null,
       });
     }
+    await eventRepo.save({
+      user: { id: user.id },
+      type: ContractEventType.SIGNED,
+      date: new Date("2026-09-05T12:00:00.000Z"),
+      contractId: ctx.defaultContractId,
+      deletedAt: new Date(),
+    });
     const res = await search({ organizationIds: [organization.id] }).expect(
       200,
     );
