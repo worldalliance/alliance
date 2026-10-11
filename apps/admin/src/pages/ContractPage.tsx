@@ -1,11 +1,9 @@
 import {
   ContractAdminDto,
-  contractCreateAdmin,
-  contractFindOneAdmin,
-  contractUpdateAdmin,
   CreateContractDto,
   UpdateContractDto,
 } from "@alliance/shared/client";
+import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import {
   formatLocalDateTime,
@@ -13,10 +11,10 @@ import {
 } from "@alliance/sharedweb/ui/DateTimePicker";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Plus, X } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import FormTextarea from "../components/FormTextarea";
-import { useInvalidateContractsAdmin } from "../lib/useContractsAdmin";
+import { useContractAdmin } from "../lib/useContractAdmin";
 
 type DescriptionRow = {
   key: string;
@@ -54,6 +52,22 @@ const toDescriptionPayload = (rows: DescriptionRow[]) =>
     }))
     .filter((item) => item.point.length > 0);
 
+const toForm = (contract: ContractAdminDto): ContractForm => ({
+  name: contract.name ?? "",
+  markdown: contract.markdown,
+  description: (contract.description ?? []).map((item) => ({
+    key: crypto.randomUUID(),
+    point: item.point,
+    subtext: item.subtext,
+  })),
+  startDate: contract.startDate
+    ? formatLocalDateTime(resolveDateValue(contract.startDate), "minute")
+    : "",
+  endDate: contract.endDate
+    ? formatLocalDateTime(resolveDateValue(contract.endDate), "minute")
+    : "",
+});
+
 const ContractPage: React.FC = () => {
   const { id: idParam } = useParams<{ id?: string }>();
   const navigate = useNavigate();
@@ -61,67 +75,26 @@ const ContractPage: React.FC = () => {
   const isNew = !idParam || idParam === "new";
   const id = !isNew && idParam ? parseInt(idParam, 10) : null;
 
-  const [contract, setContract] = useState<ContractAdminDto | null>(null);
-  const [loading, setLoading] = useState<boolean>(!isNew);
-  const [saving, setSaving] = useState<boolean>(false);
+  const { query, create, update } = useContractAdmin(
+    id == null || isNaN(id) ? null : id,
+  );
+  const contract = query.data;
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<ContractForm>(emptyForm);
+  const [formContractId, setFormContractId] = useState<number | null>(null);
   const { success } = useToast();
-  const invalidateContracts = useInvalidateContractsAdmin();
+  const saving = create.isPending || update.isPending;
+  const createContract = create.mutateAsync;
+  const updateContract = update.mutateAsync;
 
-  useEffect(() => {
-    if (isNew || id == null || isNaN(id)) {
-      if (!isNew && idParam) setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const response = await contractFindOneAdmin({
-          path: { id },
-        });
-        if (cancelled) return;
-        const data = response.data;
-        if (!data) {
-          setError("Contract not found");
-          setLoading(false);
-          return;
-        }
-        setContract(data);
-        setForm({
-          name: data.name ?? "",
-          markdown: data.markdown,
-          description: (data.description ?? []).map((item) => ({
-            key: crypto.randomUUID(),
-            point: item.point,
-            subtext: item.subtext,
-          })),
-          startDate: data.startDate
-            ? formatLocalDateTime(resolveDateValue(data.startDate), "minute")
-            : "",
-          endDate: data.endDate
-            ? formatLocalDateTime(resolveDateValue(data.endDate), "minute")
-            : "",
-        });
-      } catch (err) {
-        if (!cancelled) {
-          setError("Failed to load contract");
-          console.error(err);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [id, isNew, idParam]);
+  if (contract && formContractId !== contract.id) {
+    setFormContractId(contract.id);
+    setForm(toForm(contract));
+  }
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      setSaving(true);
       setError(null);
       try {
         if (isNew) {
@@ -134,12 +107,8 @@ const ContractPage: React.FC = () => {
               : null,
             endDate: form.endDate ? new Date(form.endDate).toISOString() : null,
           };
-          const response = await contractCreateAdmin({
-            body,
-          });
-          if (!response.data) throw new Error("Failed to create");
-          await invalidateContracts();
-          navigate(`/contracts/${response.data.id}`);
+          const created = await createContract(body);
+          navigate(`/contracts/${created.id}`);
         } else if (id != null) {
           const body: UpdateContractDto = {
             name: form.name.trim(),
@@ -149,26 +118,18 @@ const ContractPage: React.FC = () => {
               : null,
             endDate: form.endDate ? new Date(form.endDate).toISOString() : null,
           };
-          const response = await contractUpdateAdmin({
-            path: { id },
-            body,
-          });
-          if (response.data) setContract(response.data);
-          else throw new Error("Update failed");
-          await invalidateContracts();
+          await updateContract(body);
           success("Contract updated successfully");
         }
       } catch (err) {
         setError("Failed to save contract");
         console.error(err);
-      } finally {
-        setSaving(false);
       }
     },
-    [isNew, id, form, navigate, success, invalidateContracts],
+    [isNew, id, form, navigate, success, createContract, updateContract],
   );
 
-  if (loading) {
+  if (query.isLoading) {
     return (
       <div className="p-8">
         <title>Contract - Admin</title>
@@ -177,11 +138,15 @@ const ContractPage: React.FC = () => {
     );
   }
 
-  if (error && !contract && !isNew) {
+  if (query.isError && !contract) {
     return (
       <div className="p-8">
         <title>Contract - Admin</title>
-        <p className="text-red-500">{error}</p>
+        <p className="text-red-500">
+          {thrownStatus(query.error) === 404
+            ? "Contract not found"
+            : "Failed to load contract"}
+        </p>
         <button
           onClick={() => navigate("/contracts")}
           className="mt-4 px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
