@@ -9,7 +9,10 @@ import { DetachedWorkTracker } from "src/utils/detached-work";
 import { Repository } from "typeorm";
 import { MessageDto } from "./dto/messaging.dto";
 import { Conversation } from "./entities/conversation.entity";
-import { Participant } from "./entities/participant.entity";
+import {
+  loadedParticipantUser,
+  Participant,
+} from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
 import { MessagingGateway } from "./messaging.gateway";
 
@@ -71,7 +74,7 @@ export class MessagePushListener implements OnModuleDestroy {
         await this.messagingGateway.getUsersViewingConversation(conversationId);
 
       const eligibleParticipants = participants.filter((p) => {
-        const user = p.user;
+        const user = loadedParticipantUser(p);
         if (user.id === message.author.id) return false;
         if (user.pushesForMessages === false) return false;
         if (user.turnedOffAllNotifs === true) return false;
@@ -87,13 +90,14 @@ export class MessagePushListener implements OnModuleDestroy {
       const allMessages: CreatePushMessage[] = [];
 
       for (const participant of eligibleParticipants) {
+        const userId = loadedParticipantUser(participant).id;
         const messages = await this.pushService.getPushForAllUserDevices(
-          participant.user.id,
+          userId,
           {
-            userId: participant.user.id,
+            userId,
             body,
             screen,
-            idempotencyKey: `msg-${message.id}-${participant.user.id}`,
+            idempotencyKey: `msg-${message.id}-${userId}`,
           },
         );
         allMessages.push(...messages);

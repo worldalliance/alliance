@@ -39,8 +39,7 @@ export class Participant {
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "userId" })
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  user: Relation<User>;
+  user?: Relation<User>;
 
   @Column({ type: "enum", enum: ParticipantRole, enumName: "ParticipantRole" })
   @ApiProperty({ enum: ParticipantRole, enumName: "ParticipantRole" })
@@ -77,4 +76,13 @@ export function loadedParticipantConversation(
     throw new Error(`conversation of participant ${participant.id} not loaded`);
   }
   return participant.conversation;
+}
+
+export function loadedParticipantUser(
+  participant: Participant,
+): Relation<User> {
+  if (!participant.user) {
+    throw new Error(`user of participant ${participant.id} not loaded`);
+  }
+  return participant.user;
 }

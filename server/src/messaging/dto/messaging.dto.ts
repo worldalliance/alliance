@@ -29,7 +29,11 @@ import {
   loadedConversationParticipants,
 } from "../entities/conversation.entity";
 import { Message } from "../entities/message.entity";
-import { Participant, ParticipantState } from "../entities/participant.entity";
+import {
+  loadedParticipantUser,
+  Participant,
+  ParticipantState,
+} from "../entities/participant.entity";
 
 export class MessageReferenceDto extends PickType(Message, [
   "id",
@@ -104,7 +108,7 @@ export class ParticipantDto extends OmitType(Participant, [
   constructor(participant: Participant) {
     super();
     Object.assign(this, participant);
-    this.user = new ProfileDto(participant.user);
+    this.user = new ProfileDto(loadedParticipantUser(participant));
     this.lastReadMessage = participant.lastReadMessage
       ? new MessageReferenceDto(participant.lastReadMessage)
       : undefined;
@@ -186,7 +190,8 @@ export class ConversationDto extends PickType(Conversation, [
 
     if (contextUserId) {
       const currentParticipant = participants.find(
-        (participant) => participant.user.id === contextUserId,
+        (participant) =>
+          loadedParticipantUser(participant).id === contextUserId,
       );
       this.isMessageRequest =
         currentParticipant?.state === ParticipantState.Invited;

@@ -5,6 +5,7 @@ import { Community } from "src/community/entities/community.entity";
 import { ConversationService } from "src/messaging/conversation.service";
 import { Conversation } from "src/messaging/entities/conversation.entity";
 import {
+  loadedParticipantUser,
   Participant,
   ParticipantState,
 } from "src/messaging/entities/participant.entity";
@@ -701,7 +702,7 @@ describe("ConversationController (e2e)", () => {
           relations: { user: true },
         })
       )
-        .map((participant) => participant.user.id)
+        .map((participant) => loadedParticipantUser(participant).id)
         .sort((a, b) => a - b);
 
     it("returns a community's chat to a member and refuses an outsider", async () => {

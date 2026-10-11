@@ -42,6 +42,7 @@ import {
 import { Message } from "./entities/message.entity";
 import {
   loadedParticipantConversation,
+  loadedParticipantUser,
   Participant,
   ParticipantState,
 } from "./entities/participant.entity";
@@ -218,7 +219,7 @@ export class ConversationService {
     });
     if (
       !loadedConversationParticipants(conversation).some(
-        (participant) => participant.user.id === userId,
+        (participant) => loadedParticipantUser(participant).id === userId,
       )
     ) {
       throw new BadRequestException();
@@ -566,7 +567,9 @@ export class ConversationService {
 
     const alreadyParticipant = loadedConversationParticipants(
       conversation,
-    ).some((participant) => participant.user.id === dto.userId);
+    ).some(
+      (participant) => loadedParticipantUser(participant).id === dto.userId,
+    );
 
     if (alreadyParticipant) {
       return this.buildConversationDto(conversationId, actingUserId);
@@ -630,7 +633,8 @@ export class ConversationService {
 
     if (
       targetParticipant.role === ParticipantRole.Owner &&
-      adminParticipant.user.id !== targetParticipant.user.id
+      loadedParticipantUser(adminParticipant).id !==
+        loadedParticipantUser(targetParticipant).id
     ) {
       throw new ForbiddenException("Only owners can remove other owners.");
     }
@@ -720,7 +724,7 @@ export class ConversationService {
 
     const participantMap = new Map<number, Participant>(
       loadedConversationParticipants(conversation).map((participant) => [
-        participant.user.id,
+        loadedParticipantUser(participant).id,
         participant,
       ]),
     );
@@ -759,7 +763,7 @@ export class ConversationService {
     }
 
     const removable = loadedConversationParticipants(conversation).filter(
-      (participant) => !desiredUsers.has(participant.user.id),
+      (participant) => !desiredUsers.has(loadedParticipantUser(participant).id),
     );
     if (removable.length) {
       await this.participantRepository.remove(removable);
