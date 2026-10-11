@@ -1,3 +1,5 @@
+export type ChartContext = ReturnType<typeof createChartContext>;
+
 export function createChartContext(signal: AbortSignal) {
   const $ = (id: string) => document.getElementById(id) as HTMLElement;
   const tip = $("ir-tip");
@@ -49,5 +51,5 @@ export function createChartContext(signal: AbortSignal) {
     );
   }
 
-  return { $, live, showTip, hideTip, vbPoint, wireRadios };
+  return { signal, $, live, showTip, hideTip, vbPoint, wireRadios };
 }
