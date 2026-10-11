@@ -659,6 +659,7 @@ export class ForumService {
           id: createCommentDto.parentId,
           parentObjectType: createCommentDto.parentObjectType,
           parentObjectId: createCommentDto.parentObjectId,
+          deleted: false,
         },
         relations: { author: true },
       });
