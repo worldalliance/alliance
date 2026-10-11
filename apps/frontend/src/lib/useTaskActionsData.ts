@@ -9,9 +9,7 @@ import { useUnreadGeneralUpdates } from "@alliance/shared/lib/useGeneralUpdates"
 import { useCallback, useMemo } from "react";
 import { type LoadFailure } from "../components/LoadFailed";
 
-export function useTaskActionsData(options?: {
-  refetchInterval?: number | false;
-}): {
+export function useTaskActionsData(): {
   actions: ActionWithAwayStatus[] | null;
   generalUpdates: ParsedGeneralUpdate[] | null;
   generalUpdatesFailure: LoadFailure | null;
@@ -20,9 +18,7 @@ export function useTaskActionsData(options?: {
   handleDismissGeneralUpdate: (generalUpdateId: number) => Promise<void>;
 } {
   const { mutateAsync: dismissAction } = useDismissActionMutation();
-  const actionsQuery = useActionsQuery({
-    refetchInterval: options?.refetchInterval,
-  });
+  const actionsQuery = useActionsQuery();
   const {
     data: actionsData,
     isLoading: actionsLoading,

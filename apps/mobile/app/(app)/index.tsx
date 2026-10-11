@@ -21,7 +21,6 @@ import useHomeFeed, { resetHomeFeed } from "@alliance/shared/lib/useHomeFeed";
 import { useInvalidateTaskForms } from "@alliance/shared/lib/useTaskForm";
 import { LegendList, type LegendListRef } from "@legendapp/list";
 import { useQueryClient } from "@tanstack/react-query";
-import { milliseconds } from "date-fns";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -69,7 +68,6 @@ export default function HomeScreen() {
   const invalidateActions = useInvalidateActions();
   const [refreshing, setRefreshing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const hasNoTasks = useRef(true);
 
   const handleSubmitSuccess = useCallback(() => {
     setShowSuccess(true);
@@ -78,9 +76,7 @@ export default function HomeScreen() {
   const handleSuccessComplete = useCallback(() => {
     setShowSuccess(false);
   }, []);
-  const actionsQuery = useActionsQuery({
-    refetchInterval: hasNoTasks.current ? milliseconds({ minutes: 1 }) : false,
-  });
+  const actionsQuery = useActionsQuery();
   const {
     data: actions,
     isPending,
@@ -159,8 +155,6 @@ export default function HomeScreen() {
     return [...actionAndUpdateItems, ...followUpItems];
   }, [todoActions, generalUpdates, activeCompletableFollowUpForms]);
   const allItemKeys = useMemo(() => allItems.map(homeItemKey), [allItems]);
-
-  hasNoTasks.current = allItems.length === 0;
 
   const {
     index: safeIndex,

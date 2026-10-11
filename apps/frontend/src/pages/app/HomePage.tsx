@@ -32,7 +32,6 @@ import LargeGeneralUpdateCard from "@alliance/sharedweb/ui/LargeGeneralUpdateCar
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useQueryClient } from "@tanstack/react-query";
-import { milliseconds } from "date-fns";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { href, Link } from "react-router";
 import FollowUpFormPanel from "../../components/FollowUpFormPanel";
@@ -81,7 +80,6 @@ const HomePage = () => {
   const invalidateActions = useInvalidateActions();
   const markActionCompleted = useMarkActionCompleted();
   const { warning } = useToast();
-  const hasNoTasks = useRef(true);
   const {
     actions: liveActions,
     generalUpdates,
@@ -89,9 +87,7 @@ const HomePage = () => {
     actionsFailure,
     handleDismissAction,
     handleDismissGeneralUpdate,
-  } = useTaskActionsData({
-    refetchInterval: hasNoTasks.current ? milliseconds({ minutes: 1 }) : false,
-  });
+  } = useTaskActionsData();
 
   const mocked = useMockTasks();
   const actions = mocked ? MOCK_TASKS : liveActions;
@@ -211,8 +207,6 @@ const HomePage = () => {
     return [...actionCards, ...followUpCards];
   }, [todoActions, activeCompletableFollowUpForms]);
 
-  hasNoTasks.current = taskNavigatorItems.length === 0;
-
   const taskNavigatorKeys = useMemo(
     () => taskNavigatorItems.map(homeItemKey),
     [taskNavigatorItems],
@@ -225,9 +219,10 @@ const HomePage = () => {
     [generalUpdates],
   );
 
-  const selectedTaskNavigatorItem = hasNoTasks.current
-    ? undefined
-    : taskNavigatorItems[taskNavigatorIndex];
+  const selectedTaskNavigatorItem =
+    taskNavigatorItems.length === 0
+      ? undefined
+      : taskNavigatorItems[taskNavigatorIndex];
 
   const taskNavigatorListContent = useMemo(() => {
     const activeActionId =

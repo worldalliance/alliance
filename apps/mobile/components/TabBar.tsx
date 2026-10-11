@@ -1,10 +1,9 @@
-import { useActionsQuery } from "@alliance/shared/lib/actionsListPage";
-import { showActionInSidebarList } from "@alliance/shared/lib/actionUtils";
+import { useTaskBadgeCount } from "@alliance/shared/lib/useTaskBadgeCount";
 import { cn } from "@alliance/shared/styles/util";
 import { impactAsync, ImpactFeedbackStyle } from "expo-haptics";
 import { usePathname, useRouter } from "expo-router";
 import { Bell, ListTodo, MessageSquare, Users } from "lucide-react-native";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Animated, Pressable, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { isPathActive } from "../lib/isPathActive";
@@ -102,7 +101,7 @@ export default function TabBar() {
   const reportChromeBottom = useReportChromeBottom();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { data: actions } = useActionsQuery();
+  const taskBadgeCount = useTaskBadgeCount();
   const {
     unread: unreadMessages,
     hasUpdates,
@@ -111,20 +110,6 @@ export default function TabBar() {
   } = useMessagingUnread();
   const unreadNotifications = useUnreadNotificationCount();
 
-  const uncompletedTaskCount = useMemo(() => {
-    if (!actions) {
-      return 0;
-    }
-
-    return actions.filter((action) =>
-      // `awayStatus` is computed on the server and shipped on each ActionDto.
-      showActionInSidebarList({
-        ...action,
-        awayStatus: action.awayStatus ?? "not_away",
-      }),
-    ).length;
-  }, [actions]);
-
   useEffect(() => {
     if (hasUpdates) {
       refreshUnreadCount();
@@ -132,7 +117,7 @@ export default function TabBar() {
   }, [hasUpdates, updateTick, refreshUnreadCount]);
 
   const tabBadgeCounts: Record<TabPaths, number> = {
-    "/": uncompletedTaskCount,
+    "/": taskBadgeCount ?? 0,
     "/notifications": unreadNotifications,
     "/messages": unreadMessages,
     "/groups": 0,

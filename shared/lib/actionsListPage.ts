@@ -1,5 +1,6 @@
 import {
   QueryClient,
+  UseQueryOptions,
   UseQueryResult,
   useMutation,
   useQuery,
@@ -20,7 +21,7 @@ import {
 import { queryKeys } from "./queryKeys";
 
 export const useActionsQuery = (options?: {
-  refetchInterval?: number | false;
+  refetchInterval?: UseQueryOptions<ActionDto[], Error>["refetchInterval"];
 }): UseQueryResult<ActionDto[], Error> =>
   useQuery({
     queryKey: queryKeys.actions(),
