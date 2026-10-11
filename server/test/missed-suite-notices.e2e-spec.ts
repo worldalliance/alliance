@@ -19,6 +19,7 @@ import {
   MessageTracking,
 } from "src/link-tracking/message-tracking.entity";
 import { MailService } from "src/mail/mail.service";
+import { MmsService } from "src/mms/mms.service";
 import { ActionEventNotifWorker } from "src/notifs/action-event-notif.worker";
 import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
 import {
@@ -388,6 +389,45 @@ describe("missed-suite notices (e2e)", () => {
       relations: { notification: true },
     });
     expect(read.notification?.readAt).not.toBeNull();
+  });
+
+  it("records a notice sent while its group is deleted, detached from the group", async () => {
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+    const mms = ctx.app.get(MmsService);
+    const send = mms.sendMms.bind(mms);
+    const sending = jest
+      .spyOn(mms, "sendMms")
+      .mockImplementationOnce(async (...args) => {
+        await ctx.app
+          .get(ActionEventReminderService)
+          .deleteReminderGroup(group.id);
+        return send(...args);
+      });
+
+    try {
+      await dispatch();
+    } finally {
+      sending.mockRestore();
+    }
+
+    expect(
+      await notifRepo.query(
+        `SELECT "reminderGroupId", "memberActionEventId", sent, "mmsId" IS NOT NULL AS "hasMms", "notificationId" IS NOT NULL AS "hasEntry" FROM action_event_notif WHERE type = $1`,
+        [ActionEventNotifType.MissedDeadline],
+      ),
+    ).toEqual([
+      {
+        reminderGroupId: null,
+        memberActionEventId: closed.memberEvent.id,
+        sent: true,
+        hasMms: true,
+        hasEntry: true,
+      },
+    ]);
   });
 
   it("reads the notice through its text when the email fails", async () => {
