@@ -59,6 +59,8 @@ export const queryKeys = {
     communityId: number | undefined,
     userId: number | undefined,
   ) => ["communityMemberInfo", communityId ?? null, userId ?? null] as const,
+  communityMemberContactInfo: (communityId: number | null) =>
+    ["communityGetMemberContactInfo", communityId] as const,
   communityOnetimeInvites: (communityId: number) =>
     ["userGetOnetimeInvitesByCommunity", communityId] as const,
   contractById: (contractId: number | null) =>
