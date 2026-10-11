@@ -657,6 +657,7 @@ export class ForumService {
       parentReply = await this.commentRepository.findOne({
         where: {
           id: createCommentDto.parentId,
+          parentObjectType: createCommentDto.parentObjectType,
           parentObjectId: createCommentDto.parentObjectId,
         },
         relations: { author: true },
