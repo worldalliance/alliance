@@ -1,9 +1,10 @@
-import { UserDto, userMembers } from "@alliance/shared/client";
+import type { ProfileDto, UserDto } from "@alliance/shared/client";
+import { useMembers } from "@alliance/shared/lib/useMembers";
 import {
   matchesName,
   useUserSelection,
 } from "@alliance/shared/lib/useUserSelection";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { AvatarProfile } from "./Avatar";
 
 export type UserSelectUser = Pick<UserDto, "id" | "name" | "profilePicture">;
@@ -170,18 +171,14 @@ const UserSelect: React.FC<UserSelectProps> = ({
 
 export default UserSelect;
 
-export const useSelectableUserIds = () => {
-  const [users, setUsers] = useState<UserSelectUser[]>([]);
-  useEffect(() => {
-    userMembers().then((response) => {
-      setUsers(
-        response.data?.map((user) => ({
-          id: user.id,
-          name: user.displayName,
-          profilePicture: user.profilePicture,
-        })) ?? [],
-      );
-    });
-  }, []);
-  return users;
+const toUserSelectUser = (member: ProfileDto): UserSelectUser => ({
+  id: member.id,
+  name: member.displayName,
+  profilePicture: member.profilePicture,
+});
+
+export const useSelectableUsers = () => {
+  const { data, isLoading, isLoadingError } = useMembers();
+  const users = useMemo(() => data?.map(toUserSelectUser) ?? [], [data]);
+  return { users, isLoading, isLoadingError };
 };

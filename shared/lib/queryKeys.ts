@@ -75,6 +75,7 @@ export const queryKeys = {
   linkedGuestDraft: (taskFormId: number) =>
     ["tasksGetLinkedGuestDraft", taskFormId] as const,
   linkPreview: (url: string) => ["linkPreviewGetPreview", url] as const,
+  members: () => ["userMembers"] as const,
   membersWithFriends: () => ["userMembersWithFriends"] as const,
   myAwayRanges: () => ["userGetAwayRanges"] as const,
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,

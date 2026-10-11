@@ -1,15 +1,13 @@
-import { userMembers } from "@alliance/shared/client";
 import {
   missingRecipient,
   recipientNameOf,
-  type MessageRecipient,
   type MessageRecipientSelectProps,
 } from "@alliance/shared/lib/messageRecipients";
 import { useUserSelection } from "@alliance/shared/lib/useUserSelection";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { X } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React from "react";
 
 const MessageRecipientSelect: React.FC<MessageRecipientSelectProps> = ({
   users,
@@ -115,19 +113,3 @@ const MessageRecipientSelect: React.FC<MessageRecipientSelectProps> = ({
 };
 
 export default MessageRecipientSelect;
-
-export const useSelectableUserIds = () => {
-  const [users, setUsers] = useState<MessageRecipient[]>([]);
-  useEffect(() => {
-    userMembers().then((response) => {
-      setUsers(
-        response.data?.map((user) => ({
-          id: user.id,
-          displayName: user.displayName,
-          profilePicture: user.profilePicture,
-        })) ?? [],
-      );
-    });
-  }, []);
-  return users;
-};

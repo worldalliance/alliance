@@ -22,7 +22,7 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import UserSelect, {
-  useSelectableUserIds,
+  useSelectableUsers,
 } from "@alliance/sharedweb/ui/UserSelect";
 import { ChevronDown, ChevronRight, Copy, Pencil, Trash2 } from "lucide-react";
 import React, {
@@ -138,7 +138,7 @@ const loadShareUrlsForOwner = (
 };
 
 const ShareLinksPage: React.FC = () => {
-  const users = useSelectableUserIds();
+  const { users } = useSelectableUsers();
   const [ownerKind, setOwnerKind] = useState<OwnerKind>("user");
 
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
