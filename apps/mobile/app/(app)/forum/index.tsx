@@ -2,7 +2,7 @@ import { PostDto, forumFindAllPosts } from "@alliance/shared/client";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { router } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -56,14 +56,6 @@ export default function ForumScreen() {
     router.push("/forum/create");
   }, []);
 
-  const sortedPosts = useMemo(() => {
-    return [...posts].sort((a, b) => {
-      if (a.pinned && !b.pinned) return -1;
-      if (!a.pinned && b.pinned) return 1;
-      return 0;
-    });
-  }, [posts]);
-
   return (
     <View className="flex-1 bg-white">
       <SimplePageTitle title="Forum" />
@@ -96,13 +88,13 @@ export default function ForumScreen() {
                 <Text className="text-zinc-700">Retry</Text>
               </TouchableOpacity>
             </View>
-          ) : sortedPosts.length === 0 ? (
+          ) : posts.length === 0 ? (
             <View className="items-center py-12">
               <Text className="text-zinc-500">No posts yet.</Text>
             </View>
           ) : (
             <View className="overflow-hidden bg-white">
-              {sortedPosts.map((post, index) => {
+              {posts.map((post, index) => {
                 const isPrivateFuturePost =
                   post.visibleAt && new Date(post.visibleAt) > new Date();
 

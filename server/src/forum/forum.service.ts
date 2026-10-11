@@ -60,6 +60,7 @@ import {
 import { EditableContent } from "./entities/editablecontent.entity";
 import { PostTag } from "./entities/post-tag.entity";
 import { parsePost, Post, type ParsedPost } from "./entities/post.entity";
+import { byForumListOrder } from "./forum-list-order";
 import { filterVisiblePosts } from "./post-visibility";
 
 export type ForumFeedComment = {
@@ -229,11 +230,13 @@ export class ForumService {
       lastComments.map((c) => [c.parentObjectId, c]),
     );
 
-    return posts.map((post, index) => ({
-      post: parsePost(post),
-      commentCount: Number(raw[index].commentCount ?? 0),
-      lastComment: lastCommentByPostId.get(post.id) ?? undefined,
-    }));
+    return posts
+      .map((post, index) => ({
+        post: parsePost(post),
+        commentCount: Number(raw[index].commentCount ?? 0),
+        lastComment: lastCommentByPostId.get(post.id) ?? undefined,
+      }))
+      .sort(byForumListOrder);
   }
 
   async findPostsByAction(params: {

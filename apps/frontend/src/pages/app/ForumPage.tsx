@@ -1,4 +1,4 @@
-import { forumFindAllPosts, PostDto } from "@alliance/shared/client";
+import { forumFindAllPosts } from "@alliance/shared/client";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Card from "@alliance/sharedweb/ui/Card";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
@@ -10,25 +10,8 @@ import { useGrayBackground } from "../../components/HtmlBackgroundManager";
 
 export async function clientLoader() {
   const response = await forumFindAllPosts();
-  const posts = response.data ?? null;
-  if (!posts) {
-    return null;
-  }
-
-  return [...posts].sort(
-    (a, b) =>
-      new Date(b.lastComment?.createdAt ?? b.updatedAt).getTime() -
-      new Date(a.lastComment?.createdAt ?? a.updatedAt).getTime(),
-  );
+  return response.data ?? null;
 }
-
-const pinFirst = (posts: PostDto[]) => {
-  return [...posts].sort((a, b) => {
-    if (a.pinned && !b.pinned) return -1;
-    if (!a.pinned && b.pinned) return 1;
-    return 0;
-  });
-};
 
 const ForumPage: React.FC = () => {
   const posts = useLoaderData<typeof clientLoader>();
@@ -44,7 +27,6 @@ const ForumPage: React.FC = () => {
   if (posts === null) {
     return null;
   }
-  const sorted = pinFirst(posts);
 
   return (
     <CenterLayout className="space-y-3">
@@ -56,7 +38,7 @@ const ForumPage: React.FC = () => {
         <p>Create a new thread...</p>
       </Card>
       <List className="mb-10">
-        {sorted.map((post) => (
+        {posts.map((post) => (
           <ForumListPost key={post.id} post={post} />
         ))}
       </List>
