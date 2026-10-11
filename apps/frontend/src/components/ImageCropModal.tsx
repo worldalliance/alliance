@@ -11,7 +11,7 @@ import { RotateCcw, RotateCw } from "lucide-react";
 import type { FC, RefObject } from "react";
 import ReactCrop, { type PercentCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
-import type { Dimensions } from "./imageEditorCanvas";
+import { RotationDirection, type Dimensions } from "./imageEditorCanvas";
 
 type ImageCropModalProps = {
   previewSrc: string | null;
@@ -20,7 +20,7 @@ type ImageCropModalProps = {
   crop: PercentCrop | undefined;
   onCropChange: (crop: PercentCrop) => void;
   onPreviewLoad: (image: HTMLImageElement) => void;
-  onRotate: (direction: "left" | "right") => void;
+  onRotate: (direction: RotationDirection) => void;
   onChooseAnother: () => void;
   onDismiss: () => void;
   onApply: () => void;
@@ -111,7 +111,7 @@ const ImageCropModal: FC<ImageCropModalProps> = ({
               aria-label="Rotate left"
               title="Rotate left"
               className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-40 disabled:hover:bg-transparent"
-              onClick={() => onRotate("left")}
+              onClick={() => onRotate(RotationDirection.Left)}
               disabled={isPreviewProcessing || isUploading || isCropping}
             >
               <RotateCcw className="h-5 w-5" />
@@ -121,7 +121,7 @@ const ImageCropModal: FC<ImageCropModalProps> = ({
               aria-label="Rotate right"
               title="Rotate right"
               className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-40 disabled:hover:bg-transparent"
-              onClick={() => onRotate("right")}
+              onClick={() => onRotate(RotationDirection.Right)}
               disabled={isPreviewProcessing || isUploading || isCropping}
             >
               <RotateCw className="h-5 w-5" />

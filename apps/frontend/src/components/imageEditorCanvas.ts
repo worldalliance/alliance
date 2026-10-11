@@ -12,6 +12,16 @@ type SourcePixels = {
   height: number;
 };
 
+export enum RotationDirection {
+  Left = "left",
+  Right = "right",
+}
+
+export const ROTATION_DEGREES: Record<RotationDirection, number> = {
+  [RotationDirection.Left]: -90,
+  [RotationDirection.Right]: 90,
+};
+
 const MAX_PREVIEW_SIZE = 1200;
 
 const getRadianAngle = (degreeValue: number) => (degreeValue * Math.PI) / 180;
@@ -90,7 +100,7 @@ export const createPreviewImage = async (image: HTMLImageElement) => {
 
 export const rotateImageData = async (
   imageSrc: string,
-  direction: "left" | "right",
+  direction: RotationDirection,
 ) => {
   const image = await createImage(imageSrc);
   const canvas = document.createElement("canvas");
@@ -100,8 +110,7 @@ export const rotateImageData = async (
     throw new Error("Failed to create canvas context");
   }
 
-  const angle = direction === "left" ? -90 : 90;
-  const rotRad = getRadianAngle(angle);
+  const rotRad = getRadianAngle(ROTATION_DEGREES[direction]);
   const width = image.width;
   const height = image.height;
 

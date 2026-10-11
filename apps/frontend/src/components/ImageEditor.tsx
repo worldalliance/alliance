@@ -17,6 +17,8 @@ import {
   createPreviewImage,
   getCroppedImage,
   rotateImageData,
+  ROTATION_DEGREES,
+  RotationDirection,
   toSourcePixels,
   type Dimensions,
 } from "./imageEditorCanvas";
@@ -333,7 +335,7 @@ const ImageEditor: FC<ImageEditorProps> = ({
   }, [dropRotation, imageSrc]);
 
   const handleRotate = useCallback(
-    async (direction: "left" | "right") => {
+    async (direction: RotationDirection) => {
       if (
         !hasCustomImage ||
         isUploading ||
@@ -350,9 +352,10 @@ const ImageEditor: FC<ImageEditorProps> = ({
         if (previewGenerationRef.current !== generation) return;
         // The crop is mapped onto the source at `rotation`, so the angle and
         // the preview it was drawn on have to move together or not at all.
-        const delta = direction === "left" ? -90 : 90;
         setPreviewSrc(rotated);
-        setRotation((((rotation + delta) % 360) + 360) % 360);
+        setRotation(
+          (((rotation + ROTATION_DEGREES[direction]) % 360) + 360) % 360,
+        );
         setCrop(undefined);
       } catch {
         if (previewGenerationRef.current === generation) {
