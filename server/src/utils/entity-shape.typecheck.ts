@@ -13,6 +13,7 @@ import type { DailyStatsRecord } from "src/analytics/dailystats.entity";
 import type { Guest } from "src/auth/entities/guest.entity";
 import type { Campaign } from "src/campaign/entities/campaign.entity";
 import type { Cluster } from "src/cluster/entities/cluster.entity";
+import type { CommunityInvite } from "src/community/entities/community-invite.entity";
 import type { Contract } from "src/contract/entities/contract.entity";
 import type { EventLog } from "src/eventlog/event-log.entity";
 import type { EditableContent } from "src/forum/entities/editablecontent.entity";
@@ -68,6 +69,7 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<Campaign>>
   | Assert<EntityShape<City>>
   | Assert<EntityShape<Cluster>>
+  | Assert<EntityShape<CommunityInvite>>
   | Assert<EntityShape<Contract>>
   | Assert<EntityShape<ContractEvent>>
   | Assert<EntityShape<Conversation>>

@@ -45,6 +45,7 @@ import { CreateCommunityDto, UpdateCommunityDto } from "./dto/community.dto";
 import {
   CommunityInvite,
   CommunityInviteStatus,
+  loadedCommunityInviteCommunity,
   loadedCommunityInviteInvitedUser,
 } from "./entities/community-invite.entity";
 import { Community } from "./entities/community.entity";
@@ -1083,7 +1084,7 @@ export class CommunityService {
     if (
       !(
         invite.invitingUser?.id === userId ||
-        canManageCommunity(user, invite.community.id)
+        canManageCommunity(user, loadedCommunityInviteCommunity(invite).id)
       )
     ) {
       throw new BadRequestException();
@@ -1210,9 +1211,10 @@ export class CommunityService {
     if (!user) {
       throw new BadRequestException("User not found");
     }
-    if (!user.leaderOfIds.some((cid) => cid === invite.community.id)) {
+    const communityId = loadedCommunityInviteCommunity(invite).id;
+    if (!user.leaderOfIds.some((cid) => cid === communityId)) {
       throw new BadRequestException(
-        `User is not a leader of community ${invite.community.id}`,
+        `User is not a leader of community ${communityId}`,
       );
     }
 
@@ -1229,6 +1231,7 @@ export class CommunityService {
     );
 
     const invitedUser = loadedCommunityInviteInvitedUser(invite);
+    const community = loadedCommunityInviteCommunity(invite);
     invite.status = CommunityInviteStatus.InviteePending;
     const savedInvite = await this.communityInviteRepository.save(invite);
 
@@ -1236,7 +1239,7 @@ export class CommunityService {
       {
         user: invitedUser,
         category: NotificationCategory.CommunityInviteCreated,
-        message: notifMessage`${member(invite.invitingUser ?? user)} invited you to join their group (${group(invite.community)})`,
+        message: notifMessage`${member(invite.invitingUser ?? user)} invited you to join their group (${group(community)})`,
         destination: null,
         webAppLocation: groupUrl({
           tab: "groups",
@@ -1250,10 +1253,10 @@ export class CommunityService {
               user: invite.invitingUser,
               category: NotificationCategory.CommunityInviteCreated,
               message: notifMessage`Your request to invite ${member(invitedUser)} was approved`,
-              destination: communityDestination(invite.community.id),
+              destination: communityDestination(community.id),
               webAppLocation: groupUrl({
                 tab: "groups",
-                communityId: invite.community.id,
+                communityId: community.id,
               }),
               associatedUsers: [],
               communityInvite: invite,
@@ -1350,7 +1353,9 @@ export class CommunityService {
 
     invite.status = CommunityInviteStatus.InviteeAccepted;
 
-    const community = await this.findOneOrFail(invite.community.id);
+    const community = await this.findOneOrFail(
+      loadedCommunityInviteCommunity(invite).id,
+    );
 
     if (community.users.some((user) => user.id === invitedUser.id)) {
       throw new BadRequestException();
@@ -1431,6 +1436,7 @@ export class CommunityService {
       },
     });
     const invitedUser = loadedCommunityInviteInvitedUser(invite);
+    const community = loadedCommunityInviteCommunity(invite);
     if (invitedUser.id !== userId) {
       throw new BadRequestException();
     }
@@ -1448,11 +1454,11 @@ export class CommunityService {
     await this.notifsService.sendNotif({
       user: invite.invitingUser!,
       category: NotificationCategory.CommunityInviteRejected,
-      message: notifMessage`${member(invitedUser)} declined your invitation to join your group (${group(invite.community)})`,
-      destination: communityDestination(invite.community.id),
+      message: notifMessage`${member(invitedUser)} declined your invitation to join your group (${group(community)})`,
+      destination: communityDestination(community.id),
       webAppLocation: groupUrl({
         tab: "invites",
-        communityId: invite.community.id,
+        communityId: community.id,
       }),
       associatedUsers: [invitedUser],
       communityInvite: invite,

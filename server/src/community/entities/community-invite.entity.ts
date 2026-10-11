@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsDefined, IsOptional } from "class-validator";
+import { Allow, IsOptional } from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -88,12 +88,11 @@ export class CommunityInvite {
     nullable: false,
     onDelete: "CASCADE",
   })
-  @ApiProperty({ type: () => Community })
+  @ApiPropertyOptional({ type: () => Community })
   @Type(() => Community)
   @JoinColumn({ name: "communityId" })
-  @IsDefined()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  community: Relation<Community>;
+  @IsOptional()
+  community?: Relation<Community>;
 
   @OneToMany(() => Notification, (notif) => notif.communityInvite)
   @Type(() => Notification)
@@ -110,4 +109,13 @@ export function loadedCommunityInviteInvitedUser(
     throw new Error(`invitedUser of community invite ${invite.id} not loaded`);
   }
   return invite.invitedUser;
+}
+
+export function loadedCommunityInviteCommunity(
+  invite: CommunityInvite,
+): Relation<Community> {
+  if (!invite.community) {
+    throw new Error(`community of community invite ${invite.id} not loaded`);
+  }
+  return invite.community;
 }

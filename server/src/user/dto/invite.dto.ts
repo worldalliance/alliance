@@ -17,7 +17,10 @@ import {
   ValidateNested,
 } from "class-validator";
 import { CommunityDto } from "src/community/dto/community.dto";
-import { CommunityInvite } from "src/community/entities/community-invite.entity";
+import {
+  CommunityInvite,
+  loadedCommunityInviteCommunity,
+} from "src/community/entities/community-invite.entity";
 import { getImageSource } from "src/images/images.service";
 import { type PaginatedList, PaginatedListDto } from "src/utils/pagination.dto";
 import type { WithRelations } from "src/utils/Repository";
@@ -106,7 +109,9 @@ export class CommunityInviteDto extends PickType(CommunityInvite, [
     this.status = communityInvite.status;
     this.createdAt = communityInvite.createdAt;
     this.updatedAt = communityInvite.updatedAt;
-    this.community = new CommunityDto(communityInvite.community);
+    this.community = new CommunityDto(
+      loadedCommunityInviteCommunity(communityInvite),
+    );
     this.invitedUser = communityInvite.invitedUser
       ? new ProfileDto(communityInvite.invitedUser)
       : undefined;
