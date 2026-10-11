@@ -119,6 +119,7 @@ export const queryKeys = {
   campaignsAdmin: () => ["campaignFindAllAdmin"] as const,
   clustersAdmin: () => ["clusterListAdmin"] as const,
   communitiesAdmin: () => ["communityGetCommunitiesAdmin"] as const,
+  contractAdmin: (id: number | null) => ["contractFindOneAdmin", id] as const,
   contractsAdmin: () => ["contractAllAdmin"] as const,
   customValidatorAdmin: (id: number) =>
     ["tasksFindOneCustomValidatorAdmin", id] as const,
