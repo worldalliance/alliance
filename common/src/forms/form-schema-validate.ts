@@ -143,12 +143,13 @@ function collectCycleErrors(
   }
 }
 
-// Edges run from a field to each in-form field its own formula reads; loops
-// through a page's formula are not followed.
-function collectVisibilityCycleErrors(
+/**
+ * Each field's id, with the in-form fields its own visibility formula reads.
+ * Loops through a page's formula are not followed.
+ */
+export function visibilityDependencies(
   schema: FormSchema,
-  errors: FormSchemaValidationError[],
-): void {
+): Map<string, string[]> {
   const deps = new Map<string, string[]>();
   for (const field of collectFieldLookup(schema.pages ?? []).values()) {
     deps.set(
@@ -158,16 +159,23 @@ function collectVisibilityCycleErrors(
       ),
     );
   }
+  return deps;
+}
 
-  for (const cycle of findCycles(deps)) {
+/** As validation reports it: the field ids along the cycle, from any of them. */
+export const describeVisibilityCycle = (cycle: string[]): string =>
+  cycle.length === 1
+    ? `Visibility of "${cycle[0]}" depends on its own answer`
+    : `Visibility conditions form a cycle: ${[...cycle, cycle[0]].join(" -> ")}`;
+
+function collectVisibilityCycleErrors(
+  schema: FormSchema,
+  errors: FormSchemaValidationError[],
+): void {
+  for (const cycle of findCycles(visibilityDependencies(schema))) {
     errors.push({
       blockId: cycle[0],
-      message:
-        cycle.length === 1
-          ? `Visibility of "${cycle[0]}" depends on its own answer`
-          : `Visibility conditions form a cycle: ${[...cycle, cycle[0]].join(
-              " -> ",
-            )}`,
+      message: describeVisibilityCycle(cycle),
     });
   }
 }

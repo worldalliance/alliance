@@ -1,15 +1,19 @@
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
-import type { Page, PageItem } from "@alliance/common/forms/form-schema";
+import type {
+  FormSchema,
+  Page,
+  PageItem,
+} from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import {
   deriveVisibilityGroups,
   detachMember,
-  joinNeighbor,
-  mergeGroups,
+  newVisibilityCycle,
   normalizeVisibilityGroups,
   pageSegments,
   SegmentKind,
   setGroupVisibility,
+  shareVisibility,
   splitGroup,
   ungroup,
   type VisibilityGroups,
@@ -191,59 +195,109 @@ describe("membership operations", () => {
   });
 });
 
-describe("joining and merging", () => {
-  it("adopts only the destination group's condition", () => {
-    const pages: Page[] = [
-      { id: "p", fields: [text("A", X), text("B", X), text("C", Y)] },
-    ];
-    const groups = deriveVisibilityGroups(pages);
-    const [, , joining] = pages[0].fields;
-    const joined = joinNeighbor({
-      pages,
-      groups,
-      element: joining,
-      neighbor: pages[0].fields[1],
-    });
-    const normalized = normalizeVisibilityGroups(joined.pages, joined.groups);
-    expect(memberLists(joined.pages, normalized)).toEqual([["A", "B", "C"]]);
-    expect(formulaOf(joined.pages, "C")).toEqual(X);
-  });
-
-  it("forms a new group with a conditional element outside any group", () => {
-    const pages: Page[] = [{ id: "p", fields: [text("A"), text("B", Y)] }];
-    const joined = joinNeighbor({
-      pages,
-      groups: new Map(),
-      element: pages[0].fields[0],
-      neighbor: pages[0].fields[1],
-    });
-    expect(
-      memberLists(
-        joined.pages,
-        normalizeVisibilityGroups(joined.pages, joined.groups),
-      ),
-    ).toEqual([["A", "B"]]);
-  });
-
-  it("merges adjacent groups under the chosen condition", () => {
+describe("shareVisibility", () => {
+  it("gives the elements one condition and a group of their own", () => {
     const pages: Page[] = [
       {
         id: "p",
-        fields: [text("A", X), text("B", X), text("C", Y), text("D", Y)],
+        fields: [text("A", X), text("B", X), text("C", Y), text("D")],
       },
     ];
-    const groups = deriveVisibilityGroups(pages);
-    const merged = mergeGroups({
+    const shared = shareVisibility({
       pages,
-      groups,
-      previousKey: keyOf(groups, "A"),
-      nextKey: keyOf(groups, "C"),
+      groups: deriveVisibilityGroups(pages),
+      ids: ["B", "C", "D"],
       formula: Y,
     });
-    expect(memberLists(merged.pages, merged.groups)).toEqual([
-      ["A", "B", "C", "D"],
+    const groups = normalizeVisibilityGroups(shared.pages, shared.groups);
+    expect(memberLists(shared.pages, groups)).toEqual([["B", "C", "D"]]);
+    expect(keyOf(groups, "B")).toBe(shared.key);
+    expect(shared.pages[0].fields.map((f) => f.visibleIfFormula)).toEqual([
+      X,
+      Y,
+      Y,
+      Y,
     ]);
-    expect(formulaOf(merged.pages, "A")).toEqual(Y);
+  });
+});
+
+describe("newVisibilityCycle", () => {
+  const formWith = (fields: PageItem[]): FormSchema => ({
+    pages: [{ id: "p", fields }],
+    outputViews: [],
+    aggregateViews: [],
+  });
+  const answered = (when: string): VisibleIfFormula => ({
+    conditions: { c1: { kind: "hasValue", when, hasValue: true } },
+    formula: "c1",
+  });
+  const loop = [text("y", answered("x")), text("x", answered("y"))];
+
+  it("names a cycle the change closes", () => {
+    expect(
+      newVisibilityCycle({
+        before: formWith([text("m"), text("z", answered("m"))]),
+        after: formWith([text("m", answered("z")), text("z", answered("m"))]),
+      }),
+    ).toBe("Visibility conditions form a cycle: m -> z -> m");
+  });
+
+  const readsAll = (id: string, ...reads: string[]): PageItem =>
+    text(id, {
+      conditions: Object.fromEntries(
+        reads.map((when, index) => [
+          `c${index + 1}`,
+          { kind: "hasValue", when, hasValue: true },
+        ]),
+      ),
+      formula: reads.map((_, index) => `c${index + 1}`).join(" AND ") || "c1",
+    });
+
+  it("ignores a cycle already there when the change only removes reads", () => {
+    expect(
+      newVisibilityCycle({
+        before: formWith([
+          readsAll("x", "y", "z"),
+          readsAll("y", "w"),
+          readsAll("z", "w"),
+          readsAll("w", "x"),
+        ]),
+        after: formWith([
+          readsAll("x", "y", "z"),
+          text("y"),
+          readsAll("z", "w"),
+          readsAll("w", "x"),
+        ]),
+      }),
+    ).toBeNull();
+  });
+
+  it("names a cycle a new read closes beside one already there", () => {
+    expect(
+      newVisibilityCycle({
+        before: formWith([
+          readsAll("x", "y"),
+          readsAll("y", "w"),
+          text("z"),
+          readsAll("w", "x"),
+        ]),
+        after: formWith([
+          readsAll("x", "y", "z"),
+          readsAll("y", "w"),
+          readsAll("z", "w"),
+          readsAll("w", "x"),
+        ]),
+      }),
+    ).toBe("Visibility conditions form a cycle: x -> z -> w -> x");
+  });
+
+  it("ignores a cycle already there, wherever it's reported to start", () => {
+    expect(
+      newVisibilityCycle({
+        before: formWith([text("m"), ...loop]),
+        after: formWith([text("m", answered("x")), ...loop]),
+      }),
+    ).toBeNull();
   });
 });
 
@@ -374,31 +428,14 @@ describe("per-user display content", () => {
     expect(userFormula(cleared.pages, "a")).toBeUndefined();
   });
 
-  it("takes the condition it adopts by joining or merging", () => {
-    const pages = page([perUser("a", X), label("b", Y)]);
-    const [element, neighbor] = pages[0].fields;
-    const joined = joinNeighbor({
+  it("takes the condition it shares", () => {
+    const pages = page([perUser("a", X), label("b")]);
+    const shared = shareVisibility({
       pages,
       groups: new Map(),
-      element,
-      neighbor,
-    });
-    expect(userFormula(joined.pages, "a")).toEqual(Y);
-
-    const four = page([
-      perUser("a", X),
-      label("b", X),
-      label("c", Y),
-      label("d", Y),
-    ]);
-    const groups = deriveVisibilityGroups(four);
-    const merged = mergeGroups({
-      pages: four,
-      groups,
-      previousKey: keyOf(groups, "a"),
-      nextKey: keyOf(groups, "c"),
+      ids: ["a", "b"],
       formula: Y,
     });
-    expect(userFormula(merged.pages, "a")).toEqual(Y);
+    expect(userFormula(shared.pages, "a")).toEqual(Y);
   });
 });

@@ -1,142 +1,79 @@
-import type { Page, PageItem } from "@alliance/common/forms/form-schema";
-import { ArrowDownToLine, ArrowUpToLine, Unlink } from "lucide-react";
+import type { PageItem } from "@alliance/common/forms/form-schema";
+import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
+import { Settings2, Unlink } from "lucide-react";
 import { createContext, useContext } from "react";
-import {
-  detachMember,
-  joinNeighbor,
-  NeighborDirection,
-  sameVisibility,
-  type GroupedPages,
-  type VisibilityGroups,
-} from "../lib/visibilityGroups";
+import { detachMember, type VisibilityGroups } from "../lib/visibilityGroups";
+import { SharedRuleSummary } from "./form-canvas/VisibilityGroupPanel";
 
-export enum VisibilityGroupRoleKind {
-  Member = "member",
-  Single = "single",
-}
-
-type JoinOption = { join: () => void; replacesOwn: boolean };
-
-type VisibilityGroupRole =
-  | { kind: VisibilityGroupRoleKind.Member; detach: () => void }
-  | {
-      kind: VisibilityGroupRoleKind.Single;
-      joins: Record<NeighborDirection, JoinOption | null>;
-    };
-
-const JOIN_ICONS: Record<NeighborDirection, typeof ArrowUpToLine> = {
-  [NeighborDirection.Previous]: ArrowUpToLine,
-  [NeighborDirection.Next]: ArrowDownToLine,
+type VisibilityGroupMember = {
+  elementId: string;
+  summary: string;
+  openGroup: () => void;
+  detach: () => void;
 };
 
 // Carries the id of the top-level element it describes, so an editor under it
 // for anything else doesn't take it as its own.
-export const VisibilityGroupContext = createContext<
-  ({ elementId: string } & VisibilityGroupRole) | null
->(null);
+export const VisibilityGroupContext =
+  createContext<VisibilityGroupMember | null>(null);
 
-export function visibilityGroupRole({
-  pages,
-  pageIndex,
-  index,
+export function visibilityGroupMember({
+  element,
   groups,
   setGroups,
-  applyGrouped,
+  summarize,
+  onOpenGroup,
 }: {
-  pages: Page[];
-  pageIndex: number;
-  index: number;
+  element: PageItem;
   groups: VisibilityGroups;
   setGroups: (groups: VisibilityGroups) => void;
-  applyGrouped: (grouped: GroupedPages) => void;
-}): ({ elementId: string } & VisibilityGroupRole) | null {
-  const fields = pages[pageIndex]?.fields ?? [];
-  const field = fields[index];
-  if (!field?.id) return null;
-  const elementId = field.id;
-  if (groups.has(elementId)) {
-    return {
-      elementId,
-      kind: VisibilityGroupRoleKind.Member,
-      detach: () => setGroups(detachMember(groups, elementId)),
-    };
-  }
-  const joinWith = (neighbor: PageItem | undefined): JoinOption | null =>
-    neighbor?.id && neighbor.visibleIfFormula
-      ? {
-          join: () =>
-            applyGrouped(
-              joinNeighbor({ pages, groups, element: field, neighbor }),
-            ),
-          replacesOwn:
-            field.visibleIfFormula != null &&
-            !sameVisibility(field.visibleIfFormula, neighbor.visibleIfFormula),
-        }
-      : null;
+  summarize: (formula: VisibleIfFormula) => string;
+  onOpenGroup: (key: string) => void;
+}): VisibilityGroupMember | null {
+  const elementId = element.id;
+  const key = elementId && groups.get(elementId);
+  if (!elementId || !key || !element.visibleIfFormula) return null;
   return {
     elementId,
-    kind: VisibilityGroupRoleKind.Single,
-    joins: {
-      [NeighborDirection.Previous]: joinWith(fields[index - 1]),
-      [NeighborDirection.Next]: joinWith(fields[index + 1]),
-    },
+    summary: summarize(element.visibleIfFormula),
+    openGroup: () => onOpenGroup(key),
+    detach: () => setGroups(detachMember(groups, elementId)),
   };
 }
 
-export function useVisibilityGroupRole(
-  elementId: string | undefined,
-): VisibilityGroupRole | null {
-  const role = useContext(VisibilityGroupContext);
-  return role && elementId && role.elementId === elementId ? role : null;
-}
-
 export function useVisibilityGroupMember(elementId: string | undefined) {
-  const role = useVisibilityGroupRole(elementId);
-  return role?.kind === VisibilityGroupRoleKind.Member ? role : null;
+  const member = useContext(VisibilityGroupContext);
+  return member && elementId && member.elementId === elementId ? member : null;
 }
 
-export function SharedVisibilityNotice({ detach }: { detach: () => void }) {
+export function SharedVisibilityNotice({
+  summary,
+  openGroup,
+  detach,
+}: Omit<VisibilityGroupMember, "elementId">) {
   return (
-    <div className="flex items-center justify-between gap-2 border-t border-gray-200 px-4 py-2 text-sm text-gray-600">
-      <span>Visibility is shared with its group.</span>
-      <button
-        type="button"
-        onClick={detach}
-        aria-label="Edit visibility separately"
-        title="Edit visibility separately"
-        className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-      >
-        <Unlink className="h-4 w-4" aria-hidden="true" />
-      </button>
+    <div className="flex items-start gap-2">
+      <SharedRuleSummary heading="Shared visibility" summary={summary} />
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={openGroup}
+          aria-label="Edit in group settings"
+          title="Edit in group settings"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+        >
+          <Settings2 className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={detach}
+          aria-label="Edit visibility separately"
+          title="Edit visibility separately"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+        >
+          <Unlink className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
     </div>
   );
-}
-
-export function JoinVisibilityButtons({
-  elementId,
-}: {
-  elementId: string | undefined;
-}) {
-  const role = useVisibilityGroupRole(elementId);
-  if (role?.kind !== VisibilityGroupRoleKind.Single) return null;
-  return Object.values(NeighborDirection).map((neighbor) => {
-    const option = role.joins[neighbor];
-    const Icon = JOIN_ICONS[neighbor];
-    if (!option) return null;
-    const label = option.replacesOwn
-      ? `Use the ${neighbor} element's visibility, replacing this element's`
-      : `Share the ${neighbor} element's visibility`;
-    return (
-      <button
-        key={neighbor}
-        type="button"
-        onClick={option.join}
-        title={label}
-        aria-label={label}
-        className="text-gray-500 hover:text-gray-700 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100"
-      >
-        <Icon className="h-4 w-4" aria-hidden="true" />
-      </button>
-    );
-  });
 }

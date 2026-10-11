@@ -1,4 +1,12 @@
-import type { Page, PageItem } from "@alliance/common/forms/form-schema";
+import type {
+  FormSchema,
+  Page,
+  PageItem,
+} from "@alliance/common/forms/form-schema";
+import {
+  describeVisibilityCycle,
+  visibilityDependencies,
+} from "@alliance/common/forms/form-schema-validate";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { withBlockVisibility } from "./blockVisibility";
 import { stableStringify } from "./schemaDiff";
@@ -208,50 +216,77 @@ export function setGroupVisibility({
   };
 }
 
-/**
- * The element adopts its neighbor's condition and joins the neighbor's group,
- * or forms a new one with a conditional neighbor outside any group.
- */
-export function joinNeighbor({
+/** The elements take `formula` and form one group of their own, under `key`. */
+export function shareVisibility({
   pages,
   groups,
-  element,
-  neighbor,
-}: GroupedPages & { element: PageItem; neighbor: PageItem }): GroupedPages {
-  if (!element.id || !neighbor.id || !neighbor.visibleIfFormula) {
-    throw new Error(
-      "join needs two elements with ids and a neighbor condition",
-    );
-  }
-  const key = groups.get(neighbor.id) ?? newGroupKey();
+  ids,
+  formula,
+}: GroupedPages & {
+  ids: readonly string[];
+  formula: VisibleIfFormula;
+}): GroupedPages & { key: string } {
+  const key = newGroupKey();
+  const next = new Map(groups);
+  for (const id of ids) next.set(id, key);
   return {
-    pages: withVisibility({
-      pages,
-      ids: new Set([element.id]),
-      formula: neighbor.visibleIfFormula,
-    }),
-    groups: new Map(groups).set(neighbor.id, key).set(element.id, key),
+    pages: withVisibility({ pages, ids: new Set(ids), formula }),
+    groups: next,
+    key,
   };
 }
 
-export function mergeGroups({
-  pages,
-  groups,
-  previousKey,
-  nextKey,
-  formula,
-}: GroupedPages & {
-  previousKey: string;
-  nextKey: string;
-  formula: VisibleIfFormula;
-}): GroupedPages {
-  const ids = new Set([
-    ...groupMemberIds(groups, previousKey),
-    ...groupMemberIds(groups, nextKey),
-  ]);
-  const next = new Map(groups);
-  for (const id of ids) next.set(id, previousKey);
-  return { pages: withVisibility({ pages, ids, formula }), groups: next };
+/** The fields from `from` through `to` along `deps`, or null if none reach it. */
+function pathBetween({
+  deps,
+  from,
+  to,
+}: {
+  deps: ReadonlyMap<string, readonly string[]>;
+  from: string;
+  to: string;
+}): string[] | null {
+  const cameFrom = new Map<string, string | null>([[from, null]]);
+  const queue = [from];
+  for (let node = queue.shift(); node !== undefined; node = queue.shift()) {
+    if (node === to) {
+      const path: string[] = [];
+      for (let at: string | null = node; at !== null; at = cameFrom.get(at)!) {
+        path.unshift(at);
+      }
+      return path;
+    }
+    for (const next of deps.get(node) ?? []) {
+      if (!cameFrom.has(next)) {
+        cameFrom.set(next, node);
+        queue.push(next);
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * A visibility cycle through a read `after` adds to `before`, described as
+ * validation describes it, or null. Cycles `before` already has don't count.
+ */
+export function newVisibilityCycle({
+  before,
+  after,
+}: {
+  before: FormSchema;
+  after: FormSchema;
+}): string | null {
+  const was = visibilityDependencies(before);
+  const now = visibilityDependencies(after);
+  for (const [field, reads] of now) {
+    for (const read of reads) {
+      if (was.get(field)?.includes(read)) continue;
+      const back = pathBetween({ deps: now, from: read, to: field });
+      if (back) return describeVisibilityCycle([field, ...back.slice(0, -1)]);
+    }
+  }
+  return null;
 }
 
 /**

@@ -10,8 +10,9 @@ import {
   type ReactNode,
 } from "react";
 
-/** The selection's select button, marked pressed, within `root`. */
+/** The selection's select button, marked pressed, within `root`; a range's focus first. */
 export const selectedOnCanvas = (root: HTMLElement | null) =>
+  root?.querySelector<HTMLElement>("[data-selection-focus]") ??
   root?.querySelector<HTMLElement>('[aria-pressed="true"]');
 
 /** At this width and up the outline and settings sidebar stay beside the canvas. */

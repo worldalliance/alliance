@@ -28,6 +28,7 @@ import {
   startOnEnter,
   type InlineEditing,
 } from "./InlineText";
+import { extendableClick } from "./rangeSelection";
 import { SidebarSection } from "./sidebarSections";
 import type { ListDrag } from "./useListDrag";
 
@@ -99,8 +100,10 @@ export function CanvasElement({
   element: authored,
   label,
   selected,
+  rangeFocus,
   selectedChild,
   onSelect,
+  onExtend,
   onSelectChild,
   summarize,
   conditionSummary,
@@ -112,7 +115,10 @@ export function CanvasElement({
 }: ContentProps & {
   label: string;
   selected: boolean;
+  rangeFocus: boolean;
   onSelect: (section: SidebarSection) => void;
+  /** Shift-click's selection through this element; null to select it alone. */
+  onExtend: (() => void) | null;
   /** Null when the element shows unconditionally, or through its group. */
   conditionSummary: string | null;
   drag: ListDrag;
@@ -152,7 +158,10 @@ export function CanvasElement({
           : selectionRing(selected),
         drag.dragging && "opacity-50",
       )}
-      onClick={() => onSelect(SidebarSection.Content)}
+      {...extendableClick({
+        onSelect: () => onSelect(SidebarSection.Content),
+        onExtend,
+      })}
       onDragOver={drag.onDragOver}
     >
       {drag.dropPosition && (
@@ -166,6 +175,7 @@ export function CanvasElement({
         type="button"
         aria-label={`Select ${label}`}
         aria-pressed={selected}
+        data-selection-focus={rangeFocus || undefined}
         onKeyDown={editing && text ? startOnEnter(editing) : undefined}
         className={SELECT_OVERLAY}
       />

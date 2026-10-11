@@ -15,10 +15,7 @@ import { renderBlockEditor } from "../display-blocks/blockEditors";
 import { LocalExpressionBuffers } from "../form-fields/conditions/expressionBuffers";
 import { CustomValidatorDraftsContext } from "../form-fields/customValidatorDrafts";
 import { renderFieldEditor } from "../form-fields/fieldEditors";
-import {
-  VisibilityGroupContext,
-  VisibilityGroupRoleKind,
-} from "../VisibilityGroupContext";
+import { VisibilityGroupContext } from "../VisibilityGroupContext";
 import { SelectChildProvider } from "./ChildRows";
 import {
   ALL_SECTIONS,
@@ -72,7 +69,8 @@ const renderSidebar = (element: PageItem, groupMember = false) =>
                   groupMember && element.id
                     ? {
                         elementId: element.id,
-                        kind: VisibilityGroupRoleKind.Member,
+                        summary: "Town is answered",
+                        openGroup() {},
                         detach() {},
                       }
                     : null
@@ -210,9 +208,7 @@ describe("an editor in the settings sidebar", () => {
       true,
     );
     openSection("Conditions");
-    expect(
-      panel().getByText("Visibility is shared with its group."),
-    ).toBeTruthy();
+    expect(panel().getByText("Shown when Town is answered")).toBeTruthy();
     expect(panel().queryByRole("button", { name: "Add rule" })).toBeNull();
     expect(panel().queryByText("Remove all conditions")).toBeNull();
   });

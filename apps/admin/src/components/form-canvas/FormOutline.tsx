@@ -21,6 +21,13 @@ import {
 import { DropLine } from "./DropLine";
 import { isContainer, OutlineContents } from "./OutlineContents";
 import { OutlineRow, type RowProps } from "./OutlineRow";
+import {
+  checkStateOf,
+  inRange,
+  rangeFocus,
+  toggleChecked,
+  type Span,
+} from "./rangeSelection";
 import { useListDrag, type ListDrag, type ListMove } from "./useListDrag";
 
 const PAGES = "pages";
@@ -62,6 +69,10 @@ type FormOutlineProps = {
   /** Changes with the selection, revealing its entry. */
   selectionKey: string;
   onSelect: (pageIndex: number, target: CanvasTarget) => void;
+  /** Shift-click's selection on the open page through `clicked`, else `alone`. Null where ranges are off. */
+  onExtend: ((clicked: Span, alone: CanvasTarget) => void) | null;
+  /** The selection once an entry's checkbox toggles. Null where ranges are off. */
+  onCheck: ((pageIndex: number, target: CanvasTarget) => void) | null;
   onAddPage: () => void;
   onMovePage: (move: ListMove) => void;
   onMoveElement: (pageIndex: number, move: ListMove) => void;
@@ -81,6 +92,8 @@ export function FormOutline({
   selected,
   selectionKey,
   onSelect,
+  onExtend,
+  onCheck,
   onAddPage,
   onMovePage,
   onMoveElement,
@@ -97,16 +110,18 @@ export function FormOutline({
     );
 
   const currentPage = pages[pageIndex];
-  const selectedElement =
+  const selectedElements =
     selected.kind === CanvasTargetKind.Element
-      ? currentPage?.fields[selected.index]
-      : undefined;
-  const selectedGroup = selectedElement?.id
-    ? groups.get(selectedElement.id)
-    : undefined;
+      ? currentPage?.fields.slice(selected.index, selected.index + 1)
+      : selected.kind === CanvasTargetKind.Range
+        ? currentPage?.fields.slice(selected.start, selected.end)
+        : undefined;
   const revealed = [
     currentPage && pageKey(currentPage),
-    selectedGroup && groupKey(selectedGroup),
+    ...(selectedElements ?? []).map((element) => {
+      const group = element.id ? groups.get(element.id) : undefined;
+      return group && groupKey(group);
+    }),
   ].filter((key) => key !== undefined);
   // Unlike pages and groups, these start collapsed.
   const revealedContainers =
@@ -130,9 +145,10 @@ export function FormOutline({
     }
   }
   useEffect(() => {
-    ref.current
-      ?.querySelector('[aria-current="true"]')
-      ?.scrollIntoView({ block: "nearest" });
+    (
+      ref.current?.querySelector("[data-selection-focus]") ??
+      ref.current?.querySelector('[aria-current="true"]')
+    )?.scrollIntoView({ block: "nearest" });
   }, [selectionKey]);
 
   const { acceptDrop, drop, dragFor } = useListDrag<string>((list, move) => {
@@ -146,6 +162,9 @@ export function FormOutline({
 
   const renderElements = (page: Page, index: number) => {
     const onPage = index === pageIndex;
+    const pageSelected: ResolvedTarget = onPage
+      ? selected
+      : { kind: CanvasTargetKind.Page };
     const elementEntry = (element: PageItem, at: number) => {
       const target =
         onPage &&
@@ -156,12 +175,42 @@ export function FormOutline({
       const key = elementKey(page, at);
       const container = isContainer(element) ? element : null;
       const open = container !== null && isExpanded(key, false);
+      const alone = elementTarget(element, at);
       return (
         <OutlineEntry
           key={element.id || at}
           label={describeElement(element)}
-          current={target !== null && (!target.child || !open)}
-          onSelect={() => onSelect(index, elementTarget(element, at))}
+          current={
+            (target !== null && (!target.child || !open)) ||
+            (onPage && inRange(selected, at))
+          }
+          rangeFocus={onPage && rangeFocus(selected) === at}
+          onSelect={() => onSelect(index, alone)}
+          onExtend={
+            onPage && onExtend
+              ? () => onExtend({ start: at, end: at + 1 }, alone)
+              : undefined
+          }
+          check={
+            onCheck
+              ? {
+                  state: checkStateOf({
+                    fields: page.fields,
+                    selected: pageSelected,
+                    index: at,
+                  }),
+                  onToggle: () =>
+                    onCheck(
+                      index,
+                      toggleChecked({
+                        fields: page.fields,
+                        selected: pageSelected,
+                        index: at,
+                      }),
+                    ),
+                }
+              : undefined
+          }
           drag={dragFor(pageKey(page), at)}
           {...(container && {
             expanded: open,
@@ -194,6 +243,7 @@ export function FormOutline({
             case SegmentKind.Group: {
               const { key, start, end } = segment;
               const open = isExpanded(groupKey(key), true);
+              const group: CanvasTarget = { kind: CanvasTargetKind.Group, key };
               return (
                 <li key={key}>
                   <OutlineRow
@@ -203,8 +253,11 @@ export function FormOutline({
                       selected.kind === CanvasTargetKind.Group &&
                       selected.key === key
                     }
-                    onSelect={() =>
-                      onSelect(index, { kind: CanvasTargetKind.Group, key })
+                    onSelect={() => onSelect(index, group)}
+                    onExtend={
+                      onPage && onExtend
+                        ? () => onExtend({ start, end }, group)
+                        : undefined
                     }
                     expanded={open}
                     onToggle={() => toggle(groupKey(key), true)}

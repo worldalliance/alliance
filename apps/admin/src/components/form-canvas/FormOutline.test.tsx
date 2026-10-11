@@ -19,6 +19,8 @@ it("shows a child selected before it mounts", () => {
       }}
       selectionKey="age"
       onSelect={() => {}}
+      onExtend={null}
+      onCheck={null}
       onAddPage={() => {}}
       onMovePage={() => {}}
       onMoveElement={() => {}}
