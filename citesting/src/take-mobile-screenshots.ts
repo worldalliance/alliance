@@ -15,68 +15,26 @@ import {
   type SpawnOptions,
 } from "./child-processes";
 import { fileExists } from "./file-exists";
-import { mobileScreenshotTargets } from "./mobile-screenshot-targets";
+import {
+  appBinaryPath,
+  backendPort,
+  bundleId,
+  configuredScheme,
+  configuredWorkspacePath,
+  dbName,
+  derivedDataPath,
+  iosConfiguration,
+  logPrefix,
+  mobileAppRoot,
+  outputDir,
+  preferredSimulatorNames,
+  repoRoot,
+  selectedTargets,
+  shouldCleanDerivedData,
+} from "./mobile-screenshot-config";
 import { sanitizeFileName } from "./sanitize-file-name";
-import { screenshotDatabase } from "./screenshot-database";
 import { dbHost, dbPass, dbPort, dbUser, seedDatabase } from "./seed-database";
 import { testUserEmail, testUserPassword } from "./test-user";
-
-const repoRoot = path.resolve(__dirname, "..", "..");
-const backendPort = Number(process.env.SERVER_PORT ?? "3105");
-const rawOutputDir =
-  process.env.SCREENSHOT_OUTPUT_DIR ??
-  path.join(
-    repoRoot,
-    "citesting",
-    "screenshots-mobile",
-    new Date().toISOString().replace(/[:.]/g, "-"),
-  );
-const outputDir = path.isAbsolute(rawOutputDir)
-  ? rawOutputDir
-  : path.join(repoRoot, rawOutputDir);
-const derivedDataPath = path.isAbsolute(process.env.IOS_DERIVED_DATA_PATH ?? "")
-  ? (process.env.IOS_DERIVED_DATA_PATH as string)
-  : path.join(
-      repoRoot,
-      process.env.IOS_DERIVED_DATA_PATH ?? "citesting/ios-derived-data",
-    );
-
-const preferredSimulatorNames = (
-  process.env.IOS_SIMULATOR_NAME
-    ? [process.env.IOS_SIMULATOR_NAME]
-    : ["iPhone 16", "iPhone 17", "iPhone 15", "iPhone 15 Pro", "iPhone 17 Pro"]
-).filter(Boolean) as string[];
-const bundleId =
-  process.env.IOS_BUNDLE_ID ?? "com.alliancefoundation.alliancemobile";
-const configuredScheme = process.env.IOS_SCHEME;
-const configuredWorkspacePath = process.env.IOS_WORKSPACE_PATH;
-const iosConfiguration = process.env.IOS_CONFIGURATION ?? "Release";
-const shouldCleanDerivedData = process.env.IOS_CLEAN_BUILD === "true";
-const appBinaryPath =
-  process.env.IOS_APP_BINARY_PATH ??
-  path.join(
-    derivedDataPath,
-    "Build",
-    "Products",
-    `${iosConfiguration}-iphonesimulator`,
-    "Alliance.app",
-  );
-
-const dbName = screenshotDatabase();
-const requestedTargetNames = (process.env.SCREENSHOT_TARGETS ?? "")
-  .split(",")
-  .map((value) => value.trim())
-  .filter(Boolean);
-
-const logPrefix = "[citesting:mobile-ios]";
-const mobileAppRoot = path.join(repoRoot, "apps", "mobile");
-
-const selectedTargets =
-  requestedTargetNames.length > 0
-    ? mobileScreenshotTargets.filter((target) =>
-        requestedTargetNames.includes(target.name),
-      )
-    : mobileScreenshotTargets;
 
 const execFileCapture = (
   command: string,
