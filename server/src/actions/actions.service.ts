@@ -62,7 +62,11 @@ import {
   Community,
   loadedCommunityUsers,
 } from "src/community/entities/community.entity";
-import { assertLive, writeUnderLive } from "src/datasources/soft-delete";
+import {
+  assertLive,
+  updateLive,
+  writeUnderLive,
+} from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import {
@@ -2059,6 +2063,11 @@ export class ActionsService {
           : [{ target: Form, id: rest.taskFormId }]),
       ],
       notFound: ACTION_PARENT_GONE,
+      saved: {
+        target: Action,
+        id,
+        notFound: "Action not found",
+      },
       write: async (em) => {
         if (reviewers !== undefined) {
           await em.delete(ActionReviewer, { actionId: id });
@@ -2212,6 +2221,11 @@ export class ActionsService {
     return writeUnderLive(this.followUpFormRepository.manager, {
       parents:
         dto.formId === undefined ? [] : [{ target: Form, id: dto.formId }],
+      saved: {
+        target: FollowUpForm,
+        id: followUpFormId,
+        notFound: "Follow-up form not found",
+      },
       write: async (em) => parseFollowUpForm(await em.save(followUpForm)),
     });
   }
@@ -3150,14 +3164,19 @@ export class ActionsService {
     return this.setArchived({ id, archived: false });
   }
 
-  // update() rather than save(): saving the loaded action would also diff its
-  // relations, unlinking any follow-up form added since the load.
+  // updateLive() rather than save(): saving the loaded action would also diff
+  // its relations, unlinking any follow-up form added since the load.
   private async setArchived(params: {
     id: number;
     archived: boolean;
   }): Promise<ParsedAction> {
     const { id, archived } = params;
-    await this.actionRepository.update(id, { archived });
+    await updateLive(this.actionRepository.manager, {
+      target: Action,
+      id,
+      changes: { archived },
+      notFound: "Action not found",
+    });
     return parseAction(
       await this.actionRepository.findOneOrFail({
         where: { id },

@@ -10,7 +10,7 @@ import {
   type CreateNotifParams,
 } from "src/notifs/notifs.service";
 import { User } from "src/user/entities/user.entity";
-import { In, type EntityManager, type Repository } from "typeorm";
+import { In, IsNull, type EntityManager, type Repository } from "typeorm";
 import * as changeMembersModule from "./change-members";
 import { CommunityService, ContractRefusalAudience } from "./community.service";
 import { memberLeftCommunityNotif } from "./community.utils";
@@ -20,6 +20,7 @@ import {
 } from "./entities/community-invite.entity";
 import { Community } from "./entities/community.entity";
 import { GroupJoinNotifsService } from "./group-join-notifs.service";
+import * as inviteWritesModule from "./invite-writes";
 
 describe("CommunityService", () => {
   let service: CommunityService;
@@ -32,6 +33,7 @@ describe("CommunityService", () => {
   let transaction: jest.Mock;
   let transactionManager: EntityManager;
   let addAndRemove: jest.Mock;
+  let inviteUpdates: jest.SpyInstance;
 
   const membershipWrite = (params: {
     communityId: number;
@@ -56,9 +58,12 @@ describe("CommunityService", () => {
     }) as Community;
 
   beforeEach(() => {
+    inviteUpdates = jest
+      .spyOn(inviteWritesModule, "setLiveInviteStatus")
+      .mockResolvedValue();
     communityInviteRepository = {
-      save: jest.fn().mockResolvedValue(undefined),
       findOneOrFail: jest.fn(),
+      manager: {},
     } as unknown as jest.Mocked<Repository<CommunityInvite>>;
 
     transactionManager = {
@@ -124,7 +129,6 @@ describe("CommunityService", () => {
     };
 
     userRepository = {
-      save: jest.fn().mockResolvedValue(undefined),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
       findOneOrFail: jest.fn(),
       createQueryBuilder: jest.fn(() => contractCheck),
@@ -276,13 +280,10 @@ describe("CommunityService", () => {
       );
 
       // clears user's pending state
-      expect(userRepository.save).toHaveBeenCalledWith([
-        {
-          id: user.id,
-          undergoingGroupAssignment: false,
-          pendingCommunity: null,
-        },
-      ]);
+      expect(userRepository.update).toHaveBeenCalledWith(
+        { id: In([user.id]), deletedAt: IsNull() },
+        { undergoingGroupAssignment: false, pendingCommunity: null },
+      );
 
       // sends one notif per leader
       expect(notifsService.sendNotifs).toHaveBeenCalledTimes(1);
@@ -396,6 +397,13 @@ describe("CommunityService", () => {
 
       await service.acceptCommunityInvite(7, invitee.id);
 
+      expect(inviteUpdates).toHaveBeenCalledWith(
+        communityInviteRepository.manager,
+        expect.objectContaining({
+          id: 7,
+          status: CommunityInviteStatus.InviteeAccepted,
+        }),
+      );
       expect(leave).toHaveBeenCalledWith(invitee);
     });
 
@@ -430,7 +438,7 @@ describe("CommunityService", () => {
         service.acceptCommunityInvite(7, invitee.id),
       ).rejects.toThrow(BadRequestException);
 
-      expect(communityInviteRepository.save).not.toHaveBeenCalled();
+      expect(inviteUpdates).not.toHaveBeenCalled();
       expect(join).not.toHaveBeenCalled();
       expect(leave).not.toHaveBeenCalled();
       expect(notifsService.sendNotif).not.toHaveBeenCalled();
@@ -613,7 +621,7 @@ describe("CommunityService", () => {
       });
 
       expect(userRepository.update).toHaveBeenCalledWith(
-        { id: In([user.id]) },
+        { id: In([user.id]), deletedAt: IsNull() },
         { pendingCommunity: { id: community.id } },
       );
     });
@@ -694,11 +702,10 @@ describe("CommunityService", () => {
           }),
         ],
       ]);
-      expect(userRepository.save).toHaveBeenCalledWith({
-        id: user.id,
-        undergoingGroupAssignment: false,
-        pendingCommunity: null,
-      });
+      expect(userRepository.update).toHaveBeenCalledWith(
+        { id: user.id, deletedAt: IsNull() },
+        { undergoingGroupAssignment: false, pendingCommunity: null },
+      );
       expect(
         conversationService.placeCommunityConversationParticipant,
       ).toHaveBeenCalledWith({

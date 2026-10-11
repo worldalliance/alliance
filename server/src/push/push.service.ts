@@ -5,7 +5,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { Expo, ExpoPushMessage, ExpoPushTicket } from "expo-server-sdk";
 import { randomUUID } from "node:crypto";
-import { lockLive } from "src/datasources/soft-delete";
+import { lockLive, updateLive } from "src/datasources/soft-delete";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
 import {
@@ -181,7 +181,20 @@ export class PushService {
       }
     }
 
-    return await this.pushRepository.save(pushEntities);
+    for (const push of pushEntities) {
+      await updateLive(this.pushRepository.manager, {
+        target: Push,
+        id: push.id,
+        changes: {
+          ticketStatus: push.ticketStatus,
+          receiptId: push.receiptId,
+          receiptStatus: push.receiptStatus,
+          errorCode: push.errorCode,
+          errorMessage: push.errorMessage,
+        },
+      });
+    }
+    return pushEntities;
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
@@ -240,9 +253,17 @@ export class PushService {
 
     const now = new Date();
     for (const push of resolvedPushes) {
-      push.lastCheckedStatusAt = now;
+      await updateLive(this.pushRepository.manager, {
+        target: Push,
+        id: push.id,
+        changes: {
+          receiptStatus: push.receiptStatus,
+          errorCode: push.errorCode,
+          errorMessage: push.errorMessage,
+          lastCheckedStatusAt: now,
+        },
+      });
     }
-    const saved = await this.pushRepository.save([...resolvedPushes]);
 
     // Pushes with no receipt yet only need their recheck timestamp bumped;
     // one batched UPDATE instead of a row-at-a-time save().
@@ -251,7 +272,7 @@ export class PushService {
       .map((push) => push.id);
     if (unresolvedIds.length > 0) {
       await this.pushRepository.update(
-        { id: In(unresolvedIds) },
+        { id: In(unresolvedIds), deletedAt: IsNull() },
         { lastCheckedStatusAt: now },
       );
     }
@@ -261,10 +282,9 @@ export class PushService {
         receiptStatus: "pending",
         receiptId: Not(IsNull()),
         createdAt: LessThan(new Date(Date.now() - RECEIPT_MAX_AGE_MS)),
+        deletedAt: IsNull(),
       },
       { receiptStatus: "expired" },
     );
-
-    return saved;
   }
 }

@@ -1,9 +1,16 @@
 import type { FeedActionActivity } from "@alliance/common/actionActivity";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { lockForSave } from "src/datasources/soft-delete";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
-import { In, IsNull, type EntityManager, type Repository } from "typeorm";
+import {
+  In,
+  IsNull,
+  type EntityManager,
+  type FindOptionsWhere,
+  type Repository,
+} from "typeorm";
 import {
   Notification,
   NotificationCategory,
@@ -92,15 +99,9 @@ export class LikeNotificationService {
     await this.notifRepository.manager.transaction(async (manager) => {
       await this.acquireGroupingKeyLocks(manager, compatibleGroupingKeys);
       const notifRepo = manager.getRepository(Notification);
-      const existingNotif = await notifRepo.findOne({
-        where: {
-          user: { id: owner.id },
-          groupingKey: In(compatibleGroupingKeys),
-          category: NotificationCategory.Likes,
-          readAt: IsNull(),
-        },
-        relations: { associatedUsers: true },
-        order: { createdAt: "ASC", id: "ASC" },
+      const existingNotif = await this.findUnreadLocked(manager, {
+        ownerId: owner.id,
+        groupingKeys: compatibleGroupingKeys,
       });
 
       if (existingNotif) {
@@ -194,15 +195,9 @@ export class LikeNotificationService {
     await this.notifRepository.manager.transaction(async (manager) => {
       await this.acquireGroupingKeyLocks(manager, compatibleGroupingKeys);
       const notifRepo = manager.getRepository(Notification);
-      const notif = await notifRepo.findOne({
-        where: {
-          user: { id: ownerId },
-          groupingKey: In(compatibleGroupingKeys),
-          category: NotificationCategory.Likes,
-          readAt: IsNull(),
-        },
-        relations: { associatedUsers: true },
-        order: { createdAt: "ASC", id: "ASC" },
+      const notif = await this.findUnreadLocked(manager, {
+        ownerId,
+        groupingKeys: compatibleGroupingKeys,
       });
 
       if (!notif) {
@@ -228,6 +223,33 @@ export class LikeNotificationService {
       });
       // Intentionally don't reset shouldPush/sendTime/pushClaimed* — an unlike shouldn't trigger a new push.
       await notifRepo.save(notif);
+    });
+  }
+
+  /** Re-read under {@link lockForSave}, which the caller's save needs. */
+  private async findUnreadLocked(
+    manager: EntityManager,
+    params: { ownerId: number; groupingKeys: string[] },
+  ): Promise<Notification | null> {
+    const notifRepo = manager.getRepository(Notification);
+    const where: FindOptionsWhere<Notification> = {
+      user: { id: params.ownerId },
+      groupingKey: In(params.groupingKeys),
+      category: NotificationCategory.Likes,
+      readAt: IsNull(),
+    };
+    const found = await notifRepo.findOne({
+      select: { id: true, createdAt: true },
+      where,
+      order: { createdAt: "ASC", id: "ASC" },
+    });
+    if (!found) return null;
+    if (!(await lockForSave(manager, { target: Notification, id: found.id }))) {
+      return null;
+    }
+    return notifRepo.findOne({
+      where: { ...where, id: found.id },
+      relations: { associatedUsers: true },
     });
   }
 

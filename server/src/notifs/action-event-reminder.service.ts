@@ -28,7 +28,7 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
-import { writeUnderLive } from "src/datasources/soft-delete";
+import { type LiveRow, writeUnderLive } from "src/datasources/soft-delete";
 import { EmailType } from "src/mail/mail.entity";
 import { MailService, processKeywordReplacements } from "src/mail/mail.service";
 import { Tag } from "src/user/entities/tag.entity";
@@ -598,11 +598,13 @@ export class ActionEventReminderService {
 
   private async saveUnderLiveParents(
     group: ReminderGroup,
+    saved?: LiveRow & { notFound: string },
   ): Promise<ReminderGroup> {
     const withDeadline = await this.attachDeadlineEvent(group);
     return writeUnderLive(this.reminderGroupRepository.manager, {
       parents: reminderGroupParents(withDeadline),
       notFound: REMINDER_GROUP_PARENT_GONE,
+      saved,
       write: (em) => em.save(ReminderGroup, withDeadline),
     });
   }
@@ -640,7 +642,11 @@ export class ActionEventReminderService {
     // clears a previously set anchor instead of silently keeping it.
     group.timingAnchorEvent = timingAnchorEvent;
 
-    return this.saveUnderLiveParents(group);
+    return this.saveUnderLiveParents(group, {
+      target: ReminderGroup,
+      id: groupId,
+      notFound: "Reminder group not found",
+    });
   }
 
   async deleteReminderGroup(groupId: number): Promise<void> {

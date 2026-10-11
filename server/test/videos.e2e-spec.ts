@@ -267,4 +267,40 @@ describe("Videos (e2e)", () => {
       video.dateUpdated.getTime(),
     );
   });
+
+  it("answers 404 for a video deleted while its content is replaced", async () => {
+    const video = await videoRepo.save(
+      videoRepo.create({
+        key: "videos/test-replace-deleted",
+        originalFilename: "replace.mp4",
+        mime: "video/mp4",
+        size: 3000,
+      }),
+    );
+    mockSend.mockImplementation(async (command) => {
+      if (command instanceof ListObjectsV2Command) {
+        await videoRepo.softDelete(video.id);
+      }
+      return { Contents: [] };
+    });
+
+    await request(ctx.app.getHttpServer())
+      .post(`/videos/${video.id}/replace`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .attach("files", Buffer.from("fake-m3u8"), {
+        filename: "playlist.m3u8",
+        contentType: "application/vnd.apple.mpegurl",
+      })
+      .expect(404);
+
+    expect(
+      await videoRepo.findOneOrFail({
+        where: { id: video.id },
+        withDeleted: true,
+      }),
+    ).toMatchObject({
+      dateUpdated: video.dateUpdated,
+      deletedAt: expect.any(Date),
+    });
+  });
 });
