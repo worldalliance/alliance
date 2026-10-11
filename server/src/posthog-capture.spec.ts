@@ -16,38 +16,49 @@ describe("PostHog exception capture", () => {
     accept(): void {}
   }
 
-  it("captures a malformed request body once", async () => {
-    const events: string[] = [];
-    const posthog = new PostHog("test-key", {
-      flushAt: 1,
-      disableCompression: true,
-      fetchRetryCount: 0,
-      fetch: async (_url, options) => {
-        const body: { batch?: { event: string }[] } = JSON.parse(
-          await new Response(options.body).text(),
-        );
-        events.push(...(body.batch ?? []).map(({ event }) => event));
-        return { status: 200, text: async () => "", json: async () => ({}) };
-      },
-    });
-    const module = await Test.createTestingModule({
-      controllers: [TestController],
-    }).compile();
-    const app = module.createNestApplication<NestExpressApplication>({
-      bodyParser: false,
-    });
-    configureApp(app);
-    capturePosthogExceptions(app, posthog);
-    await app.init();
+  it.each([
+    { contentType: "application/json", body: "{invalid-json", status: 400 },
+    { contentType: "application/json; charset=bogus", body: "{}", status: 415 },
+  ])(
+    "captures a body-parser $status once, with that status",
+    async ({ contentType, body, status }) => {
+      const events: { event: string; status: unknown }[] = [];
+      const posthog = new PostHog("test-key", {
+        flushAt: 1,
+        disableCompression: true,
+        fetchRetryCount: 0,
+        fetch: async (_url, options) => {
+          const payload: {
+            batch?: { event: string; properties: { status?: unknown } }[];
+          } = JSON.parse(await new Response(options.body).text());
+          events.push(
+            ...(payload.batch ?? []).map(({ event, properties }) => ({
+              event,
+              status: properties.status,
+            })),
+          );
+          return { status: 200, text: async () => "", json: async () => ({}) };
+        },
+      });
+      const module = await Test.createTestingModule({
+        controllers: [TestController],
+      }).compile();
+      const app = module.createNestApplication<NestExpressApplication>({
+        bodyParser: false,
+      });
+      configureApp(app);
+      capturePosthogExceptions(app, posthog);
+      await app.init();
 
-    await request(app.getHttpServer())
-      .post("/capture-test")
-      .set("Content-Type", "application/json")
-      .send("{invalid-json")
-      .expect(400);
-    await posthog.shutdown();
-    await app.close();
+      await request(app.getHttpServer())
+        .post("/capture-test")
+        .set("Content-Type", contentType)
+        .send(body)
+        .expect(status);
+      await posthog.shutdown();
+      await app.close();
 
-    expect(events).toEqual(["$exception"]);
-  });
+      expect(events).toEqual([{ event: "$exception", status }]);
+    },
+  );
 });

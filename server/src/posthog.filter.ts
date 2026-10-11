@@ -29,7 +29,11 @@ export class PosthogExceptionFilter extends BaseExceptionFilter {
     const req = ctx.getRequest<Request>();
 
     const status =
-      exception instanceof HttpException ? exception.getStatus() : 500;
+      exception instanceof HttpException
+        ? exception.getStatus()
+        : this.isHttpError(exception)
+          ? exception.statusCode
+          : 500;
 
     if (
       exception instanceof NotFoundException ||
