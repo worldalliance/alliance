@@ -21,6 +21,7 @@ import { DailyStatsDto } from "./dailystats.dto";
 import { InviteFunnelDto } from "./invite-funnel.dto";
 import { MemberCompletionRetentionCohortDto } from "./member-completion-retention.dto";
 import { MemberReliabilityWindowDto } from "./member-reliability-window.dto";
+import { MemberRetentionAnalyticsService } from "./member-retention-analytics.service";
 import { MissedActionsDto } from "./missed-actions.dto";
 import { PlatformTenureAnalyticsService } from "./platform-tenure-analytics.service";
 import { PlatformTenureCohortStatsDto } from "./platform-tenure-cohort.dto";
@@ -35,6 +36,7 @@ export class AnalyticsController {
     private readonly analyticsService: AnalyticsService,
     private readonly actionStatsAnalyticsService: ActionStatsAnalyticsService,
     private readonly contractAnalyticsService: ContractAnalyticsService,
+    private readonly memberRetentionAnalyticsService: MemberRetentionAnalyticsService,
     private readonly platformTenureAnalyticsService: PlatformTenureAnalyticsService,
     private readonly posthogTimeSpentService: PosthogTimeSpentService,
   ) {}
@@ -119,7 +121,7 @@ export class AnalyticsController {
     MemberCompletionRetentionCohortDto[]
   > {
     const cohorts =
-      await this.analyticsService.getMemberCompletionRetentionByCohort();
+      await this.memberRetentionAnalyticsService.getMemberCompletionRetentionByCohort();
     return cohorts.map(
       (cohort) => new MemberCompletionRetentionCohortDto(cohort),
     );
@@ -143,7 +145,9 @@ export class AnalyticsController {
       );
     }
     const stats =
-      await this.analyticsService.getMemberReliabilityWindow(parsedWeeks);
+      await this.memberRetentionAnalyticsService.getMemberReliabilityWindow(
+        parsedWeeks,
+      );
     return new MemberReliabilityWindowDto(stats);
   }
 
