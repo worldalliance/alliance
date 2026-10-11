@@ -1,6 +1,6 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { Injectable } from "@nestjs/common";
-import { ContractEventType } from "src/user/entities/contract-event.entity";
+import { sqlUserHasEverSigned } from "src/user/entities/user.entity";
 import { inviteClaimantSql } from "src/user/invite-claim";
 import { DataSource } from "typeorm";
 import type { WaitlistEntryFilterDto } from "./dto/waitlist-entry-admin.dto";
@@ -186,11 +186,7 @@ export class WaitlistMetricsService {
       `SELECT entry."organizationId", organization.name AS "organizationName",
          claim."communityId" AS "groupId", community.name AS "groupName",
          count(*)::int AS claims,
-         count(*) FILTER (WHERE EXISTS (
-           SELECT 1 FROM contract_event event
-           WHERE event."userId" = claim."userId"
-             AND event.type = '${ContractEventType.SIGNED}'
-         ))::int AS "contractSigned",
+         count(*) FILTER (WHERE ${sqlUserHasEverSigned('claim."userId"')})::int AS "contractSigned",
          count(*) FILTER (WHERE EXISTS (
            SELECT 1 FROM action_activity activity
            JOIN action ON action.id = activity."actionId"

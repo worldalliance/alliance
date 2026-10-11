@@ -107,6 +107,7 @@ import { ContractEventType } from "src/user/entities/contract-event.entity";
 import { loadedTagUsers, Tag } from "src/user/entities/tag.entity";
 import {
   sqlUserHasActiveContractAt,
+  sqlUserHasEverSigned,
   User,
 } from "src/user/entities/user.entity";
 import {
@@ -901,7 +902,7 @@ export class ActionsService {
         WITH latest AS (
           SELECT DISTINCT ON ("userId", "actionId") id, "userId", "actionId", "createdAt", type
           FROM action_activity
-          WHERE "actionId" = ANY($1::int[]) AND type::text = ANY($5::text[])
+          WHERE "actionId" = ANY($1::int[]) AND type::text = ANY($4::text[])
           ORDER BY "userId", "actionId", "createdAt" DESC, id DESC
         )
         SELECT activity."userId", activity."actionId", activity.id AS "activityId",
@@ -912,10 +913,7 @@ export class ActionsService {
         LEFT JOIN "user" staff_liker
           ON staff_liker.id = activity_like."userId" AND staff_liker.staff = true
         WHERE activity.type = $2
-        AND EXISTS (
-          SELECT 1 FROM contract_event
-          WHERE contract_event."userId" = activity."userId" AND contract_event.type = $4
-        )
+        AND ${sqlUserHasEverSigned('activity."userId"')}
         AND NOT EXISTS (
           SELECT 1
           FROM action_activity completion
@@ -932,7 +930,6 @@ export class ActionsService {
         actionIds,
         ActionActivityType.USER_COMPLETED,
         CommentParentObject.Activity,
-        ContractEventType.SIGNED,
         TERMINAL_ACTIVITY_TYPES,
       ],
     );
