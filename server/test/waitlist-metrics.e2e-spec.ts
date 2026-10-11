@@ -345,6 +345,57 @@ describe("Waitlist metrics (e2e)", () => {
     ]);
   });
 
+  it.each([
+    {
+      order: "completed then withdrew",
+      types: [
+        ActionActivityType.USER_COMPLETED,
+        ActionActivityType.USER_WONT_COMPLETE,
+      ],
+      firstAction: 0,
+    },
+    {
+      order: "withdrew then completed",
+      types: [
+        ActionActivityType.USER_WONT_COMPLETE,
+        ActionActivityType.USER_COMPLETED,
+      ],
+      firstAction: 1,
+    },
+  ])(
+    "counts a claimant who $order as $firstAction first actions",
+    async ({ types, firstAction }) => {
+      const organization = await saveOrganization("Withdrawal Org");
+      const entry = await saveEntry(await saveLink(organization, "Social"), {
+        createdAt: new Date("2026-03-03T12:00:00Z"),
+      });
+      const member = await claim(await saveInvite(entry, null), after(HOUR));
+      const actionRepo = ctx.dataSource.getRepository(Action);
+      const action = await actionRepo.save(
+        actionRepo.create({ name: "Withdrawable", category: [], body: "" }),
+      );
+      const activityRepo = ctx.dataSource.getRepository(ActionActivity);
+      await activityRepo.save(
+        types.map((type, index) =>
+          activityRepo.create({
+            userId: member.id,
+            actionId: action.id,
+            type,
+            createdAt: after(index * HOUR),
+          }),
+        ),
+      );
+
+      const res = await metrics({ organizationIds: [organization.id] }).expect(
+        200,
+      );
+
+      expect(res.body.conversions).toEqual([
+        expect.objectContaining({ claims: 1, firstAction }),
+      ]);
+    },
+  );
+
   it("counts a submitted email once however often it is submitted", async () => {
     const organization = await saveOrganization("Duplicate Org");
     const link = await saveLink(organization, "Newsletter");
