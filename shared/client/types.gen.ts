@@ -641,8 +641,8 @@ export type Community = {
 export type OnetimeInvite = {
     id: number;
     invitee: string;
-    inviteeDescription?: string;
-    info?: string;
+    inviteeDescription: string | null;
+    info: string | null;
     code: string;
     createdAt: string;
     status: OnetimeInviteStatus;
@@ -1336,8 +1336,8 @@ export type CommunityDto = {
 export type OnetimeInviteDto = {
     id: number;
     invitee: string;
-    inviteeDescription?: string;
-    info?: string;
+    inviteeDescription: string | null;
+    info: string | null;
     code: string;
     createdAt: string;
     status: OnetimeInviteStatus;

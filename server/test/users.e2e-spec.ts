@@ -2632,6 +2632,7 @@ describe("Users (e2e)", () => {
           expect(res.status).toBe(201);
           expect(res.body.community.id).toBe(communityLedByUserA.id);
           expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
+          expect(res.body.info).toBeNull();
         });
 
         it("allows admins to create onetime invites for any community", async () => {
@@ -2873,6 +2874,19 @@ describe("Users (e2e)", () => {
             "Member request for manual review",
           );
           expect(res.body.invitedUserId).toBeNull();
+        });
+
+        it("saves a request without a description as null", async () => {
+          const res = await request(ctx.app.getHttpServer())
+            .post("/user/onetimeInvite/request")
+            .set("Authorization", `Bearer ${communityMemberToken}`)
+            .send({
+              invitee: "undescribed-request@example.com",
+              communityId: communityLedByUserA.id,
+            });
+
+          expect(res.status).toBe(201);
+          expect(res.body.inviteeDescription).toBeNull();
         });
 
         it("reports the requested group to analytics", async () => {

@@ -49,17 +49,15 @@ export class OnetimeInvite {
   @Allow()
   invitee: string;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  inviteeDescription?: string;
+  inviteeDescription: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  info?: string;
+  info: string | null;
 
   @ApiProperty()
   @Column()
