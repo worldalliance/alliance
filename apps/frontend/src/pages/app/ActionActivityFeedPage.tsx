@@ -1,4 +1,4 @@
-import { ActionDto, actionsFindOne } from "@alliance/shared/client";
+import { useAction } from "@alliance/shared/lib/useAction";
 import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
@@ -11,7 +11,7 @@ import {
   useUserFriendsQuery,
 } from "@alliance/shared/lib/user";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link, href, useParams } from "react-router";
 import chevronLeft from "../../assets/icons8-expand-arrow-96.png";
 import FeedModeColumns from "../../components/FeedModeColumns";
@@ -22,31 +22,11 @@ import { useAuth } from "../../lib/AuthContext";
 const ActionActivityFeedPage = () => {
   const { actionId } = useParams<{ actionId: string }>();
 
-  const { isAuthenticated, user } = useAuth();
+  const { user } = useAuth();
 
-  const [action, setAction] = useState<ActionDto | null>(null);
-  const [actionLoading, setActionLoading] = useState(true);
-
-  const fetchAction = useCallback(async () => {
-    try {
-      setActionLoading(true);
-      const actionResponse = await actionsFindOne({
-        path: { id: parseInt(actionId!) },
-      });
-      console.log("Fetched action:", actionResponse);
-      if (actionResponse.data) {
-        setAction(actionResponse.data);
-      } else {
-        setAction(null);
-      }
-    } finally {
-      setActionLoading(false);
-    }
-  }, [actionId]);
-
-  useEffect(() => {
-    fetchAction();
-  }, [fetchAction, isAuthenticated]);
+  const { data: action, isPending: actionLoading } = useAction(
+    parseInt(actionId!),
+  );
 
   const {
     activities,
