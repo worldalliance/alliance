@@ -3,6 +3,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ActionsService } from "src/actions/actions.service";
+import { loadedActionEventAction } from "src/actions/entities/action-event.entity";
 import type { ActionSuite } from "src/actions/entities/action-suite.entity";
 import {
   cohortNotifiesRecipientPersonally,
@@ -79,7 +80,7 @@ const reminderTracking = (
   source: NOTIF_SOURCE[notif.type],
   context: reminderContext({
     group: plan.group,
-    action: plan.group.memberActionEvent.action,
+    action: loadedActionEventAction(plan.group.memberActionEvent),
     notifiedActionIds: notif.notifiedActionIds,
     actionSuiteId: notif.actionSuite?.id ?? null,
     missNumber: notif.missNumber,
@@ -219,7 +220,7 @@ export class ActionEventNotifWorker {
 
     return processKeywordReplacements(text, {
       user: plan.user,
-      action: plan.group.memberActionEvent.action,
+      action: loadedActionEventAction(plan.group.memberActionEvent),
       deadlineEvent: plan.group.deadlineEvent,
       uncompletedTasksCount: uncompletedTasks.length,
       uncompletedMembersInGroupCount,
@@ -381,7 +382,7 @@ export class ActionEventNotifWorker {
       template: templates.pushMessage,
       renderText: render,
       recipient: plan.user,
-      action: plan.group.memberActionEvent.action,
+      action: loadedActionEventAction(plan.group.memberActionEvent),
       tasks: notice.standing.missedActions,
     });
     if (inAppMessage.text.trim()) {

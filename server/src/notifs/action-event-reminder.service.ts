@@ -36,6 +36,7 @@ import { Brackets, In, type Repository } from "typeorm";
 import {
   ActionEvent,
   ActionStatus,
+  loadedActionEventAction,
 } from "../actions/entities/action-event.entity";
 import { memberActionPhase } from "../actions/utils/action-event";
 import { DEFAULT_TIME_ZONE, User } from "../user/entities/user.entity";
@@ -202,7 +203,9 @@ export class ActionEventReminderService {
       return group;
     }
     const events = await this.eventRepository.find({
-      where: { action: { id: group.memberActionEvent.action.id } },
+      where: {
+        action: { id: loadedActionEventAction(group.memberActionEvent).id },
+      },
     });
     const { deadlineEvent } = memberActionPhase(events);
     if (!deadlineEvent) {
@@ -260,10 +263,11 @@ export class ActionEventReminderService {
     return Promise.all(
       plans.map(async (plan) => {
         const event = plan.group.memberActionEvent!;
+        const action = loadedActionEventAction(event);
         return {
           scheduledFor: plan.scheduledFor,
-          actionId: event.action!.id,
-          actionName: event.action!.name,
+          actionId: action.id,
+          actionName: action.name,
           actionStatus: event.newStatus,
           eventId: event.id,
           type: ActionEventNotifType.Reminder,
@@ -417,7 +421,7 @@ export class ActionEventReminderService {
       where: { id: eventId },
       relations: { action: true },
     });
-    return this.findAnchorCandidatesForAction(event.action);
+    return this.findAnchorCandidatesForAction(loadedActionEventAction(event));
   }
 
   private async findAnchorCandidatesForAction(
@@ -518,7 +522,7 @@ export class ActionEventReminderService {
       );
     }
     const candidates = await this.findAnchorCandidatesForAction(
-      memberActionEvent.action,
+      loadedActionEventAction(memberActionEvent),
     );
     if (
       !candidates.some(
@@ -675,7 +679,7 @@ export class ActionEventReminderService {
       relations: { action: true },
     });
     const events = await this.eventRepository.find({
-      where: { action: { id: event.action.id } },
+      where: { action: { id: loadedActionEventAction(event).id } },
     });
     return {
       event,
@@ -691,7 +695,7 @@ export class ActionEventReminderService {
     const { event, deadlineEvent } = await this.loadEventsForPreview(eventId);
 
     return {
-      action: event.action,
+      action: loadedActionEventAction(event),
       deadlineEvent,
       user: testUser,
       uncompletedTasksCount: dto.taskCount,
@@ -787,7 +791,7 @@ export function groupTaskScopeActionIds(group: ReminderGroup): number[] {
       : [];
   return suiteActions.length
     ? suiteActions.map((action) => action.id)
-    : [group.memberActionEvent.action.id];
+    : [loadedActionEventAction(group.memberActionEvent).id];
 }
 
 /**

@@ -218,7 +218,11 @@ import {
   ActivitySource,
   ALLOW_DUPLICATE,
 } from "./entities/action-activity.entity";
-import { ActionEvent, ActionStatus } from "./entities/action-event.entity";
+import {
+  ActionEvent,
+  ActionStatus,
+  loadedActionEventAction,
+} from "./entities/action-event.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { ActionReviewer } from "./entities/action-reviewer.entity";
 import {
@@ -3514,7 +3518,8 @@ export class ActionsService {
       where: { id: suiteId },
       relations: { actions: { events: true } },
     });
-    const eventIdx = event.action.events
+    const eventAction = loadedActionEventAction(event);
+    const eventIdx = eventAction.events
       .sort((a, b) => a.date.getTime() - b.date.getTime())
       .findIndex((event) => event.id === eventId);
     const eventsToUpdate = new Set<number>([eventId]);
@@ -3538,7 +3543,7 @@ export class ActionsService {
     }
 
     const actionIds = [
-      event.action.id,
+      eventAction.id,
       ...suiteActions.map((action) => action.id),
     ];
     await this.cohortDecisionStaffService.guardDeadlineShortening({
@@ -3585,8 +3590,8 @@ export class ActionsService {
       where: { id: suiteId },
       relations: { actions: { events: true } },
     });
-    const eventIdx = event.action.events
-      .sort((a, b) => a.date.getTime() - b.date.getTime())
+    const eventIdx = loadedActionEventAction(event)
+      .events.sort((a, b) => a.date.getTime() - b.date.getTime())
       .findIndex((event) => event.id === eventId);
 
     const suiteActions = loadedActionSuiteActions(suite);
@@ -5054,21 +5059,22 @@ export class ActionsService {
     const visibleActionIds =
       await this.actionVisibility.visibleActionIdsForUser({
         actionIds: [
-          ...events.map((event) => event.action.id),
+          ...events.map((event) => loadedActionEventAction(event).id),
           ...actionUpdates.map((update) => update.actionId),
         ],
         userId,
       });
 
     for (const event of events) {
-      if (!visibleActionIds.has(event.action.id)) {
+      const action = loadedActionEventAction(event);
+      if (!visibleActionIds.has(action.id)) {
         continue;
       }
       feedItems.push(
         new TimelineFeedItemDto({
           type: TimelineFeedItemType.ActionEvent,
           date: event.date,
-          action: parseAction(event.action),
+          action: parseAction(action),
           actionEvent: event,
         }),
       );
