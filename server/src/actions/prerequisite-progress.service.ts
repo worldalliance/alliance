@@ -170,7 +170,7 @@ export class PrerequisiteProgressService {
    * completion.
    */
   async loadCompletions(
-    scope: { actionId: number } | { userId: number },
+    scope: { actionId: number; userId?: number } | { userId: number },
   ): Promise<Pick<ActionActivity, "userId" | "actionId">[]> {
     const terminal = await this.actionActivityRepository.find({
       where: { ...scope, type: In(TERMINAL_ACTIVITY_TYPES) },

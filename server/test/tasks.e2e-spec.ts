@@ -778,6 +778,66 @@ describe("Tasks (e2e)", () => {
     expect(await formResponseRepo.countBy({ formId: form.body.id })).toBe(0);
   });
 
+  it.each([
+    {
+      order: "completed then withdrew",
+      types: [
+        ActionActivityType.USER_COMPLETED,
+        ActionActivityType.USER_WONT_COMPLETE,
+      ],
+      status: 404,
+    },
+    {
+      order: "withdrew then completed",
+      types: [
+        ActionActivityType.USER_WONT_COMPLETE,
+        ActionActivityType.USER_COMPLETED,
+      ],
+      status: 201,
+    },
+  ])(
+    "answers $status to a follow-up form from a member who $order",
+    async ({ types, status }) => {
+      const action = await createAction(`Follow-up Action ${status}`);
+      const form = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: `Follow-up Form ${status}`,
+          schema: { pages: [], outputViews: [], aggregateViews: [] },
+        })
+        .expect(201);
+      await actionActivityRepo.save(
+        types.map((type, index) =>
+          actionActivityRepo.create({
+            actionId: action.id,
+            userId: ctx.testUserId,
+            type,
+            createdAt: new Date(
+              Date.now() - milliseconds({ hours: 2 - index }),
+            ),
+          }),
+        ),
+      );
+      const followUp = await ctx.dataSource.getRepository(FollowUpForm).save({
+        actionId: action.id,
+        formId: form.body.id as number,
+        startDate: new Date(Date.now() - milliseconds({ days: 1 })),
+        cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+      });
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitFollowUpForm/${followUp.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {},
+          formSnapshotId: form.body.formSnapshotId as number,
+          deviceType: "desktop",
+        })
+        .expect(status);
+    },
+  );
+
   it("sums number field answers into aggregate views", async () => {
     const aggregateSchema: FormSchema = {
       pages: [
