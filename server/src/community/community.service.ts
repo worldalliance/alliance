@@ -45,6 +45,8 @@ import { CreateCommunityDto, UpdateCommunityDto } from "./dto/community.dto";
 import {
   CommunityInvite,
   CommunityInviteStatus,
+  loadedCommunityInviteCommunity,
+  loadedCommunityInviteInvitedUser,
 } from "./entities/community-invite.entity";
 import { Community } from "./entities/community.entity";
 import { GroupJoinNotifsService } from "./group-join-notifs.service";
@@ -1082,7 +1084,7 @@ export class CommunityService {
     if (
       !(
         invite.invitingUser?.id === userId ||
-        canManageCommunity(user, invite.community.id)
+        canManageCommunity(user, loadedCommunityInviteCommunity(invite).id)
       )
     ) {
       throw new BadRequestException();
@@ -1209,9 +1211,10 @@ export class CommunityService {
     if (!user) {
       throw new BadRequestException("User not found");
     }
-    if (!user.leaderOfIds.some((cid) => cid === invite.community.id)) {
+    const communityId = loadedCommunityInviteCommunity(invite).id;
+    if (!user.leaderOfIds.some((cid) => cid === communityId)) {
       throw new BadRequestException(
-        `User is not a leader of community ${invite.community.id}`,
+        `User is not a leader of community ${communityId}`,
       );
     }
 
@@ -1227,14 +1230,16 @@ export class CommunityService {
       userId,
     );
 
+    const invitedUser = loadedCommunityInviteInvitedUser(invite);
+    const community = loadedCommunityInviteCommunity(invite);
     invite.status = CommunityInviteStatus.InviteePending;
     const savedInvite = await this.communityInviteRepository.save(invite);
 
     await this.notifsService.sendNotifs([
       {
-        user: invite.invitedUser,
+        user: invitedUser,
         category: NotificationCategory.CommunityInviteCreated,
-        message: notifMessage`${member(invite.invitingUser ?? user)} invited you to join their group (${group(invite.community)})`,
+        message: notifMessage`${member(invite.invitingUser ?? user)} invited you to join their group (${group(community)})`,
         destination: null,
         webAppLocation: groupUrl({
           tab: "groups",
@@ -1247,11 +1252,11 @@ export class CommunityService {
             {
               user: invite.invitingUser,
               category: NotificationCategory.CommunityInviteCreated,
-              message: notifMessage`Your request to invite ${member(invite.invitedUser)} was approved`,
-              destination: communityDestination(invite.community.id),
+              message: notifMessage`Your request to invite ${member(invitedUser)} was approved`,
+              destination: communityDestination(community.id),
               webAppLocation: groupUrl({
                 tab: "groups",
-                communityId: invite.community.id,
+                communityId: community.id,
               }),
               associatedUsers: [],
               communityInvite: invite,
@@ -1272,6 +1277,7 @@ export class CommunityService {
       userId,
     );
 
+    const invitedUser = loadedCommunityInviteInvitedUser(invite);
     invite.status = CommunityInviteStatus.RequestRejected;
     await this.communityInviteRepository.save(invite);
 
@@ -1279,7 +1285,7 @@ export class CommunityService {
       await this.notifsService.sendNotif({
         user: invite.invitingUser,
         category: NotificationCategory.CommunityInviteRequestRejected,
-        message: notifMessage`Your request to invite ${member(invite.invitedUser)} was rejected`,
+        message: notifMessage`Your request to invite ${member(invitedUser)} was rejected`,
         destination: null,
         webAppLocation: groupUrl({
           tab: "groups",
@@ -1337,7 +1343,8 @@ export class CommunityService {
         notifs: true,
       },
     });
-    if (invite.invitedUser.id !== userId) {
+    const invitedUser = loadedCommunityInviteInvitedUser(invite);
+    if (invitedUser.id !== userId) {
       throw new BadRequestException();
     }
     if (invite.status !== CommunityInviteStatus.InviteePending) {
@@ -1346,16 +1353,18 @@ export class CommunityService {
 
     invite.status = CommunityInviteStatus.InviteeAccepted;
 
-    const community = await this.findOneOrFail(invite.community.id);
+    const community = await this.findOneOrFail(
+      loadedCommunityInviteCommunity(invite).id,
+    );
 
-    if (community.users.some((user) => user.id === invite.invitedUser.id)) {
+    if (community.users.some((user) => user.id === invitedUser.id)) {
       throw new BadRequestException();
     }
 
     await Promise.all([
       this.communityInviteRepository.save(invite),
       this.addUsersToCommunityAndRefreshConversation({
-        user: invite.invitedUser,
+        user: invitedUser,
         community,
         contractRefusalAudience: ContractRefusalAudience.Self,
         notifForLeader: ({ leader }) => {
@@ -1365,33 +1374,33 @@ export class CommunityService {
           return {
             user: leader,
             category: NotificationCategory.MemberJoinedCommunity,
-            message: notifMessage`${member(invite.invitedUser)} joined your group (${group(community)})`,
+            message: notifMessage`${member(invitedUser)} joined your group (${group(community)})`,
             destination: communityDestination(community.id),
             webAppLocation: groupUrl({
               tab: "members",
               communityId: community.id,
             }),
-            associatedUsers: [invite.invitedUser],
+            associatedUsers: [invitedUser],
           };
         },
       }),
-      ...invite.invitedUser.communities
-        .filter((c) => !c.leaders!.some((l) => l.id === invite.invitedUser.id))
+      ...invitedUser.communities
+        .filter((c) => !c.leaders!.some((l) => l.id === invitedUser.id))
         .map((c) =>
           this.removeUserFromCommunityAndRefreshConversation({
-            user: invite.invitedUser,
+            user: invitedUser,
             community: c,
             removeAsLeader: false,
             notifForLeader: ({ leader }) => ({
               user: leader,
               category: NotificationCategory.MemberLeftCommunity,
-              message: notifMessage`${member(invite.invitedUser)} left your group (${group(c)})`,
+              message: notifMessage`${member(invitedUser)} left your group (${group(c)})`,
               destination: communityDestination(c.id),
               webAppLocation: groupUrl({
                 tab: "members",
                 communityId: c.id,
               }),
-              associatedUsers: [invite.invitedUser],
+              associatedUsers: [invitedUser],
             }),
             saveAsPendingCommunity: false,
           }),
@@ -1402,13 +1411,13 @@ export class CommunityService {
       this.notifsService.sendNotif({
         user: invite.invitingUser!,
         category: NotificationCategory.CommunityInviteAccepted,
-        message: notifMessage`${member(invite.invitedUser)} accepted your invitation to join your group (${group(community)})`,
+        message: notifMessage`${member(invitedUser)} accepted your invitation to join your group (${group(community)})`,
         destination: communityDestination(community.id),
         webAppLocation: groupUrl({
           tab: "members",
           communityId: community.id,
         }),
-        associatedUsers: [invite.invitedUser],
+        associatedUsers: [invitedUser],
         communityInvite: invite,
       }),
     ]);
@@ -1426,7 +1435,9 @@ export class CommunityService {
         notifs: true,
       },
     });
-    if (invite.invitedUser.id !== userId) {
+    const invitedUser = loadedCommunityInviteInvitedUser(invite);
+    const community = loadedCommunityInviteCommunity(invite);
+    if (invitedUser.id !== userId) {
       throw new BadRequestException();
     }
     if (invite.status !== CommunityInviteStatus.InviteePending) {
@@ -1443,13 +1454,13 @@ export class CommunityService {
     await this.notifsService.sendNotif({
       user: invite.invitingUser!,
       category: NotificationCategory.CommunityInviteRejected,
-      message: notifMessage`${member(invite.invitedUser)} declined your invitation to join your group (${group(invite.community)})`,
-      destination: communityDestination(invite.community.id),
+      message: notifMessage`${member(invitedUser)} declined your invitation to join your group (${group(community)})`,
+      destination: communityDestination(community.id),
       webAppLocation: groupUrl({
         tab: "invites",
-        communityId: invite.community.id,
+        communityId: community.id,
       }),
-      associatedUsers: [invite.invitedUser],
+      associatedUsers: [invitedUser],
       communityInvite: invite,
     });
   }
