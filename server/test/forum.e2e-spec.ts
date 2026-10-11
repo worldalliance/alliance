@@ -5,6 +5,7 @@ import type {
 import { sdkStreamMixin } from "@smithy/util-stream";
 import { milliseconds } from "date-fns";
 import { ActionsService } from "src/actions/actions.service";
+import { GlobalFeedItemType } from "src/actions/dto/action.dto";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
@@ -2572,6 +2573,88 @@ describe("Forum (e2e)", () => {
       expect(activityCommentNotifs[0].webAppLocation).toBe(
         `/actions/${testAction.id}/activity/${activityId}?replyId=${commentId}`,
       );
+    });
+
+    it("groups a post's recent comments by commenter in the global feed", async () => {
+      const createPost = async (title: string): Promise<number> => {
+        const response = await request(ctx.app.getHttpServer())
+          .post("/forum/posts")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({
+            title,
+            editableContent: { body: "Body", attachments: [] },
+            visibleAt: new Date(),
+          } satisfies CreatePostDto)
+          .expect(201);
+        return response.body.id;
+      };
+      const commentAs = async (params: {
+        token: string;
+        postId: number;
+        body: string;
+      }): Promise<number> => {
+        const response = await request(ctx.app.getHttpServer())
+          .post("/forum/comments")
+          .set("Authorization", `Bearer ${params.token}`)
+          .send({
+            editableContent: { body: params.body, attachments: [] },
+            parentObjectId: params.postId,
+            parentObjectType: CommentParentObject.Post,
+          } satisfies CreateCommentDto)
+          .expect(201);
+        return response.body.id;
+      };
+      const sharedPostId = await createPost("Post With Two Commenters");
+      await commentAs({
+        token: ctx.accessToken,
+        postId: sharedPostId,
+        body: "First",
+      });
+      await commentAs({
+        token: ctx.accessToken,
+        postId: sharedPostId,
+        body: "Second",
+      });
+      await commentAs({
+        token: ctx.adminAccessToken,
+        postId: sharedPostId,
+        body: "Third",
+      });
+      const soloPostId = await createPost("Post With One Commenter");
+      await commentAs({
+        token: ctx.accessToken,
+        postId: soloPostId,
+        body: "Older",
+      });
+      const newestSoloCommentId = await commentAs({
+        token: ctx.accessToken,
+        postId: soloPostId,
+        body: "Newer",
+      });
+
+      const feed = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 50 })
+        .expect(200);
+
+      const forumCommentsFor = (postId: number) =>
+        feed.body.find(
+          ({ type, forumComments }) =>
+            type === GlobalFeedItemType.ForumComments &&
+            forumComments.postId === postId,
+        )?.forumComments;
+      const shared = forumCommentsFor(sharedPostId);
+      expect(shared).toBeDefined();
+      expect(shared.count).toBe(2);
+      expect(shared.users.map(({ id }) => id)).toEqual([
+        ctx.adminUserId,
+        ctx.testUserId,
+      ]);
+      expect(shared.commentId).toBeUndefined();
+      const solo = forumCommentsFor(soloPostId);
+      expect(solo).toBeDefined();
+      expect(solo.count).toBe(1);
+      expect(solo.commentId).toBe(newestSoloCommentId);
     });
   });
 
