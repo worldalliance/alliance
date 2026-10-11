@@ -9,8 +9,6 @@ import { changedPhoto } from "@alliance/common/image-src";
 import {
   actionsCommunityCompletedActionsCount,
   communityDelete,
-  communityGetMemberContactInfo,
-  CommunityMemberContactInfoDto,
   communityUpdate,
   conversationGetCommunityConversations,
 } from "@alliance/shared/client";
@@ -21,6 +19,7 @@ import {
 import { getMemberCount, isLedBy } from "@alliance/shared/lib/communityUtils";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import { Features } from "@alliance/shared/lib/features";
+import { useCommunityMemberContactInfo } from "@alliance/shared/lib/useCommunityMemberContactInfo";
 import { useCommunityMemberInfo } from "@alliance/shared/lib/useCommunityMemberInfo";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
@@ -39,7 +38,6 @@ import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
-import { keyBy } from "es-toolkit";
 import { MessageSquare } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link, useSearchParams } from "react-router";
@@ -75,10 +73,6 @@ const SHOWN_TABS = {
 const CURRENT_ACTION_WINDOW_MS = milliseconds({ days: 3 });
 
 const CommunityPage = () => {
-  const [memberContactInfo, setMemberContactInfo] = useState<Record<
-    number,
-    CommunityMemberContactInfoDto
-  > | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const tab = (searchParams.get("tab") as Tab | undefined) ?? "activity";
@@ -170,6 +164,11 @@ const CommunityPage = () => {
     userId: user?.id,
   });
 
+  const { data: memberContactInfo } = useCommunityMemberContactInfo({
+    communityId: community?.id,
+    amLeader: amLeader ?? false,
+  });
+
   const { data: communityCompletedActionsCount = 0 } = useQuery({
     queryKey: ["communityCompletedActionsCount", community?.id ?? null],
     queryFn: () =>
@@ -228,22 +227,6 @@ const CommunityPage = () => {
     actionSummaries,
     userActionRelations,
   });
-
-  useEffect(() => {
-    if (amLeader && community?.id !== undefined) {
-      communityGetMemberContactInfo({
-        path: {
-          communityId: community.id,
-        },
-      }).then((resp) => {
-        if (resp.data) {
-          setMemberContactInfo(
-            keyBy(resp.data, (contactInfo) => contactInfo.id),
-          );
-        }
-      });
-    }
-  }, [amLeader, community?.id]);
 
   const setParams = useCallback(
     (params: { tab?: Tab | null; communityId?: number | null }) => {
@@ -792,7 +775,7 @@ const CommunityPage = () => {
                     removeMemberFromCommunity(community.id, memberId)
                   }
                   amLeader={amLeader ?? false}
-                  memberContactInfo={memberContactInfo ?? undefined}
+                  memberContactInfo={memberContactInfo}
                   userActionRelations={userActionRelations ?? undefined}
                   actions={actionSummaries}
                   maxActionsPerWeek={maxActionsPerWeek}

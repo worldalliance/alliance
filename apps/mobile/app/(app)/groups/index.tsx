@@ -4,7 +4,6 @@ import { errorMessage } from "@alliance/common/errorMessage";
 import { changedPhoto } from "@alliance/common/image-src";
 import {
   communityGetCommunityInvites,
-  communityGetMemberContactInfo,
   communityUpdate,
   userGetOnetimeInvitesByCommunity,
 } from "@alliance/shared/client";
@@ -23,13 +22,12 @@ import { groupSettings } from "@alliance/shared/lib/copy";
 import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
+import { useCommunityMemberContactInfo } from "@alliance/shared/lib/useCommunityMemberContactInfo";
 import { useCommunityMemberInfo } from "@alliance/shared/lib/useCommunityMemberInfo";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnNextDeadline } from "@alliance/shared/lib/useOnNextDeadline";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
 import { LegendList } from "@legendapp/list";
-import { useQuery } from "@tanstack/react-query";
-import { keyBy } from "es-toolkit";
 import { router, useFocusEffect } from "expo-router";
 import { ChevronDown, Settings, Trash2, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -506,19 +504,10 @@ function GroupMembersTab({
     useCallback(() => setNow(Date.now()), []),
   );
 
-  const { data: memberContactInfoList } = useQuery({
-    queryKey: ["communityMemberContactInfo", community.id],
-    queryFn: () =>
-      communityGetMemberContactInfo({
-        path: { communityId: community.id },
-      }).then((r) => r.data ?? []),
-    enabled: amLeader,
+  const { data: memberContactInfoByUserId } = useCommunityMemberContactInfo({
+    communityId: community.id,
+    amLeader,
   });
-
-  const memberContactInfoByUserId = useMemo(() => {
-    if (!memberContactInfoList?.length) return undefined;
-    return keyBy(memberContactInfoList, (info) => info.id);
-  }, [memberContactInfoList]);
 
   const memberInfoUserIds = useMemo(
     () => new Set(memberInfo?.users?.map(({ userId }) => userId) ?? []),

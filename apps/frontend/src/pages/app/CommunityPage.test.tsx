@@ -1,6 +1,8 @@
+import { makeCommunity, makeProfile } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { IncomingCommunityInvitesProvider } from "@alliance/shared/lib/useIncomingCommunityInvites";
+import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   cleanup,
@@ -22,6 +24,22 @@ serveApi(
     "GET /community/list/my": () => myGroups(),
     "GET /community/list/public": () => Response.json([]),
     "GET /community/communityInvites": () => Response.json([]),
+    "GET /community/memberContactInfo/:communityId": () =>
+      Response.json([
+        {
+          id: 2,
+          timeZone: null,
+          phoneNumber: null,
+          preferredReminderTimeLeaderTz: "9:00 AM",
+          awayRanges: [],
+        },
+      ]),
+    "GET /actions/communityMemberInfo/:communityId": () =>
+      Response.json({ actions: [], suites: [], users: [] }),
+    "GET /actions/communityCompletedActionsCount": () =>
+      Response.json({ completedCount: 0 }),
+    "GET /messaging/conversations/community/:communityId": () =>
+      Response.json([]),
   }),
 );
 
@@ -30,7 +48,7 @@ afterEach(cleanup);
 const isDisabled = (text: string) =>
   screen.getByText(text).closest("button")?.disabled;
 
-const renderPage = () => {
+const renderPage = (url = "/") => {
   const { wrapper: QueryWrapper } = queryWrapper();
   render(
     <QueryWrapper>
@@ -41,8 +59,10 @@ const renderPage = () => {
           })}
         >
           <IncomingCommunityInvitesProvider>
-            <MemoryRouter>
-              <CommunityPage />
+            <MemoryRouter initialEntries={[url]}>
+              <SiteAppProvider>
+                <CommunityPage />
+              </SiteAppProvider>
             </MemoryRouter>
           </IncomingCommunityInvitesProvider>
         </AuthContext.Provider>
@@ -79,4 +99,17 @@ it("keeps the retry on screen while retrying a failed load of your groups", asyn
 
   resolve(Response.json([]));
   await screen.findByText("Request assignment");
+});
+
+it("shows a leader each member's reminder time from their contact info", async () => {
+  myGroups = async () =>
+    Response.json([
+      makeCommunity({
+        leaders: [makeProfile(testAuthUser.id)],
+        users: [makeProfile(testAuthUser.id), makeProfile(2)],
+      }),
+    ]);
+  renderPage("/?tab=members&communityId=1");
+
+  await screen.findByText("9:00 AM");
 });
