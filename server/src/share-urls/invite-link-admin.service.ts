@@ -1,11 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { signupUrl, withRef } from "src/search/approutes";
-import { ContractEventType } from "src/user/entities/contract-event.entity";
 import { OnetimeInviteStatus } from "src/user/entities/onetime-invite.entity";
 import {
   ReferralSource,
   sqlUserHasActiveContractAt,
+  sqlUserHasEverSigned,
 } from "src/user/entities/user.entity";
 import type { PaginatedList } from "src/utils/pagination.dto";
 import type { Repository } from "src/utils/Repository";
@@ -49,8 +49,7 @@ const LINKS = `WITH links AS (
   FROM "user" account
 ), metrics AS (
   SELECT claim."linkId", count(*)::int AS "accountsCreated",
-    count(*) FILTER (WHERE EXISTS (SELECT 1 FROM contract_event event
-      WHERE event."userId" = claim."userId" AND event.type = '${ContractEventType.SIGNED}' AND event.date <= now()))::int AS "initialSigners",
+    count(*) FILTER (WHERE ${sqlUserHasEverSigned('claim."userId"')})::int AS "initialSigners",
     count(*) FILTER (WHERE ${sqlUserHasActiveContractAt('claim."userId"', "now()")})::int AS "retainedSigners"
   FROM claims claim WHERE claim."linkId" IS NOT NULL GROUP BY claim."linkId"
 ), filtered AS (
