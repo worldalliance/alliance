@@ -2244,7 +2244,11 @@ describe("Actions (e2e)", () => {
         .get(ActionsService)
         .completeAction(action.id, ctx.testUserId);
 
-      expect(complete.type).toBe(ActionActivityType.USER_COMPLETED);
+      expect(complete).toMatchObject({
+        type: ActionActivityType.USER_COMPLETED,
+        isMoral: null,
+        outOfTime: null,
+      });
 
       const feed = await request(ctx.app.getHttpServer())
         .get("/actions/activities/feed")
@@ -2256,6 +2260,61 @@ describe("Actions (e2e)", () => {
       );
 
       await actionRepo.delete(action.id);
+    });
+
+    it("lists a form's withdrawals with their flags, null where none were given", async () => {
+      const { form } = await createFormWithSnapshot(ctx.dataSource, {
+        title: "Withdrawals Form",
+        schema: { title: "Withdrawals Form", pages: [], outputViews: [] },
+      });
+      const { action } = await createPublishedAction("Withdrawals Action", {
+        actionOverrides: { taskFormId: form.id },
+      });
+
+      try {
+        await ctx.app.get(ActionsService).createActionActivity({
+          actionId: action.id,
+          userId: ctx.testUserId,
+          type: ActionActivityType.USER_WONT_COMPLETE,
+          declineReason: "busy",
+          isOutOfTime: true,
+          isMoral: false,
+        });
+        await request(ctx.app.getHttpServer())
+          .post("/actions/createActivity")
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .send({
+            actionId: action.id,
+            userId: ctx.adminUserId,
+            type: ActionActivityType.USER_WONT_COMPLETE,
+          })
+          .expect(201);
+
+        const res = await request(ctx.app.getHttpServer())
+          .get(`/actions/withdrawals/byForm/${form.id}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+          .expect(200);
+
+        expect(res.body).toHaveLength(2);
+        expect(res.body).toEqual(
+          expect.arrayContaining([
+            {
+              userId: ctx.testUserId,
+              declineReason: "busy",
+              isMoral: false,
+              outOfTime: true,
+            },
+            {
+              userId: ctx.adminUserId,
+              declineReason: null,
+              isMoral: null,
+              outOfTime: null,
+            },
+          ]),
+        );
+      } finally {
+        await actionRepo.delete(action.id);
+      }
     });
 
     it("closes ordinary completion at the deadline unless late completion is allowed", async () => {
