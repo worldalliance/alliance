@@ -54,11 +54,10 @@ export class MessageService {
     if (dto.replyToId) {
       replyTo =
         (await this.messageRepository.findOne({
-          where: { id: dto.replyToId },
-          relations: { conversation: true },
+          where: { id: dto.replyToId, conversation: { id: conversation.id } },
         })) ?? undefined;
 
-      if (!replyTo || replyTo.conversation.id !== conversation.id) {
+      if (!replyTo) {
         throw new BadRequestException("Invalid reply target.");
       }
     }

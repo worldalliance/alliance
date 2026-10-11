@@ -766,6 +766,43 @@ describe("ConversationController (e2e)", () => {
     });
   });
 
+  describe("replies", () => {
+    const createDirectConversation = async (): Promise<number> => {
+      const { user: targetUser } = await createUserAndToken();
+      const response = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ targetUserId: targetUser.id })
+        .expect(201);
+      return response.body.id;
+    };
+
+    const sendMessage = (conversationId: number, replyToId?: string) =>
+      request(ctx.app.getHttpServer())
+        .post("/messaging/messages")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ conversationId, body: "Hello", replyToId });
+
+    it("replies to a message in the same conversation", async () => {
+      const conversationId = await createDirectConversation();
+      const original = await sendMessage(conversationId).expect(201);
+
+      const reply = await sendMessage(conversationId, original.body.id).expect(
+        201,
+      );
+
+      expect(reply.body.replyTo.id).toBe(original.body.id);
+    });
+
+    it("refuses a reply to a message in another conversation", async () => {
+      const conversationId = await createDirectConversation();
+      const otherConversationId = await createDirectConversation();
+      const original = await sendMessage(otherConversationId).expect(201);
+
+      await sendMessage(conversationId, original.body.id).expect(400);
+    });
+  });
+
   describe("unread counts", () => {
     const getUnreadSummary = async (
       token: string,
