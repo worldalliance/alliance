@@ -1,7 +1,48 @@
 import type { DisplayBlock } from "./display-blocks";
-import { collectSourceFormIds, forEachCondition } from "./form-conditions";
-import type { AnyField, FormSchema, TextField } from "./form-schema";
+import {
+  collectSourceFormIds,
+  conditionHolders,
+  forEachCondition,
+  PlaceKind,
+} from "./form-conditions";
+import type { AnyField, FormSchema, Page, TextField } from "./form-schema";
 import type { Condition } from "./visible-if-formula";
+
+describe("conditionHolders", () => {
+  it("yields pages, elements, and list sub-fields in form order", () => {
+    const pages: Page[] = [
+      {
+        id: "p1",
+        fields: [
+          { id: "intro", type: "display", kind: "text", text: "Hi" },
+          {
+            id: "kids",
+            type: "input",
+            kind: "list",
+            label: "Kids",
+            fields: [
+              { id: "name", type: "input", kind: "text", label: "Name" },
+            ],
+          },
+        ],
+      },
+    ];
+    expect(
+      [...conditionHolders(pages)].map(({ place, question }) => [
+        place,
+        question?.id ?? null,
+      ]),
+    ).toEqual([
+      [{ kind: PlaceKind.Page, pageIndex: 0 }, null],
+      [{ kind: PlaceKind.Element, pageIndex: 0, index: 0 }, null],
+      [{ kind: PlaceKind.Element, pageIndex: 0, index: 1 }, "kids"],
+      [
+        { kind: PlaceKind.SubField, pageIndex: 0, index: 1, subIndex: 0 },
+        "name",
+      ],
+    ]);
+  });
+});
 
 describe("forEachCondition", () => {
   /** A condition tagged with the slot it was hung on, so order is checkable. */

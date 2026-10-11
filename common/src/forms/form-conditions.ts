@@ -1,16 +1,79 @@
-import type { DisplayBlock } from "./display-blocks";
-import { isQuestionField, type AnyField, type FormSchema } from "./form-schema";
-import type { Condition, VisibleIfFormula } from "./visible-if-formula";
+import {
+  isQuestionField,
+  type AnyField,
+  type FormSchema,
+  type Page,
+} from "./form-schema";
+import {
+  conditionFieldReference,
+  type Condition,
+  type VisibleIfFormula,
+} from "./visible-if-formula";
+
+export enum PlaceKind {
+  Page = "page",
+  Element = "element",
+  SubField = "subField",
+}
+
+/** Where a page, top-level element, or list sub-field sits in the form. */
+export type FormPlace =
+  | { kind: PlaceKind.Page; pageIndex: number }
+  | { kind: PlaceKind.Element; pageIndex: number; index: number }
+  | {
+      kind: PlaceKind.SubField;
+      pageIndex: number;
+      index: number;
+      subIndex: number;
+    };
+
+/** Something on a form's input pages that can carry a condition. */
+export type ConditionHolder = {
+  place: FormPlace;
+  formulas: {
+    visibleIfFormula?: VisibleIfFormula;
+    requiredIfFormula?: VisibleIfFormula;
+  };
+  /** The holder when it is a question, which conditions can read. */
+  question: AnyField | null;
+};
+
+/** Each page, top-level element, and list sub-field, in form order. */
+export function* conditionHolders(
+  pages: readonly Page[],
+): Generator<ConditionHolder> {
+  for (const [pageIndex, page] of pages.entries()) {
+    yield {
+      place: { kind: PlaceKind.Page, pageIndex },
+      formulas: page,
+      question: null,
+    };
+    for (const [index, element] of (page.fields ?? []).entries()) {
+      const question = isQuestionField(element) ? element : null;
+      yield {
+        place: { kind: PlaceKind.Element, pageIndex, index },
+        formulas: element,
+        question,
+      };
+      if (question?.kind !== "list") continue;
+      for (const [subIndex, sub] of (question.fields ?? []).entries()) {
+        yield {
+          place: { kind: PlaceKind.SubField, pageIndex, index, subIndex },
+          formulas: sub,
+          question: sub,
+        };
+      }
+    }
+  }
+}
 
 /**
- * Every condition governing a form's input pages: `visibleIfFormula`
- * conditions on pages, elements and list sub-fields, plus `requiredIfFormula`
- * on question fields (only they carry one — see `baseFieldSchema`).
+ * Every condition governing a form's input pages: `visibleIfFormula` and
+ * `requiredIfFormula` conditions on each of `conditionHolders`.
  *
  * Anything that reacts to which condition *kinds* a schema contains — which
  * values to fetch before evaluating, which source forms to load — should walk
- * with this instead of re-deriving the traversal, so a new place to hang a
- * condition only has to be taught about here.
+ * with this instead of re-deriving the traversal.
  *
  * Output-view conditions are deliberately excluded: they're scoped to a view,
  * can't read answers or account state, and are validated separately in
@@ -24,27 +87,14 @@ export function forEachCondition(
   schema: FormSchema,
   visit: (condition: Condition) => boolean | void,
 ): boolean {
-  const visitFormula = (formula: VisibleIfFormula | undefined): boolean => {
-    for (const condition of Object.values(formula?.conditions ?? {})) {
-      if (visit(condition) === true) return true;
-    }
-    return false;
-  };
-  const visitElement = (element: AnyField | DisplayBlock): boolean => {
-    if (visitFormula(element.visibleIfFormula)) return true;
-    if (!isQuestionField(element)) return false;
-    if (visitFormula(element.requiredIfFormula)) return true;
-    if (element.kind === "list") {
-      for (const sub of element.fields ?? []) {
-        if (visitElement(sub)) return true;
+  for (const { formulas } of conditionHolders(schema.pages ?? [])) {
+    for (const formula of [
+      formulas.visibleIfFormula,
+      formulas.requiredIfFormula,
+    ]) {
+      for (const condition of Object.values(formula?.conditions ?? {})) {
+        if (visit(condition) === true) return true;
       }
-    }
-    return false;
-  };
-  for (const page of schema.pages ?? []) {
-    if (visitFormula(page.visibleIfFormula)) return true;
-    for (const element of page.fields ?? []) {
-      if (visitElement(element)) return true;
     }
   }
   return false;
@@ -74,35 +124,12 @@ export function forEachOutputViewCondition(
   return false;
 }
 
-/** Scan a form schema for all sourceFormIds referenced in visibility conditions. */
+/** Every sourceFormId the conditions `forEachCondition` walks reference. */
 export function collectSourceFormIds(schema: FormSchema): number[] {
   const ids = new Set<number>();
   forEachCondition(schema, (c) => {
-    switch (c.kind) {
-      case "equals":
-      case "includesOption":
-      case "anySelected":
-      case "selectedCount":
-      case "hasValue":
-        if (typeof c.sourceFormId === "number") {
-          ids.add(c.sourceFormId);
-        }
-        break;
-      case "validator":
-      case "deviceType":
-      case "outputBlockVisible":
-      case "userHasCity":
-      case "userPropertyHasValue":
-      case "firstContractSigned":
-      case "completedActionCount":
-        break;
-      default:
-        // A kind added in a newer build: it may reference a source form we
-        // won't prefetch, but this runs during render, where throwing isn't an
-        // option. The renderers block such a schema outright.
-        c satisfies never;
-        break;
-    }
+    const sourceFormId = conditionFieldReference(c)?.sourceFormId;
+    if (sourceFormId != null) ids.add(sourceFormId);
   });
   return Array.from(ids);
 }
