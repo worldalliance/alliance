@@ -138,6 +138,8 @@ describe("CohortExpressionBuilder", () => {
             actionsLoading={actionsLoading}
             actionsError={actionsError}
             availableUsers={[]}
+            usersLoading={false}
+            usersError={false}
           />
         </ToastProvider>
       </QueryClientProvider>,
@@ -159,5 +161,29 @@ describe("CohortExpressionBuilder", () => {
     renderCompareSelect({ actionsError: true });
 
     expect(selectedLabel()).toBe("Couldn't load actions");
+  });
+
+  it("says the users failed to load in a manual condition", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ToastProvider>
+          <CohortExpressionBuilder
+            value={{ type: "Manual", userIds: [] }}
+            onChange={jest.fn()}
+            availableTags={availableTags}
+            tagsLoading={false}
+            tagsError={false}
+            availableActions={[]}
+            actionsLoading={false}
+            actionsError={false}
+            availableUsers={[]}
+            usersLoading={false}
+            usersError
+          />
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByText("Failed to load users.")).toBeTruthy();
   });
 });

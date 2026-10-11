@@ -34,6 +34,8 @@ export interface ActionFollowUpFormsTabProps {
   actionsLoading: boolean;
   actionsError: boolean;
   availableUsers: UserSelectUser[];
+  usersLoading: boolean;
+  usersError: boolean;
 }
 
 const emptyFormSchema: FormSchema = {
@@ -53,6 +55,8 @@ export default function ActionFollowUpFormsTab({
   actionsLoading,
   actionsError,
   availableUsers,
+  usersLoading,
+  usersError,
 }: ActionFollowUpFormsTabProps) {
   const followUpForms = useMemo(
     () => action.followUpForms ?? [],
@@ -272,6 +276,8 @@ export default function ActionFollowUpFormsTab({
           actionsLoading={actionsLoading}
           actionsError={actionsError}
           availableUsers={availableUsers}
+          usersLoading={usersLoading}
+          usersError={usersError}
         />
       )}
     </div>
@@ -302,6 +308,8 @@ interface FollowUpFormCardProps {
   actionsLoading: boolean;
   actionsError: boolean;
   availableUsers: UserSelectUser[];
+  usersLoading: boolean;
+  usersError: boolean;
 }
 
 function FollowUpFormCard({
@@ -319,6 +327,8 @@ function FollowUpFormCard({
   actionsLoading,
   actionsError,
   availableUsers,
+  usersLoading,
+  usersError,
 }: FollowUpFormCardProps) {
   const [startDate, setStartDate] = useState<string>(
     followUpForm.startDate ?? "",
@@ -407,6 +417,8 @@ function FollowUpFormCard({
             actionsLoading={actionsLoading}
             actionsError={actionsError}
             availableUsers={availableUsers}
+            usersLoading={usersLoading}
+            usersError={usersError}
           />
         </div>
 

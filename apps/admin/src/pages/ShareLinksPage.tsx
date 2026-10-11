@@ -138,7 +138,11 @@ const loadShareUrlsForOwner = (
 };
 
 const ShareLinksPage: React.FC = () => {
-  const { users } = useSelectableUsers();
+  const {
+    users,
+    isLoading: usersLoading,
+    isLoadingError: usersError,
+  } = useSelectableUsers();
   const [ownerKind, setOwnerKind] = useState<OwnerKind>("user");
 
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
@@ -518,6 +522,8 @@ const ShareLinksPage: React.FC = () => {
                 users={users}
                 selectedUserIds={selectedUserIds}
                 onChange={setSelectedUserIds}
+                loading={usersLoading}
+                loadFailed={usersError}
                 label="User"
                 single
               />

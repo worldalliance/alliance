@@ -234,8 +234,11 @@ const ActionDashboard: React.FC = () => {
   const [suitesLoading, setSuitesLoading] = useState<boolean>(true);
   const [cohortExpression, setCohortExpression] =
     useState<CohortExpression | null>(null);
-  const { users: availableUsers, isLoading: usersLoading } =
-    useSelectableUsers();
+  const {
+    users: availableUsers,
+    isLoading: usersLoading,
+    isLoadingError: usersError,
+  } = useSelectableUsers();
   const { data: members } = useMembers();
   const activeContractUserIds = useMemo(
     () =>
@@ -984,6 +987,7 @@ const ActionDashboard: React.FC = () => {
             suitesLoading={suitesLoading}
             availableUsers={availableUsers}
             usersLoading={usersLoading}
+            usersError={usersError}
             activeContractUserIds={activeContractUserIds}
             onboarding={form.onboarding ?? false}
             cohortExpression={cohortExpression}
@@ -1562,6 +1566,7 @@ const ActionDashboard: React.FC = () => {
                   suitesLoading={suitesLoading}
                   availableUsers={availableUsers}
                   usersLoading={usersLoading}
+                  usersError={usersError}
                   activeContractUserIds={activeContractUserIds}
                   onboarding={form.onboarding ?? false}
                   cohortExpression={cohortExpression}
@@ -1620,6 +1625,8 @@ const ActionDashboard: React.FC = () => {
                 actionsLoading={allActionsLoading}
                 actionsError={allActionsLoadFailed}
                 availableUsers={availableUsers}
+                usersLoading={usersLoading}
+                usersError={usersError}
               />
             )}
             {activeTab === "responses" && action && (

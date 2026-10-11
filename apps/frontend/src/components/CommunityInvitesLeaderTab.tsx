@@ -71,7 +71,11 @@ const CommunityInvitesLeaderTab = ({
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { error: errorToast, confirm } = useToast();
 
-  const { users: allUsers } = useSelectableUsers();
+  const {
+    users: allUsers,
+    isLoading: usersLoading,
+    isLoadingError: usersError,
+  } = useSelectableUsers();
 
   const selectableUsers = useMemo(
     () =>
@@ -302,6 +306,8 @@ const CommunityInvitesLeaderTab = ({
                         null,
                     )
                   }
+                  loading={usersLoading}
+                  loadFailed={usersError}
                   label={null}
                   single={true}
                 />

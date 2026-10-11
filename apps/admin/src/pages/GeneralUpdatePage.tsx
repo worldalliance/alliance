@@ -70,8 +70,11 @@ const GeneralUpdatePage: React.FC = () => {
   const { tags: availableTags, isLoading: tagsLoading } = useTagsAdmin();
   const [availableSuites, setAvailableSuites] = useState<ActionSuiteDto[]>([]);
   const [suitesLoading, setSuitesLoading] = useState<boolean>(true);
-  const { users: availableUsers, isLoading: usersLoading } =
-    useSelectableUsers();
+  const {
+    users: availableUsers,
+    isLoading: usersLoading,
+    isLoadingError: usersError,
+  } = useSelectableUsers();
 
   useEffect(() => {
     if (!isNew) return;
@@ -498,6 +501,7 @@ const GeneralUpdatePage: React.FC = () => {
                 selectedUserIds={form.manualCohortUserIds}
                 onChange={handleManualCohortChange}
                 loading={usersLoading}
+                loadFailed={usersError}
                 label="Select users"
               />
             ) : (
