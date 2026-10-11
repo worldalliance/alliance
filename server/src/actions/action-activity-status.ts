@@ -95,6 +95,21 @@ export function findLatestCompletions<
 }
 
 /**
+ * SQL rendering of {@link findLatestCompletions}: whether the `action_activity`
+ * row aliased `alias` is a completion that no later completion or withdrawal by
+ * the same member on the same action supersedes. At most one row per (member,
+ * action) pair passes.
+ */
+export function sqlIsLatestCompletion(alias: string): string {
+  return `(${alias}.type = '${ActionActivityType.USER_COMPLETED}' AND NOT EXISTS (
+    SELECT 1 FROM action_activity later
+    WHERE later."userId" = ${alias}."userId" AND later."actionId" = ${alias}."actionId"
+      AND later.type IN (${TERMINAL_ACTIVITY_TYPES.map((type) => `'${type}'`).join(", ")})
+      AND (later."createdAt", later.id) > (${alias}."createdAt", ${alias}.id)
+  ))`;
+}
+
+/**
  * Resolves a user's self-view relation to one action, selecting that user's
  * activities from a {@link CachedFilter}.
  *

@@ -147,6 +147,7 @@ import {
   findLatestTerminalActivity,
   isTerminalActivity,
   resolveUserActionRelation,
+  sqlIsLatestCompletion,
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
 import { ActionFormVariantService } from "./action-form-variant.service";
@@ -900,20 +901,15 @@ export class ActionsService {
       }[]
     >(
       `
-        WITH latest AS (
-          SELECT DISTINCT ON ("userId", "actionId") id, "userId", "actionId", "createdAt", type
-          FROM action_activity
-          WHERE "actionId" = ANY($1::int[]) AND type::text = ANY($4::text[])
-          ORDER BY "userId", "actionId", "createdAt" DESC, id DESC
-        )
         SELECT activity."userId", activity."actionId", activity.id AS "activityId",
           activity."createdAt" AS "completedAt", COUNT(staff_liker.id) AS "staffLikeCount"
-        FROM latest activity
+        FROM action_activity activity
         LEFT JOIN action_activity_likes_user activity_like
           ON activity_like."actionActivityId" = activity.id
         LEFT JOIN "user" staff_liker
           ON staff_liker.id = activity_like."userId" AND staff_liker.staff = true
-        WHERE activity.type = $2
+        WHERE activity."actionId" = ANY($1::int[])
+        AND ${sqlIsLatestCompletion("activity")}
         AND ${sqlUserHasEverSigned('activity."userId"')}
         AND NOT EXISTS (
           SELECT 1
@@ -931,7 +927,6 @@ export class ActionsService {
         actionIds,
         ActionActivityType.USER_COMPLETED,
         CommentParentObject.Activity,
-        TERMINAL_ACTIVITY_TYPES,
       ],
     );
     const rowsByUser = groupBy(rows, (row) => row.userId);
