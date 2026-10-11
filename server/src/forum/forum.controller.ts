@@ -115,6 +115,7 @@ export class ForumController {
     @Param("id") id: string,
     @Request() req: JwtRequest,
   ): Promise<CommentDto[]> {
+    await this.forumService.assertPostVisible(+id, req.user?.sub);
     return this.forumService
       .findCommentsForPost(+id)
       .then((comments) =>
