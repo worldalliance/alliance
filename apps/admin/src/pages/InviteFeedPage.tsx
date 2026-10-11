@@ -1,35 +1,13 @@
-import {
-  shareUrlsFindInviteFeedAdmin,
-  userGetOnetimeInvitesAdmin,
-} from "@alliance/shared/client";
-import type {
-  OnetimeInviteDto,
-  ReusableInviteFeedItemDto,
-} from "@alliance/shared/client/types.gen";
-import { useQuery } from "@tanstack/react-query";
-import { milliseconds } from "date-fns";
 import { Settings2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useEventLogWebSocket } from "../lib/useEventLogWebSocket";
+import { InviteFeedKind, useInviteFeedAdmin } from "../lib/useInviteFeedAdmin";
 
-const INVITES_PER_PAGE = 200;
 const STORAGE_KEY = "alliance-admin-invite-feed-settings";
 
 type FeedSettings = {
   numbered: boolean;
   startAt: string;
-};
-
-enum InviteFeedKind {
-  Individual = "individual",
-  Group = "group",
-}
-
-type InviteFeedItem = {
-  id: string;
-  createdAt: string;
-  invitingUserDisplayName: string;
-  kind: InviteFeedKind;
 };
 
 function toLocalInputValue(date: Date): string {
@@ -71,76 +49,6 @@ function loadSettings(): FeedSettings {
   return defaults;
 }
 
-function isCreatedInvite(invite: OnetimeInviteDto): boolean {
-  return invite.status === "link_unused" || invite.status === "link_used";
-}
-
-async function getOnetimeInvitesSince(
-  startAt: string,
-): Promise<InviteFeedItem[]> {
-  const startTime = new Date(startAt).getTime();
-  const invites: OnetimeInviteDto[] = [];
-  let page = 1;
-  let totalPages = 1;
-
-  do {
-    const response = await userGetOnetimeInvitesAdmin({
-      query: { page, limit: INVITES_PER_PAGE },
-      throwOnError: true,
-    });
-    const batch = response.data.items;
-    totalPages = response.data.totalPages;
-    invites.push(
-      ...batch.filter(
-        (invite) =>
-          isCreatedInvite(invite) &&
-          new Date(invite.createdAt).getTime() >= startTime,
-      ),
-    );
-
-    const oldestInvite = batch.at(-1);
-    if (
-      !oldestInvite ||
-      new Date(oldestInvite.createdAt).getTime() < startTime
-    ) {
-      break;
-    }
-    page += 1;
-  } while (page <= totalPages);
-
-  return invites.map((invite) => ({
-    id: `onetime-${invite.id}`,
-    createdAt: invite.createdAt,
-    invitingUserDisplayName: invite.invitingUser?.displayName ?? "Someone",
-    kind: InviteFeedKind.Individual,
-  }));
-}
-
-function reusableInviteFeedItem(
-  invite: ReusableInviteFeedItemDto,
-): InviteFeedItem {
-  return {
-    id: `reusable-${invite.id}`,
-    createdAt: invite.createdAt,
-    invitingUserDisplayName: invite.invitingUserDisplayName,
-    kind: InviteFeedKind.Group,
-  };
-}
-
-async function getInvitesSince(startAt: string): Promise<InviteFeedItem[]> {
-  const [onetimeInvites, reusableInvitesResponse] = await Promise.all([
-    getOnetimeInvitesSince(startAt),
-    shareUrlsFindInviteFeedAdmin({
-      query: { startAt: new Date(startAt).toISOString() },
-      throwOnError: true,
-    }),
-  ]);
-  return [
-    ...onetimeInvites,
-    ...reusableInvitesResponse.data.items.map(reusableInviteFeedItem),
-  ];
-}
-
 const INVITE_TYPE_LABEL: Record<InviteFeedKind, string> = {
   [InviteFeedKind.Individual]: "individual invite",
   [InviteFeedKind.Group]: "group invite",
@@ -180,12 +88,7 @@ export default function InviteFeedPage() {
     isError,
     isLoading,
     refetch,
-  } = useQuery({
-    queryKey: ["inviteFeed", settings?.startAt],
-    queryFn: () => getInvitesSince(settings?.startAt ?? ""),
-    enabled: settings !== null,
-    refetchInterval: milliseconds({ seconds: 10 }),
-  });
+  } = useInviteFeedAdmin(settings?.startAt ?? null);
 
   const refreshFeed = useCallback(() => {
     void refetch();

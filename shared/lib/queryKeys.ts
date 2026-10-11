@@ -136,6 +136,8 @@ export const queryKeys = {
     [...formsAdminAll(), "responseCounts", formIds] as const,
   generalUpdatesAdmin: () => ["actionsAllGeneralUpdatesAdmin"] as const,
   graphUsersAdmin: () => ["userListForGraphAdmin"] as const,
+  inviteFeedAdmin: (startAt: string | null) =>
+    ["inviteFeedAdmin", startAt] as const,
   memberContactInfoAdmin: () =>
     ["communityGetAllMemberContactInfoAdmin"] as const,
   onetimeInvitesAdminAll,
