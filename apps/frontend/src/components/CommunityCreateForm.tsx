@@ -2,6 +2,7 @@ import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
   isMaxCapacityRequired,
+  validateCommunitySettings,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { nameParts } from "@alliance/common/nameParts";
@@ -72,17 +73,13 @@ const CommunityCreateForm = ({
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = useCallback(async () => {
-    if (!formValues.name.trim()) {
-      setError("Name is required");
+    const validated = validateCommunitySettings({
+      settings: formValues,
+      memberCount: 0,
+    });
+    if (!validated.ok) {
+      setError(validated.error);
       return;
-    }
-    let normalizedMaxCapacity: number | null = null;
-    if (useMaxCapacity) {
-      if (!formValues.maxCapacity || formValues.maxCapacity <= 0) {
-        setError("Capacity is required");
-        return;
-      }
-      normalizedMaxCapacity = formValues.maxCapacity;
     }
 
     setIsSubmitting(true);
@@ -92,7 +89,7 @@ const CommunityCreateForm = ({
         body: {
           ...formValues,
           photo: photoUrl ?? undefined,
-          maxCapacity: normalizedMaxCapacity,
+          maxCapacity: validated.value.maxCapacity,
         },
       });
       if (response.data) {
@@ -111,7 +108,7 @@ const CommunityCreateForm = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [useMaxCapacity, formValues, photoUrl, onSuccess]);
+  }, [formValues, photoUrl, onSuccess]);
 
   useEffect(() => {
     if (!submitRef) {

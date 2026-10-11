@@ -1,5 +1,8 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { isMaxCapacityRequired } from "@alliance/common/community";
+import {
+  isMaxCapacityRequired,
+  validateCommunitySettings,
+} from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { forCount, withCount } from "@alliance/common/plural";
 import {
@@ -160,22 +163,15 @@ export default function GroupManageScreen() {
   const loading = (myCommunitiesLoading && !didGroupsFail) || publicLoading;
 
   const handleCreateCommunity = useCallback(async () => {
-    const name = newCommunity.name.trim();
-    const description = newCommunity.description.trim();
-
-    let normalizedMaxCapacity: number | null = null;
-    if (requiresMaxCapacity) {
-      if (!newCommunity.maxCapacity || newCommunity.maxCapacity <= 0) {
-        setError("Member capacity is required.");
-        return;
-      }
-      normalizedMaxCapacity = newCommunity.maxCapacity;
-    }
-
-    if (!name) {
-      setError("Name is required.");
+    const validated = validateCommunitySettings({
+      settings: newCommunity,
+      memberCount: 0,
+    });
+    if (!validated.ok) {
+      setError(validated.error);
       return;
     }
+    const { name, maxCapacity } = validated.value;
 
     setCreating(true);
     setError(null);
@@ -183,11 +179,11 @@ export default function GroupManageScreen() {
       const response = await communityCreateCommunity({
         body: {
           name,
-          description,
+          description: newCommunity.description.trim(),
           public: newCommunity.public,
           allowMemberInvites: newCommunity.allowMemberInvites,
           allowStaffAssignments: newCommunity.allowStaffAssignments,
-          maxCapacity: normalizedMaxCapacity,
+          maxCapacity,
         },
       });
       if (response.error || !response.data) {
@@ -209,7 +205,7 @@ export default function GroupManageScreen() {
     } finally {
       setCreating(false);
     }
-  }, [newCommunity, requiresMaxCapacity, refreshAll, refreshUser]);
+  }, [newCommunity, refreshAll, refreshUser]);
 
   const runLeaveGroup = useCallback(
     async (community: CommunityDto) => {

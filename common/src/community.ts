@@ -37,3 +37,37 @@ export function checkCommunityAccessRules(
   }
   return R.success(undefined);
 }
+
+/**
+ * The checks a group form runs before saving. Returns the trimmed name and the
+ * capacity to send, which is null when nothing requires one.
+ */
+export function validateCommunitySettings(params: {
+  settings: CommunityAccess & {
+    name: string;
+    maxCapacity: number | null | undefined;
+  };
+  /** The capacity may not drop below this; null allows any capacity. */
+  memberCount: number | null;
+}): Result<{ name: string; maxCapacity: number | null }, string> {
+  const { settings, memberCount } = params;
+  const name = settings.name.trim();
+  if (!name) {
+    return R.failure("Name is required");
+  }
+  const maxCapacity =
+    isMaxCapacityRequired(settings) &&
+    settings.maxCapacity != null &&
+    settings.maxCapacity > 0
+      ? settings.maxCapacity
+      : null;
+  return R.flatMap(
+    checkCommunityAccessRules({ ...settings, maxCapacity }),
+    () =>
+      maxCapacity !== null && memberCount !== null && maxCapacity < memberCount
+        ? R.failure(
+            `Capacity cannot be less than the current number of members (${memberCount})`,
+          )
+        : R.success({ name, maxCapacity }),
+  );
+}

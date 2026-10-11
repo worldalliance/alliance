@@ -3,6 +3,7 @@ import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
   isMaxCapacityRequired,
+  validateCommunitySettings,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { changedPhoto } from "@alliance/common/image-src";
@@ -238,24 +239,18 @@ const CommunityPage = () => {
     setError(null);
     if (!community || isSaving) return;
 
-    // Validation
-    if (!editName.trim()) {
-      setError("Name is required");
-      return;
-    }
-
-    let normalizedMaxCapacity: number | null = null;
-    if (useMaxCapacity) {
-      if (!editMaxCapacity || editMaxCapacity <= 0) {
-        setError("Capacity is required");
-        return;
-      }
-      normalizedMaxCapacity = editMaxCapacity;
-    }
-    if (normalizedMaxCapacity !== null && normalizedMaxCapacity < memberCount) {
-      setError(
-        `Capacity cannot be less than the current number of members (${memberCount})`,
-      );
+    const validated = validateCommunitySettings({
+      settings: {
+        name: editName,
+        public: editPublic,
+        allowMemberInvites: editAllowMemberInvites,
+        allowStaffAssignments: editAllowStaffAssignments,
+        maxCapacity: editMaxCapacity,
+      },
+      memberCount,
+    });
+    if (!validated.ok) {
+      setError(validated.error);
       return;
     }
 
@@ -269,7 +264,7 @@ const CommunityPage = () => {
           description: editDescription,
           photo: changedPhoto({ current: currentPhoto, next: editPhotoUrl }),
           public: editPublic,
-          maxCapacity: normalizedMaxCapacity,
+          maxCapacity: validated.value.maxCapacity,
           allowMemberInvites: editAllowMemberInvites,
           allowStaffAssignments: editAllowStaffAssignments,
         },
@@ -303,7 +298,6 @@ const CommunityPage = () => {
     editPhotoUrl,
     currentPhoto,
     isSaving,
-    useMaxCapacity,
     memberCount,
     updateCommunity,
   ]);

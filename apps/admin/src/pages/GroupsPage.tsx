@@ -2,6 +2,7 @@ import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
   isMaxCapacityRequired,
+  validateCommunitySettings,
 } from "@alliance/common/community";
 import { withCount } from "@alliance/common/plural";
 import type {
@@ -101,31 +102,25 @@ const GroupsPage: React.FC = () => {
   const handleCreateCommunity = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      const name = newCommunity.name.trim();
-      const description = newCommunity.description.trim();
-      let normalizedMaxCapacity: number | null = null;
-      if (requiresMaxCapacity) {
-        if (!newCommunity.maxCapacity || newCommunity.maxCapacity <= 0) {
-          setCreateError("Member capacity is required.");
-          return;
-        }
-        normalizedMaxCapacity = newCommunity.maxCapacity;
-      }
-      if (!name) {
-        setCreateError("Name is required.");
+      const validated = validateCommunitySettings({
+        settings: newCommunity,
+        memberCount: 0,
+      });
+      if (!validated.ok) {
+        setCreateError(validated.error);
         return;
       }
       setCreateError(null);
       createCommunity({
-        name,
-        description,
+        name: validated.value.name,
+        description: newCommunity.description.trim(),
         public: newCommunity.public,
         allowMemberInvites: newCommunity.allowMemberInvites,
         allowStaffAssignments: newCommunity.allowStaffAssignments,
-        maxCapacity: normalizedMaxCapacity,
+        maxCapacity: validated.value.maxCapacity,
       });
     },
-    [createCommunity, newCommunity, requiresMaxCapacity],
+    [createCommunity, newCommunity],
   );
 
   return (

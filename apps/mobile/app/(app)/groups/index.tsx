@@ -1,5 +1,8 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { isMaxCapacityRequired } from "@alliance/common/community";
+import {
+  isMaxCapacityRequired,
+  validateCommunitySettings,
+} from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { changedPhoto } from "@alliance/common/image-src";
 import {
@@ -816,24 +819,12 @@ function GroupSettingsTab({
 
   const handleSave = useCallback(async () => {
     setError(null);
-    const trimmed = editForm.name.trim();
-    if (!trimmed) {
-      setError("Name is required");
-      return;
-    }
-
-    let normalizedMaxCapacity: number | null = null;
-    if (requiresMaxCapacity) {
-      if (!editForm.maxCapacity || editForm.maxCapacity <= 0) {
-        setError("Capacity is required");
-        return;
-      }
-      normalizedMaxCapacity = editForm.maxCapacity;
-    }
-    if (normalizedMaxCapacity !== null && normalizedMaxCapacity < memberCount) {
-      setError(
-        `Capacity cannot be less than the current number of members (${memberCount})`,
-      );
+    const validated = validateCommunitySettings({
+      settings: editForm,
+      memberCount,
+    });
+    if (!validated.ok) {
+      setError(validated.error);
       return;
     }
 
@@ -844,14 +835,14 @@ function GroupSettingsTab({
       const response = await communityUpdate({
         path: { communityId: community.id },
         body: {
-          name: trimmed,
+          name: validated.value.name,
           description: editForm.description,
           photo: changedPhoto({
             current: community.photo ?? null,
             next: photoTrim || null,
           }),
           public: editForm.public,
-          maxCapacity: normalizedMaxCapacity,
+          maxCapacity: validated.value.maxCapacity,
           allowMemberInvites: editForm.allowMemberInvites,
           allowStaffAssignments: editForm.allowStaffAssignments,
         },
@@ -876,16 +867,9 @@ function GroupSettingsTab({
   }, [
     community.id,
     community.photo,
-    editForm.allowMemberInvites,
-    editForm.allowStaffAssignments,
-    editForm.description,
-    editForm.maxCapacity,
-    editForm.name,
-    editForm.photo,
-    editForm.public,
+    editForm,
     memberCount,
     onCommunityUpdated,
-    requiresMaxCapacity,
   ]);
 
   const requiresCapacityDisplay = isMaxCapacityRequired(community);
