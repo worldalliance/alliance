@@ -1,10 +1,46 @@
 import { cn } from "@alliance/shared/styles/util";
 import { ChevronRight, GripVertical } from "lucide-react";
+import { CheckState, extendableClick } from "./rangeSelection";
+
+const CHECKBOX: Record<
+  CheckState,
+  { checked: boolean; disabled: boolean; title: string }
+> = {
+  [CheckState.Unchecked]: {
+    checked: false,
+    disabled: false,
+    title: "Include in the selection",
+  },
+  [CheckState.Checked]: {
+    checked: true,
+    disabled: false,
+    title: "Remove from the selection",
+  },
+  [CheckState.Locked]: {
+    checked: true,
+    disabled: true,
+    title: "Uncheck from an end of the selection",
+  },
+  [CheckState.NoId]: {
+    checked: false,
+    disabled: true,
+    title: "A block without an ID can't be selected with others",
+  },
+  [CheckState.BesideNoId]: {
+    checked: false,
+    disabled: true,
+    title: "The selected block has no ID, so nothing can be selected with it",
+  },
+};
 
 export type RowProps = {
   label: string;
   current: boolean;
+  rangeFocus?: boolean;
   onSelect: () => void;
+  /** Shift-click's selection through this row, in place of `onSelect`. */
+  onExtend?: () => void;
+  check?: { state: CheckState; onToggle: () => void };
   expanded?: boolean;
   onToggle?: () => void;
   className?: string;
@@ -13,7 +49,10 @@ export type RowProps = {
 export function OutlineRow({
   label,
   current,
+  rangeFocus,
   onSelect,
+  onExtend,
+  check,
   expanded,
   onToggle,
   className,
@@ -56,8 +95,9 @@ export function OutlineRow({
       )}
       <button
         type="button"
-        onClick={onSelect}
+        {...extendableClick({ onSelect, onExtend })}
         aria-current={current}
+        data-selection-focus={rangeFocus || undefined}
         title={label}
         className={cn(
           "min-w-0 flex-1 truncate rounded py-1 pr-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
@@ -67,6 +107,21 @@ export function OutlineRow({
       >
         {label}
       </button>
+      {check && (
+        <input
+          type="checkbox"
+          checked={CHECKBOX[check.state].checked}
+          disabled={CHECKBOX[check.state].disabled}
+          onChange={check.onToggle}
+          aria-label={`Include ${label} in the selection`}
+          title={CHECKBOX[check.state].title}
+          className={cn(
+            "mr-1 h-3.5 w-3.5 shrink-0",
+            !CHECKBOX[check.state].checked &&
+              "opacity-0 focus:opacity-100 group-hover/row:opacity-100 [@media(hover:none)]:opacity-100",
+          )}
+        />
+      )}
     </div>
   );
 }

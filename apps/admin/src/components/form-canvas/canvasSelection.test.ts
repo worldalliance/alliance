@@ -1,4 +1,4 @@
-import type { Page } from "@alliance/common/forms/form-schema";
+import type { Page, PageItem } from "@alliance/common/forms/form-schema";
 import {
   CanvasTargetKind,
   ChildKind,
@@ -97,6 +97,54 @@ describe("resolveTarget", () => {
     });
     expect(
       resolve({ kind: CanvasTargetKind.Element, id: "a", index: 1 }, "p2"),
+    ).toEqual({ kind: CanvasTargetKind.Page });
+  });
+});
+
+describe("resolveTarget for a range", () => {
+  it("spans its ends in either order, keeping the anchor", () => {
+    expect(
+      resolve({
+        kind: CanvasTargetKind.Range,
+        anchor: { id: "b", index: 2 },
+        focus: { id: "a", index: 1 },
+      }),
+    ).toEqual({ kind: CanvasTargetKind.Range, anchor: 2, start: 1, end: 3 });
+  });
+
+  it("keeps to the selected ends of elements sharing an id", () => {
+    const duplicated: Page = {
+      id: "p1",
+      fields: ["dup", "b", "dup", "d"].map((id) => ({
+        id,
+        type: "input",
+        kind: "text",
+        label: id,
+      })),
+    };
+    expect(
+      resolveTarget({
+        page: duplicated,
+        groups,
+        selection: {
+          pageId: "p1",
+          target: {
+            kind: CanvasTargetKind.Range,
+            anchor: { id: "dup", index: 2 },
+            focus: { id: "d", index: 3 },
+          },
+        },
+      }),
+    ).toEqual({ kind: CanvasTargetKind.Range, anchor: 2, start: 2, end: 4 });
+  });
+
+  it("falls back to the page once an end is gone", () => {
+    expect(
+      resolve({
+        kind: CanvasTargetKind.Range,
+        anchor: { id: "a", index: 1 },
+        focus: { id: "z", index: 2 },
+      }),
     ).toEqual({ kind: CanvasTargetKind.Page });
   });
 });
@@ -227,7 +275,47 @@ describe("resolveTarget inside an element", () => {
   });
 });
 
+describe("followElement for a range", () => {
+  const items = ["a", "b", "c", "d"].map(
+    (id): PageItem => ({ id, type: "input", kind: "text", label: id }),
+  );
+  const [a, b, c, d] = items as [PageItem, PageItem, PageItem, PageItem];
+  const bToC: CanvasTarget = {
+    kind: CanvasTargetKind.Range,
+    anchor: { id: "b", index: 1 },
+    focus: { id: "c", index: 2 },
+  };
+  const follow = (after: PageItem[]) =>
+    followElement({ before: items, after, target: bToC });
+
+  it("follows its elements while they stay together in order", () => {
+    expect(follow([b, c, a, d])).toEqual({
+      kind: CanvasTargetKind.Range,
+      anchor: { id: "b", index: 0 },
+      focus: { id: "c", index: 1 },
+    });
+  });
+
+  it("gives way to its anchor once a move changes what it spans", () => {
+    expect(follow([a, b, d, c])).toEqual(elementTarget(b, 1));
+    expect(follow([d, c, a, b])).toEqual(elementTarget(b, 3));
+    expect(follow([a, b, c, d].filter((item) => item !== c))).toEqual({
+      kind: CanvasTargetKind.Page,
+    });
+  });
+});
+
 describe("forgetPositions", () => {
+  it("narrows a range to its anchor", () => {
+    expect(
+      forgetPositions({
+        kind: CanvasTargetKind.Range,
+        anchor: { id: "b", index: 2 },
+        focus: { id: "a", index: 1 },
+      }),
+    ).toEqual({ kind: CanvasTargetKind.Element, id: "b", index: 2 });
+  });
+
   it("drops a child addressed by position, keeping its element", () => {
     const loose = inside(1, {
       kind: ChildKind.Section,

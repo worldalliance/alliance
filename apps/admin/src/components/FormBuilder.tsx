@@ -25,6 +25,7 @@ import {
   type Condition,
   type VisibleIfFormula,
 } from "@alliance/common/forms/visible-if-formula";
+import { withCount } from "@alliance/common/plural";
 import { R, type Result } from "@alliance/common/result";
 import {
   tasksCreateCustomValidatorAdmin,
@@ -109,6 +110,8 @@ import {
   type InsertLoc,
 } from "./form-canvas/InsertPoint";
 import { PageSettings, PageSettingsSidebar } from "./form-canvas/PageSettings";
+import { extendSelection, type Span } from "./form-canvas/rangeSelection";
+import { RangeSettings } from "./form-canvas/RangeSettings";
 import { SettingsSidebar } from "./form-canvas/SettingsSidebar";
 import { SidebarSection } from "./form-canvas/sidebarSections";
 import type { ListMove } from "./form-canvas/useListDrag";
@@ -486,11 +489,13 @@ const copyElementWithUniqueIds = (
 };
 
 const GROUP_SECTIONS = [SidebarSection.Content, SidebarSection.Conditions];
+const RANGE_SECTIONS = [SidebarSection.Content];
 
 const SECTION_ON_SELECT: Record<CanvasTargetKind, SidebarSection> = {
   [CanvasTargetKind.Page]: SidebarSection.Content,
   [CanvasTargetKind.Element]: SidebarSection.Content,
   [CanvasTargetKind.Group]: SidebarSection.Conditions,
+  [CanvasTargetKind.Range]: SidebarSection.Content,
 };
 
 export function FormBuilder(props: FormBuilderProps) {
@@ -727,17 +732,27 @@ export function FormBuilder(props: FormBuilderProps) {
     page,
     pageIndex,
     target,
+    keepOutline = false,
   }: {
     page: Page;
     pageIndex: number;
     target: CanvasTarget;
+    /** For adding to a selection, which takes more than one entry. */
+    keepOutline?: boolean;
   }) => {
     setSelectedPageIndex(pageIndex);
     setSelection({ pageId: page.id, target });
     setSection(SECTION_ON_SELECT[target.kind]);
     setRevealPending(true);
-    setDrawer(wideCanvas ? null : DrawerKind.Settings);
+    if (!keepOutline) setDrawer(wideCanvas ? null : DrawerKind.Settings);
   };
+
+  const extendTo = (clicked: Span, alone: CanvasTarget) =>
+    extendSelection({
+      fields: currentPage.fields,
+      selected: resolvedTarget,
+      clicked,
+    }) ?? alone;
 
   const insertAndSelect = (item: PageItem, loc: InsertLoc) => {
     applyInsert(item, loc);
@@ -1949,6 +1964,32 @@ export function FormBuilder(props: FormBuilderProps) {
             />
           </SettingsSidebar>
         );
+      case CanvasTargetKind.Range: {
+        const { start, end } = resolvedTarget;
+        return (
+          <SettingsSidebar
+            heading={`${withCount(end - start, "element")} selected`}
+            sections={RANGE_SECTIONS}
+            section={section}
+            onSection={setSection}
+            focusPending={focusPending}
+            onFocused={focused}
+          >
+            <RangeSettings
+              members={currentPage.fields.slice(start, end)}
+              onSelectMember={(offset) =>
+                select(
+                  elementTarget(
+                    currentPage.fields[start + offset]!,
+                    start + offset,
+                  ),
+                  SidebarSection.Content,
+                )
+              }
+            />
+          </SettingsSidebar>
+        );
+      }
       default:
         throw new Error(
           `unknown target: ${JSON.stringify(resolvedTarget satisfies never)}`,
@@ -2224,6 +2265,28 @@ export function FormBuilder(props: FormBuilderProps) {
                             target,
                           })
                         }
+                        onExtend={
+                          displayOnly
+                            ? null
+                            : (clicked, alone) =>
+                                selectFromOutline({
+                                  page: currentPage,
+                                  pageIndex: selectedPageIndex,
+                                  target: extendTo(clicked, alone),
+                                  keepOutline: true,
+                                })
+                        }
+                        onCheck={
+                          displayOnly
+                            ? null
+                            : (pageIndex, target) =>
+                                selectFromOutline({
+                                  page: schema.pages[pageIndex]!,
+                                  pageIndex,
+                                  target,
+                                  keepOutline: true,
+                                })
+                        }
                         onAddPage={addPage}
                         onMovePage={movePage}
                         onMoveElement={(pageIndex, move) =>
@@ -2242,6 +2305,14 @@ export function FormBuilder(props: FormBuilderProps) {
                         displayOnly={displayOnly}
                         selected={resolvedTarget}
                         onSelect={select}
+                        onExtend={
+                          displayOnly
+                            ? null
+                            : (clicked, alone) => {
+                                const target = extendTo(clicked, alone);
+                                select(target, SECTION_ON_SELECT[target.kind]);
+                              }
+                        }
                         summarize={summarize}
                         invalidIds={invalidIds}
                         renderInsertPoint={renderInsertPoint}

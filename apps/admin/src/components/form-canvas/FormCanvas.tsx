@@ -34,6 +34,12 @@ import {
   type InlineEditing,
 } from "./InlineText";
 import type { InsertLoc } from "./InsertPoint";
+import {
+  extendableClick,
+  inRange,
+  rangeFocus,
+  type Span,
+} from "./rangeSelection";
 import { SidebarSection } from "./sidebarSections";
 import { useListDrag, type ListMove } from "./useListDrag";
 
@@ -43,6 +49,8 @@ type FormCanvasProps = {
   displayOnly: boolean;
   selected: ResolvedTarget;
   onSelect: (target: CanvasTarget, section: SidebarSection) => void;
+  /** Shift-click's selection through `clicked`, else `alone`. Null where ranges are off. */
+  onExtend: ((clicked: Span, alone: CanvasTarget) => void) | null;
   summarize: (formula: VisibleIfFormula) => string;
   /** Elements the form's validation faults, by id. */
   invalidIds: ReadonlySet<string>;
@@ -65,6 +73,7 @@ export function FormCanvas({
   displayOnly,
   selected,
   onSelect,
+  onExtend,
   summarize,
   invalidIds,
   renderInsertPoint,
@@ -102,14 +111,21 @@ export function FormCanvas({
       selected.kind === CanvasTargetKind.Element && selected.index === index
         ? selected
         : null;
+    const alone = elementTarget(element, index);
     return (
       <CanvasElement
         key={element.id || index}
         element={element}
         label={describeElement(element)}
-        selected={target !== null && !target.child}
+        selected={
+          (target !== null && !target.child) || inRange(selected, index)
+        }
+        rangeFocus={rangeFocus(selected) === index}
         selectedChild={target?.child}
-        onSelect={(section) => onSelect(elementTarget(element, index), section)}
+        onSelect={(section) => onSelect(alone, section)}
+        onExtend={
+          onExtend && (() => onExtend({ start: index, end: index + 1 }, alone))
+        }
         onSelectChild={(child, section) =>
           onSelect({ ...elementTarget(element, index), child }, section)
         }
@@ -226,6 +242,7 @@ export function FormCanvas({
           }
           case SegmentKind.Group: {
             const { key, start, end } = segment;
+            const group: CanvasTarget = { kind: CanvasTargetKind.Group, key };
             const formula = fields[start]?.visibleIfFormula;
             const groupSelected =
               selected.kind === CanvasTargetKind.Group && selected.key === key;
@@ -246,12 +263,12 @@ export function FormCanvas({
                 >
                   <button
                     type="button"
-                    onClick={() =>
-                      onSelect(
-                        { kind: CanvasTargetKind.Group, key },
-                        SidebarSection.Conditions,
-                      )
-                    }
+                    {...extendableClick({
+                      onSelect: () =>
+                        onSelect(group, SidebarSection.Conditions),
+                      onExtend:
+                        onExtend && (() => onExtend({ start, end }, group)),
+                    })}
                     aria-pressed={groupSelected}
                     className="block w-full rounded py-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   >

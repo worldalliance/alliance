@@ -194,6 +194,13 @@ As implemented:
 
 Checks: select a consecutive range, resolve differing rules explicitly, apply a shared rule, and detach/split/ungroup without erasing visibility; undo each operation restores formula and membership.
 
+As implemented:
+
+- A range is a selection target addressed by its anchor and focus elements, each by id and position as an element is, so a reorder can't redirect it and of elements sharing an id the selected one stays an end; it resolves to the page once either is gone. A move that changes which elements lie between its ends (moving an end, or moving an element into or out of it) narrows the selection to the anchor, as do undo, redo, and loads, so what a range holds never changes unseen. Only elements with ids end a range: a Shift-click that would end one on an id-less block selects the clicked item alone.
+- Shift-click on a canvas element, a group's header, an outline element entry, or an outline group row selects from the anchor through the clicked item: a range keeps its anchor; an element or group anchors on its end farthest from the click. A clicked group joins whole, even around the anchor, which then gives way to the range's start. Elsewhere (another page, a child, the page) Shift-click selects normally. The canvas and outline scroll to the end a range was last extended to.
+- Each top-level outline entry has a checkbox, shown on hover, focus, or when checked, and always on screens without hover, where it is the only way to select a range. Checking widens the selection to reach the entry, anchored at its far end as Shift-click would be; unchecking drops an end, along with any id-less blocks that would be left at that end. The inside of a selection is checked and disabled, so unchecking never leaves it split; that includes an id-less block there. Beside a selection an id-less block's checkbox is disabled and says why, as is every other checkbox while an id-less block is selected alone; with nothing selected, checking it selects it alone. A selected element or group shows its members checked. The outline expands the groups a selection reaches into. Checking an entry on another page selects that entry alone. Checking and Shift-click keep the outline drawer open below 1024px, since a range takes several entries.
+- A range's sidebar ("N elements selected") lists its members; choosing one selects it alone. A display-only editor has no ranges, as it has no conditions.
+
 ## PR 9: Dependencies and deletion
 
 - Compute source/dependent links from the current draft (pages, top-level elements, and list sub-fields, visibility and required-if), updating after edits, moves, deletion, JSON application, and undo/redo. Search the current form; do not fetch all forms to build a global dependency graph.

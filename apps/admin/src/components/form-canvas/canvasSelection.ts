@@ -18,6 +18,7 @@ export enum CanvasTargetKind {
   Page = "page",
   Element = "element",
   Group = "group",
+  Range = "range",
 }
 
 export enum ChildKind {
@@ -39,12 +40,14 @@ export type ChildTarget =
 
 /**
  * What the sidebar edits, by identity so a reorder can't redirect an edit: a
- * page, a group, an element, or a `child` inside an element.
+ * page, a group, an element, a `child` inside an element, or the consecutive
+ * elements from `anchor` to `focus`.
  */
 export type CanvasTarget =
   | { kind: CanvasTargetKind.Page }
   | ({ kind: CanvasTargetKind.Element; child?: ChildTarget } & ItemAddress)
-  | { kind: CanvasTargetKind.Group; key: string };
+  | { kind: CanvasTargetKind.Group; key: string }
+  | { kind: CanvasTargetKind.Range; anchor: ItemAddress; focus: ItemAddress };
 
 export type CanvasSelection = { pageId: string; target: CanvasTarget };
 
@@ -56,7 +59,13 @@ export type ResolvedChild =
 export type ResolvedTarget =
   | { kind: CanvasTargetKind.Page }
   | { kind: CanvasTargetKind.Element; index: number; child?: ResolvedChild }
-  | { kind: CanvasTargetKind.Group; key: string; start: number; end: number };
+  | { kind: CanvasTargetKind.Group; key: string; start: number; end: number }
+  | {
+      kind: CanvasTargetKind.Range;
+      anchor: number;
+      start: number;
+      end: number;
+    };
 
 const PAGE: ResolvedTarget = { kind: CanvasTargetKind.Page };
 
@@ -196,6 +205,18 @@ export function resolveTarget({
           }
         : PAGE;
     }
+    case CanvasTargetKind.Range: {
+      const anchor = findAddressed(page.fields, target.anchor);
+      const focus = findAddressed(page.fields, target.focus);
+      return anchor === -1 || focus === -1 || anchor === focus
+        ? PAGE
+        : {
+            kind: CanvasTargetKind.Range,
+            anchor,
+            start: Math.min(anchor, focus),
+            end: Math.max(anchor, focus) + 1,
+          };
+    }
     default:
       throw new Error(
         `unknown target: ${JSON.stringify(target satisfies never)}`,
@@ -206,7 +227,9 @@ export function resolveTarget({
 /**
  * The target once the page's elements go from `before` to `after`. An
  * id-less block is addressed by position, so it follows its block to where
- * the change put it, or gives way to the page once its block is gone.
+ * the change put it, or gives way to the page once its block is gone. A range
+ * that no longer spans the same elements in the same order gives way to its
+ * anchor alone, so a move can't change what it holds unseen.
  */
 export function followElement({
   before,
@@ -217,12 +240,48 @@ export function followElement({
   after: readonly PageItem[];
   target: CanvasTarget;
 }): CanvasTarget {
+  if (target.kind === CanvasTargetKind.Range)
+    return followRange({ before, after, target });
   if (target.kind !== CanvasTargetKind.Element || target.id !== null) {
     return target;
   }
   const element = before[target.index];
   const index = element ? after.indexOf(element) : -1;
   return index === -1 ? { kind: CanvasTargetKind.Page } : { ...target, index };
+}
+
+function followRange({
+  before,
+  after,
+  target,
+}: {
+  before: readonly PageItem[];
+  after: readonly PageItem[];
+  target: Extract<CanvasTarget, { kind: CanvasTargetKind.Range }>;
+}): CanvasTarget {
+  const spanned = (fields: readonly PageItem[]) => {
+    const anchor = findAddressed(fields, target.anchor);
+    const focus = findAddressed(fields, target.focus);
+    if (anchor === -1 || focus === -1) return null;
+    return {
+      anchor,
+      focus,
+      items: fields.slice(Math.min(anchor, focus), Math.max(anchor, focus) + 1),
+    };
+  };
+  const was = spanned(before);
+  const now = spanned(after);
+  if (!was || !now) return { kind: CanvasTargetKind.Page };
+  const same =
+    was.items.length === now.items.length &&
+    was.items.every((item, offset) => now.items[offset] === item);
+  return same
+    ? {
+        ...target,
+        anchor: { ...target.anchor, index: now.anchor },
+        focus: { ...target.focus, index: now.focus },
+      }
+    : elementTarget(after[now.anchor]!, now.anchor);
 }
 
 const byPosition = (child: ChildTarget): boolean => {
@@ -243,9 +302,16 @@ const byPosition = (child: ChildTarget): boolean => {
 /**
  * The target without what it addresses by position, for a schema from
  * elsewhere (undo, pasted JSON, a conflict) that can shift what sits there:
- * the page in place of an id-less element, the element in place of a child.
+ * the page in place of an id-less element, the element in place of a child,
+ * and a range's anchor in place of the range, which may span other elements.
  */
 export function forgetPositions(target: CanvasTarget): CanvasTarget {
+  if (target.kind === CanvasTargetKind.Range) {
+    return forgetPositions({
+      kind: CanvasTargetKind.Element,
+      ...target.anchor,
+    });
+  }
   if (target.kind !== CanvasTargetKind.Element) return target;
   if (target.id === null) return { kind: CanvasTargetKind.Page };
   if (!target.child || !byPosition(target.child)) return target;
@@ -290,6 +356,12 @@ export function targetKey(page: Page, target: ResolvedTarget): string {
     }
     case CanvasTargetKind.Group:
       return `group:${target.key}`;
+    case CanvasTargetKind.Range: {
+      const ends = [target.start, target.end - 1].map((index) =>
+        keyPart(page.fields[index], index),
+      );
+      return `range:${page.id}/${ends.join("..")}`;
+    }
     default:
       throw new Error(
         `unknown target: ${JSON.stringify(target satisfies never)}`,
