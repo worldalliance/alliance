@@ -173,8 +173,8 @@ export type ActionActivity = {
     likesCount: number;
     taskFormResponse?: FormResponse;
     declineReason: string | null;
-    isMoral?: boolean;
-    outOfTime?: boolean;
+    isMoral: boolean | null;
+    outOfTime: boolean | null;
     /**
      * Source of the activity
      */
@@ -2413,8 +2413,8 @@ export type GlobalFeedItemDto = {
 export type ActionWithdrawalDto = {
     userId: number;
     declineReason: string | null;
-    isMoral?: boolean;
-    outOfTime?: boolean;
+    isMoral: boolean | null;
+    outOfTime: boolean | null;
 };
 
 export type NotificationScheduleMetadataDto = {

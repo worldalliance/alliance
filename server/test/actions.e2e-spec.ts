@@ -2317,6 +2317,47 @@ describe("Actions (e2e)", () => {
       }
     });
 
+    it("shows a withdrawal's flags in a member's action relations, omitting absent ones", async () => {
+      const { action } = await createPublishedAction("Relations Withdrawal");
+
+      try {
+        await ctx.app.get(ActionsService).createActionActivity({
+          actionId: action.id,
+          userId: ctx.testUserId,
+          type: ActionActivityType.USER_WONT_COMPLETE,
+          isOutOfTime: false,
+          isMoral: true,
+        });
+        await ctx.app.get(ActionsService).createActionActivity({
+          actionId: action.id,
+          userId: ctx.adminUserId,
+          type: ActionActivityType.USER_WONT_COMPLETE,
+          adminCreated: true,
+        });
+
+        const relationOf = async (userId: number) => {
+          const res = await request(ctx.app.getHttpServer())
+            .get(`/actions/action-relations/${userId}`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .expect(200);
+          return res.body.users
+            .find((user) => user.userId === userId)
+            ?.relations.find((relation) => relation.actionId === action.id);
+        };
+
+        expect(await relationOf(ctx.testUserId)).toMatchObject({
+          isMoral: true,
+          outOfTime: false,
+        });
+        const flagless = await relationOf(ctx.adminUserId);
+        expect(flagless).toBeDefined();
+        expect(flagless).not.toHaveProperty("isMoral");
+        expect(flagless).not.toHaveProperty("outOfTime");
+      } finally {
+        await actionRepo.delete(action.id);
+      }
+    });
+
     it("closes ordinary completion at the deadline unless late completion is allowed", async () => {
       const createClosedAction = async (
         shouldCompleteAfterDeadline: boolean,

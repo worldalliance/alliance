@@ -114,6 +114,8 @@ function activity(
       PHASE_START.getTime() + ++activitySeq * milliseconds({ minutes: 1 }),
     ),
     declineReason: null,
+    isMoral: null,
+    outOfTime: null,
     ...overrides,
   };
 }

@@ -120,17 +120,15 @@ export class ActionActivity {
   @IsOptional()
   declineReason: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "boolean", nullable: true })
+  @ApiProperty({ type: Boolean, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  isMoral?: boolean; // for moral declines
+  isMoral: boolean | null; // for moral declines
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: "boolean", nullable: true })
+  @ApiProperty({ type: Boolean, nullable: true })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  outOfTime?: boolean; // for opting out due to running out of time
+  outOfTime: boolean | null; // for opting out due to running out of time
 
   @Column({ type: "enum", enum: ActivitySource, default: ActivitySource.USER })
   @ApiProperty({
