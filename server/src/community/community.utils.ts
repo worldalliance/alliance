@@ -1,3 +1,4 @@
+import type { User } from "src/user/entities/user.entity";
 import { Community } from "./entities/community.entity";
 
 /**
@@ -77,4 +78,17 @@ export function getStaffAssignableSlots(c: Community): number {
  */
 export function isCommunityLedBy(c: Community, userId: number): boolean {
   return c.leaders?.some((leader) => leader.id === userId) ?? false;
+}
+
+export function membersAndLeaders(
+  community: Pick<Community, "users" | "leaders">,
+): User[] {
+  return Array.from(
+    new Map(
+      [...community.users, ...(community.leaders ?? [])].map((user) => [
+        user.id,
+        user,
+      ]),
+    ).values(),
+  );
 }

@@ -1,6 +1,7 @@
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { User } from "./entities/user.entity";
 import {
+  newGroupMemberTextsEnabled,
   referralLabel,
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_push,
@@ -10,6 +11,7 @@ import {
 type EmailUser = Parameters<typeof userActionNotifsEnabled_email>[0];
 type TextUser = Parameters<typeof userActionNotifsEnabled_text>[0];
 type PushUser = Parameters<typeof userActionNotifsEnabled_push>[0];
+type GroupJoinTextUser = Parameters<typeof newGroupMemberTextsEnabled>[0];
 
 function emailUser(overrides: Partial<EmailUser> = {}): EmailUser {
   return {
@@ -35,6 +37,18 @@ function pushUser(overrides: Partial<PushUser> = {}): PushUser {
   return {
     turnedOffAllNotifs: false,
     pushNotifsForActions: true,
+    ...overrides,
+  };
+}
+
+function groupJoinTextUser(
+  overrides: Partial<GroupJoinTextUser> = {},
+): GroupJoinTextUser {
+  return {
+    textsForNewGroupMembers: true,
+    turnedOffAllNotifs: false,
+    phoneNumber: "+14155552671",
+    phoneNumberUnsubscribed: false,
     ...overrides,
   };
 }
@@ -123,6 +137,44 @@ describe("userActionNotifsEnabled_push", () => {
   it("is disabled when all notifs are turned off", () => {
     expect(
       userActionNotifsEnabled_push(pushUser({ turnedOffAllNotifs: true })),
+    ).toBe(false);
+  });
+});
+
+describe("newGroupMemberTextsEnabled", () => {
+  it("is enabled when opted in with a canonical, subscribed phone", () => {
+    expect(newGroupMemberTextsEnabled(groupJoinTextUser())).toBe(true);
+  });
+
+  it("is disabled when texts for new group members are off", () => {
+    expect(
+      newGroupMemberTextsEnabled(
+        groupJoinTextUser({ textsForNewGroupMembers: false }),
+      ),
+    ).toBe(false);
+  });
+
+  it("is disabled when all notifs are turned off", () => {
+    expect(
+      newGroupMemberTextsEnabled(
+        groupJoinTextUser({ turnedOffAllNotifs: true }),
+      ),
+    ).toBe(false);
+  });
+
+  it("is disabled without a usable phone number", () => {
+    for (const phoneNumber of [null, "not-a-phone", "(415) 555-2671"]) {
+      expect(
+        newGroupMemberTextsEnabled(groupJoinTextUser({ phoneNumber })),
+      ).toBe(false);
+    }
+  });
+
+  it("is disabled when the phone number is unsubscribed", () => {
+    expect(
+      newGroupMemberTextsEnabled(
+        groupJoinTextUser({ phoneNumberUnsubscribed: true }),
+      ),
     ).toBe(false);
   });
 });

@@ -93,6 +93,8 @@ export const testUser = new User({
   receiveReplyNotifications: true,
   pushesForMessages: true,
   pushesForActionUpdates: true,
+  pushesForNewGroupMembers: true,
+  textsForNewGroupMembers: false,
   clusterId: null,
   preferredReminderTime: null,
   timeZone: null,

@@ -59,9 +59,11 @@ import { SimplePageTitle } from "../../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../../components/system/Text";
 import UserActivityCard from "../../../components/UserActivityCard";
 import { useAuth } from "../../../lib/AuthContext";
+import type { GroupsLink } from "../../../lib/groupsLink";
 import { Anchor, WalkthroughAnchor } from "../../../lib/onboarding/walkthrough";
 import { pickImageDataUri } from "../../../lib/pickImageDataUri";
 import { colors } from "../../../lib/style/colors";
+import { useGroupsLink } from "../../../lib/useGroupsLink";
 
 type Tab = "activity" | "members" | "invites" | "settings";
 
@@ -71,6 +73,9 @@ const TAB_DISPLAY_NAMES: Record<Tab, string> = {
   invites: "Invites",
   settings: "Settings",
 };
+
+const isTab = (value: string | undefined): value is Tab =>
+  value !== undefined && Object.hasOwn(TAB_DISPLAY_NAMES, value);
 
 export default function GroupsScreen() {
   const { user } = useAuth();
@@ -97,6 +102,15 @@ export default function GroupsScreen() {
       return communities[0]?.id ?? null;
     });
   }, [communities]);
+
+  const applyGroupsLink = useCallback(
+    ({ communityId, tab }: GroupsLink<Tab>) => {
+      if (communityId !== null) setSelectedCommunityId(communityId);
+      if (tab !== null) setTab(tab);
+    },
+    [],
+  );
+  useGroupsLink({ isTab, onApply: applyGroupsLink });
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

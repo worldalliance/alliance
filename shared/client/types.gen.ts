@@ -56,7 +56,7 @@ export type OnetimeInviteStatus = 'request_pending' | 'request_rejected' | 'link
 
 export type CommunityInviteStatus = 'request_pending' | 'request_rejected' | 'invitee_pending' | 'invitee_accepted' | 'invitee_rejected' | 'cancelled';
 
-export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'removed_from_community' | 'removed_from_community_for_leader' | 'member_left_community' | 'member_suspended_removed_from_community' | 'member_joined_community' | 'community_assigned' | 'new_member_referred' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected' | 'community_invite_request_created' | 'community_invite_request_rejected';
+export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'removed_from_community' | 'removed_from_community_for_leader' | 'member_left_community' | 'member_suspended_removed_from_community' | 'member_joined_community' | 'community_assigned' | 'new_member_referred' | 'group_member_joined' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected' | 'community_invite_request_created' | 'community_invite_request_rejected';
 
 export type NotifPriority = 'low' | 'high';
 
@@ -739,6 +739,8 @@ export type User = {
     pushesForFriendRequests: boolean;
     pushesForMessages: boolean;
     pushesForActionUpdates: boolean;
+    pushesForNewGroupMembers: boolean;
+    textsForNewGroupMembers: boolean;
     undergoingGroupAssignment: boolean;
     remindAboutUncompletedGroupMembers: boolean;
     receiveReplyNotifications: boolean;
@@ -818,6 +820,8 @@ export type UserDto = {
     pushesForFriendRequests: boolean;
     pushesForMessages: boolean;
     pushesForActionUpdates: boolean;
+    pushesForNewGroupMembers: boolean;
+    textsForNewGroupMembers: boolean;
     undergoingGroupAssignment: boolean;
     remindAboutUncompletedGroupMembers: boolean;
     receiveReplyNotifications: boolean;
@@ -970,7 +974,6 @@ export type UpdateAwayRangeDto = {
 };
 
 export type UpdateProfileDto = {
-    name?: string;
     emailNotifsForActions?: boolean;
     textNotifsForActions?: boolean;
     pushNotifsForActions?: boolean;
@@ -985,8 +988,11 @@ export type UpdateProfileDto = {
     pushesForFriendRequests?: boolean;
     pushesForMessages?: boolean;
     pushesForActionUpdates?: boolean;
+    pushesForNewGroupMembers?: boolean;
+    textsForNewGroupMembers?: boolean;
     remindAboutUncompletedGroupMembers?: boolean;
     receiveReplyNotifications?: boolean;
+    name?: string;
     cityId?: number | null;
     phoneNumber?: string | null;
     profilePicture?: string | null;
@@ -1110,6 +1116,8 @@ export type UserAdminDetailDto = {
     pushesForFriendRequests: boolean;
     pushesForMessages: boolean;
     pushesForActionUpdates: boolean;
+    pushesForNewGroupMembers: boolean;
+    textsForNewGroupMembers: boolean;
     undergoingGroupAssignment: boolean;
     remindAboutUncompletedGroupMembers: boolean;
     receiveReplyNotifications: boolean;

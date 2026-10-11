@@ -232,6 +232,8 @@ export function makeUser(overrides: Partial<UserDto> = {}): UserDto {
     leaderOfIds: [],
     pushesForMessages: false,
     pushesForActionUpdates: false,
+    pushesForNewGroupMembers: false,
+    textsForNewGroupMembers: false,
     clusterId: null,
     hasPassword: true,
     oauthAccounts: [],
