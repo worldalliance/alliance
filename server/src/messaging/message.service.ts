@@ -12,7 +12,11 @@ import {
 } from "./dto/messaging.dto";
 import { Conversation } from "./entities/conversation.entity";
 import { Message } from "./entities/message.entity";
-import { Participant, ParticipantState } from "./entities/participant.entity";
+import {
+  loadedParticipantConversation,
+  Participant,
+  ParticipantState,
+} from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
 
 @Injectable()
@@ -38,6 +42,7 @@ export class MessageService {
       userId,
       relations: { conversation: true },
     });
+    const conversation = loadedParticipantConversation(participant);
 
     if (participant.state !== ParticipantState.Joined) {
       participant.state = ParticipantState.Joined;
@@ -53,7 +58,7 @@ export class MessageService {
           relations: { conversation: true },
         })) ?? undefined;
 
-      if (!replyTo || replyTo.conversation.id !== participant.conversation.id) {
+      if (!replyTo || replyTo.conversation.id !== conversation.id) {
         throw new BadRequestException("Invalid reply target.");
       }
     }
@@ -71,14 +76,14 @@ export class MessageService {
       body: trimmedBody,
       attachments,
       author: { id: userId } as User,
-      conversation: participant.conversation,
+      conversation,
       replyTo,
     });
 
     const savedMessage = await this.messageRepository.save(message);
     participant.lastReadMessage = savedMessage;
     await this.participantRepository.save(participant);
-    await this.conversationRepository.update(participant.conversation.id, {
+    await this.conversationRepository.update(conversation.id, {
       updatedAt: new Date(),
     });
 
@@ -93,8 +98,7 @@ export class MessageService {
 
     const dtoMessage = new MessageDto({
       message: hydratedMessage,
-      conversationId:
-        hydratedMessage.conversation?.id ?? participant.conversation.id,
+      conversationId: hydratedMessage.conversation?.id ?? conversation.id,
     });
 
     this.eventEmitter.emit(MessagingEvents.MessageCreated, {
