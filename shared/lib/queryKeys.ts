@@ -28,6 +28,9 @@ const taskFormsAll = () => ["form"] as const;
 const actionCompletionCurvesAdminAll = () =>
   ["analyticsGetActionCompletionCurvesAdmin"] as const;
 
+const actionReminderGroupsAdminAll = () =>
+  ["actionReminderGroupsAdmin"] as const;
+
 /**
  * Central registry of react-query keys
  */
@@ -116,6 +119,14 @@ export const queryKeys = {
   actionCohortDecisionsAdmin: (actionId: number) =>
     ["cohortDecisionsListForActionAdmin", actionId] as const,
   actionRelationsAdmin: () => ["actionsActionRelationsAdmin"] as const,
+  actionReminderGroupsAdminEvents: () =>
+    [...actionReminderGroupsAdminAll(), "event"] as const,
+  actionReminderGroupsAdmin: (eventId: number | null) =>
+    [...actionReminderGroupsAdminAll(), "event", eventId] as const,
+  actionReminderGroupDetailsAdminAll: () =>
+    [...actionReminderGroupsAdminAll(), "group"] as const,
+  actionReminderGroupDetailsAdmin: (groupId: number) =>
+    [...actionReminderGroupsAdminAll(), "group", groupId] as const,
   ambassadorProgramAdmin: () => ["userGetAmbassadorProgramAdmin"] as const,
   campaignsAdmin: () => ["campaignFindAllAdmin"] as const,
   clustersAdmin: () => ["clusterListAdmin"] as const,

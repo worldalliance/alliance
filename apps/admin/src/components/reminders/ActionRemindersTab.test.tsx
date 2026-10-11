@@ -2,22 +2,71 @@ import { makeAction, makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import ActionRemindersTab from "./ActionRemindersTab";
 
 afterEach(cleanup);
 
+let groups: ({ id: number; name: string } & Record<string, unknown>)[] = [];
+let groupsStatus = 200;
+let deleteStatus = 200;
+let createStatus = 200;
+
 serveApi(
   routes({
     "GET /user/list": () => Response.json({}, { status: 500 }),
     "GET /user/tags": () => Response.json([]),
-    "GET /actions/reminderGroupsForEvent/:id": () => Response.json([]),
+    "GET /actions/reminderGroupsForEvent/:id": () =>
+      Response.json(groups, { status: groupsStatus }),
     "GET /actions/reminderAnchorCandidates/:id": () => Response.json([]),
+    "GET /actions/plansForGroup/:groupId": () => Response.json([]),
+    "GET /actions/sentNotifsForGroup/:groupId": () => Response.json([]),
+    "POST /actions/events/:eventId/createremindergroup": async ({
+      request,
+    }) => {
+      if (createStatus !== 200)
+        return Response.json(
+          { message: "Reminder name taken" },
+          { status: createStatus },
+        );
+      const { name }: { name: string } = await request.json();
+      const created = {
+        id: groups.length + 1,
+        name,
+        timingMode: "event_launch",
+      };
+      groups = [...groups, created];
+      return Response.json(created);
+    },
+    "POST /actions/events/:eventId/checkTentativePlans": () =>
+      Response.json([]),
+    "PATCH /actions/remindergroups/:groupId": () =>
+      Response.json({ message: "Reminder name taken" }, { status: 400 }),
+    "DELETE /actions/reminders/:groupId": ({ params }) => {
+      if (deleteStatus !== 200)
+        return Response.json({}, { status: deleteStatus });
+      groups = groups.filter((group) => String(group.id) !== params.groupId);
+      return new Response(null, { status: 200 });
+    },
   }),
 );
 
-it("says under the custom recipients picker when the user list fails to load", async () => {
+afterEach(() => {
+  groups = [];
+  groupsStatus = 200;
+  deleteStatus = 200;
+  createStatus = 200;
+});
+
+const renderTab = (events = [makeEvent({ newStatus: "member_action" })]) =>
   render(
     <MemoryRouter>
       <ToastProvider>
@@ -25,11 +74,7 @@ it("says under the custom recipients picker when the user list fails to load", a
           suite={{
             id: 1,
             name: "Suite",
-            actions: [
-              makeAction({
-                events: [makeEvent({ newStatus: "member_action" })],
-              }),
-            ],
+            actions: [makeAction({ events })],
             events: [],
             reminderGroups: [],
             generalUpdates: [],
@@ -40,10 +85,207 @@ it("says under the custom recipients picker when the user list fails to load", a
     queryWrapper(),
   );
 
+it("says under the custom recipients picker when the user list fails to load", async () => {
+  renderTab();
+
   fireEvent.click(await screen.findByRole("button", { name: "New reminder" }));
   fireEvent.change(screen.getByDisplayValue("All uncompleted"), {
     target: { value: "custom" },
   });
 
   expect(await screen.findByText("Failed to load users.")).toBeTruthy();
+});
+
+it("says the reminders failed to load", async () => {
+  groupsStatus = 500;
+  renderTab();
+
+  expect(await screen.findByText("Failed to load reminders.")).toBeTruthy();
+  expect(
+    screen.queryByRole("button", { name: "Populate default reminders" }),
+  ).toBeNull();
+});
+
+const deleteGroup = async (name: string) => {
+  const card = (await screen.findByText(name)).closest(".bg-white");
+  if (!(card instanceof HTMLElement)) throw new Error(`no card for ${name}`);
+  fireEvent.click(within(card).getByRole("button", { name: "Delete" }));
+  const confirmButtons = await screen.findAllByRole("button", {
+    name: "Delete",
+  });
+  fireEvent.click(confirmButtons[confirmButtons.length - 1]);
+};
+
+it("removes a deleted group", async () => {
+  groups = [
+    { id: 1, name: "Announcement", timingMode: "event_launch" },
+    { id: 2, name: "Last call", timingMode: "event_launch" },
+  ];
+  renderTab();
+
+  await deleteGroup("Last call");
+
+  await waitFor(() => expect(screen.queryByText("Last call")).toBeNull());
+  expect(screen.getByText("Announcement")).toBeTruthy();
+});
+
+it("says a delete was refused and keeps the group", async () => {
+  groups = [{ id: 1, name: "Announcement", timingMode: "event_launch" }];
+  deleteStatus = 403;
+  renderTab();
+
+  await deleteGroup("Announcement");
+
+  expect(
+    await screen.findByText("Failed to delete reminder group."),
+  ).toBeTruthy();
+  expect(screen.getByText("Announcement")).toBeTruthy();
+});
+
+const eventsWithDeadline = () => [
+  makeEvent({ id: 1, newStatus: "member_action" }),
+  makeEvent({
+    id: 2,
+    newStatus: "completed",
+    date: new Date(Date.now() + 1000).toISOString(),
+  }),
+];
+
+const populate = async () => {
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Populate default reminders" }),
+  );
+  fireEvent.change(
+    await screen.findByPlaceholderText(
+      "I am going to notify many real members",
+    ),
+    { target: { value: "I am going to notify many real members" } },
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Create" }));
+};
+
+it("populates the default reminders in order", async () => {
+  renderTab(eventsWithDeadline());
+
+  await populate();
+
+  expect(
+    await screen.findByText("Reminders created successfully."),
+  ).toBeTruthy();
+  expect(groups.map((group) => group.name)).toEqual([
+    "Member Action announcement",
+    "24-48h reminder",
+    "6-24h reminder",
+    "3 hour reminder",
+    "Missed deadline message",
+    "Group leads 3 days reminder",
+    "Group leads 2 days reminder",
+  ]);
+});
+
+it("populates only the announcement without a deadline event", async () => {
+  renderTab();
+
+  await populate();
+
+  expect(
+    await screen.findByText(
+      "No deadline reminders created - does this event have a deadline?",
+    ),
+  ).toBeTruthy();
+  expect(groups.map((group) => group.name)).toEqual([
+    "Member Action announcement",
+  ]);
+});
+
+it("says why a populate was refused", async () => {
+  createStatus = 400;
+  renderTab();
+
+  await populate();
+
+  expect(await screen.findByText("Reminder name taken")).toBeTruthy();
+  expect(
+    screen.queryByText(
+      "No deadline reminders created - does this event have a deadline?",
+    ),
+  ).toBeNull();
+});
+
+it("clears a refused populate's message when a retry succeeds", async () => {
+  createStatus = 400;
+  renderTab(eventsWithDeadline());
+  await populate();
+  await screen.findByText("Reminder name taken");
+
+  createStatus = 200;
+  await populate();
+
+  expect(
+    await screen.findByText("Reminders created successfully."),
+  ).toBeTruthy();
+  expect(screen.queryByText("Reminder name taken")).toBeNull();
+});
+
+it("says why an edit was refused and keeps the form open", async () => {
+  groups = [
+    {
+      id: 1,
+      name: "Announcement",
+      timingMode: "event_launch",
+      cohortType: "all_uncompleted",
+      emailSubject: "Subject",
+      emailMessage: "Body",
+      textMessage: "Text",
+      pushMessage: "Push",
+      memberActionEvent: { id: 1 },
+    },
+  ];
+  renderTab();
+
+  fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+  const submit = await screen.findByRole("button", {
+    name: "Update Reminders",
+  });
+  await waitFor(() => expect(submit).toHaveProperty("disabled", false));
+  fireEvent.click(submit);
+
+  expect(await screen.findByText("Reminder name taken")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Update Reminders" })).toBeTruthy();
+});
+
+const createFromAnnouncementPreset = async () => {
+  fireEvent.click(await screen.findByRole("button", { name: "New reminder" }));
+  fireEvent.click(screen.getByRole("button", { name: "Load preset..." }));
+  fireEvent.click(screen.getByRole("button", { name: "Announcement" }));
+  const submit = screen.getByRole("button", { name: "Create Reminders" });
+  await waitFor(() => expect(submit).toHaveProperty("disabled", false));
+  fireEvent.click(submit);
+  fireEvent.change(
+    await screen.findByPlaceholderText("I am going to notify 0 real members"),
+    { target: { value: "I am going to notify 0 real members" } },
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Create" }));
+};
+
+it("creates a group from the form and closes it", async () => {
+  renderTab();
+
+  await createFromAnnouncementPreset();
+
+  expect(
+    await screen.findByText("Personal reminders group scheduled successfully."),
+  ).toBeTruthy();
+  expect(screen.getByText("Member Action announcement")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Create Reminders" })).toBeNull();
+});
+
+it("says why a create from the form was refused and keeps it open", async () => {
+  createStatus = 400;
+  renderTab();
+
+  await createFromAnnouncementPreset();
+
+  expect(await screen.findAllByText("Reminder name taken")).not.toHaveLength(0);
+  expect(screen.getByRole("button", { name: "Create Reminders" })).toBeTruthy();
 });
