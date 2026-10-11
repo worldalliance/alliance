@@ -52,7 +52,11 @@ import {
   UpdatePostDto,
   UpdatePostSettingsDto,
 } from "./dto/post.dto";
-import { Comment, CommentParentObject } from "./entities/comment.entity";
+import {
+  Comment,
+  CommentParentObject,
+  loadedCommentAuthor,
+} from "./entities/comment.entity";
 import { EditableContent } from "./entities/editablecontent.entity";
 import { PostTag } from "./entities/post-tag.entity";
 import { parsePost, Post, type ParsedPost } from "./entities/post.entity";
@@ -732,7 +736,7 @@ export class ForumService {
         where: { id: comment.parentId, deleted: false },
         relations: { author: { contractEvents: true } },
       });
-      parentAuthor = parentReply.author;
+      parentAuthor = loadedCommentAuthor(parentReply);
     }
 
     if (comment.parentObjectType === CommentParentObject.Post) {
@@ -762,7 +766,7 @@ export class ForumService {
       seenIds.add(user.id);
       return true;
     });
-    const authorDto = new ProfileDto(comment.author);
+    const authorDto = new ProfileDto(loadedCommentAuthor(comment));
 
     await this.notifsService.sendUnreadContents(
       uniqueUsersToNotify
@@ -995,7 +999,7 @@ export class ForumService {
   }
 
   private async sendCommentLikeNotification(comment: Comment, liker: User) {
-    if (!comment.author || comment.authorId === liker.id) {
+    if (comment.authorId === liker.id) {
       return;
     }
     let actionIdForActivity: number | undefined;
@@ -1013,7 +1017,7 @@ export class ForumService {
       return;
     }
     await this.likeNotificationService.createOrUpdate({
-      owner: comment.author,
+      owner: loadedCommentAuthor(comment),
       liker,
       targetType: "comment",
       targetId: comment.id,
@@ -1037,7 +1041,7 @@ export class ForumService {
   }
 
   private async removeCommentLikeNotification(comment: Comment, unliker: User) {
-    if (!comment.author || comment.authorId === unliker.id) {
+    if (comment.authorId === unliker.id) {
       return;
     }
     await this.likeNotificationService.removeOnUnlike({

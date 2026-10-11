@@ -1,7 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { isEqual } from "es-toolkit";
-import { CommentParentObject } from "src/forum/entities/comment.entity";
+import {
+  CommentParentObject,
+  loadedCommentAuthor,
+} from "src/forum/entities/comment.entity";
 import { actionUrl, commentUrl } from "src/search/approutes";
 import { In, Raw, type Repository } from "typeorm";
 import { NotificationDto } from "./dto/notification.dto";
@@ -186,7 +189,7 @@ export class NotificationRenderService {
               content,
               references,
               count: null,
-              participant: comment.author,
+              participant: loadedCommentAuthor(comment),
               commentExcerpt: getPreviewText(comment.editableContent.body),
             });
           if (!comment || !rendered) {
@@ -205,7 +208,7 @@ export class NotificationRenderService {
               message: rendered.message,
               webAppLocation: location,
               mobileAppLocation: location,
-              associatedUsers: [comment.author],
+              associatedUsers: [loadedCommentAuthor(comment)],
             }),
           ];
         }

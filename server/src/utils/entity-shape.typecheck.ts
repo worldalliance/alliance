@@ -15,6 +15,7 @@ import type { Campaign } from "src/campaign/entities/campaign.entity";
 import type { Cluster } from "src/cluster/entities/cluster.entity";
 import type { Contract } from "src/contract/entities/contract.entity";
 import type { EventLog } from "src/eventlog/event-log.entity";
+import type { Comment } from "src/forum/entities/comment.entity";
 import type { EditableContent } from "src/forum/entities/editablecontent.entity";
 import type { City } from "src/geo/city.entity";
 import type { Mail } from "src/mail/mail.entity";
@@ -68,6 +69,7 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<Campaign>>
   | Assert<EntityShape<City>>
   | Assert<EntityShape<Cluster>>
+  | Assert<EntityShape<Comment>>
   | Assert<EntityShape<Contract>>
   | Assert<EntityShape<ContractEvent>>
   | Assert<EntityShape<Conversation>>

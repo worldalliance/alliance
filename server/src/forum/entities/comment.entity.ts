@@ -48,11 +48,10 @@ export class Comment {
 
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn()
-  @ApiProperty()
-  @Allow()
+  @ApiPropertyOptional()
+  @IsOptional()
   @Type(() => User)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  author: Relation<User>;
+  author?: Relation<User>;
 
   @Column()
   @ApiProperty()
@@ -143,4 +142,11 @@ export class Comment {
   @ApiProperty({ type: Number, nullable: true })
   @IsOptional()
   tagId: number | null;
+}
+
+export function loadedCommentAuthor(comment: Comment): Relation<User> {
+  if (!comment.author) {
+    throw new Error(`author of comment ${comment.id} not loaded`);
+  }
+  return comment.author;
 }

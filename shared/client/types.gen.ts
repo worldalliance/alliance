@@ -566,7 +566,7 @@ export type PostTag = {
 export type Comment = {
     id: number;
     editableContent?: EditableContent;
-    author: {
+    author?: {
         [key: string]: unknown;
     };
     authorId: number;

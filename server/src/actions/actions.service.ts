@@ -64,6 +64,7 @@ import { EventLogService } from "src/eventlog/eventlog.service";
 import {
   Comment,
   CommentParentObject,
+  loadedCommentAuthor,
 } from "src/forum/entities/comment.entity";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { Post } from "src/forum/entities/post.entity";
@@ -4719,9 +4720,10 @@ export class ActionsService {
         });
       }
       const group = commentGroups.get(postId)!;
-      if (comment.author && !group.users.has(comment.author.id)) {
-        group.users.set(comment.author.id, {
-          profile: new ProfileDto(comment.author),
+      const author = loadedCommentAuthor(comment);
+      if (!group.users.has(author.id)) {
+        group.users.set(author.id, {
+          profile: new ProfileDto(author),
           commentId: comment.id,
         });
       }
