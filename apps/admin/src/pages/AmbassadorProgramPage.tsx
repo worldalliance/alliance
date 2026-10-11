@@ -4,11 +4,9 @@ import {
   AmbassadorInviteProjectionDto,
   AmbassadorProgramMemberDto,
   UserDto,
-  userListForGraphAdmin,
 } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import { useQuery } from "@tanstack/react-query";
 import {
   CalendarDays,
   Plus,
@@ -24,6 +22,7 @@ import {
   useUpdateAmbassadorProgramMemberAdmin,
   useUpsertAmbassadorProgramMemberAdmin,
 } from "../lib/useAmbassadorProgramAdmin";
+import { useGraphUsersAdmin } from "../lib/useGraphUsersAdmin";
 
 type ProgramSection = "invited" | "active";
 
@@ -601,13 +600,7 @@ const AmbassadorProgramPage: React.FC = () => {
 
   const dashboardQuery = useAmbassadorProgramAdmin();
 
-  const membersQuery = useQuery({
-    queryKey: ["userListForGraphAdmin"],
-    queryFn: () =>
-      userListForGraphAdmin({ throwOnError: true }).then(
-        (response) => response.data,
-      ),
-  });
+  const membersQuery = useGraphUsersAdmin();
 
   const upsertMember = useUpsertAmbassadorProgramMemberAdmin();
   const updateMember = useUpdateAmbassadorProgramMemberAdmin();

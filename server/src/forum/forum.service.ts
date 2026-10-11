@@ -272,12 +272,21 @@ export class ForumService {
     return postsWithComments;
   }
 
+  private visiblePostQuery(id: number, userId?: number) {
+    return this.addPostVisibilityFilter(
+      this.postRepository
+        .createQueryBuilder("post")
+        .where("post.id = :id", { id }),
+      "post",
+      userId,
+    );
+  }
+
   private async findOneVisiblePost(
     id: number,
     userId?: number,
   ): Promise<ParsedPost> {
-    const qb = this.postRepository
-      .createQueryBuilder("post")
+    const post = await this.visiblePostQuery(id, userId)
       .leftJoinAndSelect("post.author", "author")
       .leftJoinAndSelect("post.action", "action")
       .leftJoinAndSelect("action.reviewers", "actionReviewer")
@@ -285,13 +294,17 @@ export class ForumService {
       .leftJoinAndSelect("post.authors", "authors")
       .leftJoinAndSelect("post.likes", "likes")
       .leftJoinAndSelect("post.tags", "tags")
-      .where("post.id = :id", { id });
-    this.addPostVisibilityFilter(qb, "post", userId);
-    const post = await qb.getOne();
+      .getOne();
     if (!post) {
       throw new NotFoundException(`Post with ID "${id}" not found`);
     }
     return parsePost(post);
+  }
+
+  async assertPostVisible(id: number, userId?: number): Promise<void> {
+    if (!(await this.visiblePostQuery(id, userId).getExists())) {
+      throw new NotFoundException(`Post with ID "${id}" not found`);
+    }
   }
 
   async findOnePostFull(id: number, userId?: number): Promise<ParsedPost> {
@@ -648,6 +661,9 @@ export class ForumService {
     userId: number,
   ): Promise<Comment> {
     await this.assertCommentParentNotInStaffPreview(createCommentDto);
+    if (createCommentDto.parentObjectType === CommentParentObject.Post) {
+      await this.assertPostVisible(createCommentDto.parentObjectId, userId);
+    }
 
     // Validate parent reply if provided
     let parentReply: Comment | null = null;
@@ -917,7 +933,7 @@ export class ForumService {
             relations: { likes: true, author: true, authors: true },
           });
 
-    if (!object) {
+    if (!object || !(await this.isLikeTargetVisible(object, userId))) {
       throw new NotFoundException(`${type} with ID "${id}" not found`);
     }
     if ("parentObjectType" in object) {
@@ -964,6 +980,19 @@ export class ForumService {
         await this.removePostLikeNotification(object as Post, user);
       }
     }
+  }
+
+  private async isLikeTargetVisible(
+    target: Post | Comment,
+    userId: number,
+  ): Promise<boolean> {
+    if (!("parentObjectType" in target)) {
+      return this.visiblePostQuery(target.id, userId).getExists();
+    }
+    return (
+      target.parentObjectType !== CommentParentObject.Post ||
+      this.visiblePostQuery(target.parentObjectId, userId).getExists()
+    );
   }
 
   private getUniquePostAuthors(post: Post): User[] {

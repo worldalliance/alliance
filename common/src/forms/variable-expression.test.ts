@@ -1,11 +1,11 @@
 import { R } from "../result";
+import { MATH_FUNCTION_NAMES } from "./formula-allowlist";
 import {
-  compileVariableExpression,
   evaluateVariableExpression,
   exprValueToText,
-  MATH_FUNCTION_NAMES,
   type ExprValue,
 } from "./variable-expression";
+import { compileVariableExpression } from "./variable-expression-compile";
 
 const INPUTS = new Set(["input1", "input2", "input3"]);
 

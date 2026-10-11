@@ -1,4 +1,3 @@
-import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -19,7 +18,6 @@ import {
   evaluateCohortExpression,
   singleUserCohortContext,
 } from "./cohort-expression.evaluator";
-import { ActionActivity } from "./entities/action-activity.entity";
 import {
   Action,
   parseAction,
@@ -36,8 +34,6 @@ export class SingleMemberCohortService {
   constructor(
     @InjectRepository(Action)
     private readonly actionRepository: Repository<Action>,
-    @InjectRepository(ActionActivity)
-    private readonly actionActivityRepository: Repository<ActionActivity>,
     @InjectRepository(FormResponse)
     private readonly formResponseRepository: Repository<FormResponse>,
     @InjectRepository(Community)
@@ -139,15 +135,9 @@ export class SingleMemberCohortService {
       completedAction: async (actionId: number) => {
         let pending = session.completedActionIdsByUser.get(user.id);
         if (!pending) {
-          pending = this.actionActivityRepository
-            .find({
-              where: {
-                userId: user.id,
-                type: ActionActivityType.USER_COMPLETED,
-              },
-              select: { actionId: true },
-            })
-            .then((rows) => new Set(rows.map((row) => row.actionId)));
+          pending = this.prerequisiteProgressService
+            .loadCompletions({ userId: user.id })
+            .then((completions) => new Set(completions.map((c) => c.actionId)));
           session.completedActionIdsByUser.set(user.id, pending);
         }
         return (await pending).has(actionId);

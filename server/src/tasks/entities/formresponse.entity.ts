@@ -117,9 +117,8 @@ export class FormResponse {
   @ManyToOne(() => FormSnapshot, { onDelete: "RESTRICT" })
   @JoinColumn({ name: "formSnapshotId" })
   @Type(() => FormSnapshot)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  formSnapshot: Relation<FormSnapshot>;
+  @IsOptional()
+  formSnapshot?: Relation<FormSnapshot>;
 
   @Column({ type: "text", nullable: true })
   @ApiProperty({ type: String, nullable: true })
@@ -136,6 +135,15 @@ export class FormResponse {
 export interface ParsedFormResponse extends FormResponse {
   visibilityValidatorResults: VisibilityValidatorResults;
   formulaChoices: FormulaChoices;
+}
+
+export function loadedFormResponseSnapshot(
+  response: FormResponse,
+): Relation<FormSnapshot> {
+  if (!response.formSnapshot) {
+    throw new Error(`formSnapshot of form response ${response.id} not loaded`);
+  }
+  return response.formSnapshot;
 }
 
 export function parseFormResponse(response: FormResponse): ParsedFormResponse {

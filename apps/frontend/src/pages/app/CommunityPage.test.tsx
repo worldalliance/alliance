@@ -37,7 +37,7 @@ serveApi(
     "GET /actions/communityMemberInfo/:communityId": () =>
       Response.json({ actions: [], suites: [], users: [] }),
     "GET /actions/communityCompletedActionsCount": () =>
-      Response.json({ completedCount: 0 }),
+      Response.json({ completedCount: 12 }),
     "GET /messaging/conversations/community/:communityId": () =>
       Response.json([]),
   }),
@@ -112,4 +112,13 @@ it("shows a leader each member's reminder time from their contact info", async (
   renderPage("/?tab=members&communityId=1");
 
   await screen.findByText("9:00 AM");
+});
+
+it("shows how many actions the community's members completed", async () => {
+  myGroups = async () =>
+    Response.json([makeCommunity({ users: [makeProfile(testAuthUser.id)] })]);
+  renderPage("/?tab=members&communityId=1");
+
+  const count = await screen.findByText("12");
+  expect(count.parentElement?.textContent).toContain("actions completed");
 });

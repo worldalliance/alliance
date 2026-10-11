@@ -13,6 +13,7 @@ import type { DailyStatsRecord } from "src/analytics/dailystats.entity";
 import type { Guest } from "src/auth/entities/guest.entity";
 import type { Campaign } from "src/campaign/entities/campaign.entity";
 import type { Cluster } from "src/cluster/entities/cluster.entity";
+import type { CommunityInvite } from "src/community/entities/community-invite.entity";
 import type { Contract } from "src/contract/entities/contract.entity";
 import type { EventLog } from "src/eventlog/event-log.entity";
 import type { Comment } from "src/forum/entities/comment.entity";
@@ -29,6 +30,7 @@ import type { Push } from "src/push/push.entity";
 import type { RecentSearch } from "src/search/recentsearch.entity";
 import type { ExternalShareTarget } from "src/share-urls/entities/external-share-target.entity";
 import type { CustomValidator } from "src/tasks/entities/customvalidator.entity";
+import type { FormResponse } from "src/tasks/entities/formresponse.entity";
 import type { FormSnapshot } from "src/tasks/entities/formsnapshot.entity";
 import type { AmbassadorInviteGoal } from "src/user/entities/ambassador-invite-goal.entity";
 import type { AmbassadorProgramInteraction } from "src/user/entities/ambassador-program-interaction.entity";
@@ -70,6 +72,7 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<City>>
   | Assert<EntityShape<Cluster>>
   | Assert<EntityShape<Comment>>
+  | Assert<EntityShape<CommunityInvite>>
   | Assert<EntityShape<Contract>>
   | Assert<EntityShape<ContractEvent>>
   | Assert<EntityShape<Conversation>>
@@ -79,6 +82,7 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<EventLog>>
   | Assert<EntityShape<ExternalShareTarget>>
   | Assert<EntityShape<FollowUpForm>>
+  | Assert<EntityShape<FormResponse>>
   | Assert<EntityShape<FormSnapshot>>
   | Assert<EntityShape<Friend>>
   | Assert<EntityShape<GeneralUpdateActivity>>

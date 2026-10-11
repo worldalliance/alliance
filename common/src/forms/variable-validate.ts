@@ -25,7 +25,7 @@ import {
   evaluateVariable,
   type VariableResolutionContext,
 } from "./variable-evaluation";
-import { compileVariableExpression } from "./variable-expression";
+import { compileVariableExpression } from "./variable-expression-compile";
 import {
   checkOptionsFormulaType,
   checkVariableFormulaType,

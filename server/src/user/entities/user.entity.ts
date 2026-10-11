@@ -701,6 +701,13 @@ export function sqlUserHasActiveContractAt(
   ) = '${ContractEventType.SIGNED}'`;
 }
 
+export function sqlUserHasEverSigned(userIdExpr: string): string {
+  return `EXISTS (
+    SELECT 1 FROM "contract_event" ce
+    WHERE ce."userId" = ${userIdExpr} AND ce."type" = '${ContractEventType.SIGNED}'
+  )`;
+}
+
 export function canManageCommunity(
   user: Pick<User, "admin" | "leaderOfIdSet">,
   communityId: number | null,

@@ -55,6 +55,8 @@ export const queryKeys = {
   allianceMemberCount: () => ["userNmembers"] as const,
   ambassadorInviteDashboard: () =>
     ["userGetAmbassadorInviteDashboard"] as const,
+  communityCompletedActionsCount: (communityId: number | null) =>
+    ["actionsCommunityCompletedActionsCount", communityId] as const,
   communityMemberInfo: (
     communityId: number | undefined,
     userId: number | undefined,
@@ -70,7 +72,10 @@ export const queryKeys = {
     ["forumFindOnePost", postId] as const,
   generalUpdatesAll: () => ["actionsAllGeneralUpdates"] as const,
   generalUpdatesUnread: () => ["actions", "generalUpdates", "unread"] as const,
+  linkedGuestDraft: (taskFormId: number) =>
+    ["tasksGetLinkedGuestDraft", taskFormId] as const,
   linkPreview: (url: string) => ["linkPreviewGetPreview", url] as const,
+  membersWithFriends: () => ["userMembersWithFriends"] as const,
   myAwayRanges: () => ["userGetAwayRanges"] as const,
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,
   inviteMessageTemplate: () => ["shareUrlsInviteMessageTemplate"] as const,
@@ -127,6 +132,7 @@ export const queryKeys = {
   formResponseCountsAdmin: (formIds: readonly number[]) =>
     [...formsAdminAll(), "responseCounts", formIds] as const,
   generalUpdatesAdmin: () => ["actionsAllGeneralUpdatesAdmin"] as const,
+  graphUsersAdmin: () => ["userListForGraphAdmin"] as const,
   memberContactInfoAdmin: () =>
     ["communityGetAllMemberContactInfoAdmin"] as const,
   onetimeInvitesAdminAll,

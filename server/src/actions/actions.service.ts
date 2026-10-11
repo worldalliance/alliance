@@ -89,6 +89,7 @@ import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { Form } from "src/tasks/entities/form.entity";
 import {
   FormResponse,
+  loadedFormResponseSnapshot,
   parseFormResponse,
   type ParsedFormResponse,
 } from "src/tasks/entities/formresponse.entity";
@@ -107,6 +108,7 @@ import { ContractEventType } from "src/user/entities/contract-event.entity";
 import { loadedTagUsers, Tag } from "src/user/entities/tag.entity";
 import {
   sqlUserHasActiveContractAt,
+  sqlUserHasEverSigned,
   User,
 } from "src/user/entities/user.entity";
 import {
@@ -253,6 +255,7 @@ import {
   trailingMissedSuiteIds,
   type SuiteOutcome,
 } from "./missed-suite-streak";
+import { PrerequisiteProgressService } from "./prerequisite-progress.service";
 import {
   assertNotAPrerequisite,
   assertPrerequisitesValid,
@@ -396,6 +399,7 @@ export class ActionsService {
     private readonly cohortDecisionService: CohortDecisionService,
     private readonly cohortAdmissionService: CohortAdmissionService,
     private readonly actionVisibility: ActionVisibilityService,
+    private readonly prerequisiteProgressService: PrerequisiteProgressService,
   ) {}
 
   async applyAssignedFormIds(
@@ -681,12 +685,10 @@ export class ActionsService {
   }
 
   async findUsersCompletedForAction(actionId: number): Promise<number> {
-    return this.actionActivityRepository.count({
-      where: {
-        actionId,
-        type: ActionActivityType.USER_COMPLETED,
-      },
+    const completions = await this.prerequisiteProgressService.loadCompletions({
+      actionId,
     });
+    return completions.length;
   }
 
   async reloadUsersCompletedForAction(actionId: number): Promise<void> {
@@ -901,7 +903,7 @@ export class ActionsService {
         WITH latest AS (
           SELECT DISTINCT ON ("userId", "actionId") id, "userId", "actionId", "createdAt", type
           FROM action_activity
-          WHERE "actionId" = ANY($1::int[]) AND type::text = ANY($5::text[])
+          WHERE "actionId" = ANY($1::int[]) AND type::text = ANY($4::text[])
           ORDER BY "userId", "actionId", "createdAt" DESC, id DESC
         )
         SELECT activity."userId", activity."actionId", activity.id AS "activityId",
@@ -912,10 +914,7 @@ export class ActionsService {
         LEFT JOIN "user" staff_liker
           ON staff_liker.id = activity_like."userId" AND staff_liker.staff = true
         WHERE activity.type = $2
-        AND EXISTS (
-          SELECT 1 FROM contract_event
-          WHERE contract_event."userId" = activity."userId" AND contract_event.type = $4
-        )
+        AND ${sqlUserHasEverSigned('activity."userId"')}
         AND NOT EXISTS (
           SELECT 1
           FROM action_activity completion
@@ -932,7 +931,6 @@ export class ActionsService {
         actionIds,
         ActionActivityType.USER_COMPLETED,
         CommentParentObject.Activity,
-        ContractEventType.SIGNED,
         TERMINAL_ACTIVITY_TYPES,
       ],
     );
@@ -1875,8 +1873,10 @@ export class ActionsService {
     });
 
     await this.reloadUsersJoinedForAction(actionId);
-    if (type === ActionActivityType.USER_COMPLETED) {
+    if (isTerminalActivity(savedActivity)) {
       await this.reloadUsersCompletedForAction(actionId);
+    }
+    if (type === ActionActivityType.USER_COMPLETED) {
       if (!adminCreated) {
         this.posthogService.capture({
           event: AnalyticsEvent.ActionCompleted,
@@ -2235,8 +2235,9 @@ export class ActionsService {
     const savedChoices: ResolvedOptions = new Map(
       Object.entries(response.formulaChoices),
     );
+    const snapshot = loadedFormResponseSnapshot(activity.taskFormResponse);
     const schema = schemaWithResolvedOptions(
-      formSchemaOf(activity.taskFormResponse.formSnapshot),
+      formSchemaOf(snapshot),
       savedChoices,
     );
     const outputAnswers = this.outputAnswers(schema, response);
@@ -2287,7 +2288,7 @@ export class ActionsService {
       visibilityValidatorResults: {},
       formulaChoices: shownChoices,
       formSnapshot: {
-        ...response.formSnapshot,
+        ...snapshot,
         schema: schemaWithSavedChoices(output.schema, shownChoices),
       },
     });

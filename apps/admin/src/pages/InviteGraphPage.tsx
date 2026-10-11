@@ -1,9 +1,7 @@
 import { publicDisplayName } from "@alliance/common/displayName";
 import {
   OnetimeInviteEdgeDto,
-  UserDto,
   userGetOnetimeInviteGraphEdgesAdmin,
-  userListForGraphAdmin,
 } from "@alliance/shared/client";
 import { AlertTriangle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -22,6 +20,7 @@ import {
   useUserGraphFilters,
 } from "../components/force-graph/UserGraphFilters";
 import { useCampaignsAdmin } from "../lib/useCampaignsAdmin";
+import { useGraphUsersAdmin } from "../lib/useGraphUsersAdmin";
 
 enum NodeKind {
   User = "user",
@@ -124,10 +123,15 @@ const LINK_TONE: Record<LinkTone, { color: string; markerId: string }> = {
 };
 
 const InviteGraphPage = () => {
-  const [users, setUsers] = useState<UserDto[]>([]);
   const [inviteEdges, setInviteEdges] = useState<OnetimeInviteEdgeDto[]>([]);
-  // A changed campaign list rebuilds the layout and drops the selection, so
-  // the graph skips the refetches that land while an admin is exploring it.
+  // A changed user or campaign list rebuilds the layout and drops the
+  // selection, so the graph skips the refetches that land while an admin is
+  // exploring it.
+  const usersQuery = useGraphUsersAdmin({
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+  const users = useMemo(() => usersQuery.data ?? [], [usersQuery.data]);
   const campaignsQuery = useCampaignsAdmin({
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -137,7 +141,7 @@ const InviteGraphPage = () => {
     [campaignsQuery.data],
   );
   const [loading, setLoading] = useState(true);
-  const [failedLoads, setFailedLoads] = useState<string[]>([]);
+  const [edgesFailed, setEdgesFailed] = useState(false);
   const [unreachable, setUnreachable] = useState(false);
 
   // Filters
@@ -145,38 +149,31 @@ const InviteGraphPage = () => {
   const [isolateSubgraph, setIsolateSubgraph] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      userListForGraphAdmin(),
-      userGetOnetimeInviteGraphEdgesAdmin(),
-    ])
-      .then(([usersRes, edgesRes]) => {
-        setUsers(usersRes.data ?? []);
+    userGetOnetimeInviteGraphEdgesAdmin()
+      .then((edgesRes) => {
         setInviteEdges(edgesRes.data ?? []);
-
-        // A failed request leaves a whole class of edges out of the graph,
-        // which reads as "no attribution" rather than as a failure — so name
-        // what is missing instead of drawing a wrong graph.
-        const failed = [
-          { name: "users", error: usersRes.error },
-          { name: "used invites", error: edgesRes.error },
-        ].filter((request) => request.error !== undefined);
-
-        for (const request of failed) {
+        if (edgesRes.error !== undefined) {
           console.error(
-            `Invite graph: could not load ${request.name}`,
-            request.error,
+            "Invite graph: could not load used invites",
+            edgesRes.error,
           );
+          setEdgesFailed(true);
         }
-
-        setFailedLoads(failed.map((request) => request.name));
       })
       .catch(() => setUnreachable(true))
       .finally(() => setLoading(false));
   }, []);
 
-  const failed = campaignsQuery.isError
-    ? [...failedLoads, "campaigns"]
-    : failedLoads;
+  // A failed request leaves a whole class of edges out of the graph, which
+  // reads as "no attribution" rather than as a failure — so name what is
+  // missing instead of drawing a wrong graph.
+  const failed = [
+    { name: "users", failed: usersQuery.isError },
+    { name: "used invites", failed: edgesFailed },
+    { name: "campaigns", failed: campaignsQuery.isError },
+  ]
+    .filter((load) => load.failed)
+    .map((load) => load.name);
   const loadError = unreachable
     ? "Could not load the graph data. Try reloading the page."
     : failed.length > 0
@@ -443,7 +440,11 @@ const InviteGraphPage = () => {
     return users.filter((u) => filteredUserIds.has(u.id)).length;
   }, [users, filteredUserIds, hasActiveFilters]);
 
-  if (loading || !campaignsQuery.isFetchedAfterMount) {
+  if (
+    loading ||
+    !usersQuery.isFetchedAfterMount ||
+    !campaignsQuery.isFetchedAfterMount
+  ) {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-gray-500">Loading graph...</p>
