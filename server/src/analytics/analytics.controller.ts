@@ -15,6 +15,7 @@ import { ActionStatsAnalyticsService } from "./action-stats-analytics.service";
 import { ActionStatsWithOnboardingDto } from "./actionstats-with-onboarding.dto";
 import { AggregateStatsDto } from "./aggregatestats.dto";
 import { AnalyticsService } from "./analytics.service";
+import { ContractAnalyticsService } from "./contract-analytics.service";
 import { ContractStatusPointDto } from "./contract-status-history.dto";
 import { DailyStatsDto } from "./dailystats.dto";
 import { InviteFunnelDto } from "./invite-funnel.dto";
@@ -33,6 +34,7 @@ export class AnalyticsController {
   constructor(
     private readonly analyticsService: AnalyticsService,
     private readonly actionStatsAnalyticsService: ActionStatsAnalyticsService,
+    private readonly contractAnalyticsService: ContractAnalyticsService,
     private readonly platformTenureAnalyticsService: PlatformTenureAnalyticsService,
     private readonly posthogTimeSpentService: PosthogTimeSpentService,
   ) {}
@@ -198,7 +200,7 @@ export class AnalyticsController {
   @Get("time-to-churn")
   @ApiOkResponse({ type: [TimeToChurnSampleDto] })
   async getTimeToChurnSamplesAdmin(): Promise<TimeToChurnSampleDto[]> {
-    const samples = await this.analyticsService.getTimeToChurnSamples();
+    const samples = await this.contractAnalyticsService.getTimeToChurnSamples();
     return samples.map((sample) => new TimeToChurnSampleDto(sample));
   }
 
@@ -206,7 +208,7 @@ export class AnalyticsController {
   @Get("aggregate-stats")
   @ApiOkResponse({ type: AggregateStatsDto })
   async getAggregateStatsAdmin(): Promise<AggregateStatsDto> {
-    const stats = await this.analyticsService.getAggregateStats();
+    const stats = await this.contractAnalyticsService.getAggregateStats();
     return new AggregateStatsDto(stats);
   }
 
@@ -233,7 +235,7 @@ export class AnalyticsController {
     @Query("startDate") startDate: string,
     @Query("endDate") endDate: string,
   ): Promise<ContractStatusPointDto[]> {
-    const points = await this.analyticsService.getContractStatusHistory(
+    const points = await this.contractAnalyticsService.getContractStatusHistory(
       startDate,
       endDate,
     );

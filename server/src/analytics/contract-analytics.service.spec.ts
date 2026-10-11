@@ -5,7 +5,7 @@ import {
   ContractEvent,
   ContractEventType,
 } from "src/user/entities/contract-event.entity";
-import { AnalyticsService } from "./analytics.service";
+import { ContractAnalyticsService } from "./contract-analytics.service";
 
 const signedAt = new Date("2026-03-01T12:00:00Z");
 
@@ -23,7 +23,7 @@ const serviceWith = async () =>
   (
     await Test.createTestingModule({
       providers: [
-        AnalyticsService,
+        ContractAnalyticsService,
         {
           provide: getRepositoryToken(ContractEvent),
           useValue: { find: jest.fn(async () => sameInstantEvents) },
@@ -48,9 +48,9 @@ const serviceWith = async () =>
     })
       .useMocker(() => ({}))
       .compile()
-  ).get(AnalyticsService);
+  ).get(ContractAnalyticsService);
 
-describe("AnalyticsService contract status", () => {
+describe("ContractAnalyticsService", () => {
   it("counts a member suspended at the instant they signed as churned", async () => {
     const service = await serviceWith();
 
