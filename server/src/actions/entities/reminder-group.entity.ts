@@ -1,7 +1,7 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsDefined, IsOptional } from "class-validator";
+import { Allow, IsDefined, IsEnum, IsOptional } from "class-validator";
 import { millisecondsInSecond } from "date-fns/constants";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
 import { Tag } from "src/user/entities/tag.entity";
@@ -113,9 +113,8 @@ export class ReminderGroup {
     enum: ReminderCohortType,
     enumName: "ReminderCohortType",
   })
-  @Column({ type: "enum", enum: ReminderCohortType, nullable: true })
-  @Allow()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
+  @Column({ type: "enum", enum: ReminderCohortType })
+  @IsEnum(ReminderCohortType)
   cohortType: ReminderCohortType;
 
   @ManyToOne(() => Tag)

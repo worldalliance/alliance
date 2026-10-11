@@ -76,4 +76,11 @@ describe("Admin reminder groups (e2e)", () => {
         .findOneByOrFail({ id: created.body.id }),
     ).toMatchObject({ cohortType: ReminderCohortType.AllUncompleted });
   });
+
+  it.each([
+    ["without a cohort type", {}],
+    ["with an unknown cohort type", { cohortType: "everyone" }],
+  ])("rejects a group %s", async (_label, cohort) => {
+    await createGroup({ ...groupBody, ...cohort }).expect(400);
+  });
 });
