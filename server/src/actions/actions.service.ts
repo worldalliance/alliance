@@ -220,6 +220,7 @@ import {
   ActionActivity,
   ActivitySource,
   ALLOW_DUPLICATE,
+  loadedActionActivityLikes,
 } from "./entities/action-activity.entity";
 import {
   ActionEvent,
@@ -2944,7 +2945,9 @@ export class ActionsService {
     return new ActionActivityDto(activity, {
       formResponseOutput: this.buildOutputFormResponse(activity),
       likedByMe: requestingUserId
-        ? activity.likes?.some((like) => like.id === requestingUserId)
+        ? loadedActionActivityLikes(activity).some(
+            (like) => like.id === requestingUserId,
+          )
         : undefined,
     });
   }
@@ -2979,14 +2982,17 @@ export class ActionsService {
       .relation(ActionActivity, "likes")
       .of(activity);
 
+    const liked = loadedActionActivityLikes(activity).some(
+      (like) => like.id === user.id,
+    );
     let createdLike = false;
     let removedLike = false;
     if (unlike) {
-      if (activity.likes.some((like) => like.id === user.id)) {
+      if (liked) {
         await qb.remove(user);
         removedLike = true;
       }
-    } else if (!activity.likes.some((like) => like.id === user.id)) {
+    } else if (!liked) {
       await qb.add(user);
       createdLike = true;
     }

@@ -2530,6 +2530,53 @@ describe("Actions (e2e)", () => {
       await actionRepo.delete(action.id);
     });
 
+    it("reports an activity's likers and whether the requester liked it", async () => {
+      const { action } = await createPublishedAction("Activity Likers", {
+        status: ActionStatus.MemberAction,
+      });
+      const { id: activityId } = await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
+      const post = (path: string, token: string) =>
+        request(ctx.app.getHttpServer())
+          .post(`/actions/${path}/${activityId}`)
+          .set("Authorization", `Bearer ${token}`)
+          .expect(201);
+      const get = (token?: string) => {
+        const req = request(ctx.app.getHttpServer()).get(
+          `/actions/activities/${activityId}`,
+        );
+        return (token ? req.set("Authorization", `Bearer ${token}`) : req)
+          .expect(200)
+          .then((res) => res.body);
+      };
+      const likerIds = (body: { likes: { id: number }[] }) =>
+        body.likes.map((like) => like.id);
+
+      await post("likeActivity", ctx.adminAccessToken);
+      const relike = await post("likeActivity", ctx.adminAccessToken);
+      expect(relike.body.likesCount).toBe(1);
+      expect(likerIds(relike.body)).toEqual([ctx.adminUserId]);
+
+      const unlikeUnliked = await post("unlikeActivity", ctx.accessToken);
+      expect(unlikeUnliked.body.likesCount).toBe(1);
+      expect(likerIds(unlikeUnliked.body)).toEqual([ctx.adminUserId]);
+
+      const asLiker = await get(ctx.adminAccessToken);
+      expect(asLiker.likedByMe).toBe(true);
+      expect(asLiker.likesCount).toBe(1);
+      expect(likerIds(asLiker)).toEqual([ctx.adminUserId]);
+      expect((await get(ctx.accessToken)).likedByMe).toBe(false);
+      expect((await get()).likedByMe).toBeUndefined();
+
+      const unliked = await post("unlikeActivity", ctx.adminAccessToken);
+      expect(unliked.body.likesCount).toBe(0);
+      expect(unliked.body.likes).toEqual([]);
+      expect((await get(ctx.adminAccessToken)).likedByMe).toBe(false);
+
+      await actionRepo.delete(action.id);
+    });
+
     it("rejects likes and group members for activity types hidden from feeds", async () => {
       const { action } = await createPublishedAction("Hidden Activity Type", {
         status: ActionStatus.MemberAction,

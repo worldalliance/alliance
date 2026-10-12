@@ -169,7 +169,7 @@ export type ActionActivity = {
     userId: number;
     createdAt: string;
     editableContent?: EditableContent;
-    likes: Array<User>;
+    likes?: Array<User>;
     likesCount: number;
     taskFormResponse?: FormResponse;
     declineReason: string | null;
