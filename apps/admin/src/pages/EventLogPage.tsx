@@ -1,8 +1,5 @@
 import { hoursInDay } from "@alliance/common/duration";
-import { eventLogFindAllAdmin } from "@alliance/shared/client";
 import type { EventLogDto, EventType } from "@alliance/shared/client/types.gen";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { usePaginatedQuery } from "@alliance/shared/lib/usePaginatedQuery";
 import { cn } from "@alliance/shared/styles/util";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { milliseconds } from "date-fns";
@@ -13,6 +10,7 @@ import {
 } from "date-fns/constants";
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
+import { useEventLogAdmin } from "../lib/useEventLogAdmin";
 import {
   useEventLogWebSocket,
   type EventLogWsEvent,
@@ -62,8 +60,6 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-const EVENTS_PER_PAGE = 50;
-
 const EventLogPage: React.FC = () => {
   const [eventTypeFilter, setEventTypeFilter] = useState<EventType | "">("");
   const [liveEvents, setLiveEvents] = useState<EventLogWsEvent[]>([]);
@@ -80,19 +76,7 @@ const EventLogPage: React.FC = () => {
     isError,
     isPlaceholderData,
     refetch,
-  } = usePaginatedQuery({
-    queryKey: (page) =>
-      queryKeys.eventLogAdmin(page, EVENTS_PER_PAGE, eventTypeFilter),
-    queryFn: (page) =>
-      eventLogFindAllAdmin({
-        query: {
-          page,
-          limit: EVENTS_PER_PAGE,
-          ...(eventTypeFilter ? { eventType: eventTypeFilter } : {}),
-        },
-        throwOnError: true,
-      }).then((response) => response.data),
-  });
+  } = useEventLogAdmin(eventTypeFilter);
 
   // Track timeout refs for highlight cleanup
   const highlightTimeoutsRef = useRef<
