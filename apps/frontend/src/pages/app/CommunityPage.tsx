@@ -7,11 +7,7 @@ import {
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { changedPhoto } from "@alliance/common/image-src";
-import {
-  communityDelete,
-  communityUpdate,
-  conversationGetCommunityConversations,
-} from "@alliance/shared/client";
+import { communityDelete, communityUpdate } from "@alliance/shared/client";
 import {
   calculateAllCompletionData,
   CompletionData,
@@ -20,6 +16,7 @@ import { getMemberCount, isLedBy } from "@alliance/shared/lib/communityUtils";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import { Features } from "@alliance/shared/lib/features";
 import { useCommunityCompletedActionsCount } from "@alliance/shared/lib/useCommunityCompletedActionsCount";
+import { useCommunityConversation } from "@alliance/shared/lib/useCommunityConversation";
 import { useCommunityMemberContactInfo } from "@alliance/shared/lib/useCommunityMemberContactInfo";
 import { useCommunityMemberInfo } from "@alliance/shared/lib/useCommunityMemberInfo";
 import { useIncomingCommunityInvites } from "@alliance/shared/lib/useIncomingCommunityInvites";
@@ -38,7 +35,7 @@ import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import { milliseconds } from "date-fns";
 import { MessageSquare } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { href, Link, useSearchParams } from "react-router";
 import CommunityActivityTab from "../../components/CommunityActivityTab";
 import CommunityInvitesLeaderTab from "../../components/CommunityInvitesLeaderTab";
@@ -116,18 +113,24 @@ const CommunityPage = () => {
     allowStaffAssignments: editAllowStaffAssignments,
   });
 
+  const { conversation: communityConversation } = useCommunityConversation(
+    community?.id ?? null,
+  );
+  // Decide once per group, so a later update can't reopen a closed chat.
+  const chatAutoOpenedForRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!community?.id) {
+    if (
+      !community ||
+      !communityConversation ||
+      chatAutoOpenedForRef.current === community.id
+    ) {
       return;
     }
-    conversationGetCommunityConversations({
-      path: { communityId: community.id },
-    }).then((response) => {
-      if (response.data?.lastMessage) {
-        setChatOpen(true);
-      }
-    });
-  }, [community?.id]);
+    chatAutoOpenedForRef.current = community.id;
+    if (communityConversation.lastMessage) {
+      setChatOpen(true);
+    }
+  }, [community, communityConversation]);
 
   const { user, refreshUser } = useAuth();
 
