@@ -15,6 +15,7 @@ import {
 import { captureException } from "@alliance/shared/lib/analytics";
 import { TagFilter } from "@alliance/shared/lib/commentTags";
 import { updateCommentInTree } from "@alliance/shared/lib/commentTree";
+import { replyRefusalMessage } from "@alliance/shared/lib/replyRefusal";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
 import { useDeleteComment } from "@alliance/shared/lib/useDeleteComment";
 import { useLoadComments } from "@alliance/shared/lib/useLoadComments";
@@ -219,9 +220,9 @@ export function useCommentTree(
         if (response.error) {
           setSubmitError({
             parentId: replyingTo,
-            message: errorMessage({
+            message: replyRefusalMessage({
+              status: response.response.status,
               error: response.error,
-              fallback: "Failed to submit reply",
             }),
           });
           // The comment may have been deleted, which a reload shows.
