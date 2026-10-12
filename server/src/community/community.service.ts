@@ -1348,8 +1348,6 @@ export class CommunityService {
       throw new BadRequestException();
     }
 
-    invite.status = CommunityInviteStatus.InviteeAccepted;
-
     const community = await this.findOneOrFail(
       loadedCommunityInviteCommunity(invite).id,
     );
@@ -1359,6 +1357,14 @@ export class CommunityService {
     ) {
       throw new BadRequestException();
     }
+    // Before any write, so a refused join leaves the invite and the
+    // invitee's current groups untouched.
+    await this.assertUsersHaveActiveContracts(
+      [invitedUser],
+      ContractRefusalAudience.Self,
+    );
+
+    invite.status = CommunityInviteStatus.InviteeAccepted;
 
     await Promise.all([
       this.communityInviteRepository.save(invite),
