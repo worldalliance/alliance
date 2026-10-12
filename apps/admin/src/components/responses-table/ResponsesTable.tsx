@@ -7,7 +7,6 @@ import type {
   ProfileDto,
 } from "@alliance/shared/client";
 import { CardStyle } from "@alliance/shared/styles/card";
-import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -21,18 +20,7 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronDown,
-  ChevronRight,
-  Layers,
-  Link2,
-  Pencil,
-  Search,
-  UnfoldVertical,
-  X,
-} from "lucide-react";
+import { Layers, Link2, Search, UnfoldVertical, X } from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -45,15 +33,13 @@ import type {
   FormWithSchema,
   ResponseVariantOption,
 } from "../FormResponsesView";
-import { IdentityChip, IdentitySwatch } from "../IdentitySwatch";
+import { IdentityChip } from "../IdentitySwatch";
 import SideDrawer from "../SideDrawer";
-import type { CellContent } from "./cells";
 import {
   autoSnapshotMode,
   buildQuestionColumns,
   collectSnapshotFields,
   SnapshotMode,
-  type QuestionColumn,
 } from "./columns";
 import ColumnVisibilityMenu from "./ColumnVisibilityMenu";
 import {
@@ -62,85 +48,20 @@ import {
   type StoredView,
 } from "./persistence";
 import ResponseDrawer from "./ResponseDrawer";
+import ResponsesGrid from "./ResponsesGrid";
 import { buildRows, buildTableColumns, DEFAULT_HIDDEN_COLUMNS } from "./rows";
-import {
-  highlightSegments,
-  matchesQuery,
-  normalizeQuery,
-  searchedColumnIds,
-} from "./search";
+import { matchesQuery, normalizeQuery, searchedColumnIds } from "./search";
 import SnapshotNavigator, { snapshotSeed } from "./SnapshotNavigator";
 import { buildSnapshotEntries } from "./snapshots";
 import { compareRows } from "./sorting";
-import { ColumnKind, MetaColumnId, type ResponseRow } from "./types";
+import type { ResponseRow } from "./types";
 
 const SEARCH_DEBOUNCE_MS = 200;
-
-/** Long enough that the cell is certainly clipped, so clicking it should open the row. */
-const CLIPPED_TEXT_LENGTH = 48;
 
 const DEFAULT_VIEW: StoredView = {
   hiddenColumns: DEFAULT_HIDDEN_COLUMNS,
   expandRows: false,
   snapshotMode: null,
-};
-
-const isExpandable = (content: CellContent | undefined): boolean =>
-  content !== undefined &&
-  (content.summary !== undefined ||
-    content.text.includes("\n") ||
-    content.text.length > CLIPPED_TEXT_LENGTH);
-
-const headerTitle = (question: QuestionColumn): string => {
-  const lines = [question.fieldId];
-  if (question.retired && question.lastSeenSnapshotId !== null) {
-    lines.push(`Retired, last in v${question.lastSeenSnapshotId}`);
-  }
-  if (question.wordings.length > 1) {
-    lines.push(
-      "Wording by version:",
-      ...question.wordings.map(
-        ({ snapshotId, label }) => `v${snapshotId}: ${label}`,
-      ),
-    );
-  }
-  return lines.join("\n");
-};
-
-const Highlighted: React.FC<{ text: string; query: string }> = ({
-  text,
-  query,
-}) => (
-  <>
-    {highlightSegments({ text, query }).map((segment, index) =>
-      segment.match ? (
-        <mark key={index} className="rounded-sm bg-yellow-200 text-inherit">
-          {segment.text}
-        </mark>
-      ) : (
-        <React.Fragment key={index}>{segment.text}</React.Fragment>
-      ),
-    )}
-  </>
-);
-
-const CellView: React.FC<{
-  content: CellContent | undefined;
-  expanded: boolean;
-  query: string;
-}> = ({ content, expanded, query }) => {
-  if (content?.node) return <>{content.node}</>;
-  if (!content?.text) return <span className="text-zinc-300">—</span>;
-  const text = expanded ? content.text : (content.summary ?? content.text);
-  return (
-    <span
-      className={cn(
-        expanded ? "whitespace-pre-line break-words" : "block truncate",
-      )}
-    >
-      <Highlighted text={text} query={query} />
-    </span>
-  );
 };
 
 export type ResponsesTableProps = {
@@ -580,151 +501,18 @@ const ResponsesTable: React.FC<ResponsesTableProps> = ({
           <p className="text-gray-600">No responses yet for this form.</p>
         </Card>
       ) : (
-        <div className="overflow-auto rounded-lg border border-zinc-200 bg-white">
-          <table className="min-w-full border-separate border-spacing-0 text-sm">
-            <thead>
-              <tr>
-                <th className="sticky top-0 left-0 z-30 w-9 border-b border-zinc-200 bg-zinc-50 p-0" />
-                {visibleColumns.map(({ leaf, column }, index) => {
-                  const sorted = leaf.getIsSorted();
-                  return (
-                    <th
-                      key={column.id}
-                      scope="col"
-                      className={cn(
-                        "sticky top-0 z-20 max-w-[18rem] min-w-[9rem] border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left align-bottom font-semibold text-zinc-700",
-                        index === 0 && "left-9 z-30",
-                      )}
-                    >
-                      <button
-                        type="button"
-                        onClick={leaf.getToggleSortingHandler()}
-                        className="flex w-full min-w-0 items-center gap-1.5"
-                        title={
-                          column.kind === ColumnKind.Question
-                            ? headerTitle(column.question)
-                            : undefined
-                        }
-                      >
-                        {column.kind === ColumnKind.Question && (
-                          <IdentitySwatch seed={column.question.fieldId} />
-                        )}
-                        <span
-                          className={cn(
-                            "min-w-0 truncate",
-                            column.kind === ColumnKind.Question &&
-                              column.question.retired &&
-                              "text-zinc-400 italic",
-                          )}
-                        >
-                          {column.label}
-                        </span>
-                        {column.kind === ColumnKind.Question &&
-                          column.question.wordings.length > 1 && (
-                            <Pencil
-                              aria-label="Wording changed between versions"
-                              className="size-3 shrink-0 text-amber-500"
-                            />
-                          )}
-                        {sorted === "asc" && (
-                          <ArrowUp
-                            aria-hidden="true"
-                            className="size-3.5 shrink-0"
-                          />
-                        )}
-                        {sorted === "desc" && (
-                          <ArrowDown
-                            aria-hidden="true"
-                            className="size-3.5 shrink-0"
-                          />
-                        )}
-                      </button>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {sortedRows.map(({ original: row }) => {
-                const expanded =
-                  view.expandRows || expandedRowIds.has(row.response.id);
-                const isOpen = row.response.id === openResponseId;
-                return (
-                  <tr
-                    key={row.response.id}
-                    onClick={() =>
-                      updateParams({ response: String(row.response.id) })
-                    }
-                    className={cn(
-                      "cursor-pointer",
-                      isOpen ? "bg-blue-50" : "hover:bg-zinc-50",
-                    )}
-                  >
-                    <td
-                      className={cn(
-                        "sticky left-0 z-10 w-9 border-b border-zinc-100 p-0 align-top",
-                        isOpen ? "bg-blue-50" : "bg-white",
-                      )}
-                    >
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          toggleRow(row.response.id);
-                        }}
-                        aria-label={expanded ? "Collapse row" : "Expand row"}
-                        title={expanded ? "Collapse row" : "Expand row"}
-                        className="flex size-9 items-center justify-center text-zinc-400 hover:text-zinc-900"
-                      >
-                        {expanded ? (
-                          <ChevronDown aria-hidden="true" className="size-4" />
-                        ) : (
-                          <ChevronRight aria-hidden="true" className="size-4" />
-                        )}
-                      </button>
-                    </td>
-                    {visibleColumns.map(({ column }, index) => {
-                      const content = row.cells[column.id];
-                      const expandable = isExpandable(content);
-                      return (
-                        <td
-                          key={column.id}
-                          onClick={
-                            expandable
-                              ? (event) => {
-                                  event.stopPropagation();
-                                  toggleRow(row.response.id);
-                                }
-                              : undefined
-                          }
-                          className={cn(
-                            "max-w-[18rem] min-w-[9rem] border-b border-zinc-100 px-3 py-2 align-top text-zinc-800",
-                            expandable && "cursor-zoom-in",
-                            column.id === MetaColumnId.Respondent &&
-                              "font-medium text-zinc-900",
-                            index === 0 && "sticky left-9 z-10",
-                            index === 0 && (isOpen ? "bg-blue-50" : "bg-white"),
-                          )}
-                        >
-                          <CellView
-                            content={content}
-                            expanded={expanded}
-                            query={queryParam}
-                          />
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {sortedRows.length === 0 && (
-            <p className="px-3 py-6 text-center text-sm text-zinc-500">
-              No response matches this search.
-            </p>
-          )}
-        </div>
+        <ResponsesGrid
+          visibleColumns={visibleColumns}
+          rows={sortedRows}
+          expandAll={view.expandRows}
+          expandedRowIds={expandedRowIds}
+          onToggleRow={toggleRow}
+          openResponseId={openResponseId}
+          onOpenResponse={(responseId) =>
+            updateParams({ response: String(responseId) })
+          }
+          query={queryParam}
+        />
       )}
 
       <SideDrawer
