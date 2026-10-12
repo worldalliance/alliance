@@ -24,7 +24,7 @@ import { ReactNode, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
 import { copyOrAlert } from "../lib/clipboard";
-import { getBaseUrl } from "../lib/config";
+import { getSiteUrl } from "../lib/config";
 import { colors } from "../lib/style/colors";
 import ActionTaskPanel from "./ActionTaskPanel";
 import CheckIcon from "./system/CheckIcon";
@@ -152,7 +152,7 @@ const ActionPageTaskPanel = ({
   const handleShareCopy = async () => {
     const url = await buildActionShareUrl({
       actionId: action.id,
-      baseUrl: getBaseUrl(),
+      baseUrl: getSiteUrl(),
       isAuthenticated,
     });
     const text = buildShareText({

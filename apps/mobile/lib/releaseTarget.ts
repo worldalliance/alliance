@@ -1,5 +1,6 @@
 import { NodeEnv } from "@alliance/common/node-env";
 import { R, type Result } from "@alliance/common/result";
+import { ALLIANCE_DOMAIN } from "@alliance/common/url";
 
 /** Mirrors the `VARIANTS` keys in app.config.js. */
 export enum AppVariant {
@@ -26,12 +27,15 @@ export const APPLICATION_IDS: Record<AppVariant, readonly string[]> = {
 
 export type ReleaseTarget = {
   apiUrl: string;
+  /** The web app's origin, for links shared off the app or opened in a browser. */
+  siteUrl: string;
   env: NodeEnv;
   posthog: { apiKey: string; host: string };
 };
 
 const PRODUCTION: ReleaseTarget = {
   apiUrl: "https://worldalliance.org/api",
+  siteUrl: `https://${ALLIANCE_DOMAIN}`,
   env: NodeEnv.Production,
   posthog: {
     apiKey: "phc_4Bkir1Px9qIRnMQfMWQPcGIq6wjodf9jtme8fty3ZLt",
@@ -44,6 +48,7 @@ const RELEASE_TARGETS: Record<AppVariant, ReleaseTarget> = {
   [AppVariant.Development]: PRODUCTION,
   [AppVariant.Staging]: {
     apiUrl: "https://staging.worldalliance.org/api",
+    siteUrl: `https://staging.${ALLIANCE_DOMAIN}`,
     env: NodeEnv.Staging,
     posthog: {
       apiKey: "phc_Af7iQMRPzZS1T0MkYp20WgXyThUnWkNChHuYhuxomPS",

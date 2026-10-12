@@ -20,7 +20,7 @@ import { Linking, ScrollView, View } from "react-native";
 import Card from "../../components/system/Card";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../components/system/Text";
-import { getBaseUrl, releaseTarget } from "../../lib/config";
+import { getSitePageUrl, releaseTarget } from "../../lib/config";
 import { colors } from "../../lib/style/colors";
 
 type ResourceIcon = ComponentType<{
@@ -138,7 +138,7 @@ const normalizeResourceUrl = (href: string) => {
     return href;
   }
 
-  return `${getBaseUrl()}${href}`;
+  return getSitePageUrl(href);
 };
 
 function ResourceCard({

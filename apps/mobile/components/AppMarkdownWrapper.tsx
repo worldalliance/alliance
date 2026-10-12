@@ -11,7 +11,7 @@ import {
   ViewStyle,
 } from "react-native";
 import Markdown, { ASTNode, RenderRules } from "react-native-markdown-display";
-import { getApiUrl } from "../lib/config";
+import { getApiUrl, getSitePageUrl } from "../lib/config";
 import {
   extractPathFromInternalUrl,
   getInternalRoute,
@@ -64,10 +64,7 @@ function useHandleLinkPress() {
     }
 
     // For relative URLs that don't match internal routes, open on web
-    const webUrl = `https://worldalliance.org${
-      url.startsWith("/") ? "" : "/"
-    }${url}`;
-    Linking.openURL(webUrl).catch((err) => {
+    Linking.openURL(getSitePageUrl(url)).catch((err) => {
       console.error("Failed to open URL:", err);
     });
     return false;
