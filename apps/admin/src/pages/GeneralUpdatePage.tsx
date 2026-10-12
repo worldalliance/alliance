@@ -4,15 +4,13 @@ import {
   readDisplayOnlySchema,
 } from "@alliance/common/forms/display-only-schema";
 import {
-  actionsCreateGeneralUpdateAdmin,
-  actionsFindOneGeneralUpdateAdmin,
   actionsSuitesAdmin,
   ActionSuiteDto,
-  actionsUpdateGeneralUpdateAdmin,
   CreateGeneralUpdateDto,
   GeneralUpdateAdminDto,
   UpdateGeneralUpdateDto,
 } from "@alliance/shared/client";
+import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import {
@@ -27,10 +25,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { FormBuilder } from "../components/FormBuilder";
 import FormSection from "../components/FormSection";
-import {
-  useDisplayOnlySchemaSave,
-  type DisplayOnlySchemaSaveBody,
-} from "../lib/useDisplayOnlySchemaSave";
+import { useGeneralUpdateAdmin } from "../lib/useGeneralUpdateAdmin";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 
 const tabs = ["details", "content"] as const;
@@ -63,13 +58,45 @@ const GeneralUpdatePage: React.FC = () => {
 
   const isNew = !idParam || idParam === "new";
   const id = !isNew && idParam ? parseInt(idParam, 10) : null;
+  const updateId = id == null || isNaN(id) ? null : id;
 
-  const [update, setUpdate] = useState<GeneralUpdateAdminDto | null>(null);
-  const [loading, setLoading] = useState<boolean>(!isNew);
-  const [saving, setSaving] = useState<boolean>(false);
+  const {
+    query,
+    create,
+    update: updateMutation,
+    saveSchema,
+  } = useGeneralUpdateAdmin(updateId);
+  const update = query.data;
+  const saving = create.isPending || updateMutation.isPending;
+  const createUpdate = create.mutateAsync;
+  const saveUpdate = updateMutation.mutateAsync;
   const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState<GeneralUpdateForm>(emptyForm);
+  const [formUpdateId, setFormUpdateId] = useState<number | null>(null);
+
+  // A copy cached by an earlier visit may be stale, and saving a form filled
+  // from it would write those stale details back.
+  if (
+    update &&
+    query.isFetchedAfterMount &&
+    !query.isError &&
+    formUpdateId !== update.id
+  ) {
+    setFormUpdateId(update.id);
+    setForm({
+      name: update.name,
+      startDate: formatLocalDateTime(
+        resolveDateValue(update.startDate),
+        "minute",
+      ),
+      endDate: formatLocalDateTime(resolveDateValue(update.endDate), "minute"),
+      useManualCohort: update.useManualCohort,
+      manualCohortUserIds: update.manualCohortUserIds ?? [],
+      tagIds: update.tags?.map((t) => t.id) ?? [],
+      suiteIds: update.suites?.map((s) => s.id) ?? [],
+    });
+  }
 
   const { tags: availableTags, isLoading: tagsLoading } = useTagsAdmin();
   const [availableSuites, setAvailableSuites] = useState<ActionSuiteDto[]>([]);
@@ -112,63 +139,11 @@ const GeneralUpdatePage: React.FC = () => {
     };
   }, []);
 
-  // Load general update when editing
-  useEffect(() => {
-    if (isNew || id == null || isNaN(id)) {
-      if (!isNew && idParam) setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const response = await actionsFindOneGeneralUpdateAdmin({
-          path: { id },
-        });
-
-        if (cancelled) return;
-        const data = response.data;
-        if (!data) {
-          setError("General update not found");
-          setLoading(false);
-          return;
-        }
-        setUpdate(data);
-        setForm({
-          name: data.name,
-          startDate: formatLocalDateTime(
-            resolveDateValue(data.startDate),
-            "minute",
-          ),
-          endDate: formatLocalDateTime(
-            resolveDateValue(data.endDate),
-            "minute",
-          ),
-          useManualCohort: data.useManualCohort,
-          manualCohortUserIds: data.manualCohortUserIds ?? [],
-          tagIds: data.tags?.map((t) => t.id) ?? [],
-          suiteIds: data.suites?.map((s) => s.id) ?? [],
-        });
-      } catch (err) {
-        if (!cancelled) {
-          setError("Failed to load general update");
-          console.error(err);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [id, isNew, idParam]);
-
   const hasSuites = form.suiteIds.length > 0;
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      setSaving(true);
       setError(null);
       try {
         if (isNew) {
@@ -189,10 +164,9 @@ const GeneralUpdatePage: React.FC = () => {
             tagIds: form.tagIds,
             suiteIds: form.suiteIds,
           };
-          const response = await actionsCreateGeneralUpdateAdmin({ body });
-          if (!response.data) throw new Error("Failed to create");
-          navigate(`/general-updates/${response.data.id}`);
-        } else if (id != null && update) {
+          const created = await createUpdate(body);
+          navigate(`/general-updates/${created.id}`);
+        } else if (update) {
           const body: UpdateGeneralUpdateDto = {
             name: form.name,
             startDate:
@@ -210,21 +184,14 @@ const GeneralUpdatePage: React.FC = () => {
             tagIds: form.tagIds,
             suiteIds: form.suiteIds,
           };
-          const response = await actionsUpdateGeneralUpdateAdmin({
-            path: { id },
-            body,
-          });
-          if (response.data) setUpdate(response.data);
-          else throw new Error("Update failed");
+          await saveUpdate(body);
         }
       } catch (err) {
         setError("Failed to save general update");
         console.error(err);
-      } finally {
-        setSaving(false);
       }
     },
-    [isNew, id, update, form, hasSuites, navigate],
+    [isNew, update, form, hasSuites, navigate, createUpdate, saveUpdate],
   );
 
   const handleToggleTag = useCallback((tagId: string) => {
@@ -257,26 +224,6 @@ const GeneralUpdatePage: React.FC = () => {
       manualCohortUserIds: ids,
     }));
   }, []);
-
-  const saveSchema = useCallback(
-    (body: DisplayOnlySchemaSaveBody) => {
-      if (id == null) throw new Error("Missing general update id");
-      return actionsUpdateGeneralUpdateAdmin({ path: { id }, body });
-    },
-    [id],
-  );
-
-  const refetchUpdate = useCallback(() => {
-    if (id == null) throw new Error("Missing general update id");
-    return actionsFindOneGeneralUpdateAdmin({ path: { id } });
-  }, [id]);
-
-  const handleSaveSchema = useDisplayOnlySchemaSave({
-    ownerLabel: "General updates",
-    save: saveSchema,
-    refetch: refetchUpdate,
-    onSaved: setUpdate,
-  });
 
   const formContent = (
     <>
@@ -545,7 +492,9 @@ const GeneralUpdatePage: React.FC = () => {
     </>
   );
 
-  if (loading) {
+  const formFilled = updateId === null || formUpdateId === updateId;
+
+  if (!formFilled && !query.isError) {
     return (
       <div className="p-8">
         <title>General Update - Admin</title>
@@ -554,11 +503,15 @@ const GeneralUpdatePage: React.FC = () => {
     );
   }
 
-  if (error && !update && !isNew) {
+  if (!formFilled) {
     return (
       <div className="p-8">
         <title>General Update - Admin</title>
-        <p className="text-red-500">{error}</p>
+        <p className="text-red-500">
+          {thrownStatus(query.error) === 404
+            ? "General update not found"
+            : "Failed to load general update"}
+        </p>
         <button
           onClick={() => navigate("/general-updates")}
           className="mt-4 px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
@@ -598,7 +551,7 @@ const GeneralUpdatePage: React.FC = () => {
         initialSnapshotId={generalUpdate.schemaSnapshotId}
         title={generalUpdate.name}
         setFormId={() => {}}
-        onSave={handleSaveSchema}
+        onSave={saveSchema}
       />
     );
   };
