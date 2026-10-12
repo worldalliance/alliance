@@ -2,6 +2,7 @@ import type { DisplayOnlySchema } from "@alliance/common/forms/display-only-sche
 import {
   ApiProperty,
   ApiPropertyOptional,
+  IntersectionType,
   PartialType,
   PickType,
 } from "@nestjs/swagger";
@@ -91,13 +92,10 @@ export class GeneralUpdateAdminDto extends PickType(GeneralUpdate, [
   }
 }
 
-export class CreateGeneralUpdateDto extends PickType(GeneralUpdate, [
-  "name",
-  "startDate",
-  "endDate",
-  "useManualCohort",
-  "manualCohortUserIds",
-]) {
+export class CreateGeneralUpdateDto extends IntersectionType(
+  PickType(GeneralUpdate, ["name", "useManualCohort", "manualCohortUserIds"]),
+  PartialType(PickType(GeneralUpdate, ["startDate", "endDate"])),
+) {
   @ApiPropertyOptional({ type: String, isArray: true })
   @IsOptional()
   @IsArray()

@@ -210,8 +210,8 @@ export type GeneralUpdate = {
     schemaSnapshotId: number;
     createdAt: string;
     updatedAt: string;
-    startDate?: string;
-    endDate?: string;
+    startDate: string | null;
+    endDate: string | null;
     useManualCohort: boolean;
     /**
      * User IDs in the manual cohort
@@ -2241,8 +2241,8 @@ export type ActionDto = {
 export type GeneralUpdateDto = {
     id: number;
     name: string;
-    startDate?: string;
-    endDate?: string;
+    startDate: string | null;
+    endDate: string | null;
     priority: number;
     schema: {
         [key: string]: unknown;
@@ -2255,8 +2255,8 @@ export type GeneralUpdateAdminDto = {
     schemaSnapshotId: number;
     createdAt: string;
     updatedAt: string;
-    startDate?: string;
-    endDate?: string;
+    startDate: string | null;
+    endDate: string | null;
     useManualCohort: boolean;
     /**
      * User IDs in the manual cohort
@@ -2272,21 +2272,21 @@ export type GeneralUpdateAdminDto = {
 
 export type CreateGeneralUpdateDto = {
     name: string;
-    startDate?: string;
-    endDate?: string;
     useManualCohort: boolean;
     /**
      * User IDs in the manual cohort
      */
     manualCohortUserIds?: Array<number> | null;
+    startDate?: string | null;
+    endDate?: string | null;
     tagIds?: Array<string>;
     suiteIds?: Array<number>;
 };
 
 export type UpdateGeneralUpdateDto = {
     name?: string;
-    startDate?: string;
-    endDate?: string;
+    startDate?: string | null;
+    endDate?: string | null;
     useManualCohort?: boolean;
     /**
      * User IDs in the manual cohort
