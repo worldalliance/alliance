@@ -1,13 +1,11 @@
 import { pickForCount, withCount } from "@alliance/common/plural";
-import { actionsGetWelcomeQueueAdmin } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import { useQuery } from "@tanstack/react-query";
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { getSiteUrl } from "../lib/config";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { useWelcomeQueueAdmin } from "../lib/useWelcomeQueueAdmin";
 
 type WelcomeQueueFilter = "all" | "staff-liked";
 
@@ -34,11 +32,7 @@ const WelcomeQueuePage: React.FC = () => {
     data: queue,
     isPending: loading,
     error: loadError,
-  } = useQuery({
-    queryKey: queryKeys.welcomeQueueAdmin(),
-    queryFn: () =>
-      actionsGetWelcomeQueueAdmin({ throwOnError: true }).then((r) => r.data),
-  });
+  } = useWelcomeQueueAdmin();
   const error = loadError
     ? thrownRefusalMessage({
         error: loadError,
