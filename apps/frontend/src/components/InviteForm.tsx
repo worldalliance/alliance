@@ -1,12 +1,9 @@
-/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { withCount } from "@alliance/common/plural";
 import {
   CommunityDto,
   CreateOnetimeInviteDto,
   OnetimeInviteDto,
   userCreateOnetimeInvite,
 } from "@alliance/shared/client";
-import { getMemberCount, isLedBy } from "@alliance/shared/lib/communityUtils";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { useInvitePlacement } from "@alliance/shared/lib/useInvitePlacement";
@@ -17,15 +14,13 @@ import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Card from "@alliance/sharedweb/ui/Card";
-import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import NewButton, {
   ButtonColor,
   ButtonSize,
 } from "@alliance/sharedweb/ui/NewButton";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -36,12 +31,10 @@ import {
 } from "react";
 import { Link } from "react-router";
 import { useAuth } from "../lib/AuthContext";
-import CommunityCreateForm from "./CommunityCreateForm";
+import InviteFormGroupStep from "./InviteFormGroupStep";
 import OnetimeInviteForm from "./OnetimeInviteForm";
 
 const inviteTitleClass = "font-semibold text-xl text-zinc-900";
-const inviteSectionLabelClass = "text-lg font-semibold text-zinc-900";
-const inviteStrongClass = "text-base font-semibold text-zinc-900";
 
 enum InviteFormStep {
   Type = "type",
@@ -99,42 +92,6 @@ const InviteForm = ({
   useEffect(() => {
     setInviteeName("");
   }, [multipleUseInvite]);
-
-  const memberCommunities = useMemo(
-    () =>
-      user
-        ? communities.filter((community) => !isLedBy(community, user.id))
-        : [],
-    [communities, user],
-  );
-
-  const isLeader = leaderCommunities.length > 0;
-
-  const communityOptions = useMemo(() => {
-    return {
-      ...Object.fromEntries(
-        leaderCommunities.map((community) => [
-          `c${community.id}`,
-          community.name,
-        ]),
-      ),
-      assign: onetimeInviteCreation.assignToOpenGroup,
-      new: onetimeInviteCreation.createNewGroupOption,
-    } as Record<string, string>;
-  }, [leaderCommunities]);
-
-  const dropdownSelectedLabel = useMemo(() => {
-    if (placement.kind === "assign") {
-      return communityOptions.assign;
-    }
-    if (placement.kind === "new") {
-      return communityOptions.new;
-    }
-    return (
-      communityOptions[`c${placement.id}`] ??
-      onetimeInviteCreation.createNewGroupOption
-    );
-  }, [placement, communityOptions]);
 
   const resetWizard = useCallback(() => {
     setInviteeName("");
@@ -262,24 +219,6 @@ const InviteForm = ({
     ? creatingReusable
     : creatingInvite;
   const wizardIsBusy = inviteIsCreating || creatingCommunity;
-
-  const {
-    memberCommunityAllowsMemberInvites,
-    memberCommunityRemainingCapacity,
-  } =
-    !memberCommunities.length ||
-    !memberCommunities[0].allowMemberInvites ||
-    memberCommunities[0].maxCapacity === null
-      ? {
-          memberCommunityAllowsMemberInvites: false,
-          memberCommunityRemainingCapacity: 0,
-        }
-      : {
-          memberCommunityAllowsMemberInvites: true,
-          memberCommunityRemainingCapacity:
-            memberCommunities[0].maxCapacity -
-            getMemberCount(memberCommunities[0]),
-        };
 
   const goBack = useCallback(() => {
     const prev = PREV_STEP[step];
@@ -483,140 +422,16 @@ const InviteForm = ({
       break;
     case InviteFormStep.Group:
       stepContent = (
-        <div className="flex flex-col gap-y-6">
-          <div className="flex flex-col gap-y-4">
-            <p className={inviteSectionLabelClass}>
-              {onetimeInviteCreation.responsible.leader.title}
-            </p>
-            <p className="text-invite-form-body">
-              {onetimeInviteCreation.groupContext}
-            </p>
-            <DropdownSelect
-              options={communityOptions}
-              value={dropdownSelectedLabel}
-              onChange={([key]) => {
-                const k = String(key);
-                if (k === "assign") {
-                  setPlacement({ kind: "assign" });
-                } else if (k === "new") {
-                  setPlacement({ kind: "new" });
-                } else if (k.startsWith("c")) {
-                  setPlacement({
-                    kind: "community",
-                    id: Number(k.slice(1)),
-                  });
-                }
-              }}
-              titleOverride={dropdownSelectedLabel}
-              dropdownWidth="medium"
-            />
-          </div>
-
-          {placement.kind === "assign" && (
-            <div className="flex flex-col gap-y-4">
-              {!memberCommunityAllowsMemberInvites ? (
-                <AppMarkdownWrapper
-                  className="text-invite-form-body"
-                  markdownContent={onetimeInviteCreation.not_responsible.explanations.genericGroup.join(
-                    "\n\n",
-                  )}
-                />
-              ) : memberCommunityRemainingCapacity > 0 ? (
-                <>
-                  <AppMarkdownWrapper
-                    className="text-invite-form-body"
-                    markdownContent={onetimeInviteCreation.not_responsible.explanations.yourGroup.join(
-                      "\n\n",
-                    )}
-                  />
-                  <div className="border border-zinc-200 bg-white rounded px-3 py-2.5 flex flex-col gap-y-2 self-start max-w-full">
-                    <div className="flex flex-row items-center justify-between gap-x-4">
-                      <p className={inviteSectionLabelClass}>
-                        Your current group
-                      </p>
-                      <Link
-                        to={`/groups?communityId=${memberCommunities[0].id}`}
-                        target="_blank"
-                        aria-label={`Open ${memberCommunities[0].name} in a new tab`}
-                        className="text-zinc-400 hover:text-zinc-700 shrink-0"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </Link>
-                    </div>
-                    <div className="flex flex-row items-center gap-x-2 min-w-0">
-                      <AvatarProfile
-                        pfp={memberCommunities[0].photo ?? null}
-                        size="small"
-                      />
-                      <div className="flex flex-col min-w-0 sm:flex-row sm:items-baseline sm:gap-x-2">
-                        <p className={`${inviteStrongClass} truncate`}>
-                          {memberCommunities[0].name}
-                        </p>
-                        <p className="text-invite-form-body shrink-0">
-                          {withCount(
-                            memberCommunityRemainingCapacity,
-                            "open seat",
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <AppMarkdownWrapper
-                  className="text-invite-form-body"
-                  markdownContent={onetimeInviteCreation.not_responsible.explanations.yourGroupNoCapacity.join(
-                    "\n\n",
-                  )}
-                />
-              )}
-            </div>
-          )}
-
-          {placement.kind === "new" && (
-            <div className="flex flex-col gap-y-4">
-              <AppMarkdownWrapper
-                className="text-invite-form-body"
-                markdownContent={onetimeInviteCreation.responsible.leader.invite.explanation.join(
-                  "\n\n",
-                )}
-              />
-              <p className={inviteSectionLabelClass}>
-                {onetimeInviteCreation.responsible.leader.newGroup.title}
-              </p>
-              {!isLeader && (
-                <p className="text-invite-form-body">
-                  You are not leading a group yet—create one to be responsible
-                  for this member.
-                </p>
-              )}
-              <p className="text-invite-form-body">
-                Read our{" "}
-                <Link to="/groups-guide" className="text-green hover:underline">
-                  groups guide
-                </Link>{" "}
-                to learn how to lead a group.
-              </p>
-              <CommunityCreateForm
-                name={user?.name}
-                createDisabled={inviteIsCreating || !inviteeName.trim()}
-                onSuccess={onCreateCommunity}
-                includePhotoEditor={false}
-                hideSubmitButton
-                submitRef={communityCreateSubmitRef}
-              />
-            </div>
-          )}
-
-          {placement.kind === "community" && selectedCommunity && (
-            <AppMarkdownWrapper
-              className="text-invite-form-body"
-              markdownContent={onetimeInviteCreation.responsible.leader.invite.explanation.join(
-                "\n\n",
-              )}
-            />
-          )}
-        </div>
+        <InviteFormGroupStep
+          communities={communities}
+          leaderCommunities={leaderCommunities}
+          placement={placement}
+          setPlacement={setPlacement}
+          selectedCommunity={selectedCommunity}
+          createDisabled={inviteIsCreating || !inviteeName.trim()}
+          onCreateCommunity={onCreateCommunity}
+          communityCreateSubmitRef={communityCreateSubmitRef}
+        />
       );
       break;
     default:
