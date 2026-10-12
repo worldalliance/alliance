@@ -3,7 +3,7 @@ import { waitFor } from "@testing-library/dom";
 import { afterEach, expect, it, mock, spyOn } from "bun:test";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
-import { connectMessagingSocket } from "./messages";
+import { connectMessagingSocket } from "./messagingSocket";
 
 const cleanups: (() => void | Promise<void>)[] = [];
 

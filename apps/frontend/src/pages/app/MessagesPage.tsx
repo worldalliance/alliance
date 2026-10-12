@@ -7,7 +7,6 @@ import {
   conversationMarkRead,
   MessageDto,
 } from "@alliance/shared/client";
-import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import {
   buildGroupConversationTitle,
   findMatchingConversation,
@@ -18,7 +17,8 @@ import {
   mergeConversationUpdate,
   sortConversations,
   updateConversationsForLastMessage,
-} from "@alliance/shared/lib/messages";
+} from "@alliance/shared/lib/conversations";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
 import { cn } from "@alliance/shared/styles/util";
 import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";

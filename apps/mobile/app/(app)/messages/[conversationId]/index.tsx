@@ -8,7 +8,7 @@ import {
   messageSendMessage,
   ProfileDto,
 } from "@alliance/shared/client";
-import { getParticipantState } from "@alliance/shared/lib/messages";
+import { getParticipantState } from "@alliance/shared/lib/conversations";
 import { LegendList, LegendListRef } from "@legendapp/list";
 import { milliseconds } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
