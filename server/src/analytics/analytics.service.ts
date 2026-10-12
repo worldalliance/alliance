@@ -15,7 +15,10 @@ import {
   parseAction,
   type ParsedAction,
 } from "src/actions/entities/action.entity";
-import { ReminderGroup } from "src/actions/entities/reminder-group.entity";
+import {
+  loadedReminderGroupMemberActionEvent,
+  ReminderGroup,
+} from "src/actions/entities/reminder-group.entity";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
@@ -198,14 +201,13 @@ export class AnalyticsService {
         continue;
       }
 
-      const action = loadedActionEventAction(group.memberActionEvent);
+      const memberActionEvent = loadedReminderGroupMemberActionEvent(group);
+      const action = loadedActionEventAction(memberActionEvent);
 
       // Plot each reminder-group at its first sent notification time, falling
       // back to its configured absolute send time or the member_action date.
       const pointDate =
-        aggregate.firstSentAt ??
-        group.sendAtAbsolute ??
-        group.memberActionEvent.date;
+        aggregate.firstSentAt ?? group.sendAtAbsolute ?? memberActionEvent.date;
 
       points.push({
         date: pointDate,

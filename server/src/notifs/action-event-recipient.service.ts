@@ -15,6 +15,7 @@ import {
   loadedActionSuiteActions,
 } from "src/actions/entities/action-suite.entity";
 import {
+  loadedReminderGroupMemberActionEvent,
   ReminderCohortType,
   ReminderGroup,
 } from "src/actions/entities/reminder-group.entity";
@@ -628,6 +629,7 @@ export class ActionEventRecipientService {
   }
 
   async findReminderGroupCohort(group: ReminderGroup): Promise<User[]> {
+    const memberActionEvent = loadedReminderGroupMemberActionEvent(group);
     let users: User[];
     switch (group.cohortType) {
       case ReminderCohortType.Custom:
@@ -638,7 +640,7 @@ export class ActionEventRecipientService {
         break;
       case ReminderCohortType.AllUncompleted:
         users = await this.findFilteredUsersForEvent(
-          group.memberActionEvent,
+          memberActionEvent,
           group.deadlineEvent ?? null,
           ActionEventNotifType.PersonalReminder,
           group.actionSuite,
@@ -647,7 +649,7 @@ export class ActionEventRecipientService {
         break;
       case ReminderCohortType.GroupLeadsWithUncompleted:
         return await this.findFilteredGroupLeads(
-          group.memberActionEvent,
+          memberActionEvent,
           group.deadlineEvent ?? null,
           group.actionSuite,
           group.excludeOptionalActions,
@@ -666,7 +668,7 @@ export class ActionEventRecipientService {
     }
     return this.filterForShouldRemind(
       users,
-      group.memberActionEvent,
+      memberActionEvent,
       group.deadlineEvent ?? null,
       group.actionSuite,
       group.excludeOptionalActions,

@@ -103,11 +103,10 @@ export class ReminderGroup {
   actionSuite?: Relation<ActionSuite>;
 
   @ManyToOne(() => ActionEvent, { nullable: false, onDelete: "CASCADE" })
-  @ApiProperty({ type: () => ActionEvent })
+  @ApiPropertyOptional({ type: () => ActionEvent })
   @Type(() => ActionEvent)
-  @IsDefined()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  memberActionEvent: Relation<ActionEvent>;
+  @IsOptional()
+  memberActionEvent?: Relation<ActionEvent>;
 
   @ApiProperty({
     enum: ReminderCohortType,
@@ -252,6 +251,17 @@ export class ReminderGroup {
   excludePreviouslyNotified: boolean;
 }
 
+export function loadedReminderGroupMemberActionEvent(
+  group: Pick<ReminderGroup, "id" | "memberActionEvent">,
+): Relation<ActionEvent> {
+  if (!group.memberActionEvent) {
+    throw new Error(
+      `memberActionEvent of reminder group ${group.id} not loaded`,
+    );
+  }
+  return group.memberActionEvent;
+}
+
 export function firstOccurrenceInRange(
   tz: Temporal.TimeZoneLike,
   timeOfDay: Temporal.PlainTime,
@@ -332,7 +342,7 @@ export function getGroupSendTimeForUser(
         Temporal.Instant.fromEpochMilliseconds(end.getTime()),
       );
     case ReminderGroupTimingMode.EventLaunch:
-      return group.memberActionEvent.date;
+      return loadedReminderGroupMemberActionEvent(group).date;
     default:
       throw new Error(
         `Invalid timing mode: ${group.timingMode satisfies never}`,

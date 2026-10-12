@@ -23,6 +23,7 @@ import { FollowUpForm } from "src/actions/entities/follow-up-form.entity";
 import {
   cohortNotifiesRecipientPersonally,
   getGroupSendTimeForUser,
+  loadedReminderGroupMemberActionEvent,
   ReminderCohortType,
   ReminderGroup,
   ReminderGroupTimingMode,
@@ -147,7 +148,7 @@ export class ActionEventReminderService {
       .createQueryBuilder("notif")
       .where("notif.sent = true")
       .andWhere('notif."memberActionEventId" = :eventId', {
-        eventId: group.memberActionEvent.id,
+        eventId: loadedReminderGroupMemberActionEvent(group).id,
       })
       .select('notif."userId"', "userId")
       .addSelect('notif."notifiedActionIds"', "notifiedActionIds")
@@ -199,12 +200,16 @@ export class ActionEventReminderService {
   }
 
   async attachDeadlineEvent(group: ReminderGroup): Promise<ReminderGroup> {
-    if (group.deadlineEvent || !group.memberActionEvent) {
+    if (group.deadlineEvent) {
       return group;
     }
     const events = await this.eventRepository.find({
       where: {
-        action: { id: loadedActionEventAction(group.memberActionEvent).id },
+        action: {
+          id: loadedActionEventAction(
+            loadedReminderGroupMemberActionEvent(group),
+          ).id,
+        },
       },
     });
     const { deadlineEvent } = memberActionPhase(events);
@@ -262,7 +267,7 @@ export class ActionEventReminderService {
 
     return Promise.all(
       plans.map(async (plan) => {
-        const event = plan.group.memberActionEvent!;
+        const event = loadedReminderGroupMemberActionEvent(plan.group);
         const action = loadedActionEventAction(event);
         return {
           scheduledFor: plan.scheduledFor,
@@ -607,7 +612,7 @@ export class ActionEventReminderService {
 
     const timingAnchorEvent = await this.resolveTimingAnchorEvent(
       dto,
-      group.memberActionEvent,
+      loadedReminderGroupMemberActionEvent(group),
     );
 
     const { timingAnchorEventId: _timingAnchorEventId, ...dtoRest } = dto;
@@ -647,7 +652,7 @@ export class ActionEventReminderService {
     leader: User,
   ): Promise<User[]> {
     const baseUsers = await this.recipientService.findFilteredUsersForEvent(
-      group.memberActionEvent,
+      loadedReminderGroupMemberActionEvent(group),
       group.deadlineEvent ?? null,
       ActionEventNotifType.PersonalReminder,
       group.actionSuite,
@@ -791,7 +796,7 @@ export function groupTaskScopeActionIds(group: ReminderGroup): number[] {
       : [];
   return suiteActions.length
     ? suiteActions.map((action) => action.id)
-    : [loadedActionEventAction(group.memberActionEvent).id];
+    : [loadedActionEventAction(loadedReminderGroupMemberActionEvent(group)).id];
 }
 
 /**
@@ -847,7 +852,7 @@ export function dropPlansPreemptedInSameCycle(
   const notifiedThisCycle = new Set<string>();
   const kept: NotificationPlan[] = [];
   for (const plan of plans) {
-    const key = `${plan.user.id}:${plan.group.memberActionEvent.id}`;
+    const key = `${plan.user.id}:${loadedReminderGroupMemberActionEvent(plan.group).id}`;
     if (plan.group.excludePreviouslyNotified && notifiedThisCycle.has(key)) {
       continue;
     }

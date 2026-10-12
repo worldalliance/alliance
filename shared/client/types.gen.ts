@@ -299,7 +299,7 @@ export type ReminderGroup = {
     name: string;
     timingMode: ReminderGroupTimingMode;
     actionSuite?: ActionSuite;
-    memberActionEvent: ActionEvent;
+    memberActionEvent?: ActionEvent;
     cohortType: ReminderCohortType;
     userTag?: Tag;
     users?: Array<User>;
@@ -3146,7 +3146,6 @@ export type ReminderGroupDto = {
     name: string;
     timingMode: ReminderGroupTimingMode;
     actionSuite?: ActionSuite;
-    memberActionEvent: ActionEvent;
     cohortType: ReminderCohortType;
     userTag?: Tag;
     users?: Array<User>;
@@ -3166,6 +3165,7 @@ export type ReminderGroupDto = {
     allSent: boolean;
     excludeOptionalActions: boolean;
     excludePreviouslyNotified: boolean;
+    memberActionEvent: ActionEvent;
     /**
      * Whether the group's email uses a missed-suite keyword, so dispatch sends it as a missed-suite notice
      */

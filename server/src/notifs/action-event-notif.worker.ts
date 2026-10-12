@@ -7,6 +7,7 @@ import { loadedActionEventAction } from "src/actions/entities/action-event.entit
 import type { ActionSuite } from "src/actions/entities/action-suite.entity";
 import {
   cohortNotifiesRecipientPersonally,
+  loadedReminderGroupMemberActionEvent,
   ReminderCohortType,
 } from "src/actions/entities/reminder-group.entity";
 import { type MissedSuiteStanding } from "src/actions/missed-suite-streak";
@@ -80,7 +81,9 @@ const reminderTracking = (
   source: NOTIF_SOURCE[notif.type],
   context: reminderContext({
     group: plan.group,
-    action: loadedActionEventAction(plan.group.memberActionEvent),
+    action: loadedActionEventAction(
+      loadedReminderGroupMemberActionEvent(plan.group),
+    ),
     notifiedActionIds: notif.notifiedActionIds,
     actionSuiteId: notif.actionSuite?.id ?? null,
     missNumber: notif.missNumber,
@@ -220,7 +223,9 @@ export class ActionEventNotifWorker {
 
     return processKeywordReplacements(text, {
       user: plan.user,
-      action: loadedActionEventAction(plan.group.memberActionEvent),
+      action: loadedActionEventAction(
+        loadedReminderGroupMemberActionEvent(plan.group),
+      ),
       deadlineEvent: plan.group.deadlineEvent,
       uncompletedTasksCount: uncompletedTasks.length,
       uncompletedMembersInGroupCount,
@@ -245,7 +250,7 @@ export class ActionEventNotifWorker {
       // only enumerates the tasks they haven't been notified about.
       const coverage = await this.reminderService.findSentNotifCoverage(
         plan.user.id,
-        plan.group.memberActionEvent.id,
+        loadedReminderGroupMemberActionEvent(plan.group).id,
       );
       const scopeNotYetNotified = tasksNotYetNotified(
         groupTaskScopeActionIds(plan.group).map((id) => ({ id })),
@@ -280,7 +285,9 @@ export class ActionEventNotifWorker {
     const plannedNotif = this.actionEventNotifsRepository.create({
       user: plan.user,
       reminderGroup: plan.group,
-      memberActionEvent: personal ? plan.group.memberActionEvent : undefined,
+      memberActionEvent: personal
+        ? loadedReminderGroupMemberActionEvent(plan.group)
+        : undefined,
       notifiedActionIds: personal
         ? uncompletedTasks
             .filter((task) => scopeActionIds.has(task.id))
@@ -348,7 +355,7 @@ export class ActionEventNotifWorker {
           memberActionEvent: cohortNotifiesRecipientPersonally(
             plan.group.cohortType,
           )
-            ? plan.group.memberActionEvent
+            ? loadedReminderGroupMemberActionEvent(plan.group)
             : undefined,
           notifiedActionIds:
             notice?.standing.missedActions.map((action) => action.id) ?? [],
@@ -382,7 +389,9 @@ export class ActionEventNotifWorker {
       template: templates.pushMessage,
       renderText: render,
       recipient: plan.user,
-      action: loadedActionEventAction(plan.group.memberActionEvent),
+      action: loadedActionEventAction(
+        loadedReminderGroupMemberActionEvent(plan.group),
+      ),
       tasks: notice.standing.missedActions,
     });
     if (inAppMessage.text.trim()) {
