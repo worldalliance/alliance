@@ -238,6 +238,55 @@ describe("Search (e2e)", () => {
     ]);
   });
 
+  it("fills five recent selections past one that no longer resolves", async () => {
+    const users = await userRepo.save(
+      Array.from({ length: 6 }, (_, i) =>
+        userRepo.create({
+          name: `Recent User ${i}`,
+          email: `recent-user-${i}@example.com`,
+          password: "Password123!",
+          anonymous: false,
+        }),
+      ),
+    );
+    const save = (id: string, type: SearchItemType) =>
+      request(ctx.app.getHttpServer())
+        .post("/search/selected")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          id,
+          name: "Selection",
+          webAppLocation: "/",
+          secondaryData: [],
+          type,
+        })
+        .expect(201);
+    for (const user of users) await save(`u${user.id}`, SearchItemType.User);
+    const post = await postRepo.save(
+      postRepo.create({
+        title: "Post Deleted After Selection",
+        editableContent: { body: "Gone soon", attachments: [] },
+        author: targetUser,
+        authorId: targetUser.id,
+      }),
+    );
+    await save(`p${post.id}`, SearchItemType.Post);
+    await postRepo.delete(post.id);
+
+    const response = await request(ctx.app.getHttpServer())
+      .get("/search/all")
+      .query({ query: "" })
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .expect(200);
+
+    expect(response.body.map((item) => item.id)).toEqual(
+      users
+        .map((user) => `u${user.id}`)
+        .reverse()
+        .slice(0, 5),
+    );
+  });
+
   it("deduplicates saved selections when the same item is stored again", async () => {
     const payload = {
       id: `u${targetUser.id}`,
