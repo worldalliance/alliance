@@ -754,7 +754,7 @@ export type User = {
      * The community that the user will join when they sign the contract
      */
     pendingCommunity?: Community | null;
-    communities: Array<Community>;
+    communities?: Array<Community>;
     leaderOfIds: Array<number>;
     invitedCommunities?: Array<CommunityInvite>;
     participants?: Array<Participant>;
@@ -829,7 +829,7 @@ export type UserDto = {
     referralSource: ReferralSource;
     referredByCampaignId: number | null;
     tags: Array<Tag>;
-    communities: Array<Community>;
+    communities?: Array<Community>;
     leaderOfIds: Array<number>;
     clusterId: number | null;
     email: string;
@@ -1125,7 +1125,7 @@ export type UserAdminDetailDto = {
     referralSource: ReferralSource;
     referredByCampaignId: number | null;
     tags: Array<Tag>;
-    communities: Array<Community>;
+    communities?: Array<Community>;
     leaderOfIds: Array<number>;
     clusterId: number | null;
     email: string;

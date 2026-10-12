@@ -110,6 +110,7 @@ import { ProfileDto } from "src/user/dto/user.dto";
 import { ContractEventType } from "src/user/entities/contract-event.entity";
 import { loadedTagUsers, Tag } from "src/user/entities/tag.entity";
 import {
+  loadedUserCommunities,
   sqlUserHasActiveContractAt,
   sqlUserHasEverSigned,
   User,
@@ -2737,7 +2738,7 @@ export class ActionsService {
     if (!user) throw new NotFoundException("User not found");
 
     const friendIds = friends.map((f) => f.id);
-    const communityIds = (user.communities ?? []).map((c) => c.id);
+    const communityIds = loadedUserCommunities(user).map((c) => c.id);
     const userClusterId = user.clusterId;
 
     // Get community member IDs in batch

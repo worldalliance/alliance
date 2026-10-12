@@ -21,7 +21,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
 import { ImagesService } from "src/images/images.service";
 import { Friend } from "src/user/entities/friend.entity";
-import { User } from "src/user/entities/user.entity";
+import { loadedUserCommunities, User } from "src/user/entities/user.entity";
 import { acceptedFriendship, friendshipBetween } from "src/user/friendship";
 import { UserEvents, type FriendsAcceptedPayload } from "src/user/user.events";
 import type { Relations } from "src/utils/Repository";
@@ -903,7 +903,7 @@ export class ConversationService {
     }
 
     await Promise.all(
-      (user.communities ?? []).map((community) =>
+      loadedUserCommunities(user).map((community) =>
         this.syncCommunityConversationMembers(community.id),
       ),
     );

@@ -210,7 +210,7 @@ const SettingsPage: React.FC = () => {
           impersonating={isImpersonation}
         />
 
-        {user.communities.length > 0 && (
+        {!!user.communities?.length && (
           <Card style={CardStyle.White} className="p-6">
             <div>
               <h2 className="!font-semibold !text-2xl mb-4">Groups</h2>

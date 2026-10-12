@@ -1545,7 +1545,7 @@ describe("Users (e2e)", () => {
       });
 
       expect(
-        updatedUser?.communities.some((c) => c.id === inviteCommunity.id),
+        updatedUser?.communities?.some((c) => c.id === inviteCommunity.id),
       ).toBe(true);
 
       // Verify notifications were sent to community leaders
@@ -1609,7 +1609,7 @@ describe("Users (e2e)", () => {
         relations: { communities: true },
       });
       expect(
-        updatedUser?.communities.some(
+        updatedUser?.communities?.some(
           (community) => community.id === inviteCommunity.id,
         ),
       ).toBe(true);
@@ -1659,7 +1659,7 @@ describe("Users (e2e)", () => {
       });
       expect(updatedUser?.referredByShareUrl).toBeNull();
       expect(
-        updatedUser?.communities.some(
+        updatedUser?.communities?.some(
           (community) => community.id === inviteCommunity.id,
         ),
       ).toBe(true);
@@ -1888,7 +1888,7 @@ describe("Users (e2e)", () => {
         relations: { communities: true },
       });
       expect(
-        updatedUser?.communities.some(
+        updatedUser?.communities?.some(
           (community) => community.id === fullCommunity.id,
         ),
       ).toBe(true);
@@ -1941,7 +1941,7 @@ describe("Users (e2e)", () => {
         relations: { communities: true },
       });
       expect(
-        updatedUser?.communities.some(
+        updatedUser?.communities?.some(
           (community) => community.id === uncappedCommunity.id,
         ),
       ).toBe(true);
@@ -2120,7 +2120,7 @@ describe("Users (e2e)", () => {
       });
 
       expect(
-        updatedUser?.communities.some((c) => c.id === referrerCommunity.id),
+        updatedUser?.communities?.some((c) => c.id === referrerCommunity.id),
       ).toBe(true);
     });
 
@@ -2219,7 +2219,7 @@ describe("Users (e2e)", () => {
       });
 
       expect(
-        updatedUser?.communities.some((c) => c.id === pendingComm.id),
+        updatedUser?.communities?.some((c) => c.id === pendingComm.id),
       ).toBe(true);
       expect(updatedUser?.pendingCommunity).toBeNull();
     });
@@ -2291,7 +2291,7 @@ describe("Users (e2e)", () => {
         relations: { communities: true, pendingCommunity: true },
       });
 
-      expect(updatedUser?.communities.some((c) => c.id === fullComm.id)).toBe(
+      expect(updatedUser?.communities?.some((c) => c.id === fullComm.id)).toBe(
         false,
       );
       expect(updatedUser?.pendingCommunity).toBeNull();
@@ -2347,7 +2347,7 @@ describe("Users (e2e)", () => {
 
       // Should be removed from community
       expect(
-        updatedMember?.communities.some((c) => c.id === community.id),
+        updatedMember?.communities?.some((c) => c.id === community.id),
       ).toBe(false);
       // Should have pendingCommunity set
       expect(updatedMember?.pendingCommunity?.id).toBe(community.id);
@@ -2389,7 +2389,7 @@ describe("Users (e2e)", () => {
 
       // Should still be in their own community
       expect(
-        updatedLeader?.communities.some((c) => c.id === ownCommunity.id),
+        updatedLeader?.communities?.some((c) => c.id === ownCommunity.id),
       ).toBe(true);
       expect(
         updatedLeader?.leaderOf?.some((c) => c.id === ownCommunity.id),
@@ -3337,7 +3337,7 @@ describe("Users (e2e)", () => {
         }),
       ]);
       // Untouched: still in the group they started in, still queued.
-      expect(updatedSigned.communities.map((c) => c.id)).toEqual([origin.id]);
+      expect(updatedSigned.communities?.map((c) => c.id)).toEqual([origin.id]);
       expect(updatedSigned.undergoingGroupAssignment).toBe(true);
       expect(updatedLapsed.communities).toHaveLength(0);
       expect(updatedLapsed.undergoingGroupAssignment).toBe(true);

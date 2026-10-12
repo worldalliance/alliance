@@ -164,6 +164,7 @@ import { UserDevice } from "./entities/user-device.entity";
 import {
   canManageCommunity,
   DEFAULT_TIME_ZONE,
+  loadedUserCommunities,
   ReferralSource,
   sqlUserHasActiveContractAt,
   User,
@@ -1126,7 +1127,7 @@ export class UserService {
       });
     }
 
-    const memberCommunityIds = user.communities.map((c) => c.id);
+    const memberCommunityIds = loadedUserCommunities(user).map((c) => c.id);
     const leaderCommunityIds = user.leaderOfIds;
 
     const [rels, staff, communityUsers] = await Promise.all([
@@ -2649,7 +2650,7 @@ export class UserService {
     const { communityId, ...rest } = body;
 
     const user = await this.findOneOrFail(userId, { communities: true });
-    const community: Community | undefined = user.communities.find(
+    const community: Community | undefined = loadedUserCommunities(user).find(
       (community) => community.id === communityId,
     );
     if (!community) {
@@ -3050,7 +3051,7 @@ export class UserService {
     for (const { user, community } of assignments) {
       // Remove user from old communities (except ones they lead)
       await Promise.all(
-        user.communities
+        loadedUserCommunities(user)
           .filter((oldCommunity) => !user.leaderOfIdSet.has(oldCommunity.id))
           .map((oldCommunity) =>
             this.communityService.removeUserFromCommunityAndRefreshConversation(

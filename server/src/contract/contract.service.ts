@@ -31,7 +31,11 @@ import {
   ContractEvent,
   ContractEventType,
 } from "src/user/entities/contract-event.entity";
-import { ReferralSource, User } from "src/user/entities/user.entity";
+import {
+  ReferralSource,
+  User,
+  loadedUserCommunities,
+} from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { referralLabel } from "src/user/user.utils";
 import { IsNull, LessThanOrEqual, MoreThan, Or, Repository } from "typeorm";
@@ -368,7 +372,7 @@ export class ContractService {
     });
 
     const communitiesP = Promise.all(
-      (user.communities ?? []).map((community: Community) =>
+      loadedUserCommunities(user).map((community: Community) =>
         this.communityService.removeUserFromCommunityAndRefreshConversation({
           user,
           community,

@@ -39,7 +39,11 @@ import {
   loadedActionEventAction,
 } from "../actions/entities/action-event.entity";
 import { memberActionPhase } from "../actions/utils/action-event";
-import { DEFAULT_TIME_ZONE, User } from "../user/entities/user.entity";
+import {
+  DEFAULT_TIME_ZONE,
+  loadedUserCommunities,
+  User,
+} from "../user/entities/user.entity";
 import { ActionEventRecipientService } from "./action-event-recipient.service";
 import { NotificationPlan } from "./dto/notification-plan.dto";
 import { ActionEventNotifDto } from "./entities/action-event-notif.dto";
@@ -664,7 +668,7 @@ export class ActionEventReminderService {
     );
 
     const inCommunities = usersWithCommunities.filter((user) =>
-      user.communities.some((community) =>
+      loadedUserCommunities(user).some((community) =>
         leaderCommunityIds.has(community.id),
       ),
     );
