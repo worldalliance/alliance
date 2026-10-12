@@ -28,6 +28,7 @@ import {
   type ResolvedTarget,
 } from "./canvasSelection";
 import { SidebarSection } from "./sidebarSections";
+import { useRestoreFocusWithin } from "./useRestoreFocusWithin";
 
 export enum IssueGate {
   Save = "save",
@@ -157,6 +158,13 @@ export function IssueList({
   useEffect(() => {
     if (open && gate) panelRef.current?.focus();
   }, [open, gate]);
+
+  const restorePanelFocus = useRestoreFocusWithin(panelRef);
+  // A row that goes away while focused, as a successful Retry's does, leaves
+  // focus on the page, out of reach of the list's Escape.
+  useEffect(() => {
+    restorePanelFocus();
+  });
 
   useEffect(() => {
     if (!open) return;

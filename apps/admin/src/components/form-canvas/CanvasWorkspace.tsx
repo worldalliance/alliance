@@ -9,6 +9,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
+import { useRestoreFocusWithin } from "./useRestoreFocusWithin";
 
 /** The selection's select button, marked pressed, within `root`; a range's focus first. */
 export const selectedOnCanvas = (root: HTMLElement | null) =>
@@ -62,41 +63,16 @@ export function CanvasWorkspace({
     onRevealed();
   }, [revealPending, onRevealed]);
   const settingsRef = useRef<HTMLDivElement>(null);
-  const focusedInSettings = useRef<Element | null>(null);
-  useEffect(() => {
-    const forget = (event: FocusEvent) => {
-      if (
-        !(event.target instanceof Node) ||
-        !settingsRef.current?.contains(event.target)
-      ) {
-        focusedInSettings.current = null;
-      }
-    };
-    document.addEventListener("focusin", forget);
-    return () => document.removeEventListener("focusin", forget);
-  }, []);
+  const restoreSettingsFocus = useRestoreFocusWithin(settingsRef);
   const shownKey = useRef(settingsKey);
   useEffect(() => {
     if (shownKey.current === settingsKey) return;
     shownKey.current = settingsKey;
-    const active = document.activeElement;
-    if (
-      focusedInSettings.current?.isConnected === false &&
-      (!active || active === document.body)
-    ) {
-      settingsRef.current?.focus();
-    }
-  }, [settingsKey]);
+    restoreSettingsFocus();
+  }, [settingsKey, restoreSettingsFocus]);
 
   const trackedSettings = (
-    <div
-      ref={settingsRef}
-      tabIndex={-1}
-      onFocus={(event) => {
-        focusedInSettings.current = event.target;
-      }}
-      className="focus:outline-none"
-    >
+    <div ref={settingsRef} tabIndex={-1} className="focus:outline-none">
       {settings}
     </div>
   );

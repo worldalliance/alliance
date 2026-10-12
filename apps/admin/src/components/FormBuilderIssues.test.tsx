@@ -45,6 +45,19 @@ const twoPages = (second: PageItem[]): FormSchema => ({
 
 const readsMissing = twoPages([text("b", reads("gone"))]);
 
+const readsForm9: FormSchema = {
+  ...twoPages([]),
+  variables: [
+    {
+      name: "scores",
+      inputs: {
+        input1: { kind: "sourceField", sourceFormId: 9, fieldId: "score" },
+      },
+      formula: "input1.length",
+    },
+  ],
+};
+
 const writes: string[] = [];
 const failing = new Set<string>();
 const savedForms: Record<string, FormSchema> = { 5: twoPages([text("b")]) };
@@ -315,18 +328,7 @@ describe("FormBuilder issues", () => {
     api.alsoServing({
       "GET /tasks/slug/:id": () => new Promise<Response>(() => {}),
     });
-    renderFormBuilder({
-      ...twoPages([]),
-      variables: [
-        {
-          name: "scores",
-          inputs: {
-            input1: { kind: "sourceField", sourceFormId: 9, fieldId: "score" },
-          },
-          formula: "input1.length",
-        },
-      ],
-    });
+    renderFormBuilder(readsForm9);
     expect(screen.getByRole("button", { name: "Checking" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Preview" }));
@@ -373,20 +375,58 @@ describe("FormBuilder issues", () => {
     expect(canvas().getByText("Pick")).toBeTruthy();
   });
 
-  it("offers to retry the questions of a form a formula reads", async () => {
-    failing.add("9");
-    renderFormBuilder({
-      ...twoPages([]),
-      variables: [
-        {
-          name: "scores",
-          inputs: {
-            input1: { kind: "sourceField", sourceFormId: 9, fieldId: "score" },
-          },
-          formula: "input1.length",
-        },
-      ],
+  it("keeps focus on Retry when the questions of a form a formula reads fail again", async () => {
+    let loads = 0;
+    api.alsoServing({
+      "GET /tasks/slug/:id": () => {
+        loads += 1;
+        return new Response(null, { status: 500 });
+      },
     });
+    renderFormBuilder(readsForm9);
+    fireEvent.click(await screen.findByRole("button", { name: "1 issue" }));
+
+    const retry = issueList().getByRole("button", { name: "Retry" });
+    retry.focus();
+    await act(async () => {
+      fireEvent.click(retry);
+    });
+    await waitFor(() => expect(loads).toBe(2));
+    await act(async () => {});
+    expect(retry.isConnected).toBe(true);
+    expect(document.activeElement).toBe(retry);
+  });
+
+  it("leaves focus off the list when it reopens after closing with focus inside", () => {
+    renderFormBuilder(readsMissing);
+    fireEvent.click(screen.getByRole("button", { name: "1 issue" }));
+    within(issueList().getByRole("listitem")).getByRole("button").focus();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole("region", { name: "Issues" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "1 issue" }));
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("leaves focus in the sidebar when deleting from it with the list open", () => {
+    renderFormBuilder(readsMissing);
+    fireEvent.click(screen.getByRole("button", { name: "1 issue" }));
+    selectElement("Label a");
+    openSection("Advanced");
+    const remove = screen.getByRole("button", { name: "Delete question" });
+    remove.focus();
+    fireEvent.click(remove);
+    expect(heading()).toBe("Page settings");
+    expect(
+      screen
+        .getByRole("complementary", { name: "Settings" })
+        .contains(document.activeElement),
+    ).toBe(true);
+  });
+
+  it("offers to retry the questions of a form a formula reads, keeping focus in the list", async () => {
+    failing.add("9");
+    renderFormBuilder(readsForm9);
     fireEvent.click(await screen.findByRole("button", { name: "1 issue" }));
     expect(
       issueList().getByText(
@@ -395,11 +435,16 @@ describe("FormBuilder issues", () => {
     ).toBeTruthy();
 
     failing.clear();
+    const retry = issueList().getByRole("button", { name: "Retry" });
+    retry.focus();
     await act(async () => {
-      fireEvent.click(issueList().getByRole("button", { name: "Retry" }));
+      fireEvent.click(retry);
     });
     await waitFor(() =>
       expect(issueList().getByText("No issues")).toBeTruthy(),
+    );
+    expect(document.activeElement).toBe(
+      screen.getByRole("region", { name: "Issues" }),
     );
   });
 
