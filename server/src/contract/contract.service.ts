@@ -6,6 +6,7 @@ import {
   hasRoomForReturningMember,
   isAtCapacity,
   isCommunityLedBy,
+  memberJoinedCommunityNotif,
 } from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
 import { EventType } from "src/eventlog/event-log.entity";
@@ -43,7 +44,6 @@ import { ContractEvents, type ContractSignedPayload } from "./contract.events";
 import {
   REFERRAL_COMMUNITY_SELECTORS,
   buildNotifForLeaderWithReferrer,
-  memberJoinedCommunityNotif,
   newMemberReferredNotif,
 } from "./contract.utils";
 import { CreateContractDto, UpdateContractDto } from "./dto/contract.dto";
@@ -229,12 +229,12 @@ export class ContractService {
             community: user.pendingCommunity,
             contractBeingSigned: true,
             notifForLeader: ({ leader }) =>
-              memberJoinedCommunityNotif(
+              memberJoinedCommunityNotif({
                 leader,
-                user,
-                user.pendingCommunity!,
-                notifMessage`${member(user)} signed their contract and was re-added to your group (${group(user.pendingCommunity!)})`,
-              ),
+                joiner: user,
+                community: user.pendingCommunity!,
+                message: notifMessage`${member(user)} signed their contract and was re-added to your group (${group(user.pendingCommunity!)})`,
+              }),
           }),
         );
       }
@@ -269,12 +269,12 @@ export class ContractService {
                 (v) => (referrerNotified = v),
               )
             : ({ leader }) =>
-                memberJoinedCommunityNotif(
+                memberJoinedCommunityNotif({
                   leader,
-                  user,
+                  joiner: user,
                   community,
-                  notifMessage`${member(user)} joined the Alliance and your group (${group(community)})`,
-                ),
+                  message: notifMessage`${member(user)} joined the Alliance and your group (${group(community)})`,
+                }),
         });
       }
       if (user.referredBy && !referrerNotified) {

@@ -1,3 +1,10 @@
+import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import {
+  communityDestination,
+  type NotifMessage,
+} from "src/notifs/notification-content";
+import type { CreateNotifParams } from "src/notifs/notifs.service";
+import { groupUrl } from "src/search/approutes";
 import type { User } from "src/user/entities/user.entity";
 import { Community, loadedCommunityUsers } from "./entities/community.entity";
 
@@ -88,4 +95,27 @@ export function membersAndLeaders(community: Community): User[] {
       ),
     ).values(),
   );
+}
+
+export function memberJoinedCommunityNotif({
+  leader,
+  joiner,
+  community,
+  message,
+  associatedUsers = [joiner],
+}: {
+  leader: User;
+  joiner: User;
+  community: Community;
+  message: NotifMessage;
+  associatedUsers?: User[];
+}): CreateNotifParams {
+  return {
+    user: leader,
+    category: NotificationCategory.MemberJoinedCommunity,
+    message,
+    destination: communityDestination(community.id),
+    webAppLocation: groupUrl({ tab: "members", communityId: community.id }),
+    associatedUsers,
+  };
 }

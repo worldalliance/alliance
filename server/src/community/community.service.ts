@@ -41,6 +41,7 @@ import { DeepPartial, In, IsNull, type Repository } from "typeorm";
 import {
   acceptsPublicJoin,
   acceptsStaffAssignment,
+  memberJoinedCommunityNotif,
   membersAndLeaders,
 } from "./community.utils";
 import { CreateCommunityDto, UpdateCommunityDto } from "./dto/community.dto";
@@ -429,17 +430,13 @@ export class CommunityService {
         user,
         community,
         contractRefusalAudience: ContractRefusalAudience.Self,
-        notifForLeader: ({ leader }) => ({
-          user: leader,
-          category: NotificationCategory.MemberJoinedCommunity,
-          message: notifMessage`${member(user)} joined your public group (${group(community)})`,
-          destination: communityDestination(community.id),
-          webAppLocation: groupUrl({
-            tab: "members",
-            communityId: community.id,
+        notifForLeader: ({ leader }) =>
+          memberJoinedCommunityNotif({
+            leader,
+            joiner: user,
+            community,
+            message: notifMessage`${member(user)} joined your public group (${group(community)})`,
           }),
-          associatedUsers: [user],
-        }),
       }),
       ...loadedUserCommunities(user).map((community) =>
         this.removeUserFromCommunityAndRefreshConversation({
@@ -817,17 +814,14 @@ export class CommunityService {
 
     const destinationLeaderNotifs: CreateNotifParams[] = (
       destinationCommunity.leaders ?? []
-    ).map((leader) => ({
-      user: leader,
-      category: NotificationCategory.MemberJoinedCommunity,
-      message: notifMessage`Staff added ${member(user)} to your group (${group(destinationCommunity)})`,
-      destination: communityDestination(destinationCommunity.id),
-      webAppLocation: groupUrl({
-        tab: "members",
-        communityId: destinationCommunity.id,
+    ).map((leader) =>
+      memberJoinedCommunityNotif({
+        leader,
+        joiner: user,
+        community: destinationCommunity,
+        message: notifMessage`Staff added ${member(user)} to your group (${group(destinationCommunity)})`,
       }),
-      associatedUsers: [user],
-    }));
+    );
     const sourceLeaderNotifs: CreateNotifParams[] = sourceCommunity
       ? (sourceCommunity.leaders ?? []).map((leader) => ({
           user: leader,
@@ -1376,17 +1370,12 @@ export class CommunityService {
           if (leader.id === invite.invitingUser?.id) {
             return null;
           }
-          return {
-            user: leader,
-            category: NotificationCategory.MemberJoinedCommunity,
+          return memberJoinedCommunityNotif({
+            leader,
+            joiner: invitedUser,
+            community,
             message: notifMessage`${member(invitedUser)} joined your group (${group(community)})`,
-            destination: communityDestination(community.id),
-            webAppLocation: groupUrl({
-              tab: "members",
-              communityId: community.id,
-            }),
-            associatedUsers: [invitedUser],
-          };
+          });
         },
       }),
       ...loadedUserCommunities(invitedUser)
