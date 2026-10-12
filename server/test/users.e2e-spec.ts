@@ -136,6 +136,20 @@ describe("Users (e2e)", () => {
     expect(res.status).toBe(201);
   });
 
+  it("lists a community's members as messageable to its leader, and the leader to its members", async () => {
+    const messageableIds = async (token: string) =>
+      (
+        await request(ctx.app.getHttpServer())
+          .get("/user/listMessageableUsers")
+          .set("Authorization", `Bearer ${token}`)
+          .expect(200)
+      ).body.map((user: { id: number }) => user.id);
+
+    expect(await messageableIds(userAToken)).toContain(communityMemberId);
+    expect(await messageableIds(communityMemberToken)).toContain(userAId);
+    expect(await messageableIds(userBToken)).not.toContain(communityMemberId);
+  });
+
   describe("phone number on /user/update", () => {
     const phoneOf = async (id: number) =>
       (await userRepo.findOneByOrFail({ id })).phoneNumber;
@@ -2316,7 +2330,7 @@ describe("Users (e2e)", () => {
         updatedLeader?.communities.some((c) => c.id === ownCommunity.id),
       ).toBe(true);
       expect(
-        updatedLeader?.leaderOf.some((c) => c.id === ownCommunity.id),
+        updatedLeader?.leaderOf?.some((c) => c.id === ownCommunity.id),
       ).toBe(true);
     });
 
