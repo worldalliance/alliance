@@ -224,6 +224,10 @@ export function useCommentTree(
               fallback: "Failed to submit reply",
             }),
           });
+          // The comment may have been deleted, which a reload shows.
+          if (replyingTo !== null && response.response.status === 404) {
+            fetchComments();
+          }
           return;
         }
 

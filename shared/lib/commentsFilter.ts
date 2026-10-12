@@ -243,8 +243,17 @@ export function useCommentFilterData({
   return { friendIdSet, groupMemberIdSet };
 }
 
-export function isCommentShown(comment: CommentDto): boolean {
-  return !comment.deleted || (comment.children?.length ?? 0) > 0;
+// A deleted comment the member is replying to stays, so the refusal and their
+// draft stay on screen under it.
+export function isCommentShown(
+  comment: CommentDto,
+  replyingTo: number | null,
+): boolean {
+  return (
+    !comment.deleted ||
+    (comment.children?.length ?? 0) > 0 ||
+    comment.id === replyingTo
+  );
 }
 
 export function useCommentFiltering({
@@ -256,6 +265,7 @@ export function useCommentFiltering({
   expertIds,
   tags,
   tagFilter,
+  replyingTo,
 }: {
   comments: CommentDto[] | null;
   user: UserDto | undefined;
@@ -265,6 +275,7 @@ export function useCommentFiltering({
   expertIds: number[];
   tags: readonly PostTagDto[];
   tagFilter: TagFilter;
+  replyingTo: number | null;
 }) {
   const hasSameGroup = showClusterTags && user?.clusterId != null;
   const [commentFilter, setCommentFilter] = useState(CommentFilter.All);
@@ -285,8 +296,9 @@ export function useCommentFiltering({
   });
 
   const topLevelComments = useMemo(
-    () => (comments ?? []).filter(isCommentShown),
-    [comments],
+    () =>
+      (comments ?? []).filter((comment) => isCommentShown(comment, replyingTo)),
+    [comments, replyingTo],
   );
 
   const hasMineComments = useMemo(

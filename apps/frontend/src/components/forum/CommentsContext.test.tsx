@@ -6,6 +6,8 @@ import type { PropsWithChildren } from "react";
 import { MemoryRouter } from "react-router";
 
 let createError: { message: string } | null = null;
+let createStatus = 400;
+let commentFetches = 0;
 
 const storedComment: CommentDto = {
   id: 3,
@@ -48,15 +50,17 @@ serveApi(
   routes({
     "POST /forum/comments": () =>
       createError
-        ? Response.json(createError, { status: 400 })
+        ? Response.json(createError, { status: createStatus })
         : Response.json({ id: 7 }),
-    "GET /forum/posts/:id/comments": () =>
-      postCommentsFail
+    "GET /forum/posts/:id/comments": () => {
+      commentFetches++;
+      return postCommentsFail
         ? Response.json(
             { statusCode: 403, message: "the server said no" },
             { status: 403 },
           )
-        : Response.json([...storedThread, ...extraRoots]),
+        : Response.json([...storedThread, ...extraRoots]);
+    },
     "DELETE /forum/comments/:id": () => {
       if (deleteFails) throw new Error("the request never landed");
       return new Response(null, { status: 204 });
@@ -80,6 +84,7 @@ const wrapper = ({ children }: PropsWithChildren) => (
 
 afterEach(() => {
   createError = null;
+  createStatus = 400;
 });
 
 it("leaves the reply target alone when a reply posts", async () => {
@@ -135,6 +140,31 @@ it("drops a rejected reply's message when another form opens", async () => {
   });
 
   expect(result.current.submitErrorFor(5)).toBeNull();
+});
+
+it("keeps a reply refused for a deleted comment open and reloads the thread", async () => {
+  const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
+  await waitFor(() => expect(result.current.comments).not.toBeNull());
+
+  act(() => {
+    result.current.setReplyingTo(5);
+  });
+
+  createError = { message: "The reply you're answering is no longer here" };
+  createStatus = 404;
+  const fetchesBefore = commentFetches;
+  await act(async () => {
+    await result.current.handleSubmitReply({
+      body: "a reply",
+      attachments: [],
+    });
+  });
+
+  expect(result.current.replyingTo).toBe(5);
+  expect(result.current.submitErrorFor(5)).toBe(
+    "The reply you're answering is no longer here",
+  );
+  await waitFor(() => expect(commentFetches).toBeGreaterThan(fetchesBefore));
 });
 
 it("keeps a rejection that landed while its own form was closed", async () => {

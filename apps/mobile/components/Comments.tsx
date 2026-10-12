@@ -1,4 +1,4 @@
-import { errorMessage } from "@alliance/common/errorMessage";
+import { errorMessage, refusalMessage } from "@alliance/common/errorMessage";
 import { R, type Result } from "@alliance/common/result";
 import {
   CommentDto,
@@ -185,16 +185,29 @@ export default function Comments({
           tagId: parentId ? undefined : selectedTagId,
         };
 
-        const response = await forumCreateComment({ body: commentDto });
+        const response = await forumCreateComment({
+          body: commentDto,
+          throwOnError: false,
+        });
 
         if (response.error) {
+          if (response.response.status >= 500) {
+            console.error("The server failed the reply:", response.error);
+          }
           setSubmitError({
             parentId,
-            message: errorMessage({
+            message: refusalMessage({
+              status: response.response.status,
               error: response.error,
               fallback: "Failed to submit reply",
+              sessionExpired:
+                "Your session has expired. Sign in again to reply.",
             }),
           });
+          // The comment may have been deleted, which a reload shows.
+          if (parentId !== null && response.response.status === 404) {
+            await fetchComments();
+          }
           return;
         }
 
@@ -335,6 +348,7 @@ export default function Comments({
     expertIds,
     tags,
     tagFilter,
+    replyingTo,
   });
   const sortedComments = comments ? filteredComments : null;
 

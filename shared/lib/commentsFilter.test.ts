@@ -125,7 +125,7 @@ describe("useCommentFiltering", () => {
     }) as CommentDto;
   const user = { id: 7, clusterId: 3 } as UserDto;
 
-  const render = (comments: CommentDto[]) =>
+  const render = (comments: CommentDto[], replyingTo: number | null = null) =>
     renderHook(
       ({ comments, showClusterTags }) =>
         useCommentFiltering({
@@ -137,6 +137,7 @@ describe("useCommentFiltering", () => {
           expertIds: [],
           tags: [],
           tagFilter: undefined,
+          replyingTo,
         }),
       {
         initialProps: { comments, showClusterTags: true },
@@ -159,6 +160,15 @@ describe("useCommentFiltering", () => {
     act(() => result.current.setCommentFilter(CommentFilter.Mine));
 
     expect(result.current.filteredComments.map((c) => c.id)).toEqual([1]);
+  });
+
+  it("keeps a deleted comment the viewer is replying to", () => {
+    const { result } = render(
+      [authored(1, 8, { deleted: true }), authored(2, 8, { deleted: true })],
+      1,
+    );
+
+    expect(result.current.topLevelComments.map((c) => c.id)).toEqual([1]);
   });
 
   it("falls back to all comments once the chosen filter is no longer offered", () => {

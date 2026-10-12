@@ -167,6 +167,7 @@ const Comments = ({
     expertIds,
     tags,
     tagFilter: tree.tagFilter,
+    replyingTo: tree.replyingTo,
   });
 
   const thread = useRef<HTMLDivElement>(null);

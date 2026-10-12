@@ -1153,7 +1153,7 @@ describe("Forum (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
 
-      await request(ctx.app.getHttpServer())
+      const response = await request(ctx.app.getHttpServer())
         .post("/forum/comments")
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
@@ -1164,6 +1164,9 @@ describe("Forum (e2e)", () => {
         } satisfies CreateCommentDto)
         .expect(404);
 
+      expect(response.body.message).toBe(
+        "The reply you're answering is no longer here",
+      );
       expect(
         await ctx.dataSource.getRepository(Comment).countBy({ parentId }),
       ).toBe(0);
