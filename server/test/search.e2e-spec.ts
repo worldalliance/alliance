@@ -161,6 +161,83 @@ describe("Search (e2e)", () => {
     expect(response.body[0].id).toBe(`a${targetAction.id}`);
   });
 
+  it.each([
+    {
+      label: "a deleted post",
+      type: SearchItemType.Post,
+      createGone: async () => {
+        const post = await postRepo.save(
+          postRepo.create({
+            title: "Post Deleted After Selection",
+            editableContent: { body: "Gone soon", attachments: [] },
+            author: targetUser,
+            authorId: targetUser.id,
+          }),
+        );
+        await postRepo.delete(post.id);
+        return `p${post.id}`;
+      },
+    },
+    {
+      label: "a deleted action",
+      type: SearchItemType.Action,
+      createGone: async () => {
+        const action = await actionRepo.save(
+          actionRepo.create({
+            name: "Action Deleted After Selection",
+            category: [],
+            body: "Gone soon",
+            shortDescription: "Gone soon",
+          }),
+        );
+        await actionRepo.delete(action.id);
+        return `a${action.id}`;
+      },
+    },
+    {
+      label: "an action the member can't open",
+      type: SearchItemType.Action,
+      createGone: async () => {
+        const action = await actionRepo.save(
+          actionRepo.create({
+            name: "Draft Action",
+            category: [],
+            body: "Not live",
+            shortDescription: "Not live",
+          }),
+        );
+        return `a${action.id}`;
+      },
+    },
+  ])("skips $label in recent selections", async ({ type, createGone }) => {
+    const save = (id: string, itemType: SearchItemType) =>
+      request(ctx.app.getHttpServer())
+        .post("/search/selected")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          id,
+          name: "Selection",
+          webAppLocation: "/",
+          secondaryData: [],
+          type: itemType,
+        })
+        .expect(201);
+
+    await save(`a${targetAction.id}`, SearchItemType.Action);
+    const goneId = await createGone();
+    await save(goneId, type);
+
+    const response = await request(ctx.app.getHttpServer())
+      .get("/search/all")
+      .query({ query: "" })
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .expect(200);
+
+    expect(response.body.map((item) => item.id)).toEqual([
+      `a${targetAction.id}`,
+    ]);
+  });
+
   it("deduplicates saved selections when the same item is stored again", async () => {
     const payload = {
       id: `u${targetUser.id}`,

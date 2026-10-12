@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { formatDistanceToNow } from "date-fns";
 import { ActionsService } from "src/actions/actions.service";
@@ -18,6 +18,12 @@ import {
   SearchItem,
   SearchItemType,
 } from "./searchitem.dto";
+
+const nullIfNotFound = <T>(lookup: Promise<T>): Promise<T | null> =>
+  lookup.catch((error: unknown) => {
+    if (error instanceof NotFoundException) return null;
+    throw error;
+  });
 
 @Injectable()
 export class SearchService {
@@ -62,17 +68,18 @@ export class SearchService {
             }
             return this.userToSearchItem(user, false, false);
           } else if (search.objectType === SearchItemType.Action) {
-            const action = await this.actionsService.findOneOrFail({
-              id: search.objectId,
-              userId,
-            });
-            return this.actionToSearchItem(action);
-          } else if (search.objectType === SearchItemType.Post) {
-            const post = await this.forumService.findOnePostFull(
-              search.objectId,
-              userId,
+            const action = await nullIfNotFound(
+              this.actionsService.findOneOrFail({
+                id: search.objectId,
+                userId,
+              }),
             );
-            return this.postToSearchItem(post);
+            return action && this.actionToSearchItem(action);
+          } else if (search.objectType === SearchItemType.Post) {
+            const post = await nullIfNotFound(
+              this.forumService.findOnePostFull(search.objectId, userId),
+            );
+            return post && this.postToSearchItem(post);
           }
           return null;
         }),
