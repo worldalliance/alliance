@@ -93,24 +93,30 @@ import { AdminFollowUpFormDto, FollowUpFormDto } from "./follow-up-form.dto";
 import { GeneralUpdateDto } from "./general-update.dto";
 import { ProjectDto } from "./project.dto";
 
-export class CreateReminderGroupDto extends PickType(ReminderGroup, [
-  "name",
-  "emailMessage",
-  "cohortType",
-  "timingMode",
-  "emailSubject",
-  "textMessage",
-  "pushMessage",
-  "sendAtAbsolute",
-  "sendAtSecondsFromDeadline",
-  "send_range_start",
-  "send_range_end",
-  "relative_range_start_seconds_from_deadline",
-  "relative_range_end_seconds_from_deadline",
-  "useSuiteTaskCount",
-  "excludeOptionalActions",
-  "excludePreviouslyNotified",
-]) {
+export class CreateReminderGroupDto extends IntersectionType(
+  PickType(ReminderGroup, [
+    "name",
+    "emailMessage",
+    "cohortType",
+    "timingMode",
+    "emailSubject",
+    "textMessage",
+    "pushMessage",
+    "useSuiteTaskCount",
+    "excludeOptionalActions",
+    "excludePreviouslyNotified",
+  ]),
+  PartialType(
+    PickType(ReminderGroup, [
+      "sendAtAbsolute",
+      "sendAtSecondsFromDeadline",
+      "send_range_start",
+      "send_range_end",
+      "relative_range_start_seconds_from_deadline",
+      "relative_range_end_seconds_from_deadline",
+    ]),
+  ),
+) {
   @ApiPropertyOptional({ type: Number, isArray: true })
   @IsOptional()
   userIds?: number[];

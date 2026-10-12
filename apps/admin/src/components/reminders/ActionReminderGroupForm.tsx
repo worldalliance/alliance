@@ -52,7 +52,7 @@ type ReminderGroupContentFields = Pick<
 >;
 
 type ReminderGroupScheduleFields = Pick<
-  ReminderGroupDto,
+  CreateReminderGroupDto,
   | "sendAtAbsolute"
   | "sendAtSecondsFromDeadline"
   | "send_range_start"

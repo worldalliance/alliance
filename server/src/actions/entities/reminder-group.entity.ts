@@ -159,47 +159,41 @@ export class ReminderGroup {
   @Type(() => ActionEventNotif)
   notifications?: Relation<ActionEventNotif>[];
 
-  @ApiPropertyOptional({ type: Date })
+  @ApiProperty({ type: Date, nullable: true })
   @Column({ type: "timestamptz", nullable: true })
   @Type(() => Date)
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  send_range_start?: Date;
+  send_range_start: Date | null;
 
-  @ApiPropertyOptional({ type: Date })
+  @ApiProperty({ type: Date, nullable: true })
   @Column({ type: "timestamptz", nullable: true })
   @Type(() => Date)
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  send_range_end?: Date;
+  send_range_end: Date | null;
 
-  @ApiPropertyOptional({ type: Date })
+  @ApiProperty({ type: Date, nullable: true })
   @Column({ type: "timestamptz", nullable: true })
   @Type(() => Date)
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  sendAtAbsolute?: Date;
+  sendAtAbsolute: Date | null;
 
-  @ApiPropertyOptional({ type: Number })
+  @ApiProperty({ type: Number, nullable: true })
   @Column({ type: "integer", nullable: true })
   @IsOptional()
   @Type(() => Number)
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  sendAtSecondsFromDeadline?: number;
+  sendAtSecondsFromDeadline: number | null;
 
-  @ApiPropertyOptional({ type: Number })
+  @ApiProperty({ type: Number, nullable: true })
   @Column({ type: "integer", nullable: true })
   @IsOptional()
   @Type(() => Number)
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  relative_range_start_seconds_from_deadline?: number;
+  relative_range_start_seconds_from_deadline: number | null;
 
-  @ApiPropertyOptional({ type: Number })
+  @ApiProperty({ type: Number, nullable: true })
   @Column({ type: "integer", nullable: true })
   @IsOptional()
   @Type(() => Number)
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  relative_range_end_seconds_from_deadline?: number;
+  relative_range_end_seconds_from_deadline: number | null;
 
   @ManyToOne(() => ActionEvent, { nullable: true, onDelete: "SET NULL" })
   @ApiPropertyOptional({ type: () => ActionEvent })
