@@ -1,4 +1,10 @@
-import { canManageCommunity, hasPassword, User } from "./user.entity";
+import { BadRequestException } from "@nestjs/common";
+import {
+  assertCanManageCommunity,
+  canManageCommunity,
+  hasPassword,
+  User,
+} from "./user.entity";
 
 describe("hashPassword", () => {
   it("leaves a null password null", async () => {
@@ -79,5 +85,19 @@ describe("canManageCommunity", () => {
     },
   ])("is $expected for $who", ({ user, id, expected }) => {
     expect(canManageCommunity(user, id)).toBe(expected);
+  });
+});
+
+describe("assertCanManageCommunity", () => {
+  const leaderOf7 = { admin: false, leaderOfIdSet: new Set([7]) };
+
+  it("passes a leader of the community", () => {
+    expect(() => assertCanManageCommunity(leaderOf7, 7)).not.toThrow();
+  });
+
+  it("refuses anyone else with a 400 naming the community", () => {
+    expect(() => assertCanManageCommunity(leaderOf7, 8)).toThrow(
+      new BadRequestException("User is not a leader of community 8"),
+    );
   });
 });

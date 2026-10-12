@@ -162,6 +162,7 @@ import {
 } from "./entities/user-away-range.entity";
 import { UserDevice } from "./entities/user-device.entity";
 import {
+  assertCanManageCommunity,
   canManageCommunity,
   DEFAULT_TIME_ZONE,
   loadedUserCommunities,
@@ -2029,10 +2030,8 @@ export class UserService {
       throw new BadRequestException("User not found");
     }
     const isAdmin = user.admin;
-    if (communityId && !canManageCommunity(user, communityId)) {
-      throw new BadRequestException(
-        `User is not a leader of community ${communityId}`,
-      );
+    if (communityId) {
+      assertCanManageCommunity(user, communityId);
     }
 
     // Normal users cannot create invites from other users
@@ -2596,14 +2595,8 @@ export class UserService {
     if (invite.status !== OnetimeInviteStatus.LINK_UNUSED) {
       throw new BadRequestException("This invite can no longer be edited");
     }
-    if (
-      communityId !== undefined &&
-      communityId !== null &&
-      !canManageCommunity(user, communityId)
-    ) {
-      throw new BadRequestException(
-        `User is not a leader of community ${communityId}`,
-      );
+    if (communityId !== undefined && communityId !== null) {
+      assertCanManageCommunity(user, communityId);
     }
 
     const trimmedInvitee = invitee?.trim();
