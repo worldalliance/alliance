@@ -39,6 +39,9 @@ let updateStatus = 200;
 let deleteStatus = 200;
 let removeStatus = 200;
 let addLeaderDrops = false;
+let memberInfoStatus = 200;
+let memberInfoRequests = 0;
+let contactInfoStatus = 200;
 
 serveApi(
   routes({
@@ -53,10 +56,22 @@ serveApi(
       if (addLeaderDrops) throw new TypeError("Failed to fetch");
       return Response.json({ ...north, leaders: [lee, sam] });
     },
-    "GET /actions/communityMemberInfo/:communityId/admin": () =>
-      Response.json({ actions: [], users: [] }),
+    "GET /actions/communityMemberInfo/:communityId/admin": () => {
+      memberInfoRequests += 1;
+      return memberInfoStatus === 200
+        ? Response.json({ actions: [], users: [] })
+        : Response.json(
+            { message: "Members only" },
+            { status: memberInfoStatus },
+          );
+    },
     "GET /community/memberContactInfo/:communityId/admin": () =>
-      Response.json([]),
+      contactInfoStatus === 200
+        ? Response.json([])
+        : Response.json(
+            { message: "Contact info is private" },
+            { status: contactInfoStatus },
+          ),
     "POST /community/:communityId/removeMember/admin": () =>
       removeStatus === 200
         ? Response.json({ ...north, users: [] })
@@ -91,6 +106,9 @@ afterEach(() => {
   onlineManager.setOnline(true);
   removeStatus = 200;
   addLeaderDrops = false;
+  memberInfoStatus = 200;
+  memberInfoRequests = 0;
+  contactInfoStatus = 200;
 });
 
 const renderPage = (id = "4", cached?: CommunityDto[]) => {
@@ -406,4 +424,28 @@ it("brings newer details into an untouched form when the refetch lands", async (
   renderPage("4", [north]);
 
   expect(await screen.findByDisplayValue("Fresh description")).toBeTruthy();
+});
+
+it("says why loading the member details was refused", async () => {
+  memberInfoStatus = 403;
+  renderPage();
+
+  expect(await screen.findByText("Members only")).toBeTruthy();
+});
+
+it("says why loading the members' contact info was refused", async () => {
+  contactInfoStatus = 403;
+  renderPage();
+
+  expect(await screen.findByText("Contact info is private")).toBeTruthy();
+});
+
+it("reloads the member details after a membership change", async () => {
+  renderPage();
+  await screen.findByText("Sam");
+  await waitFor(() => expect(memberInfoRequests).toBe(1));
+
+  fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+
+  await waitFor(() => expect(memberInfoRequests).toBe(2));
 });
