@@ -13,7 +13,10 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import type { FormWithSchema } from "../components/FormResponsesView";
+import {
+  REFERRALS_LOAD_ERROR,
+  type FormWithSchema,
+} from "../components/FormResponsesView";
 import { adminRefusalMessage } from "./adminRefusal";
 import { sortResponsesByCreatedAtAsc } from "./sortResponses";
 
@@ -90,10 +93,7 @@ export function useFormResponsesAdmin(formId: number | undefined) {
       ? adminRefusalMessage(failure, "Failed to load form responses")
       : null,
     referralsError: shareLinks.isLoadingError
-      ? adminRefusalMessage(
-          shareLinks.error,
-          "Failed to load share links, so invited respondents show as anonymous",
-        )
+      ? adminRefusalMessage(shareLinks.error, REFERRALS_LOAD_ERROR)
       : null,
     refresh,
   };
