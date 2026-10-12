@@ -94,11 +94,10 @@ export class ActionActivity {
 
   @ManyToMany(() => User, { onDelete: "CASCADE" })
   @JoinTable()
-  @Allow()
-  @ApiProperty({ type: () => User, isArray: true })
+  @IsOptional()
+  @ApiPropertyOptional({ type: () => User, isArray: true })
   @Type(() => User)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  likes: Relation<User>[];
+  likes?: Relation<User>[];
 
   @Column({ default: 0 })
   @ApiProperty()
@@ -138,4 +137,13 @@ export class ActionActivity {
   })
   @Allow()
   source: ActivitySource;
+}
+
+export function loadedActionActivityLikes(
+  activity: ActionActivity,
+): Relation<User>[] {
+  if (!activity.likes) {
+    throw new Error(`likes of action activity ${activity.id} not loaded`);
+  }
+  return activity.likes;
 }
