@@ -22,9 +22,11 @@ import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
+import { ActionFormAssignment } from "src/actions/entities/action-form-assignment.entity";
 import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { FollowUpForm } from "src/actions/entities/follow-up-form.entity";
+import { Guest } from "src/auth/entities/guest.entity";
 import { Community } from "src/community/entities/community.entity";
 import {
   Comment,
@@ -137,6 +139,8 @@ describe("Tasks (e2e)", () => {
     jest.restoreAllMocks();
     await formResponseDraftRepo.query("DELETE FROM form_response_draft");
     await formResponseRepo.query("DELETE FROM form_response");
+    await formResponseRepo.query("DELETE FROM guest");
+    await variantRepo.query("DELETE FROM action_form_assignment");
     // Before the forms it points at; the variant -> form FK is RESTRICT.
     await variantRepo.query("DELETE FROM action_form_variant");
     await formRepo.query("DELETE FROM form");
@@ -1731,6 +1735,105 @@ describe("Tasks (e2e)", () => {
       expect(fetched.body.draft).toBeUndefined();
 
       await saveDraft({ "full-name": "Too Late" }).expect(400);
+    });
+
+    const assignVariant = async () => {
+      const variantForm = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Variant", schema: sampleSchema })
+        .expect(201);
+      const variant = await variantRepo.save(
+        variantRepo.create({
+          actionId: draftActionId,
+          formId: variantForm.body.id,
+          name: "B",
+          splitValue: 1,
+        }),
+      );
+      await ctx.dataSource.getRepository(ActionFormAssignment).insert({
+        actionId: draftActionId,
+        userId: ctx.testUserId,
+        variantId: variant.id,
+      });
+      return {
+        formId: variantForm.body.id as number,
+        formSnapshotId: variantForm.body.formSnapshotId as number,
+      };
+    };
+
+    const submit = (form: { formId: number; formSnapshotId: number }) =>
+      request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${form.formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { "full-name": "Submitted" },
+          formSnapshotId: form.formSnapshotId,
+          actionId: draftActionId,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+
+    it("turns away a member who submitted another of the action's forms", async () => {
+      await submit({ formId: draftFormId, formSnapshotId: draftSnapshotId });
+      const variantForm = await assignVariant();
+
+      const refused = await request(ctx.app.getHttpServer())
+        .put(`/tasks/formDraft/${variantForm.formId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          actionId: draftActionId,
+          formSnapshotId: variantForm.formSnapshotId,
+          answers: { "full-name": "Second try" },
+        })
+        .expect(400);
+
+      expect(refused.body.message).toBe("Form already submitted");
+    });
+
+    it("offers no linked guest draft once the member submitted another of the action's forms", async () => {
+      const guest = await ctx.dataSource
+        .getRepository(Guest)
+        .save({ linkedUser: { id: ctx.testUserId } });
+      await formResponseRepo.save({
+        formId: draftFormId,
+        formSnapshotId: draftSnapshotId,
+        answers: { "full-name": "Guest typed" },
+        guest,
+      });
+      const getLinkedGuestDraft = () =>
+        request(ctx.app.getHttpServer())
+          .get(`/tasks/draft/${draftFormId}`)
+          .query({ actionId: draftActionId })
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .expect(200);
+
+      const offered = await getLinkedGuestDraft();
+      expect(offered.body.draft.answers).toEqual({
+        "full-name": "Guest typed",
+      });
+
+      await submit(await assignVariant());
+
+      const withdrawn = await getLinkedGuestDraft();
+      expect(withdrawn.body.draft).toBeUndefined();
+    });
+
+    it("turns away a linked guest draft asked for under another action", async () => {
+      const other = await createAction("Other Action");
+
+      await request(ctx.app.getHttpServer())
+        .get(`/tasks/draft/${draftFormId}`)
+        .query({ actionId: other.id })
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(403);
+    });
+
+    it("requires the action of a linked guest draft", async () => {
+      await request(ctx.app.getHttpServer())
+        .get(`/tasks/draft/${draftFormId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(400);
     });
 
     it("turns away a form that isn't the action's", async () => {

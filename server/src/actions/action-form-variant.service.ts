@@ -1,3 +1,4 @@
+import { actionFormIds } from "@alliance/common/cohort-expression";
 import {
   BadRequestException,
   Injectable,
@@ -59,6 +60,54 @@ export class ActionFormVariantService {
       where: { actionId },
       order: { id: "ASC" },
     });
+  }
+
+  /** The action owning each form of these actions: its task form or a variant's. */
+  async findActionIdByFormId(
+    actionIds: number[],
+  ): Promise<Map<number, number>> {
+    if (actionIds.length === 0) return new Map();
+    const [actions, variants] = await Promise.all([
+      this.actionRepo.find({
+        where: { id: In(actionIds) },
+        select: { id: true, taskFormId: true },
+      }),
+      this.variantRepo.find({ where: { actionId: In(actionIds) } }),
+    ]);
+    const actionIdByFormId = new Map<number, number>();
+    for (const action of actions) {
+      const formIds = actionFormIds({
+        taskFormId: action.taskFormId,
+        variantFormIds: variants
+          .filter((v) => v.actionId === action.id)
+          .map((v) => v.formId),
+      });
+      for (const formId of formIds) actionIdByFormId.set(formId, action.id);
+    }
+    return actionIdByFormId;
+  }
+
+  /** Each action's form the member submitted: its task form or a variant's. */
+  async findSubmittedFormIds(params: {
+    actionIds: number[];
+    userId: number;
+  }): Promise<Map<number, number>> {
+    const actionIdByFormId = await this.findActionIdByFormId(params.actionIds);
+    if (actionIdByFormId.size === 0) return new Map();
+
+    const responses = await this.variantRepo.manager.find(FormResponse, {
+      where: {
+        formId: In([...actionIdByFormId.keys()]),
+        user: { id: params.userId },
+      },
+      select: { formId: true },
+    });
+    const submitted = new Map<number, number>();
+    for (const { formId } of responses) {
+      const actionId = actionIdByFormId.get(formId);
+      if (actionId !== undefined) submitted.set(actionId, formId);
+    }
+    return submitted;
   }
 
   async createVariant(
@@ -204,7 +253,14 @@ export class ActionFormVariantService {
       return v?.formId ?? null;
     }
 
-    const chosenVariantId = this.pickVariantForNewUser(variants);
+    const submitted = await this.findSubmittedFormIds({
+      actionIds: [actionId],
+      userId,
+    });
+    const chosenVariantId = this.variantForNewAssignment({
+      variants,
+      submittedFormId: submitted.get(actionId),
+    });
     try {
       await this.assignmentRepo.insert({
         actionId,
@@ -263,6 +319,13 @@ export class ActionFormVariantService {
       assignmentByAction.set(a.actionId, a);
     }
 
+    const submitted = await this.findSubmittedFormIds({
+      actionIds: actionIds.filter(
+        (id) => variantsByAction.has(id) && !assignmentByAction.has(id),
+      ),
+      userId,
+    });
+
     const result = new Map<number, number>();
     const inserts: {
       actionId: number;
@@ -282,7 +345,10 @@ export class ActionFormVariantService {
         continue;
       }
 
-      const chosenVariantId = this.pickVariantForNewUser(variants);
+      const chosenVariantId = this.variantForNewAssignment({
+        variants,
+        submittedFormId: submitted.get(actionId),
+      });
       inserts.push({ actionId, userId, variantId: chosenVariantId });
       if (chosenVariantId !== null) {
         const v = variants.find((x) => x.id === chosenVariantId);
@@ -404,6 +470,17 @@ export class ActionFormVariantService {
     );
     if (assignedFormId === null) return action.taskFormId === formId;
     return assignedFormId === formId;
+  }
+
+  private variantForNewAssignment(params: {
+    variants: ActionFormVariant[];
+    submittedFormId: number | undefined;
+  }): number | null {
+    const { variants, submittedFormId } = params;
+    if (submittedFormId === undefined) {
+      return this.pickVariantForNewUser(variants);
+    }
+    return variants.find((v) => v.formId === submittedFormId)?.id ?? null;
   }
 
   private pickVariantForNewUser(variants: ActionFormVariant[]): number | null {

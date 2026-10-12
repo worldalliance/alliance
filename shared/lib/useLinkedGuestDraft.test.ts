@@ -9,8 +9,9 @@ let respond: () => Response;
 
 serveApi(
   routes({
-    "GET /tasks/draft/:id": ({ params }) => {
-      requested.push(params.id);
+    "GET /tasks/draft/:id": ({ request, params }) => {
+      const actionId = new URL(request.url).searchParams.get("actionId");
+      requested.push(`${params.id}?actionId=${actionId}`);
       return respond();
     },
   }),
@@ -26,13 +27,13 @@ it("loads the guest draft linked to the member", async () => {
   const { wrapper } = queryWrapper();
 
   const hook = renderHook(
-    () => useLinkedGuestDraft({ taskFormId: 5, enabled: true }),
+    () => useLinkedGuestDraft({ taskFormId: 5, actionId: 9, enabled: true }),
     { wrapper },
   );
 
   await waitFor(() => expect(hook.result.current.isSuccess).toBe(true));
   expect(hook.result.current.data?.answers).toEqual({ note: "hi" });
-  expect(requested).toEqual(["5"]);
+  expect(requested).toEqual(["5?actionId=9"]);
 });
 
 it("reads a form without a linked draft as null", async () => {
@@ -40,7 +41,7 @@ it("reads a form without a linked draft as null", async () => {
   const { wrapper } = queryWrapper();
 
   const hook = renderHook(
-    () => useLinkedGuestDraft({ taskFormId: 5, enabled: true }),
+    () => useLinkedGuestDraft({ taskFormId: 5, actionId: 9, enabled: true }),
     { wrapper },
   );
 
@@ -52,7 +53,7 @@ it("requests nothing while disabled", async () => {
   const { wrapper } = queryWrapper();
 
   const hook = renderHook(
-    () => useLinkedGuestDraft({ taskFormId: 5, enabled: false }),
+    () => useLinkedGuestDraft({ taskFormId: 5, actionId: 9, enabled: false }),
     { wrapper },
   );
 
@@ -66,7 +67,7 @@ it("fails rather than reading a failed load as no draft", async () => {
   const { wrapper } = queryWrapper();
 
   const hook = renderHook(
-    () => useLinkedGuestDraft({ taskFormId: 5, enabled: true }),
+    () => useLinkedGuestDraft({ taskFormId: 5, actionId: 9, enabled: true }),
     { wrapper },
   );
 

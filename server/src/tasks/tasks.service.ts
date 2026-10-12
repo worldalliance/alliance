@@ -923,22 +923,10 @@ export class TasksService {
     if (action) {
       assertNotInStaffPreview(action);
     }
-    const variants = await this.actionFormVariantService.listForAction(
-      submitFormDto.actionId,
-    );
-    const actionFormIds = new Set<number>([formId]);
-    if (action?.taskFormId != null) actionFormIds.add(action.taskFormId);
-    for (const v of variants) actionFormIds.add(v.formId);
-
-    const existingFormResponse = await this.formResponseRepository.findOne({
-      where: {
-        formId: In([...actionFormIds]),
-        user: { id: userId },
-      },
+    await this.assertActionNotSubmitted({
+      actionId: submitFormDto.actionId,
+      userId,
     });
-    if (existingFormResponse) {
-      throw new BadRequestException("Form already submitted");
-    }
 
     // One instant for both completion checks, so a deadline passing
     // mid-submission cannot reject the completion after the answers applied.
@@ -1279,6 +1267,19 @@ export class TasksService {
       isOutOfTime: withdrawal.outOfTime,
       isMoral: withdrawal.isMoral,
     });
+  }
+
+  private async assertActionNotSubmitted(params: {
+    actionId: number;
+    userId: number;
+  }): Promise<void> {
+    const submitted = await this.actionFormVariantService.findSubmittedFormIds({
+      actionIds: [params.actionId],
+      userId: params.userId,
+    });
+    if (submitted.has(params.actionId)) {
+      throw new BadRequestException("Form already submitted");
+    }
   }
 
   private async createAndSaveFormResponse({
@@ -1747,12 +1748,7 @@ export class TasksService {
       );
     }
 
-    const submitted = await this.formResponseRepository.findOne({
-      where: { formId, user: { id: userId } },
-    });
-    if (submitted) {
-      throw new BadRequestException("Form already submitted");
-    }
+    await this.assertActionNotSubmitted({ actionId: dto.actionId, userId });
 
     const snapshot = await this.resolveSubmissionSnapshot(form, dto);
     const answers = readFormAnswers(dto.answers);
@@ -1833,16 +1829,27 @@ export class TasksService {
     return { answered, output };
   }
 
-  async getLinkedGuestDraftFormResponse(
-    userId: number,
-    formId: number,
-  ): Promise<ParsedFormResponse | null> {
-    // If the user has already submitted this form as an authenticated user,
+  async getLinkedGuestDraftFormResponse(params: {
+    userId: number;
+    formId: number;
+    actionId: number;
+  }): Promise<ParsedFormResponse | null> {
+    const { userId, formId, actionId } = params;
+    const owners = await this.actionFormVariantService.findActionIdByFormId([
+      actionId,
+    ]);
+    if (owners.get(formId) !== actionId) {
+      throw new ForbiddenException(
+        "This form is not one of the action's forms",
+      );
+    }
+    // If the user has already submitted this action as an authenticated user,
     // any linked-guest draft is stale and shouldn't be surfaced as a prefill.
-    const userResponse = await this.formResponseRepository.findOne({
-      where: { formId, user: { id: userId } },
+    const submitted = await this.actionFormVariantService.findSubmittedFormIds({
+      actionIds: [actionId],
+      userId,
     });
-    if (userResponse) {
+    if (submitted.has(actionId)) {
       return null;
     }
     const draft = await this.formResponseRepository.findOne({
