@@ -1,5 +1,5 @@
 import { Features } from "@alliance/shared/lib/features";
-import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
+import { useIncomingCommunityInvites } from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { cn } from "@alliance/shared/styles/util";
 import BottomSpacer from "@alliance/sharedweb/ui/BottomSpacer";
 import {

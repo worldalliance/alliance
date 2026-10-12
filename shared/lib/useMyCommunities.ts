@@ -2,8 +2,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { CommunityDto, communityGetMyCommunities } from "../client";
 import { failedToLoad } from "./failedToLoad";
+import { queryKeys } from "./queryKeys";
 
-const QUERY_KEY = ["communityGetMyCommunities"] as const;
+const QUERY_KEY = queryKeys.myCommunities();
 
 function findCommunityById(
   communities: CommunityDto[],

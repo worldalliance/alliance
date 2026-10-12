@@ -14,7 +14,7 @@ import {
 } from "@alliance/shared/lib/communityUtils";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
 import { useGroupAssignment } from "@alliance/shared/lib/useGroupAssignment";
-import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
+import { useIncomingCommunityInvites } from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { usePublicCommunities } from "@alliance/shared/lib/usePublicCommunities";
 import { cn } from "@alliance/shared/styles/util";
@@ -83,15 +83,24 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
   const {
     pendingCommunityInvites,
     incomingCommunityInvitesById,
+    didFail: didInvitesFail,
+    isFetching: isFetchingInvites,
+    refetch: refetchInvites,
     acceptCommunityInvite,
     declineCommunityInvite,
+    isAnswering: isAnsweringInvite,
   } = useIncomingCommunityInvites();
 
   const handleDeclineInvite = useCallback(
-    (inviteId: number) => {
-      void declineCommunityInvite(inviteId);
+    async (inviteId: number) => {
+      try {
+        await declineCommunityInvite(inviteId);
+      } catch (err) {
+        console.error("Failed to decline invite", err);
+        showError("Unable to decline that invite right now.");
+      }
     },
-    [declineCommunityInvite],
+    [declineCommunityInvite, showError],
   );
 
   const { leaderCommunities, nonLeaderCommunities } = useMemo(() => {
@@ -141,13 +150,19 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
           })
         : true;
 
-      if (ok) {
-        void acceptCommunityInvite(inviteId).then(() => {
-          onSelectCommunity(
-            incomingCommunityInvitesById.get(inviteId)?.community.id,
-          );
-        });
+      if (!ok) {
+        return;
       }
+      try {
+        await acceptCommunityInvite(inviteId);
+      } catch (err) {
+        console.error("Failed to accept invite", err);
+        showError("Unable to accept that invite right now.");
+        return;
+      }
+      onSelectCommunity(
+        incomingCommunityInvitesById.get(inviteId)?.community.id,
+      );
     },
     [
       onSelectCommunity,
@@ -155,6 +170,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
       acceptCommunityInvite,
       confirm,
       getRemovalMessage,
+      showError,
     ],
   );
 
@@ -537,6 +553,13 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
       </div>
 
       {/* Pending group invites */}
+      {didInvitesFail && (
+        <LoadFailed
+          message="Couldn't load your group invites."
+          onRetry={() => void refetchInvites()}
+          retrying={isFetchingInvites}
+        />
+      )}
       {!!pendingCommunityInvites.length && (
         <div className="flex flex-col gap-y-2">
           <p className="font-semibold text-xl md:text-2xl">
@@ -545,6 +568,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
           <CommunityInviteList
             invites={pendingCommunityInvites}
             acceptDisabled={didGroupsFail}
+            answering={isAnsweringInvite}
             onAccept={handleAcceptInvite}
             onDecline={handleDeclineInvite}
           />

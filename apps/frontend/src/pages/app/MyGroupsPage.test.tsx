@@ -1,7 +1,6 @@
 import type { CommunityDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { IncomingCommunityInvitesProvider } from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   cleanup,
@@ -22,6 +21,17 @@ const failed = async () =>
 let myGroups = failed;
 let publicGroups: CommunityDto[] = [];
 let invitedTo: CommunityDto[] = [];
+let invites = async () =>
+  Response.json(
+    invitedTo.map((community, index) => ({
+      id: index + 1,
+      status: "invitee_pending",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      community,
+    })),
+  );
+const defaultInvites = invites;
 
 let groupAssignment = async () => Response.json({});
 
@@ -31,16 +41,7 @@ const api = serveApi(
     "POST /user/groupAssignment/leave": () => groupAssignment(),
     "GET /community/list/my": () => myGroups(),
     "GET /community/list/public": () => Response.json(publicGroups),
-    "GET /community/communityInvites": () =>
-      Response.json(
-        invitedTo.map((community, index) => ({
-          id: index + 1,
-          status: "invitee_pending",
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updatedAt: "2026-01-01T00:00:00.000Z",
-          community,
-        })),
-      ),
+    "GET /community/communityInvites": () => invites(),
   }),
 );
 
@@ -48,6 +49,7 @@ beforeEach(() => {
   myGroups = failed;
   publicGroups = [];
   invitedTo = [];
+  invites = defaultInvites;
   groupAssignment = async () => Response.json({});
 });
 
@@ -66,7 +68,13 @@ const group = (id: number, name: string): CommunityDto => ({
   leaders: [],
 });
 
-const renderPage = ({ undergoingGroupAssignment = false } = {}) => {
+const renderPage = ({
+  undergoingGroupAssignment = false,
+  onSelectCommunity = () => {},
+}: {
+  undergoingGroupAssignment?: boolean;
+  onSelectCommunity?: (communityId: number | null | undefined) => void;
+} = {}) => {
   const { wrapper: QueryWrapper } = queryWrapper();
   render(
     <QueryWrapper>
@@ -76,11 +84,9 @@ const renderPage = ({ undergoingGroupAssignment = false } = {}) => {
             user: { ...testAuthUser, undergoingGroupAssignment },
           })}
         >
-          <IncomingCommunityInvitesProvider>
-            <MemoryRouter>
-              <MyGroupsPage onSelectCommunity={() => {}} />
-            </MemoryRouter>
-          </IncomingCommunityInvitesProvider>
+          <MemoryRouter>
+            <MyGroupsPage onSelectCommunity={onSelectCommunity} />
+          </MemoryRouter>
         </AuthContext.Provider>
       </ToastProvider>
     </QueryWrapper>,
@@ -224,3 +230,100 @@ it.each([requesting, cancelling])(
     await waitFor(() => expect(isDisabled(button)).toBe(false));
   },
 );
+
+it("offers a retry when your group invites fail to load", async () => {
+  myGroups = async () => Response.json([]);
+  invites = failed;
+  renderPage();
+  await screen.findByText("Couldn't load your group invites.");
+
+  invitedTo = [group(2, "Invited group")];
+  invites = defaultInvites;
+  fireEvent.click(screen.getByText("Try again"));
+
+  await screen.findByText("Invited group");
+  expect(screen.queryByText("Couldn't load your group invites.")).toBeNull();
+});
+
+it("opens the group once its invite is accepted", async () => {
+  myGroups = async () => Response.json([]);
+  invitedTo = [group(2, "Invited group")];
+  api.alsoServing({
+    "POST /community/communityInvites/:inviteId/accept": () =>
+      Response.json({}),
+  });
+  const onSelectCommunity = jest.fn();
+  renderPage({ onSelectCommunity });
+  fireEvent.click(await screen.findByText("Accept"));
+
+  await waitFor(() => expect(onSelectCommunity).toHaveBeenCalledWith(2));
+  expect(screen.queryByText("Invited group")).toBeNull();
+});
+
+it("drops a declined invite from the list", async () => {
+  myGroups = async () => Response.json([]);
+  invitedTo = [group(2, "Invited group")];
+  api.alsoServing({
+    "POST /community/communityInvites/:inviteId/reject": () =>
+      Response.json({}),
+  });
+  renderPage();
+  fireEvent.click(await screen.findByText("Decline"));
+
+  await waitFor(() => expect(screen.queryByText("Invited group")).toBeNull());
+});
+
+it.each([
+  {
+    button: "Accept",
+    path: "accept",
+    message: "Unable to accept that invite right now.",
+  },
+  {
+    button: "Decline",
+    path: "reject",
+    message: "Unable to decline that invite right now.",
+  },
+])(
+  "says when $button fails and keeps the invite",
+  async ({ button, path, message }) => {
+    myGroups = async () => Response.json([]);
+    invitedTo = [group(2, "Invited group")];
+    api.alsoServing({
+      [`POST /community/communityInvites/:inviteId/${path}`]: failed,
+    });
+    const onSelectCommunity = jest.fn();
+    renderPage({ onSelectCommunity });
+    fireEvent.click(await screen.findByText(button));
+
+    await screen.findByText(message);
+    expect(screen.getByText("Invited group")).toBeTruthy();
+    expect(onSelectCommunity).not.toHaveBeenCalled();
+  },
+);
+
+it.each([
+  { button: "Accept", path: "accept" },
+  { button: "Decline", path: "reject" },
+])("holds the invite while $button is in flight", async ({ button, path }) => {
+  myGroups = async () => Response.json([]);
+  invitedTo = [group(2, "Invited group")];
+  const { promise, resolve } = Promise.withResolvers<Response>();
+  let answers = 0;
+  api.alsoServing({
+    [`POST /community/communityInvites/:inviteId/${path}`]: () => {
+      answers++;
+      return promise;
+    },
+  });
+  renderPage();
+  fireEvent.click(await screen.findByText(button));
+  await waitFor(() => expect(isDisabled("Accept")).toBe(true));
+  expect(isDisabled("Decline")).toBe(true);
+  fireEvent.click(screen.getByText(button));
+
+  resolve(Response.json({}));
+  await waitFor(() => expect(screen.queryByText("Invited group")).toBeNull());
+  expect(answers).toBe(1);
+  expect(screen.queryByText(/Unable to/)).toBeNull();
+});
