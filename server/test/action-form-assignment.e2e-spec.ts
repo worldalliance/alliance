@@ -10,6 +10,7 @@ import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { TasksModule } from "src/tasks/tasks.module";
 import request from "supertest";
 import type { Repository } from "typeorm";
+import { KeepSubmittersOnTaskForm1791762748605 } from "../migrations/1791762748605-KeepSubmittersOnTaskForm";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
 const schema: FormSchema = {
@@ -155,5 +156,51 @@ describe("Form variant assignment (e2e)", () => {
 
     expect(await listedTaskFormId(actionId)).toBe(variantFormId);
     expect(await assignedVariantId(actionId)).toBe(variantId);
+  });
+
+  it("moves members already drawn into a variant after submitting the task form back to it", async () => {
+    const submittedAction = await createActionAddingVariant({
+      submitted: true,
+    });
+    const unsubmittedAction = await createActionAddingVariant({
+      submitted: false,
+    });
+    await assignmentRepo.insert([
+      {
+        actionId: submittedAction.actionId,
+        userId: ctx.testUserId,
+        variantId: submittedAction.variantId,
+      },
+      {
+        actionId: submittedAction.actionId,
+        userId: ctx.adminUserId,
+        variantId: submittedAction.variantId,
+      },
+      {
+        actionId: unsubmittedAction.actionId,
+        userId: ctx.testUserId,
+        variantId: unsubmittedAction.variantId,
+      },
+    ]);
+
+    const runner = ctx.dataSource.createQueryRunner();
+    try {
+      await new KeepSubmittersOnTaskForm1791762748605().up(runner);
+    } finally {
+      await runner.release();
+    }
+
+    expect(await assignedVariantId(submittedAction.actionId)).toBeNull();
+    expect(
+      (
+        await assignmentRepo.findOneByOrFail({
+          actionId: submittedAction.actionId,
+          userId: ctx.adminUserId,
+        })
+      ).variantId,
+    ).toBe(submittedAction.variantId);
+    expect(await assignedVariantId(unsubmittedAction.actionId)).toBe(
+      unsubmittedAction.variantId,
+    );
   });
 });
