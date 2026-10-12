@@ -665,6 +665,39 @@ describe("Forum (e2e)", () => {
       await getAsTestUser().expect(200);
     });
 
+    it("lets the creator and co-authors edit and delete a post, and no one else", async () => {
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: "Co-authored Post",
+          editableContent: { body: "Written together", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+      const postId = createResponse.body.id;
+      await ctx.dataSource.getRepository(Post).save({
+        id: postId,
+        authors: [{ id: ctx.testUserId }],
+      });
+      const { token: visitorToken } = await createExtraUserAndToken();
+      const patchAs = (token: string) =>
+        request(ctx.app.getHttpServer())
+          .patch(`/forum/posts/${postId}`)
+          .set("Authorization", `Bearer ${token}`)
+          .send({ title: "Retitled" });
+      const deleteAs = (token: string) =>
+        request(ctx.app.getHttpServer())
+          .delete(`/forum/posts/${postId}`)
+          .set("Authorization", `Bearer ${token}`);
+
+      await patchAs(visitorToken).expect(404);
+      await deleteAs(visitorToken).expect(404);
+      await patchAs(ctx.accessToken).expect(200);
+      await patchAs(ctx.adminAccessToken).expect(200);
+      await deleteAs(ctx.accessToken).expect(200);
+    });
+
     it("should update a post", async () => {
       // Create a post to update
       const createResponse = await request(ctx.app.getHttpServer())

@@ -1,9 +1,10 @@
+import { isPostAuthor, postBylineAuthors } from "@alliance/common/postAuthors";
 import { PostDto } from "@alliance/shared/client";
 import { useForumPost } from "@alliance/shared/lib/useForumPost";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { router, useLocalSearchParams } from "expo-router";
 import { Pin } from "lucide-react-native";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, TouchableOpacity, View } from "react-native";
 import { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import Comments from "../../../../components/Comments";
@@ -48,7 +49,7 @@ export default function PostDetailScreen() {
   } = useForumPost(postId, { userId: user?.id });
 
   const confirmDeletePost = useCallback(() => {
-    if (!post || post.author.id !== user?.id) return;
+    if (!post || !isPostAuthor(post, user?.id)) return;
     Alert.alert("Delete Post", "Are you sure you want to delete this post?", [
       { text: "Cancel", style: "cancel" },
       {
@@ -125,13 +126,17 @@ export default function PostDetailScreen() {
           </View>
 
           <View className="flex-row flex-wrap items-center gap-x-2 mt-2">
-            {renderAvatar(post.author)}
-            <UserDisplayName
-              name={post.author.displayName}
-              staff={post.author.staff}
-              ambassador={post.author.ambassador}
-              grouplead={post.author.isCommunityLeader}
-            />
+            {postBylineAuthors(post).map((author) => (
+              <Fragment key={author.id}>
+                {renderAvatar(author)}
+                <UserDisplayName
+                  name={author.displayName}
+                  staff={author.staff}
+                  ambassador={author.ambassador}
+                  grouplead={author.isCommunityLeader}
+                />
+              </Fragment>
+            ))}
             <Text className="text-sm text-zinc-500">
               {formatTime(new Date(post.createdAt), {
                 addSuffix: true,
@@ -161,7 +166,7 @@ export default function PostDetailScreen() {
             onLike={user ? handleLike : undefined}
             align="right"
           />
-          {post.author.id === user?.id && (
+          {isPostAuthor(post, user?.id) && (
             <View className="flex-row items-center mt-3">
               <TouchableOpacity
                 onPress={confirmDeletePost}

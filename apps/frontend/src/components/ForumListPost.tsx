@@ -1,3 +1,4 @@
+import { postBylineAuthors } from "@alliance/common/postAuthors";
 import { CommentDto, PostDto } from "@alliance/shared/client";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
@@ -91,7 +92,7 @@ const ForumListPost = ({
       </div>
       <div className="flex flex-row justify-between md:items-end text-sm text-zinc-500 gap-y-1 flex-wrap gap-x-4">
         <div className="flex flex-row items-center">
-          {(post.authors?.length ? post.authors : [post.author]).map((a) => (
+          {postBylineAuthors(post).map((a) => (
             <span key={a.id} className="mr-2">
               <span
                 onClick={(e) => {
