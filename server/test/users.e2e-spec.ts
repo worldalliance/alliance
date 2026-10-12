@@ -153,6 +153,65 @@ describe("Users (e2e)", () => {
     expect(await messageableIds(userBToken)).not.toContain(communityMemberId);
   });
 
+  it("returns the caller's groups from /auth/me", async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .get("/auth/me")
+      .set("Authorization", `Bearer ${communityMemberToken}`)
+      .expect(200);
+
+    expect(res.body.user.communities.map((c: { id: number }) => c.id)).toEqual([
+      communityLedByUserA.id,
+    ]);
+  });
+
+  it("lists every member's groups on the admin graph", async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .get("/user/list-graph")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+
+    const member = res.body.find(
+      (user: { id: number }) => user.id === communityMemberId,
+    );
+    expect(member.communities.map((c: { id: number }) => c.id)).toEqual([
+      communityLedByUserA.id,
+    ]);
+  });
+
+  it("lists a group assignment member's groups with their leaders", async () => {
+    const queued = await userRepo.save(
+      userRepo.create({
+        name: "Queued Member",
+        email: "queued.member@example.com",
+        password: "Password123!",
+        communities: [communityLedByUserA],
+        undergoingGroupAssignment: true,
+      }),
+    );
+    await giveActiveContract(ctx, queued.id);
+
+    try {
+      const res = await request(ctx.app.getHttpServer())
+        .post("/user/groupAssignment/members")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(201);
+
+      const member = res.body.find(
+        (user: { id: number }) => user.id === queued.id,
+      );
+      expect(
+        member.communities.map(
+          (c: { id: number; leaders: { id: number }[] }) => ({
+            id: c.id,
+            leaderIds: c.leaders.map((leader) => leader.id),
+          }),
+        ),
+      ).toEqual([{ id: communityLedByUserA.id, leaderIds: [userAId] }]);
+    } finally {
+      await userRepo.delete(queued.id);
+    }
+  });
+
   describe("phone number on /user/update", () => {
     const phoneOf = async (id: number) =>
       (await userRepo.findOneByOrFail({ id })).phoneNumber;

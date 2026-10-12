@@ -104,6 +104,14 @@ describe("Community (e2e)", () => {
     await ctx.app.close();
   });
 
+  const communityIdsOf = async (userId: number) =>
+    (
+      await userRepo.findOneOrFail({
+        where: { id: userId },
+        relations: { communities: true },
+      })
+    ).communities?.map((community) => community.id);
+
   it("POST /community/create creates community when authenticated", async () => {
     const res = await request(ctx.app.getHttpServer())
       .post("/community/create")
@@ -513,6 +521,30 @@ describe("Community (e2e)", () => {
       .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(400);
+  });
+
+  it("POST /community/:communityId/join moves the joiner out of their previous group", async () => {
+    const publicGroup = (name: string, users: User[]) =>
+      communityRepo.save(
+        communityRepo.create({
+          name,
+          public: true,
+          allowMemberInvites: true,
+          allowStaffAssignments: true,
+          maxCapacity: 10,
+          leaders: [testUser],
+          users,
+        }),
+      );
+    await publicGroup("E2E HTTP Join Previous", [testUser, secondUser]);
+    const joined = await publicGroup("E2E HTTP Join Next", [testUser]);
+
+    await request(ctx.app.getHttpServer())
+      .post(`/community/${joined.id}/join`)
+      .set("Authorization", `Bearer ${secondUserToken}`)
+      .expect(201);
+
+    expect(await communityIdsOf(secondUser.id)).toEqual([joined.id]);
   });
 
   it("PATCH /community/:communityId updates community when authenticated as leader", async () => {
@@ -2191,7 +2223,14 @@ describe("Community (e2e)", () => {
     expect(res.status).toBe(400);
   });
 
-  it("POST /community/communityInvites/:inviteId/accept removes user from non-leader communities", async () => {
+  it("POST /community/communityInvites/:inviteId/accept removes user from non-leader communities and keeps the ones they lead", async () => {
+    const ledCommunity = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP AcceptInvite LedGroup",
+        leaders: [secondUser],
+        users: [secondUser],
+      }),
+    );
     const oldCommunity = await communityRepo.save(
       communityRepo.create({
         name: "E2E HTTP AcceptInvite OldGroup",
@@ -2236,6 +2275,7 @@ describe("Community (e2e)", () => {
     expect(
       loadedCommunityUsers(refreshedOld).map((u: User) => u.id),
     ).not.toContain(secondUser.id);
+    expect(await communityIdsOf(secondUser.id)).toContain(ledCommunity.id);
   });
 
   it("POST /community/communityInvites/:inviteId/reject rejects invite when authenticated as invited user", async () => {
