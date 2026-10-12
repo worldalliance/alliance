@@ -6,16 +6,28 @@ import {
 } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
+  forumCreatePost,
   forumFindOnePost,
   forumLikePost,
+  forumRemovePost,
   forumUnlikePost,
+  forumUpdatePost,
+  type CreatePostDto,
   type PostDto,
+  type UpdatePostDto,
 } from "../client";
 import { queryKeys } from "./queryKeys";
 
+/** One forum post and its writes. An undefined `postId` fetches nothing, for
+ * the create form; `update` and `remove` throw then. `refetchOnMount:
+ * "always"` makes `isFetchedAfterMount` turn true whatever the client's
+ * staleTime. */
 export function useForumPost(
   postId: string | undefined,
-  userId: number | undefined,
+  {
+    userId,
+    refetchOnMount,
+  }: { userId?: number; refetchOnMount?: "always" } = {},
 ) {
   const queryClient = useQueryClient();
   const queryKey = queryKeys.forumPost(postId);
@@ -23,6 +35,7 @@ export function useForumPost(
   const {
     data: post = null,
     isLoading,
+    isFetchedAfterMount,
     error,
   } = useQuery({
     queryKey,
@@ -32,6 +45,7 @@ export function useForumPost(
             (res) => res.data ?? null,
           )
       : skipToken,
+    refetchOnMount,
   });
 
   const { mutateAsync: toggleLike } = useMutation({
@@ -63,5 +77,53 @@ export function useForumPost(
     await toggleLike(post);
   }, [post, userId, toggleLike]);
 
-  return { post, isLoading, error, handleLike };
+  // A created post is left uncached: the create response lacks the action and
+  // tags the post page shows, so that page loads it instead.
+  const { mutateAsync: create } = useMutation({
+    mutationFn: (body: CreatePostDto) =>
+      forumCreatePost({ body, throwOnError: true }).then((r) => r.data),
+  });
+
+  const { mutateAsync: update } = useMutation({
+    mutationFn: (body: UpdatePostDto) => {
+      if (!postId) throw new Error("No post to update");
+      return forumUpdatePost({
+        path: { id: Number(postId) },
+        body,
+        throwOnError: true,
+      }).then((r) => r.data);
+    },
+    onSuccess: async (saved) => {
+      const savedKey = queryKeys.forumPost(String(saved.id));
+      // A refetch in flight would land the old post back over the save.
+      await queryClient.cancelQueries({ queryKey: savedKey });
+      queryClient.setQueryData(savedKey, saved);
+    },
+  });
+
+  const { mutateAsync: remove, isSuccess: removed } = useMutation({
+    mutationFn: async () => {
+      if (!postId) throw new Error("No post to remove");
+      await forumRemovePost({
+        path: { id: Number(postId) },
+        throwOnError: true,
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.cancelQueries({ queryKey });
+      queryClient.setQueryData(queryKey, null);
+    },
+  });
+
+  return {
+    post,
+    isLoading,
+    isFetchedAfterMount,
+    error,
+    handleLike,
+    create,
+    update,
+    remove,
+    removed,
+  };
 }
