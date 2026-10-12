@@ -73,6 +73,7 @@ export function makeAction(
     optional,
     preventCompletion: false,
     isForumParticipationAction: false,
+    forumParticipationIncludeChildren: false,
     archived: false,
     followUpForms: [],
     reviewers: [],

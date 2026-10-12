@@ -287,13 +287,12 @@ export class Action {
   forumParticipationPostId?: number;
 
   @Column({ default: false })
-  @ApiPropertyOptional({
+  @ApiProperty({
     description:
       "When using forumParticipationPostId, also count replies to nested child posts",
   })
-  @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  forumParticipationIncludeChildren?: boolean;
+  @Allow()
+  forumParticipationIncludeChildren: boolean;
 
   @Column({ type: "timestamptz", nullable: true })
   @ApiPropertyOptional({

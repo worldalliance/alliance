@@ -473,7 +473,7 @@ export type Action = {
     /**
      * When using forumParticipationPostId, also count replies to nested child posts
      */
-    forumParticipationIncludeChildren?: boolean;
+    forumParticipationIncludeChildren: boolean;
     /**
      * Date and time when the action was computed for autocomplete
      */
@@ -2209,7 +2209,7 @@ export type ActionDto = {
     /**
      * When using forumParticipationPostId, also count replies to nested child posts
      */
-    forumParticipationIncludeChildren?: boolean;
+    forumParticipationIncludeChildren: boolean;
     /**
      * Date and time when the action was computed for autocomplete
      */
@@ -2562,7 +2562,7 @@ export type AdminActionListItemDto = {
     /**
      * When using forumParticipationPostId, also count replies to nested child posts
      */
-    forumParticipationIncludeChildren?: boolean;
+    forumParticipationIncludeChildren: boolean;
     /**
      * Date and time when the action was computed for autocomplete
      */
@@ -2741,7 +2741,7 @@ export type AdminActionDto = {
     /**
      * When using forumParticipationPostId, also count replies to nested child posts
      */
-    forumParticipationIncludeChildren?: boolean;
+    forumParticipationIncludeChildren: boolean;
     /**
      * Date and time when the action was computed for autocomplete
      */
@@ -2979,10 +2979,6 @@ export type CreateActionDto = {
      */
     forumParticipationPostId?: number;
     /**
-     * When using forumParticipationPostId, also count replies to nested child posts
-     */
-    forumParticipationIncludeChildren?: boolean;
-    /**
      * Date and time when the action was computed for autocomplete
      */
     computedAutocompleteAt?: string;
@@ -2990,6 +2986,10 @@ export type CreateActionDto = {
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
+    /**
+     * When using forumParticipationPostId, also count replies to nested child posts
+     */
+    forumParticipationIncludeChildren?: boolean;
     suiteId?: number | null;
     staffPreview?: boolean;
     reviewers?: Array<ActionReviewerDto>;
@@ -3074,10 +3074,6 @@ export type UpdateActionDto = {
      */
     forumParticipationPostId?: number;
     /**
-     * When using forumParticipationPostId, also count replies to nested child posts
-     */
-    forumParticipationIncludeChildren?: boolean;
-    /**
      * Date and time when the action was computed for autocomplete
      */
     computedAutocompleteAt?: string;
@@ -3085,6 +3081,10 @@ export type UpdateActionDto = {
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
+    /**
+     * When using forumParticipationPostId, also count replies to nested child posts
+     */
+    forumParticipationIncludeChildren?: boolean;
     suiteId?: number | null;
     staffPreview?: boolean;
     reviewers?: Array<ActionReviewerDto>;
@@ -3445,7 +3445,7 @@ export type ExportActionDto = {
     /**
      * When using forumParticipationPostId, also count replies to nested child posts
      */
-    forumParticipationIncludeChildren?: boolean;
+    forumParticipationIncludeChildren: boolean;
     /**
      * Date and time when the action was computed for autocomplete
      */
