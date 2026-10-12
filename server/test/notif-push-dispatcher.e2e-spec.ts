@@ -462,6 +462,62 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       expect(messages).toHaveLength(1);
     });
 
+    it("pushes no category to a member who turned off all notifications", async () => {
+      const optedOut = await createUser({ turnedOffAllNotifs: true });
+      const optedIn = await createUser();
+      const oneHourAgo = new Date(Date.now() - milliseconds({ hours: 1 }));
+      const fiveMinutesAgo = new Date(
+        Date.now() - milliseconds({ minutes: 5 }),
+      );
+      const optedOutNotifs: Notification[] = [];
+      for (const user of [optedOut, optedIn]) {
+        await createDevice(user, oneHourAgo);
+        for (const category of [
+          NotificationCategory.CommunityInviteCreated,
+          NotificationCategory.Likes,
+        ]) {
+          const notif = await createNotification(user, fiveMinutesAgo, {
+            category,
+          });
+          if (user === optedOut) optedOutNotifs.push(notif);
+        }
+      }
+
+      const messages = await dispatcher.findNotificationPushes(
+        "test-dispatch-all-notifs-off",
+      );
+
+      expect(messages.map((message) => message.userId)).toEqual([
+        optedIn.id,
+        optedIn.id,
+      ]);
+      for (const notif of optedOutNotifs) {
+        expect(
+          (await notifRepo.findOneByOrFail({ id: notif.id })).shouldPush,
+        ).toBe(false);
+      }
+    });
+
+    it("pushes no unread content to a member who turned off all notifications", async () => {
+      const user = await createUser({ turnedOffAllNotifs: true });
+      const oneHourAgo = new Date(Date.now() - milliseconds({ hours: 1 }));
+      await createDevice(user, oneHourAgo);
+      const row = await createForumReplyUnreadContent(
+        user,
+        new Date(Date.now() - milliseconds({ minutes: 5 })),
+        oneHourAgo,
+      );
+
+      const messages = await dispatcher.findUnreadContentPushes(
+        "test-dispatch-unread-all-notifs-off",
+      );
+
+      expect(messages).toEqual([]);
+      expect(
+        (await unreadContentRepo.findOneByOrFail({ id: row.id })).shouldPush,
+      ).toBe(false);
+    });
+
     it("pushes a like with its sole liker's current name", async () => {
       const owner = await createUser({ pushesForLikes: true });
       const liker = await createUser({ name: "Lane Before" });
@@ -583,6 +639,26 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       expect(messages.filter((message) => message.userId === user.id)).toEqual(
         [],
       );
+      expect(
+        (await unreadContentRepo.findOneByOrFail({ id: row.id })).shouldPush,
+      ).toBe(false);
+    });
+
+    it("drops the push of a reply to a member with comment pushes off", async () => {
+      const user = await createUser({ pushesForComments: false });
+      const oneHourAgo = new Date(Date.now() - milliseconds({ hours: 1 }));
+      await createDevice(user, oneHourAgo);
+      const row = await createForumReplyUnreadContent(
+        user,
+        new Date(Date.now() - milliseconds({ minutes: 5 })),
+        oneHourAgo,
+      );
+
+      const messages = await dispatcher.findUnreadContentPushes(
+        "test-dispatch-comment-pushes-off",
+      );
+
+      expect(messages).toEqual([]);
       expect(
         (await unreadContentRepo.findOneByOrFail({ id: row.id })).shouldPush,
       ).toBe(false);

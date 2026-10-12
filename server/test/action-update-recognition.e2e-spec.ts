@@ -586,13 +586,19 @@ describe("action update recognition (e2e)", () => {
     expect(check.body.members).toEqual([]);
   });
 
-  it("sends only on the channels a member has enabled", async () => {
+  it.each([
+    [
+      "with every channel off",
+      {
+        emailNotifsForActions: false,
+        textNotifsForActions: false,
+        pushesForActionUpdates: false,
+      },
+    ],
+    ["who turned off all notifications", { turnedOffAllNotifs: true }],
+  ] as const)("reaches a member %s on no channel", async (_, settings) => {
     const member = await createMember({ arm: ExperimentArm.Control });
-    await ctx.dataSource.getRepository(User).update(member.id, {
-      emailNotifsForActions: false,
-      textNotifsForActions: false,
-      pushesForActionUpdates: false,
-    });
+    await ctx.dataSource.getRepository(User).update(member.id, settings);
     const id = await createUpdate();
     await notify(id).expect(200);
     await deliverAll();

@@ -12,6 +12,7 @@ import type { TrackedMessage } from "src/link-tracking/message-tracking.service"
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { Experiment } from "src/notifs/entities/experiment-assignment.entity";
+import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
   UnreadContent,
   UnreadContentType,
@@ -23,6 +24,7 @@ import { actionUrl } from "src/search/approutes";
 import { FormSnapshot } from "src/tasks/entities/formsnapshot.entity";
 import { User } from "src/user/entities/user.entity";
 import {
+  notificationPushesEnabled,
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_text,
 } from "src/user/user.utils";
@@ -448,7 +450,7 @@ export class ActionUpdateRecognitionService {
         },
         actionEventNotifId: null,
       };
-      if (user.pushesForActionUpdates) {
+      if (notificationPushesEnabled(user, NotificationCategory.ActionUpdate)) {
         await this.pushService.sendMessages(
           await this.pushService.getPushForAllUserDevices(user.id, {
             userId: user.id,
