@@ -31,6 +31,7 @@ import {
   type ResolvedChild,
 } from "./canvasSelection";
 import { neighborMoves } from "./ChildRows";
+import { ElementBoundary, FlaggedSettings } from "./ElementBoundary";
 import {
   SettingsAction,
   SettingsActions,
@@ -154,7 +155,19 @@ export function ChildSettings({
         </SettingsActions>
       }
     >
-      <div key={editorKey}>{view.editor}</div>
+      <div key={editorKey}>
+        <ElementBoundary
+          element={element}
+          fallback={(message) => (
+            <FlaggedSettings
+              message={message}
+              repair="Delete it under Advanced, or edit its element's JSON."
+            />
+          )}
+        >
+          {() => view.editor}
+        </ElementBoundary>
+      </div>
     </SettingsSidebar>
   );
 }

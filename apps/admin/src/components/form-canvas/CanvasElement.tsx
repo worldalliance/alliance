@@ -7,7 +7,7 @@ import { resolveDisplayBlockForUser } from "@alliance/shared/formrenderer";
 import { cn } from "@alliance/shared/styles/util";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { GripVertical } from "lucide-react";
-import type { ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { AddressedWrite } from "../../lib/displayBlockById";
 import { writeBlockFor } from "../display-blocks/perUserContent";
 import { CanvasAccordion, CanvasList } from "./CanvasContainers";
@@ -21,6 +21,7 @@ import {
 import type { ChildTarget, ResolvedChild } from "./canvasSelection";
 import { ElementConditionsIndicator } from "./ConditionsIndicator";
 import { DropLine } from "./DropLine";
+import { ElementBoundary, FlaggedElement } from "./ElementBoundary";
 import {
   EditTextButton,
   inlineTextFor,
@@ -131,12 +132,22 @@ export function CanvasElement({
 }) {
   const shown =
     override && !isQuestionField(authored) && authored.manualPerUser
-      ? { override, block: authored }
+      ? override
       : null;
-  const element = shown
-    ? resolveDisplayBlockForUser(shown.block, shown.override.userId)
-    : authored;
-  const editing = selected ? inline : null;
+  const shownUserId = shown?.userId;
+  // The boundary below resets on this object's identity, so it changes only
+  // with what it resolves from.
+  const element = useMemo(
+    () =>
+      shownUserId === undefined || isQuestionField(authored)
+        ? authored
+        : resolveDisplayBlockForUser(authored, shownUserId),
+    [authored, shownUserId],
+  );
+  const [flagged, setFlagged] = useState(false);
+  // A flagged element shows no content to edit in place, so its repair is
+  // through the sidebar.
+  const editing = selected && !flagged ? inline : null;
   const text =
     editing &&
     inlineTextFor({
@@ -146,7 +157,7 @@ export function CanvasElement({
           ? onUpdate({ label: next })
           : writeBlockFor({
               block: authored,
-              userId: shown?.override.userId ?? null,
+              userId: shownUserId ?? null,
               update: () => ({ text: next }),
               updateCurrent,
               onUpdate,
@@ -185,16 +196,29 @@ export function CanvasElement({
         onKeyDown={editing && text ? startOnEnter(editing) : undefined}
         className={SELECT_OVERLAY}
       />
-      <ElementContent
+      <ElementBoundary
         element={element}
-        selectedChild={selectedChild}
-        onSelectChild={onSelectChild}
-        summarize={summarize}
-        onUpdate={onUpdate}
-        updateCurrent={updateCurrent}
-        inline={inline}
-        textEditor={editing?.editing && text ? text.editor : null}
-      />
+        fallback={(message) => (
+          <FlaggedElement
+            message={message}
+            repair="Select it to change its settings or JSON."
+          />
+        )}
+        onFlagged={setFlagged}
+      >
+        {() => (
+          <ElementContent
+            element={element}
+            selectedChild={selectedChild}
+            onSelectChild={onSelectChild}
+            summarize={summarize}
+            onUpdate={onUpdate}
+            updateCurrent={updateCurrent}
+            inline={inline}
+            textEditor={editing?.editing && text ? text.editor : null}
+          />
+        )}
+      </ElementBoundary>
       {editing && !editing.editing && text && (
         <EditTextButton
           label={text.editLabel}
@@ -217,7 +241,7 @@ export function CanvasElement({
       </span>
       {shown && (
         <span className="absolute -top-2.5 left-3 z-10 max-w-[70%] truncate rounded bg-blue-600 px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm">
-          Editing content for {shown.override.label}
+          Editing content for {shown.label}
         </span>
       )}
       <IssueMarker

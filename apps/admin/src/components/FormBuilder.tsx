@@ -115,6 +115,11 @@ import {
 import { SelectChildProvider } from "./form-canvas/ChildRows";
 import { ChildSettings } from "./form-canvas/ChildSettings";
 import { DependencyLinks } from "./form-canvas/DependencyLinks";
+import {
+  ElementBoundary,
+  FlaggedSettings,
+  PreviewBoundary,
+} from "./form-canvas/ElementBoundary";
 import { ElementSettings } from "./form-canvas/ElementSettings";
 import { FormCanvas } from "./form-canvas/FormCanvas";
 import { FormOutline } from "./form-canvas/FormOutline";
@@ -2082,7 +2087,17 @@ export function FormBuilder(props: FormBuilderProps) {
           >
             <div key={`${element.id || index}-${schemaLoads}`}>
               <OverrideTargetContext.Provider value={overrideTarget}>
-                {renderElementEditor(index)}
+                <ElementBoundary
+                  element={element}
+                  fallback={(message) => (
+                    <FlaggedSettings
+                      message={message}
+                      repair="Edit its JSON, or delete it, under Advanced."
+                    />
+                  )}
+                >
+                  {() => renderElementEditor(index)}
+                </ElementBoundary>
               </OverrideTargetContext.Provider>
             </div>
           </ElementSettings>
@@ -2416,10 +2431,12 @@ export function FormBuilder(props: FormBuilderProps) {
                   />
                 ) : isPreviewMode && displayOnly ? (
                   <div className="max-w-3xl mx-auto p-6">
-                    <DisplayOnlyPreview
-                      schema={schema}
-                      title={displayOnlyTitle}
-                    />
+                    <PreviewBoundary resetKeys={[schema]}>
+                      <DisplayOnlyPreview
+                        schema={schema}
+                        title={displayOnlyTitle}
+                      />
+                    </PreviewBoundary>
                   </div>
                 ) : isPreviewMode ? (
                   <div className="max-w-3xl mx-auto bg-white p-6">
@@ -2430,20 +2447,24 @@ export function FormBuilder(props: FormBuilderProps) {
                       isLoadingPreviewUsers={isLoadingPreviewUsers}
                       previewUserError={previewUserError}
                     />
-                    <FormRenderer
-                      key={resolvedPreviewUserId}
-                      id={0}
-                      formSnapshotId={null}
-                      actionId={0}
-                      form={schema}
-                      onSubmit={null}
-                      renderFormAsCompleted={false}
-                      userId={resolvedPreviewUserId}
-                      user={resolvedPreviewUser}
-                      adminPreviewUserId={resolvedPreviewUserId}
-                      showVariableError
-                      initialPageIndex={selectedPageIndex}
-                    />
+                    <PreviewBoundary
+                      resetKeys={[schema, resolvedPreviewUserId]}
+                    >
+                      <FormRenderer
+                        key={resolvedPreviewUserId}
+                        id={0}
+                        formSnapshotId={null}
+                        actionId={0}
+                        form={schema}
+                        onSubmit={null}
+                        renderFormAsCompleted={false}
+                        userId={resolvedPreviewUserId}
+                        user={resolvedPreviewUser}
+                        adminPreviewUserId={resolvedPreviewUserId}
+                        showVariableError
+                        initialPageIndex={selectedPageIndex}
+                      />
+                    </PreviewBoundary>
                   </div>
                 ) : (
                   <CanvasWorkspace
