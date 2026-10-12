@@ -1,3 +1,7 @@
+import type {
+  PreviewEmailHtmlDto,
+  PreviewTextDto,
+} from "@alliance/shared/client/types.gen";
 import { makeAction, makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
@@ -19,6 +23,7 @@ let groups: ({ id: number; name: string } & Record<string, unknown>)[] = [];
 let groupsStatus = 200;
 let deleteStatus = 200;
 let createStatus = 200;
+const previewRequests: unknown[] = [];
 
 serveApi(
   routes({
@@ -48,6 +53,22 @@ serveApi(
     },
     "POST /actions/events/:eventId/checkTentativePlans": () =>
       Response.json([]),
+    "POST /actions/previewEmailHtml/:eventId": async ({ request, params }) => {
+      const body: PreviewEmailHtmlDto = await request.json();
+      previewRequests.push({ ...params, ...body });
+      return Response.json({
+        subject: `Rendered ${body.emailSubject}`,
+        html: `Rendered ${body.emailMessage}`,
+      });
+    },
+    "POST /actions/previewTextMessage/:eventId": async ({
+      request,
+      params,
+    }) => {
+      const body: PreviewTextDto = await request.json();
+      previewRequests.push({ ...params, ...body });
+      return Response.json({ text: `Rendered ${body.textMessage}` });
+    },
     "PATCH /actions/remindergroups/:groupId": () =>
       Response.json({ message: "Reminder name taken" }, { status: 400 }),
     "DELETE /actions/reminders/:groupId": ({ params }) => {
@@ -64,6 +85,7 @@ afterEach(() => {
   groupsStatus = 200;
   deleteStatus = 200;
   createStatus = 200;
+  previewRequests.length = 0;
 });
 
 const renderTab = (events = [makeEvent({ newStatus: "member_action" })]) =>
@@ -227,20 +249,20 @@ it("clears a refused populate's message when a retry succeeds", async () => {
   expect(screen.queryByText("Reminder name taken")).toBeNull();
 });
 
+const announcementGroup = {
+  id: 1,
+  name: "Announcement",
+  timingMode: "event_launch",
+  cohortType: "all_uncompleted",
+  emailSubject: "Subject",
+  emailMessage: "Body",
+  textMessage: "Text",
+  pushMessage: "Push",
+  memberActionEvent: { id: 1 },
+};
+
 it("says why an edit was refused and keeps the form open", async () => {
-  groups = [
-    {
-      id: 1,
-      name: "Announcement",
-      timingMode: "event_launch",
-      cohortType: "all_uncompleted",
-      emailSubject: "Subject",
-      emailMessage: "Body",
-      textMessage: "Text",
-      pushMessage: "Push",
-      memberActionEvent: { id: 1 },
-    },
-  ];
+  groups = [announcementGroup];
   renderTab();
 
   fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
@@ -288,4 +310,39 @@ it("says why a create from the form was refused and keeps it open", async () => 
 
   expect(await screen.findAllByText("Reminder name taken")).not.toHaveLength(0);
   expect(screen.getByRole("button", { name: "Create Reminders" })).toBeTruthy();
+});
+
+it("previews an expanded reminder's messages", async () => {
+  groups = [announcementGroup];
+  renderTab();
+  const expand = await screen.findByRole("button", {
+    name: "Expand reminder",
+  });
+  expect(previewRequests).toEqual([]);
+
+  fireEvent.click(expand);
+
+  expect(await screen.findByText("Rendered Subject")).toBeTruthy();
+  expect(screen.getByText("Rendered Body")).toBeTruthy();
+  expect(await screen.findByText("Rendered Text")).toBeTruthy();
+  expect(await screen.findByText("Rendered Push")).toBeTruthy();
+  const preview = { eventId: "1", taskCount: 1, cohortType: "all_uncompleted" };
+  expect(previewRequests).toEqual(
+    expect.arrayContaining([
+      { ...preview, emailSubject: "Subject", emailMessage: "Body" },
+      { ...preview, textMessage: "Text" },
+      { ...preview, textMessage: "Push" },
+    ]),
+  );
+});
+
+it("does not preview a reminder being edited", async () => {
+  groups = [announcementGroup];
+  renderTab();
+
+  fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+  await screen.findByRole("button", { name: "Update Reminders" });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  expect(previewRequests).toEqual([]);
 });
