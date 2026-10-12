@@ -1,12 +1,9 @@
 import {
   CreateEditableContentDto,
   CreatePostDto,
-  PostDto,
-  forumCreatePost,
-  forumFindOnePost,
-  forumUpdatePost,
   imagesUploadImage,
 } from "@alliance/shared/client";
+import { useForumPost } from "@alliance/shared/lib/useForumPost";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
@@ -15,7 +12,7 @@ import EditableContentForm, {
   useDraftStorageKey,
 } from "@alliance/sharedweb/ui/EditableContentForm";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Link,
   href,
@@ -42,7 +39,6 @@ const PostFormPage: React.FC = () => {
   );
   const [useSchedulePost, setUseSchedulePost] = useState<boolean>(false);
 
-  const [isLoading, setIsLoading] = useState(mode === "edit");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<number | undefined>(
@@ -57,42 +53,41 @@ const PostFormPage: React.FC = () => {
   const storageKey = useDraftStorageKey(`post-${postId}`);
   const [clearDraftSignal, setClearDraftSignal] = useState(0);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        if (mode === "edit" && postId) {
-          setIsLoading(true);
-          const postResponse = await forumFindOnePost({
-            path: { id: postId },
-          });
-          if (postResponse.data) {
-            setTitle(postResponse.data.title);
-            setContent(postResponse.data.editableContent);
-            setActionId(postResponse.data.actionId ?? undefined);
-            if (
-              !!postResponse.data.visibleAt &&
-              new Date(postResponse.data.visibleAt) > new Date()
-            ) {
-              setScheduledVisibleAt(postResponse.data.visibleAt);
-              setUseSchedulePost(true);
-            } else {
-              setUseSchedulePost(false);
-              setScheduledVisibleAt(null);
-            }
-          } else {
-            setError("Post not found");
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setError("Failed to load required data");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const {
+    post,
+    isFetchedAfterMount,
+    error: loadError,
+    create,
+    update,
+  } = useForumPost(mode === "edit" ? postId : undefined, {
+    refetchOnMount: "always",
+  });
+  const [filledPostId, setFilledPostId] = useState<number | null>(null);
 
-    fetchData();
-  }, [mode, postId]);
+  // A copy cached by an earlier visit may be stale, and saving a form filled
+  // from it would write those stale details back.
+  if (post && isFetchedAfterMount && !loadError && filledPostId !== post.id) {
+    setFilledPostId(post.id);
+    setTitle(post.title);
+    setContent(post.editableContent);
+    setActionId(post.actionId ?? undefined);
+    if (!!post.visibleAt && new Date(post.visibleAt) > new Date()) {
+      setScheduledVisibleAt(post.visibleAt);
+      setUseSchedulePost(true);
+    } else {
+      setUseSchedulePost(false);
+      setScheduledVisibleAt(null);
+    }
+  }
+
+  const awaitingPost = mode === "edit" && filledPostId !== post?.id;
+  const loadErrorMessage =
+    awaitingPost && isFetchedAfterMount
+      ? loadError
+        ? "Failed to load required data"
+        : "Post not found"
+      : null;
+  const shownError = error ?? loadErrorMessage;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,34 +140,14 @@ const PostFormPage: React.FC = () => {
         visibleAt,
       };
 
-      let response: { data: PostDto | undefined };
+      const saved =
+        mode === "create" ? await create(postData) : await update(postData);
 
-      if (mode === "create") {
-        response = await forumCreatePost({
-          body: postData,
-        });
-      } else {
-        if (!postId) {
-          setError("An error occurred while updating the post");
-          console.error("no post id");
-          return;
-        }
-        response = await forumUpdatePost({
-          path: { id: parseInt(postId) },
-          body: postData,
-        });
-      }
-
-      if (response.data) {
-        // Leaving the page unmounts this form while the post is in flight, and
-        // the signal below dies with it.
-        clearDraft(storageKey);
-        setClearDraftSignal((x) => x + 1);
-        navigate(href("/forum/post/:id", { id: response.data.id.toString() }));
-      } else {
-        setError("An error occurred while updating the post");
-        console.error(response);
-      }
+      // Leaving the page unmounts this form while the post is in flight, and
+      // the signal below dies with it.
+      clearDraft(storageKey);
+      setClearDraftSignal((x) => x + 1);
+      navigate(href("/forum/post/:id", { id: saved.id.toString() }));
     } catch (err) {
       console.error("Error saving post:", err);
       setError("Failed to save post");
@@ -181,7 +156,7 @@ const PostFormPage: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  if (awaitingPost && !isFetchedAfterMount) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-center py-10">
@@ -205,9 +180,9 @@ const PostFormPage: React.FC = () => {
             {mode === "create" ? "New Thread" : "Edit Thread"}
           </h1>
 
-          {error && (
+          {shownError && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-              {error}
+              {shownError}
             </div>
           )}
 

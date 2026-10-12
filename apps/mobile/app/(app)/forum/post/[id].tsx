@@ -43,7 +43,7 @@ export default function PostDetailScreen() {
     isLoading: loading,
     error: queryError,
     handleLike,
-  } = useForumPost(postId, user?.id);
+  } = useForumPost(postId, { userId: user?.id });
 
   const confirmDeletePost = useCallback(() => {
     if (!post || post.author.id !== user?.id) return;

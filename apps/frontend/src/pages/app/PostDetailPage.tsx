@@ -30,7 +30,7 @@ const PostDetailPage: React.FC = () => {
     isLoading: loading,
     error: queryError,
     handleLike,
-  } = useForumPost(postId, user?.id);
+  } = useForumPost(postId, { userId: user?.id });
 
   const handleDeletePost = async () => {
     if (!post || !amAuthor) {
