@@ -97,7 +97,7 @@ export function useHomePageActions(actions: ActionWithAwayStatus[] | null) {
     const list: ActiveFollowUpFormEntry[] = [];
     for (const action of actions) {
       if (action.userRelation !== "completed") continue;
-      for (const f of action.followUpForms) {
+      for (const f of action.followUpForms ?? []) {
         if (isFollowUpFormActive(f)) {
           list.push({ followUpForm: f, actionId: action.id });
         }

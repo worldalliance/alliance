@@ -364,14 +364,13 @@ export class Action {
   updates?: Relation<ActionUpdate>[];
 
   @OneToMany(() => FollowUpForm, (followUpForm) => followUpForm.action)
-  @ApiProperty({
+  @ApiPropertyOptional({
     type: () => FollowUpForm,
     isArray: true,
   })
-  @Allow()
+  @IsOptional()
   @Type(() => FollowUpForm)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  followUpForms: Relation<FollowUpForm>[];
+  followUpForms?: Relation<FollowUpForm>[];
 
   @OneToMany(() => ActionFormVariant, (variant) => variant.action)
   @ApiProperty({
@@ -464,7 +463,7 @@ export class Action {
  */
 export interface ParsedAction extends Action {
   cohortExpression: CohortExpression | null;
-  followUpForms: ParsedFollowUpForm[];
+  followUpForms?: ParsedFollowUpForm[];
 }
 
 export function parseAction(action: Action): ParsedAction {
@@ -476,4 +475,13 @@ export function parseAction(action: Action): ParsedAction {
   // Mutate-and-cast (rather than spread) to keep the entity's getters; the
   // assignments above just validated the only fields the cast narrows.
   return action as ParsedAction;
+}
+
+export function loadedActionFollowUpForms(
+  action: ParsedAction,
+): ParsedFollowUpForm[] {
+  if (!action.followUpForms) {
+    throw new Error(`followUpForms of action ${action.id} not loaded`);
+  }
+  return action.followUpForms;
 }

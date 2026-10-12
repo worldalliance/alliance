@@ -36,6 +36,11 @@ describe("Admin action member-action phase (e2e)", () => {
       .get(`/actions/adminslug/${actionId}`)
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
+  const postAdmin = (path: string) =>
+    request(ctx.app.getHttpServer())
+      .post(path)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
   it("returns the member-action start and deadline", async () => {
     const start = addDays(now, -1);
     const deadline = addDays(now, 3);
@@ -52,20 +57,18 @@ describe("Admin action member-action phase (e2e)", () => {
   it("returns the member-action start from archive, unarchive, and import", async () => {
     const start = addDays(now, -1);
     const action = await createAction({ start, deadline: null });
-    const post = (path: string) =>
-      request(ctx.app.getHttpServer())
-        .post(path)
-        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
-    const archived = await post(`/actions/archive/${action.id}`).expect(201);
-    const unarchived = await post(`/actions/unarchive/${action.id}`).expect(
+    const archived = await postAdmin(`/actions/archive/${action.id}`).expect(
       201,
     );
+    const unarchived = await postAdmin(
+      `/actions/unarchive/${action.id}`,
+    ).expect(201);
     const exported = await request(ctx.app.getHttpServer())
       .get(`/actions/export/${action.id}?events=true`)
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .expect(200);
-    const imported = await post("/actions/pasteJson")
+    const imported = await postAdmin("/actions/pasteJson")
       .send({ body: JSON.stringify(exported.body) })
       .expect(201);
 
@@ -123,6 +126,38 @@ describe("Admin action member-action phase (e2e)", () => {
       response.body.find((listed: { id: number }) => listed.id === action.id),
     ).toMatchObject({
       followUpForms: [{ id: followUp.id, cohortExpression }],
+    });
+  });
+
+  it("returns the action's follow-up forms from archive and unarchive", async () => {
+    const action = await createAction({
+      start: addDays(now, -1),
+      deadline: null,
+    });
+    const { form } = await createFormWithSnapshot(ctx.dataSource, {
+      title: "Follow-up form",
+      schema: { title: "Follow-up form", pages: [], outputViews: [] },
+    });
+    const followUp = await ctx.dataSource.getRepository(FollowUpForm).save({
+      actionId: action.id,
+      formId: form.id,
+      cohortExpression: null,
+    });
+
+    const archived = await postAdmin(`/actions/archive/${action.id}`).expect(
+      201,
+    );
+    const unarchived = await postAdmin(
+      `/actions/unarchive/${action.id}`,
+    ).expect(201);
+
+    expect(archived.body).toMatchObject({
+      archived: true,
+      followUpForms: [{ id: followUp.id }],
+    });
+    expect(unarchived.body).toMatchObject({
+      archived: false,
+      followUpForms: [{ id: followUp.id }],
     });
   });
 

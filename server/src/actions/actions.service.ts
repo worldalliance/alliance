@@ -243,6 +243,7 @@ import {
 } from "./entities/action-update.entity";
 import {
   Action,
+  loadedActionFollowUpForms,
   parseAction,
   type ParsedAction,
 } from "./entities/action.entity";
@@ -597,6 +598,7 @@ export class ActionsService {
     }
     const action = this.actionRepository.create(rest);
     action.reviewers = this.reviewerRows(reviewers ?? []);
+    action.followUpForms = [];
 
     if (suiteId) {
       const suite = await this.actionSuiteRepository.findOneOrFail({
@@ -1116,13 +1118,11 @@ export class ActionsService {
             now,
           }) !== ActionAssignment.Unassigned;
 
-        if (action.followUpForms) {
-          action.followUpForms = await this.filterFollowUpFormsByCohort({
-            followUpForms: action.followUpForms,
-            user,
-            session,
-          });
-        }
+        action.followUpForms = await this.filterFollowUpFormsByCohort({
+          followUpForms: loadedActionFollowUpForms(action),
+          user,
+          session,
+        });
 
         return new ActionDto(action, {
           canParticipate: user
@@ -1264,13 +1264,11 @@ export class ActionsService {
       serverSide,
       session,
     });
-    if (action.followUpForms) {
-      action.followUpForms = await this.filterFollowUpFormsByCohort({
-        followUpForms: action.followUpForms,
-        user,
-        session,
-      });
-    }
+    action.followUpForms = await this.filterFollowUpFormsByCohort({
+      followUpForms: loadedActionFollowUpForms(action),
+      user,
+      session,
+    });
     if (userId) {
       await this.applyAssignedFormIds([action], userId);
     }
@@ -3058,22 +3056,28 @@ export class ActionsService {
     });
   }
 
-  async archive(id: number): Promise<ParsedAction> {
-    const action = await this.actionRepository.findOneOrFail({
-      where: { id },
-      relations: { reviewers: true, events: true },
-    });
-    action.archived = true;
-    return parseAction(await this.actionRepository.save(action));
+  archive(id: number): Promise<ParsedAction> {
+    return this.setArchived({ id, archived: true });
   }
 
-  async unarchive(id: number): Promise<ParsedAction> {
-    const action = await this.actionRepository.findOneOrFail({
-      where: { id },
-      relations: { reviewers: true, events: true },
-    });
-    action.archived = false;
-    return parseAction(await this.actionRepository.save(action));
+  unarchive(id: number): Promise<ParsedAction> {
+    return this.setArchived({ id, archived: false });
+  }
+
+  // update() rather than save(): saving the loaded action would also diff its
+  // relations, unlinking any follow-up form added since the load.
+  private async setArchived(params: {
+    id: number;
+    archived: boolean;
+  }): Promise<ParsedAction> {
+    const { id, archived } = params;
+    await this.actionRepository.update(id, { archived });
+    return parseAction(
+      await this.actionRepository.findOneOrFail({
+        where: { id },
+        relations: { reviewers: true, events: true, followUpForms: true },
+      }),
+    );
   }
 
   async createActionUpdate(
@@ -3912,7 +3916,7 @@ export class ActionsService {
 
         return actionRepo.findOneOrFail({
           where: { id: actionId },
-          relations: { reviewers: true, events: true },
+          relations: { reviewers: true, events: true, followUpForms: true },
         });
       },
     );

@@ -6,7 +6,11 @@ import { BadRequestException } from "@nestjs/common";
 import { isUUID } from "class-validator";
 import { In, type EntityManager } from "typeorm";
 import { Tag } from "../user/entities/tag.entity";
-import { Action, parseAction } from "./entities/action.entity";
+import {
+  Action,
+  loadedActionFollowUpForms,
+  parseAction,
+} from "./entities/action.entity";
 
 /**
  * A cohort expression naming a deleted action silently matches nobody. Run
@@ -34,7 +38,9 @@ export async function assertNotInACohort(params: {
     collectCohortDependencies(expression).actionIds.has(actionId);
   const referrers = actions.flatMap((action) => [
     ...(names(action.cohortExpression) ? [`"${action.name}"`] : []),
-    ...(action.followUpForms.some((form) => names(form.cohortExpression))
+    ...(loadedActionFollowUpForms(action).some((form) =>
+      names(form.cohortExpression),
+    )
       ? [`a follow-up form of "${action.name}"`]
       : []),
   ]);

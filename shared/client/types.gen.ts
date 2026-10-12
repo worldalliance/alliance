@@ -491,7 +491,7 @@ export type Action = {
      */
     activities?: Array<ActionActivity>;
     updates?: Array<ActionUpdate>;
-    followUpForms: Array<FollowUpForm>;
+    followUpForms?: Array<FollowUpForm>;
     formVariants: Array<ActionFormVariant>;
     suite?: ActionSuite;
     project?: Project;
@@ -2223,7 +2223,7 @@ export type ActionDto = {
      * Non-user reviewers credited on the action
      */
     reviewers: Array<ActionReviewerResponseDto>;
-    followUpForms: Array<FollowUpFormDto>;
+    followUpForms?: Array<FollowUpFormDto>;
     usersCompleted: number;
     events: Array<ActionEventDto>;
     status: ActionStatus;
@@ -3463,7 +3463,7 @@ export type ExportActionDto = {
      */
     activities?: Array<ActionActivity>;
     updates?: Array<ActionUpdate>;
-    followUpForms: Array<FollowUpForm>;
+    followUpForms?: Array<FollowUpForm>;
     suite?: ActionSuite;
     project?: Project;
     authors?: Array<User>;

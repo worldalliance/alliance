@@ -118,6 +118,7 @@ import {
 } from "./dto/notification-schedule.dto";
 import { ShareUrlDto, ShareUrlStatsDto } from "./dto/share-url.dto";
 import { UserCompletedActionsCountDto } from "./dto/user-completed-actions-count.dto";
+import { loadedActionFollowUpForms } from "./entities/action.entity";
 import { parseFeedPage } from "./feed-page";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
 
@@ -619,7 +620,9 @@ export class ActionsController {
       id,
       serverSide: true,
     });
-    const found = withForm.followUpForms?.find((f) => f.id === created.id);
+    const found = loadedActionFollowUpForms(withForm).find(
+      (f) => f.id === created.id,
+    );
     return new AdminFollowUpFormDto(found ?? created);
   }
 
