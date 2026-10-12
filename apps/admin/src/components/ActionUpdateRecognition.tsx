@@ -1,3 +1,4 @@
+import { actionFormIds } from "@alliance/common/cohort-expression";
 import type { ContributionFormula } from "@alliance/common/forms/contribution-formula";
 import {
   readableVariableInputFields,
@@ -110,13 +111,9 @@ export type ActionForm =
     };
 
 /** Every form a member may have answered: the action's own, then its variants. */
-export const actionFormIds = (actionForm: ActionForm): number[] =>
+export const loadedActionFormIds = (actionForm: ActionForm): number[] =>
   actionForm.status === ActionFormStatus.Loaded
-    ? [
-        // The API sends null for a form-less action, despite the generated type.
-        ...(actionForm.taskFormId == null ? [] : [actionForm.taskFormId]),
-        ...actionForm.variantFormIds,
-      ]
+    ? actionFormIds(actionForm)
     : [];
 
 const EMPTY_FORMULA: ContributionFormula = { inputs: {}, formula: "" };
@@ -186,7 +183,7 @@ export function actionFormNotice(
     case ActionFormStatus.LoadFailed:
       return "The action's forms couldn't be loaded, so their questions aren't listed.";
     case ActionFormStatus.Loaded:
-      if (actionFormIds(actionForm).length === 0) {
+      if (loadedActionFormIds(actionForm).length === 0) {
         return "This action has no form, so the formula can't read any answers.";
       }
       switch (fieldsStatus) {
@@ -194,7 +191,7 @@ export function actionFormNotice(
           return "Loading the action's form…";
         case FormFieldsStatus.LoadFailed:
         case FormFieldsStatus.SchemaUnreadable:
-          return actionFormIds(actionForm).length > 1
+          return loadedActionFormIds(actionForm).length > 1
             ? "One of the action's forms couldn't be loaded, so its questions aren't listed."
             : "The action's form couldn't be loaded.";
         case FormFieldsStatus.Ready:
@@ -220,7 +217,7 @@ function ContributionFormulaField({
   formula: ContributionFormula | null;
   onChange: (formula: ContributionFormula) => void;
 }) {
-  const formIds = useMemo(() => actionFormIds(actionForm), [actionForm]);
+  const formIds = useMemo(() => loadedActionFormIds(actionForm), [actionForm]);
   const { sources, status } = useActionFormSources(formIds);
   const copy = FORMULA_COPY[mode];
   const notice = actionFormNotice(actionForm, status);

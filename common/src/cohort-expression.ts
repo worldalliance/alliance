@@ -259,7 +259,7 @@ export type ReferencedAction = {
 
 export function actionFormIds(action: {
   taskFormId?: number | null;
-  variantFormIds: number[];
+  variantFormIds: readonly number[];
 }): number[] {
   return [
     ...(action.taskFormId == null ? [] : [action.taskFormId]),
