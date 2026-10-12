@@ -17,6 +17,7 @@ import {
 } from "@alliance/shared/lib/copy";
 import {
   compareFollowUpFormsByStartDateDesc,
+  homeItemKey,
   useHomePageActions,
 } from "@alliance/shared/lib/homePage";
 import { getTaskDismissInfo } from "@alliance/shared/lib/largeActionCard";
@@ -212,8 +213,12 @@ const HomePage = () => {
 
   hasNoTasks.current = taskNavigatorItems.length === 0;
 
+  const taskNavigatorKeys = useMemo(
+    () => taskNavigatorItems.map(homeItemKey),
+    [taskNavigatorItems],
+  );
   const { index: taskNavigatorIndex, setIndex: setTaskNavigatorIndex } =
-    useBoundedIndex(taskNavigatorItems.length);
+    useBoundedIndex(taskNavigatorKeys);
 
   const sortedGeneralUpdates = useMemo(
     () => [...(generalUpdates ?? [])].sort(homePagePriorityComparator),

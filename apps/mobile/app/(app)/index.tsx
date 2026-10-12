@@ -9,6 +9,7 @@ import { type ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { ParsedHomeFeedItemDto } from "@alliance/shared/lib/feedHelpers";
 import {
+  homeItemKey,
   type HomeSequenceItem,
   interleaveActionsAndUpdates,
   useHomePageActions,
@@ -157,6 +158,7 @@ export default function HomeScreen() {
 
     return [...actionAndUpdateItems, ...followUpItems];
   }, [todoActions, generalUpdates, activeCompletableFollowUpForms]);
+  const allItemKeys = useMemo(() => allItems.map(homeItemKey), [allItems]);
 
   hasNoTasks.current = allItems.length === 0;
 
@@ -167,7 +169,7 @@ export default function HomeScreen() {
     canGoNext,
     canGoPrev,
     hasMultiple: showTaskNavigator,
-  } = useBoundedIndex(allItems.length);
+  } = useBoundedIndex(allItemKeys);
   const currentItem = allItems[safeIndex] ?? null;
 
   const scrollViewRef = useRef<KeyboardAwareScrollViewRef>(null);
