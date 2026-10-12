@@ -17,10 +17,10 @@ type CommunityInviteListItemProps = {
 };
 
 const STATUS_STYLE = {
-  request_pending: { label: "Request pending", textStyle: "text-amber-600" },
+  request_pending: { label: "Request pending", textStyle: "text-amber-500" },
   request_rejected: { label: "Request rejected", textStyle: "text-orange-600" },
-  invitee_pending: { label: "Pending", textStyle: "text-green" },
-  invitee_accepted: { label: "Accepted", textStyle: "text-zinc-600" },
+  invitee_pending: { label: "Pending", textStyle: "text-amber-500" },
+  invitee_accepted: { label: "Accepted", textStyle: "text-green" },
   invitee_rejected: { label: "Rejected", textStyle: "text-orange-600" },
   cancelled: { label: "Cancelled", textStyle: "text-zinc-500" },
 } satisfies Record<CommunityInviteStatus, { label: string; textStyle: string }>;
