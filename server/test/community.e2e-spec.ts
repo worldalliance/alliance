@@ -547,6 +547,36 @@ describe("Community (e2e)", () => {
     expect(await communityIdsOf(secondUser.id)).toEqual([joined.id]);
   });
 
+  it("POST /community/:communityId/join keeps the joiner in the group they lead", async () => {
+    const led = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP Join Led",
+        leaders: [secondUser],
+        users: [secondUser],
+      }),
+    );
+    const joined = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP Join Public",
+        public: true,
+        allowMemberInvites: true,
+        allowStaffAssignments: true,
+        maxCapacity: 10,
+        leaders: [testUser],
+        users: [testUser],
+      }),
+    );
+
+    await request(ctx.app.getHttpServer())
+      .post(`/community/${joined.id}/join`)
+      .set("Authorization", `Bearer ${secondUserToken}`)
+      .expect(201);
+
+    expect((await communityIdsOf(secondUser.id))?.sort()).toEqual(
+      [led.id, joined.id].sort(),
+    );
+  });
+
   it("PATCH /community/:communityId updates community when authenticated as leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({

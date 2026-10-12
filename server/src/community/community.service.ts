@@ -41,7 +41,9 @@ import { DeepPartial, In, IsNull, type Repository } from "typeorm";
 import {
   acceptsPublicJoin,
   acceptsStaffAssignment,
+  isCommunityLedBy,
   memberJoinedCommunityNotif,
+  memberLeftCommunityNotif,
   membersAndLeaders,
 } from "./community.utils";
 import { CreateCommunityDto, UpdateCommunityDto } from "./dto/community.dto";
@@ -391,6 +393,28 @@ export class CommunityService {
     return updatedCommunity;
   }
 
+  /**
+   * A member who joins a group leaves every other group they belong to,
+   * except the ones they lead. `user.communities` must be loaded with
+   * `leaders` and `users`.
+   */
+  async leaveOtherCommunitiesOnJoin(user: User): Promise<void> {
+    await Promise.all(
+      loadedUserCommunities(user)
+        .filter((community) => !isCommunityLedBy(community, user.id))
+        .map((community) =>
+          this.removeUserFromCommunityAndRefreshConversation({
+            user,
+            community,
+            removeAsLeader: false,
+            notifForLeader: ({ leader }) =>
+              memberLeftCommunityNotif({ leader, leaver: user, community }),
+            saveAsPendingCommunity: false,
+          }),
+        ),
+    );
+  }
+
   async joinPublicCommunity(
     userId: number,
     communityId: number,
@@ -438,25 +462,7 @@ export class CommunityService {
             message: notifMessage`${member(user)} joined your public group (${group(community)})`,
           }),
       }),
-      ...loadedUserCommunities(user).map((community) =>
-        this.removeUserFromCommunityAndRefreshConversation({
-          user,
-          community,
-          removeAsLeader: false,
-          notifForLeader: ({ leader }) => ({
-            user: leader,
-            category: NotificationCategory.MemberLeftCommunity,
-            message: notifMessage`${member(user)} left your group (${group(community)})`,
-            destination: communityDestination(community.id),
-            webAppLocation: groupUrl({
-              tab: "members",
-              communityId: community.id,
-            }),
-            associatedUsers: [user],
-          }),
-          saveAsPendingCommunity: false,
-        }),
-      ),
+      this.leaveOtherCommunitiesOnJoin(user),
     ]);
 
     return addedCommunity;
@@ -638,17 +644,8 @@ export class CommunityService {
       user,
       community,
       removeAsLeader: true,
-      notifForLeader: ({ leader }) => ({
-        user: leader,
-        category: NotificationCategory.MemberLeftCommunity,
-        message: notifMessage`${member(user)} left your group (${group(community)})`,
-        destination: communityDestination(community.id),
-        webAppLocation: groupUrl({
-          tab: "members",
-          communityId: community.id,
-        }),
-        associatedUsers: [user],
-      }),
+      notifForLeader: ({ leader }) =>
+        memberLeftCommunityNotif({ leader, leaver: user, community }),
       saveAsPendingCommunity: false,
     });
   }
@@ -1378,27 +1375,7 @@ export class CommunityService {
           });
         },
       }),
-      ...loadedUserCommunities(invitedUser)
-        .filter((c) => !c.leaders!.some((l) => l.id === invitedUser.id))
-        .map((c) =>
-          this.removeUserFromCommunityAndRefreshConversation({
-            user: invitedUser,
-            community: c,
-            removeAsLeader: false,
-            notifForLeader: ({ leader }) => ({
-              user: leader,
-              category: NotificationCategory.MemberLeftCommunity,
-              message: notifMessage`${member(invitedUser)} left your group (${group(c)})`,
-              destination: communityDestination(c.id),
-              webAppLocation: groupUrl({
-                tab: "members",
-                communityId: c.id,
-              }),
-              associatedUsers: [invitedUser],
-            }),
-            saveAsPendingCommunity: false,
-          }),
-        ),
+      this.leaveOtherCommunitiesOnJoin(invitedUser),
       ...invite.notifs!.map((notif) =>
         this.notifsService.setRead(notif.id, userId),
       ),

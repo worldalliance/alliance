@@ -11,6 +11,7 @@ import {
 import { User } from "src/user/entities/user.entity";
 import type { EntityManager, Repository } from "typeorm";
 import { CommunityService, ContractRefusalAudience } from "./community.service";
+import { memberLeftCommunityNotif } from "./community.utils";
 import {
   CommunityInvite,
   CommunityInviteStatus,
@@ -329,6 +330,32 @@ describe("CommunityService", () => {
   });
 
   describe("acceptCommunityInvite", () => {
+    it("leaves the invitee's other groups through leaveOtherCommunitiesOnJoin", async () => {
+      const invitee = {
+        id: 5,
+        name: "Invited User",
+        communities: [buildCommunity({ id: 2 })],
+      } as User;
+      communityInviteRepository.findOneOrFail.mockResolvedValue(
+        Object.assign(new CommunityInvite(), {
+          id: 7,
+          status: CommunityInviteStatus.InviteePending,
+          invitedUser: invitee,
+          invitingUser: leader1,
+          community: buildCommunity(),
+          notifs: [],
+        }),
+      );
+      communityRepository.findOneOrFail.mockResolvedValue(buildCommunity());
+      const leave = jest
+        .spyOn(service, "leaveOtherCommunitiesOnJoin")
+        .mockResolvedValue();
+
+      await service.acceptCommunityInvite(7, invitee.id);
+
+      expect(leave).toHaveBeenCalledWith(invitee);
+    });
+
     it("writes nothing when the invitee has no active contract", async () => {
       const invitee = {
         id: 5,
@@ -364,6 +391,70 @@ describe("CommunityService", () => {
       expect(join).not.toHaveBeenCalled();
       expect(leave).not.toHaveBeenCalled();
       expect(notifsService.sendNotif).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("leaveOtherCommunitiesOnJoin", () => {
+    it("leaves the groups the user does not lead and notifies their leaders", async () => {
+      const user = { id: 99, name: "Switching Member" } as User;
+      const memberOf = buildCommunity({ id: 2, users: [leader1, user] });
+      const leads = buildCommunity({ id: 3, users: [user], leaders: [user] });
+      user.communities = [memberOf, leads];
+
+      await service.leaveOtherCommunitiesOnJoin(user);
+
+      expect(communityRepository.save).toHaveBeenCalledTimes(1);
+      expect(communityRepository.save).toHaveBeenCalledWith({
+        id: memberOf.id,
+        users: [leader1],
+        leaders: [leader1, leader2],
+      });
+      expect(notifsService.sendNotifs).toHaveBeenCalledWith(
+        [leader1, leader2].map((leader) =>
+          memberLeftCommunityNotif({
+            leader,
+            leaver: user,
+            community: memberOf,
+          }),
+        ),
+      );
+    });
+  });
+
+  describe("leaveCommunity", () => {
+    it("tells the group's leaders the member left", async () => {
+      const user = { id: 99, name: "Departing Member" } as User;
+      const community = buildCommunity({ users: [leader1, leader2, user] });
+      communityRepository.findOneOrFail.mockResolvedValue(community);
+
+      await service.leaveCommunity(community.id, user.id);
+
+      expect(notifsService.sendNotifs).toHaveBeenCalledWith(
+        [leader1, leader2].map((leader) =>
+          memberLeftCommunityNotif({ leader, leaver: user, community }),
+        ),
+      );
+    });
+  });
+
+  describe("joinPublicCommunity", () => {
+    it("leaves the joiner's other groups through leaveOtherCommunitiesOnJoin", async () => {
+      const user = {
+        id: 99,
+        name: "Public Joiner",
+        communities: [buildCommunity({ id: 3 })],
+      } as User;
+      communityRepository.findOneOrFail.mockResolvedValue(
+        buildCommunity({ public: true, maxCapacity: 10, users: [leader1] }),
+      );
+      userRepository.findOneOrFail.mockResolvedValue(user);
+      const leave = jest
+        .spyOn(service, "leaveOtherCommunitiesOnJoin")
+        .mockResolvedValue();
+
+      await service.joinPublicCommunity(user.id, 1);
+
+      expect(leave).toHaveBeenCalledWith(user);
     });
   });
 
