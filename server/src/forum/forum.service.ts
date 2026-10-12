@@ -1096,6 +1096,7 @@ export class ForumService {
       .leftJoinAndSelect("post.action", "action")
       .leftJoinAndSelect("action.reviewers", "actionReviewer")
       .leftJoinAndSelect("post.editableContent", "editableContent")
+      .leftJoinAndSelect("post.authors", "authors")
       .leftJoin("post.authors", "coAuthor")
       .andWhere("(post.authorId = :authorId OR coAuthor.id = :authorId)", {
         authorId,

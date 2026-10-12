@@ -1985,6 +1985,34 @@ describe("Forum (e2e)", () => {
       expect(updateResponse.body.authorIds).toHaveLength(2);
     });
 
+    it("credits a co-authored post's co-authors on their profile", async () => {
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/posts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          title: "Co-authored Profile Post",
+          editableContent: { body: "Body", attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+      const postId = postResponse.body.id;
+      const { user: coAuthor } = await createExtraUserAndToken();
+      const { user: otherCoAuthor } = await createExtraUserAndToken();
+      await saveSettings(postId, {
+        authorIds: [coAuthor.id, otherCoAuthor.id],
+      }).expect(200);
+
+      const profilePosts = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/user/${coAuthor.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const post = profilePosts.body.find((p) => p.id === postId);
+      expect(post.authors.map((a) => a.id).sort()).toEqual(
+        [coAuthor.id, otherCoAuthor.id].sort(),
+      );
+    });
+
     it("notifies all authors when a comment is posted", async () => {
       const { user: coAuthor } = await createExtraUserAndToken();
 
