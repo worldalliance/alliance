@@ -11,6 +11,7 @@ import {
 } from "@alliance/common/forms/user-properties";
 import type { AccountDerivedConditionKind } from "@alliance/common/forms/visible-if-formula";
 import { forCount } from "@alliance/common/plural";
+import { hasProfilePicture } from "@alliance/common/profilePicture";
 import { R, type Result } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
 import {
@@ -177,6 +178,7 @@ import {
   friendshipBetween,
 } from "./friendship";
 import { CLAIMABLE_INVITE, inviteAcceptedSql } from "./invite-claim";
+import { sqlUserHasProfilePicture } from "./profile-picture";
 import {
   type AccountDeletedPayload,
   type FriendsAcceptedPayload,
@@ -483,7 +485,7 @@ export class UserService {
       },
     });
     return users.filter(
-      (user) => user.hasActiveContract && user.profilePicture !== null,
+      (user) => user.hasActiveContract && hasProfilePicture(user),
     );
   }
 
@@ -1001,10 +1003,10 @@ export class UserService {
         new Brackets((sqb) => {
           sqb
             .where(
-              `f.requesterId = :inviterId AND addr.profilePicture IS NOT NULL AND TRIM(addr.profilePicture) <> '' AND (${sqlUserHasActiveContractAt("addr.id")})`,
+              `f.requesterId = :inviterId AND ${sqlUserHasProfilePicture('addr."profilePicture"')} AND (${sqlUserHasActiveContractAt("addr.id")})`,
             )
             .orWhere(
-              `f.addresseeId = :inviterId AND req.profilePicture IS NOT NULL AND TRIM(req.profilePicture) <> '' AND (${sqlUserHasActiveContractAt("req.id")})`,
+              `f.addresseeId = :inviterId AND ${sqlUserHasProfilePicture('req."profilePicture"')} AND (${sqlUserHasActiveContractAt("req.id")})`,
             );
         }),
       )
@@ -1061,8 +1063,7 @@ export class UserService {
     const contractAt = new Date();
     const qb = this.userRepository
       .createQueryBuilder("u")
-      .where("u.profilePicture IS NOT NULL")
-      .andWhere("TRIM(u.profilePicture) != ''");
+      .where(sqlUserHasProfilePicture('u."profilePicture"'));
     if (excludeIds.length > 0) {
       qb.andWhere("u.id NOT IN (:...ids)", { ids: excludeIds });
     }

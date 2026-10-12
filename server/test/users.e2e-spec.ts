@@ -2583,6 +2583,27 @@ describe("Users (e2e)", () => {
     expect(ids).toContain(nonStaffUser.id);
   });
 
+  it("excludes members with a blank profile picture from /user/members-public", async () => {
+    const blankPictureUser = await userRepo.save(
+      userRepo.create({
+        name: "Blank Picture Member",
+        email: `blank.picture.${Date.now()}@example.com`,
+        password: "Password123!",
+        staff: false,
+        shareInfoPublicly: true,
+        profilePicture: " ",
+      }),
+    );
+    await giveActiveContract(ctx, blankPictureUser.id);
+
+    const res = await request(ctx.app.getHttpServer())
+      .get("/user/members-public")
+      .expect(200);
+
+    const ids = res.body.map((u: { id: number }) => u.id);
+    expect(ids).not.toContain(blankPictureUser.id);
+  });
+
   it("allows admins to list all users", async () => {
     const list = await request(ctx.app.getHttpServer())
       .get("/user/list")

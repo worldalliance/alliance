@@ -2031,6 +2031,10 @@ describe("Tasks (e2e)", () => {
       expect(result.isValid).toBe(false);
       expect(result.message).toContain("profile picture");
 
+      await userRepo.update(ctx.testUserId, { profilePicture: " " });
+      result = await runValidator(photoValidatorId);
+      expect(result.isValid).toBe(false);
+
       await userRepo.update(ctx.testUserId, { profilePicture: "pic-key" });
       result = await runValidator(photoValidatorId);
       expect(result.isValid).toBe(true);

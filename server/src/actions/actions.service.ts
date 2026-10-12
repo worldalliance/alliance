@@ -115,6 +115,7 @@ import {
   sqlUserHasEverSigned,
   User,
 } from "src/user/entities/user.entity";
+import { sqlUserHasProfilePicture } from "src/user/profile-picture";
 import {
   ActionAssignment,
   computeActionAssignment,
@@ -4962,7 +4963,7 @@ export class ActionsService {
         MAX(feed_members."latestAt") OVER() AS "windowLatestAt"
       FROM (${rankedSql}) feed_members
       LEFT JOIN "user" ON "user".id = feed_members."userId"
-      ORDER BY ("user"."profilePicture" IS NOT NULL) DESC, feed_members."latestAt" DESC, feed_members."latestId" DESC
+      ORDER BY ${sqlUserHasProfilePicture('"user"."profilePicture"')} DESC, feed_members."latestAt" DESC, feed_members."latestId" DESC
       LIMIT $${limitParam}`,
       [...params, limit],
     );
