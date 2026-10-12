@@ -2,6 +2,7 @@ import {
   CommunityInviteDto,
   CommunityInviteStatus,
 } from "@alliance/shared/client";
+import { communityInviteStatusDisplay } from "@alliance/shared/styles/inviteStatus";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -15,15 +16,6 @@ type CommunityInviteListItemProps = {
   deleting?: boolean;
   onDelete?: (inviteId: number, event?: React.MouseEvent<HTMLElement>) => void;
 };
-
-const STATUS_STYLE = {
-  request_pending: { label: "Request pending", textStyle: "text-amber-600" },
-  request_rejected: { label: "Request rejected", textStyle: "text-orange-600" },
-  invitee_pending: { label: "Pending", textStyle: "text-green" },
-  invitee_accepted: { label: "Accepted", textStyle: "text-zinc-600" },
-  invitee_rejected: { label: "Rejected", textStyle: "text-orange-600" },
-  cancelled: { label: "Cancelled", textStyle: "text-zinc-500" },
-} satisfies Record<CommunityInviteStatus, { label: string; textStyle: string }>;
 
 const SHOW_DELETE_BUTTON = {
   request_pending: true,
@@ -43,7 +35,7 @@ const CommunityInviteListItem = ({
   deleting = false,
   onDelete,
 }: CommunityInviteListItemProps) => {
-  const statusStyle = STATUS_STYLE[invite.status];
+  const status = communityInviteStatusDisplay[invite.status];
   return (
     <div className="flex flex-row w-full justify-between p-4">
       <div className="flex flex-col gap-2">
@@ -96,8 +88,8 @@ const CommunityInviteListItem = ({
         )}
       </div>
       <div className="flex flex-col items-end justify-between gap-2">
-        <span className={cn("text-sm font-semibold", statusStyle.textStyle)}>
-          {statusStyle.label}
+        <span className={cn("text-sm font-semibold", status.textClass)}>
+          {status.label}
         </span>
         <div className="flex flex-row items-center justify-end gap-2">
           {onDelete && SHOW_DELETE_BUTTON[invite.status] && (

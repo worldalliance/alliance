@@ -1,6 +1,6 @@
 import { OnetimeInviteDto } from "@alliance/shared/client";
-import { onetimeInviteStatusLabels } from "@alliance/shared/lib/copy";
 import { formatTime } from "@alliance/shared/lib/utils";
+import { onetimeInviteStatusDisplay } from "@alliance/shared/styles/inviteStatus";
 import { cn } from "@alliance/shared/styles/util";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -27,16 +27,6 @@ type OnetimeInviteListItemProps = {
   onReject?: (inviteId: number) => void;
 };
 
-const STATUS_TEXT_CLASS: Record<
-  keyof typeof onetimeInviteStatusLabels,
-  string
-> = {
-  request_pending: "text-amber-500",
-  request_rejected: "text-orange-600",
-  link_used: "text-green",
-  link_unused: "text-amber-500",
-};
-
 const OnetimeInviteListItem = ({
   invite,
   showCommunityLabel,
@@ -54,8 +44,7 @@ const OnetimeInviteListItem = ({
   onReject,
 }: OnetimeInviteListItemProps) => {
   const isRequest = invite.status === "request_pending";
-  const statusLabel = onetimeInviteStatusLabels[invite.status];
-  const textColorClass = STATUS_TEXT_CLASS[invite.status];
+  const status = onetimeInviteStatusDisplay[invite.status];
   communityLabel ??= "No group";
 
   const handleCopy = (event: React.MouseEvent<HTMLElement>) => {
@@ -160,8 +149,8 @@ const OnetimeInviteListItem = ({
               <span className="text-zinc-400">{communityLabel}</span>
             )}
           </div>
-          <span className={cn("text-sm font-semibold", textColorClass)}>
-            {statusLabel}
+          <span className={cn("text-sm font-semibold", status.textClass)}>
+            {status.label}
           </span>
         </div>
         <div className="mt-2 flex flex-row flex-wrap items-center sm:justify-end gap-2">
