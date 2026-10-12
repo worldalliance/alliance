@@ -142,6 +142,10 @@ export const queryKeys = {
   externalShareTargetsAdmin: () => ["externalShareTargetsAdmin"] as const,
   customLinksAdmin: () => ["customLinksAdmin"] as const,
   formsAdminAll,
+  formResponsesAdmin: (formId: number | null) =>
+    ["tasksGetFormResponsesAdmin", formId] as const,
+  formShareLinksAdmin: (formId: number | null) =>
+    ["actionsShareLinksForFormAdmin", formId] as const,
   formWithdrawalsAdmin: (formId: number | null) =>
     ["actionsGetWithdrawalsAdmin", formId] as const,
   formsAdmin: () => [...formsAdminAll(), "index"] as const,
