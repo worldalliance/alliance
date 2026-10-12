@@ -1,4 +1,3 @@
-/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { phoneSearchDigits, phoneSearchTerm } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
 import {
@@ -16,7 +15,6 @@ import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { cn } from "@alliance/shared/styles/util";
-import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
@@ -25,6 +23,7 @@ import { groupBy, mapValues } from "es-toolkit";
 import { LayoutGrid, List, Shuffle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link, useSearchParams } from "react-router";
+import MemberFilterDropdown from "../components/MemberFilterDropdown";
 import UserCard from "../components/UserCard";
 import {
   matchesSelectedRoles,
@@ -79,11 +78,7 @@ const UsersList: React.FC = () => {
     userActionRelations,
   });
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [isTagFilterOpen, setIsTagFilterOpen] = useState(false);
-  const tagDropdownRef = useOutsideClick(() => setIsTagFilterOpen(false));
   const [selectedRoles, setSelectedRoles] = useState<RoleFilter[]>([]);
-  const [isRoleFilterOpen, setIsRoleFilterOpen] = useState(false);
-  const roleDropdownRef = useOutsideClick(() => setIsRoleFilterOpen(false));
   const [pendingTagOps, setPendingTagOps] = useState<Set<string>>(
     () => new Set(),
   );
@@ -181,68 +176,15 @@ const UsersList: React.FC = () => {
     );
   }, [filteredBySearch]);
 
-  const selectedTagNames = useMemo(() => {
-    if (!selectedTagIds.length) return [] as string[];
-    const selected = new Set(selectedTagIds);
-    return tags.filter((tag) => selected.has(tag.id)).map((tag) => tag.name);
-  }, [tags, selectedTagIds]);
-
   useEffect(() => {
     setShuffledIds(null);
   }, [selectedTagIds, selectedRoles, searchQuery]);
-
-  const groupFilterLabel = useMemo(() => {
-    if (!selectedTagIds.length) {
-      return "All tags";
-    }
-    return (
-      (selectedTagIds.length === 1 && selectedTagNames[0]) ||
-      withCount(selectedTagIds.length, "tag")
-    );
-  }, [selectedTagIds, selectedTagNames]);
-
-  const roleFilterLabel = useMemo(() => {
-    if (!selectedRoles.length) {
-      return "All roles";
-    }
-    return (
-      (selectedRoles.length === 1 &&
-        selectedRoles[0] &&
-        ROLE_FILTERS[selectedRoles[0]].label) ||
-      withCount(selectedRoles.length, "role")
-    );
-  }, [selectedRoles]);
 
   const roleMemberCounts = useMemo(
     () =>
       mapValues(ROLE_FILTERS, (filter) => users.filter(filter.matches).length),
     [users],
   );
-
-  const toggleRoleSelection = (role: RoleFilter) => {
-    setSelectedRoles((prev) =>
-      prev.includes(role)
-        ? prev.filter((selected) => selected !== role)
-        : [...prev, role],
-    );
-  };
-
-  const toggleTagSelection = (tagId: string) => {
-    setSelectedTagIds((prev) => {
-      if (prev.includes(tagId)) {
-        return prev.filter((id) => id !== tagId);
-      }
-      return [...prev, tagId];
-    });
-  };
-
-  const clearTagSelection = () => {
-    setSelectedTagIds([]);
-  };
-
-  const clearRoleSelection = () => {
-    setSelectedRoles([]);
-  };
 
   const resetAllFilters = () => {
     setSearchQuery("");
@@ -385,108 +327,28 @@ const UsersList: React.FC = () => {
           className="text-sm border border-gray-2 text-black bg-white px-3 rounded-sm py-2 w-64 focus:outline-none focus:border-black"
         />
         <div className="flex flex-row gap-3 items-center">
-          <div className="relative" ref={roleDropdownRef}>
-            <button
-              type="button"
-              className="text-sm border border-gray-2 text-black bg-white hover:bg-zinc-50 px-3 rounded-sm py-2 flex flex-row gap-x-2 items-center"
-              style={{ fontWeight: 450 }}
-              onClick={() => setIsRoleFilterOpen((open) => !open)}
-            >
-              <span>{roleFilterLabel}</span>
-            </button>
-            {isRoleFilterOpen && (
-              <div className="absolute z-10 top-[calc(100%+4px)] left-0 min-w-[220px] bg-white border border-zinc-200 rounded shadow">
-                <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-200">
-                  <p className="text-sm font-medium text-zinc-600">Roles</p>
-                  <button
-                    type="button"
-                    className="text-xs text-blue-600 hover:underline"
-                    onClick={clearRoleSelection}
-                  >
-                    Clear
-                  </button>
-                </div>
-                <div>
-                  {Object.values(RoleFilter).map((role) => (
-                    <label
-                      key={role}
-                      className="flex flex-row items-center gap-2 px-3 py-2 text-sm hover:bg-zinc-50 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        className="cursor-pointer"
-                        checked={selectedRoles.includes(role)}
-                        onChange={() => toggleRoleSelection(role)}
-                      />
-                      <div className="flex flex-col">
-                        <span className="font-medium">
-                          {ROLE_FILTERS[role].label}
-                        </span>
-                        <span className="text-xs text-zinc-500">
-                          {withCount(roleMemberCounts[role], "member")}
-                        </span>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="relative" ref={tagDropdownRef}>
-            <button
-              type="button"
-              className="text-sm border border-gray-2 text-black bg-white hover:bg-zinc-50 px-3 rounded-sm py-2 flex flex-row gap-x-2 items-center"
-              style={{ fontWeight: 450 }}
-              onClick={() => setIsTagFilterOpen((open) => !open)}
-            >
-              <span>{groupFilterLabel}</span>
-            </button>
-            {isTagFilterOpen && (
-              <div className="absolute z-10 top-[calc(100%+4px)] left-0 min-w-[220px] bg-white border border-zinc-200 rounded shadow">
-                <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-200">
-                  <p className="text-sm font-medium text-zinc-600">Tags</p>
-                  <button
-                    type="button"
-                    className="text-xs text-blue-600 hover:underline"
-                    onClick={clearTagSelection}
-                  >
-                    Clear
-                  </button>
-                </div>
-                <div className="max-h-60 overflow-y-auto">
-                  {tags.length ? (
-                    tags.map((tag) => {
-                      const checked = selectedTagIds.includes(tag.id);
-                      const memberCount = tag.users.length;
-                      return (
-                        <label
-                          key={tag.id}
-                          className="flex flex-row items-center gap-2 px-3 py-2 text-sm hover:bg-zinc-50 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            className="cursor-pointer"
-                            checked={checked}
-                            onChange={() => toggleTagSelection(tag.id)}
-                          />
-                          <div className="flex flex-col">
-                            <span className="font-medium">{tag.name}</span>
-                            <span className="text-xs text-zinc-500">
-                              {withCount(memberCount, "member")}
-                            </span>
-                          </div>
-                        </label>
-                      );
-                    })
-                  ) : (
-                    <p className="px-3 py-2 text-sm text-zinc-500">
-                      No tags yet
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          <MemberFilterDropdown
+            title="Roles"
+            noun="role"
+            options={Object.values(RoleFilter).map((role) => ({
+              value: role,
+              label: ROLE_FILTERS[role].label,
+              memberCount: roleMemberCounts[role],
+            }))}
+            selected={selectedRoles}
+            onChange={setSelectedRoles}
+          />
+          <MemberFilterDropdown
+            title="Tags"
+            noun="tag"
+            options={tags.map((tag) => ({
+              value: tag.id,
+              label: tag.name,
+              memberCount: tag.users.length,
+            }))}
+            selected={selectedTagIds}
+            onChange={setSelectedTagIds}
+          />
         </div>
         <div className="flex items-center gap-3">
           {hasActiveFilters && (

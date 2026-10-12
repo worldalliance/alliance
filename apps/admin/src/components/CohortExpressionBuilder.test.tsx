@@ -1,3 +1,4 @@
+import { makeTag } from "@alliance/shared/lib/testFixtures";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -8,17 +9,7 @@ import CohortExpressionBuilder, {
 
 afterEach(cleanup);
 
-const availableTags = [
-  {
-    id: "tag-1",
-    name: "non-US",
-    description: "",
-    publicDisplayName: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    users: [],
-  },
-];
+const availableTags = [makeTag({ id: "tag-1", name: "non-US" })];
 
 const renderTagEditor = (
   tagId: string,
