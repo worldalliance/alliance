@@ -332,16 +332,15 @@ export class Action {
   // Relations
 
   @OneToMany(() => ActionEvent, (event) => event.action)
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: "Events associated with the action",
     type: () => ActionEvent,
     isArray: true,
   })
-  @Allow()
+  @IsOptional()
   @IsArray()
   @Type(() => ActionEvent)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  events: Relation<ActionEvent>[];
+  events?: Relation<ActionEvent>[];
 
   @OneToMany(() => ActionActivity, (activity) => activity.action)
   @ApiPropertyOptional({
@@ -423,11 +422,8 @@ export class Action {
   @Expose()
   @ApiProperty({ enum: ActionStatus, enumName: "ActionStatus" })
   get status(): ActionStatus {
-    if (!this.events) {
-      throw new Error("`events` relation is not loaded");
-    }
     if (this._status === null) {
-      this._status = actionStatusAt(this.events, new Date());
+      this._status = actionStatusAt(loadedActionEvents(this), new Date());
     }
     return this._status;
   }
@@ -436,9 +432,7 @@ export class Action {
   private _memberActionPhase: MemberActionPhase | null = null;
   get memberActionPhase(): MemberActionPhase {
     if (!this._memberActionPhase) {
-      this._memberActionPhase = this.events
-        ? memberActionPhase(this.events)
-        : { event: null, deadlineEvent: null };
+      this._memberActionPhase = memberActionPhase(loadedActionEvents(this));
     }
     return this._memberActionPhase;
   }
@@ -484,4 +478,13 @@ export function loadedActionFollowUpForms(
     throw new Error(`followUpForms of action ${action.id} not loaded`);
   }
   return action.followUpForms;
+}
+
+export function loadedActionEvents(
+  action: Pick<Action, "events">,
+): Relation<ActionEvent>[] {
+  if (!action.events) {
+    throw new Error("`events` relation is not loaded");
+  }
+  return action.events;
 }

@@ -17,7 +17,7 @@ import {
 import { UserActionRelationPillStatus } from "../user/dto/user-action-relations.dto";
 import { findLatestTerminalActivity } from "./action-activity-status";
 import type { ActionActivity } from "./entities/action-activity.entity";
-import type { Action } from "./entities/action.entity";
+import { loadedActionEvents, type Action } from "./entities/action.entity";
 import { isStaffPreviewActiveFor } from "./staff-preview";
 import { resolveUserActionPillStatus } from "./user-action-pill-status";
 
@@ -317,7 +317,10 @@ export function resolveUserActionStatus(params: {
     withdrawal,
     dismissed,
     away: computeMemberActionAwayStatus({ action, user, now }),
-    memberActionStarted: hasMemberActionStarted(action.events, now),
+    memberActionStarted: hasMemberActionStarted(
+      loadedActionEvents(action),
+      now,
+    ),
     deadlineAt,
     deadlinePassed,
     staffPreview: isStaffPreviewActiveFor({ user, action, now }),

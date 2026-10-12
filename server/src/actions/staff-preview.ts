@@ -1,16 +1,14 @@
 import { ForbiddenException } from "@nestjs/common";
 import type { User } from "src/user/entities/user.entity";
 import { hasMemberActionStarted } from "src/utils/action-user";
-import type { Action } from "./entities/action.entity";
+import { loadedActionEvents, type Action } from "./entities/action.entity";
 
 export function isStaffPreviewActive(
   action: Pick<Action, "staffPreview" | "events">,
   now: Date,
 ): boolean {
-  if (!action.events) {
-    throw new Error("`events` relation is not loaded");
-  }
-  return action.staffPreview && !hasMemberActionStarted(action.events, now);
+  const events = loadedActionEvents(action);
+  return action.staffPreview && !hasMemberActionStarted(events, now);
 }
 
 export function isStaffPreviewActiveFor(params: {

@@ -485,7 +485,7 @@ export type Action = {
     /**
      * Events associated with the action
      */
-    events: Array<ActionEvent>;
+    events?: Array<ActionEvent>;
     /**
      * Activities associated with the action
      */
@@ -3457,7 +3457,7 @@ export type ExportActionDto = {
     /**
      * Events associated with the action
      */
-    events: Array<ActionEvent>;
+    events?: Array<ActionEvent>;
     /**
      * Activities associated with the action
      */

@@ -14,7 +14,12 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { ActionEvent } from "./action-event.entity";
-import { Action, parseAction, type ParsedAction } from "./action.entity";
+import {
+  Action,
+  loadedActionEvents,
+  parseAction,
+  type ParsedAction,
+} from "./action.entity";
 import { GeneralUpdate } from "./general-update.entity";
 import { ReminderGroup } from "./reminder-group.entity";
 
@@ -70,7 +75,9 @@ export class ActionSuite {
   @ApiProperty({ type: () => ActionEvent, isArray: true })
   get events(): ActionEvent[] {
     return this.actions?.length
-      ? this.actions[0].events.filter((event) => event.suiteManaged)
+      ? loadedActionEvents(this.actions[0]).filter(
+          (event) => event.suiteManaged,
+        )
       : [];
   }
 }

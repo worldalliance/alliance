@@ -39,6 +39,7 @@ import {
 } from "../actions/entities/action-event.entity";
 import {
   Action,
+  loadedActionEvents,
   parseAction,
   type ParsedAction,
 } from "../actions/entities/action.entity";
@@ -422,8 +423,7 @@ export class ActionEventRecipientService {
       // user — CPU-bound work that would otherwise block the event loop for
       // the whole batch.
       await yieldToEventLoop();
-      const events = action.events;
-      const event = events.find((e) => e.id === eventId);
+      const event = loadedActionEvents(action).find((e) => e.id === eventId);
       if (!event) {
         result.set(action.id, []);
         continue;
@@ -459,7 +459,7 @@ export class ActionEventRecipientService {
     const { action, eventId, includeSuspended, session, resolvingActionIds } =
       params;
 
-    if (!action.events.some((event) => event.id === eventId)) {
+    if (!loadedActionEvents(action).some((event) => event.id === eventId)) {
       throw new Error(`Event not found: ${eventId}`);
     }
 
