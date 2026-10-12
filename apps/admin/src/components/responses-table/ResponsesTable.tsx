@@ -1,4 +1,3 @@
-/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import type { AnyField } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
 import type {
@@ -8,7 +7,6 @@ import type {
 } from "@alliance/shared/client";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import {
@@ -20,7 +18,7 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { Layers, Link2, Search, UnfoldVertical, X } from "lucide-react";
+import { X } from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -39,9 +37,7 @@ import {
   autoSnapshotMode,
   buildQuestionColumns,
   collectSnapshotFields,
-  SnapshotMode,
 } from "./columns";
-import ColumnVisibilityMenu from "./ColumnVisibilityMenu";
 import {
   readStoredView,
   writeStoredView,
@@ -49,6 +45,7 @@ import {
 } from "./persistence";
 import ResponseDrawer from "./ResponseDrawer";
 import ResponsesGrid from "./ResponsesGrid";
+import ResponsesToolbar from "./ResponsesToolbar";
 import { buildRows, buildTableColumns, DEFAULT_HIDDEN_COLUMNS } from "./rows";
 import { matchesQuery, normalizeQuery, searchedColumnIds } from "./search";
 import SnapshotNavigator, { snapshotSeed } from "./SnapshotNavigator";
@@ -385,82 +382,21 @@ const ResponsesTable: React.FC<ResponsesTableProps> = ({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <Search
-            aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-zinc-400"
-          />
-          <input
-            type="search"
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Search responses…"
-            aria-label="Search responses"
-            className="w-64 rounded-md border border-gray-300 bg-white py-1.5 pr-3 pl-8 text-sm text-gray-900 focus:border-black focus:outline-none"
-          />
-        </div>
-
-        <Button
-          color={view.expandRows ? ButtonColor.Black : ButtonColor.White}
-          size="small"
-          onClick={() => updateView({ expandRows: !view.expandRows })}
-          aria-pressed={view.expandRows}
-        >
-          <UnfoldVertical aria-hidden="true" className="mr-1.5 size-4" />
-          Expand rows
-        </Button>
-
-        <ColumnVisibilityMenu
-          columns={columns}
-          hiddenColumns={hiddenColumns}
-          onChange={(hidden) => updateView({ hiddenColumns: hidden })}
-        />
-
-        <Button
-          color={ButtonColor.White}
-          size="small"
-          onClick={() => setNavigatorOpen(true)}
-        >
-          <Layers aria-hidden="true" className="mr-1.5 size-4" />
-          Versions
-          <span className="ml-1.5 text-zinc-500">{snapshotEntries.length}</span>
-        </Button>
-
-        <Button
-          color={
-            mode === SnapshotMode.Expanded
-              ? ButtonColor.Black
-              : ButtonColor.White
-          }
-          size="small"
-          onClick={() =>
-            updateView({
-              snapshotMode:
-                mode === SnapshotMode.Expanded
-                  ? SnapshotMode.Focused
-                  : SnapshotMode.Expanded,
-            })
-          }
-          title={
-            mode === SnapshotMode.Expanded
-              ? "Showing questions from every version in these responses"
-              : "Showing the current version's questions only"
-          }
-        >
-          {mode === SnapshotMode.Expanded ? "All versions" : "Current version"}
-        </Button>
-
-        <Button color={ButtonColor.White} size="small" onClick={copyViewLink}>
-          <Link2 aria-hidden="true" className="mr-1.5 size-4" />
-          {copied ? "Copied" : "Copy view link"}
-        </Button>
-
-        <span className="ml-auto text-sm text-zinc-500">
-          {withCount(sortedRows.length, "response")}
-          {sortedRows.length !== rows.length && ` of ${rows.length}`}
-        </span>
-      </div>
+      <ResponsesToolbar
+        searchInput={searchInput}
+        onSearchInputChange={setSearchInput}
+        expandRows={view.expandRows}
+        mode={mode}
+        onViewChange={updateView}
+        columns={columns}
+        hiddenColumns={hiddenColumns}
+        versionCount={snapshotEntries.length}
+        onOpenVersions={() => setNavigatorOpen(true)}
+        copied={copied}
+        onCopyViewLink={copyViewLink}
+        shownCount={sortedRows.length}
+        totalCount={rows.length}
+      />
 
       {selectedSnapshotId !== null && (
         <div className="flex flex-wrap items-center gap-2">
