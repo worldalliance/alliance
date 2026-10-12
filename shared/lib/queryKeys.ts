@@ -169,6 +169,8 @@ export const queryKeys = {
   formsAdminAll,
   formResponsesAdmin: (formId: number | null) =>
     ["tasksGetFormResponsesAdmin", formId] as const,
+  formResponsesByFormsAdmin: (formIds: readonly number[] | null) =>
+    ["tasksGetFormResponsesByFormsAdmin", formIds] as const,
   formShareLinksAdmin: (formId: number | null) =>
     ["actionsShareLinksForFormAdmin", formId] as const,
   formWithdrawalsAdmin: (formId: number | null) =>

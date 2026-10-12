@@ -158,6 +158,8 @@ const matchesResponseFilter = (
 export const REFERRALS_LOAD_ERROR =
   "Failed to load share links, so invited respondents show as anonymous";
 
+export const REFRESH_ERROR = "Failed to refresh form responses";
+
 export type FormResponsesViewProps = {
   /** Heading shown in the page header. */
   title: string;

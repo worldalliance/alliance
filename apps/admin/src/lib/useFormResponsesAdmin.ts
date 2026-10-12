@@ -1,9 +1,6 @@
 import {
-  actionsShareLinksForFormAdmin,
   tasksGetFormResponsesAdmin,
   type FormResponseDto,
-  type ProfileDto,
-  type ShareUrlDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
@@ -13,20 +10,12 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import {
-  REFERRALS_LOAD_ERROR,
-  type FormWithSchema,
-} from "../components/FormResponsesView";
+import { type FormWithSchema } from "../components/FormResponsesView";
 import { adminRefusalMessage } from "./adminRefusal";
 import { sortResponsesByCreatedAtAsc } from "./sortResponses";
+import { useFormShareLinksAdmin } from "./useFormShareLinksAdmin";
 
 const NO_RESPONSES: FormResponseDto[] = [];
-const NO_SIDS: Record<string, ProfileDto> = {};
-
-const sidsToUser = (links: ShareUrlDto[]) =>
-  Object.fromEntries(
-    links.flatMap((link) => (link.sid ? [[link.sid, link.user]] : [])),
-  );
 
 export function useFormResponsesAdmin(formId: number | undefined) {
   const queryClient = useQueryClient();
@@ -45,18 +34,7 @@ export function useFormResponsesAdmin(formId: number | undefined) {
     select: sortResponsesByCreatedAtAsc,
   });
 
-  const shareLinks = useQuery({
-    queryKey: queryKeys.formShareLinksAdmin(formId ?? null),
-    queryFn:
-      formId === undefined
-        ? skipToken
-        : () =>
-            actionsShareLinksForFormAdmin({
-              path: { formId },
-              throwOnError: true,
-            }).then((res) => res.data),
-    select: sidsToUser,
-  });
+  const shareLinks = useFormShareLinksAdmin(formId);
 
   const refresh = useMutation({
     mutationFn: () =>
@@ -69,9 +47,7 @@ export function useFormResponsesAdmin(formId: number | undefined) {
         ),
         // Share links fail the way their first load does, without failing
         // the refresh of rows that did reload.
-        queryClient.refetchQueries({
-          queryKey: queryKeys.formShareLinksAdmin(formId ?? null),
-        }),
+        shareLinks.refetch(),
       ]),
   });
 
@@ -85,16 +61,14 @@ export function useFormResponsesAdmin(formId: number | undefined) {
     // Unparsed: the server validates a form's schema before storing it.
     form: (form.data ?? null) as unknown as FormWithSchema | null,
     responses: responses.data ?? NO_RESPONSES,
-    sidsToUserMap: shareLinks.data ?? NO_SIDS,
+    sidsToUserMap: shareLinks.sidsToUserMap,
     // The refresh counts so a click swaps in the spinner; a background refetch
     // on window focus leaves the table up.
     loading: form.isPending || responses.isPending || refresh.isPending,
     error: failure
       ? adminRefusalMessage(failure, "Failed to load form responses")
       : null,
-    referralsError: shareLinks.isLoadingError
-      ? adminRefusalMessage(shareLinks.error, REFERRALS_LOAD_ERROR)
-      : null,
+    referralsError: shareLinks.referralsError,
     refresh,
   };
 }
