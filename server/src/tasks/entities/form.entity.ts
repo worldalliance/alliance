@@ -43,9 +43,8 @@ export class Form {
   @ManyToOne(() => FormSnapshot, { onDelete: "RESTRICT" })
   @JoinColumn({ name: "formSnapshotId" })
   @Type(() => FormSnapshot)
-  @Allow()
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  formSnapshot: Relation<FormSnapshot>;
+  @IsOptional()
+  formSnapshot?: Relation<FormSnapshot>;
 
   @ManyToMany(() => FormSnapshot)
   @JoinTable({
@@ -74,4 +73,11 @@ export class Form {
   @IsArray()
   @IsOptional()
   responses?: Relation<FormResponse>[];
+}
+
+export function loadedFormSnapshot(form: Form): Relation<FormSnapshot> {
+  if (!form.formSnapshot) {
+    throw new Error(`formSnapshot of form ${form.id} not loaded`);
+  }
+  return form.formSnapshot;
 }

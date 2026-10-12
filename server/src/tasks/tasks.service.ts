@@ -124,7 +124,7 @@ import {
   typeUsableForVisibility,
   typeUsesIdArgument,
 } from "./entities/customvalidator.entity";
-import { Form } from "./entities/form.entity";
+import { Form, loadedFormSnapshot } from "./entities/form.entity";
 import {
   FormResponse,
   loadedFormResponseSnapshot,
@@ -415,7 +415,8 @@ export class TasksService {
       relations: { formSnapshot: true },
     });
 
-    const aggregateViews = formSchemaOf(form.formSnapshot).aggregateViews ?? [];
+    const aggregateViews =
+      formSchemaOf(loadedFormSnapshot(form)).aggregateViews ?? [];
     if (aggregateViews.length === 0) {
       return [];
     }
@@ -459,7 +460,8 @@ export class TasksService {
   }
 
   async transformImageUrls(form: Form): Promise<Form> {
-    const schema = structuredClone(formSchemaOf(form.formSnapshot));
+    const snapshot = loadedFormSnapshot(form);
+    const schema = structuredClone(formSchemaOf(snapshot));
     const pages = schema.pages;
     const transformElement = (field: Page["fields"][number]): void => {
       if (field.kind === "images") {
@@ -480,15 +482,13 @@ export class TasksService {
     for (const page of pages) {
       page.fields.forEach(transformElement);
     }
-    form.formSnapshot = this.cloneFormSnapshotWithSchema(
-      form.formSnapshot,
-      schema,
-    );
+    form.formSnapshot = this.cloneFormSnapshotWithSchema(snapshot, schema);
     return form;
   }
 
   async transformContractFields(form: Form): Promise<Form> {
-    const schema = structuredClone(formSchemaOf(form.formSnapshot));
+    const snapshot = loadedFormSnapshot(form);
+    const schema = structuredClone(formSchemaOf(snapshot));
     const pages = schema.pages;
     for (const page of pages) {
       for (const field of page.fields) {
@@ -499,10 +499,7 @@ export class TasksService {
         }
       }
     }
-    form.formSnapshot = this.cloneFormSnapshotWithSchema(
-      form.formSnapshot,
-      schema,
-    );
+    form.formSnapshot = this.cloneFormSnapshotWithSchema(snapshot, schema);
     return form;
   }
 
@@ -1355,8 +1352,8 @@ export class TasksService {
     dto: { formSnapshotId?: number; schemaSnapshot?: Record<string, unknown> },
   ) {
     if (dto.formSnapshotId !== undefined) {
-      return dto.formSnapshotId === form.formSnapshotId && form.formSnapshot
-        ? form.formSnapshot
+      return dto.formSnapshotId === form.formSnapshotId
+        ? loadedFormSnapshot(form)
         : this.formSnapshotService.findHistoricalOrThrow(
             form.id,
             dto.formSnapshotId,

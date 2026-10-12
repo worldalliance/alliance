@@ -1,7 +1,7 @@
 import { ApiProperty, PickType } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsDefined } from "class-validator";
-import { Form } from "./entities/form.entity";
+import { Form, loadedFormSnapshot } from "./entities/form.entity";
 import {
   FormResponse,
   loadedFormResponseSnapshot,
@@ -42,7 +42,7 @@ export class FormResponseHistoryDto {
   responses: FormResponseHistoryEntryDto[];
 
   constructor(input: FormResponseHistory) {
-    this.schema = input.form.formSnapshot.schema;
+    this.schema = loadedFormSnapshot(input.form).schema;
     this.responses = input.responses.map(
       (response) => new FormResponseHistoryEntryDto(response),
     );

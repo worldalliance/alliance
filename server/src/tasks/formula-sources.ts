@@ -27,6 +27,7 @@ import {
 } from "@nestjs/common";
 import { isEqual } from "es-toolkit";
 import z from "zod";
+import { loadedFormSnapshot } from "./entities/form.entity";
 import { loadedFormResponseSnapshot } from "./entities/formresponse.entity";
 import type { FormResponseHistory } from "./form-response-history.dto";
 import type { FormulaSourceDto } from "./form.dto";
@@ -74,7 +75,7 @@ function verifiedFormulaSource(params: {
   }
   return R.mapError(
     readSourceHistory({
-      schema: history.form.formSnapshot.schema,
+      schema: loadedFormSnapshot(history.form).schema,
       responses: read.map((response) => ({
         id: response.id,
         answers: response.answers,

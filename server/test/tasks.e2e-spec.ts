@@ -607,6 +607,74 @@ describe("Tasks (e2e)", () => {
       .expect(200);
   });
 
+  it("groups responses to older versions against the form's current version", async () => {
+    const createResponse = await request(ctx.app.getHttpServer())
+      .post("/tasks/createForm")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({ title: "Versioned Signup", schema: sampleSchema })
+      .expect(201);
+    const versionedFormId = createResponse.body.id as number;
+    const firstSnapshotId = createResponse.body.formSnapshotId as number;
+    const updateTo = async (description: string): Promise<number> => {
+      const schema = structuredClone(sampleSchema);
+      schema.description = description;
+      const response = await request(ctx.app.getHttpServer())
+        .put(`/tasks/updateForm/${versionedFormId}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Versioned Signup", schema })
+        .expect(200);
+      return response.body.formSnapshotId as number;
+    };
+    const saveResponse = async (formSnapshotId: number): Promise<number> => {
+      const response = await formResponseRepo.save(
+        formResponseRepo.create({
+          formId: versionedFormId,
+          formSnapshotId,
+          answers: { "full-name": "Member Example" },
+          user: { id: ctx.testUserId },
+        }),
+      );
+      return response.id;
+    };
+
+    const secondSnapshotId = await updateTo("Second version");
+    const secondResponseId = await saveResponse(secondSnapshotId);
+    const firstResponseIds = [
+      await saveResponse(firstSnapshotId),
+      await saveResponse(firstSnapshotId),
+    ];
+    const currentSnapshotId = await updateTo("Current version");
+    await saveResponse(currentSnapshotId);
+
+    const migration = await request(ctx.app.getHttpServer())
+      .get(`/tasks/forms/${versionedFormId}/snapshotMigration`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+
+    expect(migration.body.latestSnapshot.id).toBe(currentSnapshotId);
+    expect(migration.body.latestSnapshot.schema.description).toBe(
+      "Current version",
+    );
+    expect(
+      migration.body.groups.map(
+        (group: { snapshot: { id: number }; responses: { id: number }[] }) => ({
+          snapshotId: group.snapshot.id,
+          responseIds: group.responses.map((response) => response.id),
+        }),
+      ),
+    ).toEqual([
+      { snapshotId: firstSnapshotId, responseIds: firstResponseIds },
+      { snapshotId: secondSnapshotId, responseIds: [secondResponseId] },
+    ]);
+  });
+
+  it("turns away a non-admin from a form's snapshot migration", async () => {
+    await request(ctx.app.getHttpServer())
+      .get("/tasks/forms/1/snapshotMigration")
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
+      .expect(401);
+  });
+
   describe("Submission after the deadline", () => {
     const createDeadlineFormAction = async (name: string, deadline: Date) => {
       const action = await actionRepo.save(
