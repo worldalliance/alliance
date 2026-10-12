@@ -144,8 +144,7 @@ describe("the group chat on a large screen", () => {
     author: makeProfile(2),
     conversationId: 1,
   });
-  const openChatButton = () =>
-    document.querySelector(".lucide-message-square")?.closest("button");
+  const openChatButton = () => screen.queryByTitle("Open Chat");
 
   beforeEach(() => {
     jest.spyOn(window, "matchMedia").mockReturnValue(
