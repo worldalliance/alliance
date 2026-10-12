@@ -57,6 +57,12 @@ import {
 import { addressedWrite } from "../lib/displayBlockById";
 import { findQuestion } from "../lib/formDependencies";
 import { useSelectOnLoad } from "../lib/formEditorLink";
+import {
+  collectFormIssues,
+  indexIssues,
+  IssueTargetKind,
+  type FormIssue,
+} from "../lib/formIssues";
 import { formSchemaIds, JsonScopeKind, type JsonScope } from "../lib/formJson";
 import { mergeFormSchemas } from "../lib/formSchemaMerge";
 import {
@@ -121,6 +127,14 @@ import {
   type AvailableElement,
   type InsertLoc,
 } from "./form-canvas/InsertPoint";
+import {
+  IssueGate,
+  IssueList,
+  issueLocation,
+  openIssue,
+  selectionIssues,
+  SidebarIssues,
+} from "./form-canvas/IssueList";
 import { PageSettings, PageSettingsSidebar } from "./form-canvas/PageSettings";
 import { extendSelection, type Span } from "./form-canvas/rangeSelection";
 import { RangeSettings } from "./form-canvas/RangeSettings";
@@ -586,9 +600,12 @@ export function FormBuilder(props: FormBuilderProps) {
   const [confirmUnresolvedVariables, setConfirmUnresolvedVariables] =
     useState(false);
 
-  const { sourceForms, statusByForm: sourceFormStatus } = useFormulaSourceForms(
-    conflict ? [schema, conflict.theirs] : [schema],
-  );
+  const {
+    sourceForms,
+    statusByForm: sourceFormStatus,
+    retryFailed: retrySourceForms,
+  } = useFormulaSourceForms(conflict ? [schema, conflict.theirs] : [schema]);
+  const sourceStatuses = Object.entries(sourceFormStatus);
   const pendingSourceForms = useMemo(
     () =>
       new Set(
@@ -598,10 +615,11 @@ export function FormBuilder(props: FormBuilderProps) {
       ),
     [sourceFormStatus],
   );
+  const failedSourceForms = sourceStatuses.filter(
+    ([, status]) => formFieldsErrorReason(status) !== null,
+  ).length;
   const sourceFormsLoading = pendingSourceForms.size > 0;
-  const sourceFormsFailed = Object.values(sourceFormStatus).some(
-    (status) => formFieldsErrorReason(status) !== null,
-  );
+  const sourceFormsFailed = failedSourceForms > 0;
   const validation = useMemo(
     () => ({ formId, sourceForms, pendingSourceForms }),
     [formId, sourceForms, pendingSourceForms],
@@ -650,6 +668,10 @@ export function FormBuilder(props: FormBuilderProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [issueList, setIssueList] = useState<{ gate: IssueGate | null } | null>(
+    null,
+  );
+  const [outputViewId, setOutputViewId] = useState<string | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewUserId, setPreviewUserId] = useState<string>("preview");
   const previewUsersQuery = useUsersAdmin({ enabled: isPreviewMode });
@@ -1309,13 +1331,8 @@ export function FormBuilder(props: FormBuilderProps) {
       amendSchema(syncedSchema);
       endStep();
 
-      const validationErrors = validateFormSchema(syncedSchema, validation);
-      if (validationErrors.length > 0) {
-        const summary = validationErrors
-          .map((e) => `• Block ${e.blockId}: ${e.message}`)
-          .join("\n");
-        setSaveError(summary);
-        showErrorToast("Fix invalid references before saving");
+      if (validateFormSchema(syncedSchema, validation).length > 0) {
+        setIssueList({ gate: IssueGate.Save });
         return;
       }
 
@@ -1444,22 +1461,36 @@ export function FormBuilder(props: FormBuilderProps) {
     [schema],
   );
 
-  const liveValidationErrors = useMemo(
-    () => validateFormSchema(schema, validation),
-    [schema, validation],
+  const issues = useMemo(
+    () =>
+      collectFormIssues({
+        // As Save will write it, naming sub-fields a list input lacks.
+        schema: syncSchemaListInputs(schema, sourceForms),
+        groups: canvasGroups,
+        expressions,
+        validation,
+      }),
+    [canvasGroups, expressions, schema, sourceForms, validation],
   );
-  const invalidIds = useMemo(
-    () => new Set(liveValidationErrors.map((error) => error.blockId)),
-    [liveValidationErrors],
-  );
+  const issueIndex = useMemo(() => indexIssues(issues), [issues]);
+  const blockingIssues = issues.length;
 
   const handleSaveForm = useCallback(() => {
+    if (blockingIssues > 0 && !sourceFormsLoading) {
+      setIssueList({ gate: IssueGate.Save });
+      return;
+    }
     if (unresolvedVariableReferences.length > 0) {
       setConfirmUnresolvedVariables(true);
       return;
     }
     void saveForm();
-  }, [saveForm, unresolvedVariableReferences]);
+  }, [
+    blockingIssues,
+    saveForm,
+    sourceFormsLoading,
+    unresolvedVariableReferences,
+  ]);
 
   const closeConflict = useCallback(() => setConflict(null), []);
 
@@ -1872,6 +1903,26 @@ export function FormBuilder(props: FormBuilderProps) {
       />
     );
 
+  const goToIssue = (issue: FormIssue) =>
+    openIssue(issue, {
+      pages: schema.pages,
+      select: (pageIndex, target, section) => {
+        if (activeEditor !== "form") setActiveEditor("form");
+        setIsPreviewMode(false);
+        selectFromOutline({
+          page: schema.pages[pageIndex]!,
+          pageIndex,
+          target,
+          section,
+        });
+      },
+      showOutputView: (viewId) => {
+        setOutputViewId(viewId);
+        setActiveEditor("outputs");
+      },
+      showVariables: () => setActiveEditor("variables"),
+    });
+
   const renderInsertPoint = (loc: InsertLoc, options?: { prominent: true }) => (
     <InsertPoint
       loc={loc}
@@ -2063,7 +2114,6 @@ export function FormBuilder(props: FormBuilderProps) {
               setGroups={setGroups}
               applyGrouped={applyGrouped}
               summarize={summarize}
-              validationErrors={liveValidationErrors}
               onSelectMember={(memberIndex) =>
                 select(
                   elementTarget(currentPage.fields[memberIndex]!, memberIndex),
@@ -2169,6 +2219,26 @@ export function FormBuilder(props: FormBuilderProps) {
               <div className="bg-white border-b border-gray-200 p-4">
                 <div className="flex items-center justify-end gap-4 flex-wrap xl:flex-nowrap">
                   <div className="flex items-center space-x-2">
+                    <IssueList
+                      rows={issues.map((issue) => ({
+                        location: issueLocation(schema, issue.target),
+                        message: issue.message,
+                        onGo:
+                          issue.target.kind === IssueTargetKind.Form
+                            ? null
+                            : () => goToIssue(issue),
+                      }))}
+                      sources={{
+                        pending: pendingSourceForms.size,
+                        failed: failedSourceForms,
+                        onRetry: retrySourceForms,
+                      }}
+                      open={issueList !== null}
+                      gate={issueList?.gate ?? null}
+                      onOpenChange={(open) =>
+                        setIssueList(open ? { gate: null } : null)
+                      }
+                    />
                     {!isPreviewMode && (
                       <HistoryControls
                         scope={builderRef}
@@ -2189,7 +2259,15 @@ export function FormBuilder(props: FormBuilderProps) {
                     )}
                     {activeEditor === "form" && (
                       <Button
-                        onClick={() => setIsPreviewMode(!isPreviewMode)}
+                        onClick={() => {
+                          if (isPreviewMode) {
+                            setIsPreviewMode(false);
+                          } else if (blockingIssues > 0) {
+                            setIssueList({ gate: IssueGate.Preview });
+                          } else {
+                            setIsPreviewMode(true);
+                          }
+                        }}
                         color={ButtonColor.Stone}
                         size="small"
                       >
@@ -2322,6 +2400,8 @@ export function FormBuilder(props: FormBuilderProps) {
                     onSchemaChange={updateSchema}
                     onUpdateBlockById={updateBlockById}
                     editorsKey={schemaLoads}
+                    selectedViewId={outputViewId}
+                    onSelectView={setOutputViewId}
                   />
                 ) : activeEditor === "aggregates" ? (
                   <AggregateBuilder
@@ -2407,6 +2487,7 @@ export function FormBuilder(props: FormBuilderProps) {
                                   keepOutline: true,
                                 })
                         }
+                        issues={issueIndex}
                         onAddPage={addPage}
                         onMovePage={movePage}
                         onMoveElement={(pageIndex, move) =>
@@ -2434,7 +2515,8 @@ export function FormBuilder(props: FormBuilderProps) {
                               }
                         }
                         summarize={summarize}
-                        invalidIds={invalidIds}
+                        issues={issueIndex}
+                        pageIndex={selectedPageIndex}
                         renderInsertPoint={renderInsertPoint}
                         onMove={moveElement}
                         onUpdateElement={(index, updates) =>
@@ -2445,7 +2527,19 @@ export function FormBuilder(props: FormBuilderProps) {
                         override={override}
                       />
                     }
-                    settings={renderSettings()}
+                    settings={
+                      <>
+                        <SidebarIssues
+                          messages={selectionIssues({
+                            index: issueIndex,
+                            page: currentPage,
+                            pageIndex: selectedPageIndex,
+                            target: resolvedTarget,
+                          })}
+                        />
+                        {renderSettings()}
+                      </>
+                    }
                   />
                 )}
               </div>

@@ -161,6 +161,23 @@ test("blames the form that failed and not the ones beside it", async () => {
   expect(state().byForm[11].map((field) => field.label)).toEqual(["Fine"]);
 });
 
+test("retries only the forms that failed", async () => {
+  schemas[11] = schemaWith("Fine");
+
+  const { state } = mount(() => useFormQuestionFieldsMap([11, 404]));
+  await waitFor(() =>
+    expect(state().statusByForm[404]).toBe(FormFieldsStatus.LoadFailed),
+  );
+  schemas[404] = schemaWith("Back");
+  fetched = [];
+  state().retryFailed();
+
+  await waitFor(() =>
+    expect(state().statusByForm[404]).toBe(FormFieldsStatus.Ready),
+  );
+  expect(fetched).toEqual([404]);
+});
+
 test("skips the sentinel id a picker sits on before a form is chosen", async () => {
   schemas[6] = schemaWith("Real");
 

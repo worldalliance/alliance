@@ -17,7 +17,11 @@ type VisibilityTarget = { visibleIfFormula?: VisibleIfFormula };
 const sameOrNone = (a: FormulaNode | null, b: FormulaNode | null) =>
   a === null || b === null ? a === b : sameFormula(a, b);
 
-const typedText = (
+/**
+ * The buffer's text while the schema still holds the formula beside it, or
+ * null when the editor shows the schema's formula.
+ */
+export const typedText = (
   buffer: ExpressionBuffer | undefined,
   target: VisibilityTarget,
 ): string | null =>

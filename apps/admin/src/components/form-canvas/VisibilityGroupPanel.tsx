@@ -21,7 +21,6 @@ type VisibilityGroupPanelProps = {
   laterFields: AnyField[];
   onChangeVisibility: (formula: VisibleIfFormula | undefined) => void;
   onUngroup: () => void;
-  errors: string[];
 };
 
 /** A group's shared rule, as its settings and its members' show it. */
@@ -50,7 +49,6 @@ export function VisibilityGroupPanel({
   laterFields,
   onChangeVisibility,
   onUngroup,
-  errors,
 }: VisibilityGroupPanelProps) {
   return (
     <SectionPanels
@@ -119,14 +117,6 @@ export function VisibilityGroupPanel({
               </button>
             </div>
           </div>
-
-          {errors.length > 0 && (
-            <ul role="alert" className="space-y-1 text-sm text-red-700">
-              {errors.map((error, index) => (
-                <li key={index}>{error}</li>
-              ))}
-            </ul>
-          )}
 
           <ConditionalVisibility
             field={firstMember}

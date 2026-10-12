@@ -126,7 +126,8 @@ export function collectVariableErrors(
 
   for (const variable of variables) {
     const blockId = `variable:${variable.name}`;
-    const push = (message: string) => errors.push({ blockId, message });
+    const push = (message: string) =>
+      errors.push({ blockId, variable: variable.name, message });
 
     if (!VARIABLE_NAME_REGEX.test(variable.name)) {
       push(

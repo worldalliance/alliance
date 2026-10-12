@@ -17,6 +17,8 @@ const renderBuilder = (schema: FormSchema) =>
             onSchemaChange={() => {}}
             onUpdateBlockById={() => null}
             editorsKey={0}
+            selectedViewId={null}
+            onSelectView={() => {}}
           />
         </ToastProvider>
       </QueryClientProvider>

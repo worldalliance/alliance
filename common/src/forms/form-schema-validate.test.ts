@@ -9,7 +9,7 @@ import type {
   RangeField,
   TextField,
 } from "./form-schema";
-import { validateFormSchema } from "./form-schema-validate";
+import { ValidatedFormula, validateFormSchema } from "./form-schema-validate";
 import type { Condition, VisibleIfFormula } from "./visible-if-formula";
 
 const formula = (conditions: Record<string, Condition>): VisibleIfFormula => ({
@@ -122,6 +122,7 @@ describe("validateFormSchema", () => {
       {
         viewId: "v1",
         blockId: "blk-label",
+        formula: ValidatedFormula.Visibility,
         message: 'References missing output block "does-not-exist"',
       },
     ]);
@@ -206,6 +207,7 @@ describe("validateFormSchema", () => {
       {
         viewId: "v1",
         blockId: "blk-a",
+        formula: ValidatedFormula.Visibility,
         message:
           "Cycle in outputBlockVisible references: blk-a -> blk-b -> blk-a",
       },
@@ -229,6 +231,7 @@ describe("validateFormSchema", () => {
       {
         viewId: "v1",
         blockId: "blk-a",
+        formula: ValidatedFormula.Visibility,
         message: "Cycle in outputBlockVisible references: blk-a -> blk-a",
       },
     ]);
@@ -261,6 +264,7 @@ describe("validateFormSchema", () => {
       {
         viewId: "v1",
         blockId: "blk-a",
+        formula: ValidatedFormula.Visibility,
         message:
           "Cycle in outputBlockVisible references: blk-a -> blk-b -> blk-c -> blk-a",
       },
@@ -305,6 +309,7 @@ describe("validateFormSchema", () => {
       {
         viewId: "v1",
         blockId: "blk",
+        formula: ValidatedFormula.Visibility,
         message: 'References missing output block ""',
       },
     ]);
@@ -328,6 +333,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "f1",
+        formula: ValidatedFormula.Visibility,
         message:
           '"outputBlockVisible" condition is only valid on output-view blocks',
       },
@@ -352,6 +358,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "f1",
+        formula: ValidatedFormula.RequiredIf,
         message:
           '"outputBlockVisible" condition is only valid on output-view blocks',
       },
@@ -373,6 +380,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "disp",
+        formula: ValidatedFormula.Visibility,
         message:
           '"outputBlockVisible" condition is only valid on output-view blocks',
       },
@@ -450,6 +458,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "p1",
+        formula: ValidatedFormula.Visibility,
         message:
           'Page visibility references field "f1", which must be on an earlier page',
       },
@@ -471,6 +480,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "p1",
+        formula: ValidatedFormula.Visibility,
         message:
           'Page visibility references field "f2", which must be on an earlier page',
       },
@@ -492,6 +502,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "p2",
+        formula: ValidatedFormula.Visibility,
         message:
           'Page visibility references field "missing", which must be on an earlier page',
       },
@@ -512,6 +523,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "p1",
+        formula: ValidatedFormula.Visibility,
         message:
           '"outputBlockVisible" condition is only valid on output-view blocks',
       },
@@ -538,6 +550,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "inner",
+        formula: ValidatedFormula.Visibility,
         message:
           '"outputBlockVisible" condition is only valid on output-view blocks',
       },
@@ -608,6 +621,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "f1",
+        formula: ValidatedFormula.Visibility,
         message: "Visibility conditions form a cycle: f1 -> f2 -> f1",
       },
     ]);
@@ -647,6 +661,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "f1",
+        formula: ValidatedFormula.Visibility,
         message: "Visibility conditions form a cycle: f1 -> f2 -> sub -> f1",
       },
     ]);
@@ -667,6 +682,7 @@ describe("validateFormSchema", () => {
     expect(validateFormSchema(schema)).toEqual([
       {
         blockId: "f1",
+        formula: ValidatedFormula.Visibility,
         message: 'Visibility of "f1" depends on its own answer',
       },
     ]);
@@ -722,12 +738,14 @@ describe("validateFormSchema", () => {
     expect(errors).toHaveLength(2);
     expect(errors).toContainEqual({
       blockId: "f1",
+      formula: ValidatedFormula.Visibility,
       message:
         '"outputBlockVisible" condition is only valid on output-view blocks',
     });
     expect(errors).toContainEqual({
       viewId: "v1",
       blockId: "blk",
+      formula: ValidatedFormula.Visibility,
       message: 'References missing output block "missing"',
     });
   });
@@ -751,6 +769,7 @@ describe("validateFormSchema", () => {
       {
         viewId: "v1",
         blockId: "<unnamed>",
+        formula: ValidatedFormula.Visibility,
         message: 'References missing output block "missing"',
       },
     ]);

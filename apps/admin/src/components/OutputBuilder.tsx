@@ -160,6 +160,9 @@ interface OutputBuilderProps {
   onUpdateBlockById: BlockWriteById;
   /** Remounts the block editors when it changes, as after undo. */
   editorsKey: number;
+  /** Null, or a view that's gone, shows the first view. */
+  selectedViewId: string | null;
+  onSelectView: (viewId: string | null) => void;
 }
 
 export function OutputBuilder({
@@ -167,10 +170,9 @@ export function OutputBuilder({
   onSchemaChange,
   onUpdateBlockById,
   editorsKey,
+  selectedViewId,
+  onSelectView: setSelectedViewId,
 }: OutputBuilderProps) {
-  const [selectedViewId, setSelectedViewId] = useState<string | null>(
-    () => schema.outputViews?.[0]?.id ?? null,
-  );
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [dropPosition, setDropPosition] = useState<"before" | "after" | null>(
@@ -193,7 +195,7 @@ export function OutputBuilder({
     ) {
       setSelectedViewId(schema.outputViews[0].id);
     }
-  }, [schema.outputViews, selectedViewId]);
+  }, [schema.outputViews, selectedViewId, setSelectedViewId]);
 
   const selectedView: OutputViewSchema | null = useMemo(() => {
     if (!schema.outputViews || schema.outputViews.length === 0) {

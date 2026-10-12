@@ -28,6 +28,7 @@ import {
   startOnEnter,
   type InlineEditing,
 } from "./InlineText";
+import { IssueMarker } from "./IssueList";
 import { extendableClick } from "./rangeSelection";
 import { SidebarSection } from "./sidebarSections";
 import type { ListDrag } from "./useListDrag";
@@ -106,6 +107,7 @@ export function CanvasElement({
   onExtend,
   onSelectChild,
   summarize,
+  issueCount,
   conditionSummary,
   drag,
   onUpdate,
@@ -119,6 +121,8 @@ export function CanvasElement({
   onSelect: (section: SidebarSection) => void;
   /** Shift-click's selection through this element; null to select it alone. */
   onExtend: (() => void) | null;
+  /** At the element or inside it. */
+  issueCount: number;
   /** Null when the element shows unconditionally, or through its group. */
   conditionSummary: string | null;
   drag: ListDrag;
@@ -155,7 +159,9 @@ export function CanvasElement({
         "group/element relative -mx-3 rounded-md px-3 py-2 transition-shadow",
         selectedChild && !selected
           ? "ring-1 ring-blue-300"
-          : selectionRing(selected),
+          : issueCount > 0 && !selected
+            ? "ring-1 ring-red-300"
+            : selectionRing(selected),
         drag.dragging && "opacity-50",
       )}
       {...extendableClick({
@@ -214,6 +220,10 @@ export function CanvasElement({
           Editing content for {shown.override.label}
         </span>
       )}
+      <IssueMarker
+        count={issueCount}
+        className="absolute -top-2 right-6 z-10 rounded-full bg-white p-0.5 shadow-sm"
+      />
       {conditionSummary && (
         <ElementConditionsIndicator
           summary={conditionSummary}

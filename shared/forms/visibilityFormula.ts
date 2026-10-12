@@ -1,4 +1,7 @@
-import type { FormulaNode } from "@alliance/common/forms/visible-if-formula";
+import type {
+  FormulaNode,
+  VisibleIfFormula,
+} from "@alliance/common/forms/visible-if-formula";
 import { R, type Result } from "@alliance/common/result";
 
 const CONDITION_NAME_REGEX = /^condition\d+$/i;
@@ -148,6 +151,17 @@ export function formulaConditionNames(node: FormulaNode): string[] {
   return [
     ...formulaConditionNames(node.left),
     ...formulaConditionNames(node.right),
+  ];
+}
+
+/** The names `formula` uses that none of its conditions define, once each. */
+export function undefinedConditionNames(formula: VisibleIfFormula): string[] {
+  return [
+    ...new Set(
+      formulaConditionNames(formula.formula).filter(
+        (name) => !Object.hasOwn(formula.conditions, name),
+      ),
+    ),
   ];
 }
 

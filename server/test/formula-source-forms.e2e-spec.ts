@@ -138,6 +138,7 @@ describe("Formulas reading another form (e2e)", () => {
       expect(response.body.errors).toEqual([
         {
           blockId: "variable:scores",
+          variable: "scores",
           message: `Input "input1" reads form ${form.id}, which doesn't exist or couldn't be loaded`,
         },
       ]);
