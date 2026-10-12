@@ -3,7 +3,6 @@ import {
   userUnregisterDevice,
 } from "@alliance/shared/client";
 import { milliseconds } from "date-fns";
-import { Platform } from "react-native";
 import { createDeviceLink } from "./deviceLink";
 import { SecureStorage } from "./SecureStorage";
 import { currentSession } from "./session";
@@ -14,7 +13,7 @@ export const { registerDevice, unregisterDevice, retryPending } =
     register: async (body) =>
       (
         await userRegisterDevice({
-          body: { ...body, taskBadgePushes: Platform.OS === "ios" },
+          body: { ...body, taskBadgePushes: true },
           throwOnError: true,
         })
       ).data.id,

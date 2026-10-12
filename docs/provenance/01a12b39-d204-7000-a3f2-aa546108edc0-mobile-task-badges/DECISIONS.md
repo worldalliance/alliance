@@ -26,11 +26,11 @@ Origin: agent decisions. These choices implement [the requirements](REQUIREMENTS
 ## Delivery
 
 - A badge push sets `badge` and `data.taskBadgeCount`, with no title, body, or sound, at normal priority. iOS applies `badge` itself without showing anything. Android receives a data-only message; Expo's `badge` field is iOS-only. Badge pushes aren't stored as `Push` rows, since those model visible notifications.
-- On Android, an `expo-task-manager` background task (`apps/mobile/lib/taskBadgeTask.ts`) sets the icon from the push. It is defined in a custom entry, `apps/mobile/index.ts`, so a headless launch finds it before routes load. iOS needs no task.
+- On Android, an `expo-task-manager` background task (`apps/mobile/lib/taskBadgeTask.ts`) sets the icon from the push. It is defined in a custom entry, `apps/mobile/index.ts`, so a headless launch finds it when the bundle loads. iOS needs no task. `expo-task-manager` changes the native fingerprint, so this part reaches users only with a new store build. expo-notifications never passes a data-only push to the foreground notification handler on Android, so while the app is in the foreground the task refetches the action list instead.
 - The foreground notification handler shows nothing for a badge push and refetches the action list instead of applying the pushed number, which may predate the app's own latest count. The app then mirrors its own count, and reapplies it on returning to the foreground, since a badge push applied in the background may have moved the icon off a count the refetch leaves unchanged.
 - The app registers with `taskBadgePushes: true` from the build that has this handler, so earlier builds get no badge pushes. This part is JavaScript only and reaches installed builds over the air.
 - Permission denial and unsupported launchers make `setBadgeCountAsync` fail or no-op; the in-app badge is unaffected.
-- On Android, `setBadgeCountAsync(0)` also dismisses every notification the app is showing. A JavaScript-only build therefore leaves the Android icon alone rather than set a count it could never clear (`apps/mobile/lib/appIconBadge.ts`); Android's icon count arrives with the store build that can clear it.
+- On Android, `setBadgeCountAsync(0)` also dismisses every notification the app is showing, so a zero goes through a local module, `apps/mobile/modules/app-icon-badge`, that clears only the launcher badge (`apps/mobile/lib/appIconBadge.ts`). Builds without that module never get an Android icon count, since they couldn't clear it; the module is native, so Android's icon count reaches users only with a new store build.
 
 ## Verification
 

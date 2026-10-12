@@ -3,23 +3,17 @@ import { useTaskBadgeMirror } from "@alliance/shared/lib/useTaskBadgeCount";
 import { setBadgeCountAsync } from "expo-notifications";
 import { useEffect } from "react";
 import { AppState, Platform } from "react-native";
-import { AppIconBadgeWrite, appIconBadgeWrite } from "./appIconBadge";
+import { clearAndroidAppIconBadge } from "../modules/app-icon-badge";
+import { writeAppIconBadge } from "./appIconBadge";
 import { onAppActive } from "./onAppActive";
 
-export async function setAppIconBadge(count: number): Promise<void> {
-  const write = appIconBadgeWrite(Platform.OS);
-  switch (write) {
-    case AppIconBadgeWrite.Set:
-      await setBadgeCountAsync(count).catch((error: unknown) =>
-        console.error("failed to set the app icon badge", error),
-      );
-      return;
-    case AppIconBadgeWrite.Skip:
-      return;
-    default:
-      throw new Error(`unknown app icon badge write: ${write satisfies never}`);
-  }
-}
+export const setAppIconBadge = (count: number): Promise<void> =>
+  writeAppIconBadge({
+    os: Platform.OS,
+    count,
+    set: setBadgeCountAsync,
+    clearAndroid: clearAndroidAppIconBadge,
+  });
 
 /**
  * The Tasks badge count, mirrored onto the app icon while the app runs and

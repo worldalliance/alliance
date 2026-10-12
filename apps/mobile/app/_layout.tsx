@@ -1,5 +1,4 @@
 import { client } from "@alliance/shared/client/client.gen";
-import { invalidateActions } from "@alliance/shared/lib/actionsListPage";
 import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
@@ -25,7 +24,7 @@ import { getRefreshToken, saveSessionTokens } from "../lib/SecureStorage";
 import { getApiUrl } from "../lib/config";
 import { linkOpeningSession, startLinkOpenings } from "../lib/linkOpenings";
 import { notificationBehavior } from "../lib/notificationBehavior";
-import { queryClient } from "../lib/queryClient";
+import { queryClient, refetchActions } from "../lib/queryClient";
 import { refreshingFetch } from "../lib/session";
 import "../lib/setImmediatePolyfill";
 import { hideSplash } from "../lib/splash";
@@ -43,7 +42,7 @@ setNotificationHandler({
   handleNotification: async (notification) =>
     notificationBehavior({
       data: notification.request.content.data,
-      onTaskBadgePush: () => invalidateActions(queryClient),
+      onTaskBadgePush: refetchActions,
     }),
 });
 

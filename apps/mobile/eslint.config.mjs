@@ -23,7 +23,7 @@ export default defineConfig([
     },
   },
   {
-    ignores: ["dist/*", "index.js", ".expo/"],
+    ignores: ["dist/*", ".expo/"],
   },
   sharedRules,
   apiClientRules,
