@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
+import type { NotificationDto } from "src/notifs/dto/notification.dto";
 import {
   Notification,
   NotificationCategory,
@@ -27,6 +28,44 @@ const unreadContentCategory: Record<UnreadContentType, NotificationCategory> = {
 };
 
 const actionUpdatePushBody = (message: string) => `Update: ${message}`;
+
+// A rendered row without a destination carries an empty `webAppLocation`.
+const pushScreen = (dto: NotificationDto) =>
+  dto.mobileAppLocation || dto.webAppLocation || undefined;
+
+async function claimDuePushes(
+  repository: TypedRepository<Notification> | Repository<UnreadContent>,
+  dispatchID: string,
+): Promise<number[]> {
+  const table = repository.metadata.tableName;
+  const claimed: { id: number }[] = (
+    await repository.query(
+      `
+      WITH cte AS (
+        SELECT t.id
+        FROM "${table}" t
+        WHERE t."sendTime" <= NOW()
+          AND t."shouldPush" = true
+          AND t."pushClaimedBy" IS NULL
+          AND t."pushDispatchedAt" IS NULL
+          -- A row read before it came due (e.g. an action update seen on its page) still pushes.
+          AND (t."readAt" IS NULL OR t."readAt" < t."sendTime")
+        ORDER BY t."sendTime" ASC
+        LIMIT 500
+        FOR UPDATE SKIP LOCKED
+      )
+      UPDATE "${table}" t
+      SET "pushClaimedBy" = $1,
+          "pushClaimedAt" = NOW()
+      FROM cte
+      WHERE t.id = cte.id
+      RETURNING t.id;
+      `,
+      [dispatchID],
+    )
+  )[0];
+  return claimed.map(({ id }) => id);
+}
 
 @Injectable()
 export class NotifPushDispatcherWorker {
@@ -60,31 +99,10 @@ export class NotifPushDispatcherWorker {
   async findNotificationPushes(
     dispatchID: string,
   ): Promise<CreatePushMessage[]> {
-    const claimed: { id: number }[] = (
-      await this.notificationRepository.query(
-        `
-        WITH cte AS (
-          SELECT n.id
-          FROM notification n
-          WHERE n."sendTime" <= NOW()
-            AND n."shouldPush" = true
-            AND n."pushClaimedBy" IS NULL
-            AND n."pushDispatchedAt" IS NULL
-            AND (n."readAt" IS NULL OR n."readAt" < n."sendTime")
-          ORDER BY n."sendTime" ASC
-          LIMIT 500
-          FOR UPDATE SKIP LOCKED
-        )
-        UPDATE notification n
-        SET "pushClaimedBy" = $1,
-            "pushClaimedAt" = NOW()
-        FROM cte
-        WHERE n.id = cte.id
-        RETURNING n.id;
-        `,
-        [dispatchID],
-      )
-    )[0];
+    const claimed = await claimDuePushes(
+      this.notificationRepository,
+      dispatchID,
+    );
 
     if (!claimed.length) {
       return [];
@@ -92,7 +110,7 @@ export class NotifPushDispatcherWorker {
 
     const toSend: NotificationWithUser[] =
       await this.notificationRepository.find({
-        where: { id: In(claimed.map((c) => c.id)) },
+        where: { id: In(claimed) },
         relations: { user: true, associatedUsers: true },
         order: { sendTime: "ASC" },
       });
@@ -122,7 +140,7 @@ export class NotifPushDispatcherWorker {
               notif.category === NotificationCategory.ActionUpdate
                 ? actionUpdatePushBody(dto.message)
                 : dto.message,
-            screen: dto.mobileAppLocation || dto.webAppLocation || undefined,
+            screen: pushScreen(dto),
             notification: notif,
             idempotencyKey: `${notif.id}-${notif.updatedAt.getTime()}`,
           },
@@ -136,47 +154,23 @@ export class NotifPushDispatcherWorker {
   async findUnreadContentPushes(
     dispatchID: string,
   ): Promise<CreatePushMessage[]> {
-    const claimed: { id: number }[] = (
-      await this.unreadContentRepository.query(
-        `
-        WITH cte AS (
-          SELECT uc.id
-          FROM unread_content uc
-          WHERE uc."sendTime" <= NOW()
-            AND uc."shouldPush" = true
-            AND uc."pushClaimedBy" IS NULL
-            AND uc."pushDispatchedAt" IS NULL
-            -- A row read before it came due (e.g. an action update seen on its page) still pushes.
-            AND (uc."readAt" IS NULL OR uc."readAt" < uc."sendTime")
-          ORDER BY uc."sendTime" ASC
-          LIMIT 500
-          FOR UPDATE SKIP LOCKED
-        )
-        UPDATE unread_content uc
-        SET "pushClaimedBy" = $1,
-            "pushClaimedAt" = NOW()
-        FROM cte
-        WHERE uc.id = cte.id
-        RETURNING uc.id;
-        `,
-        [dispatchID],
-      )
-    )[0];
+    const claimed = await claimDuePushes(
+      this.unreadContentRepository,
+      dispatchID,
+    );
 
     if (!claimed.length) {
       return [];
     }
 
-    const hydrated = await this.notifsService.getUnreadContentsForPush(
-      claimed.map((content) => content.id),
-    );
+    const hydrated = await this.notifsService.getUnreadContentsForPush(claimed);
     const shown = new Set(
       hydrated.map(({ unreadContent }) => unreadContent.id),
     );
-    const hidden = claimed.filter((row) => !shown.has(row.id));
+    const hidden = claimed.filter((id) => !shown.has(id));
     if (hidden.length) {
       await this.unreadContentRepository.update(
-        { id: In(hidden.map((row) => row.id)) },
+        { id: In(hidden) },
         { shouldPush: false },
       );
     }
@@ -207,7 +201,7 @@ export class NotifPushDispatcherWorker {
               unreadContent.contentType === UnreadContentType.ActionUpdate
                 ? actionUpdatePushBody(dto.message)
                 : dto.message,
-            screen: dto.mobileAppLocation ?? dto.webAppLocation ?? undefined,
+            screen: pushScreen(dto),
             unreadContent,
             idempotencyKey: `uc-${unreadContent.id}`,
           },
