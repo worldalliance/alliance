@@ -1,7 +1,6 @@
 import { makeCommunity, makeProfile } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { IncomingCommunityInvitesProvider } from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
@@ -58,13 +57,11 @@ const renderPage = (url = "/") => {
             user: { ...testAuthUser, undergoingGroupAssignment: false },
           })}
         >
-          <IncomingCommunityInvitesProvider>
-            <MemoryRouter initialEntries={[url]}>
-              <SiteAppProvider>
-                <CommunityPage />
-              </SiteAppProvider>
-            </MemoryRouter>
-          </IncomingCommunityInvitesProvider>
+          <MemoryRouter initialEntries={[url]}>
+            <SiteAppProvider>
+              <CommunityPage />
+            </SiteAppProvider>
+          </MemoryRouter>
         </AuthContext.Provider>
       </ToastProvider>
     </QueryWrapper>,

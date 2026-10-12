@@ -1,4 +1,5 @@
 import { renderHook, waitFor } from "@testing-library/react";
+import { queryKeys } from "./queryKeys";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { useMyCommunities } from "./useMyCommunities";
@@ -51,7 +52,7 @@ it("a failed communities fetch reports an error", async () => {
 
 it("a failed communities refetch keeps the communities it had", async () => {
   const { client, wrapper } = queryWrapper();
-  client.setQueryData(["communityGetMyCommunities"], cached);
+  client.setQueryData(queryKeys.myCommunities(), cached);
 
   const hook = renderHook(() => useMyCommunities(), { wrapper });
 

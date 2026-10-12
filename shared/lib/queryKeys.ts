@@ -87,12 +87,15 @@ export const queryKeys = {
     ["forumFindOnePost", postId] as const,
   generalUpdatesAll: () => ["actionsAllGeneralUpdates"] as const,
   generalUpdatesUnread: () => ["actions", "generalUpdates", "unread"] as const,
+  incomingCommunityInvites: () =>
+    ["communityGetIncomingCommunityInvitesForUser"] as const,
   linkedGuestDraft: (taskFormId: number) =>
     ["tasksGetLinkedGuestDraft", taskFormId] as const,
   linkPreview: (url: string) => ["linkPreviewGetPreview", url] as const,
   members: () => ["userMembers"] as const,
   membersWithFriends: () => ["userMembersWithFriends"] as const,
   myAwayRanges: () => ["userGetAwayRanges"] as const,
+  myCommunities: () => ["communityGetMyCommunities"] as const,
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,
   inviteMessageTemplate: () => ["shareUrlsInviteMessageTemplate"] as const,
   myVisibilityContext: () => ["userMyVisibilityContext"] as const,

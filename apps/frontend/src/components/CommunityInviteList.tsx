@@ -5,6 +5,7 @@ import List from "@alliance/sharedweb/ui/List";
 type CommunityInviteListProps = {
   invites: CommunityInviteDto[];
   acceptDisabled: boolean;
+  answering: boolean;
   onAccept: (inviteId: number, anchor?: HTMLElement | null) => void;
   onDecline: (inviteId: number) => void;
 };
@@ -12,6 +13,7 @@ type CommunityInviteListProps = {
 const CommunityInviteList = ({
   invites,
   acceptDisabled,
+  answering,
   onAccept,
   onDecline,
 }: CommunityInviteListProps) => (
@@ -26,13 +28,14 @@ const CommunityInviteList = ({
           <Button
             onClick={(event) => onAccept(invite.id, event.currentTarget)}
             color={ButtonColor.Green}
-            disabled={acceptDisabled}
+            disabled={acceptDisabled || answering}
           >
             Accept
           </Button>
           <Button
             onClick={() => onDecline(invite.id)}
             color={ButtonColor.Light}
+            disabled={answering}
           >
             Decline
           </Button>
