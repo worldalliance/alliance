@@ -10,6 +10,7 @@ import {
 import {
   canvasOrder,
   heading,
+  inNarrowWindow,
   insertElement,
   openSection,
   selectElement,
@@ -524,11 +525,7 @@ describe("the form canvas", () => {
 });
 
 describe("the form canvas in a narrow window", () => {
-  // Other tests declare `window.happyDOM` without `setViewport`.
-  const happyDOMKey: string = "happyDOM";
-  const happyDOM = Reflect.get(window, happyDOMKey);
-  beforeEach(() => happyDOM.setViewport({ width: 800 }));
-  afterEach(() => happyDOM.setViewport({ width: 1024 }));
+  inNarrowWindow();
 
   it("opens settings as a drawer that Escape closes, returning focus", () => {
     renderFormBuilder(schema);

@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import {
   canvas,
   heading,
+  inNarrowWindow,
   openSection,
   outline,
   selectElement,
@@ -258,10 +259,7 @@ describe("the form outline", () => {
 });
 
 describe("the form outline in a narrow window", () => {
-  const happyDOMKey: string = "happyDOM";
-  const happyDOM = Reflect.get(window, happyDOMKey);
-  beforeEach(() => happyDOM.setViewport({ width: 800 }));
-  afterEach(() => happyDOM.setViewport({ width: 1024 }));
+  inNarrowWindow();
 
   it("opens as a drawer that closes on a choice, opening its settings", () => {
     renderFormBuilder(schema);

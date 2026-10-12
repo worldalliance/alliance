@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 
 const escapeRegExp = (text: string) =>
   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -60,4 +60,11 @@ export const insertElement = (addButton: HTMLElement, name: string) => {
       name: new RegExp(`^${escapeRegExp(name)}\\s*(Field|Block|Copy)$`),
     }),
   );
+};
+
+declare const happyDOM: { setViewport: (viewport: { width: number }) => void };
+
+export const inNarrowWindow = () => {
+  beforeEach(() => happyDOM.setViewport({ width: 800 }));
+  afterEach(() => act(() => happyDOM.setViewport({ width: 1024 })));
 };
