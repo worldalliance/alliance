@@ -3149,6 +3149,33 @@ describe("Actions (e2e)", () => {
         now - milliseconds({ minutes: 1 }),
       );
     });
+
+    it("names the action and lists its members in a global feed activity group", async () => {
+      const { action } = await createPublishedAction(
+        `Grouped Activity ${Date.now()}`,
+        { status: ActionStatus.MemberAction },
+      );
+      await ctx.app
+        .get(ActionsService)
+        .completeAction(action.id, ctx.testUserId);
+
+      const res = await request(ctx.app.getHttpServer())
+        .get("/actions/globalFeed")
+        .query({ limit: 50 })
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      const group = res.body.find(
+        (item: { activityGroup?: { actionId: number } }) =>
+          item.activityGroup?.actionId === action.id,
+      )?.activityGroup;
+      expect(group).toBeDefined();
+      expect(group.actionName).toBe(action.name);
+      expect(group.users.map((user: { id: number }) => user.id)).toEqual([
+        ctx.testUserId,
+      ]);
+
+      await actionRepo.delete(action.id);
+    });
   });
 
   describe("Action Ordering in /actions/loggedIn", () => {
