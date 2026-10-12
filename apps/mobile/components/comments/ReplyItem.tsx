@@ -345,14 +345,16 @@ export const ReplyItem = memo(function ReplyItemView({
 
       {hasChildren && !isCollapsed && (
         <View className="mt-3 gap-y-3">
-          {reply.children?.filter(isCommentShown).map((childReply) => (
-            <ReplyItem
-              key={childReply.id}
-              reply={childReply}
-              depth={depth + 1}
-              {...shared}
-            />
-          ))}
+          {reply.children
+            ?.filter((child) => isCommentShown(child, shared.replyingTo))
+            .map((childReply) => (
+              <ReplyItem
+                key={childReply.id}
+                reply={childReply}
+                depth={depth + 1}
+                {...shared}
+              />
+            ))}
         </View>
       )}
     </View>

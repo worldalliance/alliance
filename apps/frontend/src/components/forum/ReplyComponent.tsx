@@ -276,7 +276,9 @@ const ReplyComponent = memo(({ reply, depth = 0 }: ReplyComponentProps) => {
 
   const newReplyClass = isNewlyAdded ? "!bg-green/10" : "";
 
-  const filteredChildren = (reply.children ?? []).filter(isCommentShown);
+  const filteredChildren = (reply.children ?? []).filter((child) =>
+    isCommentShown(child, ctx.replyingTo),
+  );
 
   const renderChildren = () => {
     if (!hasChildren || (isTopLevel && isCollapsed)) return null;

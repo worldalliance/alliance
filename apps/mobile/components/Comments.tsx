@@ -204,6 +204,10 @@ export default function Comments({
                 "Your session has expired. Sign in again to reply.",
             }),
           });
+          // The comment may have been deleted, which a reload shows.
+          if (parentId !== null && response.response.status === 404) {
+            await fetchComments();
+          }
           return;
         }
 
@@ -344,6 +348,7 @@ export default function Comments({
     expertIds,
     tags,
     tagFilter,
+    replyingTo,
   });
   const sortedComments = comments ? filteredComments : null;
 

@@ -2,6 +2,7 @@ import { R } from "@alliance/common/result";
 import { CommentDto, UserDto } from "@alliance/shared/client";
 import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
+import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
@@ -9,10 +10,12 @@ import { CommentsProvider } from "./CommentsContext";
 import ReplyComponent from "./ReplyComponent";
 
 let user: UserDto | undefined;
+let replyingTo: number | null = null;
 
 afterEach(() => {
   cleanup();
   user = undefined;
+  replyingTo = null;
 });
 
 const author: CommentDto["author"] = {
@@ -54,12 +57,15 @@ const renderReply = (
   dismissed.length = 0;
   const ctx = {
     user,
-    replyingTo: null,
+    replyingTo,
     setReplyingTo: () => {},
     handleSubmitReply: () => Promise.resolve(),
     handleDeleteReply: () => Promise.resolve(),
     onUpdateReply: () => Promise.resolve(R.success<void>(undefined)),
-    submitErrorFor: () => null,
+    submitErrorFor: (parentId: number | null) =>
+      parentId !== null && parentId === replyingTo
+        ? "The reply you're answering is no longer here"
+        : null,
     clearSubmitError: () => {},
     deleteErrorFor,
     clearDeleteError: (replyId: number) => dismissed.push(replyId),
@@ -75,9 +81,11 @@ const renderReply = (
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter>
         <SiteAppProvider>
-          <CommentsProvider value={ctx}>
-            <ReplyComponent reply={root} />
-          </CommentsProvider>
+          <ToastProvider>
+            <CommentsProvider value={ctx}>
+              <ReplyComponent reply={root} />
+            </CommentsProvider>
+          </ToastProvider>
         </SiteAppProvider>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -87,9 +95,9 @@ const renderReply = (
 it("says a delete failed under the reply it was asked of", () => {
   renderReply((replyId) => (replyId === 5 ? "Failed to delete reply" : null));
 
-  const alert = screen.getByRole("alert");
-
-  expect(alert.textContent).toContain("Failed to delete reply");
+  expect(
+    screen.getByText("Failed to delete reply").closest('[role="alert"]'),
+  ).not.toBeNull();
 });
 
 it("takes back the message the reader dismissed and no other", () => {
@@ -118,4 +126,23 @@ it("offers no reply to a deleted reply kept for the replies under it", () => {
   renderReply(() => null, { ...reply(5, [reply(6)]), deleted: true });
 
   expect(screen.getAllByRole("button", { name: "Reply" })).toHaveLength(1);
+});
+
+it("keeps a deleted reply the reader is answering, with the refusal under it", () => {
+  user = makeUser();
+  replyingTo = 6;
+  renderReply(() => null, reply(5, [{ ...reply(6), deleted: true }]));
+
+  expect(
+    screen
+      .getByText("The reply you're answering is no longer here")
+      .closest('[role="alert"]'),
+  ).not.toBeNull();
+});
+
+it("drops a deleted reply without replies once nobody is answering it", () => {
+  renderReply(() => null, reply(5, [{ ...reply(6), deleted: true }]));
+
+  expect(document.getElementById("reply-6")).toBeNull();
+  expect(document.getElementById("reply-5")).not.toBeNull();
 });
