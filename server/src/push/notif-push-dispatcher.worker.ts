@@ -13,11 +13,18 @@ import {
   type NotificationWithUser,
   NotifsService,
 } from "src/notifs/notifs.service";
+import { notificationPushesEnabled } from "src/user/user.utils";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { In, type Repository } from "typeorm";
 import { v4 } from "uuid";
 import { CreatePushMessage, PushService } from "./push.service";
+
+const unreadContentCategory: Record<UnreadContentType, NotificationCategory> = {
+  [UnreadContentType.ActionEvent]: NotificationCategory.ActionEvent,
+  [UnreadContentType.ActionUpdate]: NotificationCategory.ActionUpdate,
+  [UnreadContentType.ForumReply]: NotificationCategory.ForumReply,
+};
 
 const actionUpdatePushBody = (message: string) => `Update: ${message}`;
 
@@ -99,35 +106,8 @@ export class NotifPushDispatcherWorker {
 
     const messages: CreatePushMessage[] = [];
     for (const notif of toSend) {
-      const notifTypeToSendable: Record<NotificationCategory, boolean> = {
-        [NotificationCategory.ActionEvent]: true,
-        [NotificationCategory.ActionUpdate]: notif.user.pushesForActionUpdates,
-        [NotificationCategory.ForumReply]: notif.user.pushesForComments,
-        [NotificationCategory.FriendRequest]:
-          notif.user.pushesForFriendRequests,
-        [NotificationCategory.FriendRequestAccepted]:
-          notif.user.pushesForFriendRequests,
-        [NotificationCategory.Likes]: notif.user.pushesForLikes,
-        [NotificationCategory.CommunityInviteCreated]: true,
-        [NotificationCategory.CommunityInviteRejected]: true,
-        [NotificationCategory.CommunityInviteAccepted]: true,
-        [NotificationCategory.RemovedFromCommunity]: true,
-        [NotificationCategory.RemovedFromCommunityForLeader]: true,
-        [NotificationCategory.MemberLeftCommunity]: true,
-        [NotificationCategory.MemberJoinedCommunity]: true,
-        [NotificationCategory.MemberSuspendedRemovedFromCommunity]: true,
-        [NotificationCategory.CommunityAssigned]: true,
-        [NotificationCategory.NewMemberReferred]: true,
-        [NotificationCategory.GroupMemberJoined]:
-          notif.user.pushesForNewGroupMembers && !notif.user.turnedOffAllNotifs,
-        [NotificationCategory.OnetimeInviteRequestCreated]: true,
-        [NotificationCategory.OnetimeInviteRequestApproved]: true,
-        [NotificationCategory.OnetimeInviteRequestRejected]: true,
-        [NotificationCategory.CommunityInviteRequestCreated]: true,
-        [NotificationCategory.CommunityInviteRequestRejected]: true,
-      };
       const dto = dtoById.get(notif.id);
-      if (!notifTypeToSendable[notif.category] || !dto) {
+      if (!notificationPushesEnabled(notif.user, notif.category) || !dto) {
         await this.notificationRepository.update(notif.id, {
           shouldPush: false,
         });
@@ -207,13 +187,12 @@ export class NotifPushDispatcherWorker {
 
     const messages: CreatePushMessage[] = [];
     for (const { unreadContent, dto } of hydrated) {
-      const contentTypeToSendable: Record<UnreadContentType, boolean> = {
-        [UnreadContentType.ActionEvent]: true,
-        [UnreadContentType.ActionUpdate]:
-          unreadContent.user.pushesForActionUpdates,
-        [UnreadContentType.ForumReply]: unreadContent.user.pushesForComments,
-      };
-      if (!contentTypeToSendable[unreadContent.contentType]) {
+      if (
+        !notificationPushesEnabled(
+          unreadContent.user,
+          unreadContentCategory[unreadContent.contentType],
+        )
+      ) {
         await this.unreadContentRepository.update(unreadContent.id, {
           shouldPush: false,
         });

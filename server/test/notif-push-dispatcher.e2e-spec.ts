@@ -588,6 +588,26 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       ).toBe(false);
     });
 
+    it("drops the push of a reply to a member with comment pushes off", async () => {
+      const user = await createUser({ pushesForComments: false });
+      const oneHourAgo = new Date(Date.now() - milliseconds({ hours: 1 }));
+      await createDevice(user, oneHourAgo);
+      const row = await createForumReplyUnreadContent(
+        user,
+        new Date(Date.now() - milliseconds({ minutes: 5 })),
+        oneHourAgo,
+      );
+
+      const messages = await dispatcher.findUnreadContentPushes(
+        "test-dispatch-comment-pushes-off",
+      );
+
+      expect(messages).toEqual([]);
+      expect(
+        (await unreadContentRepo.findOneByOrFail({ id: row.id })).shouldPush,
+      ).toBe(false);
+    });
+
     it("judges an action's launch by the database clock when the server's clock runs behind", async () => {
       const member = await createUser();
       const now = new Date();
