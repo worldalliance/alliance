@@ -218,7 +218,7 @@ export type GeneralUpdate = {
      */
     manualCohortUserIds?: Array<number> | null;
     priority: number;
-    tags: Array<Tag>;
+    tags?: Array<Tag>;
     suites?: Array<ActionSuite>;
 };
 

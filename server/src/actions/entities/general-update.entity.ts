@@ -116,12 +116,11 @@ export class GeneralUpdate {
   @ManyToMany(() => Tag, (tag) => tag.generalUpdates, {
     onDelete: "CASCADE",
   })
-  @ApiProperty({ type: () => Tag, isArray: true })
-  @Allow()
+  @ApiPropertyOptional({ type: () => Tag, isArray: true })
+  @IsOptional()
   @JoinTable()
   @Type(() => Tag)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  tags: Relation<Tag>[];
+  tags?: Relation<Tag>[];
 
   @ManyToMany(() => ActionSuite, (suite) => suite.generalUpdates, {
     nullable: true,
@@ -131,4 +130,13 @@ export class GeneralUpdate {
   @JoinTable()
   @IsOptional()
   suites?: Relation<ActionSuite>[];
+}
+
+export function loadedGeneralUpdateTags(
+  generalUpdate: GeneralUpdate,
+): Relation<Tag>[] {
+  if (!generalUpdate.tags) {
+    throw new Error(`tags of general update ${generalUpdate.id} not loaded`);
+  }
+  return generalUpdate.tags;
 }

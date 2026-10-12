@@ -18,7 +18,10 @@ import {
 import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
 import { Tag } from "src/user/entities/tag.entity";
 import { ActionSuite } from "../entities/action-suite.entity";
-import { GeneralUpdate } from "../entities/general-update.entity";
+import {
+  GeneralUpdate,
+  loadedGeneralUpdateTags,
+} from "../entities/general-update.entity";
 
 function schemaOf(generalUpdate: GeneralUpdate): DisplayOnlySchema {
   return displayOnlySchemaOf({
@@ -87,7 +90,7 @@ export class GeneralUpdateAdminDto extends PickType(GeneralUpdate, [
     this.useManualCohort = generalUpdate.useManualCohort;
     this.manualCohortUserIds = generalUpdate.manualCohortUserIds;
     this.priority = generalUpdate.priority;
-    this.tags = generalUpdate.tags ?? [];
+    this.tags = loadedGeneralUpdateTags(generalUpdate);
     this.suites = generalUpdate.suites ?? [];
   }
 }

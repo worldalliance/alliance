@@ -253,7 +253,10 @@ import {
   GeneralUpdateActivity,
   GeneralUpdateActivityType,
 } from "./entities/general-update-activity.entity";
-import { GeneralUpdate } from "./entities/general-update.entity";
+import {
+  GeneralUpdate,
+  loadedGeneralUpdateTags,
+} from "./entities/general-update.entity";
 import {
   ReminderGroup,
   ReminderGroupTimingMode,
@@ -1703,7 +1706,9 @@ export class ActionsService {
           user,
           useManualCohort: update.useManualCohort,
           manualCohortUserIdSet: new Set(update.manualCohortUserIds),
-          participatingTagIdSet: new Set(update.tags.map((tag) => tag.id)),
+          participatingTagIdSet: new Set(
+            loadedGeneralUpdateTags(update).map((tag) => tag.id),
+          ),
           onboarding: false,
           memberActionEventDate: update.startDate,
           memberActionEventDeadline: update.endDate,
