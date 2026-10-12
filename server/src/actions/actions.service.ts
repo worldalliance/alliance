@@ -242,6 +242,7 @@ import {
 } from "./entities/action-update.entity";
 import {
   Action,
+  loadedActionFollowUpForms,
   parseAction,
   type ParsedAction,
 } from "./entities/action.entity";
@@ -596,6 +597,7 @@ export class ActionsService {
     }
     const action = this.actionRepository.create(rest);
     action.reviewers = this.reviewerRows(reviewers ?? []);
+    action.followUpForms = [];
 
     if (suiteId) {
       const suite = await this.actionSuiteRepository.findOneOrFail({
@@ -1115,13 +1117,11 @@ export class ActionsService {
             now,
           }) !== ActionAssignment.Unassigned;
 
-        if (action.followUpForms) {
-          action.followUpForms = await this.filterFollowUpFormsByCohort({
-            followUpForms: action.followUpForms,
-            user,
-            session,
-          });
-        }
+        action.followUpForms = await this.filterFollowUpFormsByCohort({
+          followUpForms: loadedActionFollowUpForms(action),
+          user,
+          session,
+        });
 
         return new ActionDto(action, {
           canParticipate: user
@@ -1263,13 +1263,11 @@ export class ActionsService {
       serverSide,
       session,
     });
-    if (action.followUpForms) {
-      action.followUpForms = await this.filterFollowUpFormsByCohort({
-        followUpForms: action.followUpForms,
-        user,
-        session,
-      });
-    }
+    action.followUpForms = await this.filterFollowUpFormsByCohort({
+      followUpForms: loadedActionFollowUpForms(action),
+      user,
+      session,
+    });
     if (userId) {
       await this.applyAssignedFormIds([action], userId);
     }
@@ -3917,7 +3915,7 @@ export class ActionsService {
 
         return actionRepo.findOneOrFail({
           where: { id: actionId },
-          relations: { reviewers: true, events: true },
+          relations: { reviewers: true, events: true, followUpForms: true },
         });
       },
     );

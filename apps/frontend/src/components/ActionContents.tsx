@@ -117,7 +117,7 @@ const ActionContents = () => {
     if (context.userRelation !== "completed") {
       return [];
     }
-    const list = action.followUpForms;
+    const list = action.followUpForms ?? [];
     return list.filter(isFollowUpFormActive);
     // dont want to show follow up before cohort recomputed
     // eslint-disable-next-line react-hooks/exhaustive-deps

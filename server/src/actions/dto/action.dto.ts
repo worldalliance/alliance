@@ -72,7 +72,11 @@ import {
 } from "../entities/action-reviewer.entity";
 import { ActionSuite } from "../entities/action-suite.entity";
 import { ActionUpdate } from "../entities/action-update.entity";
-import { Action, type ParsedAction } from "../entities/action.entity";
+import {
+  Action,
+  loadedActionFollowUpForms,
+  type ParsedAction,
+} from "../entities/action.entity";
 import { GeneralUpdate } from "../entities/general-update.entity";
 import {
   ReminderCohortType,
@@ -427,9 +431,9 @@ export class ActionDto extends PickType(Action, [
   })
   reviewers: ActionReviewerResponseDto[];
 
-  @ApiProperty({ type: () => FollowUpFormDto, isArray: true })
+  @ApiPropertyOptional({ type: () => FollowUpFormDto, isArray: true })
   @Type(() => FollowUpFormDto)
-  followUpForms: FollowUpFormDto[];
+  followUpForms?: FollowUpFormDto[];
 
   @ApiProperty()
   usersCompleted: number;
@@ -510,8 +514,9 @@ export class ActionDto extends PickType(Action, [
     this.customStatLabel = action.customStatLabel;
     this.customStatValue = action.customStatValue;
     this.customStatGoal = action.customStatGoal;
-    this.followUpForms =
-      action.followUpForms?.map((form) => new FollowUpFormDto(form)) ?? [];
+    this.followUpForms = action.followUpForms?.map(
+      (form) => new FollowUpFormDto(form),
+    );
     if (!action.reviewers) {
       throw new Error("`reviewers` relation is not loaded");
     }
@@ -552,7 +557,12 @@ export class AdminActionDto extends ActionDto {
   @Type(() => Object)
   cohortExpression?: CohortExpression | null;
 
-  @ApiProperty({ type: () => AdminFollowUpFormDto, isArray: true })
+  // eslint-disable-next-line @darraghor/nestjs-typed/api-property-matches-property-optionality -- without it, @ApiProperty keeps ActionDto's inherited required: false
+  @ApiProperty({
+    type: () => AdminFollowUpFormDto,
+    isArray: true,
+    required: true,
+  })
   @Allow()
   @Type(() => AdminFollowUpFormDto)
   followUpForms: AdminFollowUpFormDto[];
@@ -603,8 +613,9 @@ export class AdminActionDto extends ActionDto {
     this.memberActionDeadline =
       action.memberActionPhase.deadlineEvent?.date ?? null;
     this.staffPreview = action.staffPreview;
-    this.followUpForms =
-      action.followUpForms?.map((form) => new AdminFollowUpFormDto(form)) ?? [];
+    this.followUpForms = loadedActionFollowUpForms(action).map(
+      (form) => new AdminFollowUpFormDto(form),
+    );
     this.storedImage = action.image ?? undefined;
     this.storedSquareThumbnailImage = action.squareThumbnailImage ?? undefined;
   }
