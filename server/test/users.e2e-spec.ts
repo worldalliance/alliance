@@ -2907,6 +2907,39 @@ describe("Users (e2e)", () => {
             .expect(400);
         });
 
+        const saveMemberInvite = () =>
+          onetimeInviteRepo.save(
+            onetimeInviteRepo.create({
+              invitee: "Member's invitee",
+              code: `MEMBER-EDIT-${Math.random().toString(36).slice(2)}`,
+              status: OnetimeInviteStatus.LINK_UNUSED,
+              invitingUser: { id: communityMemberId },
+              community: communityLedByUserA,
+            }),
+          );
+
+        it("lets the group's leader edit a member's invite", async () => {
+          const invite = await saveMemberInvite();
+
+          const res = await patch(invite.id, { invitee: "Leader edit" }).expect(
+            200,
+          );
+
+          expect(res.body.invitee).toBe("Leader edit");
+        });
+
+        it("lets an admin who leads no community edit a member's invite", async () => {
+          const invite = await saveMemberInvite();
+
+          const res = await request(ctx.app.getHttpServer())
+            .patch(`/user/onetimeInvites/${invite.id}`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .send({ invitee: "Admin edit" })
+            .expect(200);
+
+          expect(res.body.invitee).toBe("Admin edit");
+        });
+
         it("refuses once the invite has been used", async () => {
           const invite = await createInvite(communityLedByUserA.id);
           await onetimeInviteRepo.update(invite.id, {
@@ -2978,6 +3011,41 @@ describe("Users (e2e)", () => {
             id: invite.id,
           });
           expect(kept.deletedAt).toBeNull();
+        });
+      });
+
+      describe("findOnetimeInvites", () => {
+        const list = (token: string) =>
+          request(ctx.app.getHttpServer())
+            .get(`/user/onetimeInvites/${communityLedByUserA.id}`)
+            .set("Authorization", `Bearer ${token}`);
+
+        it("lists the group's invites for its leader", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+
+          const res = await list(userAToken).expect(200);
+
+          expect(res.body.map((invite: { id: number }) => invite.id)).toContain(
+            pendingInvite.id,
+          );
+        });
+
+        it("lists the group's invites for an admin who leads no community", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+
+          const res = await list(ctx.adminAccessToken).expect(200);
+
+          expect(res.body.map((invite: { id: number }) => invite.id)).toContain(
+            pendingInvite.id,
+          );
+        });
+
+        it("refuses a leader of another community", async () => {
+          await createPendingInviteRequest();
+
+          const res = await list(userBToken).expect(400);
+
+          expect(res.body.message).toContain("not a leader");
         });
       });
 
@@ -3076,6 +3144,31 @@ describe("Users (e2e)", () => {
           expect(res.body.invitingUser ?? null).toBeNull();
         });
 
+        it("allows an admin who leads no community to approve pending requests", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+
+          const res = await request(ctx.app.getHttpServer())
+            .post(`/user/onetimeInvite/${pendingInvite.id}/approve`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .send()
+            .expect(201);
+
+          expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
+        });
+
+        it("refuses even an admin once the request's group is gone", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+          await onetimeInviteRepo.update(pendingInvite.id, { community: null });
+
+          const res = await request(ctx.app.getHttpServer())
+            .post(`/user/onetimeInvite/${pendingInvite.id}/approve`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .send()
+            .expect(400);
+
+          expect(res.body.message).toBe("Invite request has no group");
+        });
+
         it("rejects approval attempts from non-leaders", async () => {
           const pendingInvite = await createPendingInviteRequest();
 
@@ -3114,6 +3207,21 @@ describe("Users (e2e)", () => {
             where: { id: pendingInvite.id },
           });
           expect(refreshed?.status).toBe(OnetimeInviteStatus.REQUEST_REJECTED);
+        });
+
+        it("allows an admin who leads no community to reject pending requests", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+
+          await request(ctx.app.getHttpServer())
+            .post(`/user/onetimeInvite/${pendingInvite.id}/reject`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .send()
+            .expect(201);
+
+          const refreshed = await onetimeInviteRepo.findOneByOrFail({
+            id: pendingInvite.id,
+          });
+          expect(refreshed.status).toBe(OnetimeInviteStatus.REQUEST_REJECTED);
         });
 
         it("rejects rejection attempts from leaders of other communities", async () => {

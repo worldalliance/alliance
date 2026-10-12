@@ -29,6 +29,7 @@ import {
 } from "src/user/dto/invite.dto";
 import { CommunityMemberContactInfo } from "src/user/dto/user-action-relations.dto";
 import {
+  assertCanManageCommunity,
   canManageCommunity,
   DEFAULT_TIME_ZONE,
   loadedUserCommunities,
@@ -1194,7 +1195,7 @@ export class CommunityService {
     return savedInvite;
   }
 
-  private async findPendingInviteRequestForLeader(
+  private async findPendingInviteRequestForManager(
     inviteId: number,
     userId: number,
   ): Promise<{ invite: CommunityInvite; user: User }> {
@@ -1216,12 +1217,7 @@ export class CommunityService {
     if (!user) {
       throw new BadRequestException("User not found");
     }
-    const communityId = loadedCommunityInviteCommunity(invite).id;
-    if (!user.leaderOfIds.some((cid) => cid === communityId)) {
-      throw new BadRequestException(
-        `User is not a leader of community ${communityId}`,
-      );
-    }
+    assertCanManageCommunity(user, loadedCommunityInviteCommunity(invite).id);
 
     return { invite, user };
   }
@@ -1230,7 +1226,7 @@ export class CommunityService {
     inviteId: number,
     userId: number,
   ): Promise<CommunityInvite> {
-    const { invite, user } = await this.findPendingInviteRequestForLeader(
+    const { invite, user } = await this.findPendingInviteRequestForManager(
       inviteId,
       userId,
     );
@@ -1277,7 +1273,7 @@ export class CommunityService {
     inviteId: number,
     userId: number,
   ): Promise<void> {
-    const { invite, user } = await this.findPendingInviteRequestForLeader(
+    const { invite, user } = await this.findPendingInviteRequestForManager(
       inviteId,
       userId,
     );
@@ -1305,14 +1301,10 @@ export class CommunityService {
     userId: number,
     communityId: number,
   ): Promise<CommunityInvite[]> {
-    await this.communityRepository.findOneOrFail({
-      where: {
-        id: communityId,
-        leaders: {
-          id: userId,
-        },
-      },
+    const user = await this.userRepository.findOneOrFail({
+      where: { id: userId },
     });
+    assertCanManageCommunity(user, communityId);
     const invites = await this.communityInviteRepository.find({
       where: { community: { id: communityId }, deletedAt: IsNull() },
       relations: { invitedUser: true, invitingUser: true, community: true },

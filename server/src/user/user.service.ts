@@ -151,6 +151,7 @@ import {
 } from "./entities/contract-event.entity";
 import { Friend, FriendStatus } from "./entities/friend.entity";
 import {
+  canModifyOnetimeInvite,
   loadedOnetimeInviteInvitingUser,
   OnetimeInvite,
   OnetimeInviteStatus,
@@ -162,7 +163,7 @@ import {
 } from "./entities/user-away-range.entity";
 import { UserDevice } from "./entities/user-device.entity";
 import {
-  canManageCommunity,
+  assertCanManageCommunity,
   DEFAULT_TIME_ZONE,
   loadedUserCommunities,
   ReferralSource,
@@ -2029,10 +2030,8 @@ export class UserService {
       throw new BadRequestException("User not found");
     }
     const isAdmin = user.admin;
-    if (communityId && !canManageCommunity(user, communityId)) {
-      throw new BadRequestException(
-        `User is not a leader of community ${communityId}`,
-      );
+    if (communityId) {
+      assertCanManageCommunity(user, communityId);
     }
 
     // Normal users cannot create invites from other users
@@ -2590,20 +2589,14 @@ export class UserService {
       }),
       this.findOneOrFail(userId, { leaderOf: true }),
     ]);
-    if (loadedOnetimeInviteInvitingUser(invite)?.id !== userId && !user.admin) {
+    if (!canModifyOnetimeInvite(user, invite)) {
       throw new BadRequestException("Invite belongs to someone else");
     }
     if (invite.status !== OnetimeInviteStatus.LINK_UNUSED) {
       throw new BadRequestException("This invite can no longer be edited");
     }
-    if (
-      communityId !== undefined &&
-      communityId !== null &&
-      !canManageCommunity(user, communityId)
-    ) {
-      throw new BadRequestException(
-        `User is not a leader of community ${communityId}`,
-      );
+    if (communityId !== undefined && communityId !== null) {
+      assertCanManageCommunity(user, communityId);
     }
 
     const trimmedInvitee = invitee?.trim();
@@ -2629,12 +2622,7 @@ export class UserService {
       relations: { invitingUser: true },
     });
     const user = await this.findOneOrFail(userId);
-    if (
-      !(
-        loadedOnetimeInviteInvitingUser(invite)?.id === userId ||
-        canManageCommunity(user, invite.communityId)
-      )
-    ) {
+    if (!canModifyOnetimeInvite(user, invite)) {
       throw new BadRequestException();
     }
 
@@ -2745,14 +2733,10 @@ export class UserService {
     }
 
     const { communityId } = request;
-    if (
-      communityId === null ||
-      !user.leaderOfIds.some((cid) => cid === communityId)
-    ) {
-      throw new BadRequestException(
-        `User is not a leader of community ${communityId}`,
-      );
+    if (communityId === null) {
+      throw new BadRequestException("Invite request has no group");
     }
+    assertCanManageCommunity(user, communityId);
 
     let category: NotificationCategory;
     switch (newStatus) {
@@ -2886,7 +2870,12 @@ export class UserService {
       .getRawMany<FriendGraphEdge>();
   }
 
-  async findOnetimeInvites(communityId: number): Promise<OnetimeInvite[]> {
+  async findOnetimeInvites(
+    userId: number,
+    communityId: number,
+  ): Promise<OnetimeInvite[]> {
+    const user = await this.findOneOrFail(userId);
+    assertCanManageCommunity(user, communityId);
     return this.onetimeInviteRepository.find({
       where: { community: { id: communityId }, deletedAt: IsNull() },
       relations: { invitingUser: true },

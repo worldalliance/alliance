@@ -21,7 +21,7 @@ import {
   PrimaryGeneratedColumn,
   RelationId,
 } from "typeorm";
-import { User } from "./user.entity";
+import { canManageCommunity, User } from "./user.entity";
 
 export enum OnetimeInviteStatus {
   REQUEST_PENDING = "request_pending",
@@ -172,4 +172,14 @@ export function loadedOnetimeInviteInvitingUser(
     throw new Error(`invitingUser of onetime invite ${invite.id} not loaded`);
   }
   return invite.invitingUser;
+}
+
+export function canModifyOnetimeInvite(
+  user: Pick<User, "id" | "admin" | "leaderOfIdSet">,
+  invite: OnetimeInvite,
+): boolean {
+  return (
+    loadedOnetimeInviteInvitingUser(invite)?.id === user.id ||
+    canManageCommunity(user, invite.communityId)
+  );
 }

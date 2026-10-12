@@ -1006,10 +1006,11 @@ export class UserController {
   @ApiOkResponse({ type: [OnetimeInviteDto] })
   async getOnetimeInvitesByCommunity(
     @Param("communityId", ParseIntPipe) communityId: number,
+    @Request() req: JwtRequest,
   ): Promise<OnetimeInviteDto[]> {
-    return (await this.userService.findOnetimeInvites(communityId)).map(
-      (invite) => new OnetimeInviteDto(invite),
-    );
+    return (
+      await this.userService.findOnetimeInvites(req.user.sub, communityId)
+    ).map((invite) => new OnetimeInviteDto(invite));
   }
 
   @Get("onetimeInvites/:communityId/my")

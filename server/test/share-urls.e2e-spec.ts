@@ -265,6 +265,25 @@ describe("Share URLs (e2e)", () => {
         .send({ label: "Invalid group invite", communityId: community.id })
         .expect(400);
     });
+
+    it("rejects a community an admin does not lead", async () => {
+      const leader = await userRepo.findOneByOrFail({ id: ctx.testUserId });
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: "Admin Non-Led Reusable Destination",
+          description: "Not led by the admin",
+          leaders: [leader],
+          users: [leader],
+          maxCapacity: 10,
+        }),
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post("/share-urls/mine/invite-duplicate")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ label: "Admin group invite", communityId: community.id })
+        .expect(400);
+    });
   });
 
   describe("PATCH /share-urls/mine/invites/:id", () => {
