@@ -13,7 +13,10 @@ import {
   type GroupedPages,
   type VisibilityGroups,
 } from "../../lib/visibilityGroups";
-import { ExpressionScope } from "../form-fields/conditions/expressionBuffers";
+import {
+  expressionKeys,
+  ExpressionScope,
+} from "../form-fields/conditions/expressionBuffers";
 import { describeElement } from "./canvasSelection";
 import { VisibilityGroupPanel } from "./VisibilityGroupPanel";
 
@@ -62,7 +65,7 @@ export function VisibilityGroupSettings({
   });
 
   return (
-    <ExpressionScope.Provider value={`group:${key}`}>
+    <ExpressionScope.Provider value={expressionKeys.group(key)}>
       <VisibilityGroupPanel
         firstMember={members[0]!}
         members={members.map((member, offset) => ({

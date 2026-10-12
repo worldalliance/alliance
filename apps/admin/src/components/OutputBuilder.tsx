@@ -25,7 +25,10 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { addressedWrite, type BlockWriteById } from "../lib/displayBlockById";
 import { createDisplayBlock } from "./display-blocks";
 import { renderBlockEditor } from "./display-blocks/blockEditors";
-import { ElementExpressionScope } from "./form-fields/conditions/expressionBuffers";
+import {
+  ElementExpressionScope,
+  expressionKeys,
+} from "./form-fields/conditions/expressionBuffers";
 import { EditableOutputFieldBlock } from "./output-builder/EditableOutputFieldBlock";
 
 const outputBlockKey = (block: OutputBlock, index: number) =>
@@ -603,7 +606,7 @@ export function OutputBuilder({
                     {selectedView.blocks.map((block, index) => (
                       <ElementExpressionScope
                         key={outputBlockKey(block, index)}
-                        parent={`output:${selectedView.id}`}
+                        parent={expressionKeys.outputView(selectedView.id)}
                         id={block.id}
                       >
                         {renderBlock(block, index)}

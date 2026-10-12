@@ -129,7 +129,10 @@ import { useGuardedDeletion } from "./form-canvas/useGuardedDeletion";
 import type { ListMove } from "./form-canvas/useListDrag";
 import { useOverrideTarget } from "./form-canvas/useOverrideTarget";
 import { VisibilityGroupSettings } from "./form-canvas/VisibilityGroupSettings";
-import { ElementExpressionScope } from "./form-fields/conditions/expressionBuffers";
+import {
+  ElementExpressionScope,
+  expressionKeys,
+} from "./form-fields/conditions/expressionBuffers";
 import { isDraftValidatorId } from "./form-fields/customValidatorDrafts";
 import { renderFieldEditor } from "./form-fields/fieldEditors";
 import { FormConflictModal } from "./FormConflictModal";
@@ -1805,7 +1808,7 @@ export function FormBuilder(props: FormBuilderProps) {
     };
     return (
       <ElementExpressionScope
-        parent={`element:${currentPage.id}`}
+        parent={expressionKeys.pageElements(currentPage.id)}
         id={field.id}
       >
         <VisibilityGroupContext.Provider
@@ -1952,7 +1955,7 @@ export function FormBuilder(props: FormBuilderProps) {
               : undefined;
           return (
             <ElementExpressionScope
-              parent={`element:${currentPage.id}`}
+              parent={expressionKeys.pageElements(currentPage.id)}
               id={element.id}
             >
               <ChildSettings

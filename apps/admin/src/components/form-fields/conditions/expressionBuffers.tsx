@@ -42,6 +42,15 @@ export const ExpressionBuffersContext =
  */
 export const ExpressionScope = createContext<string | null>(null);
 
+/** The keys `ExpressionScope` holds, by where the editor sits. */
+export const expressionKeys = {
+  page: (pageId: string) => `page:${pageId}`,
+  pageElements: (pageId: string) => `element:${pageId}`,
+  group: (groupKey: string) => `group:${groupKey}`,
+  outputView: (viewId: string) => `output:${viewId}`,
+  within: (scope: string, id: string) => `${scope}/${id}`,
+};
+
 /**
  * Buffers kept in component state rather than the draft, so they last as
  * long as the mount and add no undo steps.
@@ -79,7 +88,9 @@ export function ElementExpressionScope({
   const base = parent ?? enclosing;
   if (!id) return <LocalExpressionBuffers>{children}</LocalExpressionBuffers>;
   return (
-    <ExpressionScope.Provider value={base === null ? null : `${base}/${id}`}>
+    <ExpressionScope.Provider
+      value={base === null ? null : expressionKeys.within(base, id)}
+    >
       {children}
     </ExpressionScope.Provider>
   );
