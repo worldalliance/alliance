@@ -32,7 +32,10 @@ import {
 import { UserService } from "src/user/user.service";
 import request from "supertest";
 import { IsNull, type Repository } from "typeorm";
-import { Community } from "../src/community/entities/community.entity";
+import {
+  Community,
+  loadedCommunityUsers,
+} from "../src/community/entities/community.entity";
 import { City } from "../src/geo/city.entity";
 import { GeoModule } from "../src/geo/geo.module";
 import { getImageSource } from "../src/images/images.service";
@@ -3152,7 +3155,7 @@ describe("Users (e2e)", () => {
         relations: { users: true },
       });
 
-      const memberIds = updatedCommunity.users.map((u) => u.id);
+      const memberIds = loadedCommunityUsers(updatedCommunity).map((u) => u.id);
       expect(memberIds).toContain(batchUser1.id);
       expect(memberIds).toContain(batchUser2.id);
       expect(memberIds).toContain(leader.id);
@@ -3332,7 +3335,7 @@ describe("Users (e2e)", () => {
         relations: { users: true },
       });
 
-      const memberIds = updatedCommunity.users.map((u) => u.id);
+      const memberIds = loadedCommunityUsers(updatedCommunity).map((u) => u.id);
       expect(memberIds).toContain(reassignUser.id);
       expect(memberIds).toContain(leader.id);
     });

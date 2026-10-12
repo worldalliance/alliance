@@ -9,7 +9,10 @@ import {
   CommunityInvite,
   CommunityInviteStatus,
 } from "../src/community/entities/community-invite.entity";
-import { Community } from "../src/community/entities/community.entity";
+import {
+  Community,
+  loadedCommunityUsers,
+} from "../src/community/entities/community.entity";
 import { getImageSource } from "../src/images/images.service";
 import { ConversationService } from "../src/messaging/conversation.service";
 import { Conversation } from "../src/messaging/entities/conversation.entity";
@@ -737,7 +740,7 @@ describe("Community (e2e)", () => {
       where: { id: community.id },
       relations: { users: true },
     });
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     expect(memberIds).not.toContain(secondUser.id);
   });
 
@@ -811,7 +814,7 @@ describe("Community (e2e)", () => {
       where: { id: community.id },
       relations: { users: true },
     });
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     expect(memberIds).not.toContain(secondUser.id);
   });
 
@@ -866,7 +869,7 @@ describe("Community (e2e)", () => {
       where: { id: community.id },
       relations: { users: true },
     });
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     expect(memberIds).not.toContain(secondUser.id);
     expect(memberIds).toContain(testUser.id);
   });
@@ -937,7 +940,7 @@ describe("Community (e2e)", () => {
       where: { id: community.id },
       relations: { users: true, leaders: true },
     });
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     expect(memberIds).not.toContain(testUser.id);
     expect(memberIds).toContain(secondUser.id);
     const leaderIds = refreshed.leaders!.map((u: User) => u.id);
@@ -1104,7 +1107,7 @@ describe("Community (e2e)", () => {
       where: { id: community.id },
       relations: { users: true },
     });
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     expect(memberIds).toContain(secondUser.id);
   });
 
@@ -1161,7 +1164,7 @@ describe("Community (e2e)", () => {
       where: { id: community.id },
       relations: { users: true, leaders: true },
     });
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     const leaderIds = refreshed.leaders!.map((u: User) => u.id);
     expect(memberIds).toContain(secondUser.id);
     expect(leaderIds).toContain(secondUser.id);
@@ -1223,7 +1226,7 @@ describe("Community (e2e)", () => {
     const leaderIds = refreshed.leaders!.map((u: User) => u.id);
     expect(leaderIds).not.toContain(secondUser.id);
     // User should still be a member
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     expect(memberIds).toContain(secondUser.id);
   });
 
@@ -2088,7 +2091,7 @@ describe("Community (e2e)", () => {
       where: { id: community.id },
       relations: { users: true },
     });
-    const memberIds = refreshed.users.map((u: User) => u.id);
+    const memberIds = loadedCommunityUsers(refreshed).map((u: User) => u.id);
     expect(memberIds).toContain(secondUser.id);
   });
 
@@ -2222,15 +2225,17 @@ describe("Community (e2e)", () => {
       where: { id: newCommunity.id },
       relations: { users: true },
     });
-    expect(refreshedNew.users.map((u: User) => u.id)).toContain(secondUser.id);
+    expect(loadedCommunityUsers(refreshedNew).map((u: User) => u.id)).toContain(
+      secondUser.id,
+    );
     // User should be removed from old community (not a leader there)
     const refreshedOld = await communityRepo.findOneOrFail({
       where: { id: oldCommunity.id },
       relations: { users: true },
     });
-    expect(refreshedOld.users.map((u: User) => u.id)).not.toContain(
-      secondUser.id,
-    );
+    expect(
+      loadedCommunityUsers(refreshedOld).map((u: User) => u.id),
+    ).not.toContain(secondUser.id);
   });
 
   it("POST /community/communityInvites/:inviteId/reject rejects invite when authenticated as invited user", async () => {
@@ -2357,7 +2362,9 @@ describe("Community (e2e)", () => {
         where: { id: community.id },
         relations: { users: true },
       });
-      expect(updated.users.map((u) => u.id)).toContain(secondUser.id);
+      expect(loadedCommunityUsers(updated).map((u) => u.id)).toContain(
+        secondUser.id,
+      );
     });
 
     it("refuses a group that has opted out of staff assignments", async () => {
@@ -2379,7 +2386,9 @@ describe("Community (e2e)", () => {
         where: { id: community.id },
         relations: { users: true },
       });
-      expect(updated.users.map((u) => u.id)).not.toContain(secondUser.id);
+      expect(loadedCommunityUsers(updated).map((u) => u.id)).not.toContain(
+        secondUser.id,
+      );
     });
 
     it("refuses a group that is already at capacity", async () => {
@@ -2406,7 +2415,9 @@ describe("Community (e2e)", () => {
         where: { id: community.id },
         relations: { users: true },
       });
-      expect(updated.users.map((u) => u.id)).not.toContain(secondUser.id);
+      expect(loadedCommunityUsers(updated).map((u) => u.id)).not.toContain(
+        secondUser.id,
+      );
     });
 
     it("allows only one concurrent assignment into the final available slot", async () => {
@@ -2440,7 +2451,9 @@ describe("Community (e2e)", () => {
         where: { id: community.id },
         relations: { users: true, leaders: true },
       });
-      expect(updated.users.length - updated.leaders!.length).toBe(1);
+      expect(
+        loadedCommunityUsers(updated).length - updated.leaders!.length,
+      ).toBe(1);
     });
   });
 
@@ -2497,7 +2510,7 @@ describe("Community (e2e)", () => {
         where: { id: community.id },
         relations: { users: true },
       });
-      return refreshed.users.map((member) => member.id);
+      return loadedCommunityUsers(refreshed).map((member) => member.id);
     };
 
     it("moves the member out of the source group and into the destination", async () => {

@@ -58,7 +58,10 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { groupBy } from "es-toolkit";
 import { CommunityService } from "src/community/community.service";
-import { Community } from "src/community/entities/community.entity";
+import {
+  Community,
+  loadedCommunityUsers,
+} from "src/community/entities/community.entity";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import {
@@ -4194,7 +4197,7 @@ export class ActionsService {
       .findOneOrFail(communityId, {
         users: { awayRanges: true, contractEvents: true, tags: true },
       })
-      .then((community) => community.users);
+      .then(loadedCommunityUsers);
     return this.findActionRelationsForUsers(usersPromise);
   }
 
@@ -4202,18 +4205,15 @@ export class ActionsService {
     userId: number,
     communityId: number,
   ): Promise<UserActionRelations> {
-    const usersPromise = run(async () => {
-      const community = await this.communityService.findOneOrFail(communityId, {
-        users: { awayRanges: true, contractEvents: true, tags: true },
-      });
-      if (!community.users.some((user) => user.id === userId)) {
-        throw new NotFoundException("User is not a member of this community");
-      }
-
-      return community.users;
+    const community = await this.communityService.findOneOrFail(communityId, {
+      users: { awayRanges: true, contractEvents: true, tags: true },
     });
+    const members = loadedCommunityUsers(community);
+    if (!members.some((user) => user.id === userId)) {
+      throw new NotFoundException("User is not a member of this community");
+    }
 
-    return this.findActionRelationsForUsers(usersPromise);
+    return this.findActionRelationsForUsers(Promise.resolve(members));
   }
 
   private async buildSuspendPlanContext(

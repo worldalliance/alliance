@@ -3,7 +3,10 @@ import {
   CommunityInvite,
   CommunityInviteStatus,
 } from "src/community/entities/community-invite.entity";
-import { Community } from "src/community/entities/community.entity";
+import {
+  Community,
+  loadedCommunityUsers,
+} from "src/community/entities/community.entity";
 import { ContractService } from "src/contract/contract.service";
 import {
   MessageSource,
@@ -301,7 +304,9 @@ describe("Group join notifications (e2e)", () => {
       where: { id: group.id },
       relations: { users: true },
     });
-    expect(returned.users.map((user) => user.id)).toContain(member.id);
+    expect(loadedCommunityUsers(returned).map((user) => user.id)).toContain(
+      member.id,
+    );
     expect((await announcements()).get(leader.id)).toEqual([member.id]);
   });
 
@@ -474,7 +479,9 @@ describe("Group join notifications (e2e)", () => {
       where: { id: group.id },
       relations: { users: true },
     });
-    expect(joined.users.map((user) => user.id)).toContain(joiner.id);
+    expect(loadedCommunityUsers(joined).map((user) => user.id)).toContain(
+      joiner.id,
+    );
     expect(await joinNotifs()).toEqual([]);
     expect(
       await notifRepo.count({

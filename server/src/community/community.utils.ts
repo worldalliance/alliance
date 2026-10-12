@@ -1,5 +1,5 @@
 import type { User } from "src/user/entities/user.entity";
-import { Community } from "./entities/community.entity";
+import { Community, loadedCommunityUsers } from "./entities/community.entity";
 
 /**
  * Non-leader member count (users minus leaders). Safe when relations are unloaded.
@@ -80,15 +80,12 @@ export function isCommunityLedBy(c: Community, userId: number): boolean {
   return c.leaders?.some((leader) => leader.id === userId) ?? false;
 }
 
-export function membersAndLeaders(
-  community: Pick<Community, "users" | "leaders">,
-): User[] {
+export function membersAndLeaders(community: Community): User[] {
   return Array.from(
     new Map(
-      [...community.users, ...(community.leaders ?? [])].map((user) => [
-        user.id,
-        user,
-      ]),
+      [...loadedCommunityUsers(community), ...(community.leaders ?? [])].map(
+        (user) => [user.id, user],
+      ),
     ).values(),
   );
 }

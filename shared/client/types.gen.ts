@@ -631,7 +631,7 @@ export type Community = {
     allowMemberInvites: boolean;
     allowStaffAssignments: boolean;
     maxCapacity: number | null;
-    users: Array<User>;
+    users?: Array<User>;
     leaders?: Array<User>;
     pendingUsers?: Array<User>;
     invites?: Array<OnetimeInvite>;
