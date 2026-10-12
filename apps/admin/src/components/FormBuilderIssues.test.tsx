@@ -141,6 +141,41 @@ describe("FormBuilder issues", () => {
     expect(writes).toEqual([]);
   });
 
+  it("lets a rule the expression uses go, flagging the expression until repaired", () => {
+    renderFormBuilder(
+      twoPages([
+        text("b", {
+          conditions: {
+            c1: reads("a").conditions.c1!,
+            c2: { kind: "hasValue", when: "a", hasValue: false },
+          },
+          formula: {
+            op: "AND",
+            left: "c1",
+            right: { op: "OR", left: "c1", right: "c2" },
+          },
+        }),
+      ]),
+    );
+    fireEvent.click(outline().getByRole("button", { name: "Two" }));
+    selectElement("Label b");
+    openSection("Conditions");
+    fireEvent.click(
+      within(settings().getByRole("listitem", { name: "Rule c2" })).getByRole(
+        "button",
+        { name: "Remove rule" },
+      ),
+    );
+
+    expect(
+      screen.getByRole("list", { name: "Issues here" }).textContent,
+    ).toContain("uses c2, which no rule defines");
+    fireEvent.change(settings().getByRole("textbox", { name: "Expression" }), {
+      target: { value: "c1" },
+    });
+    expect(issueButton()).toBeNull();
+  });
+
   it("blocks Preview while errors remain", () => {
     renderFormBuilder(readsMissing);
     fireEvent.click(screen.getByRole("button", { name: "Preview" }));
@@ -365,6 +400,34 @@ describe("FormBuilder issues", () => {
     });
     await waitFor(() =>
       expect(issueList().getByText("No issues")).toBeTruthy(),
+    );
+  });
+
+  it("shows an output block's expression whose rules are all gone", () => {
+    const dangling: VisibleIfFormula = { conditions: {}, formula: "c1" };
+    renderFormBuilder({
+      ...twoPages([]),
+      outputViews: [
+        {
+          type: "default",
+          id: "view-1",
+          blocks: [
+            { id: "b1", fieldId: "a", visibleIfFormula: dangling },
+            {
+              id: "b2",
+              type: "display",
+              kind: "header",
+              text: "Heading",
+              visibleIfFormula: dangling,
+            },
+          ],
+        },
+      ],
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Output View" }));
+
+    expect(screen.getAllByRole("textbox", { name: "Expression" })).toHaveLength(
+      2,
     );
   });
 });

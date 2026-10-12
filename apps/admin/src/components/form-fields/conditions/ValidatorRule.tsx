@@ -12,12 +12,10 @@ type ValidatorCondition = Extract<Condition, { kind: "validator" }>;
 
 export function ValidatorRule({
   condition,
-  removable,
   onChange,
   onRemove,
 }: {
   condition: ValidatorCondition;
-  removable: boolean;
   onChange: (condition: ValidatorCondition) => void;
   onRemove: () => void;
 }) {
@@ -45,7 +43,6 @@ export function ValidatorRule({
           }}
           filter={(validator) => validator.usableForVisibility}
           label="Visibility validator"
-          allowNone={removable}
         />
       ) : saved.isError ? (
         <div className="flex items-center gap-2">

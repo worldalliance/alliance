@@ -138,8 +138,11 @@ function expressionIssue({
   const missing = undefinedConditionNames(formula);
   return missing.length === 0
     ? null
-    : `${ROLE_LABEL[role]} expression uses ${missing.join(", ")}, which no rule defines`;
+    : `${ROLE_LABEL[role]} expression ${usesUndefinedRules(missing)}`;
 }
+
+export const usesUndefinedRules = (missing: readonly string[]) =>
+  `uses ${missing.join(", ")}, which no rule defines`;
 
 function missingQuestionIssues({
   formula,

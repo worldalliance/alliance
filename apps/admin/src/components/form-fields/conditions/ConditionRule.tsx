@@ -54,7 +54,6 @@ function ruleTitle(condition: Condition): string {
 function RuleBody({
   condition,
   negated,
-  removable,
   allowNegation,
   sources,
   onChange,
@@ -62,7 +61,6 @@ function RuleBody({
 }: {
   condition: Condition;
   negated: boolean;
-  removable: boolean;
   allowNegation: boolean;
   sources: RuleSources;
   onChange: (rule: RuleCondition) => void;
@@ -89,12 +87,7 @@ function RuleBody({
       );
     case "validator":
       return (
-        <ValidatorRule
-          condition={shown}
-          removable={removable}
-          onChange={set}
-          onRemove={onRemove}
-        />
+        <ValidatorRule condition={shown} onChange={set} onRemove={onRemove} />
       );
     case "deviceType":
       return <DeviceRule condition={shown} onChange={set} />;
@@ -128,7 +121,6 @@ export function ConditionRule({
   negated,
   showName,
   unreferenced,
-  removable,
   allowNegation,
   sources,
   onChange,
@@ -140,9 +132,6 @@ export function ConditionRule({
   /** Advanced mode, where the expression refers to rules by name. */
   showName: boolean;
   unreferenced: boolean;
-  /** False while the expression references the rule, so removing it can't
-   * leave the saved formula naming a missing rule. */
-  removable: boolean;
   allowNegation: boolean;
   sources: RuleSources;
   onChange: (rule: RuleCondition) => void;
@@ -162,19 +151,13 @@ export function ConditionRule({
             </code>
           )}
         </span>
-        {removable ? (
-          <button
-            type="button"
-            className="text-[11px] text-gray-500 hover:text-red-500"
-            onClick={onRemove}
-          >
-            Remove rule
-          </button>
-        ) : (
-          <span className="text-[11px] text-gray-400">
-            Used in the expression; remove it there first
-          </span>
-        )}
+        <button
+          type="button"
+          className="text-[11px] text-gray-500 hover:text-red-500"
+          onClick={onRemove}
+        >
+          Remove rule
+        </button>
       </div>
       {unreferenced && (
         <p className="text-[11px] text-amber-600">
@@ -184,7 +167,6 @@ export function ConditionRule({
       <RuleBody
         condition={condition}
         negated={negated}
-        removable={removable}
         allowNegation={allowNegation}
         sources={sources}
         onChange={onChange}

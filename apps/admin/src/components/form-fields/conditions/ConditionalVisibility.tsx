@@ -161,7 +161,6 @@ export function ConditionalVisibility({
   };
 
   const removeRule = (name: string) => {
-    if (advanced && referenced.has(name)) return;
     const removed = conditions[name];
     if (
       removed?.kind === "validator" &&
@@ -290,7 +289,6 @@ export function ConditionalVisibility({
                 negated={negated}
                 showName={advanced}
                 unreferenced={advanced && !referenced.has(name)}
-                removable={!advanced || !referenced.has(name)}
                 allowNegation={!advanced}
                 sources={sources}
                 onChange={(next) => changeRule({ name, negated, next })}

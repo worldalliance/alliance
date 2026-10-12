@@ -15,7 +15,7 @@ import {
   renderDisplayOnlyBuilder,
   renderFormBuilder,
 } from "../lib/testing/renderFormBuilder";
-import { addRule } from "./form-fields/conditions/conditionEditorTesting";
+import { addRule, rule } from "./form-fields/conditions/conditionEditorTesting";
 
 afterEach(cleanup);
 
@@ -295,6 +295,45 @@ describe("FormBuilder sharing visibility across a selection", () => {
     expect(
       within(canvasGroups()[0]!).getByText("Shared visibility · 2 elements"),
     ).toBeTruthy();
+  });
+
+  it("refuses newly written rules whose expression names a removed rule", async () => {
+    renderFormBuilder(schemaWith([text("a"), text("b")]));
+    selectElement("Label a");
+    shiftSelect("Text Field: Label b");
+    await addRule("Device");
+    await addRule("Device");
+    fireEvent.click(button("Edit as expression"));
+    fireEvent.click(
+      rule("condition2").getByRole("button", { name: "Remove rule" }),
+    );
+    expect(settings().getByText(/^No rule is named condition2/)).toBeTruthy();
+    expect(button("Share new rules").disabled).toBe(true);
+    expect(
+      settings().getByText(
+        "Can't share: the expression uses condition2, which no rule defines.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("refuses a member's rules whose expression names a missing rule", () => {
+    renderFormBuilder(
+      schemaWith([
+        text("q"),
+        text("a", {
+          ...shownWhen("q"),
+          formula: { op: "AND", left: "c1", right: "c9" },
+        }),
+        text("b"),
+      ]),
+    );
+    selectElement("Label a");
+    shiftSelect("Text Field: Label b");
+    const choice = button(/^Share: shown when/);
+    expect(choice.disabled).toBe(true);
+    expect(choice.textContent).toContain(
+      "Can't share: the expression uses c9, which no rule defines.",
+    );
   });
 
   it("refuses newly written rules that would close a visibility cycle", async () => {

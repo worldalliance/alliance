@@ -1,7 +1,9 @@
 import type { FormSchema, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
+import { undefinedConditionNames } from "@alliance/shared/forms/visibilityFormula";
 import { useState } from "react";
 import { conditionSourceFields } from "../../lib/conditionSourceFields";
+import { usesUndefinedRules } from "../../lib/formIssues";
 import {
   newVisibilityCycle,
   sameVisibility,
@@ -58,8 +60,6 @@ function groupOf(members: PageItem[], groups: VisibilityGroups) {
     : null;
 }
 
-const cantShare = (cycle: string) => `Can't share: ${cycle}.`;
-
 export function RangeSettings({
   schema,
   pageIndex,
@@ -88,12 +88,18 @@ export function RangeSettings({
       ids: [...memberIds],
       formula,
     });
-  const cycleFrom = (formula: VisibleIfFormula) =>
-    newVisibilityCycle({
+  const cantShareReason = (formula: VisibleIfFormula): string | null => {
+    const missing = undefinedConditionNames(formula);
+    if (missing.length > 0) {
+      return `Can't share: the expression ${usesUndefinedRules(missing)}.`;
+    }
+    const cycle = newVisibilityCycle({
       before: schema,
       after: { ...schema, pages: sharing(formula).pages },
     });
-  const authoredCycle = authored ? cycleFrom(authored) : null;
+    return cycle && `Can't share: ${cycle}.`;
+  };
+  const authoredReason = authored ? cantShareReason(authored) : null;
 
   const share = (formula: VisibleIfFormula) => {
     const shared = sharing(formula);
@@ -139,12 +145,12 @@ export function RangeSettings({
         </p>
         <ul aria-label="Current visibility" className="space-y-2">
           {currentFormulas(members).map(({ formula, holders }, index) => {
-            const cycle = cycleFrom(formula);
+            const reason = cantShareReason(formula);
             return (
               <li key={index}>
                 <button
                   type="button"
-                  disabled={cycle !== null}
+                  disabled={reason !== null}
                   onClick={() => share(formula)}
                   className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-left text-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:bg-white disabled:text-gray-500"
                 >
@@ -154,10 +160,8 @@ export function RangeSettings({
                   <span className="block text-gray-600">
                     Now on {holders.join(", ")}
                   </span>
-                  {cycle && (
-                    <span className="block text-amber-800">
-                      {cantShare(cycle)}
-                    </span>
+                  {reason && (
+                    <span className="block text-amber-800">{reason}</span>
                   )}
                 </button>
               </li>
@@ -183,12 +187,12 @@ export function RangeSettings({
               onChange={({ visibleIfFormula }) => setAuthored(visibleIfFormula)}
             />
           </LocalExpressionBuffers>
-          {authoredCycle && (
-            <p className="text-sm text-amber-800">{cantShare(authoredCycle)}</p>
+          {authoredReason && (
+            <p className="text-sm text-amber-800">{authoredReason}</p>
           )}
           <button
             type="button"
-            disabled={!authored || authoredCycle !== null}
+            disabled={!authored || authoredReason !== null}
             onClick={() => authored && share(authored)}
             className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
           >
