@@ -2,7 +2,7 @@ import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { pending, type Pending } from "@alliance/shared/lib/testing/pending";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { useCohortEvaluationAdmin } from "./useCohortEvaluationAdmin";
 
@@ -78,7 +78,7 @@ describe("useCohortEvaluationAdmin", () => {
     expect(evaluated).toEqual(["AllMembers"]);
   });
 
-  it("keeps the previous ids while a changed expression evaluates", async () => {
+  it("matches no one while a changed expression evaluates", async () => {
     holdStaff = true;
     const view = renderEvaluation(allMembers);
     await waitFor(() => expect(view.result.current.evaluating).toBe(false));
@@ -86,7 +86,7 @@ describe("useCohortEvaluationAdmin", () => {
     view.rerender({ expr: staff });
 
     await waitFor(() => expect(heldStaff).toHaveLength(1));
-    expect([...view.result.current.userIds]).toEqual([1, 2, 3]);
+    expect([...view.result.current.userIds]).toEqual([]);
     expect(view.result.current.evaluating).toBe(true);
     heldStaff[0].resolve();
     await waitFor(() => expect([...view.result.current.userIds]).toEqual([2]));
@@ -103,17 +103,16 @@ describe("useCohortEvaluationAdmin", () => {
     expect(view.result.current.evaluating).toBe(false);
   });
 
-  it("matches no one while an expression set after a clear evaluates", async () => {
-    holdStaff = true;
-    const view = renderEvaluation(allMembers);
-    await waitFor(() => expect(view.result.current.evaluating).toBe(false));
-    view.rerender({ expr: null });
+  it("matches no one once a refetch of an earlier result fails", async () => {
+    const query = queryWrapper();
+    const view = renderEvaluation(allMembers, query);
+    await waitFor(() => expect(view.result.current.userIds.size).toBe(3));
 
-    view.rerender({ expr: staff });
+    status = 500;
+    await act(() => query.client.refetchQueries());
 
-    await waitFor(() => expect(heldStaff).toHaveLength(1));
+    await waitFor(() => expect(view.result.current.error).not.toBeNull());
     expect([...view.result.current.userIds]).toEqual([]);
-    expect(view.result.current.evaluating).toBe(true);
   });
 
   it("fails the evaluation when the server refuses it", async () => {

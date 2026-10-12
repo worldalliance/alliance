@@ -4,7 +4,7 @@ import {
   type EvaluateCohortExpressionResponseDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { keepPreviousData, skipToken, useQuery } from "@tanstack/react-query";
+import { skipToken, useQuery } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
 
 const noUserIds: ReadonlySet<number> = new Set();
@@ -13,9 +13,9 @@ const toUserIds = (
   response: EvaluateCohortExpressionResponseDto,
 ): ReadonlySet<number> => new Set(response.userIds);
 
-/** The ids of the users `expression` matches, or none without an expression.
- * While a changed expression evaluates, `userIds` still holds the previous
- * result and `evaluating` is true. */
+/** The ids of the users `expression` matches: none without an expression,
+ * before its first result, or once an evaluation fails, even a refetch of an
+ * earlier result. */
 export function useCohortEvaluationAdmin(
   expression: CohortExpression | null | undefined,
 ) {
@@ -28,16 +28,12 @@ export function useCohortEvaluationAdmin(
             throwOnError: true,
           }).then((r) => r.data)
       : skipToken,
-    // Without an expression the result is known to be empty, so a later
-    // expression evaluates over no ids rather than those from before the clear.
-    initialData: expression ? undefined : { userIds: [] },
     select: toUserIds,
-    placeholderData: keepPreviousData,
     staleTime: milliseconds({ minutes: 1 }),
   });
   return {
-    userIds: evaluation.data ?? noUserIds,
-    evaluating: evaluation.isLoading || evaluation.isPlaceholderData,
+    userIds: evaluation.isError ? noUserIds : (evaluation.data ?? noUserIds),
+    evaluating: evaluation.isLoading,
     error: evaluation.error,
   };
 }
