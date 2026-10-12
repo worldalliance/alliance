@@ -8,7 +8,6 @@ import {
   analyticsGetMemberReliabilityWindowAdmin,
   analyticsGetMissedActionsAdmin,
   analyticsGetPlatformTenureCohortAdmin,
-  analyticsGetReminderGroupClickRatesAdmin,
   analyticsGetTimeToChurnSamplesAdmin,
 } from "@alliance/shared/client";
 import {
@@ -21,13 +20,10 @@ import {
   MemberReliabilityWindowDto,
   MissedActionsDto,
   PlatformTenureCohortStatsDto,
-  ReminderGroupClickRatePointDto,
   TimeToChurnSampleDto,
 } from "@alliance/shared/client/types.gen";
 import { dateToInputValue } from "@alliance/shared/lib/dateInput";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
-import { useQuery } from "@tanstack/react-query";
 import chroma from "chroma-js";
 import {
   area,
@@ -59,6 +55,7 @@ import {
 } from "../components/TimeSeriesChart";
 import { defaultInviteFunnelRange } from "../lib/defaultInviteFunnelRange";
 import { useActionStats } from "../lib/useActionStats";
+import { useReminderGroupClickRatesAdmin } from "../lib/useReminderGroupClickRatesAdmin";
 
 type ParsedDailyStats = DailyStatsDto & { parsedDate: Date };
 type ActionStatsWithWithdrawals = ActionStatsWithOnboardingDto & {
@@ -96,10 +93,6 @@ type HoveredRetentionCell = {
     memberCount: number;
   }>;
 };
-type ReminderGroupClickRatePoint = Omit<
-  ReminderGroupClickRatePointDto,
-  "date"
-> & { date: Date };
 type ReminderActionChannelBar = {
   actionId: number;
   actionName: string;
@@ -436,18 +429,8 @@ const StatsPage: React.FC = () => {
   const {
     data: reminderGroupClickRatePoints = [],
     isPending: reminderGroupClickRatesLoading,
-  } = useQuery({
-    queryKey: queryKeys.reminderGroupClickRatesAdmin(),
-    queryFn: async () => {
-      const response = await analyticsGetReminderGroupClickRatesAdmin();
-      return (response.data ?? []).map(
-        (point): ReminderGroupClickRatePoint => ({
-          ...point,
-          date: new Date(point.date),
-        }),
-      );
-    },
-  });
+    isError: reminderGroupClickRatesLoadFailed,
+  } = useReminderGroupClickRatesAdmin();
 
   const loadRetentionCohorts = useCallback(async () => {
     setRetentionLoading(true);
@@ -2804,7 +2787,13 @@ const StatsPage: React.FC = () => {
             filteredReminderGroupClickRatePoints.length === 0 && (
               <p className="text-sm text-gray-600">Loading...</p>
             )}
+          {reminderGroupClickRatesLoadFailed && (
+            <p className="text-sm text-red-600">
+              Unable to load reminder click rates.
+            </p>
+          )}
           {!reminderGroupClickRatesLoading &&
+            !reminderGroupClickRatesLoadFailed &&
             filteredReminderGroupClickRatePoints.length === 0 && (
               <p className="text-sm text-gray-600">
                 No sent reminder groups with email/text link clicks in this date
