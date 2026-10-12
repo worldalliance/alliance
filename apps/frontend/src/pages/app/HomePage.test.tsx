@@ -1,5 +1,6 @@
 import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import * as actionsListPageModule from "@alliance/shared/lib/actionsListPage";
+import { dismissActionErrorMessage } from "@alliance/shared/lib/actionsListPage";
 import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
 import {
   makeAction,
@@ -26,6 +27,7 @@ import * as largeActionCardModule from "./LargeActionCard";
 let actions: ActionWithAwayStatus[] | null = [];
 let generalUpdatesFailure: LoadFailure | null = null;
 let actionsFailure: LoadFailure | null = null;
+let handleDismissAction: (actionId: number) => Promise<void> = async () => {};
 
 beforeEach(() => {
   jest
@@ -35,7 +37,7 @@ beforeEach(() => {
       generalUpdates: [],
       generalUpdatesFailure,
       actionsFailure,
-      handleDismissAction: async () => {},
+      handleDismissAction,
       handleDismissGeneralUpdate: async () => {},
     }));
   jest.spyOn(utilsModule, "useSidFromParams").mockImplementation(() => {});
@@ -53,6 +55,7 @@ afterEach(() => {
   actions = [];
   generalUpdatesFailure = null;
   actionsFailure = null;
+  handleDismissAction = async () => {};
   cleanup();
 });
 
@@ -187,5 +190,25 @@ describe("HomePage deadline refusal", () => {
     screen.getByRole("heading", { name: "Late task" });
     expect(invalidateActions).toHaveBeenCalledTimes(1);
     expect(scrollTo).not.toHaveBeenCalled();
+  });
+});
+
+describe("HomePage dismissal refusal", () => {
+  it("says the dismissal failed when the server refuses it", async () => {
+    actions = [
+      makeAction({ id: 7, optional: true, events: deadlineInDays(3) }),
+    ];
+    handleDismissAction = () =>
+      Promise.reject({ statusCode: 500, message: "Internal server error" });
+    jest
+      .spyOn(largeActionCardModule, "default")
+      .mockImplementation(({ dismissProps }) => (
+        <button onClick={dismissProps?.onDismiss}>Dismiss</button>
+      ));
+
+    renderHomePage();
+    fireEvent.click(screen.getByText("Dismiss"));
+
+    await screen.findByText(dismissActionErrorMessage(undefined));
   });
 });

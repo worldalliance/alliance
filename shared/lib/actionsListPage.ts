@@ -18,6 +18,7 @@ import {
   withOptimisticDismissal,
   withOptimisticRelation,
 } from "./actionUtils";
+import { thrownRefusalMessage } from "./hey-api";
 import { queryKeys } from "./queryKeys";
 
 export const useActionsQuery = (options?: {
@@ -48,7 +49,7 @@ export function useDismissActionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (actionId: number) =>
-      actionsDismissAction({ path: { id: actionId } }),
+      actionsDismissAction({ path: { id: actionId }, throwOnError: true }),
     onSuccess: (_data, actionId) =>
       patchCachedAction({
         queryClient,
@@ -57,6 +58,13 @@ export function useDismissActionMutation() {
       }),
   });
 }
+
+export const dismissActionErrorMessage = (error: unknown): string =>
+  thrownRefusalMessage({
+    error,
+    fallback: "Couldn't dismiss this task. Please try again.",
+    sessionExpired: "Your session has expired. Sign in again.",
+  });
 
 export function useMarkActionCompleted(): (actionId: number) => void {
   const queryClient = useQueryClient();

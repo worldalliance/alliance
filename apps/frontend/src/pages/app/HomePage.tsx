@@ -4,6 +4,7 @@ import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
 import { FollowUpFormDto } from "@alliance/shared/client";
 import {
+  dismissActionErrorMessage,
   useInvalidateActions,
   useMarkActionCompleted,
 } from "@alliance/shared/lib/actionsListPage";
@@ -79,7 +80,7 @@ const HomePage = () => {
   const queryClient = useQueryClient();
   const invalidateActions = useInvalidateActions();
   const markActionCompleted = useMarkActionCompleted();
-  const { warning } = useToast();
+  const { warning, error: toastError } = useToast();
   const {
     actions: liveActions,
     generalUpdates,
@@ -452,6 +453,8 @@ const HomePage = () => {
                         onDismiss: () =>
                           handleDismissAction(
                             selectedTaskNavigatorItem.action.id,
+                          ).catch((caught: unknown) =>
+                            toastError(dismissActionErrorMessage(caught)),
                           ),
                       }
                     : undefined
@@ -579,6 +582,7 @@ const HomePage = () => {
     invalidateActions,
     markActionCompleted,
     warning,
+    toastError,
     activeCompletableFollowUpForms,
     isLargeScreen,
     mocked,

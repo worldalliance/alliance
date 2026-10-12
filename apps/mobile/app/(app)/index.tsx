@@ -2,6 +2,7 @@ import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import type { FollowUpFormDto } from "@alliance/shared/client";
 import { actionsDismissAction } from "@alliance/shared/client";
 import {
+  dismissActionErrorMessage,
   useActionsQuery,
   useInvalidateActions,
 } from "@alliance/shared/lib/actionsListPage";
@@ -115,9 +116,15 @@ export default function HomeScreen() {
         return;
       }
 
-      await actionsDismissAction({
-        path: { id: action.id },
-      });
+      try {
+        await actionsDismissAction({
+          path: { id: action.id },
+          throwOnError: true,
+        });
+      } catch (error) {
+        Alert.alert("Error", dismissActionErrorMessage(error));
+        return;
+      }
 
       refetch();
     },

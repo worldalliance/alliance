@@ -103,3 +103,20 @@ it("dismisses an action on the server, then hides it in the cached list", async 
     withOptimisticDismissal(makeAction({ id: 1 })),
   );
 });
+
+it("leaves the cached action alone when the server refuses the dismissal", async () => {
+  api.alsoServing({
+    "POST /actions/dismiss/:id": () =>
+      Response.json({ message: "Nope" }, { status: 500 }),
+  });
+  const { client, wrapper } = queryWrapper();
+  client.setQueryData(queryKeys.actions(), [makeAction({ id: 1 })]);
+  const view = renderHook(() => useDismissActionMutation(), { wrapper });
+
+  await act(() => view.result.current.mutateAsync(1).catch(() => {}));
+
+  await waitFor(() => expect(view.result.current.isError).toBe(true));
+  expect(client.getQueryData<ActionDto[]>(queryKeys.actions())).toEqual([
+    makeAction({ id: 1 }),
+  ]);
+});
