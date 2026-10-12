@@ -17,6 +17,7 @@ export interface ActionItemCardPropsShared {
     | "onboarding"
     | "usersJoined"
     | "userRelation"
+    | "viewer"
     | "usersCompleted"
     | "squareThumbnailImage"
     | "squareThumbnailImageAlt"

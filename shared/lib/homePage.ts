@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { ActionDto, FollowUpFormDto } from "../client";
 import {
   ActionWithAwayStatus,
+  hasViewerCompletedAction,
   homePagePriorityComparator,
   isActionOptional,
   isCurrentlyCompletedAction,
@@ -96,7 +97,7 @@ export function useHomePageActions(actions: ActionWithAwayStatus[] | null) {
     if (!actions) return [];
     const list: ActiveFollowUpFormEntry[] = [];
     for (const action of actions) {
-      if (action.userRelation !== "completed") continue;
+      if (!hasViewerCompletedAction(action)) continue;
       for (const f of action.followUpForms ?? []) {
         if (isFollowUpFormActive(f)) {
           list.push({ followUpForm: f, actionId: action.id });

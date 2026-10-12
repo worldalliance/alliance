@@ -6,6 +6,7 @@ import type {
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
 import { showActionPageTaskSection } from "@alliance/shared/lib/actionPageTaskPanel";
 import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
+import { hasViewerCompletedAction } from "@alliance/shared/lib/actionUtils";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
 import { nameListSeparator } from "@alliance/shared/lib/nameList";
@@ -73,15 +74,15 @@ const ActionContents = () => {
 
   const action = context.action;
 
+  const isCompleted = hasViewerCompletedAction(action);
   const aggregateViews = useLiveTaskFormAggregateViews(
     action.taskFormId,
     action.usersCompleted,
-    context.userRelation,
+    isCompleted,
   );
 
   const { user, isAuthenticated } = useAuth();
   const loggedInMode = !action.publicOnly;
-  const isCompleted = context.userRelation === "completed";
   const formResponse = useCompletedTaskForm(action, isCompleted);
   const { data: taskForm } = useTaskForm(action.taskFormId, {
     enabled: !isCompleted,
@@ -114,7 +115,7 @@ const ActionContents = () => {
   }, [action.authors, action.id]);
 
   const activeFollowUpForms = useMemo(() => {
-    if (context.userRelation !== "completed") {
+    if (!isCompleted) {
       return [];
     }
     const list = action.followUpForms ?? [];

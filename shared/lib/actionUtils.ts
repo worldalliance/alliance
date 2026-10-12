@@ -232,6 +232,12 @@ export function isCurrentlyCompletedAction(action: ActionDto): boolean {
   ) {
     return false;
   }
+  return hasViewerCompletedAction(action);
+}
+
+export function hasViewerCompletedAction(
+  action: Pick<ActionDto, "viewer" | "userRelation">,
+): boolean {
   const { viewer } = action;
   return viewer
     ? viewer.relation === "completed"

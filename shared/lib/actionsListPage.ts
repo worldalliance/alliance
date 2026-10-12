@@ -13,6 +13,7 @@ import {
 } from "../client";
 import {
   FilterMode,
+  hasViewerCompletedAction,
   withOptimisticDismissal,
   withOptimisticRelation,
 } from "./actionUtils";
@@ -94,7 +95,7 @@ export const filterActions = (
         (action) => action.status !== "planned" && action.status !== "draft",
       );
     case FilterMode.CompletedByMe:
-      return actions.filter((action) => action.userRelation === "completed");
+      return actions.filter(hasViewerCompletedAction);
     case FilterMode.PendingOfficeResolution:
       return actions.filter((action) => action.status === "office_action");
     case FilterMode.MemberAction:

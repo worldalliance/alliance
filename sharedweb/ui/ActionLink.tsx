@@ -3,6 +3,7 @@ import {
   ActionEventDto,
   ActionStatus,
 } from "@alliance/shared/client";
+import { hasViewerCompletedAction } from "@alliance/shared/lib/actionUtils";
 import { formatNextTaskDue } from "@alliance/shared/lib/formatNextTaskDue";
 import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
 import { deadlineColor } from "@alliance/shared/lib/taskTimeInfo";
@@ -153,7 +154,7 @@ function ActionPreviewBody({
 function ActionPreviewCard({ action }: { action: ActionDto }) {
   const status = STATUS_META[action.status];
   const nextEvent = getNextEvent(action);
-  const completed = action.userRelation === "completed";
+  const completed = hasViewerCompletedAction(action);
 
   return (
     <div className="flex w-72 flex-col gap-y-1 p-3 text-left">

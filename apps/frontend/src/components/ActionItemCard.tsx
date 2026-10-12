@@ -2,6 +2,7 @@ import {
   ActionItemCardPropsShared,
   showCompletedBar,
 } from "@alliance/shared/lib/actionItemCard";
+import { hasViewerCompletedAction } from "@alliance/shared/lib/actionUtils";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
@@ -64,9 +65,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
                     iconClassName="h-4 w-4 shrink-0"
                     iconOnly
                   />
-                  {action.userRelation === "completed" && (
-                    <CheckIcon size={20} />
-                  )}
+                  {hasViewerCompletedAction(action) && <CheckIcon size={20} />}
                 </div>
               </div>
               <p className="text-zinc-500">{action.shortDescription}</p>
