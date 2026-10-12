@@ -428,6 +428,9 @@ export class ShareUrlsService {
     });
   }
 
+  // Leadership, not canManageCommunity: signup placement rechecks that the
+  // link's owner leads the group (`selectCommunityForReferral`), so a link
+  // aimed at a group its owner doesn't lead places nobody.
   private async assertLeadsCommunity(
     userId: number,
     communityId: number,
