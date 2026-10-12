@@ -92,14 +92,13 @@ export class GeneralUpdate {
 
   @Column("int", { array: true, nullable: true })
   @Allow()
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: "User IDs in the manual cohort",
     type: [Number],
     nullable: true,
   })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  manualCohortUserIds?: number[] | null;
+  manualCohortUserIds: number[] | null;
 
   @Column({ default: 0 })
   @ApiProperty()
