@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+import { postBylineAuthors } from "@alliance/common/postAuthors";
 import { run } from "@alliance/common/run";
 import { ActionActivityDto, HomeFeedItemDto } from "@alliance/shared/client";
 import { type FeedActionActivityDto } from "@alliance/shared/lib/actionActivity";
@@ -516,10 +517,13 @@ export default function UserProfileScreen() {
           >
             <Text className="text-zinc-900">{item.post.title}</Text>
             <View className="flex-row items-center gap-2 mt-1">
-              <ProfileImage
-                pfp={item.post.author.profilePicture}
-                size="small"
-              />
+              {postBylineAuthors(item.post).map((author) => (
+                <ProfileImage
+                  key={author.id}
+                  pfp={author.profilePicture}
+                  size="small"
+                />
+              ))}
               <Text className="text-sm text-zinc-500">
                 {formatTime(new Date(item.post.createdAt), { addSuffix: true })}
               </Text>
