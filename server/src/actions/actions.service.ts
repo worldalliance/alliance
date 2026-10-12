@@ -221,7 +221,9 @@ import {
   ActionActivity,
   ActivitySource,
   ALLOW_DUPLICATE,
+  loadedActionActivityAction,
   loadedActionActivityLikes,
+  loadedActionActivityUser,
 } from "./entities/action-activity.entity";
 import {
   ActionEvent,
@@ -3016,24 +3018,25 @@ export class ActionsService {
       throw new NotFoundException("Activity not found");
     }
 
-    if (createdLike && updatedActivity.user) {
+    if (createdLike) {
+      const likedAction = loadedActionActivityAction(updatedActivity);
       await this.likeNotificationService.createOrUpdate({
-        owner: updatedActivity.user,
+        owner: loadedActionActivityUser(updatedActivity),
         liker: user,
         targetType: `activity:${activity.type}`,
-        targetContent: updatedActivity.action.name,
-        targetAction: updatedActivity.action,
+        targetContent: likedAction.name,
+        targetAction: likedAction,
         targetId: updatedActivity.id,
         webAppLocation: actionActivityUrl(
-          updatedActivity.action?.id ?? updatedActivity.actionId,
+          updatedActivity.actionId,
           updatedActivity.id,
         ),
       });
     }
 
-    if (removedLike && updatedActivity.user) {
+    if (removedLike) {
       await this.likeNotificationService.removeOnUnlike({
-        ownerId: updatedActivity.user.id,
+        ownerId: updatedActivity.userId,
         unlikerId: user.id,
         targetType: `activity:${activity.type}`,
         targetId: updatedActivity.id,
@@ -4608,7 +4611,7 @@ export class ActionsService {
         activityGroups.set(key, {
           activities: [],
           actionId: activity.actionId,
-          actionName: activity.action?.name || "Unknown Action",
+          actionName: loadedActionActivityAction(activity).name,
           type: activity.type,
           latestDate: activity.createdAt,
         });
@@ -4623,8 +4626,9 @@ export class ActionsService {
     for (const group of activityGroups.values()) {
       const uniqueUsers = new Map<number, ProfileDto>();
       for (const activity of group.activities) {
-        if (activity.user && !uniqueUsers.has(activity.user.id)) {
-          uniqueUsers.set(activity.user.id, new ProfileDto(activity.user));
+        const activityUser = loadedActionActivityUser(activity);
+        if (!uniqueUsers.has(activityUser.id)) {
+          uniqueUsers.set(activityUser.id, new ProfileDto(activityUser));
         }
       }
       const users = Array.from(uniqueUsers.values());

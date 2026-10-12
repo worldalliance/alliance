@@ -53,10 +53,9 @@ export class ActionActivity {
 
   @ManyToOne(() => Action, { onDelete: "CASCADE" })
   @JoinColumn({ name: "actionId" })
-  @Allow()
+  @IsOptional()
   @Type(() => Action)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  action: Relation<Action>;
+  action?: Relation<Action>;
 
   @Column()
   @ApiProperty()
@@ -65,10 +64,9 @@ export class ActionActivity {
 
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn({ name: "userId" })
-  @Allow()
+  @IsOptional()
   @Type(() => User)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  user: Relation<User>;
+  user?: Relation<User>;
 
   @Column()
   @Allow()
@@ -137,6 +135,24 @@ export class ActionActivity {
   })
   @Allow()
   source: ActivitySource;
+}
+
+export function loadedActionActivityAction(
+  activity: Pick<ActionActivity, "id" | "action">,
+): Relation<Action> {
+  if (!activity.action) {
+    throw new Error(`action of action activity ${activity.id} not loaded`);
+  }
+  return activity.action;
+}
+
+export function loadedActionActivityUser(
+  activity: Pick<ActionActivity, "id" | "user">,
+): Relation<User> {
+  if (!activity.user) {
+    throw new Error(`user of action activity ${activity.id} not loaded`);
+  }
+  return activity.user;
 }
 
 export function loadedActionActivityLikes(

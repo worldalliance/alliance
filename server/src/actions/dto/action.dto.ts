@@ -61,7 +61,11 @@ import {
   RECOGNITION_MODES,
   type RecognitionMode,
 } from "../action-update-recognition";
-import { ActionActivity } from "../entities/action-activity.entity";
+import {
+  ActionActivity,
+  loadedActionActivityAction,
+  loadedActionActivityUser,
+} from "../entities/action-activity.entity";
 import { ActionEvent, ActionStatus } from "../entities/action-event.entity";
 import {
   ACTION_REVIEWERS_MAX,
@@ -855,8 +859,8 @@ export class ActionActivityDto extends PickType(ActionActivity, [
     this.createdAt = actionActivity.createdAt;
     this.actionId = actionActivity.actionId;
     this.likesCount = actionActivity.likesCount;
-    this.actionName = actionActivity.action?.name;
-    this.user = new ProfileDto(actionActivity.user);
+    this.actionName = loadedActionActivityAction(actionActivity).name;
+    this.user = new ProfileDto(loadedActionActivityUser(actionActivity));
     const likers = extra?.facepile ?? actionActivity.likes;
     if (likers !== undefined) {
       this.likes = likers
