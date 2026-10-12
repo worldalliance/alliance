@@ -120,7 +120,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
       new Map(
         members.map((member) => [
           member.id,
-          member.communities.filter(
+          (member.communities ?? []).filter(
             (community) =>
               !community.leaders?.some((leader) => leader.id === member.id),
           ),

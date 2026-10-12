@@ -485,10 +485,10 @@ export class User {
   @ManyToMany(() => Community, (community) => community.users, {
     onDelete: "CASCADE",
   })
-  @ApiProperty({ type: () => Community, isArray: true })
+  @ApiPropertyOptional({ type: () => Community, isArray: true })
   @Type(() => Community)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  communities: Relation<Community>[];
+  @IsOptional()
+  communities?: Relation<Community>[];
 
   @ManyToMany(() => Community, (community) => community.leaders, {
     onDelete: "CASCADE",
@@ -698,4 +698,11 @@ export function canManageCommunity(
 
 export function hasPassword(user: Pick<User, "password">): boolean {
   return Boolean(user.password);
+}
+
+export function loadedUserCommunities(user: User): Relation<Community>[] {
+  if (!user.communities) {
+    throw new Error(`communities of user ${user.id} not loaded`);
+  }
+  return user.communities;
 }

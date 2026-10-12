@@ -82,12 +82,16 @@ describe("Waitlist invite placement (e2e)", () => {
   it("places a waitlist invite's claimant in a group with room", async () => {
     const community = await saveGroup(5);
     const user = await claimAndSign({ community, fromWaitlist: true });
-    expect(user.communities.map((joined) => joined.id)).toEqual([community.id]);
+    expect(user.communities?.map((joined) => joined.id)).toEqual([
+      community.id,
+    ]);
   });
 
   it("places another invite's claimant even in a full group", async () => {
     const community = await saveGroup(1);
     const user = await claimAndSign({ community, fromWaitlist: false });
-    expect(user.communities.map((joined) => joined.id)).toEqual([community.id]);
+    expect(user.communities?.map((joined) => joined.id)).toEqual([
+      community.id,
+    ]);
   });
 });

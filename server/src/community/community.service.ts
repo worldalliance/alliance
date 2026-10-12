@@ -31,6 +31,7 @@ import { CommunityMemberContactInfo } from "src/user/dto/user-action-relations.d
 import {
   canManageCommunity,
   DEFAULT_TIME_ZONE,
+  loadedUserCommunities,
   sqlUserHasActiveContractAt,
   User,
 } from "src/user/entities/user.entity";
@@ -439,7 +440,7 @@ export class CommunityService {
           associatedUsers: [user],
         }),
       }),
-      ...user.communities.map((community) =>
+      ...loadedUserCommunities(user).map((community) =>
         this.removeUserFromCommunityAndRefreshConversation({
           user,
           community,
@@ -662,13 +663,14 @@ export class CommunityService {
     if (!user.leaderOfIds.some((cid) => cid === communityId)) {
       throw new BadRequestException();
     }
-    if (!user.communities.length) {
+    const communities = loadedUserCommunities(user);
+    if (!communities.length) {
       throw new NotFoundException();
     }
-    if (user.communities.length !== 1) {
+    if (communities.length !== 1) {
       throw new InternalServerErrorException("Multiple communities found");
     }
-    const community = user.communities[0];
+    const community = communities[0];
     if (loadedCommunityUsers(community).some((user) => user.id !== userId)) {
       throw new BadRequestException(
         "User cannot delete community with other members",
@@ -973,7 +975,9 @@ export class CommunityService {
         ? 0
         : 1;
     }
-    return user.communities.sort((a, b) => leaderKey(a) - leaderKey(b));
+    return loadedUserCommunities(user).sort(
+      (a, b) => leaderKey(a) - leaderKey(b),
+    );
   }
 
   async getAllMemberContactInfoAdmin(): Promise<CommunityMemberContactInfo[]> {
@@ -1137,7 +1141,7 @@ export class CommunityService {
     if (!invitedUser) {
       throw new BadRequestException("Invited user not found");
     }
-    if (invitedUser.communities.some((c) => c.id === communityId)) {
+    if (loadedUserCommunities(invitedUser).some((c) => c.id === communityId)) {
       throw new BadRequestException(
         "Invited user is already a member of the community",
       );
@@ -1387,7 +1391,7 @@ export class CommunityService {
           };
         },
       }),
-      ...invitedUser.communities
+      ...loadedUserCommunities(invitedUser)
         .filter((c) => !c.leaders!.some((l) => l.id === invitedUser.id))
         .map((c) =>
           this.removeUserFromCommunityAndRefreshConversation({
