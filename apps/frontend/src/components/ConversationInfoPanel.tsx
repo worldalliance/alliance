@@ -11,7 +11,7 @@ import {
   canEditConversationInfo,
   canEditConversationMembers,
   canLeaveConversation,
-} from "@alliance/shared/lib/messages";
+} from "@alliance/shared/lib/conversations";
 import {
   type Explanation,
   sendOrExplain,

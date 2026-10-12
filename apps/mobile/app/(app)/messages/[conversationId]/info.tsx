@@ -5,12 +5,12 @@ import {
   conversationRemoveParticipant,
   conversationUpdateInfo,
 } from "@alliance/shared/client";
-import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import {
   canEditConversationInfo,
   canEditConversationMembers,
   canLeaveConversation,
-} from "@alliance/shared/lib/messages";
+} from "@alliance/shared/lib/conversations";
+import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import {
   type Explanation,
   sendOrExplain,

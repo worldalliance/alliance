@@ -5,7 +5,7 @@ import {
   canLeaveConversation,
   getParticipantState,
   isConversationAdmin,
-} from "./messages";
+} from "./conversations";
 import { makeConversation, makeParticipant } from "./testFixtures";
 
 describe("isConversationAdmin", () => {

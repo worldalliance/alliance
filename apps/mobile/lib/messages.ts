@@ -1,7 +1,6 @@
 import { R, type Result } from "@alliance/common/result";
 import {
   buildGroupConversationTitle,
-  createMessagingHooks,
   findMatchingConversation,
   getConversationPreview,
   getConversationTimestamp,
@@ -11,7 +10,8 @@ import {
   mergeConversationUpdate,
   sortConversations,
   updateConversationsForLastMessage,
-} from "@alliance/shared/lib/messages";
+} from "@alliance/shared/lib/conversations";
+import { createMessagingHooks } from "@alliance/shared/lib/messages";
 import { getWebSocketUrl } from "./config";
 import {
   getAccessToken,

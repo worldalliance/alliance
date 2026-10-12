@@ -5,7 +5,7 @@ import {
   messageSendMessage,
   ProfileDto,
 } from "@alliance/shared/client";
-import { getParticipantState } from "@alliance/shared/lib/messages";
+import { getParticipantState } from "@alliance/shared/lib/conversations";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
