@@ -1,5 +1,7 @@
 import type {
   EventType,
+  PreviewEmailHtmlDto,
+  PreviewTextDto,
   PreviewWaitlistEmailDto,
   WaitlistEntryFilterDto,
   WaitlistEntrySearchDto,
@@ -184,8 +186,16 @@ export const queryKeys = {
     [...projectsAdminAll(), projectId] as const,
   outreachPartnershipResponsesAdmin: () =>
     ["actionPartnershipsFindAllResponsesAdmin"] as const,
+  reminderEmailPreviewAdmin: (
+    eventId: number | null,
+    preview: PreviewEmailHtmlDto | null,
+  ) => ["actionsPreviewEmailHtmlAdmin", eventId, preview] as const,
   reminderGroupClickRatesAdmin: () =>
     ["analyticsGetReminderGroupClickRatesAdmin"] as const,
+  reminderTextPreviewAdmin: (
+    eventId: number | null,
+    preview: PreviewTextDto | null,
+  ) => ["actionsPreviewTextMessageAdmin", eventId, preview] as const,
   responseSnapshotMigrationAdmin: (formId: number | null) =>
     ["tasksGetResponseSnapshotMigrationAdmin", formId] as const,
   scheduledPlansAdmin: () => ["actionsScheduledPlansAdmin"] as const,
