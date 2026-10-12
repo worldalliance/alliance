@@ -1,14 +1,19 @@
+import { ExceptionEvent } from "@alliance/common/analytics";
 import { refusalMessage } from "@alliance/common/errorMessage";
+import { captureException } from "./analytics";
 
 export const replyRefusalMessage = (params: {
   status: number;
   error: unknown;
 }): string => {
-  if (params.status >= 500) {
-    console.error("The server failed the reply:", params.error);
+  const { status, error } = params;
+  if (status >= 500) {
+    console.error("The server failed the reply:", error);
+    captureException(ExceptionEvent.PostReplyError, error, { status });
   }
   return refusalMessage({
-    ...params,
+    status,
+    error,
     fallback: "Failed to submit reply",
     sessionExpired: "Your session has expired. Sign in again to reply.",
   });
