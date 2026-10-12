@@ -1,3 +1,7 @@
+import type {
+  ActionSuiteDto,
+  CreateActionEventDto,
+} from "@alliance/shared/client";
 import { client } from "@alliance/shared/client/client.gen";
 import { makeEvent } from "@alliance/shared/lib/testFixtures";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
@@ -50,4 +54,62 @@ it("clears a failed add's error once a later add succeeds", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
   await waitFor(() => expect(setAction).toHaveBeenCalled());
   expect(screen.queryByText("Failed to add event")).toBeNull();
+});
+
+const renderSuiteForm = (
+  addToSuite: (body: CreateActionEventDto) => Promise<ActionSuiteDto | null>,
+) =>
+  render(
+    <ToastProvider>
+      <CreateEventForm
+        suiteMode={true}
+        action={action}
+        addToSuite={addToSuite}
+        creatingEvent={false}
+        setCreatingEvent={() => {}}
+        eventCreatedSuccess={false}
+        setEventCreatedSuccess={() => {}}
+      />
+    </ToastProvider>,
+  );
+
+it("says when a suite add is refused", async () => {
+  renderSuiteForm(() => Promise.reject({ statusCode: 500 }));
+
+  fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
+
+  expect(await screen.findByText("Failed to add event")).toBeTruthy();
+});
+
+it("says when a suite's deadline event is refused after its launch", async () => {
+  const addToSuite = jest
+    .fn()
+    .mockResolvedValueOnce({})
+    .mockRejectedValueOnce({ statusCode: 500 });
+  renderSuiteForm(addToSuite);
+
+  fireEvent.click(screen.getByLabelText("Automatically create deadline event"));
+  fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
+
+  expect(
+    await screen.findByText("Failed to add office action event"),
+  ).toBeTruthy();
+  expect(addToSuite).toHaveBeenCalledTimes(2);
+});
+
+it("says when staff decline to move a suite's deadline after its launch", async () => {
+  const addToSuite = jest
+    .fn()
+    .mockResolvedValueOnce({})
+    .mockResolvedValueOnce(null);
+  renderSuiteForm(addToSuite);
+
+  fireEvent.click(screen.getByLabelText("Automatically create deadline event"));
+  fireEvent.click(screen.getByRole("button", { name: "Add Event" }));
+
+  expect(
+    await screen.findByText(
+      "Added the launch event without its deadline event. Add the deadline separately.",
+    ),
+  ).toBeTruthy();
 });

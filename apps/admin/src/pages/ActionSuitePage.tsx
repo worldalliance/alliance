@@ -1,14 +1,6 @@
-import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  actionsBatchUpdateSuiteEventsAdmin,
-  actionsDeleteSuiteEventAdmin,
-  actionsSuiteAdmin,
-  ActionSuiteDto,
-  UpdateActionEventDto,
-} from "@alliance/shared/client";
+import { UpdateActionEventDto } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -17,16 +9,24 @@ import ActionTimeline from "../components/ActionTimeline";
 import GeneralUpdateCard from "../components/GeneralUpdateCard";
 import ActionRemindersTab from "../components/reminders/ActionRemindersTab";
 import SuiteEventList from "../components/SuiteEventList";
-import { sendConfirmingDeadlineShortening } from "../lib/confirmDeadlineShortening";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import {
+  suiteLoadError,
+  useActionSuiteAdmin,
+} from "../lib/useActionSuiteAdmin";
 
 const ActionSuitePage = () => {
   const { suiteId: suiteIdString } = useParams();
   const suiteId = Number(suiteIdString);
 
   const [error, setError] = useState<string | null>(null);
-  const [suite, setSuite] = useState<ActionSuiteDto | null>(null);
+  const {
+    suite: suiteQuery,
+    addEvent,
+    updateEvent,
+    deleteEvent,
+  } = useActionSuiteAdmin(suiteId);
   const navigate = useNavigate();
-  const { confirm } = useToast();
 
   const [highlightedReminder, setHighlightedReminder] = useState<number | null>(
     null,
@@ -46,67 +46,33 @@ const ActionSuitePage = () => {
     setHighlightedReminder(reminderId);
   };
 
-  useEffect(() => {
-    const fetchSuiteActions = async () => {
-      const response = await actionsSuiteAdmin({ path: { id: suiteId } });
-      if (response.data) {
-        setSuite(response.data);
-      } else {
-        setError(
-          errorMessage({
-            error: response.error,
-            fallback: "Failed to fetch suite",
-          }),
-        );
-      }
-    };
-    fetchSuiteActions();
-  }, [suiteId]);
-
+  const suite = suiteQuery.data;
   if (!suite) {
-    return <div>Loading...</div>;
+    return suiteQuery.isError ? (
+      <p className="p-6 text-red-500">{suiteLoadError(suiteQuery.error)}</p>
+    ) : (
+      <div>Loading...</div>
+    );
   }
 
   const handleEditEvent = (eventId: number, body: UpdateActionEventDto) => {
-    sendConfirmingDeadlineShortening({
-      send: (query) =>
-        actionsBatchUpdateSuiteEventsAdmin({
-          path: { suiteId, eventId },
-          body,
-          query,
-        }),
-      confirm,
-    }).then((resp) => {
-      if (!resp) return;
-      if (resp.data) {
-        setSuite(resp.data as ActionSuiteDto);
-      } else {
-        setError(
-          errorMessage({
-            error: resp.error,
-            fallback: "Failed to update event",
-          }),
-        );
-      }
-    });
+    updateEvent.mutate(
+      { eventId, body },
+      {
+        onError: (e) =>
+          setError(adminRefusalMessage(e, "Failed to update event")),
+      },
+    );
   };
 
   const handleDeleteEvent = (eventId: number) => {
-    actionsDeleteSuiteEventAdmin({ path: { suiteId, eventId } }).then(
-      (resp) => {
-        if (resp.data) {
-          setSuite(resp.data);
-        } else {
-          setError(
-            errorMessage({
-              error: resp.error,
-              fallback: "Failed to delete event",
-            }) +
-              " (events will fail to delete if reminders depend on their existence)",
-          );
-        }
-      },
-    );
+    deleteEvent.mutate(eventId, {
+      onError: (e) =>
+        setError(
+          adminRefusalMessage(e, "Failed to delete event") +
+            " (events will fail to delete if reminders depend on their existence)",
+        ),
+    });
   };
   if (suite.actions.length === 0) {
     return (
@@ -136,8 +102,7 @@ const ActionSuitePage = () => {
       />
       <SuiteEventList
         referenceAction={suite.actions[0]}
-        setSuite={setSuite}
-        suiteId={suiteId}
+        addToSuite={addEvent.mutateAsync}
         events={suite.events}
         onEdit={handleEditEvent}
         onDelete={handleDeleteEvent}
@@ -172,6 +137,7 @@ const ActionSuitePage = () => {
       <div className="space-y-5 flex-1 overflow-y-auto pt-0">
         <p className="text-sm text-gray-500">Actions ordered by priority</p>
         {suite?.actions
+          .slice()
           .sort((a, b) => b.priority - a.priority)
           .map((action) => (
             <Card key={action.id} className="!p-0">
