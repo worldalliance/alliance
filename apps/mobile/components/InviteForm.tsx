@@ -21,7 +21,7 @@ import { useCallback, useState } from "react";
 import { Alert, Linking, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../lib/AuthContext";
 import { copyToClipboard } from "../lib/clipboard";
-import { getBaseUrl } from "../lib/config";
+import { getSiteUrl } from "../lib/config";
 import { colors } from "../lib/style/colors";
 import AppMarkdownWrapper from "./AppMarkdownWrapper";
 import InviteGroupSelect from "./InviteGroupSelect";
@@ -66,7 +66,7 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
         if (response.data) {
           if (
             await copyToClipboard(
-              getOnetimeInviteSignupUrl(getBaseUrl(), response.data.code),
+              getOnetimeInviteSignupUrl(getSiteUrl(), response.data.code),
             )
           ) {
             Alert.alert("Success", "Invite created and copied to clipboard.");
@@ -157,7 +157,7 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
             <TouchableOpacity
               onPress={() => {
                 const url =
-                  getOnetimeInviteSignupUrl(getBaseUrl(), user.referralCode!) +
+                  getOnetimeInviteSignupUrl(getSiteUrl(), user.referralCode!) +
                   "&preview=1";
                 Linking.openURL(url);
               }}

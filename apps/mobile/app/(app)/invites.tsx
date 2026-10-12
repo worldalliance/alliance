@@ -61,7 +61,7 @@ import { SegmentedTabs } from "../../components/system/SegmentedTabs";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
-import { getBaseUrl } from "../../lib/config";
+import { getSiteUrl } from "../../lib/config";
 import { colors } from "../../lib/style/colors";
 import { useReferralLink } from "../../lib/useReferralLink";
 
@@ -431,7 +431,7 @@ export default function InvitesScreen() {
   const settingsTarget: InviteSettingsTarget | null = settingsInvite && {
     ...onetimeInviteSettings({
       invite: settingsInvite,
-      baseUrl: getBaseUrl(),
+      baseUrl: getSiteUrl(),
       updateInvite,
     }),
     onDelete: async () => {

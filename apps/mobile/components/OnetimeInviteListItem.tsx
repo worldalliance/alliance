@@ -13,7 +13,7 @@ import {
   View,
   type GestureResponderEvent,
 } from "react-native";
-import { getBaseUrl } from "../lib/config";
+import { getSiteUrl } from "../lib/config";
 import AppMarkdownWrapper from "./AppMarkdownWrapper";
 import ProfileImage from "./ProfileImage";
 import Button, { ButtonColor, ButtonSize } from "./system/Button";
@@ -41,7 +41,7 @@ export default function OnetimeInviteListItem({
   const communityDisplay = communityLabel ?? "No group";
 
   const handleShare = () => {
-    const url = getReferralSignupUrl(getBaseUrl(), invite.code);
+    const url = getReferralSignupUrl(getSiteUrl(), invite.code);
     Share.share(
       Platform.OS === "android"
         ? { message: url, title: "Alliance invite" }

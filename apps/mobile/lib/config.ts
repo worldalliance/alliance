@@ -1,6 +1,5 @@
 import { resolveUploadSrc, uploadSrc } from "@alliance/common/image-src";
 import { R } from "@alliance/common/result";
-import { ALLIANCE_DOMAIN } from "@alliance/common/url";
 import * as Application from "expo-application";
 import { NativeModules, Platform } from "react-native";
 import { type ReleaseTarget, releaseTargetFor } from "./releaseTarget";
@@ -54,11 +53,14 @@ export const getBaseUrl = (): string => {
 };
 
 /**
- * Where links shared off the app point: thealliance.org in builds, the dev API
- * server's origin under `__DEV__`.
+ * Where links shared off the app or opened in a browser point: the release
+ * target's web app, or the dev API server's origin under `__DEV__`.
  */
-export const getShareBaseUrl = (): string =>
-  __DEV__ ? getBaseUrl() : `https://${ALLIANCE_DOMAIN}`;
+export const getSiteUrl = (): string =>
+  __DEV__ ? getBaseUrl() : releaseTarget().siteUrl;
+
+export const getSitePageUrl = (path: string): string =>
+  `${getSiteUrl()}${path.startsWith("/") ? "" : "/"}${path}`;
 
 export const getImageSource = (key: string) =>
   uploadSrc({ key, apiUrl: getApiUrl() });

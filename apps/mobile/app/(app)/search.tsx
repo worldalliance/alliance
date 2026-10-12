@@ -22,7 +22,7 @@ import LoadFailed from "../../components/LoadFailed";
 import ProfileImage from "../../components/ProfileImage";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../components/system/Text";
-import { getImageSource } from "../../lib/config";
+import { getImageSource, getSitePageUrl } from "../../lib/config";
 import { getInternalRoute } from "../../lib/internalLinks";
 
 const resolveItemImage = (image?: string): string | null => {
@@ -38,11 +38,7 @@ const resolveItemImage = (image?: string): string | null => {
 };
 
 const openWebLocation = (location: string) => {
-  const url = location.startsWith("http")
-    ? location
-    : `https://worldalliance.org${
-        location.startsWith("/") ? "" : "/"
-      }${location}`;
+  const url = location.startsWith("http") ? location : getSitePageUrl(location);
   Linking.openURL(url).catch((err) => {
     console.error("Failed to open search destination", err);
   });

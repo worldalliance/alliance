@@ -1,0 +1,4 @@
+- `ReleaseTarget.siteUrl` holds each release target's web origin, beside `apiUrl`: production `https://thealliance.org`, staging `https://staging.thealliance.org`. `getSiteUrl()` in `apps/mobile/lib/config.ts` returns it, or the dev server origin under `__DEV__`, as `getShareBaseUrl()` did. A per-target value keeps staging builds from sharing links into production, where a staging invite code does not exist.
+- `getShareBaseUrl` is renamed `getSiteUrl`, matching the web app's `getSiteUrl`, since it now also serves links opened in a browser.
+- `getSitePageUrl(path)` is the one place a path becomes a site URL, replacing the hardcoded `https://worldalliance.org` in search and markdown links and the `getBaseUrl()` prefix in the information screen.
+- The mobile referral link stays on the homepage (`/?ref=`) while the web referral link goes to `/signup?ref=`: the mobile homepage landing was chosen deliberately (#488), so the two are not treated as one rule here.

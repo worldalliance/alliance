@@ -11,7 +11,7 @@ import { Check, Copy } from "lucide-react-native";
 import { useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { copyOrAlert } from "../../lib/clipboard";
-import { getApiUrl, getShareBaseUrl } from "../../lib/config";
+import { getApiUrl, getSiteUrl } from "../../lib/config";
 import AppMarkdownWrapper from "../AppMarkdownWrapper";
 import { commonMarkParser } from "../markdownParser";
 import Text, { FontWeight } from "../system/Text";
@@ -38,7 +38,7 @@ export default function CopyTextDisplay({ block }: { block: CopyTextBlock }) {
   const handleCopy = async () => {
     const content = copyTextClipboardContent(block, {
       apiUrl: getApiUrl(),
-      origin: getShareBaseUrl(),
+      origin: getSiteUrl(),
     });
     if (!(await copyOrAlert(content))) {
       return;
