@@ -1,5 +1,6 @@
 import { CreateOnetimeInviteDto } from "@alliance/shared/client";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
+import { onetimeInviteStatusDisplay } from "@alliance/shared/styles/inviteStatus";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
@@ -219,11 +220,13 @@ const InvitesPage = () => {
                   </div>
                   <div className="flex flex-row gap-3 items-center">
                     <p className="text-gray-500">{invite.code}</p>
-                    {invite.status === "link_unused" ? (
-                      <p className="text-green">Active</p>
-                    ) : (
-                      <p className="text-gray-500">used</p>
-                    )}
+                    <p
+                      className={
+                        onetimeInviteStatusDisplay[invite.status].textClass
+                      }
+                    >
+                      {onetimeInviteStatusDisplay[invite.status].label}
+                    </p>
                     <button
                       type="button"
                       aria-label={`Copy invite link ${invite.code}`}

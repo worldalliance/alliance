@@ -1,7 +1,11 @@
-import type { OnetimeInviteListDto } from "@alliance/shared/client";
+import type {
+  OnetimeInviteListDto,
+  OnetimeInviteStatus,
+} from "@alliance/shared/client";
 import { makeOnetimeInvite } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { onetimeInviteStatusDisplay } from "@alliance/shared/styles/inviteStatus";
 import * as config from "@alliance/sharedweb/lib/config";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
@@ -18,12 +22,15 @@ afterEach(cleanup);
 
 const created: unknown[] = [];
 let createReleased = Promise.resolve();
+let status: OnetimeInviteStatus = "link_unused";
 
 serveApi(
   routes({
     "GET /user/onetimeInvites": ({ request }) =>
       Response.json({
-        items: [makeOnetimeInvite({ createdAt: "2026-01-02T00:00:00.000Z" })],
+        items: [
+          makeOnetimeInvite({ createdAt: "2026-01-02T00:00:00.000Z", status }),
+        ],
         totalCount: 51,
         page: Number(new URL(request.url).searchParams.get("page")),
         limit: 50,
@@ -43,6 +50,7 @@ serveApi(
 afterEach(() => {
   created.length = 0;
   createReleased = Promise.resolve();
+  status = "link_unused";
 });
 
 const renderPage = () =>
@@ -111,3 +119,19 @@ it("creates one invite per submit, clears the inviting user, and returns to the 
   expect(screen.queryByRole("button", { name: "Jordan" })).toBeNull();
   expect(screen.queryByText("Jordan")).toBeNull();
 });
+
+it.each<OnetimeInviteStatus>([
+  "link_unused",
+  "link_used",
+  "request_pending",
+  "request_rejected",
+])(
+  "shows a %s invite's shared status label and color",
+  async (inviteStatus) => {
+    status = inviteStatus;
+    const { label, textClass } = onetimeInviteStatusDisplay[inviteStatus];
+    renderPage();
+
+    expect((await screen.findByText(label)).className).toContain(textClass);
+  },
+);
