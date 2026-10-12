@@ -3123,8 +3123,12 @@ describe("Actions (e2e)", () => {
       await userRepo.update(photoUser.id, {
         profilePicture: "https://example.com/photo.jpg",
       });
-      for (let i = 1; i <= GLOBAL_FEED_FACEPILE_LIMIT; i++) {
-        facepileUsers.push(await createMember(`no-photo-${i}`, i));
+      for (let i = 1; i <= 2 * GLOBAL_FEED_FACEPILE_LIMIT; i++) {
+        const member = await createMember(`no-photo-${i}`, i);
+        facepileUsers.push(member);
+        if (i % 2 === 0) {
+          await userRepo.update(member.id, { profilePicture: " " });
+        }
       }
 
       const res = await request(ctx.app.getHttpServer())

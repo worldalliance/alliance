@@ -1,3 +1,4 @@
+import { hasProfilePicture } from "../profilePicture";
 import type { Assert, Equal } from "../types";
 
 export enum UserValueProperty {
@@ -107,7 +108,7 @@ export function userValuePropertyPresence(
       bag.preferredReminderTime,
     ),
     [UserValueProperty.TimeZone]: isPresent(bag.timeZone),
-    [UserValueProperty.ProfilePicture]: isPresent(bag.profilePicture),
+    [UserValueProperty.ProfilePicture]: hasProfilePicture(bag),
     [UserValueProperty.ProfileDescription]: isPresent(bag.profileDescription),
     [UserValueProperty.City]:
       bag.city != null || isPresent(bag.customCityString),

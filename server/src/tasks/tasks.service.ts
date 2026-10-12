@@ -70,6 +70,7 @@ import {
 } from "@alliance/common/forms/visible-if-formula";
 import { toE164 } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
+import { hasProfilePicture } from "@alliance/common/profilePicture";
 import { R, type Result } from "@alliance/common/result";
 import { isTimeZoneIdentifier } from "@alliance/common/timezone";
 import { describeSchemaIssues, issuePath } from "@alliance/common/zod-issues";
@@ -1990,7 +1991,7 @@ export class TasksService {
 
     switch (validator.type) {
       case CustomValidatorType.UploadedPhoto:
-        if (!user.profilePicture) {
+        if (!hasProfilePicture(user)) {
           return {
             isValid: false,
             message: "You have not uploaded a profile picture yet",
