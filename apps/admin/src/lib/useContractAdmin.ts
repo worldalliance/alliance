@@ -7,18 +7,14 @@ import {
   type UpdateContractDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import {
-  skipToken,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
 import { useInvalidateContractsAdmin } from "./useContractsAdmin";
+import { useStoreQueryData } from "./usePatchQueryData";
 
 /** One admin contract and its writes. A `null` id fetches nothing, for the
  * create page; `update` throws then. */
 export function useContractAdmin(id: number | null) {
-  const queryClient = useQueryClient();
+  const storeQueryData = useStoreQueryData();
   const invalidateList = useInvalidateContractsAdmin();
 
   const query = useQuery({
@@ -33,10 +29,7 @@ export function useContractAdmin(id: number | null) {
   });
 
   const store = async (saved: ContractAdminDto) => {
-    const queryKey = queryKeys.contractAdmin(saved.id);
-    // A refetch in flight would land the old contract back over the save.
-    await queryClient.cancelQueries({ queryKey });
-    queryClient.setQueryData(queryKey, saved);
+    await storeQueryData(queryKeys.contractAdmin(saved.id), saved);
     await invalidateList();
   };
 

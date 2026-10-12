@@ -2,6 +2,7 @@ import type {
   AdminActionUpdateDto,
   UpdateActionUpdateDto,
 } from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -13,33 +14,13 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { HELD_POLL_MS } from "../lib/useRefreshWhileHeld";
+import { actionUpdateAdmin as update } from "../lib/testing/actionUpdateAdmin";
+import { HELD_POLL_MS } from "../lib/useActionUpdateAdmin";
 import ActionUpdatePage from "./ActionUpdatePage";
 
-afterEach(cleanup);
-
-const update = (
-  overrides: Partial<AdminActionUpdateDto> = {},
-): AdminActionUpdateDto => ({
-  id: 1,
-  actionId: 2,
-  title: "Hearing",
-  schemaSnapshotId: 3,
-  date: "2026-10-01T00:00:00.000Z",
-  visibleAt: null,
-  shortNotifString: "a hearing on the bill",
-  associatedEventId: null,
-  notifyType: "all_members",
-  notifiedAt: null,
-  schema: {
-    blocks: [{ type: "display", kind: "header", id: "b1", text: "Body" }],
-  },
-  notificationMode: "normal",
-  contributionFormula: null,
-  retrospectiveContributionFormula: null,
-  recognitionPreparedAt: null,
-  notificationHeldReason: null,
-  ...overrides,
+afterEach(() => {
+  cleanup();
+  jest.restoreAllMocks();
 });
 
 let served: AdminActionUpdateDto = update();
@@ -67,7 +48,15 @@ const api = serveApi(
   }),
 );
 
-const renderDetails = async () => {
+const renderPage = (
+  params: { path?: string; cached?: AdminActionUpdateDto } = {},
+) => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  if (params.cached) {
+    client.setQueryData(queryKeys.actionUpdateAdmin(1), params.cached);
+  }
   const router = createMemoryRouter(
     [
       {
@@ -75,19 +64,19 @@ const renderDetails = async () => {
         element: <ActionUpdatePage />,
       },
     ],
-    { initialEntries: ["/actions/2/updates/1"] },
+    { initialEntries: [params.path ?? "/actions/2/updates/1"] },
   );
   render(
-    <QueryClientProvider
-      client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      }
-    >
+    <QueryClientProvider client={client}>
       <ToastProvider>
         <RouterProvider router={router} />
       </ToastProvider>
     </QueryClientProvider>,
   );
+};
+
+const renderDetails = async () => {
+  renderPage();
   fireEvent.click(
     await screen.findByRole("button", { name: "Update Details" }),
   );
@@ -97,6 +86,87 @@ describe("ActionUpdatePage", () => {
   beforeEach(() => {
     served = update();
     variantsAnswer = () => Response.json({ variants: [], stats: [] });
+  });
+
+  it("says an update id that isn't a number is invalid", async () => {
+    renderPage({ path: "/actions/2/updates/abc" });
+
+    expect(await screen.findByText("Invalid update id")).toBeTruthy();
+  });
+
+  it("says a missing update wasn't found", async () => {
+    api.alsoServing({
+      "GET /actions/updates/admin/:id": () =>
+        Response.json({ statusCode: 404 }, { status: 404 }),
+    });
+
+    renderPage();
+
+    expect(await screen.findByText("Update not found")).toBeTruthy();
+  });
+
+  it("says the update failed to load on any other error", async () => {
+    api.alsoServing({
+      "GET /actions/updates/admin/:id": () =>
+        Response.json({ statusCode: 500 }, { status: 500 }),
+    });
+
+    renderPage();
+
+    expect(await screen.findByText("Failed to load update")).toBeTruthy();
+  });
+
+  it("waits for a reload rather than filling from a copy cached by an earlier visit", async () => {
+    let release = () => {};
+    let reloading = false;
+    api.alsoServing({
+      "GET /actions/updates/admin/:id": async () => {
+        reloading = true;
+        await new Promise<void>((resolve) => (release = resolve));
+        return Response.json(update({ title: "Fresh" }));
+      },
+    });
+
+    renderPage({ cached: update({ title: "Stale" }) });
+    await waitFor(() => expect(reloading).toBe(true));
+
+    expect(screen.getByText("Loading update...")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Update Details" })).toBeNull();
+
+    release();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Update Details" }),
+    );
+    expect(screen.getAllByRole("textbox")[0]).toHaveProperty("value", "Fresh");
+  });
+
+  it("says the update failed to load when a reload over a cached copy fails", async () => {
+    api.alsoServing({
+      "GET /actions/updates/admin/:id": () =>
+        Response.json({ statusCode: 500 }, { status: 500 }),
+    });
+
+    renderPage({ cached: update() });
+
+    expect(await screen.findByText("Failed to load update")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Update Details" })).toBeNull();
+  });
+
+  it("says why the server refused a notification", async () => {
+    jest.spyOn(window, "confirm").mockReturnValue(true);
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    api.alsoServing({
+      "POST /actions/updates/:id/notify": () =>
+        Response.json(
+          { statusCode: 409, message: "Already notified" },
+          { status: 409 },
+        ),
+    });
+    await renderDetails();
+
+    fireEvent.click(screen.getByRole("button", { name: "Send notification" }));
+
+    expect(await screen.findByText("Already notified")).toBeTruthy();
   });
 
   it("shows no recognition copy for a legacy update", async () => {
@@ -239,6 +309,35 @@ describe("while an update's notifications are on hold", () => {
     await waitFor(() =>
       expect(screen.queryByText("Nobody resolves.")).toBeNull(),
     );
+  });
+
+  it("shows another admin's change to unedited details after a reload", async () => {
+    await renderDetails();
+    await screen.findByText("Nobody resolves.");
+
+    served = update({ title: "Changed elsewhere" });
+
+    await waitFor(() =>
+      expect(screen.getAllByRole("textbox")[0]).toHaveProperty(
+        "value",
+        "Changed elsewhere",
+      ),
+    );
+    expect(screen.queryByText(/Save your changes/)).toBeNull();
+  });
+
+  it("keeps unsaved edits across a reload", async () => {
+    await renderDetails();
+    await screen.findByText("Nobody resolves.");
+    const [title] = screen.getAllByRole("textbox");
+    fireEvent.change(title, { target: { value: "Edited" } });
+
+    served = update({ title: "Changed elsewhere" });
+
+    await waitFor(() =>
+      expect(screen.queryByText("Nobody resolves.")).toBeNull(),
+    );
+    expect(screen.getAllByRole("textbox")[0]).toHaveProperty("value", "Edited");
   });
 
   it("keeps a save over a poll response that left before it", async () => {

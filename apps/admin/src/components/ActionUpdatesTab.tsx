@@ -1,8 +1,6 @@
 import { R } from "@alliance/common/result";
 import {
   ActionEventDto,
-  actionsCreateUpdateAdmin,
-  actionsDeleteUpdateAdmin,
   ActionUpdateDto,
   ActionUpdateNotifyType,
   CreateActionUpdateDto,
@@ -20,6 +18,7 @@ import {
   ACTION_UPDATE_NOTIFY_TYPES,
 } from "../lib/actionUpdateNotifyTypes";
 import { adminRefusalMessage } from "../lib/adminRefusal";
+import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
 import {
   COLLECTIVE_RESULT_DESCRIPTIONS,
   RecognitionModeSelect,
@@ -28,7 +27,6 @@ import {
 interface ActionUpdatesTabProps {
   actionId: number;
   updates: ActionUpdateDto[];
-  setUpdates: (updates: ActionUpdateDto[]) => unknown;
   events: ActionEventDto[];
   availableTags: TagDto[];
 }
@@ -44,7 +42,6 @@ const defaultNewUpdate: CreateActionUpdateDto = {
 const ActionUpdatesTab = ({
   actionId,
   updates,
-  setUpdates,
   events,
   availableTags,
 }: ActionUpdatesTabProps) => {
@@ -52,7 +49,12 @@ const ActionUpdatesTab = ({
   const [newUpdate, setNewUpdate] =
     useState<CreateActionUpdateDto>(defaultNewUpdate);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<ReadonlySet<number>>(
+    new Set(),
+  );
+  const { create, remove } = useActionUpdateAdmin(null);
+  const creating = create.isPending;
 
   const shortNotifString = newUpdate.shortNotifString ?? "";
   const isSubmitDisabled =
@@ -67,35 +69,37 @@ const ActionUpdatesTab = ({
     }
 
     setCreateError(null);
-    setCreating(true);
     const created = await R.fromPromise(
-      actionsCreateUpdateAdmin({
-        path: { id: actionId },
-        body: newUpdate,
-        throwOnError: true,
-      }),
+      create.mutateAsync({ actionId, body: newUpdate }),
       (thrown) => {
         console.error(thrown);
         return adminRefusalMessage(thrown, "Couldn't create the update.");
       },
     );
-    setCreating(false);
     if (!created.ok) {
       setCreateError(created.error);
       return;
     }
-    setUpdates([...updates, created.value.data]);
     setNewUpdate(defaultNewUpdate);
-    navigate(`/actions/${actionId}/updates/${created.value.data.id}`);
+    navigate(`/actions/${actionId}/updates/${created.value.id}`);
   };
 
-  const handleDelete = async (id: number) => {
-    const response = await actionsDeleteUpdateAdmin({
-      path: { id },
+  const handleDelete = async (update: ActionUpdateDto) => {
+    setDeleteError(null);
+    setDeletingIds((ids) => new Set(ids).add(update.id));
+    const deleted = await R.fromPromise(
+      remove.mutateAsync(update),
+      (thrown) => {
+        console.error(thrown);
+        return adminRefusalMessage(thrown, "Couldn't delete the update.");
+      },
+    );
+    setDeletingIds((ids) => {
+      const next = new Set(ids);
+      next.delete(update.id);
+      return next;
     });
-    if (response.response.ok) {
-      setUpdates(updates.filter((update) => update.id !== id));
-    }
+    if (!deleted.ok) setDeleteError(deleted.error);
   };
 
   return (
@@ -284,13 +288,22 @@ const ActionUpdatesTab = ({
       </div>
       <div className="flex flex-col gap-2">
         <h2 className="font-bold">Existing updates</h2>
+        {deleteError && (
+          <p className="text-sm text-red-700" role="alert">
+            {deleteError}
+          </p>
+        )}
       </div>
       <div className="space-y-2 bg-white pb-5">
         {updates.map((update) => (
           <ActionUpdateCard
             key={update.id}
             update={update}
-            onDelete={() => handleDelete(update.id)}
+            onDelete={
+              deletingIds.has(update.id)
+                ? undefined
+                : () => handleDelete(update)
+            }
             actions={
               <>
                 {!update.visibleAt && (

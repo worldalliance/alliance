@@ -1,5 +1,16 @@
+import type { ActionUpdateDto } from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import ActionUpdatesTab from "./ActionUpdatesTab";
 
@@ -10,34 +21,79 @@ afterEach(() => {
 
 let answer: (request: Request) => Response | Promise<Response> = () =>
   Response.json({});
+let deleteAnswer: () => Response | Promise<Response> = () => Response.json({});
 
 serveApi(
   routes({
     "POST /actions/createUpdate/:id": ({ request }) => answer(request),
+    "DELETE /actions/deleteUpdate/:id": () => deleteAnswer(),
   }),
 );
 
-const createUpdate = (params: { mode?: string } = {}) => {
-  const setUpdates = jest.fn();
+const existing: ActionUpdateDto = {
+  id: 7,
+  actionId: 4,
+  title: "Old news",
+  schemaSnapshotId: 1,
+  date: "2026-10-01T00:00:00.000Z",
+  visibleAt: "2026-10-01T00:00:00.000Z",
+  shortNotifString: "old news",
+  associatedEventId: null,
+  notifyType: "none",
+  notifiedAt: null,
+  schema: { blocks: [] },
+};
+
+const HangingActionReload = ({ children }: { children: ReactNode }) => {
+  useQuery({
+    queryKey: queryKeys.actionAdmin(4),
+    queryFn: () => new Promise<null>(() => {}),
+    staleTime: Infinity,
+  });
+  return children;
+};
+
+const renderTab = (
+  updates: ActionUpdateDto[] = [],
+  params: { actionReloadHangs?: boolean } = {},
+) => {
+  const query = queryWrapper();
+  query.client.setQueryData(queryKeys.actionAdmin(4), null);
+  const tab = (
+    <ActionUpdatesTab
+      actionId={4}
+      updates={updates}
+      events={[]}
+      availableTags={[]}
+    />
+  );
   render(
     <MemoryRouter>
       <Routes>
         <Route
           path="/"
           element={
-            <ActionUpdatesTab
-              actionId={4}
-              updates={[]}
-              setUpdates={setUpdates}
-              events={[]}
-              availableTags={[]}
-            />
+            params.actionReloadHangs ? (
+              <HangingActionReload>{tab}</HangingActionReload>
+            ) : (
+              tab
+            )
           }
         />
         <Route path="/actions/4/updates/9" element={<p>Update 9</p>} />
       </Routes>
     </MemoryRouter>,
+    { wrapper: query.wrapper },
   );
+  const actionInvalidated = () =>
+    query.client.getQueryState(queryKeys.actionAdmin(4))?.isInvalidated;
+  return { client: query.client, actionInvalidated };
+};
+
+const createUpdate = (
+  params: { mode?: string; actionReloadHangs?: boolean } = {},
+) => {
+  const tab = renderTab([], params);
   fireEvent.change(screen.getByPlaceholderText("Title..."), {
     target: { value: "Hearing scheduled" },
   });
@@ -53,7 +109,7 @@ const createUpdate = (params: { mode?: string } = {}) => {
   fireEvent.click(
     screen.getByRole("button", { name: "Create and write content" }),
   );
-  return { setUpdates };
+  return tab;
 };
 
 const refusing = (status: number, message: string) => {
@@ -62,17 +118,27 @@ const refusing = (status: number, message: string) => {
 };
 
 describe("ActionUpdatesTab", () => {
-  it("adds the created update and opens it, with no error", async () => {
+  it("refreshes the action and opens the created update", async () => {
     answer = () =>
-      Response.json({ id: 9, title: "Hearing scheduled" }, { status: 201 });
+      Response.json(
+        { id: 9, actionId: 4, title: "Hearing scheduled" },
+        { status: 201 },
+      );
 
-    const { setUpdates } = createUpdate();
+    const { actionInvalidated } = createUpdate();
 
     expect(await screen.findByText("Update 9")).toBeTruthy();
-    expect(setUpdates).toHaveBeenCalledWith([
-      { id: 9, title: "Hearing scheduled" },
-    ]);
+    expect(actionInvalidated()).toBe(true);
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("opens the created update without waiting for the action to reload", async () => {
+    answer = () =>
+      Response.json({ id: 9, actionId: 4, title: "Hearing" }, { status: 201 });
+
+    createUpdate({ actionReloadHangs: true });
+
+    expect(await screen.findByText("Update 9")).toBeTruthy();
   });
 
   it("creates the update in the recognition mode picked", async () => {
@@ -136,5 +202,98 @@ describe("ActionUpdatesTab", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(
       "Couldn't create the update.",
     );
+  });
+});
+
+describe("deleting an update", () => {
+  afterEach(() => {
+    deleteAnswer = () => Response.json({});
+  });
+
+  const deleteExisting = (params: { actionReloadHangs?: boolean } = {}) => {
+    const tab = renderTab([existing], params);
+    tab.client.setQueryData(queryKeys.actionUpdateAdmin(7), existing);
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    return tab;
+  };
+
+  it("drops the cached update and refreshes the action", async () => {
+    const { client, actionInvalidated } = deleteExisting();
+
+    await waitFor(() => expect(actionInvalidated()).toBe(true));
+    expect(client.getQueryData(queryKeys.actionUpdateAdmin(7))).toBeUndefined();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("hides the delete while it's in flight", async () => {
+    let release = () => {};
+    deleteAnswer = async () => {
+      await new Promise<void>((resolve) => (release = resolve));
+      return Response.json({});
+    };
+
+    const { actionInvalidated } = deleteExisting();
+
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Delete" })).toBeNull(),
+    );
+    release();
+    await waitFor(() => expect(actionInvalidated()).toBe(true));
+  });
+
+  it("keeps the delete hidden until the action has reloaded", async () => {
+    let deleted = false;
+    deleteAnswer = () => {
+      deleted = true;
+      return Response.json({});
+    };
+
+    deleteExisting({ actionReloadHangs: true });
+    await waitFor(() => expect(deleted).toBe(true));
+    await Bun.sleep(30);
+
+    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+  });
+
+  it("keeps each delete hidden while overlapping deletes are in flight", async () => {
+    deleteAnswer = () => new Promise<Response>(() => {});
+    renderTab([existing, { ...existing, id: 8, title: "Older news" }]);
+
+    const [first, second] = screen.getAllByRole("button", { name: "Delete" });
+    fireEvent.click(first);
+    fireEvent.click(second);
+
+    await waitFor(() =>
+      expect(screen.queryAllByRole("button", { name: "Delete" })).toHaveLength(
+        0,
+      ),
+    );
+  });
+
+  it("treats an update already deleted elsewhere as deleted", async () => {
+    deleteAnswer = () => Response.json({ statusCode: 404 }, { status: 404 });
+
+    const { actionInvalidated } = deleteExisting();
+
+    await waitFor(() => expect(actionInvalidated()).toBe(true));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("says why the server refused the delete and keeps the update", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    deleteAnswer = () =>
+      Response.json(
+        { statusCode: 403, message: "Not allowed" },
+        { status: 403 },
+      );
+
+    const { client, actionInvalidated } = deleteExisting();
+
+    expect((await screen.findByRole("alert")).textContent).toBe("Not allowed");
+    expect(screen.getByRole("button", { name: "Delete" })).toBeTruthy();
+    expect(client.getQueryData(queryKeys.actionUpdateAdmin(7))).toEqual(
+      existing,
+    );
+    expect(actionInvalidated()).toBe(false);
   });
 });

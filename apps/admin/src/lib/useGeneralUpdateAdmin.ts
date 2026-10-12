@@ -7,23 +7,19 @@ import {
   type UpdateGeneralUpdateDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import {
-  skipToken,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
   useDisplayOnlySchemaSave,
   type DisplayOnlySchemaSaveBody,
 } from "./useDisplayOnlySchemaSave";
 import { useInvalidateGeneralUpdatesAdmin } from "./useGeneralUpdatesAdmin";
+import { useStoreQueryData } from "./usePatchQueryData";
 
 /** One admin general update and its writes. A `null` id fetches nothing, for
  * the create page; `update` and `saveSchema` throw then. */
 export function useGeneralUpdateAdmin(id: number | null) {
-  const queryClient = useQueryClient();
+  const storeQueryData = useStoreQueryData();
   const invalidateList = useInvalidateGeneralUpdatesAdmin();
 
   const query = useQuery({
@@ -40,13 +36,10 @@ export function useGeneralUpdateAdmin(id: number | null) {
 
   const store = useCallback(
     async (saved: GeneralUpdateAdminDto) => {
-      const queryKey = queryKeys.generalUpdateAdmin(saved.id);
-      // A refetch in flight would land the old update back over the save.
-      await queryClient.cancelQueries({ queryKey });
-      queryClient.setQueryData(queryKey, saved);
+      await storeQueryData(queryKeys.generalUpdateAdmin(saved.id), saved);
       await invalidateList();
     },
-    [queryClient, invalidateList],
+    [storeQueryData, invalidateList],
   );
 
   const create = useMutation({
