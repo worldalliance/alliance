@@ -2907,6 +2907,39 @@ describe("Users (e2e)", () => {
             .expect(400);
         });
 
+        const saveMemberInvite = () =>
+          onetimeInviteRepo.save(
+            onetimeInviteRepo.create({
+              invitee: "Member's invitee",
+              code: `MEMBER-EDIT-${Math.random().toString(36).slice(2)}`,
+              status: OnetimeInviteStatus.LINK_UNUSED,
+              invitingUser: { id: communityMemberId },
+              community: communityLedByUserA,
+            }),
+          );
+
+        it("lets the group's leader edit a member's invite", async () => {
+          const invite = await saveMemberInvite();
+
+          const res = await patch(invite.id, { invitee: "Leader edit" }).expect(
+            200,
+          );
+
+          expect(res.body.invitee).toBe("Leader edit");
+        });
+
+        it("lets an admin who leads no community edit a member's invite", async () => {
+          const invite = await saveMemberInvite();
+
+          const res = await request(ctx.app.getHttpServer())
+            .patch(`/user/onetimeInvites/${invite.id}`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .send({ invitee: "Admin edit" })
+            .expect(200);
+
+          expect(res.body.invitee).toBe("Admin edit");
+        });
+
         it("refuses once the invite has been used", async () => {
           const invite = await createInvite(communityLedByUserA.id);
           await onetimeInviteRepo.update(invite.id, {

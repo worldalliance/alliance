@@ -151,6 +151,7 @@ import {
 } from "./entities/contract-event.entity";
 import { Friend, FriendStatus } from "./entities/friend.entity";
 import {
+  canModifyOnetimeInvite,
   loadedOnetimeInviteInvitingUser,
   OnetimeInvite,
   OnetimeInviteStatus,
@@ -163,7 +164,6 @@ import {
 import { UserDevice } from "./entities/user-device.entity";
 import {
   assertCanManageCommunity,
-  canManageCommunity,
   DEFAULT_TIME_ZONE,
   loadedUserCommunities,
   ReferralSource,
@@ -2589,7 +2589,7 @@ export class UserService {
       }),
       this.findOneOrFail(userId, { leaderOf: true }),
     ]);
-    if (loadedOnetimeInviteInvitingUser(invite)?.id !== userId && !user.admin) {
+    if (!canModifyOnetimeInvite(user, invite)) {
       throw new BadRequestException("Invite belongs to someone else");
     }
     if (invite.status !== OnetimeInviteStatus.LINK_UNUSED) {
@@ -2622,12 +2622,7 @@ export class UserService {
       relations: { invitingUser: true },
     });
     const user = await this.findOneOrFail(userId);
-    if (
-      !(
-        loadedOnetimeInviteInvitingUser(invite)?.id === userId ||
-        canManageCommunity(user, invite.communityId)
-      )
-    ) {
+    if (!canModifyOnetimeInvite(user, invite)) {
       throw new BadRequestException();
     }
 
