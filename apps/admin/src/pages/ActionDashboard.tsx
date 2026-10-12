@@ -1608,9 +1608,6 @@ const ActionDashboard: React.FC = () => {
               <ActionUpdatesTab
                 actionId={action.id}
                 updates={action.updates ?? []}
-                setUpdates={(updates) =>
-                  setActionFromDto({ ...action, updates })
-                }
                 events={action.events ?? []}
                 availableTags={availableTags}
               />

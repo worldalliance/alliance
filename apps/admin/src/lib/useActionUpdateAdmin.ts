@@ -1,12 +1,17 @@
 import {
+  actionsCreateUpdateAdmin,
+  actionsDeleteUpdateAdmin,
   actionsFindOneUpdateAdmin,
   actionsNotifyUpdateAdmin,
   actionsPublishUpdateNowAdmin,
   actionsUnpublishUpdateAdmin,
   actionsUpdateUpdateAdmin,
+  type ActionUpdateDto,
   type AdminActionUpdateDto,
+  type CreateActionUpdateDto,
   type UpdateActionUpdateDto,
 } from "@alliance/shared/client";
+import { rethrowUnlessNotFound } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   skipToken,
@@ -24,9 +29,9 @@ import { useStoreQueryData } from "./usePatchQueryData";
 
 export const HELD_POLL_MS = milliseconds({ seconds: 15 });
 
-/** One admin action update and its writes. A `null` id fetches nothing, and
- * the writes throw then. Every write refreshes the action, whose `updates` the
- * dashboard's updates tab lists. */
+/** One admin action update and its writes. A `null` id fetches nothing, for
+ * the updates tab, which only creates and deletes; the other writes throw
+ * then. Every write refreshes the action, whose `updates` the tab lists. */
 export function useActionUpdateAdmin(id: number | null) {
   const queryClient = useQueryClient();
   const storeQueryData = useStoreQueryData();
@@ -68,6 +73,18 @@ export function useActionUpdateAdmin(id: number | null) {
     return id;
   }, [id]);
 
+  const create = useMutation({
+    mutationFn: (params: { actionId: number; body: CreateActionUpdateDto }) =>
+      actionsCreateUpdateAdmin({
+        path: { id: params.actionId },
+        body: params.body,
+        throwOnError: true,
+      }).then((r) => r.data),
+    // The editor loads the update itself, so the tab opens it without
+    // waiting on the action reload.
+    onSuccess: (saved) => void invalidateAction(saved.actionId),
+  });
+
   const update = useMutation({
     mutationFn: (body: UpdateActionUpdateDto) =>
       actionsUpdateUpdateAdmin({
@@ -105,6 +122,20 @@ export function useActionUpdateAdmin(id: number | null) {
     onSuccess: store,
   });
 
+  const remove = useMutation({
+    mutationFn: (target: Pick<ActionUpdateDto, "id" | "actionId">) =>
+      actionsDeleteUpdateAdmin({
+        path: { id: target.id },
+        throwOnError: true,
+      }).then(() => undefined, rethrowUnlessNotFound),
+    onSuccess: async (_, target) => {
+      queryClient.removeQueries({
+        queryKey: queryKeys.actionUpdateAdmin(target.id),
+      });
+      await invalidateAction(target.actionId);
+    },
+  });
+
   const saveSchema = useDisplayOnlySchemaSave({
     ownerLabel: "Updates",
     save: useCallback(
@@ -124,10 +155,12 @@ export function useActionUpdateAdmin(id: number | null) {
 
   return {
     query,
+    create,
     update,
     notify,
     publishNow,
     unpublish,
+    remove,
     saveSchema,
   };
 }
