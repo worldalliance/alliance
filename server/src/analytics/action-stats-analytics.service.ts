@@ -6,7 +6,11 @@ import { millisecondsInDay, millisecondsInHour } from "date-fns/constants";
 import { sqlIsLatestCompletion } from "src/actions/action-activity-status";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ActionStatus } from "src/actions/entities/action-event.entity";
-import { Action, parseAction } from "src/actions/entities/action.entity";
+import {
+  Action,
+  loadedActionEvents,
+  parseAction,
+} from "src/actions/entities/action.entity";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { In, type Repository } from "typeorm";
 import { ActionCompletionCurve } from "./action-completion-curve.dto";
@@ -27,8 +31,6 @@ export class ActionStatsAnalyticsService {
   ) {}
 
   private getActionCompletedDate(action: Action): Date | null {
-    if (!action.events) return null;
-
     const completedStatuses = [
       ActionStatus.Completed,
       ActionStatus.Failed,
@@ -36,7 +38,7 @@ export class ActionStatsAnalyticsService {
       ActionStatus.Resolution,
     ];
 
-    const completedEvent = action.events
+    const completedEvent = loadedActionEvents(action)
       .filter(
         (e) => completedStatuses.includes(e.newStatus) && e.date < new Date(),
       )
@@ -120,7 +122,7 @@ export class ActionStatsAnalyticsService {
       const completionRate = usersJoined > 0 ? usersCompleted / usersJoined : 0;
 
       // Find member_action event dates
-      const sortedEvents = (action.events ?? []).sort(
+      const sortedEvents = loadedActionEvents(action).sort(
         (a, b) => a.date.getTime() - b.date.getTime(),
       );
       const memberActionEvent = sortedEvents.find(

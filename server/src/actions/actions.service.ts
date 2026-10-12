@@ -245,6 +245,7 @@ import {
 } from "./entities/action-update.entity";
 import {
   Action,
+  loadedActionEvents,
   loadedActionFollowUpForms,
   parseAction,
   type ParsedAction,
@@ -601,6 +602,7 @@ export class ActionsService {
     const action = this.actionRepository.create(rest);
     action.reviewers = this.reviewerRows(reviewers ?? []);
     action.followUpForms = [];
+    action.events = [];
 
     if (suiteId) {
       const suite = await this.actionSuiteRepository.findOneOrFail({
@@ -773,7 +775,7 @@ export class ActionsService {
     // Build entries for actions that have a MemberAction event
     const entries: Array<{ action: ParsedAction; event: ActionEvent }> = [];
     for (const action of actions) {
-      const event = action.events.find(
+      const event = loadedActionEvents(action).find(
         (e) => e.newStatus === ActionStatus.MemberAction,
       );
       if (event) {
@@ -3259,7 +3261,7 @@ export class ActionsService {
       relations: { events: true },
     });
     const check = checkActionShowsWhenEntriesArrive({
-      action,
+      action: { archived: action.archived, events: loadedActionEvents(action) },
       actionUpdate,
       now: new Date(),
     });
@@ -3541,19 +3543,20 @@ export class ActionsService {
       relations: { actions: { events: true } },
     });
     const eventAction = loadedActionEventAction(event);
-    const eventIdx = eventAction.events
+    const eventIdx = loadedActionEvents(eventAction)
       .sort((a, b) => a.date.getTime() - b.date.getTime())
       .findIndex((event) => event.id === eventId);
     const eventsToUpdate = new Set<number>([eventId]);
 
     const suiteActions = loadedActionSuiteActions(suite);
     for (const action of suiteActions) {
-      if (action.events.length <= eventIdx) {
+      const events = loadedActionEvents(action);
+      if (events.length <= eventIdx) {
         throw new BadRequestException(
           "Events do not have equivalent events to edit",
         );
       }
-      const possibleEvent = action.events.sort(
+      const possibleEvent = events.sort(
         (a, b) => a.date.getTime() - b.date.getTime(),
       )[eventIdx];
       if (
@@ -3612,19 +3615,20 @@ export class ActionsService {
       where: { id: suiteId },
       relations: { actions: { events: true } },
     });
-    const eventIdx = loadedActionEventAction(event)
-      .events.sort((a, b) => a.date.getTime() - b.date.getTime())
+    const eventIdx = loadedActionEvents(loadedActionEventAction(event))
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
       .findIndex((event) => event.id === eventId);
 
     const suiteActions = loadedActionSuiteActions(suite);
     await this.actionEventRepository.manager.transaction(async (em) => {
       for (const action of suiteActions) {
-        if (action.events.length <= eventIdx) {
+        const events = loadedActionEvents(action);
+        if (events.length <= eventIdx) {
           throw new BadRequestException(
             "Events do not have equivalent events to delete",
           );
         }
-        const possibleEvent = action.events.sort(
+        const possibleEvent = events.sort(
           (a, b) => a.date.getTime() - b.date.getTime(),
         )[eventIdx];
         if (

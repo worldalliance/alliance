@@ -5,6 +5,7 @@ import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
 import {
   Action,
+  loadedActionEvents,
   parseAction,
   type ParsedAction,
 } from "src/actions/entities/action.entity";
@@ -112,7 +113,7 @@ export class MemberRetentionAnalyticsService {
       ) {
         continue;
       }
-      const sortedEvents = (action.events ?? []).sort(
+      const sortedEvents = loadedActionEvents(action).sort(
         (a, b) => a.date.getTime() - b.date.getTime(),
       );
       const memberActionEvent = findStartedMemberActionEvent(sortedEvents, now);

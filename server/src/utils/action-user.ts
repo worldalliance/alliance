@@ -5,7 +5,7 @@ import {
   ActionStatus,
   type ActionEvent,
 } from "src/actions/entities/action-event.entity";
-import { Action } from "src/actions/entities/action.entity";
+import { Action, loadedActionEvents } from "src/actions/entities/action.entity";
 import type { Community } from "src/community/entities/community.entity";
 import type { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { loadedUserTags, User } from "src/user/entities/user.entity";
@@ -343,14 +343,15 @@ export function computeMemberActionAwayStatus(params: {
   now: Date;
 }): TaskAwayStatus {
   const { action, user, now } = params;
+  const events = loadedActionEvents(action);
 
-  const memberActionEvent = findStartedMemberActionEvent(action.events, now);
+  const memberActionEvent = findStartedMemberActionEvent(events, now);
   if (!memberActionEvent) {
     return TaskAwayStatus.NotAway;
   }
 
   const { startDate, endDate } = findActionEventWindowAt(
-    action.events,
+    events,
     memberActionEvent.date,
   );
   if (!startDate) {

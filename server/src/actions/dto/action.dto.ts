@@ -78,6 +78,7 @@ import { ActionSuite } from "../entities/action-suite.entity";
 import { ActionUpdate } from "../entities/action-update.entity";
 import {
   Action,
+  loadedActionEvents,
   loadedActionFollowUpForms,
   type ParsedAction,
 } from "../entities/action.entity";
@@ -1209,9 +1210,9 @@ export class ActionSuiteDto extends PickType(ActionSuite, ["id", "name"]) {
     // we surface actions[0]'s copies as canonical. Brittle if actions drift —
     // any divergence (extra/missing rows, reordering) is invisible here.
     this.events = actions.length
-      ? (actions[0].events
-          ?.filter((event) => event.suiteManaged)
-          .map((event) => new ActionEventDto(event)) ?? [])
+      ? loadedActionEvents(actions[0])
+          .filter((event) => event.suiteManaged)
+          .map((event) => new ActionEventDto(event))
       : [];
     this.reminderGroups =
       suite.reminderGroups?.map((group) => new ReminderGroupDto(group)) ?? [];

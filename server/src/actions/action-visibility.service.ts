@@ -8,6 +8,7 @@ import { ActionStatus } from "./entities/action-event.entity";
 import {
   Action,
   actionStatusAt,
+  loadedActionEvents,
   parseAction,
   type ParsedAction,
   VisibilityMode,
@@ -55,7 +56,9 @@ export class ActionVisibilityService {
     if (user && isStaffPreviewActiveFor({ user, action, now })) {
       return true;
     }
-    if (actionStatusAt(action.events, now) === ActionStatus.Draft) {
+    if (
+      actionStatusAt(loadedActionEvents(action), now) === ActionStatus.Draft
+    ) {
       return false;
     }
     if (action.visibilityMode === VisibilityMode.Public) {
