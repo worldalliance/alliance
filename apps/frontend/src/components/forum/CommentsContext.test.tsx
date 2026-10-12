@@ -1,3 +1,4 @@
+import { R, type Result } from "@alliance/common/result";
 import type { CommentDto } from "@alliance/shared/client";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -44,6 +45,7 @@ const storedThread: CommentDto[] = [
 
 let postCommentsFail = false;
 let deleteFails = false;
+let updateRefusal: { status: number; message: string } | null = null;
 let extraRoots: CommentDto[] = [];
 
 serveApi(
@@ -65,12 +67,20 @@ serveApi(
       if (deleteFails) throw new Error("the request never landed");
       return new Response(null, { status: 204 });
     },
+    "PATCH /forum/comments/:id": () =>
+      updateRefusal
+        ? Response.json(
+            { message: updateRefusal.message },
+            { status: updateRefusal.status },
+          )
+        : new Response(null, { status: 204 }),
   }),
 );
 
 afterEach(() => {
   postCommentsFail = false;
   deleteFails = false;
+  updateRefusal = null;
   extraRoots = [];
 });
 
@@ -184,6 +194,29 @@ it.each([
   });
 
   expect(result.current.submitErrorFor(null)).toBe(shown);
+});
+
+it.each([
+  [404, "That reply is no longer here", "That reply is no longer here"],
+  [500, "Internal server error", "Failed to save your edit"],
+  [
+    401,
+    "Unauthorized",
+    "Your session has expired. Sign in again to save your edit.",
+  ],
+])("explains a %i edit refusal", async (status, message, shown) => {
+  const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
+
+  updateRefusal = { status, message };
+  let saved: Result<void, string> | undefined;
+  await act(async () => {
+    saved = await result.current.handleUpdateReply(3, {
+      body: "an edit",
+      attachments: [],
+    });
+  });
+
+  expect(saved).toEqual(R.failure(shown));
 });
 
 it("keeps a rejection that landed while its own form was closed", async () => {

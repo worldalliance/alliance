@@ -1,5 +1,5 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
-import { errorMessage } from "@alliance/common/errorMessage";
+import { refusalMessage } from "@alliance/common/errorMessage";
 import { R, type Result } from "@alliance/common/result";
 import {
   CommentDto,
@@ -301,9 +301,12 @@ export function useCommentTree(
 
       if (response.value.error) {
         return R.failure(
-          errorMessage({
+          refusalMessage({
+            status: response.value.response.status,
             error: response.value.error,
             fallback: "Failed to save your edit",
+            sessionExpired:
+              "Your session has expired. Sign in again to save your edit.",
           }),
         );
       }
