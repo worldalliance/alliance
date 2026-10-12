@@ -1715,6 +1715,31 @@ describe("Community (e2e)", () => {
     expect(res.body.id).toBe(invite.id);
   });
 
+  it("POST /community/communityInvites/:inviteId/approveRequest approves request when authenticated as admin", async () => {
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP ApproveRequest Admin",
+        leaders: [testUser],
+        users: [testUser],
+      }),
+    );
+    const invite = await communityInviteRepo.save(
+      communityInviteRepo.create({
+        status: CommunityInviteStatus.RequestPending,
+        invitingUser: secondUser,
+        invitedUser: secondUser,
+        community,
+      }),
+    );
+
+    const res = await request(ctx.app.getHttpServer())
+      .post(`/community/communityInvites/${invite.id}/approveRequest`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+    expect(res.status).toBe(201);
+    expect(res.body.status).toBe(CommunityInviteStatus.InviteePending);
+  });
+
   it("POST /community/communityInvites/:inviteId/approveRequest returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
@@ -1808,6 +1833,34 @@ describe("Community (e2e)", () => {
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/rejectRequest`)
       .set("Authorization", `Bearer ${testUserToken}`);
+
+    expect(res.status).toBe(201);
+    const updated = await communityInviteRepo.findOneOrFail({
+      where: { id: invite.id },
+    });
+    expect(updated.status).toBe(CommunityInviteStatus.RequestRejected);
+  });
+
+  it("POST /community/communityInvites/:inviteId/rejectRequest rejects request when authenticated as admin", async () => {
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP RejectRequest Admin",
+        leaders: [testUser],
+        users: [testUser],
+      }),
+    );
+    const invite = await communityInviteRepo.save(
+      communityInviteRepo.create({
+        status: CommunityInviteStatus.RequestPending,
+        invitingUser: secondUser,
+        invitedUser: secondUser,
+        community,
+      }),
+    );
+
+    const res = await request(ctx.app.getHttpServer())
+      .post(`/community/communityInvites/${invite.id}/rejectRequest`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
     expect(res.status).toBe(201);
     const updated = await communityInviteRepo.findOneOrFail({

@@ -2733,14 +2733,10 @@ export class UserService {
     }
 
     const { communityId } = request;
-    if (
-      communityId === null ||
-      !user.leaderOfIds.some((cid) => cid === communityId)
-    ) {
-      throw new BadRequestException(
-        `User is not a leader of community ${communityId}`,
-      );
+    if (communityId === null) {
+      throw new BadRequestException("Invite request has no group");
     }
+    assertCanManageCommunity(user, communityId);
 
     let category: NotificationCategory;
     switch (newStatus) {

@@ -1195,7 +1195,7 @@ export class CommunityService {
     return savedInvite;
   }
 
-  private async findPendingInviteRequestForLeader(
+  private async findPendingInviteRequestForManager(
     inviteId: number,
     userId: number,
   ): Promise<{ invite: CommunityInvite; user: User }> {
@@ -1217,12 +1217,7 @@ export class CommunityService {
     if (!user) {
       throw new BadRequestException("User not found");
     }
-    const communityId = loadedCommunityInviteCommunity(invite).id;
-    if (!user.leaderOfIds.some((cid) => cid === communityId)) {
-      throw new BadRequestException(
-        `User is not a leader of community ${communityId}`,
-      );
-    }
+    assertCanManageCommunity(user, loadedCommunityInviteCommunity(invite).id);
 
     return { invite, user };
   }
@@ -1231,7 +1226,7 @@ export class CommunityService {
     inviteId: number,
     userId: number,
   ): Promise<CommunityInvite> {
-    const { invite, user } = await this.findPendingInviteRequestForLeader(
+    const { invite, user } = await this.findPendingInviteRequestForManager(
       inviteId,
       userId,
     );
@@ -1278,7 +1273,7 @@ export class CommunityService {
     inviteId: number,
     userId: number,
   ): Promise<void> {
-    const { invite, user } = await this.findPendingInviteRequestForLeader(
+    const { invite, user } = await this.findPendingInviteRequestForManager(
       inviteId,
       userId,
     );

@@ -3144,6 +3144,31 @@ describe("Users (e2e)", () => {
           expect(res.body.invitingUser ?? null).toBeNull();
         });
 
+        it("allows an admin who leads no community to approve pending requests", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+
+          const res = await request(ctx.app.getHttpServer())
+            .post(`/user/onetimeInvite/${pendingInvite.id}/approve`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .send()
+            .expect(201);
+
+          expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
+        });
+
+        it("refuses even an admin once the request's group is gone", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+          await onetimeInviteRepo.update(pendingInvite.id, { community: null });
+
+          const res = await request(ctx.app.getHttpServer())
+            .post(`/user/onetimeInvite/${pendingInvite.id}/approve`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .send()
+            .expect(400);
+
+          expect(res.body.message).toBe("Invite request has no group");
+        });
+
         it("rejects approval attempts from non-leaders", async () => {
           const pendingInvite = await createPendingInviteRequest();
 
@@ -3182,6 +3207,21 @@ describe("Users (e2e)", () => {
             where: { id: pendingInvite.id },
           });
           expect(refreshed?.status).toBe(OnetimeInviteStatus.REQUEST_REJECTED);
+        });
+
+        it("allows an admin who leads no community to reject pending requests", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+
+          await request(ctx.app.getHttpServer())
+            .post(`/user/onetimeInvite/${pendingInvite.id}/reject`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .send()
+            .expect(201);
+
+          const refreshed = await onetimeInviteRepo.findOneByOrFail({
+            id: pendingInvite.id,
+          });
+          expect(refreshed.status).toBe(OnetimeInviteStatus.REQUEST_REJECTED);
         });
 
         it("rejects rejection attempts from leaders of other communities", async () => {
