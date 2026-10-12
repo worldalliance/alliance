@@ -372,14 +372,13 @@ export class Action {
   followUpForms?: Relation<FollowUpForm>[];
 
   @OneToMany(() => ActionFormVariant, (variant) => variant.action)
-  @ApiProperty({
+  @ApiPropertyOptional({
     type: () => ActionFormVariant,
     isArray: true,
   })
-  @Allow()
+  @IsOptional()
   @Type(() => ActionFormVariant)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  formVariants: Relation<ActionFormVariant>[];
+  formVariants?: Relation<ActionFormVariant>[];
 
   @ManyToOne(() => ActionSuite, (suite) => suite.actions, { nullable: true })
   @ApiPropertyOptional({ type: () => ActionSuite })
@@ -487,4 +486,13 @@ export function loadedActionEvents(
     throw new Error("`events` relation is not loaded");
   }
   return action.events;
+}
+
+export function loadedActionFormVariants(
+  action: Pick<Action, "id" | "formVariants">,
+): Relation<ActionFormVariant>[] {
+  if (!action.formVariants) {
+    throw new Error(`formVariants of action ${action.id} not loaded`);
+  }
+  return action.formVariants;
 }

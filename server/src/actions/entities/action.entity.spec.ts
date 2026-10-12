@@ -1,4 +1,9 @@
-import { Action, loadedActionEvents } from "./action.entity";
+import { ActionFormVariant } from "./action-form-variant.entity";
+import {
+  Action,
+  loadedActionEvents,
+  loadedActionFormVariants,
+} from "./action.entity";
 
 describe("loadedActionEvents", () => {
   it("returns the loaded events", () => {
@@ -25,5 +30,20 @@ describe("Action.memberActionPhase", () => {
     expect(() => new Action().memberActionPhase).toThrow(
       "`events` relation is not loaded",
     );
+  });
+});
+
+describe("loadedActionFormVariants", () => {
+  it("returns the loaded variants", () => {
+    const formVariants = [new ActionFormVariant()];
+    expect(loadedActionFormVariants({ id: 3, formVariants })).toBe(
+      formVariants,
+    );
+  });
+
+  it("throws when the variants aren't loaded", () => {
+    expect(() =>
+      loadedActionFormVariants({ id: 3, formVariants: undefined }),
+    ).toThrow("formVariants of action 3 not loaded");
   });
 });

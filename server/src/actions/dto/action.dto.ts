@@ -80,6 +80,7 @@ import {
   Action,
   loadedActionEvents,
   loadedActionFollowUpForms,
+  loadedActionFormVariants,
   type ParsedAction,
 } from "../entities/action.entity";
 import { GeneralUpdate } from "../entities/general-update.entity";
@@ -644,7 +645,9 @@ export class AdminActionListItemDto extends AdminActionDto {
 
   constructor(action: ParsedAction, extra?: ActionDtoExtra) {
     super(action, extra);
-    this.variantFormIds = action.formVariants.map((variant) => variant.formId);
+    this.variantFormIds = loadedActionFormVariants(action).map(
+      (variant) => variant.formId,
+    );
   }
 }
 
