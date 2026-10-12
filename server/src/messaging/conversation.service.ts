@@ -204,15 +204,12 @@ export class ConversationService {
   ): Promise<ConversationDto> {
     const conversation = await this.conversationRepository.findOneOrFail({
       where: { community: { id: communityId } },
-      relations: this.conversationRelations,
     });
-    if (
-      !loadedConversationParticipants(conversation).some(
-        (participant) => loadedParticipantUser(participant).id === userId,
-      )
-    ) {
-      throw new BadRequestException();
-    }
+    await this.getParticipantOrFail({
+      conversationId: conversation.id,
+      userId,
+      relations: {},
+    });
     return this.buildConversationDto(conversation.id, userId);
   }
 
