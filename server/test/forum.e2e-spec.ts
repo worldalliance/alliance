@@ -1405,6 +1405,35 @@ describe("Forum (e2e)", () => {
       expect(actionComments.body.length).toBeGreaterThan(0);
     });
 
+    it("notifies an activity's owner of a comment on it", async () => {
+      await activityRepo.delete({
+        user: { id: ctx.testUserId },
+        actionId: testAction.id,
+      });
+      const { id: activityId } = await ctx.app
+        .get(ActionsService)
+        .completeAction(testAction.id, ctx.testUserId);
+
+      const commentResponse = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          editableContent: { body: "Comment for the owner", attachments: [] },
+          parentObjectId: activityId,
+          parentObjectType: CommentParentObject.Activity,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      const ownerNotifs = await unreadContentRepo.find({
+        where: {
+          user: { id: ctx.testUserId },
+          contentType: UnreadContentType.ForumReply,
+          contentId: commentResponse.body.id,
+        },
+      });
+      expect(ownerNotifs).toHaveLength(1);
+    });
+
     const createActionAndPostSharingId = async () => {
       await ctx.dataSource.query(
         `SELECT setval(pg_get_serial_sequence('post', 'id'), next), setval(pg_get_serial_sequence('action', 'id'), next)

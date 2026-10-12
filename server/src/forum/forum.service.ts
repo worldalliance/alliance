@@ -6,7 +6,10 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ActionActivity } from "src/actions/entities/action-activity.entity";
+import {
+  ActionActivity,
+  loadedActionActivityUser,
+} from "src/actions/entities/action-activity.entity";
 import { Action } from "src/actions/entities/action.entity";
 import { assertNotInStaffPreview } from "src/actions/staff-preview";
 import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
@@ -763,7 +766,7 @@ export class ForumService {
         where: { id: comment.parentObjectId },
         relations: { user: true, action: { reviewers: true } },
       });
-      usersToNotify.push(activity.user);
+      usersToNotify.push(loadedActionActivityUser(activity));
     }
 
     const seenIds = new Set<number>();
