@@ -7,6 +7,7 @@ import {
   UserDto,
 } from "@alliance/shared/client";
 import { isCommentShown } from "@alliance/shared/lib/commentsFilter";
+import { canReplyAtDepth } from "@alliance/shared/lib/commentTree";
 import { uploadDraftAttachments } from "@alliance/shared/lib/uploadAttachments";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
@@ -24,6 +25,9 @@ import InlineError from "../system/InlineError";
 import Text from "../system/Text";
 import UserDisplayName from "../UserDisplayName";
 import { ReplyForm, type SubmitReply } from "./ReplyForm";
+
+const INDENT_PX = 12;
+const MAX_INDENT_PX = 72;
 
 type ReplyItemSharedProps = {
   compact?: boolean;
@@ -78,8 +82,7 @@ export const ReplyItem = memo(function ReplyItemView({
   });
   const deleteError = shared.deleteErrorFor(reply.id);
   const viewRef = useRef<View>(null);
-  const maxDepth = 6;
-  const canNest = depth < maxDepth;
+  const canNest = canReplyAtDepth(depth);
   const isReplyingToThis = shared.replyingTo === reply.id;
   const hasChildren = (reply.children?.length ?? 0) > 0;
   const isHighlighted = shared.highlightedId === reply.id;
@@ -167,7 +170,7 @@ export const ReplyItem = memo(function ReplyItemView({
     <View
       ref={viewRef}
       collapsable={false}
-      style={{ marginLeft: Math.min(depth * 12, maxDepth * 12) }}
+      style={{ marginLeft: Math.min(depth * INDENT_PX, MAX_INDENT_PX) }}
       className={cn(
         shared.repliesAsCards && "rounded",
         containerBorder,

@@ -1,5 +1,9 @@
 import { CommentDto } from "@alliance/shared/client";
-import { collectCommentIds, updateCommentInTree } from "./commentTree";
+import {
+  canReplyAtDepth,
+  collectCommentIds,
+  updateCommentInTree,
+} from "./commentTree";
 
 const comment = (id: number, children: CommentDto[] = []): CommentDto => ({
   id,
@@ -73,5 +77,16 @@ describe("collectCommentIds", () => {
     expect(
       collectCommentIds([comment(1, [comment(2, [comment(3)])]), comment(4)]),
     ).toEqual([1, 2, 3, 4]);
+  });
+});
+
+describe("canReplyAtDepth", () => {
+  it("takes replies through depth 5 and none from depth 6 on", () => {
+    expect([0, 5, 6, 10].map(canReplyAtDepth)).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
   });
 });

@@ -4,6 +4,7 @@ import {
   countAllReplies,
   isCommentShown,
 } from "@alliance/shared/lib/commentsFilter";
+import { canReplyAtDepth } from "@alliance/shared/lib/commentTree";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import ClusterTag from "@alliance/sharedweb/ui/ClusterTag";
@@ -260,8 +261,7 @@ const ReplyContent = ({
 
 const ReplyComponent = memo(({ reply, depth = 0 }: ReplyComponentProps) => {
   const ctx = useCommentsContext();
-  const maxDepth = 10;
-  const canNest = depth < maxDepth;
+  const canNest = canReplyAtDepth(depth);
   const isReplyingToThis = ctx.replyingTo === reply.id;
   const hasChildren = reply.children ? reply.children.length > 0 : false;
   const isNewlyAdded = ctx.newlyAddedReplies.has(reply.id);
