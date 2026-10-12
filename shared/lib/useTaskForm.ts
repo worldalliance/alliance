@@ -1,14 +1,16 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  skipToken,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useCallback } from "react";
 import { tasksGetForm } from "../client";
 import { queryKeys } from "./queryKeys";
 
-export function useTaskForm(
-  formId: number | undefined,
-  params?: { enabled?: boolean },
-) {
-  return useQuery({
+export const taskFormQuery = (formId: number | undefined) =>
+  queryOptions({
     queryKey: queryKeys.taskForm(formId ?? null),
     queryFn:
       formId === undefined
@@ -29,6 +31,14 @@ export function useTaskForm(
             }
             return response.data;
           },
+  });
+
+export function useTaskForm(
+  formId: number | undefined,
+  params?: { enabled?: boolean },
+) {
+  return useQuery({
+    ...taskFormQuery(formId),
     enabled: params?.enabled ?? true,
   });
 }

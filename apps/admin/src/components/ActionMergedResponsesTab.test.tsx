@@ -1,4 +1,5 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   makeFormResponse,
   makeProfile,
@@ -7,6 +8,7 @@ import {
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
+import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   cleanup,
   fireEvent,
@@ -126,9 +128,11 @@ beforeEach(() => {
 
 const tab = (actionId: number) => (
   <SiteOriginLinkProvider origin="https://worldalliance.org">
-    <MemoryRouter>
-      <ActionMergedResponsesTab actionId={actionId} />
-    </MemoryRouter>
+    <ToastProvider>
+      <MemoryRouter>
+        <ActionMergedResponsesTab actionId={actionId} />
+      </MemoryRouter>
+    </ToastProvider>
   </SiteOriginLinkProvider>
 );
 
@@ -249,19 +253,24 @@ it("keeps the responses when a refetch changes only the variants' counts", async
   await screen.findByText("Withdrew");
 
   submitted = 1;
-  await query.client.refetchQueries();
+  await query.client.refetchQueries({
+    queryKey: queryKeys.formVariantsAdmin(1),
+  });
   await new Promise((resolve) => setTimeout(resolve, 50));
 
   expect(variantsRequests).toBe(2);
   expect(responsesRequests).toBe(1);
 });
 
-it("keeps a reload's responses over those of the load it replaced", async () => {
-  respondentNames = ["First Member", "Second Member"];
+it("keeps a reload's responses over those of the reload it replaced", async () => {
+  respondentNames = ["Initial Member", "First Member", "Second Member"];
+  renderTab();
+  await screen.findByText("Initial Member");
+
   const first = hold();
   responsesHeld = first.held;
-  renderTab();
-  await waitFor(() => expect(responsesRequests).toBe(1));
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+  await waitFor(() => expect(responsesRequests).toBe(2));
 
   responsesHeld = Promise.resolve();
   fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
@@ -271,6 +280,7 @@ it("keeps a reload's responses over those of the load it replaced", async () => 
 
   expect(screen.queryByText("First Member")).toBeNull();
   expect(screen.getByText("Second Member")).toBeTruthy();
+  expect(screen.queryByText("Failed to refresh form responses")).toBeNull();
 });
 
 it("shows no previous action's responses while the next action's variants load", async () => {

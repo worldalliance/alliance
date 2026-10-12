@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { useFormWithdrawalsAdmin } from "./useFormWithdrawalsAdmin";
@@ -49,18 +49,6 @@ it("requests nothing without a form id", async () => {
   expect(requested).toEqual([]);
 });
 
-it("refetches the form's withdrawals on refresh", async () => {
-  const { result } = renderHook(
-    () => useFormWithdrawalsAdmin(5),
-    queryWrapper(),
-  );
-  await waitFor(() => expect(requested).toEqual(["5"]));
-
-  await act(() => result.current.refresh());
-
-  expect(requested).toEqual(["5", "5"]);
-});
-
 it("reports a failed load", async () => {
   status = 500;
   const { result } = renderHook(
@@ -68,6 +56,6 @@ it("reports a failed load", async () => {
     queryWrapper(),
   );
 
-  await waitFor(() => expect(result.current.isError).toBe(true));
+  await waitFor(() => expect(result.current.isLoadingError).toBe(true));
   expect(result.current.withdrawnUserMap.size).toBe(0);
 });

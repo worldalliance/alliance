@@ -1,7 +1,9 @@
 import { useFormWithdrawalsAdmin } from "@alliance/shared/lib/useFormWithdrawalsAdmin";
 import React, { useMemo } from "react";
 import { useParams } from "react-router";
-import FormResponsesView from "../components/FormResponsesView";
+import FormResponsesView, {
+  REFRESH_ERROR,
+} from "../components/FormResponsesView";
 import { useFormResponsesAdmin } from "../lib/useFormResponsesAdmin";
 import { useRefusalToast } from "../lib/useRefusalToast";
 
@@ -48,7 +50,7 @@ const FormResponses: React.FC = () => {
       error={isFormIdValid ? error : "Invalid form id."}
       onRefresh={() =>
         refresh.mutate(undefined, {
-          onError: (e) => refusalToast(e, "Failed to refresh form responses"),
+          onError: (e) => refusalToast(e, REFRESH_ERROR),
         })
       }
       withdrawnUserMap={withdrawnUserMap}
