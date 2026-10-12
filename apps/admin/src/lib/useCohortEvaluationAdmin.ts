@@ -1,17 +1,11 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
-import {
-  actionsEvaluateCohortAdmin,
-  type EvaluateCohortExpressionResponseDto,
-} from "@alliance/shared/client";
+import { actionsEvaluateCohortAdmin } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { skipToken, useQuery } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
+import { useMemo } from "react";
 
 const noUserIds: ReadonlySet<number> = new Set();
-
-const toUserIds = (
-  response: EvaluateCohortExpressionResponseDto,
-): ReadonlySet<number> => new Set(response.userIds);
 
 /** The ids of the users `expression` matches: none without an expression,
  * before its first result, or once an evaluation fails, even a refetch of an
@@ -28,11 +22,16 @@ export function useCohortEvaluationAdmin(
             throwOnError: true,
           }).then((r) => r.data)
       : skipToken,
-    select: toUserIds,
     staleTime: milliseconds({ minutes: 1 }),
   });
+  const { data, isError } = evaluation;
+  const userIds = useMemo(
+    (): ReadonlySet<number> =>
+      data && !isError ? new Set(data.userIds) : noUserIds,
+    [data, isError],
+  );
   return {
-    userIds: evaluation.isError ? noUserIds : (evaluation.data ?? noUserIds),
+    userIds,
     evaluating: evaluation.isLoading,
     error: evaluation.error,
   };
