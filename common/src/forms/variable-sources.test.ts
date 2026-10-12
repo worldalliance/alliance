@@ -443,6 +443,15 @@ describe("validateFormSchema with inputs from another form", () => {
     ]);
   });
 
+  it("waits on a source form still loading instead of calling it missing", () => {
+    expect(
+      validateFormSchema(destination([scoresVariable(SHOW_SCORES)]), {
+        sourceForms: new Map(),
+        pendingSourceForms: new Set([SOURCE]),
+      }),
+    ).toEqual([]);
+  });
+
   it("names an input with no question picked", () => {
     expect(
       messages(

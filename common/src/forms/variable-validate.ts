@@ -94,6 +94,7 @@ export function collectVariableErrors(
       ]),
     ),
     formId: context.formId,
+    pendingSourceForms: context.pendingSourceForms ?? new Set(),
   };
   const declared = new Set<string>();
 
@@ -232,7 +233,10 @@ function checkFormula<T extends Formula>(params: {
     pushFormulaError(typed.error);
     return;
   }
-  if (inputsFailed) return;
+  const readsPending = Object.values(formula.inputs).some((input) =>
+    readsPendingForm(input, scope.fieldKinds),
+  );
+  if (inputsFailed || readsPending) return;
 
   const unanswered = params.evaluate(formula, scope.unansweredContext);
   if (!unanswered.ok) pushFormulaError(unanswered.error);
@@ -242,7 +246,20 @@ type FieldKindScope = {
   fields: Map<string, CollectedField>;
   sourceFields: Map<number, Map<string, CollectedField>>;
   formId: number | undefined;
+  pendingSourceForms: ReadonlySet<number>;
 };
+
+function readsPendingForm(
+  input: Formula["inputs"][string],
+  scope: FieldKindScope,
+): boolean {
+  const sourceFormId = inputSourceFormId(input);
+  return (
+    sourceFormId !== undefined &&
+    scope.pendingSourceForms.has(sourceFormId) &&
+    !scope.sourceFields.has(sourceFormId)
+  );
+}
 
 function checkFormulaInputs(
   formula: Formula,
@@ -263,6 +280,7 @@ function checkFormulaInputs(
         ? scope.fields
         : scope.sourceFields.get(sourceFormId);
     if (fields === undefined) {
+      if (readsPendingForm(input, scope)) continue;
       push(
         `Input "${inputName}" reads form ${sourceFormId}, which doesn't exist or couldn't be loaded`,
       );

@@ -33,8 +33,12 @@ type ContextKind = "input" | "output";
 export type FormSchemaValidationContext = {
   /** Unset while the form is being created. */
   formId?: number;
-  /** Must hold every form a variable or options formula input reads. */
+  /** Must hold every form a variable or options formula input reads, except
+   * those in `pendingSourceForms`. */
   sourceForms: SourceFormFields;
+  /** Forms whose fields are still loading. A formula reading one skips the
+   * checks that need its fields instead of reporting it missing. */
+  pendingSourceForms?: ReadonlySet<number>;
 };
 
 export function validateFormSchema(

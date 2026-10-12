@@ -589,15 +589,22 @@ export function FormBuilder(props: FormBuilderProps) {
   const { sourceForms, statusByForm: sourceFormStatus } = useFormulaSourceForms(
     conflict ? [schema, conflict.theirs] : [schema],
   );
-  const sourceFormsLoading = Object.values(sourceFormStatus).includes(
-    FormFieldsStatus.Pending,
+  const pendingSourceForms = useMemo(
+    () =>
+      new Set(
+        Object.entries(sourceFormStatus)
+          .filter(([, status]) => status === FormFieldsStatus.Pending)
+          .map(([id]) => Number(id)),
+      ),
+    [sourceFormStatus],
   );
+  const sourceFormsLoading = pendingSourceForms.size > 0;
   const sourceFormsFailed = Object.values(sourceFormStatus).some(
     (status) => formFieldsErrorReason(status) !== null,
   );
   const validation = useMemo(
-    () => ({ formId, sourceForms }),
-    [formId, sourceForms],
+    () => ({ formId, sourceForms, pendingSourceForms }),
+    [formId, sourceForms, pendingSourceForms],
   );
   const formulaSources = useInputSources({ formId, schema });
 

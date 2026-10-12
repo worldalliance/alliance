@@ -193,6 +193,23 @@ describe("validateFormSchema with aggregate inputs", () => {
         'Input "counts" counts answers to "employers", whose kind is select. Pick a multiselect question',
       ]);
     });
+
+    it("runs the formula while the form's stored questions load", () => {
+      const tooLong =
+        "'x'.repeat(10000).split('').filter(a => 'y'.repeat(10000).split('').includes(a)).length";
+      expect(
+        validateFormSchema(
+          destination([countVariable(tooLong)], {
+            pages: [{ id: "p1", fields: [company, employers] }],
+          }),
+          {
+            formId: SOURCE,
+            sourceForms: new Map(),
+            pendingSourceForms: new Set([SOURCE]),
+          },
+        ).map(({ message }) => message),
+      ).toEqual([expect.stringContaining("too long")]);
+    });
   });
 
   it("rejects a formula that misuses the counts", () => {
