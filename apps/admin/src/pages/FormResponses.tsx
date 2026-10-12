@@ -37,8 +37,8 @@ const FormResponses: React.FC = () => {
       title={form?.title ?? "Form Responses"}
       form={form}
       responses={responses}
-      loading={loading}
-      error={error}
+      loading={isFormIdValid && loading}
+      error={isFormIdValid ? error : "Invalid form id."}
       onRefresh={() =>
         refresh.mutate(undefined, {
           onError: (e) => refusalToast(e, "Failed to refresh form responses"),
