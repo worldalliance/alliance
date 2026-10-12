@@ -1,10 +1,8 @@
 import type { OnetimeInviteDto } from "@alliance/shared/client";
-import {
-  deleteInviteConfirmation,
-  onetimeInviteStatusLabels,
-} from "@alliance/shared/lib/copy";
+import { deleteInviteConfirmation } from "@alliance/shared/lib/copy";
 import { getReferralSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import type { OnetimeInviteActions } from "@alliance/shared/lib/inviteUtils";
+import { onetimeInviteStatusDisplay } from "@alliance/shared/styles/inviteStatus";
 import { cn } from "@alliance/shared/styles/util";
 import { router } from "expo-router";
 import {
@@ -20,17 +18,6 @@ import AppMarkdownWrapper from "./AppMarkdownWrapper";
 import ProfileImage from "./ProfileImage";
 import Button, { ButtonColor, ButtonSize } from "./system/Button";
 import Text, { FontWeight } from "./system/Text";
-
-/** Mobile Tailwind classes per status; labels come from shared copy. */
-const STATUS_TEXT_CLASS: Record<
-  keyof typeof onetimeInviteStatusLabels,
-  string
-> = {
-  request_pending: "text-amber-500",
-  request_rejected: "text-orange-600",
-  link_used: "text-green",
-  link_unused: "text-amber-500",
-};
 
 export type OnetimeInviteListItemProps = {
   invite: OnetimeInviteDto;
@@ -50,8 +37,7 @@ export default function OnetimeInviteListItem({
   actions,
 }: OnetimeInviteListItemProps) {
   const isRequest = invite.status === "request_pending";
-  const label = onetimeInviteStatusLabels[invite.status];
-  const textColorClass = STATUS_TEXT_CLASS[invite.status];
+  const status = onetimeInviteStatusDisplay[invite.status];
   const communityDisplay = communityLabel ?? "No group";
 
   const handleShare = () => {
@@ -174,10 +160,10 @@ export default function OnetimeInviteListItem({
               </Text>
             )}
             <Text
-              className={cn("text-xs", textColorClass)}
+              className={cn("text-xs", status.textClass)}
               weight={FontWeight.Semibold}
             >
-              {label}
+              {status.label}
             </Text>
           </View>
 

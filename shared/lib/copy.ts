@@ -188,14 +188,6 @@ export const inviteBuckets = {
   },
 } as const;
 
-/** Shared labels for onetime invite status; each app maps to its own style (e.g. Tailwind class). */
-export const onetimeInviteStatusLabels = {
-  request_pending: "Request pending",
-  request_rejected: "Rejected",
-  link_used: "Accepted",
-  link_unused: "Pending",
-} as const;
-
 /**
  * Shown when a multi-use link has no chosen group, keyed by why. A `Record` so
  * a new reason has to be given wording rather than silently rendering nothing.
