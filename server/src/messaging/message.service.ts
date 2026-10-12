@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
+import { assertLive } from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
@@ -18,16 +19,13 @@ import {
   ParticipantState,
 } from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
+import { notInConversation } from "./not-in-conversation";
 
 @Injectable()
 export class MessageService {
   constructor(
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
-    @InjectRepository(Conversation)
-    private readonly conversationRepository: Repository<Conversation>,
-    @InjectRepository(Participant)
-    private readonly participantRepository: Repository<Participant>,
     private readonly eventEmitter: EventEmitter2,
     private readonly imagesService: ImagesService,
     private readonly conversationService: ConversationService,
@@ -47,7 +45,6 @@ export class MessageService {
     if (participant.state !== ParticipantState.Joined) {
       participant.state = ParticipantState.Joined;
       participant.joinedAt = new Date();
-      await this.participantRepository.save(participant);
     }
 
     let replyTo: Message | undefined;
@@ -79,12 +76,40 @@ export class MessageService {
       replyTo,
     });
 
-    const savedMessage = await this.messageRepository.save(message);
-    participant.lastReadMessage = savedMessage;
-    await this.participantRepository.save(participant);
-    await this.conversationRepository.update(conversation.id, {
-      updatedAt: new Date(),
-    });
+    // Holds what the message joins, so a removal committing meanwhile either
+    // waits for the message or makes this throw.
+    const savedMessage = await this.messageRepository.manager.transaction(
+      async (manager) => {
+        // In the order deletions lock in: an account before its messages,
+        // a conversation before its messages, and a message before the read
+        // cursors on it.
+        await assertLive(manager, {
+          rows: [
+            { target: User, id: userId },
+            { target: Conversation, id: conversation.id },
+          ],
+          gone: notInConversation,
+        });
+        if (replyTo) {
+          await assertLive(manager, {
+            rows: [{ target: Message, id: replyTo.id }],
+            gone: () => new BadRequestException("Invalid reply target."),
+          });
+        }
+        await assertLive(manager, {
+          rows: [{ target: Participant, id: participant.id }],
+          gone: notInConversation,
+        });
+
+        const saved = await manager.save(message);
+        participant.lastReadMessage = saved;
+        await manager.save(participant);
+        await manager.update(Conversation, conversation.id, {
+          updatedAt: new Date(),
+        });
+        return saved;
+      },
+    );
 
     const hydratedMessage = await this.messageRepository.findOneOrFail({
       where: { id: savedMessage.id },

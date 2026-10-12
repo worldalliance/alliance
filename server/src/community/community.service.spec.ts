@@ -1,4 +1,5 @@
 import { BadRequestException, Logger } from "@nestjs/common";
+import * as softDelete from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
 import { ConversationService } from "src/messaging/conversation.service";
 import { MmsService } from "src/mms/mms.service";
@@ -9,7 +10,7 @@ import {
   type CreateNotifParams,
 } from "src/notifs/notifs.service";
 import { User } from "src/user/entities/user.entity";
-import type { EntityManager, Repository } from "typeorm";
+import { In, type EntityManager, type Repository } from "typeorm";
 import * as changeMembersModule from "./change-members";
 import { CommunityService, ContractRefusalAudience } from "./community.service";
 import { memberLeftCommunityNotif } from "./community.utils";
@@ -61,11 +62,25 @@ describe("CommunityService", () => {
     } as unknown as jest.Mocked<Repository<CommunityInvite>>;
 
     transactionManager = {
+      queryRunner: { isTransactionActive: true },
       getRepository: jest.fn((entity) =>
         entity === Community ? communityRepository : userRepository,
       ),
+      update: jest.fn((_target, criteria, partial) =>
+        userRepository.update(criteria, partial),
+      ),
     } as unknown as EntityManager;
     addAndRemove = jest.fn().mockResolvedValue(undefined);
+    jest
+      .spyOn(softDelete, "writeUnderLive")
+      .mockImplementation((manager, { write }) =>
+        manager.queryRunner?.isTransactionActive
+          ? write(manager)
+          : manager.transaction(write),
+      );
+    jest
+      .spyOn(softDelete, "lockLiveIds")
+      .mockImplementation(async (_manager, { ids }) => new Set(ids));
     jest
       .spyOn(changeMembersModule, "changeMembers")
       .mockImplementation(async ({ manager: _, ...write }) => {
@@ -110,6 +125,7 @@ describe("CommunityService", () => {
 
     userRepository = {
       save: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
       findOneOrFail: jest.fn(),
       createQueryBuilder: jest.fn(() => contractCheck),
     } as unknown as jest.Mocked<Repository<User>>;
@@ -596,12 +612,10 @@ describe("CommunityService", () => {
         saveAsPendingCommunity: true,
       });
 
-      expect(userRepository.save).toHaveBeenCalledWith([
-        {
-          id: user.id,
-          pendingCommunity: { id: community.id },
-        },
-      ]);
+      expect(userRepository.update).toHaveBeenCalledWith(
+        { id: In([user.id]) },
+        { pendingCommunity: { id: community.id } },
+      );
     });
 
     it("does not save pendingCommunity when saveAsPendingCommunity is false", async () => {
@@ -618,7 +632,7 @@ describe("CommunityService", () => {
         saveAsPendingCommunity: false,
       });
 
-      expect(userRepository.save).not.toHaveBeenCalled();
+      expect(userRepository.update).not.toHaveBeenCalled();
     });
   });
 

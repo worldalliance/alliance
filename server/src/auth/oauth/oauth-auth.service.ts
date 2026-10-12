@@ -12,6 +12,7 @@ import { JwtService, TokenExpiredError } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { lockLive } from "src/datasources/soft-delete";
 import { hasPassword, User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { requestContext } from "src/utils/request-context";
@@ -475,13 +476,21 @@ export class OAuthAuthService {
     }
 
     const { provider, subject, email } = params.profile;
-    await this.accountRepository.upsert(
-      { userId: params.userId, provider, subject, email },
-      {
-        conflictPaths: ["userId", "provider"],
-        indexPredicate: '"deletedAt" IS NULL',
-      },
+    const written = await this.accountRepository.manager.transaction(
+      async (manager) =>
+        (await lockLive(manager, [{ target: User, id: params.userId }]))
+          ? manager.getRepository(OAuthAccount).upsert(
+              { userId: params.userId, provider, subject, email },
+              {
+                conflictPaths: ["userId", "provider"],
+                indexPredicate: '"deletedAt" IS NULL',
+              },
+            )
+          : null,
     );
+    if (!written) {
+      return R.failure(OAuthError.Failed);
+    }
     return R.success(await this.usersService.findOneOrFail(params.userId));
   }
 

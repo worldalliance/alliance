@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { writeUnderLive } from "src/datasources/soft-delete";
 import { isUniqueViolation } from "src/utils/db-errors";
 import type { Repository } from "src/utils/Repository";
 import { In } from "typeorm";
@@ -122,16 +123,22 @@ export class WaitlistTagService {
 
   /** Resolves to how many of the entries were newly tagged. */
   async add(id: number, entryIds: number[]): Promise<number> {
-    await this.findOne(id);
-    if (!entryIds.length) return 0;
-    const result = await this.entryTagRepository.query(
-      `INSERT INTO waitlist_entry_tag ("entryId", "tagId")
-       SELECT id, $1 FROM waitlist_entry WHERE id = ANY($2) AND "deletedAt" IS NULL
-       ON CONFLICT DO NOTHING
-       RETURNING "entryId"`,
-      [id, entryIds],
-    );
-    return result.length;
+    return writeUnderLive(this.tagRepository.manager, {
+      parents: [{ target: WaitlistTag, id }],
+      notFound: TAG_NOT_FOUND,
+      write: async (manager) => {
+        if (!entryIds.length) return 0;
+        const result: unknown[] = await manager.query(
+          `INSERT INTO waitlist_entry_tag ("entryId", "tagId")
+           SELECT id, $1 FROM waitlist_entry
+           WHERE id = ANY($2) AND "deletedAt" IS NULL
+           ON CONFLICT DO NOTHING
+           RETURNING "entryId"`,
+          [id, entryIds],
+        );
+        return result.length;
+      },
+    });
   }
 
   async remove(id: number, entryIds: number[]): Promise<number> {

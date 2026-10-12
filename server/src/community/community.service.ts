@@ -9,6 +9,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { lockLiveIds, writeUnderLive } from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
 import { ConversationService } from "src/messaging/conversation.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
@@ -56,6 +57,7 @@ import {
 } from "./entities/community-invite.entity";
 import { Community, loadedCommunityUsers } from "./entities/community.entity";
 import { GroupJoinNotifsService } from "./group-join-notifs.service";
+import { saveInviteOfLiveParents } from "./invite-writes";
 
 /**
  * The check constraints on {@link Community}, applied before the write so a row
@@ -164,7 +166,13 @@ export class CommunityService {
       users: [user],
     });
     assertCommunityAccessRules(community);
-    const savedCommunity = await this.communityRepository.save(community);
+    const savedCommunity = await writeUnderLive(
+      this.communityRepository.manager,
+      {
+        parents: [{ target: User, id: userId }],
+        write: (manager) => manager.save(community),
+      },
+    );
     await this.conversationService.syncCommunityConversationMembers(
       savedCommunity.id,
     );
@@ -203,9 +211,10 @@ export class CommunityService {
    * never hold a plain member with none.
    *
    * `contractBeingSigned` exempts the callers inside
-   * `ContractService.signContract`: they place the member while that member's
-   * SIGNED event is still being written, so neither the loaded entity nor the
-   * database can see it yet.
+   * `ContractService.signContract`, which place the member right after writing
+   * their SIGNED event. The event is dated by the app's clock and the check
+   * compares it with the database's `NOW()`, so a clock running ahead would
+   * refuse the member who just signed.
    */
   async addUsersToCommunityAndRefreshConversation(
     params: {
@@ -254,14 +263,19 @@ export class CommunityService {
       .leaders!.map((leader) => notifForLeader({ leader }))
       .filter((notif) => !!notif);
 
-    const savedP = this.communityRepository.manager.transaction((em) =>
-      changeMembers({
-        manager: em,
-        communityId: community.id,
-        relation: "users",
-        add: users.map((added) => added.id),
-      }),
-    );
+    const savedP = writeUnderLive(this.communityRepository.manager, {
+      parents: [
+        ...users.map((added) => ({ target: User, id: added.id })),
+        { target: Community, id: community.id },
+      ],
+      write: (em) =>
+        changeMembers({
+          manager: em,
+          communityId: community.id,
+          relation: "users",
+          add: users.map((added) => added.id),
+        }),
+    });
     const membershipP = run(async () => {
       await savedP;
 
@@ -369,22 +383,39 @@ export class CommunityService {
       .filter((notif) => !!notif);
 
     const updatedCommunityP = run(async () => {
-      await this.communityRepository.manager.transaction(async (em) => {
-        await changeMembers({
-          manager: em,
-          communityId: community.id,
-          relation: "users",
-          remove: members
-            .filter((member) => !newMembers.includes(member))
-            .map((member) => member.id),
-        });
-        await changeMembers({
-          manager: em,
-          communityId: community.id,
-          relation: "leaders",
-          remove: community
-            .leaders!.filter((leader) => !newLeaders.includes(leader))
-            .map((leader) => leader.id),
+      await this.communityRepository.manager.transaction(async (manager) => {
+        // Accounts first: admin placement locks them before the group, and
+        // deleting one locks it before its cascade reaches the membership rows.
+        if (saveAsPendingCommunity) {
+          await lockLiveIds(manager, { target: User, ids: [...userIdSet] });
+        }
+        await writeUnderLive(manager, {
+          parents: [{ target: Community, id: community.id }],
+          write: async (em) => {
+            await changeMembers({
+              manager: em,
+              communityId: community.id,
+              relation: "users",
+              remove: members
+                .filter((member) => !newMembers.includes(member))
+                .map((member) => member.id),
+            });
+            await changeMembers({
+              manager: em,
+              communityId: community.id,
+              relation: "leaders",
+              remove: community
+                .leaders!.filter((leader) => !newLeaders.includes(leader))
+                .map((leader) => leader.id),
+            });
+            if (saveAsPendingCommunity) {
+              await em.update(
+                User,
+                { id: In(users.map((user) => user.id)) },
+                { pendingCommunity: { id: community.id } },
+              );
+            }
+          },
         });
       });
       await this.conversationService.syncCommunityConversationMembers(
@@ -397,14 +428,6 @@ export class CommunityService {
     const [updatedCommunity] = await Promise.all([
       updatedCommunityP,
       this.notifsService.sendNotifs(notifs),
-      saveAsPendingCommunity
-        ? this.userRepository.save([
-            ...users.map((user) => ({
-              id: user.id,
-              pendingCommunity: { id: community.id },
-            })),
-          ])
-        : null,
     ]);
 
     return updatedCommunity;
@@ -933,8 +956,12 @@ export class CommunityService {
     const isLeader = community.leaders!.some(
       (existing) => existing.id === userId,
     );
-    const joined = await this.communityRepository.manager.transaction(
-      async (manager) => {
+    const joined = await writeUnderLive(this.communityRepository.manager, {
+      parents: [
+        { target: User, id: userId },
+        { target: Community, id: communityId },
+      ],
+      write: async (manager) => {
         const added = await changeMembers({
           manager,
           communityId,
@@ -949,7 +976,7 @@ export class CommunityService {
         });
         return added.includes(userId);
       },
-    );
+    });
     if (!isMember) members.push(user);
     if (!isLeader) community.leaders!.push(user);
 
@@ -971,14 +998,16 @@ export class CommunityService {
   ): Promise<Community> {
     const community = await this.findOneOrFail(communityId);
 
-    await this.communityRepository.manager.transaction((manager) =>
-      changeMembers({
-        manager,
-        communityId,
-        relation: "leaders",
-        remove: [userId],
-      }),
-    );
+    await writeUnderLive(this.communityRepository.manager, {
+      parents: [{ target: Community, id: communityId }],
+      write: (manager) =>
+        changeMembers({
+          manager,
+          communityId,
+          relation: "leaders",
+          remove: [userId],
+        }),
+    });
     community.leaders = (community.leaders ?? []).filter(
       (leader) => leader.id !== userId,
     );
@@ -1087,7 +1116,8 @@ export class CommunityService {
       );
     }
 
-    const invite = await this.communityInviteRepository.save(
+    const invite = await saveInviteOfLiveParents(
+      this.communityInviteRepository.manager,
       this.communityInviteRepository.create({
         invitedUser,
         community,
@@ -1196,7 +1226,10 @@ export class CommunityService {
       invitingUser,
       status: CommunityInviteStatus.RequestPending,
     });
-    const savedInvite = await this.communityInviteRepository.save(invite);
+    const savedInvite = await saveInviteOfLiveParents(
+      this.communityInviteRepository.manager,
+      invite,
+    );
 
     sendNotificationToLeaders: {
       const communityWithLeaders = await this.communityRepository.findOne({

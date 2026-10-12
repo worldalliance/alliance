@@ -62,6 +62,7 @@ import {
   Community,
   loadedCommunityUsers,
 } from "src/community/entities/community.entity";
+import { assertLive, writeUnderLive } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import {
@@ -272,6 +273,7 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "./entities/reminder-group.entity";
+import { lockLiveTagsAndSuites } from "./general-update-locks";
 import {
   SUSPENSION_MISSED_SUITE_COUNT,
   suspensionReasonKey,
@@ -329,6 +331,8 @@ const GLOBAL_FEED_WINDOW_DAYS = 8;
 const OPT_OUT_REASON_PREVIEW_LENGTH = 300;
 
 const COMPLETION_UNAVAILABLE = "This action is not available to you";
+
+const ACTION_PARENT_GONE = "That suite, author or form is gone";
 
 const COMPLETION_BLOCK_MESSAGE: Record<CompletionBlock, string> = {
   [CompletionBlock.PreventCompletion]: COMPLETION_UNAVAILABLE,
@@ -622,13 +626,21 @@ export class ActionsService {
         : [];
     }
 
-    const saved = await this.actionRepository.manager.transaction(
-      async (em) => {
+    const saved = await writeUnderLive(this.actionRepository.manager, {
+      parents: [
+        ...(action.suite ? [{ target: ActionSuite, id: action.suite.id }] : []),
+        ...(action.authors ?? []).map(({ id }) => ({ target: User, id })),
+        ...(rest.taskFormId == null
+          ? []
+          : [{ target: Form, id: rest.taskFormId }]),
+      ],
+      notFound: ACTION_PARENT_GONE,
+      write: async (em) => {
         const inserted = await em.save(Action, action);
         await assertPrerequisitesValid({ em, actionIds: [inserted.id] });
         return inserted;
       },
-    );
+    });
     await this.shiftPrioritiesAfterInsertion();
     await this.syncGeneralUpdateDatesForSuites([saved.suite?.id]);
     return parseAction(saved);
@@ -1505,7 +1517,12 @@ export class ActionsService {
       });
     }
 
-    const saved = await this.generalUpdateRepository.save(generalUpdate);
+    const saved = await this.generalUpdateRepository.manager.transaction(
+      async (em) => {
+        await lockLiveTagsAndSuites(em, generalUpdate);
+        return em.save(generalUpdate);
+      },
+    );
 
     await this.formSnapshotService.recordHistorical({
       owner: SnapshotHistoryOwner.GeneralUpdate,
@@ -1585,6 +1602,7 @@ export class ActionsService {
               : [];
         }
 
+        await lockLiveTagsAndSuites(em, generalUpdate);
         await em.save(generalUpdate);
 
         return generalUpdate.suites?.map((suite) => suite.id) ?? [];
@@ -1741,14 +1759,21 @@ export class ActionsService {
       );
     }
 
-    await this.generalUpdateActivityRepository.save(
-      this.generalUpdateActivityRepository.create({
-        generalUpdate: { id: generalUpdateId },
-        user: { id: userId },
-        type: GeneralUpdateActivityType.DISMISSED,
-        createdAt: new Date(),
-      }),
-    );
+    await writeUnderLive(this.generalUpdateActivityRepository.manager, {
+      parents: [
+        { target: User, id: userId },
+        { target: GeneralUpdate, id: generalUpdateId },
+      ],
+      write: (em) =>
+        em.save(
+          em.create(GeneralUpdateActivity, {
+            generalUpdate: { id: generalUpdateId },
+            user: { id: userId },
+            type: GeneralUpdateActivityType.DISMISSED,
+            createdAt: new Date(),
+          }),
+        ),
+    });
   }
 
   async getActionRelation(
@@ -1843,7 +1868,29 @@ export class ActionsService {
         ? ActivitySource.ADMIN_OVERRIDE
         : ActivitySource.USER,
     });
-    const savedActivity = await this.actionActivityRepository.save(activity);
+    const savedActivity = await writeUnderLive(
+      this.actionActivityRepository.manager,
+      {
+        parents: [
+          {
+            target: Action,
+            id: actionId,
+            notFound: "That action is no longer here",
+          },
+          { target: User, id: userId },
+          ...(taskFormResponse
+            ? [
+                {
+                  target: FormResponse,
+                  id: taskFormResponse.id,
+                  notFound: "That form response is no longer here",
+                },
+              ]
+            : []),
+        ],
+        write: (manager) => manager.save(activity),
+      },
+    );
 
     if (type === ActionActivityType.USER_WONT_COMPLETE) {
       const option = withdrawalOptionFromFlags({
@@ -1996,19 +2043,32 @@ export class ActionsService {
         : [];
     }
 
+    const previousTaskFormId = action.taskFormId;
     Object.assign(action, rest);
 
     // Replacing reviewers is a delete plus a cascading insert; without one
     // transaction a failed save leaves the action with none.
-    await this.actionRepository.manager.transaction(async (em) => {
-      if (reviewers !== undefined) {
-        await em.delete(ActionReviewer, { actionId: id });
-        action.reviewers = this.reviewerRows(reviewers);
-      }
-      await em.save(Action, action);
-      if (rest.prerequisiteActionIds !== undefined) {
-        await assertPrerequisitesValid({ em, actionIds: [id] });
-      }
+    await writeUnderLive(this.actionRepository.manager, {
+      parents: [
+        ...(suiteId == null ? [] : [{ target: ActionSuite, id: suiteId }]),
+        ...(action.authors ?? []).flatMap((author) =>
+          author.id === undefined ? [] : [{ target: User, id: author.id }],
+        ),
+        ...(rest.taskFormId == null || rest.taskFormId === previousTaskFormId
+          ? []
+          : [{ target: Form, id: rest.taskFormId }]),
+      ],
+      notFound: ACTION_PARENT_GONE,
+      write: async (em) => {
+        if (reviewers !== undefined) {
+          await em.delete(ActionReviewer, { actionId: id });
+          action.reviewers = this.reviewerRows(reviewers);
+        }
+        await em.save(Action, action);
+        if (rest.prerequisiteActionIds !== undefined) {
+          await assertPrerequisitesValid({ em, actionIds: [id] });
+        }
+      },
     });
     const newSuiteId = action.suite?.id;
     await this.syncGeneralUpdateDatesForSuites([oldSuiteId, newSuiteId]);
@@ -2046,6 +2106,10 @@ export class ActionsService {
         actionIds: actions.map((action) => action.id),
         acknowledged: params.acknowledgeDeadlineShortening,
         change: async (manager) => {
+          await assertLive(manager, {
+            rows: actions.map((action) => ({ target: Action, id: action.id })),
+            gone: () => new NotFoundException("Action not found"),
+          });
           const events: ActionEvent[] = [];
           for (const action of actions) {
             const newEvent = manager.create(ActionEvent, {
@@ -2121,9 +2185,14 @@ export class ActionsService {
       ...dto,
       actionId,
     });
-    return parseFollowUpForm(
-      await this.followUpFormRepository.save(followUpForm),
-    );
+    return writeUnderLive(this.followUpFormRepository.manager, {
+      parents: [
+        { target: Action, id: actionId },
+        { target: Form, id: form.id },
+      ],
+      notFound: "Action or form not found",
+      write: async (em) => parseFollowUpForm(await em.save(followUpForm)),
+    });
   }
 
   async updateFollowUpForm(
@@ -2140,9 +2209,11 @@ export class ActionsService {
       );
     }
     Object.assign(followUpForm, dto);
-    return parseFollowUpForm(
-      await this.followUpFormRepository.save(followUpForm),
-    );
+    return writeUnderLive(this.followUpFormRepository.manager, {
+      parents:
+        dto.formId === undefined ? [] : [{ target: Form, id: dto.formId }],
+      write: async (em) => parseFollowUpForm(await em.save(followUpForm)),
+    });
   }
 
   async deleteFollowUpForm(followUpFormId: number): Promise<void> {
@@ -3121,15 +3192,28 @@ export class ActionsService {
       });
     }
 
-    const actionUpdate = await this.actionUpdateRepository.save(
-      this.actionUpdateRepository.create({
-        ...createActionUpdateDto,
-        schemaSnapshotId: emptySnapshot.id,
-        visibleAt: null,
-        action,
-        tag,
-        associatedEvent,
-      }),
+    const actionUpdate = await writeUnderLive(
+      this.actionUpdateRepository.manager,
+      {
+        parents: [
+          { target: Action, id: action.id, notFound: "Action not found" },
+          ...(tag ? [{ target: Tag, id: tag.id }] : []),
+          ...(associatedEvent
+            ? [{ target: ActionEvent, id: associatedEvent.id }]
+            : []),
+        ],
+        write: (em) =>
+          em.save(
+            em.create(ActionUpdate, {
+              ...createActionUpdateDto,
+              schemaSnapshotId: emptySnapshot.id,
+              visibleAt: null,
+              action,
+              tag,
+              associatedEvent,
+            }),
+          ),
+      },
     );
 
     await this.formSnapshotService.recordHistorical({
@@ -3346,6 +3430,19 @@ export class ActionsService {
     // column that differs from the entity read here, so an unlocked
     // read-modify-write would revert a concurrent schema save.
     await this.actionUpdateRepository.manager.transaction(async (em) => {
+      // The action first: deleting it locks the action before any of its
+      // cascades reach the update or event, whichever order those fire in.
+      const { actionId } = await em.findOneByOrFail(ActionUpdate, { id });
+      await assertLive(em, {
+        rows: [
+          { target: Action, id: actionId },
+          ...(tagId == null ? [] : [{ target: Tag, id: tagId }]),
+          ...(associatedEventId == null
+            ? []
+            : [{ target: ActionEvent, id: associatedEventId }]),
+        ],
+        gone: () => new NotFoundException("Action, tag or event not found"),
+      });
       const actionUpdate = await this.lockActionUpdate(id, em);
 
       if (
@@ -3907,6 +4004,7 @@ export class ActionsService {
         if (suite) {
           let foundSuite = await suiteRepo.findOne({
             where: { name: suite.name },
+            lock: { mode: "for_key_share" },
           });
           if (!foundSuite) {
             foundSuite = await suiteRepo.save(
@@ -3918,11 +4016,16 @@ export class ActionsService {
         }
 
         if (authors?.length) {
-          await actionRepo
-            .createQueryBuilder()
-            .relation(Action, "authors")
-            .of(actionId)
-            .add(authors.map((a) => ({ id: a.id })));
+          await writeUnderLive(em, {
+            parents: authors.map((a) => ({ target: User, id: a.id })),
+            notFound: "That author is gone",
+            write: () =>
+              actionRepo
+                .createQueryBuilder()
+                .relation(Action, "authors")
+                .of(actionId)
+                .add(authors.map((a) => ({ id: a.id }))),
+          });
         }
 
         if (taskForm) {
