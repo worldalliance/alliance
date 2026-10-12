@@ -78,7 +78,11 @@ const renderDetails = async () => {
     { initialEntries: ["/actions/2/updates/1"] },
   );
   render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
       <ToastProvider>
         <RouterProvider router={router} />
       </ToastProvider>
@@ -131,7 +135,6 @@ describe("ActionUpdatePage", () => {
   });
 
   it("keeps the action's events when its form variants fail to load", async () => {
-    jest.spyOn(console, "error").mockImplementation(() => {});
     variantsAnswer = () =>
       Response.json({ statusCode: 500, message: "boom" }, { status: 500 });
 
@@ -141,6 +144,41 @@ describe("ActionUpdatePage", () => {
       await screen.findByText(/The action's forms couldn't be loaded/),
     ).toBeTruthy();
     expect(screen.getByRole("option", { name: /^Launch/ })).toBeTruthy();
+  });
+
+  it("reads the questions of the action's variant forms", async () => {
+    const formsRequested: string[] = [];
+    variantsAnswer = () =>
+      Response.json({
+        variants: [
+          {
+            id: 1,
+            actionId: 2,
+            formId: 8,
+            name: "Variant A",
+            splitValue: 0.5,
+            createdAt: "2026-10-01T00:00:00.000Z",
+            updatedAt: "2026-10-01T00:00:00.000Z",
+          },
+        ],
+        stats: [],
+      });
+    api.alsoServing({
+      "GET /tasks/slug/:id": ({ params }) => {
+        formsRequested.push(params.id);
+        return Response.json({
+          id: Number(params.id),
+          title: "Survey",
+          formSnapshotId: 7,
+          schema: { pages: [], outputViews: [] },
+        });
+      },
+    });
+
+    await renderDetails();
+
+    await waitFor(() => expect(formsRequested).toContain("8"));
+    expect(screen.queryByText(/This action has no form/)).toBeNull();
   });
 
   it("holds the check until a typed formula is saved into the active mode's column", async () => {

@@ -3,17 +3,18 @@ import {
   displayOnlyToFormSchema,
   readDisplayOnlySchema,
 } from "@alliance/common/forms/display-only-schema";
+import { R } from "@alliance/common/result";
 import { run } from "@alliance/common/run";
 import {
   actionsFindOneAdmin,
   actionsFindOneUpdateAdmin,
-  actionsListFormVariantsAdmin,
   actionsNotifyUpdateAdmin,
   actionsPublishUpdateNowAdmin,
   actionsUnpublishUpdateAdmin,
   actionsUpdateUpdateAdmin,
   ActionUpdateNotifyType,
   type ActionEventDto,
+  type ActionFormVariantsListDto,
   type AdminActionUpdateDto,
 } from "@alliance/shared/client";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
@@ -48,6 +49,7 @@ import {
   useDisplayOnlySchemaSave,
   type DisplayOnlySchemaSaveBody,
 } from "../lib/useDisplayOnlySchemaSave";
+import { useFormVariantsAdmin } from "../lib/useFormVariantsAdmin";
 import { useRefreshWhileHeld } from "../lib/useRefreshWhileHeld";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 
@@ -63,6 +65,13 @@ type Visibility =
   | { state: VisibilityState.Unpublished }
   | { state: VisibilityState.Scheduled; visibleAt: Date }
   | { state: VisibilityState.Published; visibleAt: Date };
+
+type ActionTaskForm =
+  | Exclude<ActionForm, { status: ActionFormStatus.Loaded }>
+  | { status: ActionFormStatus.Loaded; taskFormId: number | undefined };
+
+const variantFormIdsOf = (list: ActionFormVariantsListDto) =>
+  list.variants.map((variant) => variant.formId);
 
 const visibilityOf = (
   update: AdminActionUpdateDto,
@@ -89,9 +98,13 @@ const ActionUpdatePage: React.FC = () => {
 
   const [update, setUpdate] = useState<AdminActionUpdateDto | null>(null);
   const [events, setEvents] = useState<ActionEventDto[]>([]);
-  const [actionForm, setActionForm] = useState<ActionForm>({
+  const [actionTaskForm, setActionTaskForm] = useState<ActionTaskForm>({
     status: ActionFormStatus.Loading,
   });
+  const { variants: variantFormIds } = useFormVariantsAdmin(
+    actionId,
+    variantFormIdsOf,
+  );
   const [form, setForm] = useState<ActionUpdateForm | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -141,29 +154,22 @@ const ActionUpdatePage: React.FC = () => {
     if (isNaN(actionId)) return;
     let cancelled = false;
     const load = async () => {
-      const [action, variants] = await Promise.allSettled([
+      const action = await R.fromPromise(
         actionsFindOneAdmin({ path: { id: actionId } }),
-        actionsListFormVariantsAdmin({ path: { id: actionId } }),
-      ]);
+      );
       if (cancelled) return;
-      for (const result of [action, variants]) {
-        if (result.status === "rejected") {
-          console.error("Failed to load the action:", result.reason);
-        }
+      if (!action.ok) {
+        console.error("Failed to load the action:", action.error);
       }
-      const actionData =
-        action.status === "fulfilled" ? action.value.data : undefined;
-      const variantsData =
-        variants.status === "fulfilled" ? variants.value.data : undefined;
-      if (actionData) setEvents(actionData.events ?? []);
-      if (!actionData || !variantsData) {
-        setActionForm({ status: ActionFormStatus.LoadFailed });
+      const actionData = action.ok ? action.value.data : undefined;
+      if (!actionData) {
+        setActionTaskForm({ status: ActionFormStatus.LoadFailed });
         return;
       }
-      setActionForm({
+      setEvents(actionData.events ?? []);
+      setActionTaskForm({
         status: ActionFormStatus.Loaded,
         taskFormId: actionData.taskFormId,
-        variantFormIds: variantsData.variants.map((variant) => variant.formId),
       });
     };
     load();
@@ -171,6 +177,18 @@ const ActionUpdatePage: React.FC = () => {
       cancelled = true;
     };
   }, [actionId]);
+
+  const actionForm = useMemo(
+    (): ActionForm =>
+      actionTaskForm.status !== ActionFormStatus.Loaded
+        ? actionTaskForm
+        : variantFormIds.data
+          ? { ...actionTaskForm, variantFormIds: variantFormIds.data }
+          : variantFormIds.isError
+            ? { status: ActionFormStatus.LoadFailed }
+            : { status: ActionFormStatus.Loading },
+    [actionTaskForm, variantFormIds.data, variantFormIds.isError],
+  );
 
   const handleSubmitDetails = useCallback(
     async (e: React.FormEvent) => {
