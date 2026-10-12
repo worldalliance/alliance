@@ -779,6 +779,7 @@ const CommunityPage = () => {
                   color={ButtonColor.Outline}
                   onClick={() => setChatOpen(true)}
                   className="!px-3 !py-3"
+                  title="Open Chat"
                 >
                   <MessageSquare size="20" />
                 </Button>
