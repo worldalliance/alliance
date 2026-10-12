@@ -2879,7 +2879,12 @@ export class UserService {
       .getRawMany<FriendGraphEdge>();
   }
 
-  async findOnetimeInvites(communityId: number): Promise<OnetimeInvite[]> {
+  async findOnetimeInvites(
+    userId: number,
+    communityId: number,
+  ): Promise<OnetimeInvite[]> {
+    const user = await this.findOneOrFail(userId);
+    assertCanManageCommunity(user, communityId);
     return this.onetimeInviteRepository.find({
       where: { community: { id: communityId }, deletedAt: IsNull() },
       relations: { invitingUser: true },

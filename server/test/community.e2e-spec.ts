@@ -1942,6 +1942,52 @@ describe("Community (e2e)", () => {
     expect(res.body[0].community.id).toBe(community.id);
   });
 
+  it("GET /community/communityInvites/community/:communityId returns invites when authenticated as admin", async () => {
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: "E2E HTTP GetCommunityInvites Admin",
+        leaders: [testUser],
+        users: [testUser],
+      }),
+    );
+    await communityInviteRepo.save(
+      communityInviteRepo.create({
+        status: CommunityInviteStatus.InviteePending,
+        invitingUser: testUser,
+        invitedUser: secondUser,
+        community,
+      }),
+    );
+
+    const res = await request(ctx.app.getHttpServer())
+      .get(`/community/communityInvites/community/${community.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.length).toBe(1);
+  });
+
+  it("GET /community/communityInvites/community/:communityId returns 400 for a leader of another community", async () => {
+    const [community] = await communityRepo.save([
+      communityRepo.create({
+        name: "E2E HTTP GetCommunityInvites Target",
+        leaders: [testUser],
+        users: [testUser],
+      }),
+      communityRepo.create({
+        name: "E2E HTTP GetCommunityInvites OtherLeader",
+        leaders: [secondUser],
+        users: [secondUser],
+      }),
+    ]);
+
+    const res = await request(ctx.app.getHttpServer())
+      .get(`/community/communityInvites/community/${community.id}`)
+      .set("Authorization", `Bearer ${secondUserToken}`);
+
+    expect(res.status).toBe(400);
+  });
+
   it("GET /community/communityInvites/community/:communityId excludes deleted invites", async () => {
     const community = await communityRepo.save(
       communityRepo.create({

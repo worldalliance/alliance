@@ -2981,6 +2981,41 @@ describe("Users (e2e)", () => {
         });
       });
 
+      describe("findOnetimeInvites", () => {
+        const list = (token: string) =>
+          request(ctx.app.getHttpServer())
+            .get(`/user/onetimeInvites/${communityLedByUserA.id}`)
+            .set("Authorization", `Bearer ${token}`);
+
+        it("lists the group's invites for its leader", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+
+          const res = await list(userAToken).expect(200);
+
+          expect(res.body.map((invite: { id: number }) => invite.id)).toContain(
+            pendingInvite.id,
+          );
+        });
+
+        it("lists the group's invites for an admin who leads no community", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+
+          const res = await list(ctx.adminAccessToken).expect(200);
+
+          expect(res.body.map((invite: { id: number }) => invite.id)).toContain(
+            pendingInvite.id,
+          );
+        });
+
+        it("refuses a leader of another community", async () => {
+          await createPendingInviteRequest();
+
+          const res = await list(userBToken).expect(400);
+
+          expect(res.body.message).toContain("not a leader");
+        });
+      });
+
       describe("requestOnetimeInvite", () => {
         it("rejects requests from users that are not members of the community", async () => {
           const res = await request(ctx.app.getHttpServer())

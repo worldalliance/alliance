@@ -29,6 +29,7 @@ import {
 } from "src/user/dto/invite.dto";
 import { CommunityMemberContactInfo } from "src/user/dto/user-action-relations.dto";
 import {
+  assertCanManageCommunity,
   canManageCommunity,
   DEFAULT_TIME_ZONE,
   loadedUserCommunities,
@@ -1305,14 +1306,10 @@ export class CommunityService {
     userId: number,
     communityId: number,
   ): Promise<CommunityInvite[]> {
-    await this.communityRepository.findOneOrFail({
-      where: {
-        id: communityId,
-        leaders: {
-          id: userId,
-        },
-      },
+    const user = await this.userRepository.findOneOrFail({
+      where: { id: userId },
     });
+    assertCanManageCommunity(user, communityId);
     const invites = await this.communityInviteRepository.find({
       where: { community: { id: communityId }, deletedAt: IsNull() },
       relations: { invitedUser: true, invitingUser: true, community: true },
