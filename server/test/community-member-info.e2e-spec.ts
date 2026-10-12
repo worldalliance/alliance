@@ -16,6 +16,7 @@ describe("Community member info (e2e)", () => {
   let actionRepo: Repository<Action>;
   let member: User;
   let otherMember: User;
+  let outsider: User;
   let community: Community;
 
   beforeAll(async () => {
@@ -26,8 +27,8 @@ describe("Community member info (e2e)", () => {
   }, 50000);
 
   beforeEach(async () => {
-    [member, otherMember] = await userRepo.save(
-      ["Member", "Other Member"].map((name, i) =>
+    [member, otherMember, outsider] = await userRepo.save(
+      ["Member", "Other Member", "Outsider"].map((name, i) =>
         userRepo.create({
           name,
           email: `member-info-${i}@example.com`,
@@ -87,6 +88,17 @@ describe("Community member info (e2e)", () => {
 
     expect(res.status).toBe(200);
     expect(memberIds(res)).toEqual(new Set([member.id, otherMember.id]));
+  });
+
+  it("returns 404 to someone outside the group", async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .get(`/actions/communityMemberInfo/${community.id}`)
+      .set(
+        "Authorization",
+        `Bearer ${signAccessToken(ctx.jwtService, outsider)}`,
+      );
+
+    expect(res.status).toBe(404);
   });
 
   it("lists every member to an admin", async () => {
