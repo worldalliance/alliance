@@ -1,4 +1,10 @@
-import { makeCommunity, makeProfile } from "@alliance/shared/lib/testFixtures";
+import type { ConversationDto } from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import {
+  makeCommunity,
+  makeConversation,
+  makeProfile,
+} from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
@@ -15,8 +21,10 @@ import { AuthContext } from "../../lib/AuthContext";
 import { testAuthUser } from "../../stories/testData";
 import { authValue } from "../../testing/authValue";
 import CommunityPage from "./CommunityPage";
+import * as messagesModule from "./messages";
 
 let myGroups: () => Promise<Response>;
+let groupChat: ConversationDto;
 
 serveApi(
   routes({
@@ -38,9 +46,14 @@ serveApi(
     "GET /actions/communityCompletedActionsCount": () =>
       Response.json({ completedCount: 12 }),
     "GET /messaging/conversations/community/:communityId": () =>
-      Response.json([]),
+      Response.json(groupChat),
+    "POST /messaging/conversations/1/read": () => Response.json(groupChat),
   }),
 );
+
+beforeEach(() => {
+  groupChat = makeConversation([]);
+});
 
 afterEach(cleanup);
 
@@ -48,7 +61,7 @@ const isDisabled = (text: string) =>
   screen.getByText(text).closest("button")?.disabled;
 
 const renderPage = (url = "/") => {
-  const { wrapper: QueryWrapper } = queryWrapper();
+  const { client, wrapper: QueryWrapper } = queryWrapper();
   render(
     <QueryWrapper>
       <ToastProvider>
@@ -66,6 +79,7 @@ const renderPage = (url = "/") => {
       </ToastProvider>
     </QueryWrapper>,
   );
+  return client;
 };
 
 it("offers no group assignment until your groups load", async () => {
@@ -118,4 +132,62 @@ it("shows how many actions the community's members completed", async () => {
 
   const count = await screen.findByText("12");
   expect(count.parentElement?.textContent).toContain("actions completed");
+});
+
+describe("the group chat on a large screen", () => {
+  const message = (id: string) => ({
+    id,
+    body: "Hello",
+    attachments: [],
+    createdAt: "2026-09-17T00:00:00.000Z",
+    deletedAt: null,
+    author: makeProfile(2),
+    conversationId: 1,
+  });
+  const openChatButton = () =>
+    document.querySelector(".lucide-message-square")?.closest("button");
+
+  beforeEach(() => {
+    jest.spyOn(window, "matchMedia").mockReturnValue(
+      Object.assign(new EventTarget(), {
+        matches: true,
+        media: "",
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+      }),
+    );
+    jest.spyOn(messagesModule, "default").mockReturnValue({
+      messages: [],
+      addOptimisticMessage: () => {},
+      removeOptimisticMessage: () => {},
+    });
+    myGroups = async () =>
+      Response.json([makeCommunity({ users: [makeProfile(testAuthUser.id)] })]);
+  });
+
+  it("starts closed for a group with no messages", async () => {
+    renderPage("/?tab=members&communityId=1");
+
+    await screen.findByTitle("Close Chat");
+    expect(openChatButton()).toBeTruthy();
+  });
+
+  it("opens for a group with messages, and stays closed once closed", async () => {
+    groupChat = { ...makeConversation([]), lastMessage: message("a") };
+    const client = renderPage("/?tab=members&communityId=1");
+
+    const close = await screen.findByTitle("Close Chat");
+    await waitFor(() => expect(openChatButton()).toBeFalsy());
+    fireEvent.click(close);
+    expect(openChatButton()).toBeTruthy();
+
+    groupChat = { ...groupChat, title: "Renamed", lastMessage: message("b") };
+    await client.refetchQueries({
+      queryKey: queryKeys.communityConversation(1),
+    });
+
+    await screen.findByText("Renamed");
+    expect(openChatButton()).toBeTruthy();
+  });
 });
