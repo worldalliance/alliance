@@ -1,17 +1,9 @@
-import { Action, ActionEventDto, ActionStatus } from "@alliance/shared/client";
+import { Action, ActionStatus } from "@alliance/shared/client";
 import { startOfDay } from "date-fns";
 import { millisecondsInDay } from "date-fns/constants";
 import React from "react";
 import { useNavigate } from "react-router";
-
-interface PhaseSegment {
-  status: ActionStatus;
-  startDate: Date;
-  endDate: Date;
-  duration: number;
-  event?: ActionEventDto;
-  isActive: boolean;
-}
+import type { PhaseSegment } from "../lib/actionTimelineData";
 
 interface ActionTimelineBarProps {
   action: Pick<Action, "id" | "name" | "status">;
