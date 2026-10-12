@@ -18,7 +18,7 @@ import {
 } from "./cohort-decision";
 import { CohortDecisionService } from "./cohort-decision.service";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
-import { Action } from "./entities/action.entity";
+import { Action, loadedActionFormVariants } from "./entities/action.entity";
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
 
 @Injectable()
@@ -115,7 +115,9 @@ export class CohortDivergenceService {
       id: action.id,
       formIds: actionFormIds({
         taskFormId: action.taskFormId,
-        variantFormIds: action.formVariants.map((variant) => variant.formId),
+        variantFormIds: loadedActionFormVariants(action).map(
+          (variant) => variant.formId,
+        ),
       }),
       deadline: action.memberActionPhase.deadlineEvent?.date ?? null,
       onboarding: action.onboarding,

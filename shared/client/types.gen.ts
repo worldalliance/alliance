@@ -492,7 +492,7 @@ export type Action = {
     activities?: Array<ActionActivity>;
     updates?: Array<ActionUpdate>;
     followUpForms?: Array<FollowUpForm>;
-    formVariants: Array<ActionFormVariant>;
+    formVariants?: Array<ActionFormVariant>;
     suite?: ActionSuite;
     project?: Project;
     authors?: Array<User>;
