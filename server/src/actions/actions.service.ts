@@ -3684,6 +3684,14 @@ export class ActionsService {
     const { timingAnchorEventId: _timingAnchorEventId, ...bodyRest } = body;
     const fakeGroup = {
       ...bodyRest,
+      sendAtAbsolute: bodyRest.sendAtAbsolute ?? null,
+      sendAtSecondsFromDeadline: bodyRest.sendAtSecondsFromDeadline ?? null,
+      send_range_start: bodyRest.send_range_start ?? null,
+      send_range_end: bodyRest.send_range_end ?? null,
+      relative_range_start_seconds_from_deadline:
+        bodyRest.relative_range_start_seconds_from_deadline ?? null,
+      relative_range_end_seconds_from_deadline:
+        bodyRest.relative_range_end_seconds_from_deadline ?? null,
       id: 0,
       name: "Tentative Reminder Group",
       memberActionEvent: event,
