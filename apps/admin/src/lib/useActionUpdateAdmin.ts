@@ -1,0 +1,133 @@
+import {
+  actionsFindOneUpdateAdmin,
+  actionsNotifyUpdateAdmin,
+  actionsPublishUpdateNowAdmin,
+  actionsUnpublishUpdateAdmin,
+  actionsUpdateUpdateAdmin,
+  type AdminActionUpdateDto,
+  type UpdateActionUpdateDto,
+} from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import {
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { milliseconds } from "date-fns";
+import { useCallback } from "react";
+import {
+  useDisplayOnlySchemaSave,
+  type DisplayOnlySchemaSaveBody,
+} from "./useDisplayOnlySchemaSave";
+import { useStoreQueryData } from "./usePatchQueryData";
+
+export const HELD_POLL_MS = milliseconds({ seconds: 15 });
+
+/** One admin action update and its writes. A `null` id fetches nothing, and
+ * the writes throw then. Every write refreshes the action, whose `updates` the
+ * dashboard's updates tab lists. */
+export function useActionUpdateAdmin(id: number | null) {
+  const queryClient = useQueryClient();
+  const storeQueryData = useStoreQueryData();
+
+  const query = useQuery({
+    queryKey: queryKeys.actionUpdateAdmin(id),
+    queryFn:
+      id === null
+        ? skipToken
+        : () =>
+            actionsFindOneUpdateAdmin({
+              path: { id },
+              throwOnError: true,
+            }).then((r) => r.data),
+    // The server retries a held update each minute, so its banner follows
+    // those retries instead of showing the reason from before a fix.
+    refetchInterval: ({ state }) =>
+      state.data?.notificationHeldReason ? HELD_POLL_MS : false,
+  });
+
+  const invalidateAction = useCallback(
+    (actionId: number) =>
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.actionAdmin(actionId),
+      }),
+    [queryClient],
+  );
+
+  const store = useCallback(
+    async (saved: AdminActionUpdateDto) => {
+      await storeQueryData(queryKeys.actionUpdateAdmin(saved.id), saved);
+      await invalidateAction(saved.actionId);
+    },
+    [storeQueryData, invalidateAction],
+  );
+
+  const requireId = useCallback(() => {
+    if (id === null) throw new Error("No action update to change");
+    return id;
+  }, [id]);
+
+  const update = useMutation({
+    mutationFn: (body: UpdateActionUpdateDto) =>
+      actionsUpdateUpdateAdmin({
+        path: { id: requireId() },
+        body,
+        throwOnError: true,
+      }).then((r) => r.data),
+    onSuccess: store,
+  });
+
+  const notify = useMutation({
+    mutationFn: () =>
+      actionsNotifyUpdateAdmin({
+        path: { id: requireId() },
+        throwOnError: true,
+      }).then((r) => r.data),
+    onSuccess: store,
+  });
+
+  const publishNow = useMutation({
+    mutationFn: () =>
+      actionsPublishUpdateNowAdmin({
+        path: { id: requireId() },
+        throwOnError: true,
+      }).then((r) => r.data),
+    onSuccess: store,
+  });
+
+  const unpublish = useMutation({
+    mutationFn: () =>
+      actionsUnpublishUpdateAdmin({
+        path: { id: requireId() },
+        throwOnError: true,
+      }).then((r) => r.data),
+    onSuccess: store,
+  });
+
+  const saveSchema = useDisplayOnlySchemaSave({
+    ownerLabel: "Updates",
+    save: useCallback(
+      (body: DisplayOnlySchemaSaveBody) =>
+        actionsUpdateUpdateAdmin({ path: { id: requireId() }, body }),
+      [requireId],
+    ),
+    refetch: useCallback(
+      () => actionsFindOneUpdateAdmin({ path: { id: requireId() } }),
+      [requireId],
+    ),
+    onSaved: useCallback(
+      (saved: AdminActionUpdateDto) => void store(saved),
+      [store],
+    ),
+  });
+
+  return {
+    query,
+    update,
+    notify,
+    publishNow,
+    unpublish,
+    saveSchema,
+  };
+}

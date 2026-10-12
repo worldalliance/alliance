@@ -7,16 +7,12 @@ import { R } from "@alliance/common/result";
 import { run } from "@alliance/common/run";
 import {
   actionsFindOneAdmin,
-  actionsFindOneUpdateAdmin,
-  actionsNotifyUpdateAdmin,
-  actionsPublishUpdateNowAdmin,
-  actionsUnpublishUpdateAdmin,
-  actionsUpdateUpdateAdmin,
   ActionUpdateNotifyType,
   type ActionEventDto,
   type ActionFormVariantsListDto,
   type AdminActionUpdateDto,
 } from "@alliance/shared/client";
+import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
@@ -45,12 +41,9 @@ import {
   ACTION_UPDATE_NOTIFY_TYPE_LABELS,
   ACTION_UPDATE_NOTIFY_TYPES,
 } from "../lib/actionUpdateNotifyTypes";
-import {
-  useDisplayOnlySchemaSave,
-  type DisplayOnlySchemaSaveBody,
-} from "../lib/useDisplayOnlySchemaSave";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
 import { useFormVariantsAdmin } from "../lib/useFormVariantsAdmin";
-import { useRefreshWhileHeld } from "../lib/useRefreshWhileHeld";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 
 const tabs = ["details", "content"] as const;
@@ -94,9 +87,18 @@ const ActionUpdatePage: React.FC = () => {
   const [selectedTab, onTabChange] = useSearchParamTab(tabs, "content");
 
   const actionId = Number(actionIdParam);
-  const updateId = Number(updateIdParam);
+  const parsedUpdateId = Number(updateIdParam);
+  const updateId = isNaN(parsedUpdateId) ? null : parsedUpdateId;
 
-  const [update, setUpdate] = useState<AdminActionUpdateDto | null>(null);
+  const {
+    query,
+    update: updateMutation,
+    notify,
+    publishNow,
+    unpublish,
+    saveSchema,
+  } = useActionUpdateAdmin(updateId);
+  const update = query.data;
   const [events, setEvents] = useState<ActionEventDto[]>([]);
   const [actionTaskForm, setActionTaskForm] = useState<ActionTaskForm>({
     status: ActionFormStatus.Loading,
@@ -106,49 +108,36 @@ const ActionUpdatePage: React.FC = () => {
     variantFormIdsOf,
   );
   const [form, setForm] = useState<ActionUpdateForm | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [notifying, setNotifying] = useState(false);
-  const [changingVisibility, setChangingVisibility] = useState(false);
+  const [formSource, setFormSource] = useState<AdminActionUpdateDto | null>(
+    null,
+  );
+  const fillForm = useCallback((source: AdminActionUpdateDto) => {
+    setFormSource(source);
+    setForm(formOf(source));
+  }, []);
+  const saving = updateMutation.isPending;
+  const notifying = notify.isPending;
+  const changingVisibility = publishNow.isPending || unpublish.isPending;
   const [error, setError] = useState<string | null>(null);
+
+  // A copy cached by an earlier visit may be stale, and saving a form filled
+  // from it would write those stale details back. A newer copy refills a form
+  // with no edits, so someone else's change never reads as an unsaved edit.
+  const formEdited =
+    formSource !== null &&
+    JSON.stringify(form) !== JSON.stringify(formOf(formSource));
+  if (
+    update &&
+    query.isFetchedAfterMount &&
+    !query.isError &&
+    update !== formSource &&
+    (formSource?.id !== update.id || !formEdited)
+  ) {
+    fillForm(update);
+  }
 
   const { tags: availableTags } = useTagsAdmin();
   const savedForm = useMemo(() => update && formOf(update), [update]);
-  useRefreshWhileHeld(update, setUpdate);
-
-  useEffect(() => {
-    if (isNaN(updateId)) {
-      setError("Invalid update id");
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const response = await actionsFindOneUpdateAdmin({
-          path: { id: updateId },
-        });
-        if (cancelled) return;
-        if (!response.data) {
-          setError("Update not found");
-          return;
-        }
-        setUpdate(response.data);
-        setForm(formOf(response.data));
-      } catch (err) {
-        if (!cancelled) {
-          setError("Failed to load update");
-          console.error(err);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [updateId]);
 
   useEffect(() => {
     if (isNaN(actionId)) return;
@@ -190,28 +179,33 @@ const ActionUpdatePage: React.FC = () => {
     [actionTaskForm, variantFormIds.data, variantFormIds.isError],
   );
 
+  const saveDetails = updateMutation.mutateAsync;
   const handleSubmitDetails = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (!form) return;
-      setSaving(true);
       setError(null);
       try {
-        const response = await actionsUpdateUpdateAdmin({
-          path: { id: updateId },
-          body: detailsBody(form),
-        });
-        if (!response.data) throw new Error("Update failed");
-        setUpdate(response.data);
-        setForm(formOf(response.data));
+        fillForm(await saveDetails(detailsBody(form)));
       } catch (err) {
         setError("Failed to save update");
         console.error(err);
-      } finally {
-        setSaving(false);
       }
     },
-    [form, updateId],
+    [form, saveDetails, fillForm],
+  );
+
+  const writeAndRefill = useCallback(
+    async (write: () => Promise<AdminActionUpdateDto>, fallback: string) => {
+      setError(null);
+      try {
+        fillForm(await write());
+      } catch (err) {
+        setError(adminRefusalMessage(err, fallback));
+        console.error(err);
+      }
+    },
+    [fillForm],
   );
 
   const handleNotify = useCallback(
@@ -223,100 +217,29 @@ const ActionUpdatePage: React.FC = () => {
       ) {
         return;
       }
-      setNotifying(true);
-      setError(null);
-      try {
-        const response = await actionsNotifyUpdateAdmin({
-          path: { id: updateId },
-        });
-        if (!response.data) {
-          const message = response.error?.message;
-          throw new Error(
-            (Array.isArray(message) ? message.join("; ") : message) ??
-              "Failed to send the notification",
-          );
-        }
-        setUpdate(response.data);
-        setForm(formOf(response.data));
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to send the notification",
-        );
-        console.error(err);
-      } finally {
-        setNotifying(false);
-      }
+      await writeAndRefill(
+        notify.mutateAsync,
+        "Failed to send the notification",
+      );
     },
-    [updateId],
-  );
-
-  const changeVisibility = useCallback(
-    async (
-      call: () => ReturnType<typeof actionsUnpublishUpdateAdmin>,
-      fallbackError: string,
-    ) => {
-      setChangingVisibility(true);
-      setError(null);
-      try {
-        const response = await call();
-        if (!response.data) {
-          const message = response.error?.message;
-          throw new Error(
-            (Array.isArray(message) ? message.join("; ") : message) ??
-              fallbackError,
-          );
-        }
-        setUpdate(response.data);
-        setForm(formOf(response.data));
-      } catch (err) {
-        setError(err instanceof Error ? err.message : fallbackError);
-        console.error(err);
-      } finally {
-        setChangingVisibility(false);
-      }
-    },
-    [],
+    [writeAndRefill, notify.mutateAsync],
   );
 
   const handleUnpublish = useCallback(
     () =>
-      changeVisibility(
-        () => actionsUnpublishUpdateAdmin({ path: { id: updateId } }),
-        "Failed to unpublish the update",
-      ),
-    [changeVisibility, updateId],
+      writeAndRefill(unpublish.mutateAsync, "Failed to unpublish the update"),
+    [writeAndRefill, unpublish.mutateAsync],
   );
 
   const handlePublishNow = useCallback(
     () =>
-      changeVisibility(
-        () => actionsPublishUpdateNowAdmin({ path: { id: updateId } }),
-        "Failed to publish the update",
-      ),
-    [changeVisibility, updateId],
+      writeAndRefill(publishNow.mutateAsync, "Failed to publish the update"),
+    [writeAndRefill, publishNow.mutateAsync],
   );
 
-  const saveSchema = useCallback(
-    (body: DisplayOnlySchemaSaveBody) =>
-      actionsUpdateUpdateAdmin({ path: { id: updateId }, body }),
-    [updateId],
-  );
+  const formFilled = updateId !== null && formSource?.id === updateId;
 
-  const refetchUpdate = useCallback(
-    () => actionsFindOneUpdateAdmin({ path: { id: updateId } }),
-    [updateId],
-  );
-
-  const handleSaveSchema = useDisplayOnlySchemaSave({
-    ownerLabel: "Updates",
-    save: saveSchema,
-    refetch: refetchUpdate,
-    onSaved: setUpdate,
-  });
-
-  if (loading) {
+  if (updateId !== null && !formFilled && !query.isError) {
     return (
       <div className="p-8">
         <title>Action Update - Admin</title>
@@ -325,11 +248,17 @@ const ActionUpdatePage: React.FC = () => {
     );
   }
 
-  if (!update || !form || !savedForm) {
+  if (!formFilled || !update || !form || !savedForm) {
     return (
       <div className="p-8">
         <title>Action Update - Admin</title>
-        <p className="text-red-500">{error ?? "Update not found"}</p>
+        <p className="text-red-500">
+          {updateId === null
+            ? "Invalid update id"
+            : thrownStatus(query.error) === 404
+              ? "Update not found"
+              : "Failed to load update"}
+        </p>
         <button
           onClick={() => navigate(`/actions/${actionId}?tab=updates`)}
           className="mt-4 px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
@@ -632,7 +561,7 @@ const ActionUpdatePage: React.FC = () => {
       initialSnapshotId={update.schemaSnapshotId}
       title={update.title}
       setFormId={() => {}}
-      onSave={handleSaveSchema}
+      onSave={saveSchema}
     />
   ) : (
     // Editing content this build can't parse would save back whatever the
