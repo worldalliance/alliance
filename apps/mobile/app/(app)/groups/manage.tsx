@@ -6,12 +6,9 @@ import {
 import { errorMessage } from "@alliance/common/errorMessage";
 import { forCount, withCount } from "@alliance/common/plural";
 import {
-  communityAcceptCommunityInvite,
   communityCreateCommunity,
-  communityGetIncomingCommunityInvitesForUser,
   communityJoinPublicCommunity,
   communityLeave,
-  communityRejectCommunityInvite,
 } from "@alliance/shared/client";
 import type {
   CommunityDto,
@@ -28,11 +25,12 @@ import {
 import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
 import { useGroupAssignment } from "@alliance/shared/lib/useGroupAssignment";
+import { useIncomingCommunityInvites } from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { usePublicCommunities } from "@alliance/shared/lib/usePublicCommunities";
 import { router } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -78,9 +76,14 @@ export default function GroupManageScreen() {
     isError: publicCommunitiesError,
     refetch: refetchPublicCommunities,
   } = usePublicCommunities();
-  const [pendingInvites, setPendingInvites] = useState<CommunityInviteDto[]>(
-    [],
-  );
+  const {
+    pendingCommunityInvites: pendingInvites,
+    didFail: didInvitesFail,
+    isFetching: invitesFetching,
+    refetch: refetchInvites,
+    acceptCommunityInvite,
+    declineCommunityInvite,
+  } = useIncomingCommunityInvites();
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newCommunity, setNewCommunity] =
@@ -121,36 +124,14 @@ export default function GroupManageScreen() {
     [publicCommunities],
   );
 
-  // Public communities come from the shared usePublicCommunities cache; own
-  // communities come from useMyCommunities. Only invites are fetched here.
-  const loadInvites = useCallback(async () => {
-    try {
-      const invitesRes = await communityGetIncomingCommunityInvitesForUser();
-      if (invitesRes.data) {
-        setPendingInvites(
-          invitesRes.data.filter((i) => i.status === "invitee_pending"),
-        );
-      } else {
-        setPendingInvites([]);
-      }
-    } catch (err) {
-      console.error("Failed to load invites", err);
-      setError("Unable to load communities. Please try again.");
-    }
-  }, []);
-
   // Refresh everything the screen shows after a membership change.
   const refreshAll = useCallback(async () => {
     await Promise.all([
       refreshCommunities(),
       refetchPublicCommunities(),
-      loadInvites(),
+      refetchInvites(),
     ]);
-  }, [refreshCommunities, refetchPublicCommunities, loadInvites]);
-
-  useEffect(() => {
-    void loadInvites();
-  }, [loadInvites]);
+  }, [refreshCommunities, refetchPublicCommunities, refetchInvites]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -328,13 +309,7 @@ export default function GroupManageScreen() {
       const run = async () => {
         setAcceptingInviteId(invite.id);
         try {
-          const res = await communityAcceptCommunityInvite({
-            path: { inviteId: invite.id },
-          });
-          if (!res.response.ok) {
-            throw new Error("accept failed");
-          }
-          await refreshAll();
+          await acceptCommunityInvite(invite.id);
           await refreshUser();
         } catch (e) {
           console.error("Failed to accept invite", e);
@@ -352,20 +327,14 @@ export default function GroupManageScreen() {
         void run();
       }
     },
-    [memberCommunities, refreshAll, refreshUser],
+    [memberCommunities, acceptCommunityInvite, refreshUser],
   );
 
   const handleDeclineInvite = useCallback(
     async (inviteId: number) => {
       setDecliningInviteId(inviteId);
       try {
-        const res = await communityRejectCommunityInvite({
-          path: { inviteId },
-        });
-        if (!res.response.ok) {
-          throw new Error("decline failed");
-        }
-        await refreshAll();
+        await declineCommunityInvite(inviteId);
       } catch (e) {
         console.error("Failed to decline invite", e);
         Alert.alert("Error", "Unable to decline this invite.");
@@ -373,7 +342,7 @@ export default function GroupManageScreen() {
         setDecliningInviteId(null);
       }
     },
-    [refreshAll],
+    [declineCommunityInvite],
   );
 
   const inviteRowBusy =
@@ -552,6 +521,16 @@ export default function GroupManageScreen() {
                   </View>
                 )}
               </View>
+
+              {didInvitesFail && (
+                <View className="bg-white">
+                  <LoadFailed
+                    message="Couldn't load your group invites."
+                    onRetry={() => void refetchInvites()}
+                    retrying={invitesFetching}
+                  />
+                </View>
+              )}
 
               {pendingInvites.length > 0 ? (
                 <View className="p-4 bg-white">
