@@ -3038,32 +3038,7 @@ export class UserService {
 
     const userNotifs: CreateNotifParams[] = [];
     for (const { user, community } of assignments) {
-      // Remove user from old communities (except ones they lead)
-      await Promise.all(
-        loadedUserCommunities(user)
-          .filter((oldCommunity) => !user.leaderOfIdSet.has(oldCommunity.id))
-          .map((oldCommunity) =>
-            this.communityService.removeUserFromCommunityAndRefreshConversation(
-              {
-                user,
-                community: oldCommunity,
-                removeAsLeader: false,
-                notifForLeader: ({ leader }) => ({
-                  user: leader,
-                  category: NotificationCategory.MemberLeftCommunity,
-                  message: notifMessage`${member(user)} left your group (${group(oldCommunity)})`,
-                  destination: communityDestination(oldCommunity.id),
-                  webAppLocation: groupUrl({
-                    tab: "members",
-                    communityId: oldCommunity.id,
-                  }),
-                  associatedUsers: [user],
-                }),
-                saveAsPendingCommunity: false,
-              },
-            ),
-          ),
-      );
+      await this.communityService.leaveOtherCommunitiesOnJoin(user);
 
       // Refetch community to get up-to-date users list
       const freshCommunity = await this.communityRepository.findOneOrFail({

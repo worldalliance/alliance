@@ -2,19 +2,18 @@ import {
   acceptsAutomatedMember,
   getMemberCount,
   isCommunityLedBy,
+  memberJoinedCommunityNotif,
 } from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
-  communityDestination,
   group,
   member,
-  type NotifMessage,
   notifMessage,
   userDestination,
 } from "src/notifs/notification-content";
 import type { CreateNotifParams } from "src/notifs/notifs.service";
-import { groupUrl, profileUrl } from "src/search/approutes";
+import { profileUrl } from "src/search/approutes";
 import {
   loadedUserCommunities,
   ReferralSource,
@@ -72,23 +71,6 @@ export const REFERRAL_COMMUNITY_SELECTORS: Record<
   [ReferralSource.None]: () => null,
 };
 
-export function memberJoinedCommunityNotif(
-  leader: User,
-  user: User,
-  community: Community,
-  message: NotifMessage,
-  associatedUsers: User[] = [user],
-): CreateNotifParams {
-  return {
-    user: leader,
-    category: NotificationCategory.MemberJoinedCommunity,
-    message,
-    destination: communityDestination(community.id),
-    webAppLocation: groupUrl({ tab: "members", communityId: community.id }),
-    associatedUsers,
-  };
-}
-
 export function buildNotifForLeaderWithReferrer(
   user: User,
   community: Community,
@@ -98,20 +80,20 @@ export function buildNotifForLeaderWithReferrer(
   return ({ leader }) => {
     if (leader.id === referredBy.id) {
       setReferrerNotified(true);
-      return memberJoinedCommunityNotif(
+      return memberJoinedCommunityNotif({
         leader,
-        user,
+        joiner: user,
         community,
-        notifMessage`${member(user)} joined the Alliance and your group (${group(community)})`,
-      );
+        message: notifMessage`${member(user)} joined the Alliance and your group (${group(community)})`,
+      });
     }
-    return memberJoinedCommunityNotif(
+    return memberJoinedCommunityNotif({
       leader,
-      user,
+      joiner: user,
       community,
-      notifMessage`${member(user)} (invited by ${member(referredBy)}) joined the Alliance and your group (${group(community)})`,
-      [user, referredBy],
-    );
+      message: notifMessage`${member(user)} (invited by ${member(referredBy)}) joined the Alliance and your group (${group(community)})`,
+      associatedUsers: [user, referredBy],
+    });
   };
 }
 
