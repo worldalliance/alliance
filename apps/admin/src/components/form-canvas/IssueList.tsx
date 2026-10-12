@@ -131,6 +131,12 @@ export type SourceCheck = {
   onRetry: () => void;
 };
 
+export type LoadFailure = {
+  message: string;
+  retryLabel: string;
+  onRetry: () => void;
+};
+
 /**
  * The header's count of what blocks Save and Preview, opening a list that
  * links each issue to where it's repaired. `gate` names the action that
@@ -139,12 +145,14 @@ export type SourceCheck = {
 export function IssueList({
   rows,
   sources,
+  loadFailure,
   open,
   gate,
   onOpenChange,
 }: {
   rows: readonly IssueRow[];
   sources: SourceCheck;
+  loadFailure: LoadFailure | null;
   open: boolean;
   gate: IssueGate | null;
   onOpenChange: (open: boolean) => void;
@@ -153,7 +161,7 @@ export function IssueList({
   const rootRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const count = rows.length;
+  const count = rows.length + (loadFailure ? 1 : 0);
 
   useEffect(() => {
     if (open && gate) panelRef.current?.focus();
@@ -271,6 +279,23 @@ export function IssueList({
             </p>
           )}
           <ul className="space-y-1">
+            {loadFailure && (
+              <li className="rounded-md px-2 py-1 text-sm">
+                <span className="block font-medium text-gray-900">
+                  The form didn&apos;t load
+                </span>
+                <span className="block text-red-700">
+                  {loadFailure.message}
+                </span>
+                <button
+                  type="button"
+                  onClick={loadFailure.onRetry}
+                  className="mt-1 rounded border border-red-300 px-1.5 py-0.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                >
+                  {loadFailure.retryLabel}
+                </button>
+              </li>
+            )}
             {rows.map(({ location, message, onGo }, index) => {
               const body = (
                 <>

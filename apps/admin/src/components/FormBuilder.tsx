@@ -599,8 +599,8 @@ export function FormBuilder(props: FormBuilderProps) {
     theirsSnapshotId: number;
   } | null>(null);
   // Editors that keep their own copy of a formula or its text only follow it
-  // through their own edits, so a schema loaded from a conflict or from
-  // pasted JSON, or restored by undo or redo, remounts them.
+  // through their own edits, so a schema loaded from the server, a conflict,
+  // or pasted JSON, or restored by undo or redo, remounts them.
   const [schemaLoads, setSchemaLoads] = useState(0);
   const [confirmUnresolvedVariables, setConfirmUnresolvedVariables] =
     useState(false);
@@ -673,6 +673,7 @@ export function FormBuilder(props: FormBuilderProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [issueList, setIssueList] = useState<{ gate: IssueGate | null } | null>(
     null,
   );
@@ -876,6 +877,7 @@ export function FormBuilder(props: FormBuilderProps) {
               form.schema as unknown as FormSchema,
             );
             loadSchema(nextSchema);
+            reloadEditors();
             const selectOnLoad = selectOnLoadRef.current;
             selectOnLoadRef.current = null;
             if (selectOnLoad !== null) {
@@ -907,7 +909,9 @@ export function FormBuilder(props: FormBuilderProps) {
     displayOnly,
     formId,
     initialSchema,
+    loadAttempt,
     loadSchema,
+    reloadEditors,
     selectOnLoadRef,
     showErrorToast,
   ]);
@@ -1478,10 +1482,14 @@ export function FormBuilder(props: FormBuilderProps) {
     [canvasGroups, expressions, schema, sourceForms, validation],
   );
   const issueIndex = useMemo(() => indexIssues(issues), [issues]);
-  const blockingIssues = issues.length;
+  const blockingIssues = issues.length + (loadError ? 1 : 0);
+  const retryLoad = () => setLoadAttempt((count) => count + 1);
+  const retryLoadLabel = hasUnsavedChanges
+    ? "Discard edits and retry"
+    : "Retry";
 
   const handleSaveForm = useCallback(() => {
-    if (blockingIssues > 0 && !sourceFormsLoading) {
+    if (loadError !== null || (issues.length > 0 && !sourceFormsLoading)) {
       setIssueList({ gate: IssueGate.Save });
       return;
     }
@@ -1491,7 +1499,8 @@ export function FormBuilder(props: FormBuilderProps) {
     }
     void saveForm();
   }, [
-    blockingIssues,
+    issues.length,
+    loadError,
     saveForm,
     sourceFormsLoading,
     unresolvedVariableReferences,
@@ -2248,6 +2257,15 @@ export function FormBuilder(props: FormBuilderProps) {
                         failed: failedSourceForms,
                         onRetry: retrySourceForms,
                       }}
+                      loadFailure={
+                        loadError === null
+                          ? null
+                          : {
+                              message: loadError,
+                              retryLabel: retryLoadLabel,
+                              onRetry: retryLoad,
+                            }
+                      }
                       open={issueList !== null}
                       gate={issueList?.gate ?? null}
                       onOpenChange={(open) =>
@@ -2385,6 +2403,13 @@ export function FormBuilder(props: FormBuilderProps) {
                     <span className="block sm:inline">
                       Error loading form: {loadError}
                     </span>
+                    <button
+                      type="button"
+                      onClick={retryLoad}
+                      className="ml-2 rounded border border-red-300 px-1.5 py-0.5 text-xs font-medium hover:bg-red-50"
+                    >
+                      {retryLoadLabel}
+                    </button>
                   </div>
                 )}
                 {saveError && (

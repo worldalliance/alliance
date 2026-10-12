@@ -17,7 +17,10 @@ import {
   selectElement,
   settings,
 } from "../lib/testing/formCanvas";
-import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
+import {
+  renderFormBuilder,
+  renderSavedFormBuilder,
+} from "../lib/testing/renderFormBuilder";
 
 afterEach(cleanup);
 
@@ -60,7 +63,18 @@ const readsForm9: FormSchema = {
 
 const writes: string[] = [];
 const failing = new Set<string>();
-const savedForms: Record<string, FormSchema> = { 5: twoPages([text("b")]) };
+const readsA = {
+  inputs: { input1: { kind: "field", fieldId: "a" } },
+  formula: "input1",
+} as const;
+const withVariable = (name: string): FormSchema => ({
+  ...twoPages([]),
+  variables: [{ name, ...readsA }],
+});
+const savedForms: Record<string, FormSchema> = {
+  5: twoPages([text("b")]),
+  7: withVariable("stored"),
+};
 
 const api = serveApi(
   routes(
@@ -322,6 +336,131 @@ describe("FormBuilder issues", () => {
 
     fireEvent.mouseDown(canvas().getByText("Label a"));
     expect(screen.queryByRole("region", { name: "Issues" })).toBeNull();
+  });
+
+  it("offers to retry a form that didn't load, and blocks Save meanwhile", async () => {
+    failing.add("5");
+    renderSavedFormBuilder(5, "/");
+    await screen.findByRole("button", { name: "1 issue" });
+    edit();
+    await save();
+    expect(issueList().getByText("Fix 1 issue before saving")).toBeTruthy();
+    expect(issueList().getByText("The form didn't load")).toBeTruthy();
+    expect(writes).toEqual([]);
+
+    failing.clear();
+    const retry = issueList().getByRole("button", {
+      name: "Discard edits and retry",
+    });
+    retry.focus();
+    await act(async () => {
+      fireEvent.click(retry);
+    });
+    await waitFor(() => expect(issueButton()).toBeNull());
+    expect(outline().getByRole("button", { name: "Two" })).toBeTruthy();
+    expect(document.activeElement).toBe(
+      screen.getByRole("region", { name: "Issues" }),
+    );
+  });
+
+  it("retries a form that didn't load from its error", async () => {
+    failing.add("5");
+    renderSavedFormBuilder(5, "/");
+    await screen.findByText(/^Error loading form/);
+
+    failing.clear();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    });
+    await waitFor(() => expect(issueButton()).toBeNull());
+    expect(screen.queryByText(/^Error loading form/)).toBeNull();
+  });
+
+  it("clears what the editors held for the blank form once a retry loads it", async () => {
+    jest.spyOn(window, "confirm").mockReturnValue(true);
+    failing.add("7");
+    renderSavedFormBuilder(7, "/");
+    await screen.findByRole("button", { name: "1 issue" });
+    fireEvent.click(screen.getByRole("button", { name: "Edit form JSON" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Form JSON" }), {
+      target: { value: JSON.stringify(withVariable("mine")) },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    const confirm = await screen.findByRole("button", {
+      name: "Apply id and kind changes",
+    });
+    await act(async () => {
+      fireEvent.click(confirm);
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Variables/ }));
+    fireEvent.change(screen.getByLabelText("Sample answer for input1"), {
+      target: { value: "Oslo" },
+    });
+
+    failing.clear();
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Discard edits and retry" }),
+      );
+    });
+    await waitFor(() => expect(issueButton()).toBeNull());
+    expect(screen.getByDisplayValue("stored")).toBeTruthy();
+    expect(
+      screen.getByLabelText<HTMLInputElement>("Sample answer for input1").value,
+    ).toBe("");
+  });
+
+  it("blocks Preview on a form that didn't load", async () => {
+    failing.add("5");
+    renderSavedFormBuilder(5, "/");
+    await screen.findByRole("button", { name: "1 issue" });
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+
+    expect(issueList().getByText("Fix 1 issue before previewing")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+  });
+
+  it("blocks Save on a form that didn't load while a formula's source form loads", async () => {
+    failing.add("5");
+    api.alsoServing({
+      "GET /tasks/slug/:id": ({ params }) =>
+        params.id === "9"
+          ? new Promise<Response>(() => {})
+          : new Response(null, { status: 500 }),
+    });
+    renderSavedFormBuilder(5, "/");
+    await screen.findByRole("button", { name: "1 issue" });
+    fireEvent.click(screen.getByRole("button", { name: "Edit form JSON" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Form JSON" }), {
+      target: {
+        value: JSON.stringify({
+          pages: [{ id: "page-1", fields: [] }],
+          outputViews: [],
+          aggregateViews: [],
+          variables: [
+            {
+              name: "scores",
+              inputs: {
+                input1: {
+                  kind: "sourceField",
+                  sourceFormId: 9,
+                  fieldId: "score",
+                },
+              },
+              formula: "input1.length",
+            },
+          ],
+        }),
+      },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    });
+    edit();
+    await save();
+
+    expect(issueList().getByText("The form didn't load")).toBeTruthy();
+    expect(writes).toEqual([]);
   });
 
   it("lets Preview open while the questions of a form a formula reads load", () => {
