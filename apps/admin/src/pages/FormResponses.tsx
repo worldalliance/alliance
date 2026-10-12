@@ -18,8 +18,15 @@ const FormResponses: React.FC = () => {
     isFormIdValid ? numericFormId : undefined,
   );
 
-  const { form, responses, sidsToUserMap, loading, error, refresh } =
-    useFormResponsesAdmin(isFormIdValid ? numericFormId : undefined);
+  const {
+    form,
+    responses,
+    sidsToUserMap,
+    referralsError,
+    loading,
+    error,
+    refresh,
+  } = useFormResponsesAdmin(isFormIdValid ? numericFormId : undefined);
   const refusalToast = useRefusalToast();
 
   // Memoised for its identity, not its cost: `FormResponsesView` keys a memo
@@ -46,6 +53,7 @@ const FormResponses: React.FC = () => {
       }
       withdrawnUserMap={withdrawnUserMap}
       sidsToUserMap={sidsToUserMap}
+      referralsError={referralsError}
       exportFileBase={form?.title || `form-${form?.id ?? numericFormId}`}
       snapshotTargets={snapshotTargets}
     />

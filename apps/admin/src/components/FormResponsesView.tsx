@@ -167,6 +167,7 @@ export type FormResponsesViewProps = {
   onRefresh: () => void;
   withdrawnUserMap: Map<number, ActionWithdrawalDto>;
   sidsToUserMap: Record<string, ProfileDto>;
+  referralsError?: string | null;
   /** Base filename (without extension) for the CSV export. */
   exportFileBase: string;
   /**
@@ -198,6 +199,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   onRefresh,
   withdrawnUserMap,
   sidsToUserMap,
+  referralsError,
   exportFileBase,
   snapshotTargets,
   variantOptions,
@@ -687,6 +689,9 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
                 <p className="text-sm text-gray-500">
                   {withCount(total, "response")}
                 </p>
+                {referralsError && (
+                  <p className="text-sm text-red-500">{referralsError}</p>
+                )}
               </div>
               <div className="flex items-center gap-2 ml-3">
                 <Button

@@ -89,6 +89,12 @@ export function useFormResponsesAdmin(formId: number | undefined) {
     error: failure
       ? adminRefusalMessage(failure, "Failed to load form responses")
       : null,
+    referralsError: shareLinks.isLoadingError
+      ? adminRefusalMessage(
+          shareLinks.error,
+          "Failed to load share links, so invited respondents show as anonymous",
+        )
+      : null,
     refresh,
   };
 }
