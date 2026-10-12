@@ -1,0 +1,118 @@
+import type { ActionEventDto, ActionStatus } from "@alliance/shared/client";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  getDayOfYear,
+  isTuesday,
+  milliseconds,
+  previousTuesday,
+  startOfDay,
+} from "date-fns";
+import { MemoryRouter } from "react-router";
+import type { TimelineReminder } from "../lib/actionTimelineData";
+import ActionTimeline from "./ActionTimeline";
+
+afterEach(cleanup);
+
+const daysFromNow = (days: number) =>
+  new Date(Date.now() + milliseconds({ days })).toISOString();
+
+const timelineEvent = (
+  id: number,
+  days: number,
+  newStatus: ActionStatus,
+): ActionEventDto => ({
+  id,
+  title: `Event ${id}`,
+  description: "",
+  newStatus,
+  date: daysFromNow(days),
+  suiteManaged: false,
+});
+
+const finished = {
+  id: 1,
+  name: "Finished action",
+  status: "completed" as const,
+  events: [
+    timelineEvent(1, -60, "planned"),
+    timelineEvent(2, -50, "completed"),
+  ],
+};
+const running = {
+  id: 2,
+  name: "Running action",
+  status: "member_action" as const,
+  events: [timelineEvent(3, -10, "member_action")],
+};
+
+const timelineReminder = (
+  id: number,
+  overrides: Partial<TimelineReminder>,
+): TimelineReminder => ({
+  id,
+  name: `Reminder ${id}`,
+  timingMode: "absolute",
+  send_range_start: null,
+  send_range_end: null,
+  sendAtAbsolute: null,
+  sendAtSecondsFromDeadline: null,
+  memberActionEvent: {
+    ...timelineEvent(3, -10, "member_action"),
+    updatedAt: daysFromNow(-10),
+  },
+  ...overrides,
+});
+
+const renderTimeline = (
+  props: Partial<React.ComponentProps<typeof ActionTimeline>> = {},
+) =>
+  render(
+    <MemoryRouter>
+      <ActionTimeline actions={[finished, running]} {...props} />
+    </MemoryRouter>,
+  );
+
+describe("ActionTimeline", () => {
+  it("says so when there is nothing to chart", () => {
+    renderTimeline({ actions: [] });
+
+    expect(
+      screen.getByText("No actions with timeline events found."),
+    ).toBeTruthy();
+  });
+
+  it("scrolls a week's header to the first action with a bar that week", () => {
+    const { container } = renderTimeline();
+    const today = startOfDay(new Date());
+    const weekStart = isTuesday(today) ? today : previousTuesday(today);
+    const weekNumber = Math.ceil(getDayOfYear(weekStart) / 7) + 1;
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `Scroll to actions active in week ${weekNumber}`,
+      }),
+    );
+
+    expect(container.querySelector(".overflow-auto")?.scrollTop).toBe(64);
+  });
+
+  it("reports which reminder was clicked", () => {
+    const onReminderClick = jest.fn();
+    renderTimeline({
+      onReminderClick,
+      reminders: [
+        timelineReminder(7, { sendAtAbsolute: daysFromNow(-5) }),
+        timelineReminder(8, {
+          timingMode: "within_range",
+          send_range_start: daysFromNow(-4),
+          send_range_end: daysFromNow(-2),
+        }),
+      ],
+    });
+
+    fireEvent.click(screen.getByTitle("Reminder: Reminder 7"));
+    fireEvent.click(screen.getByTitle("Reminder window: Reminder 8"));
+
+    expect(onReminderClick.mock.calls).toEqual([[7], [8]]);
+  });
+});
