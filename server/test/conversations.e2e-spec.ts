@@ -692,6 +692,62 @@ describe("ConversationController (e2e)", () => {
         socket.disconnect();
       }
     }, 5000);
+
+    it("tells the other members about a new message", async () => {
+      const { user: member, token: memberToken } = await createUserAndToken();
+
+      const createResponse = await request(ctx.app.getHttpServer())
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ title: "Unread Chat", participantIds: [member.id] })
+        .expect(201);
+
+      const conversationId = createResponse.body.id;
+      const socket = io(`${await ctx.app.getUrl()}/messaging/overview`, {
+        auth: { token: memberToken },
+        transports: ["websocket"],
+        reconnection: false,
+      });
+
+      try {
+        await new Promise<void>((resolve, reject) => {
+          socket.on("connect", () => resolve());
+          socket.on("connect_error", reject);
+        });
+        type UnreadPayload = {
+          conversationId: number;
+          unreadCount: number;
+          lastMessage?: { id: number; body: string };
+          conversation: { lastMessage?: { id: number } };
+        };
+        const unread = new Promise<UnreadPayload>((resolve) => {
+          socket.on("conversation:unread", (payload: UnreadPayload) => {
+            if (
+              payload.conversationId === conversationId &&
+              payload.lastMessage?.body === "Hello members"
+            ) {
+              resolve(payload);
+            }
+          });
+        });
+
+        const sendResponse = await request(ctx.app.getHttpServer())
+          .post("/messaging/messages")
+          .set("Authorization", `Bearer ${ctx.accessToken}`)
+          .send({ conversationId, body: "Hello members" })
+          .expect(201);
+
+        const payload = await unread;
+        expect(payload.unreadCount).toBe(1);
+        expect(payload.lastMessage).toMatchObject({
+          id: sendResponse.body.id,
+          body: "Hello members",
+        });
+        expect(payload.conversation.lastMessage?.id).toBe(sendResponse.body.id);
+      } finally {
+        socket.disconnect();
+      }
+    }, 5000);
   });
 
   describe("community chat members", () => {
