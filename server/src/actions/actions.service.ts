@@ -3057,22 +3057,28 @@ export class ActionsService {
     });
   }
 
-  async archive(id: number): Promise<ParsedAction> {
-    const action = await this.actionRepository.findOneOrFail({
-      where: { id },
-      relations: { reviewers: true, events: true },
-    });
-    action.archived = true;
-    return parseAction(await this.actionRepository.save(action));
+  archive(id: number): Promise<ParsedAction> {
+    return this.setArchived({ id, archived: true });
   }
 
-  async unarchive(id: number): Promise<ParsedAction> {
-    const action = await this.actionRepository.findOneOrFail({
-      where: { id },
-      relations: { reviewers: true, events: true },
-    });
-    action.archived = false;
-    return parseAction(await this.actionRepository.save(action));
+  unarchive(id: number): Promise<ParsedAction> {
+    return this.setArchived({ id, archived: false });
+  }
+
+  // update() rather than save(): saving the loaded action would also diff its
+  // relations, unlinking any follow-up form added since the load.
+  private async setArchived(params: {
+    id: number;
+    archived: boolean;
+  }): Promise<ParsedAction> {
+    const { id, archived } = params;
+    await this.actionRepository.update(id, { archived });
+    return parseAction(
+      await this.actionRepository.findOneOrFail({
+        where: { id },
+        relations: { reviewers: true, events: true, followUpForms: true },
+      }),
+    );
   }
 
   async createActionUpdate(
