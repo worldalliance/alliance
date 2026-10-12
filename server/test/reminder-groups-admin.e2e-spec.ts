@@ -130,6 +130,47 @@ describe("Admin reminder groups (e2e)", () => {
     ]);
   });
 
+  it("returns null for the timing columns its timing mode leaves unset", async () => {
+    const unsetTimingColumns = {
+      sendAtSecondsFromDeadline: null,
+      send_range_start: null,
+      send_range_end: null,
+      relative_range_start_seconds_from_deadline: null,
+      relative_range_end_seconds_from_deadline: null,
+    };
+    const created = await createGroup({
+      ...groupBody,
+      cohortType: ReminderCohortType.AllUncompleted,
+    }).expect(201);
+    expect(created.body).toMatchObject({
+      sendAtAbsolute: groupBody.sendAtAbsolute.toISOString(),
+      ...unsetTimingColumns,
+    });
+
+    const listed = await request(ctx.app.getHttpServer())
+      .get(`/actions/reminderGroupsForEvent/${event.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+    expect(
+      listed.body.find((group: { id: number }) => group.id === created.body.id),
+    ).toMatchObject(unsetTimingColumns);
+  });
+
+  it("accepts a within-range group's preview without its other timing columns", async () => {
+    await request(ctx.app.getHttpServer())
+      .post(`/actions/events/${event.id}/checkTentativePlans`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .send({
+        ...groupBody,
+        cohortType: ReminderCohortType.AllUncompleted,
+        timingMode: ReminderGroupTimingMode.WithinRange,
+        sendAtAbsolute: undefined,
+        send_range_start: new Date(Date.now()),
+        send_range_end: new Date(Date.now() + milliseconds({ days: 2 })),
+      })
+      .expect(201);
+  });
+
   it.each([
     ["without a cohort type", {}],
     ["with an unknown cohort type", { cohortType: "everyone" }],
