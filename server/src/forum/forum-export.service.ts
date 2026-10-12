@@ -1,6 +1,7 @@
 import { publicDisplayName } from "@alliance/common/displayName";
 import { isUploadKey } from "@alliance/common/image-src";
 import { withCount } from "@alliance/common/plural";
+import { postBylineAuthors } from "@alliance/common/postAuthors";
 import { R } from "@alliance/common/result";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Inject, Injectable, Logger } from "@nestjs/common";
@@ -153,11 +154,7 @@ function renderPostPage(input: PageInput): string {
   const { post } = input;
   const threads = input.comments.filter(isWorthRendering);
   const commentCount = flattenComments(threads).length;
-  const authors = post.authors?.length
-    ? post.authors
-    : post.author
-      ? [post.author]
-      : [];
+  const authors = postBylineAuthors(post);
   const byline = [
     authors.map(publicDisplayName).join(", "),
     format(post.visibleAt ?? post.createdAt, "d MMMM yyyy"),

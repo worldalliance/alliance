@@ -1,8 +1,9 @@
+import { postBylineAuthors } from "@alliance/common/postAuthors";
 import { PostDto, forumFindAllPosts } from "@alliance/shared/client";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { router } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -130,15 +131,19 @@ export default function ForumScreen() {
                         )}
                       </View>
                       <View className="flex-row items-center flex-wrap gap-x-2">
-                        <View className="inline flex-row items-center w-full overflow-hidden">
-                          <ProfileImage
-                            pfp={post.author.profilePicture}
-                            size="small"
-                            className="mr-1 inline"
-                          />
-                          <Text className="text-sm">
-                            {post.author.displayName}
-                          </Text>
+                        <View className="inline flex-row flex-wrap items-center w-full">
+                          {postBylineAuthors(post).map((author, i) => (
+                            <Fragment key={author.id}>
+                              <ProfileImage
+                                pfp={author.profilePicture}
+                                size="small"
+                                className={cn("mr-1 inline", i > 0 && "ml-2")}
+                              />
+                              <Text className="text-sm">
+                                {author.displayName}
+                              </Text>
+                            </Fragment>
+                          ))}
                           <Text className="text-sm text-zinc-500">
                             {` posted ${formatTime(new Date(post.createdAt), {
                               addSuffix: true,

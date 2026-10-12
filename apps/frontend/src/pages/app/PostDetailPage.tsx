@@ -1,3 +1,4 @@
+import { isPostAuthor, postBylineAuthors } from "@alliance/common/postAuthors";
 import { formatFullDateTime } from "@alliance/shared/lib/dateFormatters";
 import { useForumPost } from "@alliance/shared/lib/useForumPost";
 import { formatTime } from "@alliance/shared/lib/utils";
@@ -77,9 +78,7 @@ const PostDetailPage: React.FC = () => {
     );
   }
 
-  const amAuthor =
-    post.author.id === user?.id ||
-    post.authors?.some((author) => author.id === user?.id);
+  const amAuthor = isPostAuthor(post, user?.id);
 
   return (
     <div className="w-full">
@@ -113,40 +112,38 @@ const PostDetailPage: React.FC = () => {
               </h1>
             </div>
             <div className="flex flex-row gap-x-2 mb-2 sm:mb-4 mt-1 items-center text-base flex-wrap">
-              {(post.authors?.length ? post.authors : [post.author]).map(
-                (author) => (
-                  <React.Fragment key={author.id}>
-                    <Link
-                      to={href("/member/:id", {
-                        id: author.id.toString(),
-                      })}
-                      className="flex items-center"
+              {postBylineAuthors(post).map((author) => (
+                <React.Fragment key={author.id}>
+                  <Link
+                    to={href("/member/:id", {
+                      id: author.id.toString(),
+                    })}
+                    className="flex items-center"
+                  >
+                    <div className="hidden sm:inline">
+                      <AvatarProfile
+                        pfp={author.profilePicture}
+                        size="small"
+                        className="mr-1.5"
+                      />
+                    </div>
+                    <div className="inline sm:hidden">
+                      <AvatarProfile
+                        pfp={author.profilePicture}
+                        size="small"
+                        className="mr-1.5"
+                      />
+                    </div>
+                    <UserDisplayName
+                      staff={author.staff}
+                      ambassador={author.ambassador}
+                      grouplead={author.isCommunityLeader}
                     >
-                      <div className="hidden sm:inline">
-                        <AvatarProfile
-                          pfp={author.profilePicture}
-                          size="small"
-                          className="mr-1.5"
-                        />
-                      </div>
-                      <div className="inline sm:hidden">
-                        <AvatarProfile
-                          pfp={author.profilePicture}
-                          size="small"
-                          className="mr-1.5"
-                        />
-                      </div>
-                      <UserDisplayName
-                        staff={author.staff}
-                        ambassador={author.ambassador}
-                        grouplead={author.isCommunityLeader}
-                      >
-                        {author.displayName}
-                      </UserDisplayName>
-                    </Link>
-                  </React.Fragment>
-                ),
-              )}
+                      {author.displayName}
+                    </UserDisplayName>
+                  </Link>
+                </React.Fragment>
+              ))}
               <span className="text-zinc-500">
                 {formatTime(new Date(post.createdAt), {
                   addSuffix: true,

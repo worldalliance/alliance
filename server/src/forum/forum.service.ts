@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+import { isPostAuthor } from "@alliance/common/postAuthors";
 import {
   BadRequestException,
   ConflictException,
@@ -548,10 +549,7 @@ export class ForumService {
   ): Promise<ParsedPost> {
     const post = await this.findOnePost(id, userId);
 
-    if (
-      post.authorId !== userId &&
-      !post.authors?.some((author) => author.id === userId)
-    ) {
+    if (!isPostAuthor(post, userId)) {
       throw new NotFoundException("You can only edit your own posts");
     }
 
@@ -577,10 +575,7 @@ export class ForumService {
   async removePost(id: number, userId: number): Promise<void> {
     const post = await this.findOnePost(id, userId);
 
-    if (
-      post.authorId !== userId &&
-      !post.authors?.some((author) => author.id === userId)
-    ) {
+    if (!isPostAuthor(post, userId)) {
       throw new NotFoundException("You can only delete your own posts");
     }
 
