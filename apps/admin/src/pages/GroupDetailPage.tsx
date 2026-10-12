@@ -6,16 +6,10 @@ import {
   validateCommunitySettings,
 } from "@alliance/common/community";
 import { withCount } from "@alliance/common/plural";
-import {
-  actionsGetCommunityMemberInfoAdmin,
-  communityGetMemberContactInfoAdmin,
-} from "@alliance/shared/client";
 import type {
   CommunityDto,
-  CommunityMemberContactInfoDto,
   CreateCommunityDto,
   UpdateCommunityDto,
-  UserActionRelationDetailDto,
   UserActionSummaryDto,
 } from "@alliance/shared/client/types.gen";
 import { getMemberCount } from "@alliance/shared/lib/communityUtils";
@@ -33,8 +27,8 @@ import {
 } from "@alliance/sharedweb/ui/ToastProvider";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
-import { isEqual, keyBy } from "es-toolkit";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { isEqual } from "es-toolkit";
+import React, { useCallback, useMemo, useState } from "react";
 import { href, Link, useNavigate, useParams } from "react-router";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
@@ -44,6 +38,7 @@ import {
   useDeleteCommunityAdmin,
   useUpdateCommunityAdmin,
 } from "../lib/useCommunitiesAdmin";
+import { useCommunityMemberInfoAdmin } from "../lib/useCommunityMemberInfoAdmin";
 import { useCompletedAllActiveActions } from "../lib/useCompletedAllActiveActions";
 import { useRefusalToast } from "../lib/useRefusalToast";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
@@ -56,6 +51,8 @@ const detailsOf = (community: CommunityDto): CreateCommunityDto => ({
   allowMemberInvites: community.allowMemberInvites,
   allowStaffAssignments: community.allowStaffAssignments,
 });
+
+const noActions: UserActionSummaryDto[] = [];
 
 const CommunityDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -106,52 +103,20 @@ const CommunityDetailPage: React.FC = () => {
 
   const memberCount = community ? getMemberCount(community) : 0;
 
-  const [userActionRelations, setUserActionRelations] = useState<Record<
-    number,
-    UserActionRelationDetailDto[]
-  > | null>(null);
-
-  const [actionSummaries, setActionSummaries] = useState<
-    UserActionSummaryDto[]
-  >([]);
+  const {
+    progress,
+    contactInfo,
+    refresh: refreshMemberInfo,
+  } = useCommunityMemberInfoAdmin(
+    Number.isNaN(communityId) ? null : communityId,
+  );
+  const actionSummaries = progress.data?.actionSummaries ?? noActions;
+  const userActionRelations = progress.data?.userActionRelations ?? null;
+  const memberInfoError = progress.error ?? contactInfo.error;
   const maxActionsPerWeek = useMaxActionsPerWeek({
-    actionSummaries: actionSummaries,
+    actionSummaries,
     userActionRelations,
   });
-
-  const [memberContactInfo, setMemberContactInfo] = useState<Record<
-    number,
-    CommunityMemberContactInfoDto
-  > | null>(null);
-
-  const refreshUserActionRelations = useCallback(() => {
-    actionsGetCommunityMemberInfoAdmin({ path: { communityId } }).then(
-      (resp) => {
-        if (resp.data) {
-          // Most recent actions first
-          resp.data.actions.reverse();
-
-          setActionSummaries(resp.data.actions);
-          const relationMap: Record<number, UserActionRelationDetailDto[]> =
-            Object.fromEntries(
-              resp.data.users.map((user) => [user.userId, user.relations]),
-            );
-          setUserActionRelations(relationMap);
-        }
-      },
-    );
-    communityGetMemberContactInfoAdmin({ path: { communityId } }).then(
-      (resp) => {
-        if (resp.data) {
-          setMemberContactInfo(
-            keyBy(resp.data, (contactInfo) => contactInfo.id),
-          );
-        }
-      },
-    );
-  }, [communityId]);
-
-  useEffect(() => refreshUserActionRelations(), [refreshUserActionRelations]);
 
   // A refetch reseeds the form only while it is untouched, so it brings in
   // newer details without overwriting unsaved edits.
@@ -358,7 +323,7 @@ const CommunityDetailPage: React.FC = () => {
         default:
           throw new Error(`unknown action: ${action satisfies never}`);
       }
-      void refreshUserActionRelations();
+      void refreshMemberInfo();
     },
     [
       changeMembership,
@@ -368,7 +333,7 @@ const CommunityDetailPage: React.FC = () => {
       community,
       reportError,
       setAddingLeader,
-      refreshUserActionRelations,
+      refreshMemberInfo,
     ],
   );
 
@@ -823,6 +788,14 @@ const CommunityDetailPage: React.FC = () => {
             </div>
           </Card>
         </div>
+        {memberInfoError && (
+          <p className="text-sm text-red-500" role="alert">
+            {adminRefusalMessage(
+              memberInfoError,
+              "Unable to load member details. Please try again.",
+            )}
+          </p>
+        )}
         <CommunityMembersTable
           leaders={sortedLeaders}
           members={sortedMembers}
@@ -834,7 +807,7 @@ const CommunityDetailPage: React.FC = () => {
           userActionRelations={userActionRelations ?? undefined}
           actions={actionSummaries}
           maxActionsPerWeek={maxActionsPerWeek}
-          memberContactInfo={memberContactInfo ?? undefined}
+          memberContactInfo={contactInfo.data}
           completedAllCurrentActions={completedAllCurrentActions}
           showInfoTooltip
           showContractFilter

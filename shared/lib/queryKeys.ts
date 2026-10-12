@@ -15,6 +15,12 @@ const onetimeInvitesAdminAll = () => ["userGetOnetimeInvitesAdmin"] as const;
 const formsAdminAll = () => ["formsAdmin"] as const;
 
 const projectsAdminAll = () => ["projectsAdmin"] as const;
+
+/** Prefix over a group's member progress and contact info, so a membership
+ * change refreshes both. */
+const communityMemberInfoAdminAll = (communityId: number | null) =>
+  ["communityMemberInfoAdmin", communityId] as const;
+
 const waitlistEmailPreviewAdminAll = () =>
   ["waitlistEmailAdminPreviewEmailAdmin"] as const;
 
@@ -133,6 +139,11 @@ export const queryKeys = {
   campaignsAdmin: () => ["campaignFindAllAdmin"] as const,
   clustersAdmin: () => ["clusterListAdmin"] as const,
   communitiesAdmin: () => ["communityGetCommunitiesAdmin"] as const,
+  communityMemberInfoAdminAll,
+  communityMemberInfoAdmin: (communityId: number | null) =>
+    [...communityMemberInfoAdminAll(communityId), "progress"] as const,
+  communityMemberContactInfoAdmin: (communityId: number | null) =>
+    [...communityMemberInfoAdminAll(communityId), "contactInfo"] as const,
   contractAdmin: (id: number | null) => ["contractFindOneAdmin", id] as const,
   contractsAdmin: () => ["contractAllAdmin"] as const,
   customValidatorAdmin: (id: number) =>
