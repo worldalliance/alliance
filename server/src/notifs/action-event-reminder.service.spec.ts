@@ -8,6 +8,7 @@ const group = (params: {
   suiteActionIds: number[] | undefined;
 }) =>
   ({
+    id: 4,
     useSuiteTaskCount: params.useSuiteTaskCount,
     actionSuite: {
       id: 7,
@@ -47,5 +48,14 @@ describe("groupTaskScopeActionIds", () => {
         group({ useSuiteTaskCount: true, suiteActionIds: undefined }),
       ),
     ).toThrow("actions of action suite 7 not loaded");
+  });
+
+  it("throws for a group whose member event isn't loaded", () => {
+    expect(() =>
+      groupTaskScopeActionIds({
+        ...group({ useSuiteTaskCount: false, suiteActionIds: [] }),
+        memberActionEvent: undefined,
+      }),
+    ).toThrow("memberActionEvent of reminder group 4 not loaded");
   });
 });

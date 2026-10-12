@@ -79,6 +79,7 @@ import {
 } from "../entities/action.entity";
 import { GeneralUpdate } from "../entities/general-update.entity";
 import {
+  loadedReminderGroupMemberActionEvent,
   ReminderCohortType,
   ReminderGroup,
 } from "../entities/reminder-group.entity";
@@ -1072,7 +1073,6 @@ export class ReminderGroupDto extends PickType(ReminderGroup, [
   "name",
   "timingMode",
   "actionSuite",
-  "memberActionEvent",
   "cohortType",
   "userTag",
   "users",
@@ -1093,6 +1093,10 @@ export class ReminderGroupDto extends PickType(ReminderGroup, [
   "excludeOptionalActions",
   "excludePreviouslyNotified",
 ]) {
+  @ApiProperty({ type: () => ActionEvent })
+  @Type(() => ActionEvent)
+  memberActionEvent: ActionEvent;
+
   @ApiProperty({
     description:
       "Whether the group's email uses a missed-suite keyword, so dispatch sends it as a missed-suite notice",
@@ -1105,7 +1109,7 @@ export class ReminderGroupDto extends PickType(ReminderGroup, [
     this.name = group.name;
     this.timingMode = group.timingMode;
     this.actionSuite = group.actionSuite;
-    this.memberActionEvent = group.memberActionEvent;
+    this.memberActionEvent = loadedReminderGroupMemberActionEvent(group);
     this.cohortType = group.cohortType;
     this.userTag = group.userTag;
     this.users = group.users;
