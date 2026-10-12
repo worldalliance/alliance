@@ -12,7 +12,10 @@ import {
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
 import { CreateCommentDto, UpdateCommentDto } from "src/forum/dto/comment.dto";
-import { CommentParentObject } from "src/forum/entities/comment.entity";
+import {
+  Comment,
+  CommentParentObject,
+} from "src/forum/entities/comment.entity";
 import { Post } from "src/forum/entities/post.entity";
 import {
   Notification,
@@ -1141,6 +1144,29 @@ describe("Forum (e2e)", () => {
           parentObjectType: CommentParentObject.Post,
         } satisfies CreateCommentDto)
         .expect(404);
+    });
+
+    it("refuses a reply to a deleted comment without saving it", async () => {
+      const parentId = await createReply("Deleted parent");
+      await request(ctx.app.getHttpServer())
+        .delete(`/forum/comments/${parentId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: "Reply to deleted", attachments: [] },
+          parentObjectId: testPostId,
+          parentId,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(404);
+
+      expect(
+        await ctx.dataSource.getRepository(Comment).countBy({ parentId }),
+      ).toBe(0);
     });
 
     it("should fail to create nested reply with parentId from different post", async () => {
