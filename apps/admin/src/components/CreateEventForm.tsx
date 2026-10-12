@@ -2,7 +2,6 @@ import {
   ActionDto,
   ActionEventDto,
   actionsAddEventAdmin,
-  actionsAddSuiteEventAdmin,
   ActionStatus,
   ActionSuiteDto,
   AdminActionDto,
@@ -34,8 +33,10 @@ export type CreateEventFormProps = {
   | {
       suiteMode: true;
       action: ActionDto;
-      suiteId: number;
-      setSuite: (suite: ActionSuiteDto) => void;
+      /** Resolves `null` when staff decline to move the deadline earlier. */
+      addToSuite: (
+        body: CreateActionEventDto,
+      ) => Promise<ActionSuiteDto | null>;
     }
 );
 
@@ -125,13 +126,6 @@ const CreateEventForm = (props: CreateEventFormProps) => {
     setDeadlineEventDate(change.utcValue);
   };
 
-  const addToSuite = (suiteId: number, body: CreateActionEventDto) =>
-    sendConfirmingDeadlineShortening({
-      send: (query) =>
-        actionsAddSuiteEventAdmin({ path: { suiteId }, body, query }),
-      confirm,
-    });
-
   const addToAction = (body: CreateActionEventDto) =>
     sendConfirmingDeadlineShortening({
       send: (query) =>
@@ -145,7 +139,6 @@ const CreateEventForm = (props: CreateEventFormProps) => {
     setError(null);
     setCreatingEvent(true);
 
-    let updatedSuite: ActionSuiteDto | null = null;
     try {
       const eventData = {
         ...eventForm,
@@ -160,12 +153,9 @@ const CreateEventForm = (props: CreateEventFormProps) => {
       let response;
 
       if (suiteMode) {
-        const sent = await addToSuite(props.suiteId, eventData);
-        if (!sent) return;
-        response = sent;
-        if (response.data) {
-          updatedSuite = response.data;
-        }
+        const added = await props.addToSuite(eventData);
+        if (!added) return;
+        response = { data: added, error: undefined };
       } else {
         const sent = await addToAction(eventData);
         if (!sent) return;
@@ -189,11 +179,12 @@ const CreateEventForm = (props: CreateEventFormProps) => {
 
         let officeActionEventResponse: { error?: unknown } | null;
         if (suiteMode) {
-          const sent = await addToSuite(props.suiteId, officeActionEvent);
-          if (sent?.data) {
-            updatedSuite = sent.data;
-          }
-          officeActionEventResponse = sent;
+          officeActionEventResponse = await props
+            .addToSuite(officeActionEvent)
+            .then(
+              (added) => added && {},
+              (error: unknown) => ({ error }),
+            );
         } else {
           const sent = await addToAction(officeActionEvent);
           addedOfficeActionEvent = sent?.data;
@@ -220,9 +211,6 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                 ]
               : [...action.events, addedEvent as ActionEventDto],
           });
-        }
-        if (suiteMode && updatedSuite) {
-          props.setSuite(updatedSuite);
         }
 
         if (!deadlineDeclined) {
