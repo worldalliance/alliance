@@ -216,7 +216,7 @@ export type GeneralUpdate = {
     /**
      * User IDs in the manual cohort
      */
-    manualCohortUserIds?: Array<number> | null;
+    manualCohortUserIds: Array<number> | null;
     priority: number;
     tags?: Array<Tag>;
     suites?: Array<ActionSuite>;
@@ -2261,7 +2261,7 @@ export type GeneralUpdateAdminDto = {
     /**
      * User IDs in the manual cohort
      */
-    manualCohortUserIds?: Array<number> | null;
+    manualCohortUserIds: Array<number> | null;
     priority: number;
     schema: {
         [key: string]: unknown;
@@ -2273,12 +2273,12 @@ export type GeneralUpdateAdminDto = {
 export type CreateGeneralUpdateDto = {
     name: string;
     useManualCohort: boolean;
+    startDate?: string | null;
+    endDate?: string | null;
     /**
      * User IDs in the manual cohort
      */
     manualCohortUserIds?: Array<number> | null;
-    startDate?: string | null;
-    endDate?: string | null;
     tagIds?: Array<string>;
     suiteIds?: Array<number>;
 };

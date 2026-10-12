@@ -96,8 +96,10 @@ export class GeneralUpdateAdminDto extends PickType(GeneralUpdate, [
 }
 
 export class CreateGeneralUpdateDto extends IntersectionType(
-  PickType(GeneralUpdate, ["name", "useManualCohort", "manualCohortUserIds"]),
-  PartialType(PickType(GeneralUpdate, ["startDate", "endDate"])),
+  PickType(GeneralUpdate, ["name", "useManualCohort"]),
+  PartialType(
+    PickType(GeneralUpdate, ["startDate", "endDate", "manualCohortUserIds"]),
+  ),
 ) {
   @ApiPropertyOptional({ type: String, isArray: true })
   @IsOptional()

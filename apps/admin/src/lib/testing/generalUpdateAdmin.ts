@@ -13,6 +13,7 @@ export const generalUpdateAdmin = (
   startDate: null,
   endDate: null,
   useManualCohort: false,
+  manualCohortUserIds: null,
   priority: 0,
   schema: {},
   tags: [],
