@@ -1,9 +1,5 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  forumExportPostAdmin,
-  forumGetPostsForAdmin,
-  forumUpdatePostSettingsAdmin,
-} from "@alliance/shared/client";
+import { forumExportPostAdmin } from "@alliance/shared/client";
 import type { PostDto } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -14,6 +10,8 @@ import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { Download, Plus, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { href, useNavigate, useParams } from "react-router";
+import { postsLoadError, usePostsAdmin } from "../lib/usePostsAdmin";
+import { useRefusalToast } from "../lib/useRefusalToast";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
 
 type TagDraft = { id?: number; name: string };
@@ -45,10 +43,8 @@ const PostsManagementPage: React.FC = () => {
   const { postId } = useParams();
   const navigate = useNavigate();
 
-  const [posts, setPosts] = useState<PostDto[]>([]);
+  const { posts, updateSettings } = usePostsAdmin();
   const [selectedPost, setSelectedPost] = useState<PostDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const {
     data: users = [],
     isLoading: usersLoading,
@@ -65,26 +61,11 @@ const PostsManagementPage: React.FC = () => {
     null,
   );
   const { success, error: pushError, confirm } = useToast();
+  const refusalToast = useRefusalToast();
 
   useEffect(() => {
-    const loadPosts = async () => {
-      setLoading(true);
-      try {
-        const response = await forumGetPostsForAdmin();
-        setPosts(response.data ?? []);
-      } catch (err) {
-        console.error("Failed to load posts", err);
-        pushError("Failed to load posts");
-      } finally {
-        setLoading(false);
-      }
-    };
-    void loadPosts();
-  }, [pushError]);
-
-  useEffect(() => {
-    if (postId && posts.length > 0) {
-      const match = posts.find((p) => p.id === Number(postId));
+    if (postId && posts.data) {
+      const match = posts.data.find((p) => p.id === Number(postId));
       if (match && selectedPost?.id !== match.id) {
         setSelectedPost(match);
         setExpertSelection(match.expertIds ?? []);
@@ -96,7 +77,7 @@ const PostsManagementPage: React.FC = () => {
         setTagDrafts(toTagDrafts(match));
       }
     }
-  }, [postId, posts, selectedPost?.id]);
+  }, [postId, posts.data, selectedPost?.id]);
 
   const handleDownload = async (post: PostDto) => {
     setDownloadingPostId(post.id);
@@ -173,10 +154,9 @@ const PostsManagementPage: React.FC = () => {
       });
       if (!confirmed) return;
     }
-    setSaving(true);
     try {
-      const { data: updatedPost, error } = await forumUpdatePostSettingsAdmin({
-        path: { id: selectedPost.id },
+      const updatedPost = await updateSettings.mutateAsync({
+        id: selectedPost.id,
         body: {
           expertIds: expertSelection,
           authorIds: authorSelection,
@@ -192,28 +172,23 @@ const PostsManagementPage: React.FC = () => {
             : undefined,
         },
       });
-      if (error) {
-        console.error("Failed to save", error);
-        pushError(errorMessage({ error, fallback: "Failed to save settings" }));
-        return;
-      }
-      if (updatedPost) {
-        setSelectedPost(updatedPost);
-        setPosts((prev) =>
-          prev.map((p) => (p.id === updatedPost.id ? updatedPost : p)),
-        );
-        setTagDrafts(toTagDrafts(updatedPost));
-      }
+      setSelectedPost(updatedPost);
+      setTagDrafts(toTagDrafts(updatedPost));
       success("Post updated", "Settings saved successfully");
     } catch (err) {
-      console.error("Failed to save", err);
-      pushError("Failed to save settings");
-    } finally {
-      setSaving(false);
+      refusalToast(err, "Failed to save settings");
     }
   };
 
-  if (loading) {
+  if (posts.isError && !posts.data) {
+    return (
+      <div className="p-6 pt-20">
+        <p className="text-sm text-red-500">{postsLoadError(posts.error)}</p>
+      </div>
+    );
+  }
+
+  if (posts.isPending) {
     return (
       <div className="p-6 pt-20">
         <p className="text-sm text-zinc-500">Loading posts...</p>
@@ -236,8 +211,8 @@ const PostsManagementPage: React.FC = () => {
             <div className="flex flex-col gap-4">
               <h2 className="font-semibold text-lg">Posts</h2>
               <div className="flex flex-col gap-2  overflow-y-auto">
-                {posts.length ? (
-                  posts.map((post) => (
+                {posts.data.length ? (
+                  posts.data.map((post) => (
                     <button
                       key={post.id}
                       type="button"
@@ -445,10 +420,10 @@ const PostsManagementPage: React.FC = () => {
                     type="button"
                     color={ButtonColor.Blue}
                     onClick={handleSave}
-                    disabled={saving}
+                    disabled={updateSettings.isPending}
                     className="self-start"
                   >
-                    {saving ? "Saving..." : "Save Changes"}
+                    {updateSettings.isPending ? "Saving..." : "Save Changes"}
                   </Button>
                 </>
               ) : (

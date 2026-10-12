@@ -160,6 +160,7 @@ export const queryKeys = {
     [...onetimeInvitesAdminAll(), page, limit] as const,
   onetimeInviteMemberStatsAdmin: () =>
     ["userGetOnetimeInviteMemberStatsAdmin"] as const,
+  postsAdmin: () => ["forumGetPostsForAdmin"] as const,
   projectsAdminAll,
   projectsAdmin: () => [...projectsAdminAll(), "list"] as const,
   projectAdmin: (projectId: number) =>
