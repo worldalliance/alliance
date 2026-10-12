@@ -16,18 +16,12 @@ import { type AccountDeletedPayload, UserEvents } from "src/user/user.events";
 import { DetachedWorkTracker } from "src/utils/detached-work";
 import type { Repository } from "typeorm";
 import { ConversationService } from "./conversation.service";
-import { MessageDto } from "./dto/messaging.dto";
 import {
   loadedParticipantUser,
   Participant,
 } from "./entities/participant.entity";
 import { disconnectUserSockets, socketAuthMiddleware } from "./gateway.utils";
 import { MessagingEvents } from "./messaging.events";
-
-interface MessageCreatedPayload {
-  conversationId: number;
-  message: MessageDto;
-}
 
 @WebSocketGateway({
   cors: {
@@ -50,23 +44,15 @@ export class MessagingOverviewGateway
   private readonly socketUsers = new Map<string, number>();
   private readonly detachedWork = new DetachedWorkTracker();
 
-  private readonly onMessageCreated = (payload: MessageCreatedPayload) => {
-    this.detachedWork.track(
-      this.handleMessageCreated(payload).catch((error: Error) =>
-        this.logger.warn(
-          `Failed to emit unread updates for conversation ${payload.conversationId}: ${error.message}`,
-        ),
-      ),
-    );
-  };
-
-  private readonly onConversationUpdated = (payload: {
+  private readonly onConversationChanged = ({
+    conversationId,
+  }: {
     conversationId: number;
   }) => {
     this.detachedWork.track(
-      this.handleConversationUpdated(payload).catch((error: Error) =>
+      this.emitUnread(conversationId).catch((error: Error) =>
         this.logger.warn(
-          `Failed to emit updates for conversation ${payload.conversationId}: ${error.message}`,
+          `Failed to emit unread updates for conversation ${conversationId}: ${error.message}`,
         ),
       ),
     );
@@ -90,11 +76,14 @@ export class MessagingOverviewGateway
     @InjectRepository(Participant)
     private readonly participantRepository: Repository<Participant>,
   ) {
-    this.eventEmitter.on(MessagingEvents.MessageCreated, this.onMessageCreated);
+    this.eventEmitter.on(
+      MessagingEvents.MessageCreated,
+      this.onConversationChanged,
+    );
     this.eventEmitter.on(UserEvents.AccountDeleted, this.onAccountDeleted);
     this.eventEmitter.on(
       MessagingEvents.ConversationUpdated,
-      this.onConversationUpdated,
+      this.onConversationChanged,
     );
   }
 
@@ -102,11 +91,11 @@ export class MessagingOverviewGateway
     this.eventEmitter.off(UserEvents.AccountDeleted, this.onAccountDeleted);
     this.eventEmitter.off(
       MessagingEvents.MessageCreated,
-      this.onMessageCreated,
+      this.onConversationChanged,
     );
     this.eventEmitter.off(
       MessagingEvents.ConversationUpdated,
-      this.onConversationUpdated,
+      this.onConversationChanged,
     );
     await this.detachedWork.drain();
   }
@@ -131,43 +120,9 @@ export class MessagingOverviewGateway
     this.socketUsers.delete(client.id);
   }
 
-  private async handleMessageCreated(payload: MessageCreatedPayload) {
+  private async emitUnread(conversationId: number) {
     const participants = await this.participantRepository.find({
-      where: { conversation: { id: payload.conversationId } },
-      relations: { user: true },
-    });
-
-    await Promise.all(
-      participants.map(async (participant) => {
-        const userId = loadedParticipantUser(participant).id;
-
-        try {
-          const conversation =
-            await this.conversationService.getConversationForUser(
-              payload.conversationId,
-              userId,
-            );
-
-          this.server.to(this.userRoom(userId)).emit("conversation:unread", {
-            conversationId: payload.conversationId,
-            unreadCount: conversation.unreadCount,
-            lastMessage: payload.message,
-            conversation,
-          });
-        } catch (error) {
-          this.logger.warn(
-            `Failed to emit unread update to user ${userId} for conversation ${payload.conversationId}: ${
-              (error as Error).message ?? error
-            }`,
-          );
-        }
-      }),
-    );
-  }
-
-  private async handleConversationUpdated(payload: { conversationId: number }) {
-    const participants = await this.participantRepository.find({
-      where: { conversation: { id: payload.conversationId } },
+      where: { conversation: { id: conversationId } },
       relations: { user: true },
     });
 
@@ -177,19 +132,19 @@ export class MessagingOverviewGateway
         try {
           const conversation =
             await this.conversationService.getConversationForUser(
-              payload.conversationId,
+              conversationId,
               userId,
             );
 
           this.server.to(this.userRoom(userId)).emit("conversation:unread", {
-            conversationId: payload.conversationId,
+            conversationId,
             unreadCount: conversation.unreadCount,
-            conversation,
             lastMessage: conversation.lastMessage,
+            conversation,
           });
         } catch (error) {
           this.logger.warn(
-            `Failed to emit conversation update to user ${userId} for conversation ${payload.conversationId}: ${
+            `Failed to emit unread update to user ${userId} for conversation ${conversationId}: ${
               (error as Error).message ?? error
             }`,
           );
