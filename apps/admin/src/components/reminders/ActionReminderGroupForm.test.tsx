@@ -1,5 +1,6 @@
 import { client } from "@alliance/shared/client/client.gen";
 import { makeEvent } from "@alliance/shared/lib/testFixtures";
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import {
   cleanup,
   fireEvent,
@@ -7,7 +8,12 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { ReactElement } from "react";
 import ActionReminderGroupForm from "./ActionReminderGroupForm";
+import {
+  defaultPushMessage,
+  defaultTextMessage,
+} from "./defaultReminderContents";
 
 const { baseUrl, fetch } = client.getConfig();
 
@@ -56,11 +62,13 @@ const mockFetch = (
   return fetchMock;
 };
 
+const renderForm = (ui: ReactElement) => render(ui, queryWrapper());
+
 const plan = { scheduledFor: new Date(2030, 0, 1).toISOString() };
 
 it("previews the group with its suite", async () => {
   const fetchMock = mockFetch();
-  render(formElement(7));
+  renderForm(formElement(7));
 
   await waitFor(() => expect(tentativeRequests(fetchMock)).toHaveLength(1));
   expect(await tentativeRequests(fetchMock)[0].clone().json()).toMatchObject({
@@ -70,7 +78,7 @@ it("previews the group with its suite", async () => {
 
 it("sends one preview request for a burst of changes", async () => {
   const fetchMock = mockFetch();
-  const { rerender } = render(formElement(7));
+  const { rerender } = renderForm(formElement(7));
   await new Promise((resolve) => setTimeout(resolve, 100));
   rerender(formElement(8));
   await new Promise((resolve) => setTimeout(resolve, 100));
@@ -97,7 +105,7 @@ it("ignores a preview response superseded by a newer change", async () => {
     }
     return Promise.resolve(Response.json([plan], { status: 201 }));
   });
-  const { rerender } = render(formElement(7));
+  const { rerender } = renderForm(formElement(7));
   await waitFor(() => expect(tentativeRequests(fetchMock)).toHaveLength(1));
 
   rerender(formElement(8));
@@ -116,7 +124,7 @@ it("holds submit until the recipient count is current", async () => {
         })
       : Promise.resolve(Response.json([], { status: 201 })),
   );
-  render(formElement(7));
+  renderForm(formElement(7));
   const submit = screen.getByRole("button", { name: "Create Reminders" });
 
   expect(submit).toHaveProperty("disabled", true);
@@ -136,7 +144,7 @@ it("holds submit after a failed preview until a retry succeeds", async () => {
     if (failing) throw new TypeError("Failed to fetch");
     return Response.json([plan], { status: 201 });
   });
-  render(formElement(7));
+  renderForm(formElement(7));
   const submit = screen.getByRole("button", { name: "Create Reminders" });
 
   expect(await screen.findByText("Failed to fetch")).toBeTruthy();
@@ -160,7 +168,7 @@ it("replaces a failed preview's error while it recounts", async () => {
     }
     return new Promise<Response>(() => {});
   });
-  const { rerender } = render(formElement(7));
+  const { rerender } = renderForm(formElement(7));
   expect(await screen.findByText("Failed to fetch")).toBeTruthy();
 
   rerender(formElement(8));
@@ -171,7 +179,7 @@ it("replaces a failed preview's error while it recounts", async () => {
 
 it("clears a fixed validation error once the preview succeeds", async () => {
   mockFetch(async () => Response.json([plan], { status: 201 }));
-  render(
+  renderForm(
     <ActionReminderGroupForm
       suiteId={7}
       waitForRecipientCount
@@ -215,7 +223,7 @@ it("clears a fixed validation error once the preview succeeds", async () => {
 
 it("holds submit again when a change outdates the count", async () => {
   mockFetch(async () => Response.json([plan], { status: 201 }));
-  const { rerender } = render(formElement(7));
+  const { rerender } = renderForm(formElement(7));
   const submit = screen.getByRole("button", { name: "Create Reminders" });
   await waitFor(() => expect(submit).toHaveProperty("disabled", false));
 
@@ -230,10 +238,109 @@ it("lets a form that needs no count submit while counting", async () => {
       ? new Promise<Response>(() => {})
       : Promise.resolve(Response.json([], { status: 201 })),
   );
-  render(formElement(7, false));
+  renderForm(formElement(7, false));
 
   await waitFor(() => expect(tentativeRequests(fetchMock)).toHaveLength(1));
   expect(
     screen.getByRole("button", { name: "Create Reminders" }),
   ).toHaveProperty("disabled", false);
+});
+
+it("previews the text message for the chosen task count", async () => {
+  const fetchMock = mockFetch(async (request) =>
+    request.url.endsWith("/actions/previewTextMessage/3")
+      ? Response.json({ text: "Rendered text" })
+      : Response.json([], { status: 201 }),
+  );
+  renderForm(formElement(7));
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Preview Text (2 tasks)" }),
+  );
+
+  expect(await screen.findByText("Rendered text")).toBeTruthy();
+  const [previewRequest] = fetchMock.mock.calls
+    .map(([request]) => request)
+    .filter((request) => request.url.includes("/previewTextMessage/"));
+  expect(await previewRequest.clone().json()).toMatchObject({ taskCount: 2 });
+});
+
+it("shows why an email preview failed", async () => {
+  mockFetch(async (request) =>
+    request.url.endsWith("/actions/previewEmailHtml/3")
+      ? Response.json({ message: "Unknown keyword" }, { status: 400 })
+      : Response.json([], { status: 201 }),
+  );
+  renderForm(formElement(7));
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Preview Email (1 task)" }),
+  );
+
+  expect(await screen.findByText("Unknown keyword")).toBeTruthy();
+});
+
+it("previews the push message", async () => {
+  mockFetch(async (request) => {
+    if (!request.url.endsWith("/actions/previewTextMessage/3")) {
+      return Response.json([], { status: 201 });
+    }
+    const { textMessage } = await request.json();
+    return Response.json({ text: `Rendered: ${textMessage}` });
+  });
+  renderForm(formElement(7));
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Preview Push (1 task)" }),
+  );
+
+  expect(
+    await screen.findByText(`Rendered: ${defaultPushMessage}`),
+  ).toBeTruthy();
+});
+
+it("keeps a save error visible over a failed preview", async () => {
+  mockFetch(async (request) =>
+    request.url.endsWith("/actions/previewEmailHtml/3")
+      ? Response.json({ message: "Unknown keyword" }, { status: 400 })
+      : Response.json([], { status: 201 }),
+  );
+  renderForm(
+    <ActionReminderGroupForm
+      {...formElement(7).props}
+      serverError="Reminder name taken"
+    />,
+  );
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Preview Email (1 task)" }),
+  );
+
+  expect(await screen.findByText("Unknown keyword")).toBeTruthy();
+  expect(screen.getByText("Reminder name taken")).toBeTruthy();
+});
+
+it("switches the previewed task count and closes the preview", async () => {
+  mockFetch(async (request) => {
+    if (!request.url.endsWith("/actions/previewTextMessage/3")) {
+      return Response.json([], { status: 201 });
+    }
+    const { taskCount } = await request.json();
+    return Response.json({ text: `Rendered for ${taskCount}` });
+  });
+  renderForm(formElement(7));
+  const previewTwo = screen.getByRole("button", {
+    name: "Preview Text (2 tasks)",
+  });
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Preview Text (1 task)" }),
+  );
+  expect(await screen.findByText("Rendered for 1")).toBeTruthy();
+  fireEvent.click(previewTwo);
+  expect(await screen.findByText("Rendered for 2")).toBeTruthy();
+  fireEvent.click(previewTwo);
+
+  expect(screen.queryByText("Rendered for 2")).toBeNull();
+  expect(screen.getByDisplayValue(defaultTextMessage)).toBeTruthy();
 });
