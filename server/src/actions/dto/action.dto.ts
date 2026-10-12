@@ -672,13 +672,13 @@ export class CreateActionDto extends IntersectionType(
     "shouldCompleteAfterDeadline",
     "isForumParticipationAction",
     "forumParticipationPostId",
-    "forumParticipationIncludeChildren",
     "computedAutocompleteAt",
     "customStatType",
     "customStatLabel",
     "customStatValue",
     "customStatGoal",
   ]),
+  PartialType(PickType(ActionDto, ["forumParticipationIncludeChildren"])),
 ) {
   @ApiPropertyOptional({
     type: Number,

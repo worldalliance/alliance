@@ -15,6 +15,7 @@ export const exampleMemberTaskAction: ActionWithAwayStatus = {
   isContractSigningAction: false,
   onboarding: false,
   isForumParticipationAction: false,
+  forumParticipationIncludeChildren: false,
   timeEstimate: 5,
   visibilityMode: "public",
   optional: false,
