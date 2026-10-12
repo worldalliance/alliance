@@ -10,6 +10,7 @@ import {
 import {
   canvasOrder,
   heading,
+  inNarrowWindow,
   insertElement,
   openSection,
   selectElement,
@@ -54,6 +55,14 @@ const schema: FormSchema = {
 
 const button = (name: string) =>
   screen.getByRole<HTMLButtonElement>("button", { name });
+
+/** Confirms deleting Town, which Pet's visibility reads. */
+const confirmDeletion = () =>
+  fireEvent.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: "Delete question",
+    }),
+  );
 
 describe("the form canvas", () => {
   it("starts on the first page's settings", () => {
@@ -397,6 +406,7 @@ describe("the form canvas", () => {
     const remove = button("Delete question");
     remove.focus();
     fireEvent.click(remove);
+    confirmDeletion();
     expect(heading()).toBe("Page settings");
     expect(
       screen
@@ -524,11 +534,7 @@ describe("the form canvas", () => {
 });
 
 describe("the form canvas in a narrow window", () => {
-  // Other tests declare `window.happyDOM` without `setViewport`.
-  const happyDOMKey: string = "happyDOM";
-  const happyDOM = Reflect.get(window, happyDOMKey);
-  beforeEach(() => happyDOM.setViewport({ width: 800 }));
-  afterEach(() => happyDOM.setViewport({ width: 1024 }));
+  inNarrowWindow();
 
   it("opens settings as a drawer that Escape closes, returning focus", () => {
     renderFormBuilder(schema);
@@ -591,6 +597,7 @@ describe("the form canvas in a narrow window", () => {
     const remove = button("Delete question");
     remove.focus();
     fireEvent.click(remove);
+    confirmDeletion();
     expect(heading()).toBe("Page settings");
     const drawer = screen.getByRole("complementary", { name: "Settings" });
     expect(drawer.contains(document.activeElement)).toBe(true);

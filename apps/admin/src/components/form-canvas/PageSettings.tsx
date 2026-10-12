@@ -1,3 +1,4 @@
+import { PlaceKind } from "@alliance/common/forms/form-conditions";
 import type { AnyField, Page } from "@alliance/common/forms/form-schema";
 import { Copy, FileJson, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -10,6 +11,7 @@ import {
 } from "./SettingsActions";
 import { SettingsSidebar } from "./SettingsSidebar";
 import { ALL_SECTIONS, SectionPanels, SidebarSection } from "./sidebarSections";
+import { DELETION } from "./useGuardedDeletion";
 
 /** The selected page's settings, around its editor. */
 export function PageSettingsSidebar({
@@ -23,6 +25,7 @@ export function PageSettingsSidebar({
   onEditJson,
   onCopy,
   onDelete,
+  dependencies,
   children,
 }: {
   pageId: string;
@@ -37,6 +40,7 @@ export function PageSettingsSidebar({
   onCopy: () => void;
   /** Null where the page can't be deleted. */
   onDelete: (() => void) | null;
+  dependencies: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -54,6 +58,7 @@ export function PageSettingsSidebar({
       onSection={onSection}
       focusPending={focusPending}
       onFocused={onFocused}
+      dependencies={dependencies}
       actions={
         <SettingsActions idLabel="Page ID" id={pageId}>
           <SettingsAction Icon={FileJson} onClick={onEditJson}>
@@ -68,7 +73,7 @@ export function PageSettingsSidebar({
             disabled={!onDelete}
             onClick={() => onDelete?.()}
           >
-            Delete page
+            {DELETION[PlaceKind.Page].action}
           </SettingsAction>
         </SettingsActions>
       }

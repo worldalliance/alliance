@@ -1,6 +1,6 @@
+import { collectSourceFormIds } from "@alliance/common/forms/form-conditions";
 import {
   collectFieldLookup,
-  collectSourceFormIds,
   type FormSchema,
   type Page,
 } from "@alliance/common/forms/form-schema";

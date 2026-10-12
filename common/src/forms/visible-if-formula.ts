@@ -161,6 +161,40 @@ export function isKnownConditionKind(kind: string): kind is ConditionKind {
   return KNOWN_CONDITION_KINDS.has(kind);
 }
 
+/**
+ * The question a condition reads an answer to, on this form or, with a
+ * `sourceFormId`, another one; null for a condition that reads no answer.
+ */
+export function conditionFieldReference(
+  condition: Condition,
+): { fieldId: string; sourceFormId: number | null } | null {
+  switch (condition.kind) {
+    case "equals":
+    case "includesOption":
+    case "anySelected":
+    case "selectedCount":
+    case "hasValue":
+      return {
+        fieldId: condition.when,
+        sourceFormId: condition.sourceFormId ?? null,
+      };
+    case "validator":
+    case "deviceType":
+    case "outputBlockVisible":
+    case "userHasCity":
+    case "userPropertyHasValue":
+    case "firstContractSigned":
+    case "completedActionCount":
+      return null;
+    default:
+      // A kind added in a newer build reads nothing this build can follow.
+      // Renderers block such a schema outright, so skipping it is safe, and
+      // render-time callers can't throw.
+      condition satisfies never;
+      return null;
+  }
+}
+
 /** Formula tree for visibility: AND/OR of two operands, NOT of one. Leaves are condition names (e.g. condition1, condition2). */
 export type FormulaNode =
   | { op: "AND"; left: FormulaNode; right: FormulaNode }

@@ -1,3 +1,4 @@
+import { PlaceKind } from "@alliance/common/forms/form-conditions";
 import {
   isQuestionField,
   type PageItem,
@@ -16,6 +17,7 @@ import {
   SidebarSection,
   UNCONDITIONAL_SECTIONS,
 } from "./sidebarSections";
+import { DELETION } from "./useGuardedDeletion";
 
 /** The selected element's settings, around its editor. */
 export function ElementSettings({
@@ -30,6 +32,7 @@ export function ElementSettings({
   onEditJson,
   onDuplicate,
   onDelete,
+  dependencies,
   children,
 }: {
   element: PageItem;
@@ -44,6 +47,7 @@ export function ElementSettings({
   onEditJson: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  dependencies: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -57,6 +61,7 @@ export function ElementSettings({
       onSection={onSection}
       focusPending={focusPending}
       onFocused={onFocused}
+      dependencies={dependencies}
       actions={
         <SettingsActions idLabel="Element ID" id={element.id}>
           <SettingsAction Icon={FileJson} onClick={onEditJson}>
@@ -66,7 +71,9 @@ export function ElementSettings({
             Duplicate
           </SettingsAction>
           <SettingsAction Icon={Trash2} destructive onClick={onDelete}>
-            {isQuestionField(element) ? "Delete question" : "Delete block"}
+            {isQuestionField(element)
+              ? DELETION[PlaceKind.Element].action
+              : "Delete block"}
           </SettingsAction>
         </SettingsActions>
       }

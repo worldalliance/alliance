@@ -20,6 +20,7 @@ import {
   CanvasTargetKind,
   describeElement,
   elementTarget,
+  pageTitle,
   targetKey,
   type CanvasTarget,
   type ResolvedTarget,
@@ -182,7 +183,7 @@ export function FormCanvas({
                 )
               }
               onKeyDown={pageSelected ? startOnEnter(inline) : undefined}
-              aria-label={`Page settings: ${page.title || "Untitled page"}`}
+              aria-label={`Page settings: ${pageTitle(page)}`}
               aria-pressed={pageSelected}
               className={cn(
                 "-mx-3 flex-1 rounded-md px-3 py-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
@@ -195,7 +196,7 @@ export function FormCanvas({
                   page.title ? "text-gray-900" : "text-gray-400",
                 )}
               >
-                {page.title || "Untitled page"}
+                {pageTitle(page)}
               </span>
               {pageDescription}
             </button>

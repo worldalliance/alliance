@@ -5,6 +5,11 @@ import {
   type DisplayKind,
 } from "@alliance/common/forms/display-blocks";
 import {
+  PlaceKind,
+  type ConditionHolder,
+  type FormPlace,
+} from "@alliance/common/forms/form-conditions";
+import {
   fieldHasOptions,
   isQuestionField,
   type AnyField,
@@ -49,6 +54,8 @@ import {
   mapCustomValidatorIds,
 } from "../lib/customValidatorIds";
 import { addressedWrite } from "../lib/displayBlockById";
+import { findQuestion } from "../lib/formDependencies";
+import { useSelectOnLoad } from "../lib/formEditorLink";
 import { formSchemaIds, JsonScopeKind, type JsonScope } from "../lib/formJson";
 import { mergeFormSchemas } from "../lib/formSchemaMerge";
 import {
@@ -81,9 +88,12 @@ import { OverrideTargetContext } from "./display-blocks/perUserContent";
 import { DisplayOnlyPreview } from "./DisplayOnlyPreview";
 import {
   CanvasTargetKind,
+  ChildKind,
+  childPlace,
   elementTarget,
   followElement,
   forgetPositions,
+  placeTarget,
   resolveTarget,
   targetKey,
   type CanvasSelection,
@@ -97,6 +107,7 @@ import {
 } from "./form-canvas/CanvasWorkspace";
 import { SelectChildProvider } from "./form-canvas/ChildRows";
 import { ChildSettings } from "./form-canvas/ChildSettings";
+import { DependencyLinks } from "./form-canvas/DependencyLinks";
 import { ElementSettings } from "./form-canvas/ElementSettings";
 import { FormCanvas } from "./form-canvas/FormCanvas";
 import { FormOutline } from "./form-canvas/FormOutline";
@@ -114,6 +125,7 @@ import { extendSelection, type Span } from "./form-canvas/rangeSelection";
 import { RangeSettings } from "./form-canvas/RangeSettings";
 import { SettingsSidebar } from "./form-canvas/SettingsSidebar";
 import { SidebarSection } from "./form-canvas/sidebarSections";
+import { useGuardedDeletion } from "./form-canvas/useGuardedDeletion";
 import type { ListMove } from "./form-canvas/useListDrag";
 import { useOverrideTarget } from "./form-canvas/useOverrideTarget";
 import { VisibilityGroupSettings } from "./form-canvas/VisibilityGroupSettings";
@@ -668,6 +680,10 @@ export function FormBuilder(props: FormBuilderProps) {
   const currentPage = schema.pages[selectedPageIndex] ??
     schema.pages?.[0] ?? { id: "page-1", title: "Page 1", fields: [] };
   const canvasGroups = displayOnly ? NO_VISIBILITY_GROUPS : visibilityGroups;
+  const { guard: guardDeletion, dialog: deletionDialog } = useGuardedDeletion({
+    pages: schema.pages,
+    groups: canvasGroups,
+  });
   const resolvedTarget = resolveTarget({
     page: currentPage,
     groups: canvasGroups,
@@ -732,20 +748,32 @@ export function FormBuilder(props: FormBuilderProps) {
     page,
     pageIndex,
     target,
+    section: nextSection = SECTION_ON_SELECT[target.kind],
     keepOutline = false,
   }: {
     page: Page;
     pageIndex: number;
     target: CanvasTarget;
+    section?: SidebarSection;
     /** For adding to a selection, which takes more than one entry. */
     keepOutline?: boolean;
   }) => {
     setSelectedPageIndex(pageIndex);
     setSelection({ pageId: page.id, target });
-    setSection(SECTION_ON_SELECT[target.kind]);
+    setSection(nextSection);
     setRevealPending(true);
     if (!keepOutline) setDrawer(wideCanvas ? null : DrawerKind.Settings);
   };
+
+  const [placeOnLoad, setPlaceOnLoad] = useState<FormPlace | null>(null);
+  if (placeOnLoad) {
+    setPlaceOnLoad(null);
+    selectFromOutline({
+      page: schema.pages[placeOnLoad.pageIndex]!,
+      pageIndex: placeOnLoad.pageIndex,
+      target: placeTarget(schema.pages, placeOnLoad),
+    });
+  }
 
   const extendTo = (clicked: Span, alone: CanvasTarget) =>
     extendSelection({
@@ -788,6 +816,7 @@ export function FormBuilder(props: FormBuilderProps) {
   // A new form's first save already holds the saved schema; refetching it
   // would regroup and drop the admin's manual group boundaries.
   const createdFormIdRef = useRef<number | null>(null);
+  const selectOnLoadRef = useSelectOnLoad();
 
   // Load form data when formId changes
   useEffect(() => {
@@ -809,6 +838,16 @@ export function FormBuilder(props: FormBuilderProps) {
               form.schema as unknown as FormSchema,
             );
             loadSchema(nextSchema);
+            const selectOnLoad = selectOnLoadRef.current;
+            selectOnLoadRef.current = null;
+            if (selectOnLoad !== null) {
+              const place = findQuestion(nextSchema.pages, selectOnLoad);
+              if (place) {
+                setPlaceOnLoad(place);
+              } else {
+                showErrorToast(`This form has no question "${selectOnLoad}"`);
+              }
+            }
             setLastSavedSchemaJSON(JSON.stringify(nextSchema));
             setBaseFormSnapshotId(
               typeof form.formSnapshotId === "number"
@@ -828,7 +867,14 @@ export function FormBuilder(props: FormBuilderProps) {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [displayOnly, formId, initialSchema, loadSchema]);
+  }, [
+    displayOnly,
+    formId,
+    initialSchema,
+    loadSchema,
+    selectOnLoadRef,
+    showErrorToast,
+  ]);
 
   const addField = (kind: FieldKind, loc: InsertLoc) => {
     const fieldId = `field-${Date.now()}`;
@@ -1626,6 +1672,12 @@ export function FormBuilder(props: FormBuilderProps) {
     replaceFields(currentPage.fields.filter((_, i) => i !== index));
   };
 
+  const deleteElement = (index: number) =>
+    guardDeletion(
+      { kind: PlaceKind.Element, pageIndex: selectedPageIndex, index },
+      () => removeElement(index),
+    );
+
   const moveElement = (
     { from, dropIndex, position }: ListMove,
     pageIndex = selectedPageIndex,
@@ -1747,7 +1799,7 @@ export function FormBuilder(props: FormBuilderProps) {
     const commonProps = {
       onUpdate: updateField,
       updateCurrent: addressedWrite(field, updateBlockById),
-      onRemove: () => removeElement(index),
+      onRemove: () => deleteElement(index),
       previousFields,
       laterFields,
     };
@@ -1788,6 +1840,28 @@ export function FormBuilder(props: FormBuilderProps) {
   const conditionFieldOf = useConditionFieldLookup(schema, currentPage);
   const summarize = (formula: VisibleIfFormula) =>
     summarizeVisibility(formula, conditionFieldOf);
+
+  const renderDependencies = (
+    item: ConditionHolder["formulas"],
+    questionId: string | null,
+  ) =>
+    !displayOnly && (
+      <DependencyLinks
+        pages={schema.pages}
+        groups={canvasGroups}
+        item={item}
+        questionId={questionId}
+        fieldOf={conditionFieldOf}
+        onSelect={(pageIndex, target) =>
+          selectFromOutline({
+            page: schema.pages[pageIndex]!,
+            pageIndex,
+            target,
+            section: SidebarSection.Conditions,
+          })
+        }
+      />
+    );
 
   const renderInsertPoint = (loc: InsertLoc, options?: { prominent: true }) => (
     <InsertPoint
@@ -1850,9 +1924,14 @@ export function FormBuilder(props: FormBuilderProps) {
             onCopy={() => copyPage(selectedPageIndex)}
             onDelete={
               schema.pages.length > 1
-                ? () => removePage(selectedPageIndex)
+                ? () =>
+                    guardDeletion(
+                      { kind: PlaceKind.Page, pageIndex: selectedPageIndex },
+                      () => removePage(selectedPageIndex),
+                    )
                 : null
             }
+            dependencies={renderDependencies(currentPage, null)}
           >
             <PageSettings
               key={`${currentPage.id}-${schemaLoads}`}
@@ -1867,6 +1946,10 @@ export function FormBuilder(props: FormBuilderProps) {
         const { index, child } = resolvedTarget;
         const element = currentPage.fields[index]!;
         if (child) {
+          const sub =
+            child.kind === ChildKind.SubField && element.kind === "list"
+              ? element.fields[child.index]
+              : undefined;
           return (
             <ElementExpressionScope
               parent={`element:${currentPage.id}`}
@@ -1891,6 +1974,15 @@ export function FormBuilder(props: FormBuilderProps) {
                 focusPending={focusPending}
                 onFocused={focused}
                 editorKey={`${selectionKey}-${schemaLoads}`}
+                dependencies={sub && renderDependencies(sub, sub.id)}
+                guardDelete={(run) => {
+                  const place = childPlace({
+                    pageIndex: selectedPageIndex,
+                    index,
+                    child,
+                  });
+                  return place ? guardDeletion(place, run) : run();
+                }}
               />
             </ElementExpressionScope>
           );
@@ -1922,7 +2014,11 @@ export function FormBuilder(props: FormBuilderProps) {
               })
             }
             onDuplicate={() => duplicateElement(index)}
-            onDelete={() => removeElement(index)}
+            onDelete={() => deleteElement(index)}
+            dependencies={renderDependencies(
+              element,
+              isQuestionField(element) ? element.id : null,
+            )}
           >
             <div key={`${element.id || index}-${schemaLoads}`}>
               <OverrideTargetContext.Provider value={overrideTarget}>
@@ -1941,6 +2037,13 @@ export function FormBuilder(props: FormBuilderProps) {
             onSection={setSection}
             focusPending={focusPending}
             onFocused={focused}
+            dependencies={renderDependencies(
+              {
+                visibleIfFormula:
+                  currentPage.fields[resolvedTarget.start]?.visibleIfFormula,
+              },
+              null,
+            )}
           >
             <VisibilityGroupSettings
               key={`${resolvedTarget.key}-${schemaLoads}`}
@@ -2037,6 +2140,7 @@ export function FormBuilder(props: FormBuilderProps) {
           void saveForm();
         }}
       />
+      {deletionDialog}
       {jsonScope && (
         <FormJsonModal
           scope={jsonScope}

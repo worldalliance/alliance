@@ -17,6 +17,7 @@ import type { SourceFormFields } from "./variable-scope";
 import { collectVariableErrors } from "./variable-validate";
 import {
   CONDITION_KIND_IS_ACCOUNT_DERIVED,
+  conditionFieldReference,
   type Condition,
   type VisibleIfFormula,
 } from "./visible-if-formula";
@@ -216,31 +217,10 @@ function findCycles(deps: Map<string, string[]>): string[][] {
   return cycles;
 }
 
-/**
- * The id of the in-form field a condition reads, or null when it reads none
- * (validator/device/etc.) or resolves against another form's answers
- * (`sourceFormId`).
- */
+/** The id of the field on this form a condition reads, if any. */
 function getLocalFieldReference(cond: Condition): string | null {
-  switch (cond.kind) {
-    case "equals":
-    case "includesOption":
-    case "anySelected":
-    case "selectedCount":
-    case "hasValue":
-      return cond.sourceFormId == null ? cond.when : null;
-    case "validator":
-    case "deviceType":
-    case "outputBlockVisible":
-    case "userHasCity":
-    case "userPropertyHasValue":
-    case "firstContractSigned":
-    case "completedActionCount":
-      return null;
-    default:
-      cond satisfies never;
-      return null;
-  }
+  const reference = conditionFieldReference(cond);
+  return reference?.sourceFormId === null ? reference.fieldId : null;
 }
 
 function collectQuestionFieldIds(item: PageItem, into: Set<string>): void {

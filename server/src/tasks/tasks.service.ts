@@ -8,6 +8,10 @@ import { isFollowUpFormActive } from "@alliance/common/followUpForm";
 import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import {
+  collectSourceFormIds,
+  forEachCondition,
+} from "@alliance/common/forms/form-conditions";
+import {
   FORM_DRAFT_MAX_ANSWER_BYTES,
   type FormAnswers,
   readFormAnswers,
@@ -21,9 +25,7 @@ import {
   type CheckboxField,
   type CityFieldValue,
   collectFieldLookup,
-  collectSourceFormIds,
   type CustomComponentField,
-  forEachCondition,
   formSchema,
   FormSchema,
   type FormValue,

@@ -10,6 +10,7 @@ const RENDER_PATH_ENTRIES = [
   "./formula-options.ts",
   "./variable-source-history.ts",
   "./form-schema.ts",
+  "./form-conditions.ts",
   "./variable-interpolation.ts",
   "./visibility.ts",
   "./output-resolution.ts",
