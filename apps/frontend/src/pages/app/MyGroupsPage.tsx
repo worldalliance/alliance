@@ -1,41 +1,18 @@
-/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { withCount } from "@alliance/common/plural";
 import {
-  CommunityDto,
-  communityJoinPublicCommunity,
-  communityLeave,
-} from "@alliance/shared/client";
-import {
-  getMemberCount,
-  groupAssignmentLabels,
   groupRemovalMessage,
   isLedBy,
-  publicGroupJoinState,
 } from "@alliance/shared/lib/communityUtils";
-import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
-import { useGroupAssignment } from "@alliance/shared/lib/useGroupAssignment";
 import { useIncomingCommunityInvites } from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
-import { usePublicCommunities } from "@alliance/shared/lib/usePublicCommunities";
-import { cn } from "@alliance/shared/styles/util";
-import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import List from "@alliance/sharedweb/ui/List";
-import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { ChevronDown, ChevronLeft, Minus, Plus } from "lucide-react";
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import CommunityCreateForm from "../../components/CommunityCreateForm";
+import { ChevronLeft } from "lucide-react";
+import { useCallback, useMemo } from "react";
 import CommunityInviteList from "../../components/CommunityInviteList";
 import LoadFailed from "../../components/LoadFailed";
+import LedGroupsSection from "../../components/myGroups/LedGroupsSection";
+import MemberGroupsSection from "../../components/myGroups/MemberGroupsSection";
+import PublicGroupsSection from "../../components/myGroups/PublicGroupsSection";
 import { useAuth } from "../../lib/AuthContext";
 
 export type MyGroupsPageProps = {
@@ -44,9 +21,10 @@ export type MyGroupsPageProps = {
 };
 
 const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const {
     communities,
+    communityIds,
     didFail: didGroupsFail,
     isFetching,
     removeCommunity,
@@ -54,32 +32,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
   } = useMyCommunities({
     selectedCommunityId: null,
   });
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [leavingCommunityId, setLeavingCommunityId] = useState<number | null>(
-    null,
-  );
-  const [isLeavingGroup, setIsLeavingGroup] = useState(false);
-  const justOpenedDialogRef = useRef(false);
-  const { confirm, error: showError, success } = useToast();
-  const handleCloseLeaveGroupConfirmation = useCallback(() => {
-    if (justOpenedDialogRef.current) {
-      return;
-    }
-    setLeavingCommunityId(null);
-  }, []);
-  const confirmationDialogRef = useOutsideClick(
-    handleCloseLeaveGroupConfirmation,
-  );
-
-  useEffect(() => {
-    if (leavingCommunityId !== null) {
-      justOpenedDialogRef.current = true;
-      const timer = setTimeout(() => {
-        justOpenedDialogRef.current = false;
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [leavingCommunityId]);
+  const { confirm, error: showError } = useToast();
   const {
     pendingCommunityInvites,
     incomingCommunityInvitesById,
@@ -111,24 +64,6 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
         communities?.filter((community) => !isLedBy(community, user?.id)) ?? [],
     };
   }, [communities, user?.id]);
-  const assignmentLabels = groupAssignmentLabels({
-    isMember: nonLeaderCommunities.length > 0,
-    didGroupsFail,
-  });
-
-  const memberCommunityIds = useMemo(() => {
-    return new Set((communities ?? []).map((community) => community.id));
-  }, [communities]);
-
-  const {
-    publicCommunities,
-    isLoading: publicCommunitiesLoading,
-    isError: publicCommunitiesError,
-    refetch: refetchPublicCommunities,
-  } = usePublicCommunities();
-  const [joiningCommunityId, setJoiningCommunityId] = useState<number | null>(
-    null,
-  );
 
   const getRemovalMessage = useCallback(
     (targetName?: string) =>
@@ -174,137 +109,6 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
     ],
   );
 
-  const onLeaveGroup = useCallback(
-    (community: CommunityDto) => {
-      setLeavingCommunityId(community.id);
-    },
-    [setLeavingCommunityId],
-  );
-
-  const onConfirmLeaveGroup = useCallback(
-    async (community: CommunityDto) => {
-      setIsLeavingGroup(true);
-      try {
-        await communityLeave({
-          path: { communityId: community.id },
-          throwOnError: true,
-        });
-      } catch (err) {
-        console.error("Failed to leave group", err);
-        showError("Unable to leave that group right now.");
-        return;
-      } finally {
-        setIsLeavingGroup(false);
-      }
-      onSelectCommunity(null);
-      setLeavingCommunityId(null);
-      removeCommunity(community.id);
-    },
-    [onSelectCommunity, removeCommunity, showError],
-  );
-
-  const { join, leave } = useGroupAssignment({ onChanged: refreshUser });
-  const assignmentBusy = join.isPending || leave.isPending;
-
-  const joinGroupAssignment = useCallback(() => {
-    join.mutate(undefined, {
-      onError: (err) => {
-        console.error("Failed to request group assignment", err);
-        showError("Unable to request group assignment right now.");
-      },
-    });
-  }, [join, showError]);
-
-  const handleRequestAssignment = useCallback(
-    async (anchor?: HTMLElement | null) => {
-      const ok = !!nonLeaderCommunities.length
-        ? await confirm({
-            title: "Group assignment",
-            message: requestGroupAssignmentConfirmation,
-            confirmLabel: "Yes, reassign me",
-            cancelLabel: "No",
-            anchorEl: anchor,
-            placement: ToastPlacement.TopLeft,
-          })
-        : true;
-      if (ok) {
-        joinGroupAssignment();
-      }
-    },
-    [confirm, joinGroupAssignment, nonLeaderCommunities.length],
-  );
-
-  const handleCancelAssignment = useCallback(() => {
-    leave.mutate(undefined, {
-      onError: (err) => {
-        console.error("Failed to cancel group assignment", err);
-        showError("Unable to cancel group assignment right now.");
-      },
-    });
-  }, [leave, showError]);
-
-  const handleJoinPublicCommunity = useCallback(
-    async (community: CommunityDto, anchor?: HTMLElement | null) => {
-      const message = getRemovalMessage(community.name);
-      const ok = message
-        ? await confirm({
-            title: "Join public group?",
-            message,
-            confirmLabel: "Join group",
-            cancelLabel: "Cancel",
-            anchorEl: anchor,
-            placement: ToastPlacement.TopLeft,
-          })
-        : true;
-      if (!ok) {
-        return;
-      }
-      setJoiningCommunityId(community.id);
-      try {
-        const response = await communityJoinPublicCommunity({
-          path: { communityId: community.id },
-        });
-        if (!response.data) {
-          throw new Error("No group returned");
-        }
-        success(`You joined ${community.name}.`);
-        await Promise.all([
-          refreshUser(),
-          refreshCommunities(),
-          refetchPublicCommunities(),
-        ]);
-        onSelectCommunity(response.data.id);
-      } catch (err) {
-        console.error("Failed to join public group", err);
-        showError("Unable to join that group right now.");
-      } finally {
-        setJoiningCommunityId(null);
-      }
-    },
-    [
-      confirm,
-      getRemovalMessage,
-      onSelectCommunity,
-      refreshUser,
-      refreshCommunities,
-      refetchPublicCommunities,
-      showError,
-      success,
-    ],
-  );
-
-  const handleCreateSuccess = useCallback(
-    (community: CommunityDto) => {
-      setShowCreateForm(false);
-      onSelectCommunity(community.id);
-    },
-    [onSelectCommunity],
-  );
-
-  const handleCreateCancel = useCallback(() => {
-    setShowCreateForm(false);
-  }, []);
-
   return (
     <div className="flex flex-col gap-y-12 py-8">
       {!!communities?.length && onBack && (
@@ -319,238 +123,17 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
           retrying={isFetching}
         />
       )}
-      {/* Leader groups */}
-      <div className="flex flex-col gap-y-4">
-        <div className="flex flex-col gap-y-1">
-          <p className="font-semibold text-xl md:text-2xl">Groups you lead</p>
-          <p className="text-zinc-500 text-base">
-            You can lead as many groups as you want.
-          </p>
-        </div>
-        <List>
-          {[
-            ...(leaderCommunities.map((community) => {
-              const memberCount = getMemberCount(community);
-              return (
-                <Button
-                  key={community.id}
-                  color={ButtonColor.White}
-                  className="w-full !rounded-none border-none !p-4"
-                  onClick={() => onSelectCommunity(community.id)}
-                >
-                  <div className={"w-full flex flex-row justify-between"}>
-                    <div className="flex flex-row gap-x-3">
-                      <AvatarProfile
-                        pfp={community.photo ?? null}
-                        size="huge"
-                      />
-                      <div className="flex flex-col text-left">
-                        <p className="text-lg font-semibold">
-                          {community.name}
-                        </p>
-                        <p className="text-zinc-500">{community.description}</p>
-                        <span className="text-zinc-500">
-                          {withCount(memberCount, "member")}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Button>
-              );
-            }) ?? []),
-            <Fragment key="create-group">
-              <Button
-                onClick={() => setShowCreateForm(!showCreateForm)}
-                color={showCreateForm ? ButtonColor.Light : ButtonColor.White}
-                className={cn(
-                  "w-full !rounded-none",
-                  leaderCommunities.length
-                    ? "border-t border-t-zinc-200 border-x-0 border-b-0"
-                    : "border-0",
-                )}
-              >
-                <div className="w-full flex flex-row gap-x-2 items-center justify-center p-2 text-zinc-500">
-                  {showCreateForm ? <Minus size="14" /> : <Plus size="14" />}{" "}
-                  Create group
-                </div>
-              </Button>
-              {!!showCreateForm && (
-                <div className="p-4 flex flex-col gap-y-4">
-                  <CommunityCreateForm
-                    name={user?.name}
-                    onCancel={handleCreateCancel}
-                    onSuccess={handleCreateSuccess}
-                  />
-                </div>
-              )}
-            </Fragment>,
-          ]}
-        </List>
-      </div>
+      <LedGroupsSection
+        communities={leaderCommunities}
+        onSelectCommunity={onSelectCommunity}
+      />
 
-      {/* Non-leader groups */}
-      <div className="flex flex-col gap-y-4">
-        <div className="flex flex-col gap-y-2 md:flex-row w-full justify-between md:items-center">
-          <div className="flex flex-col gap-y-1">
-            <p className="font-semibold text-xl md:text-2xl">
-              Groups you&apos;re a member of
-              {user?.undergoingGroupAssignment
-                ? assignmentLabels.headingSuffix
-                : ""}
-            </p>
-            <p className="text-zinc-500 text-base">
-              For now, you can only be a member of one group.
-            </p>
-          </div>
-          {user?.undergoingGroupAssignment ? (
-            <Button
-              color={ButtonColor.Black}
-              disabled={assignmentBusy}
-              onClick={handleCancelAssignment}
-            >
-              {assignmentLabels.cancelLabel}
-            </Button>
-          ) : nonLeaderCommunities.length ? (
-            <Button
-              className="justify-self-end"
-              color={ButtonColor.Grey}
-              disabled={assignmentBusy}
-              onClick={(event) =>
-                void handleRequestAssignment(event.currentTarget)
-              }
-            >
-              Request reassignment
-            </Button>
-          ) : null}
-        </div>
-        {nonLeaderCommunities.length ? (
-          <List>
-            {nonLeaderCommunities.map((community) => {
-              const memberCount = getMemberCount(community);
-              const isShowingConfirmation = leavingCommunityId === community.id;
-              return (
-                <div key={community.id}>
-                  <Button
-                    color={ButtonColor.White}
-                    className="w-full !rounded-none border-none !p-4"
-                    onClick={() => {
-                      if (!isShowingConfirmation) {
-                        onSelectCommunity(community.id);
-                      }
-                    }}
-                    asDiv={true}
-                  >
-                    <div className={"w-full flex flex-row justify-between"}>
-                      <div className="flex flex-row gap-x-3">
-                        <AvatarProfile
-                          pfp={community.photo ?? null}
-                          size="huge"
-                        />
-                        <div className="flex flex-col text-left">
-                          <p className="text-lg font-semibold">
-                            {community.name}
-                          </p>
-                          <p className="text-zinc-500">
-                            {community.description}
-                          </p>
-                          <span className="text-zinc-500">
-                            {withCount(memberCount, "member")}
-                          </span>
-                        </div>
-                      </div>
-                      {!isShowingConfirmation && (
-                        <Button
-                          color={ButtonColor.Red}
-                          size="small"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onLeaveGroup(community);
-                          }}
-                        >
-                          Leave <ChevronDown size="14" />
-                        </Button>
-                      )}
-                    </div>
-                  </Button>
-                  {isShowingConfirmation && (
-                    <div
-                      ref={confirmationDialogRef}
-                      className="p-4 bg-zinc-50 border-t border-zinc-200"
-                    >
-                      <div className="flex flex-col gap-y-2 mb-4">
-                        {!user?.undergoingGroupAssignment && (
-                          <p className="text-zinc-700">
-                            We recommend that you join the group assignment
-                            process instead of leaving the group, which will
-                            assign you to a new group. This process may take a
-                            few days.
-                          </p>
-                        )}
-                        <p className="text-zinc-700">
-                          Are you sure you want to leave the group? You will not
-                          be able to rejoin unless you are invited again.
-                        </p>
-                      </div>
-                      <div className="flex flex-row gap-x-2 justify-end">
-                        <Button
-                          color={ButtonColor.White}
-                          size="small"
-                          onClick={() => setLeavingCommunityId(null)}
-                        >
-                          Cancel
-                        </Button>
-                        {!user?.undergoingGroupAssignment && (
-                          <Button
-                            color={ButtonColor.Black}
-                            size="small"
-                            disabled={assignmentBusy}
-                            onClick={() => {
-                              setLeavingCommunityId(null);
-                              joinGroupAssignment();
-                            }}
-                          >
-                            Request reassignment
-                          </Button>
-                        )}
-                        <Button
-                          color={ButtonColor.Red}
-                          size="small"
-                          disabled={isLeavingGroup}
-                          onClick={() => {
-                            onConfirmLeaveGroup(community);
-                          }}
-                        >
-                          Leave group
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </List>
-        ) : didGroupsFail ? null : (
-          <div className="flex flex-col gap-y-2 mx-auto items-center py-4">
-            <span>
-              You are not a member of any group.
-              {user &&
-                user.undergoingGroupAssignment &&
-                " Staff will assign you to a group in a few days."}
-            </span>
-            {user && !user.undergoingGroupAssignment && (
-              <Button
-                color={ButtonColor.Black}
-                disabled={assignmentBusy}
-                onClick={(event) =>
-                  void handleRequestAssignment(event.currentTarget)
-                }
-              >
-                Request assignment
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
+      <MemberGroupsSection
+        communities={nonLeaderCommunities}
+        didGroupsFail={didGroupsFail}
+        onSelectCommunity={onSelectCommunity}
+        removeCommunity={removeCommunity}
+      />
 
       {/* Pending group invites */}
       {didInvitesFail && (
@@ -575,79 +158,13 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
         </div>
       )}
 
-      {/* Public groups */}
-      <div className="flex flex-col gap-y-4">
-        <div className="flex flex-col gap-y-1">
-          <p className="font-semibold text-xl md:text-2xl">Public groups</p>
-          <p className="text-zinc-500 text-base">
-            Groups you can join at any time.
-          </p>
-        </div>
-
-        {publicCommunitiesLoading ? (
-          <div className="flex flex-row items-center gap-x-2 text-zinc-500">
-            <Spinner size="small" />
-            <span>Loading public groups...</span>
-          </div>
-        ) : publicCommunitiesError ? (
-          <span className="text-red-500">Unable to load public groups.</span>
-        ) : publicCommunities.length ? (
-          <List>
-            {publicCommunities.map((community) => {
-              const memberCount = getMemberCount(community);
-              const { disabled: joinDisabled, label: joinLabel } =
-                publicGroupJoinState({
-                  community,
-                  userId: user?.id,
-                  isMember: memberCommunityIds.has(community.id),
-                  isJoining: joiningCommunityId === community.id,
-                  didGroupsFail,
-                });
-
-              return (
-                <div
-                  key={community.id}
-                  className="flex flex-col gap-y-2 p-4 md:flex-row md:items-start md:justify-between"
-                >
-                  <div className="flex flex-row gap-x-3">
-                    <AvatarProfile pfp={community.photo ?? null} size="huge" />
-                    <div className="flex flex-col">
-                      <p className="text-lg font-semibold">{community.name}</p>
-                      {community.description && (
-                        <p className="text-zinc-500">{community.description}</p>
-                      )}
-                      <span className="text-zinc-500">
-                        {memberCount}
-                        {community.maxCapacity !== null
-                          ? ` / ${Math.max(community.maxCapacity, memberCount)}`
-                          : ""}{" "}
-                        members
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex justify-end md:justify-start">
-                    <Button
-                      color={ButtonColor.Black}
-                      size="small"
-                      disabled={joinDisabled}
-                      onClick={(event) =>
-                        void handleJoinPublicCommunity(
-                          community,
-                          event.currentTarget,
-                        )
-                      }
-                    >
-                      {joinLabel}
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </List>
-        ) : (
-          <span>No public groups are available right now.</span>
-        )}
-      </div>
+      <PublicGroupsSection
+        memberCommunityIds={communityIds}
+        didGroupsFail={didGroupsFail}
+        getRemovalMessage={getRemovalMessage}
+        onSelectCommunity={onSelectCommunity}
+        refreshCommunities={refreshCommunities}
+      />
     </div>
   );
 };
