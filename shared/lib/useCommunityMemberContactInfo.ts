@@ -4,7 +4,7 @@ import { communityGetMemberContactInfo } from "../client";
 import type { CommunityMemberContactInfoDto } from "../client/types.gen";
 import { queryKeys } from "./queryKeys";
 
-const byUserId = (list: CommunityMemberContactInfoDto[]) =>
+export const contactInfoByUserId = (list: CommunityMemberContactInfoDto[]) =>
   keyBy(list, (info) => info.id);
 
 /** Members' contact info keyed by user id; only a community's leaders may
@@ -26,6 +26,6 @@ export function useCommunityMemberContactInfo({
               path: { communityId },
               throwOnError: true,
             }).then((res) => res.data),
-    select: byUserId,
+    select: contactInfoByUserId,
   });
 }
