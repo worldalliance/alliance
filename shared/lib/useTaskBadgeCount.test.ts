@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { milliseconds } from "date-fns";
 import type { ActionDto } from "../client";
+import { useRecordActionRelation } from "./actionsListPage";
 import { queryKeys } from "./queryKeys";
 import { makeAction, makeViewer } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
@@ -92,4 +93,36 @@ it("stops polling once the server refuses the signed-out viewer", async () => {
     expect(client.getQueryState(queryKeys.actions())?.status).toBe("error"),
   );
   expect(refetchIntervalOf(client)).toBe(false);
+});
+
+it("drops a confirmed withdrawal at once, and an older in-flight fetch can't restore it", async () => {
+  let releaseStale: (actions: ActionDto[]) => void = () => {};
+  let calls = 0;
+  serveActions(() => {
+    calls += 1;
+    return calls === 1
+      ? new Promise<ActionDto[]>((resolve) => (releaseStale = resolve))
+      : [makeAction({ id: 1, viewer: makeViewer({ relation: "withdrawn" }) })];
+  });
+  const { client, wrapper } = queryWrapper({ staleTime: Infinity });
+  client.setQueryData(queryKeys.actions(), [makeAction({ id: 1 })]);
+  const view = renderHook(
+    () => ({
+      count: useTaskBadgeCount(),
+      recordRelation: useRecordActionRelation(),
+    }),
+    { wrapper },
+  );
+  void client.refetchQueries({ queryKey: queryKeys.actions() });
+  await waitFor(() => expect(calls).toBe(1));
+
+  act(() => view.result.current.recordRelation(1, "declined"));
+  await waitFor(() => expect(view.result.current.count).toBe(0));
+
+  releaseStale([makeAction({ id: 1 })]);
+  await waitFor(() => expect(calls).toBe(2));
+  await waitFor(() =>
+    expect(client.getQueryState(queryKeys.actions())?.fetchStatus).toBe("idle"),
+  );
+  expect(view.result.current.count).toBe(0);
 });

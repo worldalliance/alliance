@@ -26,10 +26,11 @@ export const useActionsQuery = (options?: {
 }): UseQueryResult<ActionDto[], Error> =>
   useQuery({
     queryKey: queryKeys.actions(),
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       actionsFindAllLoggedIn({
         query: { sorted: true },
         throwOnError: true,
+        signal,
       }).then((response) =>
         response.data.filter(
           (action) => action.status !== "draft" || action.viewer?.staffPreview,
@@ -51,7 +52,7 @@ export function useDismissActionMutation() {
     mutationFn: (actionId: number) =>
       actionsDismissAction({ path: { id: actionId }, throwOnError: true }),
     onSuccess: (_data, actionId) =>
-      patchCachedAction({
+      applyConfirmedChange({
         queryClient,
         actionId,
         patch: withOptimisticDismissal,
@@ -66,22 +67,29 @@ export const dismissActionErrorMessage = (error: unknown): string =>
     sessionExpired: "Your session has expired. Sign in again.",
   });
 
-export function useMarkActionCompleted(): (actionId: number) => void {
+/** Applies a completion or withdrawal the server has just confirmed. */
+export function useRecordActionRelation(): (
+  actionId: number,
+  relation: "completed" | "declined",
+) => void {
   const queryClient = useQueryClient();
   return useCallback(
-    (actionId) => {
-      patchCachedAction({
+    (actionId, relation) =>
+      applyConfirmedChange({
         queryClient,
         actionId,
-        patch: (action) => withOptimisticRelation(action, "completed"),
-      });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.actions() });
-    },
+        patch: (action) => withOptimisticRelation(action, relation),
+      }),
     [queryClient],
   );
 }
 
-function patchCachedAction(params: {
+/**
+ * Patches the cached list, then refetches. The invalidation cancels any
+ * fetch already in flight, whose response predates the change and would
+ * otherwise restore the action.
+ */
+function applyConfirmedChange(params: {
   queryClient: QueryClient;
   actionId: number;
   patch: (action: ActionDto) => ActionDto;
@@ -92,6 +100,7 @@ function patchCachedAction(params: {
     (prev) =>
       prev?.map((action) => (action.id === actionId ? patch(action) : action)),
   );
+  void queryClient.invalidateQueries({ queryKey: queryKeys.actions() });
 }
 
 export const filterActions = (

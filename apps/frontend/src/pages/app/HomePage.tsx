@@ -6,7 +6,6 @@ import { FollowUpFormDto } from "@alliance/shared/client";
 import {
   dismissActionErrorMessage,
   useInvalidateActions,
-  useMarkActionCompleted,
 } from "@alliance/shared/lib/actionsListPage";
 import {
   ActionWithAwayStatus,
@@ -79,7 +78,6 @@ function TaskNavigatorListShell({ children }: { children: ReactNode }) {
 const HomePage = () => {
   const queryClient = useQueryClient();
   const invalidateActions = useInvalidateActions();
-  const markActionCompleted = useMarkActionCompleted();
   const { warning, error: toastError } = useToast();
   const {
     actions: liveActions,
@@ -463,7 +461,6 @@ const HomePage = () => {
                   selectedTaskNavigatorItem.action.userRelation ?? "none"
                 }
                 onCompleteAction={() => {
-                  markActionCompleted(selectedTaskNavigatorItem.action.id);
                   resetHomeFeed(queryClient);
                 }}
                 onUpdateActionState={() => {
@@ -580,7 +577,6 @@ const HomePage = () => {
     taskNavigatorListContent,
     queryClient,
     invalidateActions,
-    markActionCompleted,
     warning,
     toastError,
     activeCompletableFollowUpForms,

@@ -9,6 +9,7 @@ import {
   tasksSubmitPublicForm,
 } from "@alliance/shared/client";
 import { formulaSourcesChanged } from "@alliance/shared/forms/formulaChoices";
+import { useRecordActionRelation } from "@alliance/shared/lib/actionsListPage";
 import {
   memberActionDeadlinePassed,
   type ActionWithdrawal,
@@ -70,6 +71,7 @@ const ActionTaskPanelForm = ({
     loading: authLoading,
   } = useAuth();
   const invalidateVisibilityContext = useInvalidateVisibilityContext();
+  const recordRelation = useRecordActionRelation();
   const {
     data: form,
     error: formError,
@@ -102,6 +104,7 @@ const ActionTaskPanelForm = ({
             // Bumped `completedActionCount` (and `firstContractSignedAt` for a
             // contract-signing action).
             invalidateVisibilityContext();
+            recordRelation(actionId, "completed");
           }
           if (response.data) {
             onSubmitted?.(response.data);

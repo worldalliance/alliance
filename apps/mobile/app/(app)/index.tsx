@@ -1,9 +1,9 @@
 import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import type { FollowUpFormDto } from "@alliance/shared/client";
-import { actionsDismissAction } from "@alliance/shared/client";
 import {
   dismissActionErrorMessage,
   useActionsQuery,
+  useDismissActionMutation,
   useInvalidateActions,
 } from "@alliance/shared/lib/actionsListPage";
 import { type ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
@@ -109,26 +109,14 @@ export default function HomeScreen() {
     dismissGeneralUpdate: handleDismissGeneralUpdate,
   } = useUnreadGeneralUpdates();
 
+  const { mutate: dismissAction } = useDismissActionMutation();
   const handleDismissAction = useCallback(
-    async (actionId: number) => {
-      const action = actions?.find((a) => a.id === actionId);
-      if (!action) {
-        return;
-      }
-
-      try {
-        await actionsDismissAction({
-          path: { id: action.id },
-          throwOnError: true,
-        });
-      } catch (error) {
-        Alert.alert("Error", dismissActionErrorMessage(error));
-        return;
-      }
-
-      refetch();
-    },
-    [actions, refetch],
+    (actionId: number) =>
+      dismissAction(actionId, {
+        onError: (error) =>
+          Alert.alert("Error", dismissActionErrorMessage(error)),
+      }),
+    [dismissAction],
   );
 
   const loading =

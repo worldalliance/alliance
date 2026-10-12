@@ -5,7 +5,7 @@ import {
   filterActions,
   useDismissActionMutation,
   useInvalidateActions,
-  useMarkActionCompleted,
+  useRecordActionRelation,
 } from "./actionsListPage";
 import { queryKeys } from "./queryKeys";
 import { makeAction, makeViewer } from "./testFixtures";
@@ -71,10 +71,11 @@ it("marks only the given cached action completed and marks the list stale", () =
   const { client, wrapper } = queryWrapper();
   const other = makeAction({ id: 2 });
   client.setQueryData(queryKeys.actions(), [makeAction({ id: 1 }), other]);
-  const markCompleted = renderHook(() => useMarkActionCompleted(), { wrapper })
-    .result.current;
+  const recordRelation = renderHook(() => useRecordActionRelation(), {
+    wrapper,
+  }).result.current;
 
-  act(() => markCompleted(1));
+  act(() => recordRelation(1, "completed"));
 
   const [marked, untouched] =
     client.getQueryData<ActionDto[]>(queryKeys.actions()) ?? [];

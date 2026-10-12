@@ -1,7 +1,12 @@
 import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
+import type { ActionDto } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { makeFormResponse, makeUser } from "@alliance/shared/lib/testFixtures";
+import {
+  makeAction,
+  makeFormResponse,
+  makeUser,
+} from "@alliance/shared/lib/testFixtures";
 import { recordExceptions } from "@alliance/shared/lib/testing/recordExceptions";
 import {
   routes,
@@ -126,9 +131,11 @@ it("shows a form with no timezone field before the session loads", async () => {
 const renderMemberNoteForm = ({
   serving,
   onDeadlinePassed = () => {},
+  queryClient = new QueryClient(),
 }: {
   serving: RouteTable;
   onDeadlinePassed?: () => void;
+  queryClient?: QueryClient;
 }) => {
   api.alsoServing({
     "GET /tasks/slug/:id": () =>
@@ -153,7 +160,7 @@ const renderMemberNoteForm = ({
     ...serving,
   });
   render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider client={queryClient}>
       <MemoryRouter>
         <SiteAppProvider>
           <AuthContext.Provider value={authValue({ user: testAuthUser })}>
@@ -209,6 +216,27 @@ it("refetches the action, unreported, when the deadline passed before the submit
   expect(await screen.findByText(MEMBER_ACTION_DEADLINE_PASSED)).toBeTruthy();
   expect(onDeadlinePassed).toHaveBeenCalledTimes(1);
   expect(reported).toEqual([]);
+});
+
+it("marks the cached action completed once the server accepts the submission", async () => {
+  const queryClient = new QueryClient();
+  queryClient.setQueryData(queryKeys.actions(), [makeAction({ id: 1 })]);
+  renderMemberNoteForm({
+    serving: {
+      "POST /tasks/submitForm/:id": () =>
+        Response.json(makeFormResponse(), { status: 201 }),
+    },
+    queryClient,
+  });
+
+  fireEvent.click(await screen.findByRole("button", { name: "Complete" }));
+
+  await waitFor(() =>
+    expect(
+      queryClient.getQueryData<ActionDto[]>(queryKeys.actions())?.[0]?.viewer
+        ?.relation,
+    ).toBe("completed"),
+  );
 });
 
 it("prefills a member's form with the draft they left as a guest", async () => {
