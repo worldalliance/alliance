@@ -666,7 +666,7 @@ export class ForumService {
 
       if (!parentReply) {
         throw new NotFoundException(
-          `Parent reply with ID "${createCommentDto.parentId}" not found`,
+          "The reply you're answering is no longer here",
         );
       }
     }
