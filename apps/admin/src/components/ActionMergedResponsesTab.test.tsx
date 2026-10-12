@@ -31,18 +31,29 @@ const stat = (variantId: number | null, formId: number) => ({
   name: variantId == null ? "Default" : `Variant ${variantId}`,
   splitValue: null,
   assigned: 0,
-  submitted: 0,
+  submitted,
 });
 
 let withdrawalsRequested: string[] = [];
 let withdrawalsHeld: Promise<void> = Promise.resolve();
 let responsesHeld: Promise<void> = Promise.resolve();
 let withdrawalsStatus = 200;
+let variantsStatus = 200;
+let variantsRequests = 0;
+let variantsHeld: Promise<void> = Promise.resolve();
+let submitted = 0;
+let responsesRequests = 0;
+let respondentNames = ["Withdrawn Member"];
 
 serveApi(
   routes({
-    "GET /actions/:id/form-variants": () =>
-      Response.json({ variants: [], stats: [stat(2, 5), stat(null, 4)] }),
+    "GET /actions/:id/form-variants": async () => {
+      variantsRequests++;
+      await variantsHeld;
+      return variantsStatus === 200
+        ? Response.json({ variants: [], stats: [stat(2, 5), stat(null, 4)] })
+        : Response.json({}, { status: variantsStatus });
+    },
     "GET /tasks/slug/:id": ({ params }) =>
       Response.json({
         id: Number(params.id),
@@ -51,6 +62,8 @@ serveApi(
         schema,
       }),
     "POST /tasks/responses/byForms": async () => {
+      responsesRequests++;
+      const name = respondentNames[responsesRequests - 1] ?? "Withdrawn Member";
       await responsesHeld;
       return Response.json([
         makeFormResponse({
@@ -58,7 +71,7 @@ serveApi(
           formSnapshotId: 7,
           schemaSnapshot: schema,
           answers: { home: "Paris" },
-          user: makeUser({ id: 3, name: "Withdrawn Member" }),
+          user: makeUser({ id: 3, name }),
         }),
       ]);
     },
@@ -81,17 +94,23 @@ beforeEach(() => {
   withdrawalsHeld = Promise.resolve();
   responsesHeld = Promise.resolve();
   withdrawalsStatus = 200;
+  variantsStatus = 200;
+  variantsRequests = 0;
+  variantsHeld = Promise.resolve();
+  submitted = 0;
+  responsesRequests = 0;
+  respondentNames = ["Withdrawn Member"];
 });
 
-const renderTab = () =>
-  render(
-    <SiteOriginLinkProvider origin="https://worldalliance.org">
-      <MemoryRouter>
-        <ActionMergedResponsesTab actionId={1} />
-      </MemoryRouter>
-    </SiteOriginLinkProvider>,
-    queryWrapper(),
-  );
+const tab = (actionId: number) => (
+  <SiteOriginLinkProvider origin="https://worldalliance.org">
+    <MemoryRouter>
+      <ActionMergedResponsesTab actionId={actionId} />
+    </MemoryRouter>
+  </SiteOriginLinkProvider>
+);
+
+const renderTab = (query = queryWrapper()) => render(tab(1), query);
 
 it("marks a variant response from a member who withdrew, loading withdrawals through the default form", async () => {
   renderTab();
@@ -100,13 +119,21 @@ it("marks a variant response from a member who withdrew, loading withdrawals thr
   expect(withdrawalsRequested).toEqual(["4"]);
 });
 
-it("reloads withdrawals on refresh", async () => {
+it("reloads the variants and withdrawals on refresh", async () => {
   renderTab();
   await screen.findByText("Withdrew");
 
   fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
 
   await waitFor(() => expect(withdrawalsRequested).toEqual(["4", "4"]));
+  expect(variantsRequests).toBe(2);
+});
+
+it("says so when the variants fail to load", async () => {
+  variantsStatus = 500;
+  renderTab();
+
+  expect(await screen.findByText("Failed to load form responses")).toBeTruthy();
 });
 
 const hold = () => {
@@ -138,4 +165,45 @@ it("says so when withdrawals fail to load", async () => {
   renderTab();
 
   expect(await screen.findByText("Failed to load withdrawals")).toBeTruthy();
+});
+
+it("keeps the responses when a refetch changes only the variants' counts", async () => {
+  const query = queryWrapper();
+  renderTab(query);
+  await screen.findByText("Withdrew");
+
+  submitted = 1;
+  await query.client.refetchQueries();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  expect(variantsRequests).toBe(2);
+  expect(responsesRequests).toBe(1);
+});
+
+it("keeps a reload's responses over those of the load it replaced", async () => {
+  respondentNames = ["First Member", "Second Member"];
+  const first = hold();
+  responsesHeld = first.held;
+  renderTab();
+  await waitFor(() => expect(responsesRequests).toBe(1));
+
+  responsesHeld = Promise.resolve();
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+  expect(await screen.findByText("Second Member")).toBeTruthy();
+  first.release();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  expect(screen.queryByText("First Member")).toBeNull();
+  expect(screen.getByText("Second Member")).toBeTruthy();
+});
+
+it("shows no previous action's responses while the next action's variants load", async () => {
+  const view = renderTab();
+  await screen.findByText("Withdrew");
+
+  variantsHeld = hold().held;
+  view.rerender(tab(2));
+
+  expect(await screen.findByText("Loading responses...")).toBeTruthy();
+  expect(screen.queryByText("Withdrawn Member")).toBeNull();
 });
