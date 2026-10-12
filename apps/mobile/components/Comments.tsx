@@ -247,7 +247,11 @@ export default function Comments({
           {
             text: "Delete",
             style: "destructive",
-            onPress: () => deleteReply(replyId),
+            onPress: async () => {
+              if (await deleteReply(replyId)) {
+                setReplyingTo((id) => (id === replyId ? null : id));
+              }
+            },
           },
         ],
       );

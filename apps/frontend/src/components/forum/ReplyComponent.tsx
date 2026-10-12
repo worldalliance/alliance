@@ -213,7 +213,7 @@ const ReplyContent = ({
                     }
                   />
                 )}
-                {user && canNest && (
+                {user && canNest && !reply.deleted && (
                   <button
                     onClick={() => {
                       ctx.setReplyingTo(reply.id);

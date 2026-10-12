@@ -82,9 +82,11 @@ const renderDelete = () => {
     { initialProps },
   );
   const deleteReply = async (replyId: number) => {
+    let landed = false;
     await act(async () => {
-      await result.current.deleteReply(replyId);
+      landed = await result.current.deleteReply(replyId);
     });
+    return landed;
   };
   const loads = (comments: CommentDto[]) => rerender({ comments });
   return { result, reloads, deleteReply, loads };
@@ -302,4 +304,26 @@ it("reports nothing for a delete the server took", async () => {
   await deleteReply(5);
 
   expect(reported).toEqual([]);
+});
+
+it("says the delete landed once the server took it", async () => {
+  const { deleteReply } = renderDelete();
+
+  expect(await deleteReply(5)).toBe(true);
+});
+
+it("says the delete did not land when the request never reached the server", async () => {
+  const { deleteReply } = renderDelete();
+
+  unreachable = true;
+
+  expect(await deleteReply(5)).toBe(false);
+});
+
+it("says the delete did not land when the server refused it", async () => {
+  const { deleteReply } = renderDelete();
+
+  refused = { statusCode: 403, message: "Not yours" };
+
+  expect(await deleteReply(5)).toBe(false);
 });

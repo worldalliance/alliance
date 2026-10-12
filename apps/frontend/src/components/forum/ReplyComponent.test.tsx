@@ -1,5 +1,6 @@
 import { R } from "@alliance/common/result";
-import { CommentDto } from "@alliance/shared/client";
+import { CommentDto, UserDto } from "@alliance/shared/client";
+import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -7,7 +8,12 @@ import { MemoryRouter } from "react-router";
 import { CommentsProvider } from "./CommentsContext";
 import ReplyComponent from "./ReplyComponent";
 
-afterEach(cleanup);
+let user: UserDto | undefined;
+
+afterEach(() => {
+  cleanup();
+  user = undefined;
+});
 
 const author: CommentDto["author"] = {
   id: 1,
@@ -47,7 +53,7 @@ const renderReply = (
 ) => {
   dismissed.length = 0;
   const ctx = {
-    user: undefined,
+    user,
     replyingTo: null,
     setReplyingTo: () => {},
     handleSubmitReply: () => Promise.resolve(),
@@ -105,4 +111,11 @@ it("offers no like on a deleted reply kept for the replies under it", () => {
 
   expect(screen.getAllByRole("button", { name: "Like" })).toHaveLength(1);
   expect(screen.queryByText("2 others like this")).toBeNull();
+});
+
+it("offers no reply to a deleted reply kept for the replies under it", () => {
+  user = makeUser();
+  renderReply(() => null, { ...reply(5, [reply(6)]), deleted: true });
+
+  expect(screen.getAllByRole("button", { name: "Reply" })).toHaveLength(1);
 });

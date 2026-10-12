@@ -50,7 +50,7 @@ export function useDeleteComment({
   );
 
   const deleteReply = useCallback(
-    async (replyId: number) => {
+    async (replyId: number): Promise<boolean> => {
       clearDeleteError(replyId);
       // The generated client leaves its fetch call unguarded, so a request
       // that never reaches the server rejects, while one the server refused
@@ -65,7 +65,7 @@ export function useDeleteComment({
           replyId,
         });
         setFailures((prev) => ({ ...prev, [replyId]: DELETE_FAILED }));
-        return;
+        return false;
       }
       const { error, response } = sent.value;
       if (error) {
@@ -85,11 +85,12 @@ export function useDeleteComment({
         }));
         // The reload meets the same expired session, and the thread ends up
         // carrying a second copy of the sentence the reply already has.
-        if (response.status === 401) return;
+        if (response.status === 401) return false;
       }
       // A refused delete can mean the reply is already gone, so the reload
       // takes it off screen.
       await fetchComments();
+      return !error;
     },
     [clearDeleteError, fetchComments],
   );
