@@ -780,7 +780,7 @@ describe("ConversationController (e2e)", () => {
       await request(ctx.app.getHttpServer())
         .get(`/messaging/conversations/community/${community.id}`)
         .set("Authorization", `Bearer ${outsiderToken}`)
-        .expect(400);
+        .expect(403);
     });
 
     it("refuses a leader adding someone from outside the community", async () => {
