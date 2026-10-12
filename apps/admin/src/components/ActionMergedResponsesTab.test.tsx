@@ -44,6 +44,11 @@ let variantsHeld: Promise<void> = Promise.resolve();
 let submitted = 0;
 let responsesRequests = 0;
 let respondentNames = ["Withdrawn Member"];
+let failingRoute: string | null = null;
+let refusal = () => Response.json({}, { status: 500 });
+
+const refusedOr = (route: string, ok: () => Response | Promise<Response>) =>
+  failingRoute === route ? refusal() : ok();
 
 serveApi(
   routes({
@@ -55,27 +60,34 @@ serveApi(
         : Response.json({}, { status: variantsStatus });
     },
     "GET /tasks/slug/:id": ({ params }) =>
-      Response.json({
-        id: Number(params.id),
-        title: "Survey",
-        formSnapshotId: 7,
-        schema,
-      }),
+      refusedOr("GET /tasks/slug/:id", () =>
+        Response.json({
+          id: Number(params.id),
+          title: "Survey",
+          formSnapshotId: 7,
+          schema,
+        }),
+      ),
     "POST /tasks/responses/byForms": async () => {
       responsesRequests++;
       const name = respondentNames[responsesRequests - 1] ?? "Withdrawn Member";
       await responsesHeld;
-      return Response.json([
-        makeFormResponse({
-          formId: 5,
-          formSnapshotId: 7,
-          schemaSnapshot: schema,
-          answers: { home: "Paris" },
-          user: makeUser({ id: 3, name }),
-        }),
-      ]);
+      return refusedOr("POST /tasks/responses/byForms", () =>
+        Response.json([
+          makeFormResponse({
+            formId: 5,
+            formSnapshotId: 7,
+            schemaSnapshot: schema,
+            answers: { home: "Paris" },
+            user: makeUser({ id: 3, name }),
+          }),
+        ]),
+      );
     },
-    "GET /actions/shareLinksForForm/:formId": () => Response.json([]),
+    "GET /actions/shareLinksForForm/:formId": () =>
+      refusedOr("GET /actions/shareLinksForForm/:formId", () =>
+        Response.json([]),
+      ),
     "GET /actions/withdrawals/byForm/:formId": async ({ params }) => {
       withdrawalsRequested.push(params.formId);
       await withdrawalsHeld;
@@ -100,6 +112,8 @@ beforeEach(() => {
   submitted = 0;
   responsesRequests = 0;
   respondentNames = ["Withdrawn Member"];
+  failingRoute = null;
+  refusal = () => Response.json({}, { status: 500 });
 });
 
 const tab = (actionId: number) => (
@@ -134,6 +148,31 @@ it("says so when the variants fail to load", async () => {
   renderTab();
 
   expect(await screen.findByText("Failed to load form responses")).toBeTruthy();
+});
+
+it.each([
+  "GET /tasks/slug/:id",
+  "POST /tasks/responses/byForms",
+  "GET /actions/shareLinksForForm/:formId",
+])("says so when %s fails", async (route) => {
+  failingRoute = route;
+  renderTab();
+
+  expect(await screen.findByText("Failed to load form responses")).toBeTruthy();
+});
+
+it("shows the server's message when it refuses the responses", async () => {
+  failingRoute = "POST /tasks/responses/byForms";
+  refusal = () =>
+    Response.json(
+      { message: "Only owners can view this form" },
+      { status: 403 },
+    );
+  renderTab();
+
+  expect(
+    await screen.findByText("Only owners can view this form"),
+  ).toBeTruthy();
 });
 
 const hold = () => {

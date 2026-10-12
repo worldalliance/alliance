@@ -137,20 +137,30 @@ const ActionMergedResponsesTab: React.FC<ActionMergedResponsesTabProps> = ({
         const anchorFormId = defaultOption?.formId;
         const [formResults, respRes, shareLinkRes] = await Promise.all([
           formIds.length > 0
-            ? Promise.all(formIds.map((id) => tasksGetForm({ path: { id } })))
+            ? Promise.all(
+                formIds.map((id) =>
+                  tasksGetForm({ path: { id }, throwOnError: true }),
+                ),
+              )
             : Promise.resolve([]),
           formIds.length > 0
-            ? tasksGetFormResponsesByFormsAdmin({ body: { formIds } })
+            ? tasksGetFormResponsesByFormsAdmin({
+                body: { formIds },
+                throwOnError: true,
+              })
             : Promise.resolve(null),
           anchorFormId != null
-            ? actionsShareLinksForFormAdmin({ path: { formId: anchorFormId } })
+            ? actionsShareLinksForFormAdmin({
+                path: { formId: anchorFormId },
+                throwOnError: true,
+              })
             : Promise.resolve(null),
         ]);
         if (cancelled) return;
 
-        const forms = formResults
-          .map((res) => (res?.data as unknown as FormWithSchema) ?? null)
-          .filter((form): form is FormWithSchema => form != null);
+        const forms = formResults.map(
+          (res) => res.data as unknown as FormWithSchema,
+        );
         const defaultForm =
           forms.find((form) => form.id === defaultOption?.formId) ??
           forms[0] ??
@@ -170,7 +180,7 @@ const ActionMergedResponsesTab: React.FC<ActionMergedResponsesTabProps> = ({
       } catch (e) {
         if (cancelled) return;
         console.error(e);
-        setError(LOAD_ERROR);
+        setError(adminRefusalMessage(e, LOAD_ERROR));
       } finally {
         if (!cancelled) setLoading(false);
       }
