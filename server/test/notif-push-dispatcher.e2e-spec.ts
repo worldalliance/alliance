@@ -580,6 +580,33 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       expect(messages[0].body).toBe("Quinn After wants to be friends");
     });
 
+    it("pushes a notification whose destination is gone without a screen", async () => {
+      const user = await createUser();
+      const friend = await createUser();
+      await createDevice(
+        user,
+        new Date(Date.now() - milliseconds({ hours: 1 })),
+      );
+      await ctx.app.get(NotifsService).sendNotif({
+        user,
+        category: NotificationCategory.FriendRequest,
+        message: notifMessage`${member(friend)} wants to be friends`,
+        destination: userDestination(friend.id),
+        webAppLocation: `/profile/${friend.id}`,
+        mobileAppLocation: `/profile/${friend.id}`,
+        associatedUsers: [friend],
+        sendTime: new Date(Date.now() - 1000),
+      });
+
+      await userRepo.delete(friend.id);
+
+      const messages = await dispatcher.findNotificationPushes(
+        "test-dispatch-no-destination",
+      );
+      expect(messages).toHaveLength(1);
+      expect(messages[0].screen).toBeUndefined();
+    });
+
     it("does not push a referenced notification whose action was deleted", async () => {
       const user = await createUser();
       await createDevice(
