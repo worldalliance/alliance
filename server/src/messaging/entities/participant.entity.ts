@@ -51,6 +51,9 @@ export class Participant {
   @ApiPropertyOptional({ type: () => Message })
   lastReadMessage?: Relation<Message>;
 
+  @Column({ type: "uuid", nullable: true })
+  lastReadMessageId: string | null;
+
   @Column({
     type: "enum",
     enum: ParticipantState,
