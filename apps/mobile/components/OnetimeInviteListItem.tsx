@@ -28,8 +28,8 @@ const STATUS_TEXT_CLASS: Record<
 > = {
   request_pending: "text-amber-500",
   request_rejected: "text-orange-600",
-  link_used: "text-zinc-600",
-  link_unused: "text-green",
+  link_used: "text-green",
+  link_unused: "text-amber-500",
 };
 
 export type OnetimeInviteListItemProps = {
