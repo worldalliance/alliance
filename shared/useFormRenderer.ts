@@ -8,10 +8,12 @@
 import { type DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
-  collectFieldLookup,
   collectSourceFormIds,
-  collectVariableResolutionFields,
   forEachCondition,
+} from "@alliance/common/forms/form-conditions";
+import {
+  collectFieldLookup,
+  collectVariableResolutionFields,
   isDisplayBlock,
   isQuestionField,
   variableInputFieldsById,

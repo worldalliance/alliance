@@ -1,5 +1,5 @@
+import { forEachCondition } from "@alliance/common/forms/form-conditions";
 import {
-  forEachCondition,
   isQuestionField,
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
