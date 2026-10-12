@@ -4080,8 +4080,8 @@ export class ActionsService {
               activityStatus = UserActionRelationPillStatus.WontComplete;
               // Surface withdrawal reason for the leader view.
               detail.declineReason = terminal.declineReason ?? undefined;
-              detail.isMoral = terminal.isMoral;
-              detail.outOfTime = terminal.outOfTime;
+              detail.isMoral = terminal.isMoral ?? undefined;
+              detail.outOfTime = terminal.outOfTime ?? undefined;
               break;
             default:
               throw new Error(
