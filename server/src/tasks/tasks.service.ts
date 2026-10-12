@@ -108,7 +108,11 @@ import { MmsService } from "src/mms/mms.service";
 import { welcomeMessage } from "src/notifs/textnotifcontents";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import { UpdateProfileDto } from "src/user/dto/user.dto";
-import { loadedUserCommunities, User } from "src/user/entities/user.entity";
+import {
+  loadedUserCommunities,
+  loadedUserTags,
+  User,
+} from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { toPlainTime } from "src/utils/plain-time";
 import type { Repository as TypedRepository } from "src/utils/Repository";
@@ -2087,7 +2091,9 @@ export class TasksService {
         if (!validator.idArgument) {
           throw new BadRequestException("Validator has no id argument");
         }
-        if (user.tags.some((tag) => tag.id === validator.idArgument)) {
+        if (
+          loadedUserTags(user).some((tag) => tag.id === validator.idArgument)
+        ) {
           return {
             isValid: true,
           };

@@ -3,6 +3,7 @@ import {
   assertCanManageCommunity,
   canManageCommunity,
   hasPassword,
+  loadedUserTags,
   User,
 } from "./user.entity";
 
@@ -98,6 +99,18 @@ describe("assertCanManageCommunity", () => {
   it("refuses anyone else with a 400 naming the community", () => {
     expect(() => assertCanManageCommunity(leaderOf7, 8)).toThrow(
       new BadRequestException("User is not a leader of community 8"),
+    );
+  });
+});
+
+describe("loadedUserTags", () => {
+  it("returns the loaded tags", () => {
+    expect(loadedUserTags({ id: 3, tags: [] })).toEqual([]);
+  });
+
+  it("throws when the tags aren't loaded", () => {
+    expect(() => loadedUserTags({ id: 3, tags: undefined })).toThrow(
+      "tags of user 3 not loaded",
     );
   });
 });

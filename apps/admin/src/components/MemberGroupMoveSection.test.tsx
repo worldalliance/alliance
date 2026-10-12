@@ -21,6 +21,7 @@ const south = makeCommunity({ id: 5, name: "South" });
 const user: UserAdminDetailDto = {
   ...makeUser({ id: 7, name: "Sam", hasActiveContract: true }),
   communities: [{ ...north, users: [], leaders: [] }],
+  tags: [],
   location: {},
   invitedBy: null,
 };
