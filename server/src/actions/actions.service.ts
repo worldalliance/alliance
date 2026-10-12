@@ -1073,19 +1073,11 @@ export class ActionsService {
     // leaf questions, and the answers can't change mid-request.
     const session = new CohortResolutionSession();
 
-    const filtered: ParsedAction[] = [];
-    for (const action of actions) {
-      if (
-        (await this.actionVisibility.userCanSeeAction({
-          action,
-          user,
-          session,
-        })) &&
-        !action.publicOnly
-      ) {
-        filtered.push(action);
-      }
-    }
+    const filtered = await this.actionVisibility.listableActions({
+      actions,
+      user,
+      session,
+    });
 
     await this.applyAssignedFormIds(filtered, user?.id);
 
@@ -2916,12 +2908,21 @@ export class ActionsService {
     return merged.slice(0, limit).map((item) => new HomeFeedItemDto(item));
   }
 
-  async findByName(name: string): Promise<Action[]> {
-    const actions = await this.actionRepository.find({
-      where: { name: ILike(`%${name}%`) },
-      relations: { events: true },
+  async findByName(
+    name: string,
+    requestingUserId: number,
+  ): Promise<ParsedAction[]> {
+    const [actions, user] = await Promise.all([
+      this.actionRepository.find({
+        where: { name: ILike(`%${name}%`) },
+        relations: { events: true },
+      }),
+      this.actionVisibility.loadUserForActionVisibility(requestingUserId),
+    ]);
+    return this.actionVisibility.listableActions({
+      actions: actions.map(parseAction),
+      user,
     });
-    return actions.filter((action) => action.status !== ActionStatus.Draft);
   }
 
   async getActivity(

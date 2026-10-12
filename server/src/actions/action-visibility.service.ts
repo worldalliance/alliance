@@ -91,6 +91,22 @@ export class ActionVisibilityService {
     });
   }
 
+  /** The actions the user's action feed and search list: the ones they can see, less public-only ones. */
+  async listableActions(params: {
+    actions: ParsedAction[];
+    user: User | null;
+    session?: CohortResolutionSession;
+  }): Promise<ParsedAction[]> {
+    const listable = await this.visibleActionIdsAmong({
+      actions: params.actions,
+      user: params.user,
+      session: params.session ?? new CohortResolutionSession(),
+      allows: async (access) =>
+        !access.action.publicOnly && (await this.userCanSeeAction(access)),
+    });
+    return params.actions.filter((action) => listable.has(action.id));
+  }
+
   async loadUserForActionVisibility(userId?: number): Promise<User | null> {
     if (userId == null) {
       return null;
