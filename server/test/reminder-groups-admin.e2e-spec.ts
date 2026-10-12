@@ -3,7 +3,9 @@ import request from "supertest";
 import {
   ActionEvent,
   ActionStatus,
+  loadedActionEventAction,
 } from "../src/actions/entities/action-event.entity";
+import { ActionSuite } from "../src/actions/entities/action-suite.entity";
 import { Action } from "../src/actions/entities/action.entity";
 import {
   ReminderCohortType,
@@ -75,6 +77,57 @@ describe("Admin reminder groups (e2e)", () => {
         .getRepository(ReminderGroup)
         .findOneByOrFail({ id: created.body.id }),
     ).toMatchObject({ cohortType: ReminderCohortType.AllUncompleted });
+  });
+
+  it("returns a group's member event from the admin reminder group endpoints, and its derived deadline from create, update, and its suite", async () => {
+    const deadline = await ctx.dataSource.getRepository(ActionEvent).save({
+      title: "Deadline",
+      description: "Deadline",
+      newStatus: ActionStatus.Resolution,
+      date: new Date(Date.now() + milliseconds({ days: 7 })),
+      action: loadedActionEventAction(event),
+    });
+    const suite = await ctx.dataSource
+      .getRepository(ActionSuite)
+      .save({ name: "reminder-groups-admin e2e" });
+    const admin = (req: request.Test) =>
+      req.set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+    const expected = {
+      memberActionEvent: expect.objectContaining({ id: event.id }),
+      deadlineEvent: expect.objectContaining({ id: deadline.id }),
+    };
+
+    const created = await createGroup({
+      ...groupBody,
+      cohortType: ReminderCohortType.AllUncompleted,
+      suiteId: suite.id,
+    }).expect(201);
+    expect(created.body).toMatchObject(expected);
+
+    const updated = await admin(
+      request(ctx.app.getHttpServer())
+        .patch(`/actions/remindergroups/${created.body.id}`)
+        .send({ ...groupBody, cohortType: ReminderCohortType.AllUncompleted }),
+    ).expect(200);
+    expect(updated.body).toMatchObject(expected);
+
+    const listed = await admin(
+      request(ctx.app.getHttpServer()).get(
+        `/actions/reminderGroupsForEvent/${event.id}`,
+      ),
+    ).expect(200);
+    expect(
+      listed.body.find((group: { id: number }) => group.id === created.body.id),
+    ).toMatchObject({
+      memberActionEvent: expect.objectContaining({ id: event.id }),
+    });
+
+    const suiteRes = await admin(
+      request(ctx.app.getHttpServer()).get(`/actions/suite/${suite.id}`),
+    ).expect(200);
+    expect(suiteRes.body.reminderGroups).toEqual([
+      expect.objectContaining({ id: created.body.id, ...expected }),
+    ]);
   });
 
   it.each([
