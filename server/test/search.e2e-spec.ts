@@ -3,11 +3,12 @@ import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
-import { Action } from "src/actions/entities/action.entity";
+import { Action, VisibilityMode } from "src/actions/entities/action.entity";
 import { Post } from "src/forum/entities/post.entity";
 import { RecentSearch } from "src/search/recentsearch.entity";
 import { SearchModule } from "src/search/search.module";
 import { SearchItemType } from "src/search/searchitem.dto";
+import { Tag } from "src/user/entities/tag.entity";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
@@ -95,6 +96,80 @@ describe("Search (e2e)", () => {
     expect(ids).toContain(`u${targetUser.id}`);
     expect(ids).toContain(`a${targetAction.id}`);
     expect(ids).toContain(`p${targetPost.id}`);
+  });
+
+  it("lists only the actions the searching user's feed would list", async () => {
+    const draft = await actionRepo.save(
+      actionRepo.create({
+        name: "Searchgate Draft",
+        category: [],
+        body: "Hidden",
+        shortDescription: "Hidden",
+      }),
+    );
+    const otherTag = await ctx.dataSource
+      .getRepository(Tag)
+      .save({ name: "Other Tag", description: "Other Tag" });
+    const saveLive = async (overrides: Partial<Action>) => {
+      const action = await actionRepo.save(
+        actionRepo.create({
+          category: [],
+          body: "Hidden",
+          shortDescription: "Hidden",
+          ...overrides,
+        }),
+      );
+      await eventRepo.save(
+        eventRepo.create({
+          title: "Launch",
+          description: "Action is live",
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - milliseconds({ seconds: 1 })),
+          action,
+        }),
+      );
+      return action;
+    };
+    const archived = await saveLive({
+      name: "Searchgate Archived",
+      archived: true,
+    });
+    const publicOnly = await saveLive({
+      name: "Searchgate Public Only",
+      publicOnly: true,
+    });
+    const outsideCohort = await saveLive({
+      name: "Searchgate Outside Cohort",
+      visibilityMode: VisibilityMode.ParticipatingGroups,
+      cohortExpression: { type: "Tag", tagId: otherTag.id },
+    });
+    const insideCohort = await saveLive({
+      name: "Searchgate Inside Cohort",
+      visibilityMode: VisibilityMode.ParticipatingGroups,
+      cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
+    });
+
+    const searchIds = async (token: string) =>
+      (
+        await request(ctx.app.getHttpServer())
+          .get("/search/all")
+          .query({ query: "Searchgate" })
+          .set("Authorization", `Bearer ${token}`)
+          .expect(200)
+      ).body.map((item) => item.id);
+
+    const memberIds = await searchIds(ctx.accessToken);
+    expect(memberIds).toContain(`a${insideCohort.id}`);
+    expect(memberIds).not.toContain(`a${draft.id}`);
+    expect(memberIds).not.toContain(`a${archived.id}`);
+    expect(memberIds).not.toContain(`a${publicOnly.id}`);
+    expect(memberIds).not.toContain(`a${outsideCohort.id}`);
+
+    const adminIds = await searchIds(ctx.adminAccessToken);
+    expect(adminIds).toContain(`a${draft.id}`);
+    expect(adminIds).toContain(`a${archived.id}`);
+    expect(adminIds).toContain(`a${outsideCohort.id}`);
+    expect(adminIds).not.toContain(`a${publicOnly.id}`);
   });
 
   it("keeps a scheduled post out of search until it goes live", async () => {

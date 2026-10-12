@@ -98,7 +98,7 @@ export class SearchService {
       ),
     );
 
-    const actions = await this.actionsService.findByName(query);
+    const actions = await this.actionsService.findByName(query, userId);
     const actionItems = actions
       .slice(0, maxItemsPerType)
       .map((action) => this.actionToSearchItem(action));
