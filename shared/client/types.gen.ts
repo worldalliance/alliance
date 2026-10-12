@@ -749,7 +749,7 @@ export type User = {
     referralSource: ReferralSource;
     referredByCampaignId: number | null;
     referredByCampaign?: Campaign | null;
-    tags: Array<Tag>;
+    tags?: Array<Tag>;
     /**
      * The community that the user will join when they sign the contract
      */
@@ -828,7 +828,7 @@ export type UserDto = {
     referredById: number | null;
     referralSource: ReferralSource;
     referredByCampaignId: number | null;
-    tags: Array<Tag>;
+    tags?: Array<Tag>;
     communities?: Array<Community>;
     leaderOfIds: Array<number>;
     clusterId: number | null;

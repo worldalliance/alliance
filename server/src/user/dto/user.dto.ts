@@ -40,7 +40,13 @@ import {
   loadedOnetimeInviteInvitingUser,
   OnetimeInvite,
 } from "../entities/onetime-invite.entity";
-import { hasPassword, ReferralSource, User } from "../entities/user.entity";
+import { Tag } from "../entities/tag.entity";
+import {
+  hasPassword,
+  loadedUserTags,
+  ReferralSource,
+  User,
+} from "../entities/user.entity";
 import type { ReferrerResolution } from "../user.service";
 
 export type FriendStatusDtoArgs = {
@@ -454,8 +460,14 @@ export class UserAdminDetailDto extends UserDto {
   @ApiProperty({ type: () => UserAdminInvitedByDto, nullable: true })
   invitedBy: UserAdminInvitedByDto | null;
 
+  // eslint-disable-next-line @darraghor/nestjs-typed/api-property-matches-property-optionality -- without it, @ApiProperty keeps UserDto's inherited required: false
+  @ApiProperty({ type: () => Tag, isArray: true, required: true })
+  @Type(() => Tag)
+  tags: Tag[];
+
   constructor(user: UserAdminDetail) {
     super(user);
+    this.tags = loadedUserTags(user);
     this.location = new UserAdminLocationDto({
       city: user.city,
       customCityString: user.customCityString,

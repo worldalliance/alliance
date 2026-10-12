@@ -8,7 +8,7 @@ import {
 import { Action } from "src/actions/entities/action.entity";
 import type { Community } from "src/community/entities/community.entity";
 import type { FormResponse } from "src/tasks/entities/formresponse.entity";
-import { User } from "src/user/entities/user.entity";
+import { loadedUserTags, User } from "src/user/entities/user.entity";
 import { findLeast } from "src/utils/filter";
 import type { Repository } from "typeorm";
 
@@ -430,7 +430,7 @@ export function computeIsTaggedOrInManualCohort(params: {
   }
 
   return (
-    user.tags.some((tag) => participatingTagIdSet.has(tag.id)) &&
+    loadedUserTags(user).some((tag) => participatingTagIdSet.has(tag.id)) &&
     (includeSuspended ||
       onboarding ||
       user.hasActiveContractInFullRange({
