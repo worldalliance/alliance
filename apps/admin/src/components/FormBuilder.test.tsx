@@ -1,8 +1,12 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { client } from "@alliance/shared/client/client.gen";
+import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { openSection, selectElement } from "../lib/testing/formCanvas";
-import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
+import {
+  renderFormBuilder,
+  renderSavedFormBuilder,
+} from "../lib/testing/renderFormBuilder";
 
 afterEach(cleanup);
 
@@ -452,5 +456,39 @@ describe("FormBuilder page conditions", () => {
     expect(conditionsOf("Two")).toBe(1);
     expect(conditionsOf("Three")).toBe(1);
     expect(conditionsOf("One")).toBe(0);
+  });
+});
+
+describe("FormBuilder load", () => {
+  const api = serveApi(routes({}, () => Response.json([])));
+
+  it("says so when the server refuses the form", async () => {
+    api.alsoServing({
+      "GET /tasks/slug/:id": () =>
+        Response.json(
+          { statusCode: 500, message: "Internal Server Error" },
+          { status: 500 },
+        ),
+    });
+    renderSavedFormBuilder(5, "/");
+
+    expect(
+      await screen.findByText("Error loading form: Failed to load form"),
+    ).toBeTruthy();
+  });
+
+  it("names why the server refused the form", async () => {
+    api.alsoServing({
+      "GET /tasks/slug/:id": () =>
+        Response.json(
+          { statusCode: 404, message: "Form not found" },
+          { status: 404 },
+        ),
+    });
+    renderSavedFormBuilder(5, "/");
+
+    expect(
+      await screen.findByText("Error loading form: Form not found"),
+    ).toBeTruthy();
   });
 });

@@ -48,6 +48,7 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBeforeUnload, useBlocker, useSearchParams } from "react-router";
+import { adminRefusalMessage } from "../lib/adminRefusal";
 import { conditionSourceFields } from "../lib/conditionSourceFields";
 import {
   customValidatorIds,
@@ -831,7 +832,7 @@ export function FormBuilder(props: FormBuilderProps) {
     setIsLoading(true);
     setLoadError(null);
 
-    tasksGetForm({ path: { id: formId } })
+    tasksGetForm({ path: { id: formId }, throwOnError: true })
       .then((response) => {
         if (response.data) {
           // Convert the form entity back to FormSchema
@@ -863,9 +864,7 @@ export function FormBuilder(props: FormBuilderProps) {
       })
       .catch((error) => {
         console.error("Failed to load form:", error);
-        setLoadError(
-          error instanceof Error ? error.message : "Failed to load form",
-        );
+        setLoadError(adminRefusalMessage(error, "Failed to load form"));
       })
       .finally(() => {
         setIsLoading(false);
