@@ -96,6 +96,7 @@ export class ParticipantDto extends OmitType(Participant, [
   "conversation",
   "user",
   "lastReadMessage",
+  "deletedAt",
 ]) {
   @ApiProperty({ type: () => ProfileDto })
   @Type(() => ProfileDto)

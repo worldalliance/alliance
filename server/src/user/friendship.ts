@@ -8,7 +8,7 @@ export const acceptedFriendship = {
 } satisfies FindOptionsWhere<Friend>;
 
 export const acceptedFriendshipSql = (alias: string): string =>
-  `${alias}.status = '${FriendStatus.Accepted}'`;
+  `(${alias}.status = '${FriendStatus.Accepted}' AND ${alias}."deletedAt" IS NULL)`;
 
 export const acceptedFriendshipsOf = (
   userId: number,

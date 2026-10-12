@@ -1,7 +1,10 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsInt, IsOptional } from "class-validator";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import { Allow, IsEmpty, IsInt, IsOptional } from "class-validator";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -67,4 +70,9 @@ export class ActionFormAssignment {
   @Allow()
   @Type(() => Date)
   assignedAt: Date;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

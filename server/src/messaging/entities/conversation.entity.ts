@@ -3,6 +3,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Community } from "src/community/entities/community.entity";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -65,6 +66,9 @@ export class Conversation {
   @JoinColumn({ name: "communityId" })
   @ApiPropertyOptional({ type: () => Community })
   community?: Relation<Community>;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }
 
 export function loadedConversationParticipants(

@@ -27,13 +27,15 @@ const COHORT_CTES = `
     SELECT invite."waitlistEntryId" AS "entryId", invite."communityId",
       claimant.id AS "userId", claimant."createdAt" AS "claimedAt"
     FROM onetime_invite invite
-    JOIN "user" claimant ON ${inviteClaimantSql({ invite: "invite", claimant: "claimant" })}
+    JOIN "user" claimant ON claimant."deletedAt" IS NULL
+      AND ${inviteClaimantSql({ invite: "invite", claimant: "claimant" })}
     WHERE invite."waitlistEntryId" IN (SELECT id FROM cohort)
   ),
   first_send AS (
     SELECT recipient."entryId", min(recipient."acceptedAt") AS "sentAt"
     FROM waitlist_email_recipient recipient
     WHERE recipient."entryId" IN (SELECT id FROM cohort)
+      AND recipient."deletedAt" IS NULL
       AND recipient."acceptedAt" IS NOT NULL
       AND recipient."inviteId" IS NOT NULL
     GROUP BY recipient."entryId"
@@ -147,7 +149,9 @@ export class WaitlistMetricsService {
          SELECT "entryId", count(*) AS claims FROM claim GROUP BY "entryId"
        ) entry_claim ON entry_claim."entryId" = entry.id
        LEFT JOIN campaign organization ON organization.id = entry."organizationId"
+         AND organization."deletedAt" IS NULL
        LEFT JOIN waitlist_link link ON link.id = entry."sourceLinkId"
+         AND link."deletedAt" IS NULL
        WHERE entry.id IN (SELECT id FROM cohort)
        GROUP BY entry."organizationId", organization.name, link.id
        ORDER BY organization.name NULLS LAST, entry."organizationId",
@@ -192,12 +196,15 @@ export class WaitlistMetricsService {
            JOIN action ON action.id = activity."actionId"
            WHERE activity."userId" = claim."userId"
              AND ${sqlIsLatestCompletion("activity")}
+             AND action."deletedAt" IS NULL
              AND NOT action."isContractSigningAction"
          ))::int AS "firstAction"
        FROM claim
        JOIN waitlist_entry entry ON entry.id = claim."entryId"
        LEFT JOIN campaign organization ON organization.id = entry."organizationId"
+         AND organization."deletedAt" IS NULL
        LEFT JOIN community ON community.id = claim."communityId"
+         AND community."deletedAt" IS NULL
        GROUP BY entry."organizationId", organization.name,
          claim."communityId", community.name
        ORDER BY organization.name NULLS LAST, entry."organizationId",

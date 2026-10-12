@@ -1,5 +1,8 @@
 import { Campaign } from "src/campaign/entities/campaign.entity";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
 import {
   Check,
@@ -110,4 +113,7 @@ export class WaitlistEntry {
 
   @CreateDateColumnTz()
   createdAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

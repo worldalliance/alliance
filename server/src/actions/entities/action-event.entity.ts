@@ -1,7 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsNotEmpty, IsOptional } from "class-validator";
-import { UpdateDateColumnTz } from "src/datasources/basecolumns";
+import { Allow, IsEmpty, IsNotEmpty, IsOptional } from "class-validator";
+import {
+  DeleteDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
@@ -110,6 +113,11 @@ export class ActionEvent {
   @Column({ default: false })
   @Allow()
   suiteManaged: boolean;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 export function loadedActionEventAction(

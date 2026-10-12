@@ -1,4 +1,7 @@
-import { UpdateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  DeleteDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
 import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -88,4 +91,7 @@ export class WaitlistEmailRecipient {
 
   @UpdateDateColumnTz()
   updatedAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

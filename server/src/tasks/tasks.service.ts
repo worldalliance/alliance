@@ -1776,6 +1776,7 @@ export class TasksService {
     };
     await this.formResponseDraftRepository.upsert(draft, {
       conflictPaths: ["userId", "formId"],
+      indexPredicate: '"deletedAt" IS NULL',
     });
     return draft;
   }

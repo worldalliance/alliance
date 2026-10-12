@@ -9,6 +9,7 @@ const snapshotWithOptions = (values: string[]): FormSnapshot => ({
   id: nextId++,
   hash: "hash",
   createdAt: new Date(0),
+  deletedAt: null,
   schema: {
     pages: [
       {

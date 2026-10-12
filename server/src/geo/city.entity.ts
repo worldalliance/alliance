@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { Column, Entity, Index, PrimaryColumn } from "typeorm";
 
 @Entity()
@@ -44,4 +45,7 @@ export class City {
   @Column({ type: "float" })
   @ApiProperty()
   longitude: number;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

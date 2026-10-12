@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
@@ -47,4 +48,7 @@ export class MmsOptout {
   @JoinColumn({ name: "userId" })
   @ApiPropertyOptional({ type: () => User })
   user?: Relation<User>;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

@@ -1,8 +1,16 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
-import { Allow, IsNotEmpty, IsString, MaxLength } from "class-validator";
+import {
+  Allow,
+  IsEmpty,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { trim } from "src/utils/transforms";
@@ -56,4 +64,9 @@ export class CustomLink {
   @Allow()
   @Type(() => Date)
   updatedAt: Date;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

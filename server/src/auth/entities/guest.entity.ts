@@ -1,7 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsOptional } from "class-validator";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import { Allow, IsEmpty, IsOptional } from "class-validator";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
 import { Entity, Index, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
@@ -25,4 +28,9 @@ export class Guest {
   @IsOptional()
   @Type(() => User)
   linkedUser?: Relation<User> | null;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

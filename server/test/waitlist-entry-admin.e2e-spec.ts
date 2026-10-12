@@ -724,7 +724,12 @@ describe("Waitlist entry admin (e2e)", () => {
 
       expect(res.body.changed).toBe(2);
       const deletedAt = async (invite: OnetimeInvite) =>
-        (await inviteRepo.findOneByOrFail({ id: invite.id })).deletedAt;
+        (
+          await inviteRepo.findOneOrFail({
+            where: { id: invite.id },
+            withDeleted: true,
+          })
+        ).deletedAt;
       expect(await deletedAt(unused)).toEqual(expect.any(Date));
       expect(await deletedAt(usedUnclaimed)).toEqual(expect.any(Date));
       expect(await deletedAt(revoked)).toEqual(alreadyRevoked);
@@ -771,7 +776,12 @@ describe("Waitlist entry admin (e2e)", () => {
         await runner.release();
       }
       expect(
-        (await inviteRepo.findOneByOrFail({ id: invite.id })).deletedAt,
+        (
+          await inviteRepo.findOneOrFail({
+            where: { id: invite.id },
+            withDeleted: true,
+          })
+        ).deletedAt,
       ).toBeNull();
     });
 
@@ -803,7 +813,12 @@ describe("Waitlist entry admin (e2e)", () => {
 
       expect(res.body.changed).toBe(0);
       expect(
-        (await inviteRepo.findOneByOrFail({ id: invite.id })).deletedAt,
+        (
+          await inviteRepo.findOneOrFail({
+            where: { id: invite.id },
+            withDeleted: true,
+          })
+        ).deletedAt,
       ).toBeNull();
     });
   });

@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsNotEmpty, IsOptional } from "class-validator";
+import { Allow, IsEmpty, IsNotEmpty, IsOptional } from "class-validator";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
@@ -41,4 +42,9 @@ export class PostTag {
   @ApiProperty()
   @Allow()
   sortOrder: number;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

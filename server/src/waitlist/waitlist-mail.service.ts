@@ -157,10 +157,12 @@ export class WaitlistMailService {
           EXISTS (
             SELECT 1 FROM waitlist_mail_allowance
             WHERE email = $1 AND "claimedAt" > now() - interval '24 hours'
+              AND "deletedAt" IS NULL
           ) AS "recipientLimited",
           (
             SELECT count(*)::int FROM waitlist_mail_allowance
             WHERE "claimedAt" >= date_trunc('day', now(), 'UTC')
+              AND "deletedAt" IS NULL
           ) AS "sentToday"`,
         [email],
       );
@@ -171,7 +173,8 @@ export class WaitlistMailService {
       if (SENDS[claim]) {
         await manager.query(
           `INSERT INTO waitlist_mail_allowance (email, "claimedAt") VALUES ($1, now())
-          ON CONFLICT (email) DO UPDATE SET "claimedAt" = excluded."claimedAt"`,
+          ON CONFLICT (email) DO UPDATE
+          SET "claimedAt" = excluded."claimedAt", "deletedAt" = NULL`,
           [email],
         );
       }

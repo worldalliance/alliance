@@ -177,9 +177,10 @@ export class WaitlistService {
     }
     const { email, phoneNumber } = contact.value;
     if (
-      await this.entryRepository.existsBy(
-        email !== null ? { email } : { phoneNumber },
-      )
+      await this.entryRepository.exists({
+        where: email !== null ? { email } : { phoneNumber },
+        withDeleted: true,
+      })
     ) {
       return R.success(null);
     }

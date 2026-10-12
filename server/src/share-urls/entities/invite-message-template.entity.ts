@@ -1,3 +1,4 @@
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { Column, Entity, PrimaryColumn } from "typeorm";
 
 @Entity()
@@ -7,4 +8,7 @@ export class InviteMessageTemplate {
 
   @Column({ type: "text" })
   template: string;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

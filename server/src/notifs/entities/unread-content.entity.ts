@@ -1,6 +1,9 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { NotificationFormat } from "src/notifs/notification-content";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -82,4 +85,7 @@ export class UnreadContent {
   @Column({ type: "timestamptz", nullable: true })
   @ApiProperty({ type: Date, nullable: true })
   pushClaimedAt: Date | null;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

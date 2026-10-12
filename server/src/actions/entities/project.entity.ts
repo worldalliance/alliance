@@ -4,11 +4,13 @@ import {
   Allow,
   ArrayUnique,
   IsArray,
+  IsEmpty,
   IsEnum,
   IsOptional,
 } from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -70,4 +72,9 @@ export class Project {
   @Type(() => Action)
   @IsOptional()
   actions?: Relation<Action>[];
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

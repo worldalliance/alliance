@@ -1,9 +1,16 @@
 // src/forms/form.entity.ts
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsArray, IsDefined, IsOptional } from "class-validator";
+import {
+  Allow,
+  IsArray,
+  IsDefined,
+  IsEmpty,
+  IsOptional,
+} from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -73,6 +80,11 @@ export class Form {
   @IsArray()
   @IsOptional()
   responses?: Relation<FormResponse>[];
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 export function loadedFormSnapshot(form: Form): Relation<FormSnapshot> {

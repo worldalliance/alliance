@@ -1,9 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsOptional, IsString, ValidateIf } from "class-validator";
+import {
+  Allow,
+  IsEmpty,
+  IsOptional,
+  IsString,
+  ValidateIf,
+} from "class-validator";
 import { GeneralUpdate } from "src/actions/entities/general-update.entity";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -71,6 +78,11 @@ export class Tag {
   @IsOptional()
   @Type(() => GeneralUpdate)
   generalUpdates?: Relation<GeneralUpdate>[];
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 export function loadedTagUsers(tag: Tag): Relation<User>[] {

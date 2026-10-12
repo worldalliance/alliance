@@ -5,6 +5,7 @@ import { Campaign } from "src/campaign/entities/campaign.entity";
 import { Community } from "src/community/entities/community.entity";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
@@ -172,4 +173,7 @@ export class ShareUrl {
   @ManyToOne(() => Community, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: "inviteAssignmentCommunityId" })
   inviteAssignmentCommunity?: Relation<Community> | null;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

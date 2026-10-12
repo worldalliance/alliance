@@ -46,6 +46,7 @@ export class ContractReminderWorker {
           .leftJoin("user.contractEvents", "ce")
           .where("user.createdAt <= :cutoff", { cutoff })
           .andWhere("ce.id IS NULL")
+          // Deleted mail still went out, so it counts.
           .andWhere(
             `NOT EXISTS (
               SELECT 1 FROM mail

@@ -2,6 +2,7 @@ import { ParticipantRole } from "@alliance/common/participantRole";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
@@ -67,6 +68,9 @@ export class Participant {
 
   @UpdateDateColumnTz()
   updatedAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }
 
 export function loadedParticipantConversation(

@@ -712,6 +712,36 @@ describe("Auth (e2e)", () => {
       expect(claimed.invitedUser?.email).toBe("failed-signup@test.com");
     });
 
+    it("lets a signup claim an invite whose claimant is deleted", async () => {
+      const invite = await inviteRepo.save(
+        inviteRepo.create({
+          invitee: "deleted-claimant@test.com",
+          code: "DELETED-CLAIMANT-CODE",
+          status: OnetimeInviteStatus.LINK_UNUSED,
+          invitingUser,
+        }),
+      );
+      await registerWithInvite("deleted-claimant@test.com", invite.code).expect(
+        201,
+      );
+      const deleted = await userRepository.findOneByOrFail({
+        email: "deleted-claimant@test.com",
+      });
+      await userRepository.softDelete(deleted.id);
+
+      await registerWithInvite("next-claimant@test.com", invite.code).expect(
+        201,
+      );
+
+      const claimants = await userRepository.find({
+        where: { referredByInvite: { id: invite.id } },
+        withDeleted: true,
+      });
+      expect(claimants.map((user) => user.email)).toEqual([
+        "next-claimant@test.com",
+      ]);
+    });
+
     it("lets only one of two concurrent signups claim an invite", async () => {
       const invite = await inviteRepo.save(
         inviteRepo.create({

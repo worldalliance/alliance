@@ -162,24 +162,29 @@ export class WaitlistEntryAdminService {
     ids: number[],
   ): Promise<Map<number, ContractEvent[]>> {
     const invites = ids.length
-      ? await this.entryRepository.manager.getRepository(OnetimeInvite).find({
-          select: {
-            id: true,
-            waitlistEntryId: true,
-            invitedUser: {
+      ? await this.entryRepository.manager
+          .createQueryBuilder(OnetimeInvite, "invite")
+          .setFindOptions({
+            select: {
               id: true,
-              contractEvents: {
+              waitlistEntryId: true,
+              invitedUser: {
                 id: true,
-                type: true,
-                date: true,
-                automatic: true,
-                contractId: true,
+                contractEvents: {
+                  id: true,
+                  type: true,
+                  date: true,
+                  automatic: true,
+                  contractId: true,
+                },
               },
             },
-          },
-          where: { waitlistEntryId: In(ids) },
-          relations: { invitedUser: { contractEvents: true } },
-        })
+            where: { waitlistEntryId: In(ids) },
+            relations: { invitedUser: { contractEvents: true } },
+          })
+          // After setFindOptions, so deleted accounts and events stay filtered.
+          .withDeleted()
+          .getMany()
       : [];
     const eventsByEntry = new Map<number, ContractEvent[]>();
     for (const invite of invites) {
@@ -280,6 +285,7 @@ export class WaitlistEntryAdminService {
              AND NOT EXISTS (
                SELECT 1 FROM waitlist_email_recipient recipient
                WHERE recipient."inviteId" = invite.id AND recipient.status = $2
+                 AND recipient."deletedAt" IS NULL
              )
            RETURNING invite.id
          )
