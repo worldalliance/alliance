@@ -1,3 +1,4 @@
+import type { CohortExpression } from "@alliance/common/cohort-expression";
 import type {
   EventType,
   PreviewWaitlistEmailDto,
@@ -132,6 +133,8 @@ export const queryKeys = {
   ambassadorProgramAdmin: () => ["userGetAmbassadorProgramAdmin"] as const,
   campaignsAdmin: () => ["campaignFindAllAdmin"] as const,
   clustersAdmin: () => ["clusterListAdmin"] as const,
+  cohortEvaluationAdmin: (expression: CohortExpression | null) =>
+    ["actionsEvaluateCohortAdmin", expression] as const,
   communitiesAdmin: () => ["communityGetCommunitiesAdmin"] as const,
   contractAdmin: (id: number | null) => ["contractFindOneAdmin", id] as const,
   contractsAdmin: () => ["contractAllAdmin"] as const,
