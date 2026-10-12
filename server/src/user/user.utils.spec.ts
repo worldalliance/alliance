@@ -183,6 +183,18 @@ describe("notificationPushesEnabled", () => {
       ),
     ).toBe(false);
   });
+
+  it.each(Object.values(NotificationCategory))(
+    "doesn't push %s when all notifs are turned off",
+    (category) => {
+      expect(
+        notificationPushesEnabled(
+          categoryPushUser({ turnedOffAllNotifs: true }),
+          category,
+        ),
+      ).toBe(false);
+    },
+  );
 });
 
 describe("newGroupMemberTextsEnabled", () => {

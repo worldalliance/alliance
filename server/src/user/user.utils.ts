@@ -74,6 +74,7 @@ export function notificationPushesEnabled(
   >,
   category: NotificationCategory,
 ): boolean {
+  if (user.turnedOffAllNotifs) return false;
   const enabled: Record<NotificationCategory, boolean> = {
     [NotificationCategory.ActionEvent]: true,
     [NotificationCategory.ActionUpdate]: user.pushesForActionUpdates,
@@ -91,8 +92,7 @@ export function notificationPushesEnabled(
     [NotificationCategory.MemberSuspendedRemovedFromCommunity]: true,
     [NotificationCategory.CommunityAssigned]: true,
     [NotificationCategory.NewMemberReferred]: true,
-    [NotificationCategory.GroupMemberJoined]:
-      user.pushesForNewGroupMembers && !user.turnedOffAllNotifs,
+    [NotificationCategory.GroupMemberJoined]: user.pushesForNewGroupMembers,
     [NotificationCategory.OnetimeInviteRequestCreated]: true,
     [NotificationCategory.OnetimeInviteRequestApproved]: true,
     [NotificationCategory.OnetimeInviteRequestRejected]: true,
