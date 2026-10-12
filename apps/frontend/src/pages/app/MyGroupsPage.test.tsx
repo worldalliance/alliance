@@ -11,7 +11,7 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../../lib/AuthContext";
-import { testAuthUser } from "../../stories/testData";
+import { testAuthUser, testUser } from "../../stories/testData";
 import { authValue } from "../../testing/authValue";
 import MyGroupsPage from "./MyGroupsPage";
 
@@ -327,3 +327,133 @@ it.each([
   expect(answers).toBe(1);
   expect(screen.queryByText(/Unable to/)).toBeNull();
 });
+
+it("opens a group you lead or are a member of, offering Leave only on the latter", async () => {
+  myGroups = async () =>
+    Response.json([
+      { ...group(1, "Led group"), leaders: [testUser] },
+      group(2, "Member group"),
+    ]);
+  const onSelectCommunity = jest.fn();
+  renderPage({ onSelectCommunity });
+  fireEvent.click(await screen.findByText("Led group"));
+  fireEvent.click(screen.getByText("Member group"));
+  expect(onSelectCommunity.mock.calls).toEqual([[1], [2]]);
+  expect(screen.getAllByText("Leave")).toHaveLength(1);
+});
+
+it("opens the create group form, closing it from its toggle or Cancel", async () => {
+  myGroups = async () => Response.json([]);
+  renderPage();
+  fireEvent.click(await screen.findByText("Create group"));
+  await screen.findByPlaceholderText("Enter group name");
+  fireEvent.click(screen.getByText("Create group"));
+  expect(screen.queryByPlaceholderText("Enter group name")).toBeNull();
+
+  fireEvent.click(screen.getByText("Create group"));
+  fireEvent.click(await screen.findByText("Cancel"));
+  expect(screen.queryByPlaceholderText("Enter group name")).toBeNull();
+});
+
+it("opens a group you create and closes the form", async () => {
+  myGroups = async () => Response.json([]);
+  api.alsoServing({
+    "POST /community/create": () => Response.json(group(5, "New group")),
+  });
+  const onSelectCommunity = jest.fn();
+  renderPage({ onSelectCommunity });
+  fireEvent.click(await screen.findByText("Create group"));
+  fireEvent.click(await screen.findByText("Create"));
+  await waitFor(() => expect(onSelectCommunity.mock.calls).toEqual([[5]]));
+  expect(screen.queryByPlaceholderText("Enter group name")).toBeNull();
+});
+
+it("closes the leave dialog on a click outside it", async () => {
+  myGroups = async () => Response.json([group(1, "My group")]);
+  renderPage();
+  fireEvent.click(await screen.findByText("Leave"));
+  await screen.findByText(/Are you sure you want to leave/);
+  // Retried: the dialog ignores outside clicks for 100ms after it opens.
+  await waitFor(() => {
+    fireEvent.click(document.body);
+    expect(screen.queryByText(/Are you sure you want to leave/)).toBeNull();
+  });
+});
+
+it.each([
+  { answer: "Yes, reassign me", requests: 1 },
+  { answer: "No", requests: 0 },
+])(
+  "asks before requesting reassignment out of your group, answering $answer",
+  async ({ answer, requests }) => {
+    myGroups = async () => Response.json([group(1, "My group")]);
+    let joins = 0;
+    api.alsoServing({
+      "POST /user/groupAssignment/join": () => {
+        joins++;
+        return Response.json({});
+      },
+    });
+    renderPage();
+    fireEvent.click(await screen.findByText("Request reassignment"));
+    fireEvent.click(await screen.findByText(answer));
+    await waitFor(() =>
+      expect(screen.queryByText("Yes, reassign me")).toBeNull(),
+    );
+    await waitFor(() => expect(joins).toBe(requests));
+  },
+);
+
+it("asks before joining a public group, then opens it", async () => {
+  myGroups = async () => Response.json([group(1, "My group")]);
+  publicGroups = [group(2, "Public group")];
+  api.alsoServing({
+    "POST /community/:communityId/join": () =>
+      Response.json(group(2, "Public group")),
+  });
+  const onSelectCommunity = jest.fn();
+  renderPage({ onSelectCommunity });
+  await screen.findByText("My group");
+  await waitFor(() => expect(isDisabled("Join")).toBe(false));
+  fireEvent.click(screen.getByText("Join"));
+  fireEvent.click(await screen.findByText("Join group"));
+  await screen.findByText("You joined Public group.");
+  await waitFor(() => expect(onSelectCommunity.mock.calls).toEqual([[2]]));
+});
+
+it("joins no public group when you cancel its confirmation", async () => {
+  myGroups = async () => Response.json([group(1, "My group")]);
+  publicGroups = [group(2, "Public group")];
+  let joins = 0;
+  api.alsoServing({
+    "POST /community/:communityId/join": () => {
+      joins++;
+      return Response.json(group(2, "Public group"));
+    },
+  });
+  const onSelectCommunity = jest.fn();
+  renderPage({ onSelectCommunity });
+  await screen.findByText("My group");
+  await waitFor(() => expect(isDisabled("Join")).toBe(false));
+  fireEvent.click(screen.getByText("Join"));
+  fireEvent.click(await screen.findByText("Cancel"));
+  await waitFor(() => expect(screen.queryByText("Join group")).toBeNull());
+  expect(joins).toBe(0);
+  expect(onSelectCommunity).not.toHaveBeenCalled();
+});
+
+it.each([{ answer: offline }, { answer: failed }])(
+  "says when joining a public group fails with $answer.name",
+  async ({ answer }) => {
+    myGroups = async () => Response.json([]);
+    publicGroups = [group(2, "Public group")];
+    api.alsoServing({ "POST /community/:communityId/join": answer });
+    const onSelectCommunity = jest.fn();
+    renderPage({ onSelectCommunity });
+    await waitFor(() => expect(isDisabled("Join")).toBe(false));
+    fireEvent.click(screen.getByText("Join"));
+    await screen.findByText("Unable to join that group right now.");
+    await waitFor(() => expect(isDisabled("Join")).toBe(false));
+    expect(onSelectCommunity).not.toHaveBeenCalled();
+  },
+);
