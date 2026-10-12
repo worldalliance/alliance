@@ -49,11 +49,11 @@ serveApi(
   }),
 );
 
-const renderPage = () =>
+const renderPage = (path = "/forms/4/responses") =>
   render(
     <SiteOriginLinkProvider origin="https://worldalliance.org">
       <ToastProvider>
-        <MemoryRouter initialEntries={["/forms/4/responses"]}>
+        <MemoryRouter initialEntries={[path]}>
           <Routes>
             <Route
               path="/forms/:formId/responses"
@@ -69,6 +69,11 @@ const renderPage = () =>
 it("marks a response from a member who withdrew", async () => {
   renderPage();
   expect(await screen.findByText("Withdrew")).toBeTruthy();
+});
+
+it("says the form id is invalid instead of loading forever", async () => {
+  renderPage("/forms/abc/responses");
+  expect(await screen.findByText("Invalid form id.")).toBeTruthy();
 });
 
 it("says so when the responses fail to load", async () => {
