@@ -1,14 +1,20 @@
 import type { FormSchema, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
+import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import {
+  canvasButton,
   heading,
+  inNarrowWindow,
   openSection,
   outline,
   selectElement,
   settings,
 } from "../lib/testing/formCanvas";
-import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
+import {
+  renderFormBuilder,
+  renderSavedFormBuilder,
+} from "../lib/testing/renderFormBuilder";
 
 afterEach(cleanup);
 
@@ -50,6 +56,53 @@ const schema: FormSchema = {
   outputViews: [],
   aggregateViews: [],
 };
+
+const listSchema: FormSchema = {
+  ...schema,
+  pages: [
+    {
+      id: "p1",
+      title: "One",
+      fields: [
+        {
+          id: "kids",
+          type: "input",
+          kind: "list",
+          label: "Kids",
+          fields: [
+            { id: "name", type: "input", kind: "text", label: "Name" },
+            {
+              id: "age",
+              type: "input",
+              kind: "number",
+              label: "Age",
+              visibleIfFormula: reads("name"),
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+const savedForms: Record<string, FormSchema> = {
+  1: schema,
+  2: { ...listSchema, pages: [schema.pages[1]!, ...listSchema.pages] },
+};
+
+serveApi(
+  routes(
+    {
+      "GET /tasks/slug/:id": ({ params }) =>
+        Response.json({
+          id: Number(params.id),
+          schema: savedForms[params.id],
+          formSnapshotId: 3,
+        }),
+    },
+    () => Response.json([]),
+  ),
+);
 
 const links = (label: "Depends on" | "Used by") =>
   within(settings().getByRole("list", { name: label }));
@@ -118,37 +171,60 @@ describe("FormBuilder dependency links", () => {
 
     selectElement("Label e");
     openSection("Conditions");
-    expect(links("Depends on").getByText("x (form 7)")).toBeTruthy();
+    const source = links("Depends on").getByRole("link", {
+      name: "x (form 7), opens in a new tab",
+    });
+    expect(source.getAttribute("href")).toBe("/forms/7?select=x");
+    expect(source.getAttribute("target")).toBe("_blank");
+  });
+
+  it("selects and reveals the question a link to the form names", async () => {
+    const scroll = jest.spyOn(Element.prototype, "scrollIntoView");
+    const router = renderSavedFormBuilder(1, "/?select=c&editor=form");
+    expect(
+      await screen.findByRole("heading", { name: "Text Field: Label c" }),
+    ).toBeTruthy();
+    expect(scroll.mock.contexts).toContain(
+      canvasButton("Select Text Field: Label c"),
+    );
+    expect(router.state.location.search).toBe("?editor=form");
+  });
+
+  it("turns to the page of a linked list's sub-field", async () => {
+    const scroll = jest.spyOn(Element.prototype, "scrollIntoView");
+    renderSavedFormBuilder(2, "/?select=name");
+    expect(
+      await screen.findByRole("heading", { name: "Text Field: Name" }),
+    ).toBeTruthy();
+    expect(scroll.mock.contexts).toContain(
+      canvasButton("Select Text Field: Name"),
+    );
+  });
+
+  describe("in a narrow window", () => {
+    inNarrowWindow();
+
+    it("opens the linked question's settings", async () => {
+      renderSavedFormBuilder(1, "/?select=c");
+      expect(
+        await screen.findByRole("heading", { name: "Text Field: Label c" }),
+      ).toBeTruthy();
+      expect(
+        screen.getByRole("complementary", { name: "Settings" }),
+      ).toBeTruthy();
+    });
+  });
+
+  it("says when the form lacks the question a link names", async () => {
+    renderSavedFormBuilder(1, "/?select=gone");
+    expect(
+      await screen.findByText('This form has no question "gone"'),
+    ).toBeTruthy();
+    expect(heading()).toBe("Page settings");
   });
 
   it("links a list's sub-fields to the sub-fields reading them", () => {
-    renderFormBuilder({
-      ...schema,
-      pages: [
-        {
-          id: "p1",
-          title: "One",
-          fields: [
-            {
-              id: "kids",
-              type: "input",
-              kind: "list",
-              label: "Kids",
-              fields: [
-                { id: "name", type: "input", kind: "text", label: "Name" },
-                {
-                  id: "age",
-                  type: "input",
-                  kind: "number",
-                  label: "Age",
-                  visibleIfFormula: reads("name"),
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    });
+    renderFormBuilder(listSchema);
     selectElement("Number Field: Age");
     openSection("Conditions");
     fireEvent.click(

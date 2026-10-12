@@ -8,8 +8,10 @@ import type { ReactNode } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { FormBuilder } from "../../components/FormBuilder";
 
-function renderBuilder(builder: ReactNode) {
-  const router = createMemoryRouter([{ path: "/", element: builder }]);
+function renderBuilder(builder: ReactNode, url = "/") {
+  const router = createMemoryRouter([{ path: "/", element: builder }], {
+    initialEntries: [url],
+  });
   render(
     <SiteOriginLinkProvider origin="https://worldalliance.org">
       <ToastProvider>
@@ -18,6 +20,7 @@ function renderBuilder(builder: ReactNode) {
     </SiteOriginLinkProvider>,
     queryWrapper(),
   );
+  return router;
 }
 
 export function renderFormBuilder(initialSchema: FormSchema, formId?: number) {
@@ -27,6 +30,14 @@ export function renderFormBuilder(initialSchema: FormSchema, formId?: number) {
       initialSchema={initialSchema}
       setFormId={() => {}}
     />,
+  );
+}
+
+/** The builder loading form `formId` from the server, opened at `url`. */
+export function renderSavedFormBuilder(formId: number, url: string) {
+  return renderBuilder(
+    <FormBuilder formId={formId} setFormId={() => {}} />,
+    url,
   );
 }
 

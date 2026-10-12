@@ -5,7 +5,10 @@ import {
 } from "@alliance/common/forms/form-conditions";
 import { type Page } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
+import { cn } from "@alliance/shared/styles/util";
+import { ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 import {
   DependencyRole,
   DependentEntryKind,
@@ -15,6 +18,7 @@ import {
   type Dependent,
   type Source,
 } from "../../lib/formDependencies";
+import { formEditorPath } from "../../lib/formEditorLink";
 import type { VisibilityGroups } from "../../lib/visibilityGroups";
 import type { ConditionFieldLookup } from "../../lib/visibilitySummary";
 import {
@@ -116,14 +120,23 @@ export function DependencyLinks({
 
   const sourceLink = (source: Source) => {
     if (source.sourceFormId !== null) {
-      const label =
+      const label = `${
         fieldOf(source.fieldId, source.sourceFormId)?.label?.trim() ||
-        source.fieldId;
+        source.fieldId
+      } (form ${source.sourceFormId})`;
       return (
         <>
-          <span className="text-sm text-gray-800">
-            {label} (form {source.sourceFormId})
-          </span>
+          <Link
+            to={formEditorPath(source.sourceFormId, source.fieldId)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`${label}, opens in a new tab`}
+            title={label}
+            className={cn(LINK, "inline-flex items-center gap-1")}
+          >
+            <span className="truncate">{label}</span>
+            <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          </Link>
           {rolesNote(source.roles)}
         </>
       );

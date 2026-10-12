@@ -4,7 +4,10 @@ import {
   type DisplayBlock,
   type DisplayKind,
 } from "@alliance/common/forms/display-blocks";
-import { type ConditionHolder } from "@alliance/common/forms/form-conditions";
+import {
+  type ConditionHolder,
+  type FormPlace,
+} from "@alliance/common/forms/form-conditions";
 import {
   fieldHasOptions,
   isQuestionField,
@@ -50,6 +53,8 @@ import {
   mapCustomValidatorIds,
 } from "../lib/customValidatorIds";
 import { addressedWrite } from "../lib/displayBlockById";
+import { findQuestion } from "../lib/formDependencies";
+import { useSelectOnLoad } from "../lib/formEditorLink";
 import { formSchemaIds, JsonScopeKind, type JsonScope } from "../lib/formJson";
 import { mergeFormSchemas } from "../lib/formSchemaMerge";
 import {
@@ -86,6 +91,7 @@ import {
   elementTarget,
   followElement,
   forgetPositions,
+  placeTarget,
   resolveTarget,
   targetKey,
   type CanvasSelection,
@@ -752,6 +758,16 @@ export function FormBuilder(props: FormBuilderProps) {
     if (!keepOutline) setDrawer(wideCanvas ? null : DrawerKind.Settings);
   };
 
+  const [placeOnLoad, setPlaceOnLoad] = useState<FormPlace | null>(null);
+  if (placeOnLoad) {
+    setPlaceOnLoad(null);
+    selectFromOutline({
+      page: schema.pages[placeOnLoad.pageIndex]!,
+      pageIndex: placeOnLoad.pageIndex,
+      target: placeTarget(schema.pages, placeOnLoad),
+    });
+  }
+
   const extendTo = (clicked: Span, alone: CanvasTarget) =>
     extendSelection({
       fields: currentPage.fields,
@@ -793,6 +809,7 @@ export function FormBuilder(props: FormBuilderProps) {
   // A new form's first save already holds the saved schema; refetching it
   // would regroup and drop the admin's manual group boundaries.
   const createdFormIdRef = useRef<number | null>(null);
+  const selectOnLoadRef = useSelectOnLoad();
 
   // Load form data when formId changes
   useEffect(() => {
@@ -814,6 +831,16 @@ export function FormBuilder(props: FormBuilderProps) {
               form.schema as unknown as FormSchema,
             );
             loadSchema(nextSchema);
+            const selectOnLoad = selectOnLoadRef.current;
+            selectOnLoadRef.current = null;
+            if (selectOnLoad !== null) {
+              const place = findQuestion(nextSchema.pages, selectOnLoad);
+              if (place) {
+                setPlaceOnLoad(place);
+              } else {
+                showErrorToast(`This form has no question "${selectOnLoad}"`);
+              }
+            }
             setLastSavedSchemaJSON(JSON.stringify(nextSchema));
             setBaseFormSnapshotId(
               typeof form.formSnapshotId === "number"
@@ -833,7 +860,14 @@ export function FormBuilder(props: FormBuilderProps) {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [displayOnly, formId, initialSchema, loadSchema]);
+  }, [
+    displayOnly,
+    formId,
+    initialSchema,
+    loadSchema,
+    selectOnLoadRef,
+    showErrorToast,
+  ]);
 
   const addField = (kind: FieldKind, loc: InsertLoc) => {
     const fieldId = `field-${Date.now()}`;
