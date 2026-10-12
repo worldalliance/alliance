@@ -9,6 +9,7 @@ import {
   calculateCompletionData,
   canCompleteAction,
   deadlineHasPassed,
+  hasViewerCompletedAction,
   isActionAssignedAndNotDismissed,
   isActionOptional,
   isCurrentlyCompletedAction,
@@ -132,6 +133,34 @@ describe("viewer-based action predicates", () => {
       viewer: makeViewer({ relation: "completed", display: "completed" }),
     });
     expect(isCurrentlyCompletedAction(action)).toBe(true);
+  });
+
+  it("reads completion off the viewer, falling back to the legacy relation", () => {
+    expect(
+      hasViewerCompletedAction(
+        makeAction({
+          userRelation: "none",
+          viewer: makeViewer({ relation: "completed" }),
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      hasViewerCompletedAction(
+        makeAction({
+          userRelation: "completed",
+          viewer: makeViewer({ relation: "withdrawn" }),
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      hasViewerCompletedAction(makeLegacyAction({ userRelation: "completed" })),
+    ).toBe(true);
+    expect(
+      hasViewerCompletedAction(makeLegacyAction({ userRelation: "declined" })),
+    ).toBe(false);
+    expect(
+      hasViewerCompletedAction(makeLegacyAction({ userRelation: undefined })),
+    ).toBe(false);
   });
 
   it("derives deadlineHasPassed from viewer.memberActionStarted", () => {

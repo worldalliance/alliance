@@ -34,6 +34,22 @@ describe("filterActions", () => {
 
     expect(filterActions([preview], FilterMode.All)).toEqual([preview]);
   });
+
+  it("lists the actions the viewer completed under Completed by me", () => {
+    const completed = makeAction({
+      id: 1,
+      viewer: makeViewer({ relation: "completed" }),
+    });
+    const withdrawn = makeAction({
+      id: 2,
+      viewer: makeViewer({ relation: "withdrawn" }),
+    });
+    const todo = makeAction({ id: 3 });
+
+    expect(
+      filterActions([completed, withdrawn, todo], FilterMode.CompletedByMe),
+    ).toEqual([completed]);
+  });
 });
 
 it("marks the actions list and the general updates unread count stale", () => {

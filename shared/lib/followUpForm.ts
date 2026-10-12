@@ -1,7 +1,9 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
+import { isFollowUpFormActive } from "@alliance/common/followUpForm";
 import { R, type Result } from "@alliance/common/result";
 import {
   tasksSubmitFollowUpForm,
+  type ActionDto,
   type FollowUpFormDto,
   type SubmitFormDto,
 } from "../client";
@@ -10,6 +12,7 @@ import {
   formulaSourcesChanged,
   type SubmitResult,
 } from "../forms/formulaChoices";
+import { hasViewerCompletedAction } from "./actionUtils";
 import { captureException } from "./analytics";
 
 export const followUpPersistKey = (followUpFormId: number): string =>
@@ -26,6 +29,13 @@ export const followUpDraftStorageKey = ({
     formId,
     instanceId: followUpPersistKey(followUpFormId),
   });
+
+export function getActiveFollowUpForms(
+  action: Pick<ActionDto, "viewer" | "userRelation" | "followUpForms">,
+): FollowUpFormDto[] {
+  if (!hasViewerCompletedAction(action)) return [];
+  return (action.followUpForms ?? []).filter(isFollowUpFormActive);
+}
 
 export function followUpFormIntro(
   followUpForm: Pick<FollowUpFormDto, "name" | "instructions">,

@@ -12,7 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 export function useLiveTaskFormAggregateViews(
   taskFormId: number | null | undefined,
   usersCompleted?: number,
-  userRelation?: string | null,
+  viewerCompleted?: boolean,
 ): AggregateViewSchema[] {
   const queryClient = useQueryClient();
   const [aggregateViews, setAggregateViews] = useState<AggregateViewSchema[]>(
@@ -48,7 +48,7 @@ export function useLiveTaskFormAggregateViews(
     return () => {
       abortController.abort();
     };
-  }, [loadAggregateViews, usersCompleted, userRelation]);
+  }, [loadAggregateViews, usersCompleted, viewerCompleted]);
 
   useEffect(() => {
     let inFlight: AbortController | null = null;

@@ -84,6 +84,35 @@ describe("useHomePageActions", () => {
   it("counts the minutes of the required current-week actions only", () => {
     expect(homePageActions().remainingTasksEstimatedTimeCurrentWeek).toBe(20);
   });
+
+  it("lists completed actions' open follow-ups, latest start first", () => {
+    const followUp = (id: number, startDate: string) => ({
+      id,
+      name: null,
+      startDate,
+      endDate: null,
+      instructions: null,
+      actionId: 6,
+      formId: 1,
+    });
+    const earlier = followUp(1, subDays(new Date(), 2).toISOString());
+    const later = followUp(2, subDays(new Date(), 1).toISOString());
+    const completed = makeAction({
+      id: 6,
+      followUpForms: [earlier, later],
+      viewer: makeViewer({ relation: "completed" }),
+    });
+    const { activeCompletableFollowUpForms } = renderHook(() =>
+      useHomePageActions([
+        completed,
+        makeAction({ id: 7, followUpForms: [later] }),
+      ]),
+    ).result.current;
+    expect(activeCompletableFollowUpForms).toEqual([
+      { followUpForm: later, actionId: 6 },
+      { followUpForm: earlier, actionId: 6 },
+    ]);
+  });
 });
 
 describe("home task order", () => {
