@@ -9,9 +9,12 @@ import {
 } from "expo-notifications";
 import { useEffect } from "react";
 import { AppState, Platform } from "react-native";
+import { keepsAppIconBadgeClear } from "../lib/appIconBadge";
 import { useAuth } from "../lib/AuthContext";
+import { onAppActive } from "../lib/onAppActive";
 import { registerDevice, retryPending } from "../lib/registeredDevice";
 import { currentSession } from "../lib/session";
+import { useClearAppIconBadgeWhileSignedOut } from "../lib/taskBadge";
 import { isVisualTestMode } from "../lib/visualTest";
 
 function handleRegistrationError(errorMessage: string) {
@@ -62,19 +65,16 @@ async function registerForPushNotificationsAsync() {
 }
 
 export default function DeviceRegistration() {
-  const { isAuthenticated } = useAuth();
+  const auth = useAuth();
+  const { isAuthenticated } = auth;
+  useClearAppIconBadgeWhileSignedOut(keepsAppIconBadgeClear(auth));
 
   useEffect(() => {
     if (isVisualTestMode || Platform.OS === "web") {
       return;
     }
     void retryPending();
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        void retryPending();
-      }
-    });
-    return () => subscription.remove();
+    return onAppActive(AppState, () => void retryPending());
   }, []);
 
   useEffect(() => {

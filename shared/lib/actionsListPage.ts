@@ -39,11 +39,12 @@ export const useActionsQuery = (options?: {
     refetchInterval: options?.refetchInterval,
   });
 
+export const invalidateActions = (queryClient: QueryClient): void =>
+  void queryClient.invalidateQueries({ queryKey: queryKeys.actions() });
+
 export function useInvalidateActions(): () => void {
   const queryClient = useQueryClient();
-  return useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.actions() });
-  }, [queryClient]);
+  return useCallback(() => invalidateActions(queryClient), [queryClient]);
 }
 
 export function useDismissActionMutation() {
@@ -100,7 +101,7 @@ function applyConfirmedChange(params: {
     (prev) =>
       prev?.map((action) => (action.id === actionId ? patch(action) : action)),
   );
-  void queryClient.invalidateQueries({ queryKey: queryKeys.actions() });
+  invalidateActions(queryClient);
 }
 
 export const filterActions = (

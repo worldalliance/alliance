@@ -1,4 +1,5 @@
 import { client } from "@alliance/shared/client/client.gen";
+import { invalidateActions } from "@alliance/shared/lib/actionsListPage";
 import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
@@ -23,6 +24,7 @@ import PostHogProvider from "../lib/PostHogProvider";
 import { getRefreshToken, saveSessionTokens } from "../lib/SecureStorage";
 import { getApiUrl } from "../lib/config";
 import { linkOpeningSession, startLinkOpenings } from "../lib/linkOpenings";
+import { notificationBehavior } from "../lib/notificationBehavior";
 import { queryClient } from "../lib/queryClient";
 import { refreshingFetch } from "../lib/session";
 import "../lib/setImmediatePolyfill";
@@ -38,12 +40,11 @@ setTimeout(hideSplash, SPLASH_WATCHDOG_MS);
 registerErrorStatus(client);
 
 setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  handleNotification: async (notification) =>
+    notificationBehavior({
+      data: notification.request.content.data,
+      onTaskBadgePush: () => invalidateActions(queryClient),
+    }),
 });
 
 export default function RootLayout() {

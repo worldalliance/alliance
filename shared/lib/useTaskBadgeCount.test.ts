@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { expect, it, mock } from "bun:test";
 import { milliseconds } from "date-fns";
 import type { ActionDto } from "../client";
 import { useRecordActionRelation } from "./actionsListPage";
@@ -6,7 +7,7 @@ import { queryKeys } from "./queryKeys";
 import { makeAction, makeViewer } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
-import { useTaskBadgeCount } from "./useTaskBadgeCount";
+import { useTaskBadgeCount, useTaskBadgeMirror } from "./useTaskBadgeCount";
 
 const api = serveApi(routes({}));
 
@@ -125,4 +126,18 @@ it("drops a confirmed withdrawal at once, and an older in-flight fetch can't res
     expect(client.getQueryState(queryKeys.actions())?.fetchStatus).toBe("idle"),
   );
   expect(view.result.current.count).toBe(0);
+});
+
+it("mirrors the count after every fetch, even an unchanged one", async () => {
+  serveActions(() => [makeAction({ id: 1 })]);
+  const { client, wrapper } = queryWrapper();
+  const write = mock((_count: number) => {});
+  renderHook(() => useTaskBadgeMirror(write), { wrapper });
+
+  expect(write).not.toHaveBeenCalled();
+  await waitFor(() => expect(write).toHaveBeenCalledTimes(1));
+
+  await act(() => client.refetchQueries({ queryKey: queryKeys.actions() }));
+  await waitFor(() => expect(write).toHaveBeenCalledTimes(2));
+  expect(write.mock.calls).toEqual([[1], [1]]);
 });
