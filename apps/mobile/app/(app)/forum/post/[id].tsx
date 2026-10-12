@@ -1,4 +1,4 @@
-import { forumRemovePost, PostDto } from "@alliance/shared/client";
+import { PostDto } from "@alliance/shared/client";
 import { useForumPost } from "@alliance/shared/lib/useForumPost";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { router, useLocalSearchParams } from "expo-router";
@@ -43,6 +43,8 @@ export default function PostDetailScreen() {
     isLoading: loading,
     error: queryError,
     handleLike,
+    remove,
+    removed,
   } = useForumPost(postId, { userId: user?.id });
 
   const confirmDeletePost = useCallback(() => {
@@ -54,8 +56,8 @@ export default function PostDetailScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await forumRemovePost({ path: { id: post.id } });
-            router.push("/forum");
+            await remove();
+            router.replace("/forum");
           } catch (err) {
             console.error("Error deleting post:", err);
             setDeleteError("Failed to delete post");
@@ -63,9 +65,9 @@ export default function PostDetailScreen() {
         },
       },
     ]);
-  }, [post, user]);
+  }, [post, user, remove]);
 
-  if (loading) {
+  if (loading || removed) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color={colors.green} />

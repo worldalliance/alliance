@@ -1,4 +1,3 @@
-import { forumRemovePost } from "@alliance/shared/client";
 import { formatFullDateTime } from "@alliance/shared/lib/dateFormatters";
 import { useForumPost } from "@alliance/shared/lib/useForumPost";
 import { formatTime } from "@alliance/shared/lib/utils";
@@ -30,6 +29,8 @@ const PostDetailPage: React.FC = () => {
     isLoading: loading,
     error: queryError,
     handleLike,
+    remove,
+    removed,
   } = useForumPost(postId, { userId: user?.id });
 
   const handleDeletePost = async () => {
@@ -39,9 +40,7 @@ const PostDetailPage: React.FC = () => {
 
     if (window.confirm("Are you sure you want to delete this post?")) {
       try {
-        await forumRemovePost({
-          path: { id: post.id },
-        });
+        await remove();
         navigate(href("/forum"));
       } catch (err) {
         console.error("Error deleting post:", err);
@@ -63,11 +62,12 @@ const PostDetailPage: React.FC = () => {
     );
   }
 
-  if (loading || !post) {
+  // After a delete the post page stays mounted while /forum loads.
+  if (loading || removed || !post) {
     return (
       <div className="bg-page pt-20 px-8 md:px-16">
         <div className="absolute inset-0 flex items-center justify-center">
-          {loading ? (
+          {loading || removed ? (
             <Spinner size="large" />
           ) : (
             <p className="text-center text-zinc-500">Post not found</p>

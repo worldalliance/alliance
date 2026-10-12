@@ -8,6 +8,7 @@ let requests: string[] = [];
 let likeResponse: Promise<Response>;
 let getResponse: () => Response | Promise<Response>;
 let updateResponse: () => Response;
+let removeResponse: () => Response;
 
 serveApi(
   routes({
@@ -27,6 +28,10 @@ serveApi(
       requests.push("create");
       return Response.json({ ...post, id: 8, title: "New" });
     },
+    "DELETE /forum/posts/7": () => {
+      requests.push("remove");
+      return removeResponse();
+    },
     "PATCH /forum/posts/7": () => {
       requests.push("update");
       return updateResponse();
@@ -39,6 +44,7 @@ beforeEach(() => {
   likeResponse = Promise.resolve(Response.json({}));
   getResponse = () => Response.json(post);
   updateResponse = () => Response.json(renamed);
+  removeResponse = () => new Response(null);
 });
 
 const renamed = { ...post, title: "Renamed" };
@@ -200,6 +206,59 @@ it("refuses to update without an id", async () => {
 
   await waitFor(async () =>
     expect(await refused).toEqual(new Error("No post to update")),
+  );
+  expect(requests).toEqual([]);
+});
+
+it("forgets the post it removed", async () => {
+  const { wrapper } = queryWrapper();
+  const hook = renderHook(() => useForumPost("7"), { wrapper });
+  await waitFor(() => expect(hook.result.current.post).toEqual(post));
+
+  void hook.result.current.remove();
+
+  await waitFor(() => expect(hook.result.current.post).toBeNull());
+  expect(requests).toEqual(["get", "remove"]);
+});
+
+it("keeps a removal over a reload that read the post before it", async () => {
+  const { wrapper, client } = queryWrapper();
+  const hook = renderHook(() => useForumPost("7"), { wrapper });
+  await waitFor(() => expect(hook.result.current.post).toEqual(post));
+  const reload = Promise.withResolvers<Response>();
+  getResponse = () => reload.promise;
+  void client.refetchQueries({ queryKey: ["forumFindOnePost", "7"] });
+  await waitFor(() => expect(requests).toEqual(["get", "get"]));
+
+  void hook.result.current.remove();
+  await waitFor(() => expect(hook.result.current.post).toBeNull());
+  reload.resolve(Response.json(post));
+
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(hook.result.current.post).toBeNull();
+});
+
+it("keeps the post when the removal is refused", async () => {
+  removeResponse = () => Response.json({}, { status: 404 });
+  const { wrapper } = queryWrapper();
+  const hook = renderHook(() => useForumPost("7"), { wrapper });
+  await waitFor(() => expect(hook.result.current.post).toEqual(post));
+
+  const refused = hook.result.current.remove().catch((e: unknown) => e);
+
+  await waitFor(() => expect(requests).toEqual(["get", "remove"]));
+  expect(await refused).toMatchObject({ statusCode: 404 });
+  expect(hook.result.current.post).toEqual(post);
+});
+
+it("refuses to remove without an id", async () => {
+  const { wrapper } = queryWrapper();
+  const hook = renderHook(() => useForumPost(undefined), { wrapper });
+
+  const refused = hook.result.current.remove().catch((e: unknown) => e);
+
+  await waitFor(async () =>
+    expect(await refused).toEqual(new Error("No post to remove")),
   );
   expect(requests).toEqual([]);
 });

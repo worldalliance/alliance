@@ -9,6 +9,7 @@ import {
   forumCreatePost,
   forumFindOnePost,
   forumLikePost,
+  forumRemovePost,
   forumUnlikePost,
   forumUpdatePost,
   type CreatePostDto,
@@ -18,8 +19,9 @@ import {
 import { queryKeys } from "./queryKeys";
 
 /** One forum post and its writes. An undefined `postId` fetches nothing, for
- * the create form; `update` throws then. `refetchOnMount: "always"` makes
- * `isFetchedAfterMount` turn true whatever the client's staleTime. */
+ * the create form; `update` and `remove` throw then. `refetchOnMount:
+ * "always"` makes `isFetchedAfterMount` turn true whatever the client's
+ * staleTime. */
 export function useForumPost(
   postId: string | undefined,
   {
@@ -99,6 +101,20 @@ export function useForumPost(
     },
   });
 
+  const { mutateAsync: remove, isSuccess: removed } = useMutation({
+    mutationFn: async () => {
+      if (!postId) throw new Error("No post to remove");
+      await forumRemovePost({
+        path: { id: Number(postId) },
+        throwOnError: true,
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.cancelQueries({ queryKey });
+      queryClient.setQueryData(queryKey, null);
+    },
+  });
+
   return {
     post,
     isLoading,
@@ -107,5 +123,7 @@ export function useForumPost(
     handleLike,
     create,
     update,
+    remove,
+    removed,
   };
 }
