@@ -5,8 +5,10 @@ import { formulaSourcesChanged } from "../forms/formulaChoices";
 import {
   followUpDraftStorageKey,
   followUpFormIntro,
+  getActiveFollowUpForms,
   submitFollowUpForm,
 } from "./followUpForm";
+import { makeAction, makeLegacyAction, makeViewer } from "./testFixtures";
 import { recordExceptions } from "./testing/recordExceptions";
 import { routes, serveApi } from "./testing/serveApi";
 
@@ -159,5 +161,49 @@ describe("followUpFormIntro", () => {
 
   it("is hidden with no title and no instructions", () => {
     expect(followUpFormIntro(followUp({}), "").shown).toBe(false);
+  });
+});
+
+describe("getActiveFollowUpForms", () => {
+  const followUp = (
+    overrides: Pick<FollowUpFormDto, "id" | "startDate">,
+  ): FollowUpFormDto => ({
+    name: null,
+    endDate: null,
+    instructions: null,
+    actionId: 1,
+    formId: 1,
+    ...overrides,
+  });
+  const open = followUp({ id: 1, startDate: "2000-01-01T00:00:00.000Z" });
+  const unopened = followUp({ id: 2, startDate: null });
+  const followUpForms = [open, unopened];
+
+  it("lists the open follow-ups once the viewer completed the action", () => {
+    expect(
+      getActiveFollowUpForms(
+        makeAction({
+          followUpForms,
+          viewer: makeViewer({ relation: "completed" }),
+        }),
+      ),
+    ).toEqual([open]);
+    expect(
+      getActiveFollowUpForms(
+        makeLegacyAction({ followUpForms, userRelation: "completed" }),
+      ),
+    ).toEqual([open]);
+  });
+
+  it("lists none before the viewer completed the action", () => {
+    expect(
+      getActiveFollowUpForms(
+        makeAction({
+          followUpForms,
+          viewer: makeViewer({ relation: "withdrawn" }),
+        }),
+      ),
+    ).toEqual([]);
+    expect(getActiveFollowUpForms(makeAction({ followUpForms }))).toEqual([]);
   });
 });

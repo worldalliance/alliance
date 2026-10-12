@@ -1,9 +1,7 @@
-import { isFollowUpFormActive } from "@alliance/common/followUpForm";
 import { useCallback, useMemo } from "react";
 import { ActionDto, FollowUpFormDto } from "../client";
 import {
   ActionWithAwayStatus,
-  hasViewerCompletedAction,
   homePagePriorityComparator,
   isActionOptional,
   isCurrentlyCompletedAction,
@@ -11,6 +9,7 @@ import {
   shouldCompleteAction,
   showActionInSidebarList,
 } from "./actionUtils";
+import { getActiveFollowUpForms } from "./followUpForm";
 import type { ParsedGeneralUpdate } from "./generalUpdates";
 
 export type ActiveFollowUpFormEntry = {
@@ -97,11 +96,8 @@ export function useHomePageActions(actions: ActionWithAwayStatus[] | null) {
     if (!actions) return [];
     const list: ActiveFollowUpFormEntry[] = [];
     for (const action of actions) {
-      if (!hasViewerCompletedAction(action)) continue;
-      for (const f of action.followUpForms ?? []) {
-        if (isFollowUpFormActive(f)) {
-          list.push({ followUpForm: f, actionId: action.id });
-        }
+      for (const followUpForm of getActiveFollowUpForms(action)) {
+        list.push({ followUpForm, actionId: action.id });
       }
     }
     return list.sort(

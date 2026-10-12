@@ -1,4 +1,3 @@
-import { isFollowUpFormActive } from "@alliance/common/followUpForm";
 import type {
   ActionReviewerIcon,
   ProfileDto,
@@ -8,6 +7,7 @@ import { showActionPageTaskSection } from "@alliance/shared/lib/actionPageTaskPa
 import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import { hasViewerCompletedAction } from "@alliance/shared/lib/actionUtils";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
+import { getActiveFollowUpForms } from "@alliance/shared/lib/followUpForm";
 import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
 import { nameListSeparator } from "@alliance/shared/lib/nameList";
 import {
@@ -115,11 +115,7 @@ const ActionContents = () => {
   }, [action.authors, action.id]);
 
   const activeFollowUpForms = useMemo(() => {
-    if (!isCompleted) {
-      return [];
-    }
-    const list = action.followUpForms ?? [];
-    return list.filter(isFollowUpFormActive);
+    return getActiveFollowUpForms(action);
     // dont want to show follow up before cohort recomputed
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action.followUpForms]);
