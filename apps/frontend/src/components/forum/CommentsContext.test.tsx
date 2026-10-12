@@ -167,6 +167,25 @@ it("keeps a reply refused for a deleted comment open and reloads the thread", as
   await waitFor(() => expect(commentFetches).toBeGreaterThan(fetchesBefore));
 });
 
+it.each([
+  [500, "Internal server error", "Failed to submit reply"],
+  [401, "Unauthorized", "Your session has expired. Sign in again to reply."],
+])("replaces the framework's text on a %i", async (status, message, shown) => {
+  jest.spyOn(console, "error").mockImplementation(() => {});
+  const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
+
+  createError = { message };
+  createStatus = status;
+  await act(async () => {
+    await result.current.handleSubmitReply({
+      body: "a thread comment",
+      attachments: [],
+    });
+  });
+
+  expect(result.current.submitErrorFor(null)).toBe(shown);
+});
+
 it("keeps a rejection that landed while its own form was closed", async () => {
   const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
 

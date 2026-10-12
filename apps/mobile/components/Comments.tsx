@@ -1,4 +1,4 @@
-import { errorMessage, refusalMessage } from "@alliance/common/errorMessage";
+import { errorMessage } from "@alliance/common/errorMessage";
 import { R, type Result } from "@alliance/common/result";
 import {
   CommentDto,
@@ -16,6 +16,7 @@ import {
   updateCommentInTree,
 } from "@alliance/shared/lib/commentTree";
 import { commentThreadLanding } from "@alliance/shared/lib/copy";
+import { replyRefusalMessage } from "@alliance/shared/lib/replyRefusal";
 import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
 import { useDeleteComment } from "@alliance/shared/lib/useDeleteComment";
 import { useLoadComments } from "@alliance/shared/lib/useLoadComments";
@@ -191,17 +192,11 @@ export default function Comments({
         });
 
         if (response.error) {
-          if (response.response.status >= 500) {
-            console.error("The server failed the reply:", response.error);
-          }
           setSubmitError({
             parentId,
-            message: refusalMessage({
+            message: replyRefusalMessage({
               status: response.response.status,
               error: response.error,
-              fallback: "Failed to submit reply",
-              sessionExpired:
-                "Your session has expired. Sign in again to reply.",
             }),
           });
           // The comment may have been deleted, which a reload shows.
