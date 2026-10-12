@@ -155,6 +155,9 @@ const matchesResponseFilter = (
   }
 };
 
+export const REFERRALS_LOAD_ERROR =
+  "Failed to load share links, so invited respondents show as anonymous";
+
 export type FormResponsesViewProps = {
   /** Heading shown in the page header. */
   title: string;

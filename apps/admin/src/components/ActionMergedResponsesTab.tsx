@@ -1,3 +1,4 @@
+import { R } from "@alliance/common/result";
 import {
   actionsShareLinksForFormAdmin,
   tasksGetForm,
@@ -12,6 +13,7 @@ import { adminRefusalMessage } from "../lib/adminRefusal";
 import { sortResponsesByCreatedAtAsc } from "../lib/sortResponses";
 import { useFormVariantsAdmin } from "../lib/useFormVariantsAdmin";
 import FormResponsesView, {
+  REFERRALS_LOAD_ERROR,
   type FormWithSchema,
   type ResponseVariantOption,
 } from "./FormResponsesView";
@@ -117,6 +119,7 @@ const ActionMergedResponsesTab: React.FC<ActionMergedResponsesTabProps> = ({
   >({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [referralsError, setReferralsError] = useState<string | null>(null);
   const [reloads, setReloads] = useState(0);
 
   useEffect(() => {
@@ -150,11 +153,14 @@ const ActionMergedResponsesTab: React.FC<ActionMergedResponsesTabProps> = ({
               })
             : Promise.resolve(null),
           anchorFormId != null
-            ? actionsShareLinksForFormAdmin({
-                path: { formId: anchorFormId },
-                throwOnError: true,
-              })
-            : Promise.resolve(null),
+            ? R.fromPromise(
+                actionsShareLinksForFormAdmin({
+                  path: { formId: anchorFormId },
+                  throwOnError: true,
+                }),
+                (e) => adminRefusalMessage(e, REFERRALS_LOAD_ERROR),
+              )
+            : Promise.resolve(R.success(null)),
         ]);
         if (cancelled) return;
 
@@ -173,10 +179,13 @@ const ActionMergedResponsesTab: React.FC<ActionMergedResponsesTabProps> = ({
         setResponses(sortResponsesByCreatedAtAsc(respRes?.data ?? []));
 
         const sids: Record<string, ProfileDto> = {};
-        for (const link of shareLinkRes?.data ?? []) {
-          if (link.sid) sids[link.sid] = link.user;
+        if (shareLinkRes.ok) {
+          for (const link of shareLinkRes.value?.data ?? []) {
+            if (link.sid) sids[link.sid] = link.user;
+          }
         }
         setSidsToUserMap(sids);
+        setReferralsError(shareLinkRes.ok ? null : shareLinkRes.error);
       } catch (e) {
         if (cancelled) return;
         console.error(e);
@@ -242,6 +251,7 @@ const ActionMergedResponsesTab: React.FC<ActionMergedResponsesTabProps> = ({
       onRefresh={refresh}
       withdrawnUserMap={withdrawnUserMap}
       sidsToUserMap={sidsToUserMap}
+      referralsError={referralsError}
       exportFileBase={exportFileBase}
       snapshotTargets={variantOptions ?? []}
       variantOptions={hasVariants ? variantOptions : undefined}

@@ -1,5 +1,9 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import { makeFormResponse, makeUser } from "@alliance/shared/lib/testFixtures";
+import {
+  makeFormResponse,
+  makeProfile,
+  makeUser,
+} from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
@@ -44,6 +48,7 @@ let variantsHeld: Promise<void> = Promise.resolve();
 let submitted = 0;
 let responsesRequests = 0;
 let respondentNames = ["Withdrawn Member"];
+let anonymousSid: string | null = null;
 let failingRoute: string | null = null;
 let refusal = () => Response.json({}, { status: 500 });
 
@@ -79,14 +84,16 @@ serveApi(
             formSnapshotId: 7,
             schemaSnapshot: schema,
             answers: { home: "Paris" },
-            user: makeUser({ id: 3, name }),
+            ...(anonymousSid == null
+              ? { user: makeUser({ id: 3, name }) }
+              : { sid: anonymousSid }),
           }),
         ]),
       );
     },
     "GET /actions/shareLinksForForm/:formId": () =>
       refusedOr("GET /actions/shareLinksForForm/:formId", () =>
-        Response.json([]),
+        Response.json([{ sid: "invite-1", user: makeProfile(9) }]),
       ),
     "GET /actions/withdrawals/byForm/:formId": async ({ params }) => {
       withdrawalsRequested.push(params.formId);
@@ -112,6 +119,7 @@ beforeEach(() => {
   submitted = 0;
   responsesRequests = 0;
   respondentNames = ["Withdrawn Member"];
+  anonymousSid = null;
   failingRoute = null;
   refusal = () => Response.json({}, { status: 500 });
 });
@@ -150,15 +158,44 @@ it("says so when the variants fail to load", async () => {
   expect(await screen.findByText("Failed to load form responses")).toBeTruthy();
 });
 
-it.each([
-  "GET /tasks/slug/:id",
-  "POST /tasks/responses/byForms",
-  "GET /actions/shareLinksForForm/:formId",
-])("says so when %s fails", async (route) => {
-  failingRoute = route;
+it.each(["GET /tasks/slug/:id", "POST /tasks/responses/byForms"])(
+  "says so when %s fails",
+  async (route) => {
+    failingRoute = route;
+    renderTab();
+
+    expect(
+      await screen.findByText("Failed to load form responses"),
+    ).toBeTruthy();
+  },
+);
+
+const SHARE_LINKS_FAILED =
+  "Failed to load share links, so invited respondents show as anonymous";
+
+it("names who invited an anonymous respondent", async () => {
+  anonymousSid = "invite-1";
   renderTab();
 
-  expect(await screen.findByText("Failed to load form responses")).toBeTruthy();
+  expect(
+    (await screen.findAllByText("anonymous invited by User 9")).length,
+  ).toBeGreaterThan(0);
+});
+
+it("keeps the responses up when only the share links fail to load, until a refresh loads them", async () => {
+  failingRoute = "GET /actions/shareLinksForForm/:formId";
+  renderTab();
+
+  expect(await screen.findByText(SHARE_LINKS_FAILED)).toBeTruthy();
+  expect(screen.getByText("Withdrew")).toBeTruthy();
+  expect(screen.queryByText("Failed to load form responses")).toBeNull();
+
+  failingRoute = null;
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+  await waitFor(() =>
+    expect(screen.queryByText(SHARE_LINKS_FAILED)).toBeNull(),
+  );
+  expect(screen.getByText("Withdrew")).toBeTruthy();
 });
 
 it("shows the server's message when it refuses the responses", async () => {
