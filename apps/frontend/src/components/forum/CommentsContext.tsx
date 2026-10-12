@@ -267,8 +267,11 @@ export function useCommentTree(
 
   const handleDeleteReply = useCallback(
     async (replyId: number) => {
-      if (window.confirm("Are you sure you want to delete this reply?")) {
-        await deleteReply(replyId);
+      if (
+        window.confirm("Are you sure you want to delete this reply?") &&
+        (await deleteReply(replyId))
+      ) {
+        setReplyingTo((id) => (id === replyId ? null : id));
       }
     },
     [deleteReply],

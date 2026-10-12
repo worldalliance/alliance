@@ -271,7 +271,7 @@ export const ReplyItem = memo(function ReplyItemView({
                 }
               />
             )}
-            {shared.user && canNest && (
+            {shared.user && canNest && !reply.deleted && (
               <TouchableOpacity
                 onPress={() =>
                   shared.setReplyingTo(isReplyingToThis ? null : reply.id)

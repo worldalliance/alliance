@@ -218,3 +218,35 @@ it("hands back the comment objects a refetch left alone", async () => {
 
   expect(result.current.comments?.[0]).toBe(before);
 });
+
+const replyThenDelete = async ({
+  replyingTo,
+  deleted,
+}: {
+  replyingTo: number;
+  deleted: number;
+}) => {
+  const { result } = renderHook(() => useCommentTree(1, "post"), { wrapper });
+  act(() => {
+    result.current.setReplyingTo(replyingTo);
+  });
+  jest.spyOn(window, "confirm").mockReturnValue(true);
+  await act(async () => {
+    await result.current.handleDeleteReply(deleted);
+  });
+  return result.current.replyingTo;
+};
+
+it("closes the reply form on the comment the member deletes", async () => {
+  expect(await replyThenDelete({ replyingTo: 5, deleted: 5 })).toBeNull();
+});
+
+it("leaves the reply form open when another comment is deleted", async () => {
+  expect(await replyThenDelete({ replyingTo: 5, deleted: 4 })).toBe(5);
+});
+
+it("leaves the reply form open when its comment's delete fails", async () => {
+  deleteFails = true;
+
+  expect(await replyThenDelete({ replyingTo: 5, deleted: 5 })).toBe(5);
+});
