@@ -6,7 +6,10 @@ import {
   TERMINAL_ACTIVITY_TYPES,
 } from "src/actions/action-activity-status";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
-import { ActionStatus } from "src/actions/entities/action-event.entity";
+import {
+  ActionStatus,
+  loadedActionEventAction,
+} from "src/actions/entities/action-event.entity";
 import {
   Action,
   parseAction,
@@ -195,6 +198,8 @@ export class AnalyticsService {
         continue;
       }
 
+      const action = loadedActionEventAction(group.memberActionEvent);
+
       // Plot each reminder-group at its first sent notification time, falling
       // back to its configured absolute send time or the member_action date.
       const pointDate =
@@ -206,8 +211,8 @@ export class AnalyticsService {
         date: pointDate,
         reminderGroupId: group.id,
         reminderGroupName: group.name,
-        actionId: group.memberActionEvent.action.id,
-        actionName: group.memberActionEvent.action.name,
+        actionId: action.id,
+        actionName: action.name,
         emailClickRate:
           aggregate.emailSentCount > 0
             ? aggregate.emailClickedCount / aggregate.emailSentCount

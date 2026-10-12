@@ -32,7 +32,10 @@ import {
 import { yieldToEventLoop } from "src/utils/event-loop";
 import { In, type Repository } from "typeorm";
 import { ActionActivity } from "../actions/entities/action-activity.entity";
-import { ActionEvent } from "../actions/entities/action-event.entity";
+import {
+  ActionEvent,
+  loadedActionEventAction,
+} from "../actions/entities/action-event.entity";
 import {
   Action,
   parseAction,
@@ -470,20 +473,21 @@ export class ActionEventRecipientService {
 
   async filterForShouldRemind(
     users: User[],
-    event: Pick<ActionEvent, "newStatus" | "action" | "date">,
+    event: Pick<ActionEvent, "newStatus" | "action" | "date" | "id">,
     deadlineEvent: Pick<ActionEvent, "newStatus" | "action" | "date"> | null,
     actionSuite?: ActionSuite,
     excludeOptionalActions?: boolean,
   ): Promise<User[]> {
+    const rawEventAction = loadedActionEventAction(event);
     // Callers load suite actions without their events, which the
     // saved-decision reads need.
     const scopeIds = (
-      actionSuite ? loadedActionSuiteActions(actionSuite) : [event.action]
+      actionSuite ? loadedActionSuiteActions(actionSuite) : [rawEventAction]
     ).map((action) => action.id);
     const actionsById = new Map(
       (
         await this.actionRepository.find({
-          where: { id: In([...new Set([event.action.id, ...scopeIds])]) },
+          where: { id: In([...new Set([rawEventAction.id, ...scopeIds])]) },
           relations: { events: true },
         })
       ).map((action) => [action.id, parseAction(action)]),
@@ -493,7 +497,7 @@ export class ActionEventRecipientService {
       if (!action) throw new Error(`action ${id} was deleted mid-request`);
       return action;
     };
-    const eventAction = loaded(event.action.id);
+    const eventAction = loaded(rawEventAction.id);
     const pre_actions = scopeIds.map(loaded);
     const actions = excludeOptionalActions
       ? pre_actions.filter((action) => !action.optional)
@@ -566,7 +570,7 @@ export class ActionEventRecipientService {
           eventDate: event.date,
           deadlineDate: deadlineEvent?.date ?? null,
           cohortMemberIds: participationCohortMemberIds,
-          onboarding: event.action.onboarding,
+          onboarding: rawEventAction.onboarding,
         }),
       )
       .filter((user) => !userToHasCompletedAllActions.get(user.id));
@@ -609,7 +613,7 @@ export class ActionEventRecipientService {
       ? await this.userService.findActiveUsersWithTags()
       : await this.findBaseUsersForEvent({
           // The event relation carries a raw db entity; parse at first use.
-          action: parseAction(event.action),
+          action: parseAction(loadedActionEventAction(event)),
           eventId: event.id,
         });
     return type === ActionEventNotifType.Announcement

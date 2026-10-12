@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsDefined, IsNotEmpty, IsOptional } from "class-validator";
+import { Allow, IsNotEmpty, IsOptional } from "class-validator";
 import { UpdateDateColumnTz } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -92,16 +92,13 @@ export class ActionEvent {
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "actionId" })
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: "The action associated with this event",
     type: () => Action,
-    nullable: false,
   })
-  @IsDefined()
-  @Allow()
+  @IsOptional()
   @Type(() => Action)
-  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
-  action: Relation<Action>;
+  action?: Relation<Action>;
 
   @OneToMany(() => ActionUpdate, (update) => update.associatedEvent)
   @ApiPropertyOptional({ type: () => ActionUpdate, isArray: true })
@@ -113,4 +110,13 @@ export class ActionEvent {
   @Column({ default: false })
   @Allow()
   suiteManaged: boolean;
+}
+
+export function loadedActionEventAction(
+  event: Pick<ActionEvent, "id" | "action">,
+): Relation<Action> {
+  if (!event.action) {
+    throw new Error(`action of action event ${event.id} not loaded`);
+  }
+  return event.action;
 }
