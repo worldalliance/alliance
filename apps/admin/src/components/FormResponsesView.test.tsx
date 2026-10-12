@@ -23,7 +23,10 @@ const response = makeFormResponse({
   schemaSnapshot: schema,
 });
 
-it("lists no response to a question whose stored answer is an empty object", () => {
+const renderView = (params: {
+  path: string;
+  referralsError?: string | null;
+}) => {
   const router = createMemoryRouter(
     [
       {
@@ -38,14 +41,26 @@ it("lists no response to a question whose stored answer is an empty object", () 
             onRefresh={() => {}}
             withdrawnUserMap={new Map()}
             sidsToUserMap={{}}
+            referralsError={params.referralsError}
             exportFileBase="form"
           />
         ),
       },
     ],
-    { initialEntries: ["/?tab=questions"] },
+    { initialEntries: [params.path] },
   );
   render(<RouterProvider router={router} />);
+};
+
+it("lists no response to a question whose stored answer is an empty object", () => {
+  renderView({ path: "/?tab=questions" });
 
   expect(screen.getByText("No users responded to this question.")).toBeTruthy();
+});
+
+it("says the referrals failed to load beside the responses", () => {
+  renderView({ path: "/?tab=questions", referralsError: "No share links" });
+
+  expect(screen.getByText("No share links")).toBeTruthy();
+  expect(screen.getByText("1 response")).toBeTruthy();
 });

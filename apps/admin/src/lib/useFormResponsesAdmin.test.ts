@@ -68,6 +68,7 @@ it("loads the form, its responses oldest first, and its share link ids", async (
 
   await waitFor(() => expect(result.current.loading).toBe(false));
   expect(result.current.error).toBeNull();
+  expect(result.current.referralsError).toBeNull();
   expect(result.current.form?.title).toBe("Survey");
   expect(result.current.responses.map((r) => r.id)).toEqual([1, 2]);
   await waitFor(() =>
@@ -103,15 +104,31 @@ it("fails the load when the server refuses the responses", async () => {
   );
 });
 
-it("keeps the responses up when the share links fail to load", async () => {
+it("keeps the responses up and says so when the share links fail to load", async () => {
   shareLinksStatus = 500;
   const { result } = renderHook(() => useFormResponsesAdmin(4), queryWrapper());
 
-  await waitFor(() => expect(requested).toContain("shareLinks 4"));
+  await waitFor(() =>
+    expect(result.current.referralsError).toBe(
+      "Failed to load share links, so invited respondents show as anonymous",
+    ),
+  );
   await waitFor(() => expect(result.current.loading).toBe(false));
   expect(result.current.error).toBeNull();
   expect(result.current.responses).toHaveLength(2);
   expect(result.current.sidsToUserMap).toEqual({});
+});
+
+it("clears the share links error once a refresh loads them", async () => {
+  shareLinksStatus = 500;
+  const { result } = renderHook(() => useFormResponsesAdmin(4), queryWrapper());
+  await waitFor(() => expect(result.current.referralsError).not.toBeNull());
+
+  shareLinksStatus = 200;
+  await act(() => result.current.refresh.mutateAsync());
+
+  await waitFor(() => expect(result.current.referralsError).toBeNull());
+  expect(result.current.sidsToUserMap.abc?.id).toBe(3);
 });
 
 it("shows the server's message when it forbids the responses", async () => {
