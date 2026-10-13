@@ -66,6 +66,10 @@ import { MissedSuitePlanService } from "./missed-suite-plans.service";
 import { NotifsService } from "./notifs.service";
 import { recordDelivery } from "./record-delivery";
 import { buildReminderMessage } from "./reminder-message";
+import {
+  assignSocialProofArm,
+  socialProofDelivery,
+} from "./reminder-social-proof";
 import { saveForLiveRecipient } from "./save-for-live-recipient";
 
 export type UncompletedTaskSummary = {
@@ -283,6 +287,7 @@ export class ActionEventNotifWorker {
     // mentioned. Matches the granularity coverage checks consult and the
     // migration backfill.
     const scopeActionIds = new Set(groupTaskScopeActionIds(plan.group));
+    const arm = await assignSocialProofArm(this.dataSource.manager, plan);
     const plannedNotif = this.actionEventNotifsRepository.create({
       user: plan.user,
       reminderGroup: plan.group,
@@ -320,13 +325,21 @@ export class ActionEventNotifWorker {
     }
     if (!notif) return;
 
+    const socialProof = await socialProofDelivery(this.dataSource.manager, {
+      arm,
+      plan,
+      actionIds: uncompletedTasks.map((task) => task.id),
+      render: (text) =>
+        this.processCustomReminderText(text, plan, uncompletedTasks),
+    });
+    Object.assign(notif, socialProof.columns);
+
     const sendingAnyNotif = await this.deliver({
       notif,
       user: plan.user,
       tracking: reminderTracking(plan, notif),
-      templates: plan.group,
-      render: (template) =>
-        this.processCustomReminderText(template, plan, uncompletedTasks),
+      templates: socialProof.templates,
+      render: socialProof.render,
       push: { screen: "/", idempotencyKey: plan.group.id.toString() },
     });
     if (sendingAnyNotif) {

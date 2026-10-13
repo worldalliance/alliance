@@ -40,6 +40,20 @@ export enum MissedSuiteNoticeCopy {
   SecondMissReportV1 = "second_miss_report_v1",
 }
 
+/**
+ * Which push and text copy a social-proof reminder chose; email is always the
+ * group's. The row's pushes and mms show whether it reached the member.
+ */
+export enum ReminderSocialProofOutcome {
+  /** The reminder group's configured text. */
+  Control = "control",
+  NamesV1 = "names_v1",
+  /** Variant arm got the configured text: fewer than two people qualified. */
+  FallbackTooFewCompleters = "fallback_too_few_completers",
+  /** Variant arm got the configured text: the completer lookup failed. */
+  FallbackLookupFailed = "fallback_lookup_failed",
+}
+
 @Entity()
 @Index(["idempotency_key"], {
   unique: true,
@@ -136,6 +150,29 @@ export class ActionEventNotif {
     nullable: true,
   })
   missedSuiteCopy: MissedSuiteNoticeCopy | null;
+
+  /**
+   * Null on reminders outside the social-proof experiment, and on ones whose
+   * recipient has push and text both off.
+   */
+  @Column({
+    type: "enum",
+    enum: ReminderSocialProofOutcome,
+    enumName: "ReminderSocialProofOutcome",
+    nullable: true,
+  })
+  socialProofOutcome: ReminderSocialProofOutcome | null;
+
+  /** The members a `NamesV1` reminder named, in the order it named them. */
+  @Column("integer", { array: true, nullable: true })
+  socialProofUserIds: number[] | null;
+
+  /**
+   * Every task the reminder counted, which qualifying completers finished;
+   * `notifiedActionIds` can be narrower.
+   */
+  @Column("integer", { array: true, nullable: true })
+  socialProofActionIds: number[] | null;
 
   /** The in-app entry a missed-suite notice created alongside its channels. */
   @OneToOne(() => Notification, { onDelete: "SET NULL", nullable: true })
