@@ -44,14 +44,13 @@ import {
 } from "./entities/action-event-notif.entity";
 import {
   Experiment,
-  ExperimentArm,
   ExperimentAssignment,
 } from "./entities/experiment-assignment.entity";
 import {
   NotificationCategory,
   type Notification,
 } from "./entities/notification.entity";
-import { assignExperimentArms } from "./experiment-assignment";
+import { assignExperimentArm } from "./experiment-assignment";
 import { LOCK_KEYS } from "./lock-keys";
 import { withPgAdvisoryLock } from "./lock-utils";
 import {
@@ -353,7 +352,15 @@ export class ActionEventNotifWorker {
           standing,
           copy:
             standing.missNumber === 1
-              ? FIRST_MISS_COPY[await this.assignFirstMissArm(plan.user.id)]
+              ? FIRST_MISS_COPY[
+                  await assignExperimentArm(
+                    this.experimentAssignmentRepository.manager,
+                    {
+                      experiment: Experiment.MissedSuiteFirstNotice,
+                      userId: plan.user.id,
+                    },
+                  )
+                ]
               : MissedSuiteNoticeCopy.SecondMissReportV1,
         }
       : null;
@@ -441,19 +448,6 @@ export class ActionEventNotifWorker {
       },
     });
     await recordDelivery(this.dataSource.manager, notif);
-  }
-
-  private async assignFirstMissArm(userId: number): Promise<ExperimentArm> {
-    const arm = (
-      await assignExperimentArms(this.experimentAssignmentRepository.manager, {
-        experiment: Experiment.MissedSuiteFirstNotice,
-        userIds: [userId],
-      })
-    ).get(userId);
-    if (arm === undefined) {
-      throw new Error(`no first-miss arm for user ${userId}`);
-    }
-    return arm;
   }
 
   /** Sends on each channel the member enabled; true if any was attempted. */
