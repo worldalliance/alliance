@@ -10,6 +10,7 @@ import type {
   ParticipantDto,
   ParticipantRole,
   ProfileDto,
+  ShareUrlMineDto,
   TagDto,
   UserActionStatusDto,
   UserDto,
@@ -291,6 +292,24 @@ export function makeOnetimeInvite(
     status: "link_unused",
     invitedUserId: null,
     accepted: false,
+    ...overrides,
+  };
+}
+
+export function makeShareUrlMine(
+  overrides: Partial<ShareUrlMineDto> = {},
+): ShareUrlMineDto {
+  return {
+    id: "share-url-id",
+    url: "https://example.com/signup?ref=share-abc",
+    label: null,
+    duplicate: true,
+    sid: "share-abc",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    signupCount: 0,
+    assignmentKind: "automatic",
+    communityId: null,
+    communityName: null,
     ...overrides,
   };
 }
