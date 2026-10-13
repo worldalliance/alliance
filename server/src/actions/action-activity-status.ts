@@ -107,11 +107,12 @@ export function findLatestCompletions<
  * action) pair passes.
  */
 export function sqlIsLatestCompletion(alias: string): string {
-  return `(${alias}.type = '${ActionActivityType.USER_COMPLETED}' AND NOT EXISTS (
+  return `(${alias}.type = '${ActionActivityType.USER_COMPLETED}' AND ${alias}."deletedAt" IS NULL AND NOT EXISTS (
     SELECT 1 FROM action_activity later
     WHERE later."userId" = ${alias}."userId" AND later."actionId" = ${alias}."actionId"
       AND later.type IN (${TERMINAL_ACTIVITY_TYPES.map((type) => `'${type}'`).join(", ")})
       AND (later."createdAt", later.id) > (${alias}."createdAt", ${alias}.id)
+      AND later."deletedAt" IS NULL
   ))`;
 }
 

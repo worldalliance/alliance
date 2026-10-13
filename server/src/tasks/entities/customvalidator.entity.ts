@@ -1,5 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Allow, IsOptional } from "class-validator";
+import { Allow, IsEmpty, IsOptional } from "class-validator";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 export enum CustomValidatorType {
@@ -83,4 +84,9 @@ export class CustomValidator {
   @ApiProperty({ nullable: true })
   @IsOptional()
   expression: string | null;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

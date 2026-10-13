@@ -45,6 +45,11 @@ async function claimDuePushes(
         SELECT t.id
         FROM "${table}" t
         WHERE t."sendTime" <= NOW()
+          AND t."deletedAt" IS NULL
+          AND EXISTS (
+            SELECT 1 FROM "user" u
+            WHERE u.id = t."userId" AND u."deletedAt" IS NULL
+          )
           AND t."shouldPush" = true
           AND t."pushClaimedBy" IS NULL
           AND t."pushDispatchedAt" IS NULL

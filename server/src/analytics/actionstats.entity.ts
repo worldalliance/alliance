@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { Column, Entity, PrimaryGeneratedColumn, Unique } from "typeorm";
 
 @Entity()
@@ -78,4 +79,7 @@ export class ActionStatsRecord {
     description: "When the member_action phase ended (next status event date)",
   })
   memberActionEndDate: Date | null;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

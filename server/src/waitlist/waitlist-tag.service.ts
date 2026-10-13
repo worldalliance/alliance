@@ -126,7 +126,7 @@ export class WaitlistTagService {
     if (!entryIds.length) return 0;
     const result = await this.entryTagRepository.query(
       `INSERT INTO waitlist_entry_tag ("entryId", "tagId")
-       SELECT id, $1 FROM waitlist_entry WHERE id = ANY($2)
+       SELECT id, $1 FROM waitlist_entry WHERE id = ANY($2) AND "deletedAt" IS NULL
        ON CONFLICT DO NOTHING
        RETURNING "entryId"`,
       [id, entryIds],

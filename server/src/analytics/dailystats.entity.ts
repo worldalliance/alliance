@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { Column, Entity, PrimaryGeneratedColumn, Unique } from "typeorm";
 
 @Entity()
@@ -39,4 +40,7 @@ export class DailyStatsRecord {
   @Column()
   @ApiProperty()
   invitesAccepted: number;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

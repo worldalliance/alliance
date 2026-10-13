@@ -6,16 +6,17 @@ import { R } from "@alliance/common/result";
 import { Logger } from "@nestjs/common";
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsDefined, IsOptional } from "class-validator";
+import { Allow, IsDefined, IsEmpty, IsOptional } from "class-validator";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { Form } from "./form.entity";
 
@@ -28,7 +29,8 @@ const logger = new Logger("FormResponseDraft");
  * the form is submitted or withdrawn from.
  */
 @Entity()
-@Unique(["userId", "formId"])
+@Index(["userId", "formId"], { unique: true, where: '"deletedAt" IS NULL' })
+@Index(["userId"])
 export class FormResponseDraft {
   @PrimaryGeneratedColumn()
   @ApiProperty()
@@ -93,6 +95,11 @@ export class FormResponseDraft {
   @Allow()
   @Type(() => Date)
   updatedAt: Date;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 export interface ParsedFormResponseDraft extends FormResponseDraft {

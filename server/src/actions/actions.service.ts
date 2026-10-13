@@ -924,6 +924,7 @@ export class ActionsService {
           ON activity_like."actionActivityId" = activity.id
         LEFT JOIN "user" staff_liker
           ON staff_liker.id = activity_like."userId" AND staff_liker.staff = true
+          AND staff_liker."deletedAt" IS NULL
         WHERE activity."actionId" = ANY($1::int[])
         AND ${sqlIsLatestCompletion("activity")}
         AND ${sqlUserHasEverSigned('activity."userId"')}
@@ -931,10 +932,13 @@ export class ActionsService {
           SELECT 1
           FROM action_activity completion
           INNER JOIN action ON action.id = completion."actionId" AND action.onboarding = true
+            AND action."deletedAt" IS NULL
           INNER JOIN comment ON comment."parentObjectType" = $3
             AND comment."parentObjectId" = completion.id AND comment.deleted = false
           INNER JOIN "user" author ON author.id = comment."authorId" AND author.staff = true
+            AND author."deletedAt" IS NULL
           WHERE completion."userId" = activity."userId" AND completion.type = $2
+            AND completion."deletedAt" IS NULL
         )
         GROUP BY activity.id, activity."userId", activity."actionId", activity."createdAt"
         ORDER BY activity."createdAt" DESC, activity.id DESC
@@ -3191,7 +3195,7 @@ export class ActionsService {
       // An archive of the action waits until the sends commit. Locking the
       // action before the update matches the order deleting an action takes.
       const lockedActions: unknown[] = await em.query(
-        "SELECT id FROM action WHERE id = $1 FOR SHARE",
+        'SELECT id FROM action WHERE id = $1 AND "deletedAt" IS NULL FOR SHARE',
         [actionUpdate.actionId],
       );
       if (lockedActions.length === 0) {
@@ -3214,7 +3218,10 @@ export class ActionsService {
 
       // The claim holds the row lock, so this reads the update as of any
       // edit or unpublish that committed first.
-      const claimedUpdate = await em.findOneByOrFail(ActionUpdate, { id });
+      const claimedUpdate = await em.findOneBy(ActionUpdate, { id });
+      if (!claimedUpdate) {
+        throw new NotFoundException("This update has been deleted.");
+      }
       await this.assertActionShowsWhenEntriesArrive(claimedUpdate, em);
       if (recognition) {
         await this.recognitionService.recordAudience({
@@ -3710,6 +3717,7 @@ export class ActionsService {
       allSent: false,
       actionSuite,
       timingAnchorEvent,
+      deletedAt: null,
     } satisfies ReminderGroup;
 
     const withDeadlineEvent =
@@ -4830,6 +4838,7 @@ export class ActionsService {
             SELECT previous_event.type
             FROM "contract_event" previous_event
             WHERE previous_event."userId" = signed_event."userId"
+              AND previous_event."deletedAt" IS NULL
               AND (
                 previous_event.date < signed_event.date
                 OR (
@@ -4841,6 +4850,7 @@ export class ActionsService {
             LIMIT 1
           ) previous_event ON true
           WHERE signed_event.type = $1
+            AND signed_event."deletedAt" IS NULL
             AND signed_event.date > $2
             AND (
               previous_event.type IS NULL
@@ -4962,7 +4972,7 @@ export class ActionsService {
         COUNT(*) OVER() AS "totalCount",
         MAX(feed_members."latestAt") OVER() AS "windowLatestAt"
       FROM (${rankedSql}) feed_members
-      LEFT JOIN "user" ON "user".id = feed_members."userId"
+      INNER JOIN "user" ON "user".id = feed_members."userId" AND "user"."deletedAt" IS NULL
       ORDER BY ${sqlUserHasProfilePicture('"user"."profilePicture"')} DESC, feed_members."latestAt" DESC, feed_members."latestId" DESC
       LIMIT $${limitParam}`,
       [...params, limit],
@@ -5003,6 +5013,8 @@ export class ActionsService {
           AND activity.type = $2
           AND action_entity.onboarding = false
           AND activity."createdAt" > $3
+          AND activity."deletedAt" IS NULL
+          AND action_entity."deletedAt" IS NULL
         ORDER BY activity."userId" ASC, activity."createdAt" DESC, activity.id DESC
       ) ranked`;
 

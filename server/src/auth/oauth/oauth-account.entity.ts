@@ -1,19 +1,23 @@
 import { OAuthProvider } from "@alliance/common/oauth";
 import { ApiProperty } from "@nestjs/swagger";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
+  Index,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 
 @Entity("oauth_account")
-@Unique(["provider", "subject"])
-@Unique(["userId", "provider"])
+@Index(["provider", "subject"], { unique: true, where: '"deletedAt" IS NULL' })
+@Index(["userId", "provider"], { unique: true, where: '"deletedAt" IS NULL' })
+@Index(["userId"])
 export class OAuthAccount {
   @PrimaryGeneratedColumn()
   id: number;
@@ -41,4 +45,7 @@ export class OAuthAccount {
 
   @CreateDateColumnTz()
   createdAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

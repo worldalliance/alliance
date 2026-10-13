@@ -1,8 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsInt, IsOptional, Min } from "class-validator";
+import { Allow, IsEmpty, IsInt, IsOptional, Min } from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -59,4 +60,9 @@ export class AmbassadorInviteGoal {
   @Type(() => User)
   @IsOptional()
   ambassador?: Relation<User>;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

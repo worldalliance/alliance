@@ -2,6 +2,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
   Allow,
+  IsEmpty,
   IsInt,
   IsNumber,
   IsOptional,
@@ -11,6 +12,7 @@ import {
 } from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { Form } from "src/tasks/entities/form.entity";
@@ -22,13 +24,16 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { Action } from "./action.entity";
 
 @Entity()
 @Index("IDX_action_form_variant_actionId", ["actionId"])
-@Unique("UQ_action_form_variant_formId", ["formId"])
+@Index("IDX_action_form_variant_formId", ["formId"])
+@Index("UQ_action_form_variant_formId", ["formId"], {
+  unique: true,
+  where: '"deletedAt" IS NULL',
+})
 export class ActionFormVariant {
   @PrimaryGeneratedColumn()
   @ApiProperty()
@@ -80,4 +85,9 @@ export class ActionFormVariant {
   @Allow()
   @Type(() => Date)
   updatedAt: Date;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

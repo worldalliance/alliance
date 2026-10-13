@@ -33,9 +33,11 @@ function countLatestAnswers(params: {
        FROM form_response r
        WHERE r."formId" = $1
          AND r."userId" IS NOT NULL
+         AND r."deletedAt" IS NULL
          AND NOT EXISTS (
            SELECT 1 FROM action_activity a
            WHERE a."taskFormResponseId" = r.id AND a.type = $3
+             AND a."deletedAt" IS NULL
          )
        ORDER BY r."userId", r."createdAt" DESC, r.id DESC
      )

@@ -32,9 +32,14 @@ export async function assignExperimentArms(
       .orIgnore()
       .execute();
   }
-  const assignments = await em.findBy(ExperimentAssignment, {
-    experiment,
-    userId: Raw((column) => `${column} = ANY(:userIds)`, { userIds }),
+  // The unique index covers a deleted member's assignment, which the insert
+  // then skips.
+  const assignments = await em.find(ExperimentAssignment, {
+    where: {
+      experiment,
+      userId: Raw((column) => `${column} = ANY(:userIds)`, { userIds }),
+    },
+    withDeleted: true,
   });
   return new Map(assignments.map(({ userId, arm }) => [userId, arm]));
 }

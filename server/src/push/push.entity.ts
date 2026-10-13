@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
@@ -109,4 +110,7 @@ export class Push {
   @Column({ type: "timestamp", nullable: true })
   @ApiProperty({ type: Date, nullable: true })
   openedAt: Date | null;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

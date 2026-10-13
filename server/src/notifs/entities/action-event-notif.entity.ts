@@ -3,7 +3,10 @@ import { Type } from "class-transformer";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
 import { ActionSuite } from "src/actions/entities/action-suite.entity";
 import { ReminderGroup } from "src/actions/entities/reminder-group.entity";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { Mail } from "src/mail/mail.entity";
 import { Mms } from "src/mms/mms.entity";
 import { Push } from "src/push/push.entity";
@@ -157,4 +160,7 @@ export class ActionEventNotif {
   @ApiProperty({ type: Date })
   @Type(() => Date)
   createdAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

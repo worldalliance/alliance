@@ -58,7 +58,8 @@ export class ClusterService {
       const eligibleRows = await manager.query<{ id: number }[]>(`
         SELECT u.id
         FROM "user" u
-        WHERE ${sqlUserHasActiveContractAt("u.id", "NOW()")}
+        WHERE u."deletedAt" IS NULL
+          AND ${sqlUserHasActiveContractAt("u.id", "NOW()")}
       `);
       const eligibleIds = eligibleRows.map((r) => r.id);
 
@@ -99,7 +100,7 @@ export class ClusterService {
   }
 }
 
-async function loadClusterUsers(
+export async function loadClusterUsers(
   manager: EntityManager,
   ids: number[],
 ): Promise<Map<number, ClusterUser>> {
@@ -111,7 +112,9 @@ async function loadClusterUsers(
   const memberships = await manager.query<
     { userId: number; communityId: number }[]
   >(
-    'SELECT "userId", "communityId" FROM community_users_user WHERE "userId" = ANY($1::int[])',
+    `SELECT cu."userId", cu."communityId" FROM community_users_user cu
+     JOIN community c ON c.id = cu."communityId" AND c."deletedAt" IS NULL
+     WHERE cu."userId" = ANY($1::int[])`,
     [ids],
   );
   const friendsRows = await manager.query<

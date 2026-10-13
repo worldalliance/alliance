@@ -1,5 +1,6 @@
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { Check, Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
@@ -11,7 +12,7 @@ export class WaitlistCohort {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Index({ unique: true })
+  @Index({ unique: true, where: '"deletedAt" IS NULL' })
   @Column({ type: "citext" })
   name: string;
 
@@ -24,4 +25,7 @@ export class WaitlistCohort {
 
   @UpdateDateColumnTz()
   updatedAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

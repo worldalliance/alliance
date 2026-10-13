@@ -1,7 +1,10 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsInt, IsOptional } from "class-validator";
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import { Allow, IsEmpty, IsInt, IsOptional } from "class-validator";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -11,7 +14,6 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from "typeorm";
 import { ActionFormVariant } from "./action-form-variant.entity";
 import { Action } from "./action.entity";
@@ -21,8 +23,12 @@ import { Action } from "./action.entity";
 // (`action.taskFormId`). Sticky: once a row exists, it never changes, though
 // deleting its variant before launch deletes the row.
 @Entity()
-@Unique("UQ_action_form_assignment_actionId_userId", ["actionId", "userId"])
+@Index("UQ_action_form_assignment_actionId_userId", ["actionId", "userId"], {
+  unique: true,
+  where: '"deletedAt" IS NULL',
+})
 @Index("IDX_action_form_assignment_variantId", ["variantId"])
+@Index("IDX_action_form_assignment_actionId", ["actionId"])
 export class ActionFormAssignment {
   @PrimaryGeneratedColumn()
   @ApiProperty()
@@ -67,4 +73,9 @@ export class ActionFormAssignment {
   @Allow()
   @Type(() => Date)
   assignedAt: Date;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

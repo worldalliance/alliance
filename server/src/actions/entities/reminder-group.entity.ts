@@ -1,8 +1,9 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsDefined, IsEnum, IsOptional } from "class-validator";
+import { Allow, IsDefined, IsEmpty, IsEnum, IsOptional } from "class-validator";
 import { millisecondsInSecond } from "date-fns/constants";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
 import { Tag } from "src/user/entities/tag.entity";
 import { DEFAULT_TIME_ZONE, User } from "src/user/entities/user.entity";
@@ -243,6 +244,11 @@ export class ReminderGroup {
   @IsDefined()
   @Allow()
   excludePreviouslyNotified: boolean;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 export function loadedReminderGroupMemberActionEvent(

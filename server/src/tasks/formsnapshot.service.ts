@@ -33,7 +33,7 @@ export class FormSnapshotService {
     const runner = em ?? this.snapshotRepository.manager;
     const rows = await runner.query<{ id: number }[]>(
       `INSERT INTO form_snapshot ("schema", "hash") VALUES ($1::jsonb, $2)
-       ON CONFLICT ("hash") DO UPDATE SET "schema" = form_snapshot."schema"
+       ON CONFLICT ("hash") DO UPDATE SET "deletedAt" = NULL
        RETURNING id`,
       [JSON.stringify(schema), hash],
     );

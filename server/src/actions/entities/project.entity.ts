@@ -4,15 +4,23 @@ import {
   Allow,
   ArrayUnique,
   IsArray,
+  IsEmpty,
   IsEnum,
   IsOptional,
 } from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  Entity,
+  Index,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from "typeorm";
 import { ActionCategory } from "../action-category";
 import { Action } from "./action.entity";
 
@@ -29,7 +37,8 @@ export class Project {
   @Allow()
   id: number;
 
-  @Column({ unique: true })
+  @Index({ unique: true, where: '"deletedAt" IS NULL' })
+  @Column()
   @ApiProperty()
   @Allow()
   name: string;
@@ -70,4 +79,9 @@ export class Project {
   @Type(() => Action)
   @IsOptional()
   actions?: Relation<Action>[];
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

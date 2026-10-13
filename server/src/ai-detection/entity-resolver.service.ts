@@ -37,7 +37,7 @@ export class EntityResolverService {
           SELECT c."id", ec."body"
           FROM "comment" c
           LEFT JOIN "editable_content" ec ON ec."id" = c."editableContentId"
-          WHERE c."id" = $1
+          WHERE c."id" = $1 AND NOT c."deleted"
           LIMIT 1
           `,
           [entityId],
@@ -67,12 +67,13 @@ export class EntityResolverService {
                 FROM "tag_users_user" tu
                 INNER JOIN "tag" t ON t."id" = tu."tagId"
                 WHERE tu."userId" = u."id"
+                  AND t."deletedAt" IS NULL
                   AND LOWER(t."name") = 'staff'
               )
             END AS "hasStaffTag"
           FROM "form_response" fr
-          LEFT JOIN "user" u ON u."id" = fr."userId"
-          WHERE fr."id" = $1
+          LEFT JOIN "user" u ON u."id" = fr."userId" AND u."deletedAt" IS NULL
+          WHERE fr."id" = $1 AND fr."deletedAt" IS NULL
           LIMIT 1
           `,
           [entityId],

@@ -23,6 +23,7 @@ import { CommunityInvite } from "src/community/entities/community-invite.entity"
 import { Community } from "src/community/entities/community.entity";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { City } from "src/geo/city.entity";
@@ -117,7 +118,8 @@ export class User {
   @IsNotEmpty()
   name: string;
 
-  @Column({ type: "citext", unique: true })
+  @Index({ unique: true, where: '"deletedAt" IS NULL' })
+  @Column({ type: "citext" })
   @IsNotEmpty()
   @IsEmail()
   email: string;
@@ -661,6 +663,9 @@ export class User {
     }
     return this._leaderOfIdSet;
   }
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }
 
 /**
@@ -675,7 +680,8 @@ export function sqlUserHasActiveContractAt(
 ): string {
   return `(
     SELECT ce."type" FROM "contract_event" ce
-    WHERE ce."userId" = ${userIdExpr} AND ce."date" <= ${contractAtExpr}
+    WHERE ce."userId" = ${userIdExpr} AND ce."deletedAt" IS NULL
+      AND ce."date" <= ${contractAtExpr}
     ORDER BY ce."date" DESC, ce."id" DESC
     LIMIT 1
   ) = '${ContractEventType.SIGNED}'`;
@@ -684,7 +690,8 @@ export function sqlUserHasActiveContractAt(
 export function sqlUserHasEverSigned(userIdExpr: string): string {
   return `EXISTS (
     SELECT 1 FROM "contract_event" ce
-    WHERE ce."userId" = ${userIdExpr} AND ce."type" = '${ContractEventType.SIGNED}'
+    WHERE ce."userId" = ${userIdExpr} AND ce."deletedAt" IS NULL
+      AND ce."type" = '${ContractEventType.SIGNED}'
   )`;
 }
 

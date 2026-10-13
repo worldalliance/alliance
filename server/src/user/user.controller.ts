@@ -476,17 +476,7 @@ export class UserController {
   async userDetailAdmin(
     @Param("id", ParseIntPipe) id: number,
   ): Promise<UserAdminDetailDto> {
-    const user = await this.userService.findOne(id, {
-      contractEvents: true,
-      referredBy: true,
-      referredByCampaign: true,
-      referredByInvite: { invitingUser: true },
-      referredByShareUrl: true,
-      city: true,
-      tags: true,
-      communities: true,
-      leaderOf: true,
-    });
+    const user = await this.userService.findAdminDetail(id);
     if (!user) {
       throw new NotFoundException("User not found");
     }

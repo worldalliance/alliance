@@ -1,8 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsOptional } from "class-validator";
+import { Allow, IsEmpty, IsOptional } from "class-validator";
 import { Contract } from "src/contract/entities/contract.entity";
-import { UpdateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  DeleteDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
 import { findLeast } from "src/utils/filter";
 import type { Relation } from "src/utils/Repository";
 import {
@@ -140,4 +143,9 @@ export class ContractEvent {
   @Type(() => Contract)
   @IsOptional()
   contract?: Relation<Contract>;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }

@@ -1,6 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsEnum, IsNotEmpty, IsOptional } from "class-validator";
+import {
+  Allow,
+  IsEmpty,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+} from "class-validator";
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { Notification } from "src/notifs/entities/notification.entity";
 import {
   ACTION_UPDATE_SNAPSHOT_HISTORY_TABLE,
@@ -190,6 +197,11 @@ export class ActionUpdate {
   @ApiPropertyOptional({ type: () => Tag, nullable: true })
   @IsOptional()
   tag?: Relation<Tag> | null;
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 /** Edits, sends and the recognition freeze serialize on this row lock. */

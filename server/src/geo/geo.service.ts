@@ -82,7 +82,7 @@ export class GeoService {
     const stream = fs.createReadStream(citiesPath, { encoding: "utf-8" });
     const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
 
-    const batch: City[] = [];
+    const batch: Omit<City, "deletedAt">[] = [];
     const BATCH_SIZE = 500;
 
     for await (const line of rl) {

@@ -37,6 +37,7 @@ import {
   User,
   loadedUserCommunities,
 } from "src/user/entities/user.entity";
+import { findReferredByInvite } from "src/user/user-soft-delete";
 import { UserService } from "src/user/user.service";
 import { referralLabel } from "src/user/user.utils";
 import { IsNull, LessThanOrEqual, MoreThan, Or, Repository } from "typeorm";
@@ -169,7 +170,6 @@ export class ContractService {
         contractEvents: true,
         referredBy: true,
         referredByCampaign: true,
-        referredByInvite: true,
         pendingCommunity: true,
       },
     });
@@ -200,6 +200,13 @@ export class ContractService {
     }
 
     const firstSigning = user.contractEvents!.length === 0;
+    // Only a first signing places the member in their invite's group.
+    const referredByInvite = firstSigning
+      ? await findReferredByInvite(this.userRepository.manager, {
+          userId,
+          relations: { community: { users: true, leaders: true } },
+        })
+      : null;
     const promises: Promise<unknown>[] = [];
     const notifs: CreateNotifParams[] = [];
     const userUpdate: Partial<User> = {
@@ -238,21 +245,17 @@ export class ContractService {
           }),
         );
       }
-    } else if (user.referredByInvite?.communityId) {
+    } else if (referredByInvite?.community) {
       user = await this.userRepository.findOneOrFail({
         where: { id: userId },
-        relations: {
-          contractEvents: true,
-          referredBy: true,
-          referredByInvite: { community: { users: true, leaders: true } },
-        },
+        relations: { contractEvents: true, referredBy: true },
       });
-      const community = user.referredByInvite!.community!;
+      const { community } = referredByInvite;
       let referrerNotified = false;
       // A waitlist invite's group can fill after it is emailed; its claimant
       // then awaits staff placement rather than overfilling it.
       if (
-        user.referredByInvite!.waitlistEntryId !== null &&
+        referredByInvite.waitlistEntryId !== null &&
         isAtCapacity(community)
       ) {
         userUpdate.undergoingGroupAssignment = true;

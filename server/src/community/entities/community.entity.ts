@@ -7,6 +7,7 @@ import { Transform, Type } from "class-transformer";
 import {
   Allow,
   IsBoolean,
+  IsEmpty,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -18,6 +19,7 @@ import {
 } from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
@@ -141,6 +143,11 @@ export class Community {
   @Type(() => CommunityInvite)
   @IsOptional()
   internalInvites?: Relation<CommunityInvite>[];
+
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
 }
 
 export function loadedCommunityUsers(community: Community): Relation<User>[] {

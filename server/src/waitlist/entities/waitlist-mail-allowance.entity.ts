@@ -1,3 +1,4 @@
+import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { Column, Entity, Index, PrimaryColumn } from "typeorm";
 
 /**
@@ -12,4 +13,7 @@ export class WaitlistMailAllowance {
   @Index()
   @Column({ type: "timestamptz" })
   claimedAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

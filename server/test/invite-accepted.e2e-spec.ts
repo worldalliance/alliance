@@ -134,6 +134,7 @@ describe("accepted invites (e2e)", () => {
       windowEnd.toISOString(),
     );
     expect(funnel.invitesUsed).toBe(1);
+    expect(funnel.invitesCreated).toBe(4);
 
     const actionRepo = ctx.dataSource.getRepository(Action);
     const eventRepo = ctx.dataSource.getRepository(ActionEvent);
@@ -178,6 +179,9 @@ describe("accepted invites (e2e)", () => {
     const [dailyStats] = await dailyStatsRepo.find();
     expect(dailyStats.invitesAccepted).toBe(
       (await analyticsService.getInviteFunnel()).invitesUsed,
+    );
+    expect(dailyStats.invitesCreated).toBe(
+      await inviteRepo.count({ withDeleted: true }),
     );
   });
 });

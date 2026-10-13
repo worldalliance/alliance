@@ -345,6 +345,25 @@ describe("Inbound MMS keywords (e2e)", () => {
     expect(logged!.message).toContain("+14155559999");
   });
 
+  it("records STOP on a deleted account that alone holds the number", async () => {
+    const deleted = await userRepo.save(
+      userRepo.create({
+        email: "deleted-stopper@example.com",
+        password: "pass",
+        name: "Deleted Stopper",
+        referralSource: ReferralSource.None,
+        phoneNumber: "(415) 555-9002",
+      }),
+    );
+    await userRepo.softDelete(deleted.id);
+
+    await inbound("+14155559002", "STOP").expect(201);
+
+    expect(
+      await userRepo.findOne({ where: { id: deleted.id }, withDeleted: true }),
+    ).toMatchObject({ phoneNumberUnsubscribed: true });
+  });
+
   it("matches the member when STOP arrives in another format", async () => {
     const res = await inbound("(415) 555-9001", "STOP");
 

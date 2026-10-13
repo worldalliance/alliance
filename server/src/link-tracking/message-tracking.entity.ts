@@ -1,4 +1,7 @@
-import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import {
+  CreateDateColumnTz,
+  DeleteDateColumnTz,
+} from "src/datasources/basecolumns";
 import {
   ActionEventNotif,
   ActionEventNotifType,
@@ -146,4 +149,7 @@ export class MessageTracking {
 
   @CreateDateColumnTz()
   createdAt: Date;
+
+  @DeleteDateColumnTz()
+  deletedAt: Date | null;
 }

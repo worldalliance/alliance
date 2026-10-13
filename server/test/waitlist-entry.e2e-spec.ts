@@ -167,6 +167,27 @@ describe("Waitlist entry (e2e)", () => {
       expect(entries[0].reason).toBeNull();
     });
 
+    it("keeps a deleted entry for its email and reveals no code", async () => {
+      const first = await submit({
+        email: "deleted-repeat@example.com",
+        linkCode: link.code,
+      }).expect(200);
+      await entryRepo.softDelete({ code: first.body.shareCode });
+
+      const again = await submit({
+        email: "deleted-repeat@example.com",
+        linkCode: link.code,
+      }).expect(200);
+
+      expect(again.body.shareCode).toBeNull();
+      expect(
+        await entryRepo.count({
+          where: { email: "deleted-repeat@example.com" },
+          withDeleted: true,
+        }),
+      ).toBe(1);
+    });
+
     it("records one entry for concurrent submissions of an email", async () => {
       const responses = await Promise.all(
         Array.from({ length: 5 }, () =>

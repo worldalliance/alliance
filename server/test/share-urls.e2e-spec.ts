@@ -107,6 +107,28 @@ describe("Share URLs (e2e)", () => {
       expect(updated.body.template).toBe("Join us here: {invite_link}");
     });
 
+    it("brings back a deleted template when an admin replaces it", async () => {
+      const templates = ctx.dataSource.getRepository(InviteMessageTemplate);
+      await request(ctx.app.getHttpServer())
+        .patch("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ template: "Old: {invite_link}" })
+        .expect(200);
+      await templates.softDelete({ id: "default" });
+
+      await request(ctx.app.getHttpServer())
+        .patch("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ template: "New: {invite_link}" })
+        .expect(200);
+
+      const served = await request(ctx.app.getHttpServer())
+        .get("/share-urls/invite-message-template")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      expect(served.body.template).toBe("New: {invite_link}");
+    });
+
     it("rejects a template without an invite link token", async () => {
       await request(ctx.app.getHttpServer())
         .patch("/share-urls/invite-message-template")
