@@ -898,15 +898,11 @@ describe("Forum (e2e)", () => {
         .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
 
-      // Verify reply is deleted by trying to update it (should fail)
-      const reply = await request(ctx.app.getHttpServer())
+      await request(ctx.app.getHttpServer())
         .patch(`/forum/comments/${replyId}`)
         .set("Authorization", `Bearer ${ctx.accessToken}`)
-        .send({
-          content: "This should fail",
-        });
-
-      expect(reply.body.deleted).toBe(true);
+        .send({ editableContent: { body: "Too late", attachments: [] } })
+        .expect(404);
     });
 
     it("deletes only the deleted reply's notifications", async () => {
@@ -3354,6 +3350,19 @@ describe("Forum (e2e)", () => {
       expect(page).toContain("Content has been deleted");
       expect(page).not.toContain("Top level comment");
       expect(page).toContain("Nested reply");
+    });
+
+    it("exports a post its author deleted", async () => {
+      const postId = await createPostWithThread();
+      await request(ctx.app.getHttpServer())
+        .delete(`/forum/posts/${postId}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const page = await exportPage(postId);
+
+      expect(page).toContain("Archived Post");
+      expect(page).toContain("Top level comment");
     });
 
     it("embeds an attachment in the page", async () => {

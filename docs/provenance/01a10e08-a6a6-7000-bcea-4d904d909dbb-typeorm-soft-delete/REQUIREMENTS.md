@@ -11,6 +11,7 @@ date: 2026-10-05
 - R3. Restoration happens through the database for now. Add no restoration UI or API and no message deletion endpoint.
 - R4. Add no purge of retained records.
 - R5. Load staging data into a local database and inspect it to inform the message deletion decision.
+- R20. Refuse a reply to a deleted forum comment with 404, as `main` does.
 
 # Approved agent proposals
 
@@ -18,7 +19,6 @@ The behaviors below originated in agent recommendations. The user approved them 
 
 - R6. Preserve historical invitation creation/signup totals, referral references, and group assignment references when an invitation is deleted. Active invitation lists and invitation use exclude deleted records.
 - R7. Reject editing, liking, or pinning deleted forum content with 404, and remove corresponding controls from deleted-comment placeholders.
-- R8. Keep replying to deleted-comment placeholders possible. Fix the failure that can occur after a reply is saved, and omit the notification to the deleted parent's author.
 - R9. Omit deleted comments' original text and attachments from member and admin API responses. Retain the originals in the database.
 - R10. Use the migration time as the deletion marker for previously deleted posts/comments whose old boolean provides no actual deletion timestamp.
 - R11. Keep existing permanent cleanup for expired token/browser records and disposable AI results, recent searches, and recomputed clusters. Leave migration bookkeeping and unused legacy tables unchanged. These are exceptions to R1 and R4.

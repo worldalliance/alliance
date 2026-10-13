@@ -11,6 +11,7 @@ import {
   CommentParentObject,
 } from "src/forum/entities/comment.entity";
 import { Post } from "src/forum/entities/post.entity";
+import { withoutHiddenComments } from "src/forum/hidden-comments";
 import { filterVisiblePosts } from "src/forum/post-visibility";
 import { User } from "src/user/entities/user.entity";
 import {
@@ -113,10 +114,10 @@ export class NotificationReferencesService {
         )
       : [{ now: new Date() }];
 
-    const [comments, actionUpdates] = await Promise.all([
+    const [loadedComments, actionUpdates] = await Promise.all([
       findIn(idsOf(targets, ContentTargetType.Comment), (id) =>
         repo(this.commentRepository).find({
-          where: { id, deleted: false },
+          where: { id },
           relations: { author: true, editableContent: true },
         }),
       ),
@@ -124,6 +125,11 @@ export class NotificationReferencesService {
         repo(this.actionUpdateRepository).find({ where: { id } }),
       ),
     ]);
+
+    const comments = await withoutHiddenComments(
+      repo(this.commentRepository).manager,
+      loadedComments,
+    );
 
     const gatedCommentIds = new Set(
       idsOf(gatedTargets, ContentTargetType.Comment),

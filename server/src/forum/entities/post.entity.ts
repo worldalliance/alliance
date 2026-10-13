@@ -1,8 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsNotEmpty, IsOptional } from "class-validator";
+import {
+  Allow,
+  IsBoolean,
+  IsEmpty,
+  IsNotEmpty,
+  IsOptional,
+} from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
@@ -99,10 +106,16 @@ export class Post {
   @Allow()
   visibleAt: Date | null;
 
-  @Column({ default: false })
-  @ApiProperty()
-  @Allow()
-  deleted: boolean;
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
+
+  // Dropped with LegacyDeletedFlagService's trigger; see its TODO.
+  // Write-only: `select: false` leaves it undefined on a loaded row.
+  @Column({ name: "deleted", default: false, select: false })
+  @IsBoolean()
+  legacyDeleted: boolean;
 
   @ManyToMany(() => User, { onDelete: "CASCADE" })
   @ApiPropertyOptional({ type: () => User, isArray: true })

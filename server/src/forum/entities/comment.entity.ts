@@ -1,14 +1,22 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsNotEmpty, IsOptional } from "class-validator";
+import {
+  Allow,
+  IsBoolean,
+  IsEmpty,
+  IsNotEmpty,
+  IsOptional,
+} from "class-validator";
 import {
   CreateDateColumnTz,
+  DeleteDateColumnTz,
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   JoinTable,
   ManyToMany,
@@ -29,6 +37,8 @@ export enum CommentParentObject {
 }
 
 @Entity()
+@Index(["authorId"])
+@Index(["parentId"])
 export class Comment {
   @PrimaryGeneratedColumn()
   @ApiProperty()
@@ -71,10 +81,16 @@ export class Comment {
   @IsNotEmpty()
   parentObjectId: number;
 
-  @Column({ default: false })
-  @ApiProperty()
-  @Allow()
-  deleted: boolean;
+  @DeleteDateColumnTz()
+  @IsOptional()
+  @IsEmpty()
+  deletedAt: Date | null;
+
+  // Dropped with LegacyDeletedFlagService's trigger; see its TODO.
+  // Write-only: `select: false` leaves it undefined on a loaded row.
+  @Column({ name: "deleted", default: false, select: false })
+  @IsBoolean()
+  legacyDeleted: boolean;
 
   @CreateDateColumnTz()
   @ApiProperty()

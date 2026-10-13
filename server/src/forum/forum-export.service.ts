@@ -18,6 +18,7 @@ import type { User } from "src/user/entities/user.entity";
 import { type Comment, loadedCommentAuthor } from "./entities/comment.entity";
 import type { EditableContent } from "./entities/editablecontent.entity";
 import type { ParsedPost } from "./entities/post.entity";
+import { flattenComments } from "./flatten-comments";
 import { ForumService } from "./forum.service";
 
 export type PostExport = {
@@ -112,13 +113,6 @@ function contentOf(
   return content;
 }
 
-function flattenComments(comments: Comment[]): Comment[] {
-  return comments.flatMap((comment) => [
-    comment,
-    ...flattenComments(comment.children ?? []),
-  ]);
-}
-
 async function markdownToHtml(body: string): Promise<string> {
   const file = await remark().use(remarkGfm).use(remarkHtml).process(body);
   return String(file);
@@ -204,7 +198,7 @@ function closeScriptSafe(script: string): string {
 }
 
 function isWorthRendering(comment: Comment): boolean {
-  return !comment.deleted || (comment.children?.length ?? 0) > 0;
+  return comment.deletedAt === null || (comment.children?.length ?? 0) > 0;
 }
 
 function renderThread(comments: Comment[], input: PageInput): string {
@@ -228,7 +222,7 @@ function renderComment(comment: Comment, input: PageInput): string {
 
   return `<li class="comment">
 <p class="byline">${renderAvatar(author, "comment")}<span class="author">${escapeHtml(publicDisplayName(author))}</span> · ${escapeHtml(format(comment.createdAt, "d MMMM yyyy"))}${badges.map((badge) => ` <span class="badge">${escapeHtml(badge)}</span>`).join("")}${renderLikes(comment.likesCount)}</p>
-${comment.deleted ? `<p class="deleted">Content has been deleted</p>` : renderContent(comment.editableContent, input)}
+${comment.deletedAt !== null ? `<p class="deleted">Content has been deleted</p>` : renderContent(comment.editableContent, input)}
 ${children.length ? renderThread(children, input) : ""}
 </li>`;
 }

@@ -72,6 +72,10 @@ import {
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { Post } from "src/forum/entities/post.entity";
 import { ForumService } from "src/forum/forum.service";
+import {
+  hiddenCommentIds,
+  withoutHiddenComments,
+} from "src/forum/hidden-comments";
 import { renderedImageKey } from "src/images/images.service";
 import { FacepileService } from "src/likes/facepile.service";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
@@ -934,7 +938,7 @@ export class ActionsService {
           INNER JOIN action ON action.id = completion."actionId" AND action.onboarding = true
             AND action."deletedAt" IS NULL
           INNER JOIN comment ON comment."parentObjectType" = $3
-            AND comment."parentObjectId" = completion.id AND comment.deleted = false
+            AND comment."parentObjectId" = completion.id AND comment."deletedAt" IS NULL
           INNER JOIN "user" author ON author.id = comment."authorId" AND author.staff = true
             AND author."deletedAt" IS NULL
           WHERE completion."userId" = activity."userId" AND completion.type = $2
@@ -4713,30 +4717,32 @@ export class ActionsService {
       );
     }
 
-    const recentComments = await this.commentRepository
-      .createQueryBuilder("comment")
-      .leftJoinAndSelect("comment.author", "author")
-      .select([
-        "comment.id",
-        "comment.parentObjectId",
-        "comment.parentObjectType",
-        "comment.createdAt",
-        "author.id",
-        "author.name",
-        "author.profilePicture",
-        "author.anonymous",
-        "author.admin",
-        "author.staff",
-        "author.profileDescription",
-      ])
-      .loadRelationIdAndMap("author.leaderOfIds", "author.leaderOf")
-      .where("comment.parentObjectType = :postType", {
-        postType: CommentParentObject.Post,
-      })
-      .andWhere("comment.createdAt > :oneWeekAgo", { oneWeekAgo })
-      .andWhere("comment.deleted = false")
-      .orderBy("comment.createdAt", "DESC")
-      .getMany();
+    const recentComments = await withoutHiddenComments(
+      this.commentRepository.manager,
+      await this.commentRepository
+        .createQueryBuilder("comment")
+        .leftJoinAndSelect("comment.author", "author")
+        .select([
+          "comment.id",
+          "comment.parentObjectId",
+          "comment.parentObjectType",
+          "comment.createdAt",
+          "author.id",
+          "author.name",
+          "author.profilePicture",
+          "author.anonymous",
+          "author.admin",
+          "author.staff",
+          "author.profileDescription",
+        ])
+        .loadRelationIdAndMap("author.leaderOfIds", "author.leaderOf")
+        .where("comment.parentObjectType = :postType", {
+          postType: CommentParentObject.Post,
+        })
+        .andWhere("comment.createdAt > :oneWeekAgo", { oneWeekAgo })
+        .orderBy("comment.createdAt", "DESC")
+        .getMany(),
+    );
 
     const commentGroups = new Map<
       number,
@@ -5062,13 +5068,19 @@ export class ActionsService {
         WHERE comment."parentObjectType" = $1
           AND comment."parentObjectId" = $2
           AND comment."createdAt" > $3
-          AND comment.deleted = false
+          AND comment."deletedAt" IS NULL
+          AND NOT (comment.id = ANY($4))
         ORDER BY comment."authorId" ASC, comment."createdAt" DESC, comment.id DESC
       ) ranked`;
 
     const pageIds = await this.queryFeedMemberPageIds({
       rankedSql,
-      params: [CommentParentObject.Post, postId, oneWeekAgo],
+      params: [
+        CommentParentObject.Post,
+        postId,
+        oneWeekAgo,
+        await hiddenCommentIds(this.commentRepository.manager, [postId]),
+      ],
       limit,
       afterId,
     });

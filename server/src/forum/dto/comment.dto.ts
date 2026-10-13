@@ -28,10 +28,12 @@ export class CommentDto extends PickType(Comment, [
   "parentObjectType",
   "createdAt",
   "updatedAt",
-  "deleted",
   "pinned",
   "tagId",
 ]) {
+  @ApiProperty()
+  deleted: boolean;
+
   @ApiProperty({ type: ProfileDto })
   author: ProfileDto;
 
@@ -48,7 +50,7 @@ export class CommentDto extends PickType(Comment, [
   @ApiProperty()
   likesCount: number;
 
-  /** Undefined without both a requesting user and the full `likes` relation. */
+  /** Undefined for a deleted comment, or without both a requesting user and the full `likes` relation. */
   @ApiPropertyOptional({ type: Boolean })
   likedByMe?: boolean;
 
@@ -70,7 +72,7 @@ export class CommentDto extends PickType(Comment, [
     this.parentObjectType = comment.parentObjectType;
     this.createdAt = comment.createdAt;
     this.updatedAt = comment.updatedAt;
-    this.deleted = comment.deleted;
+    this.deleted = comment.deletedAt !== null;
     this.pinned = comment.pinned;
     this.tagId = comment.tagId;
     this.author = new ProfileDto(loadedCommentAuthor(comment));
@@ -79,23 +81,31 @@ export class CommentDto extends PickType(Comment, [
           (child) => new CommentDto(child, { requestingUserId }),
         )
       : undefined;
-    this.likesCount = comment.likesCount;
+    this.likesCount = this.deleted ? 0 : comment.likesCount;
     // Only the full relation can answer this; a passed facepile is truncated.
     this.likedByMe =
-      requestingUserId !== undefined && comment.likes !== undefined
+      !this.deleted &&
+      requestingUserId !== undefined &&
+      comment.likes !== undefined
         ? comment.likes.some((like) => like.id === requestingUserId)
         : undefined;
-    this.likes = likers
-      .map((like) => new ProfileDto(like))
-      .sort(byLikeOrder(comment.id))
-      .slice(0, LIKE_FACEPILE_LIMIT);
-    this.editableContent = new EditableContentDto(comment.editableContent);
+    this.likes = this.deleted
+      ? []
+      : likers
+          .map((like) => new ProfileDto(like))
+          .sort(byLikeOrder(comment.id))
+          .slice(0, LIKE_FACEPILE_LIMIT);
+    this.editableContent = new EditableContentDto(
+      this.deleted
+        ? { ...comment.editableContent, body: "", attachments: [] }
+        : comment.editableContent,
+    );
   }
 }
 
 export class UserCommentDto extends CommentDto {
-  @ApiPropertyOptional()
-  parentTitle?: string;
+  @ApiProperty()
+  parentTitle: string;
 
   constructor({ comment, parentTitle, ...rest }: UserComment) {
     super(comment, rest);
@@ -105,7 +115,7 @@ export class UserCommentDto extends CommentDto {
 
 export type UserComment = {
   comment: Comment;
-  parentTitle?: string;
+  parentTitle: string;
 } & CommentDtoOptions;
 
 export class CreateCommentDto extends PickType(Comment, [

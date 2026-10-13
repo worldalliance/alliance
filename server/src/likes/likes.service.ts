@@ -14,6 +14,7 @@ import {
 } from "src/forum/entities/comment.entity";
 import { Post } from "src/forum/entities/post.entity";
 import { ForumService } from "src/forum/forum.service";
+import { isCommentHidden } from "src/forum/hidden-comments";
 import { User } from "src/user/entities/user.entity";
 import { Repository } from "typeorm";
 import { FacepileService } from "./facepile.service";
@@ -82,12 +83,14 @@ export class LikesService {
       where: { id: commentId },
       select: {
         id: true,
-        deleted: true,
         parentObjectType: true,
         parentObjectId: true,
       },
     });
-    if (!comment || comment.deleted) {
+    if (
+      !comment ||
+      (await isCommentHidden(this.commentRepository.manager, comment))
+    ) {
       throw new NotFoundException(`Comment with ID "${commentId}" not found`);
     }
 
