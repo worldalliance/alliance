@@ -1,5 +1,5 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { NotFoundException } from "@nestjs/common";
+import { HttpException, HttpStatus, NotFoundException } from "@nestjs/common";
 import type { Response } from "express";
 import { basename } from "path";
 import { Readable } from "stream";
@@ -13,6 +13,8 @@ export async function pipeS3Object(params: {
   /** Short for an object rewritten under the same key. S3's ETag stays out:
    * iOS answers a 304 with an empty body (see configureApp). */
   maxAgeSeconds?: number;
+  range?: string;
+  filename?: string;
 }): Promise<void> {
   const { s3, bucket, key, res } = params;
   const ac = new AbortController();
@@ -22,7 +24,7 @@ export async function pipeS3Object(params: {
 
   try {
     const out = await s3.send(
-      new GetObjectCommand({ Bucket: bucket, Key: key }),
+      new GetObjectCommand({ Bucket: bucket, Key: key, Range: params.range }),
       { abortSignal: ac.signal },
     );
 
@@ -33,7 +35,17 @@ export async function pipeS3Object(params: {
       "Content-Type",
       params.contentType ?? out.ContentType ?? "application/octet-stream",
     );
-    res.setHeader("Content-Disposition", `inline; filename="${basename(key)}"`);
+    if (out.ContentRange) {
+      res.status(HttpStatus.PARTIAL_CONTENT);
+      res.setHeader("Content-Range", out.ContentRange);
+    }
+    if (out.ContentLength !== undefined)
+      res.setHeader("Content-Length", out.ContentLength);
+    if (out.AcceptRanges) res.setHeader("Accept-Ranges", out.AcceptRanges);
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${params.filename ?? basename(key)}"`,
+    );
     res.setHeader(
       "Cache-Control",
       params.maxAgeSeconds === undefined
@@ -54,6 +66,8 @@ export async function pipeS3Object(params: {
         res.destroy();
       } else {
         res.removeHeader("Cache-Control");
+        res.removeHeader("Content-Length");
+        res.removeHeader("Content-Range");
         res.status(500).end();
       }
     });
@@ -61,6 +75,11 @@ export async function pipeS3Object(params: {
     body.pipe(res);
   } catch (err) {
     if (err?.name === "AbortError") return;
+    if (err?.name === "InvalidRange")
+      throw new HttpException(
+        "Range Not Satisfiable",
+        HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
+      );
 
     if (process.env.NODE_ENV !== "development") {
       console.error("Error getting %s:", JSON.stringify(key), err);

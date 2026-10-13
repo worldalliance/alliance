@@ -62,6 +62,7 @@ export const CUSTOM_LINK_RESERVED_SLUGS = new Set([
   "membership",
   "contract",
   "deleteaccount",
+  "docs",
 ]);
 
 const siteDestination = (value: string): boolean => {

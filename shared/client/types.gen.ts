@@ -3895,6 +3895,21 @@ export type CustomLinkDestinationDto = {
     destination: string;
 };
 
+export type HostedDocDto = {
+    id: number;
+    slug: string;
+    notes: string;
+    views: number;
+    fileReplacedAt: string | null;
+    createdAt: string;
+    uploadedByName: string | null;
+    fileReplacedByName: string | null;
+};
+
+export type UpdateHostedDocDto = {
+    notes: string;
+};
+
 export type FormulaSourceDto = {
     formId: number;
     responseIds: Array<number>;
@@ -13033,6 +13048,156 @@ export type CustomLinksResolveResponses = {
 };
 
 export type CustomLinksResolveResponse = CustomLinksResolveResponses[keyof CustomLinksResolveResponses];
+
+export type HostedDocsFindAllAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/hosted-docs';
+};
+
+export type HostedDocsFindAllAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type HostedDocsFindAllAdminError = HostedDocsFindAllAdminErrors[keyof HostedDocsFindAllAdminErrors];
+
+export type HostedDocsFindAllAdminResponses = {
+    200: Array<HostedDocDto>;
+};
+
+export type HostedDocsFindAllAdminResponse = HostedDocsFindAllAdminResponses[keyof HostedDocsFindAllAdminResponses];
+
+export type HostedDocsCreateAdminData = {
+    body: {
+        file: Blob | File;
+        slug: string;
+        notes: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/hosted-docs';
+};
+
+export type HostedDocsCreateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type HostedDocsCreateAdminError = HostedDocsCreateAdminErrors[keyof HostedDocsCreateAdminErrors];
+
+export type HostedDocsCreateAdminResponses = {
+    200: HostedDocDto;
+};
+
+export type HostedDocsCreateAdminResponse = HostedDocsCreateAdminResponses[keyof HostedDocsCreateAdminResponses];
+
+export type HostedDocsReplaceFileAdminData = {
+    body: {
+        file: Blob | File;
+    };
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/hosted-docs/{id}/file';
+};
+
+export type HostedDocsReplaceFileAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type HostedDocsReplaceFileAdminError = HostedDocsReplaceFileAdminErrors[keyof HostedDocsReplaceFileAdminErrors];
+
+export type HostedDocsReplaceFileAdminResponses = {
+    200: HostedDocDto;
+};
+
+export type HostedDocsReplaceFileAdminResponse = HostedDocsReplaceFileAdminResponses[keyof HostedDocsReplaceFileAdminResponses];
+
+export type HostedDocsRemoveAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/hosted-docs/{id}';
+};
+
+export type HostedDocsRemoveAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type HostedDocsRemoveAdminError = HostedDocsRemoveAdminErrors[keyof HostedDocsRemoveAdminErrors];
+
+export type HostedDocsRemoveAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type HostedDocsRemoveAdminResponse = HostedDocsRemoveAdminResponses[keyof HostedDocsRemoveAdminResponses];
+
+export type HostedDocsUpdateAdminData = {
+    body: UpdateHostedDocDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/hosted-docs/{id}';
+};
+
+export type HostedDocsUpdateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type HostedDocsUpdateAdminError = HostedDocsUpdateAdminErrors[keyof HostedDocsUpdateAdminErrors];
+
+export type HostedDocsUpdateAdminResponses = {
+    200: HostedDocDto;
+};
+
+export type HostedDocsUpdateAdminResponse = HostedDocsUpdateAdminResponses[keyof HostedDocsUpdateAdminResponses];
+
+export type DocsServeData = {
+    body?: never;
+    path: {
+        slug: string;
+    };
+    query?: never;
+    url: '/docs/{slug}';
+};
+
+export type DocsServeErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type DocsServeError = DocsServeErrors[keyof DocsServeErrors];
+
+export type DocsServeResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type DocsServeResponse = DocsServeResponses[keyof DocsServeResponses];
 
 export type TasksSubmitFormData = {
     body: SubmitFormDto;

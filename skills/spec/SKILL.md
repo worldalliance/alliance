@@ -20,9 +20,9 @@ Continue asking questions as more decision points are uncovered. Done when every
 
 ### Format
 
-Ask in plain text, without tool calls. Ask them together in one numbered message.
+Ask with the structured question tool (`AskUserQuestion` in Claude Code, `ask_user_input_v0` on claude.ai), batching as many questions per call as it allows. Make your recommendation the first option of each question.
 
-For each question, also provide your recommendation.
+With no such tool available, ask in one numbered plain-text message, with your recommendation beside each question.
 
 ### Guidelines
 

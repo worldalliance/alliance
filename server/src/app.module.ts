@@ -22,6 +22,7 @@ import { connectionOptions } from "./datasources/dataSource";
 import { EventLogModule } from "./eventlog/eventlog.module";
 import { ForumModule } from "./forum/forum.module";
 import { GeoModule } from "./geo/geo.module";
+import { HostedDocsModule } from "./hosted-docs/hosted-docs.module";
 import { ImagesModule } from "./images/images.module";
 import { LikesModule } from "./likes/likes.module";
 import { LinkPreviewModule } from "./link-preview/link-preview.module";
@@ -100,6 +101,7 @@ if (!("polyfilled" in Intl.DateTimeFormat)) {
     SearchModule,
     ShareUrlsModule,
     CustomLinksModule,
+    HostedDocsModule,
     CampaignModule,
     TasksModule,
     MmsModule,
