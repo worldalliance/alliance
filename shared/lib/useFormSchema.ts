@@ -90,6 +90,14 @@ type FormQuestionFieldsMap = {
   byForm: Record<number, readonly AnyField[]>;
   /** Per form, so a caller showing one form at a time names the right one. */
   statusByForm: Record<number, FormFieldsStatus>;
+  retryFailed: () => void;
+};
+
+const STATUS_IS_FAILURE: Record<FormFieldsStatus, boolean> = {
+  [FormFieldsStatus.Pending]: false,
+  [FormFieldsStatus.LoadFailed]: true,
+  [FormFieldsStatus.SchemaUnreadable]: true,
+  [FormFieldsStatus.Ready]: false,
 };
 
 // Only a failure with nothing cached behind it is worth reporting. A refetch
@@ -115,13 +123,19 @@ function fieldsCombiner(formIds: readonly number[]) {
   ): FormQuestionFieldsMap => {
     const byForm: Record<number, readonly AnyField[]> = {};
     const statusByForm: Record<number, FormFieldsStatus> = {};
+    const failed: UseQueryResult<FormQuestionFields>[] = [];
     results.forEach((result, index) => {
       const formId = formIds[index];
       if (formId === undefined) return;
       if (result.data) byForm[formId] = result.data.fields;
-      statusByForm[formId] = statusOf(result);
+      const status = statusOf(result);
+      statusByForm[formId] = status;
+      if (STATUS_IS_FAILURE[status]) failed.push(result);
     });
-    return { byForm, statusByForm };
+    const retryFailed = () => {
+      for (const result of failed) void result.refetch();
+    };
+    return { byForm, statusByForm, retryFailed };
   };
 }
 

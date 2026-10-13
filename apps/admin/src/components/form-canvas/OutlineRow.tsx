@@ -1,5 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
 import { ChevronRight, GripVertical } from "lucide-react";
+import { IssueMarker } from "./IssueList";
 import { CheckState, extendableClick } from "./rangeSelection";
 
 const CHECKBOX: Record<
@@ -43,6 +44,8 @@ export type RowProps = {
   check?: { state: CheckState; onToggle: () => void };
   expanded?: boolean;
   onToggle?: () => void;
+  /** At the entry or anywhere inside it. */
+  issues?: number;
   className?: string;
 };
 
@@ -55,6 +58,7 @@ export function OutlineRow({
   check,
   expanded,
   onToggle,
+  issues = 0,
   className,
   draggable = false,
 }: RowProps & { draggable?: boolean }) {
@@ -107,6 +111,7 @@ export function OutlineRow({
       >
         {label}
       </button>
+      <IssueMarker count={issues} className="mr-1" />
       {check && (
         <input
           type="checkbox"

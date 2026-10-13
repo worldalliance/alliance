@@ -3,6 +3,7 @@ import { withCount } from "@alliance/common/plural";
 import { cn } from "@alliance/shared/styles/util";
 import { Plus } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { IssueTargetKind, type IssueIndex } from "../../lib/formIssues";
 import {
   pageSegments,
   SegmentKind,
@@ -74,6 +75,7 @@ type FormOutlineProps = {
   onExtend: ((clicked: Span, alone: CanvasTarget) => void) | null;
   /** The selection once an entry's checkbox toggles. Null where ranges are off. */
   onCheck: ((pageIndex: number, target: CanvasTarget) => void) | null;
+  issues: IssueIndex;
   onAddPage: () => void;
   onMovePage: (move: ListMove) => void;
   onMoveElement: (pageIndex: number, move: ListMove) => void;
@@ -95,6 +97,7 @@ export function FormOutline({
   onSelect,
   onExtend,
   onCheck,
+  issues,
   onAddPage,
   onMovePage,
   onMoveElement,
@@ -213,6 +216,7 @@ export function FormOutline({
               : undefined
           }
           drag={dragFor(pageKey(page), at)}
+          issues={issues.inElement(index, at)}
           {...(container && {
             expanded: open,
             onToggle: () => toggle(key, false),
@@ -262,6 +266,15 @@ export function FormOutline({
                     }
                     expanded={open}
                     onToggle={() => toggle(groupKey(key), true)}
+                    issues={page.fields.slice(start, end).reduce(
+                      (count, _, offset) =>
+                        count + issues.inElement(index, start + offset),
+                      issues.at({
+                        kind: IssueTargetKind.Group,
+                        pageIndex: index,
+                        key,
+                      }).length,
+                    )}
                     className="text-amber-800"
                   />
                   {open && (
@@ -328,6 +341,7 @@ export function FormOutline({
                   drag={dragFor(PAGES, index)}
                   expanded={open}
                   onToggle={() => toggle(pageKey(page), index === pageIndex)}
+                  issues={issues.onPage(index)}
                   className="font-medium"
                 >
                   {open && (

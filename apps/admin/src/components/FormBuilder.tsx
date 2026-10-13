@@ -48,6 +48,7 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBeforeUnload, useBlocker, useSearchParams } from "react-router";
+import { adminRefusalMessage } from "../lib/adminRefusal";
 import { conditionSourceFields } from "../lib/conditionSourceFields";
 import {
   customValidatorIds,
@@ -56,6 +57,12 @@ import {
 import { addressedWrite } from "../lib/displayBlockById";
 import { findQuestion } from "../lib/formDependencies";
 import { useSelectOnLoad } from "../lib/formEditorLink";
+import {
+  collectFormIssues,
+  indexIssues,
+  IssueTargetKind,
+  type FormIssue,
+} from "../lib/formIssues";
 import { formSchemaIds, JsonScopeKind, type JsonScope } from "../lib/formJson";
 import { mergeFormSchemas } from "../lib/formSchemaMerge";
 import {
@@ -108,6 +115,11 @@ import {
 import { SelectChildProvider } from "./form-canvas/ChildRows";
 import { ChildSettings } from "./form-canvas/ChildSettings";
 import { DependencyLinks } from "./form-canvas/DependencyLinks";
+import {
+  ElementBoundary,
+  FlaggedSettings,
+  PreviewBoundary,
+} from "./form-canvas/ElementBoundary";
 import { ElementSettings } from "./form-canvas/ElementSettings";
 import { FormCanvas } from "./form-canvas/FormCanvas";
 import { FormOutline } from "./form-canvas/FormOutline";
@@ -120,6 +132,14 @@ import {
   type AvailableElement,
   type InsertLoc,
 } from "./form-canvas/InsertPoint";
+import {
+  IssueGate,
+  IssueList,
+  issueLocation,
+  openIssue,
+  selectionIssues,
+  SidebarIssues,
+} from "./form-canvas/IssueList";
 import { PageSettings, PageSettingsSidebar } from "./form-canvas/PageSettings";
 import { extendSelection, type Span } from "./form-canvas/rangeSelection";
 import { RangeSettings } from "./form-canvas/RangeSettings";
@@ -129,7 +149,10 @@ import { useGuardedDeletion } from "./form-canvas/useGuardedDeletion";
 import type { ListMove } from "./form-canvas/useListDrag";
 import { useOverrideTarget } from "./form-canvas/useOverrideTarget";
 import { VisibilityGroupSettings } from "./form-canvas/VisibilityGroupSettings";
-import { ElementExpressionScope } from "./form-fields/conditions/expressionBuffers";
+import {
+  ElementExpressionScope,
+  expressionKeys,
+} from "./form-fields/conditions/expressionBuffers";
 import { isDraftValidatorId } from "./form-fields/customValidatorDrafts";
 import { renderFieldEditor } from "./form-fields/fieldEditors";
 import { FormConflictModal } from "./FormConflictModal";
@@ -576,24 +599,35 @@ export function FormBuilder(props: FormBuilderProps) {
     theirsSnapshotId: number;
   } | null>(null);
   // Editors that keep their own copy of a formula or its text only follow it
-  // through their own edits, so a schema loaded from a conflict or from
-  // pasted JSON, or restored by undo or redo, remounts them.
+  // through their own edits, so a schema loaded from the server, a conflict,
+  // or pasted JSON, or restored by undo or redo, remounts them.
   const [schemaLoads, setSchemaLoads] = useState(0);
   const [confirmUnresolvedVariables, setConfirmUnresolvedVariables] =
     useState(false);
 
-  const { sourceForms, statusByForm: sourceFormStatus } = useFormulaSourceForms(
-    conflict ? [schema, conflict.theirs] : [schema],
+  const {
+    sourceForms,
+    statusByForm: sourceFormStatus,
+    retryFailed: retrySourceForms,
+  } = useFormulaSourceForms(conflict ? [schema, conflict.theirs] : [schema]);
+  const sourceStatuses = Object.entries(sourceFormStatus);
+  const pendingSourceForms = useMemo(
+    () =>
+      new Set(
+        Object.entries(sourceFormStatus)
+          .filter(([, status]) => status === FormFieldsStatus.Pending)
+          .map(([id]) => Number(id)),
+      ),
+    [sourceFormStatus],
   );
-  const sourceFormsLoading = Object.values(sourceFormStatus).includes(
-    FormFieldsStatus.Pending,
-  );
-  const sourceFormsFailed = Object.values(sourceFormStatus).some(
-    (status) => formFieldsErrorReason(status) !== null,
-  );
+  const failedSourceForms = sourceStatuses.filter(
+    ([, status]) => formFieldsErrorReason(status) !== null,
+  ).length;
+  const sourceFormsLoading = pendingSourceForms.size > 0;
+  const sourceFormsFailed = failedSourceForms > 0;
   const validation = useMemo(
-    () => ({ formId, sourceForms }),
-    [formId, sourceForms],
+    () => ({ formId, sourceForms, pendingSourceForms }),
+    [formId, sourceForms, pendingSourceForms],
   );
   const formulaSources = useInputSources({ formId, schema });
 
@@ -639,6 +673,11 @@ export function FormBuilder(props: FormBuilderProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [issueList, setIssueList] = useState<{ gate: IssueGate | null } | null>(
+    null,
+  );
+  const [outputViewId, setOutputViewId] = useState<string | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewUserId, setPreviewUserId] = useState<string>("preview");
   const previewUsersQuery = useUsersAdmin({ enabled: isPreviewMode });
@@ -828,7 +867,7 @@ export function FormBuilder(props: FormBuilderProps) {
     setIsLoading(true);
     setLoadError(null);
 
-    tasksGetForm({ path: { id: formId } })
+    tasksGetForm({ path: { id: formId }, throwOnError: true })
       .then((response) => {
         if (response.data) {
           // Convert the form entity back to FormSchema
@@ -838,6 +877,7 @@ export function FormBuilder(props: FormBuilderProps) {
               form.schema as unknown as FormSchema,
             );
             loadSchema(nextSchema);
+            reloadEditors();
             const selectOnLoad = selectOnLoadRef.current;
             selectOnLoadRef.current = null;
             if (selectOnLoad !== null) {
@@ -860,9 +900,7 @@ export function FormBuilder(props: FormBuilderProps) {
       })
       .catch((error) => {
         console.error("Failed to load form:", error);
-        setLoadError(
-          error instanceof Error ? error.message : "Failed to load form",
-        );
+        setLoadError(adminRefusalMessage(error, "Failed to load form"));
       })
       .finally(() => {
         setIsLoading(false);
@@ -871,7 +909,9 @@ export function FormBuilder(props: FormBuilderProps) {
     displayOnly,
     formId,
     initialSchema,
+    loadAttempt,
     loadSchema,
+    reloadEditors,
     selectOnLoadRef,
     showErrorToast,
   ]);
@@ -1300,13 +1340,8 @@ export function FormBuilder(props: FormBuilderProps) {
       amendSchema(syncedSchema);
       endStep();
 
-      const validationErrors = validateFormSchema(syncedSchema, validation);
-      if (validationErrors.length > 0) {
-        const summary = validationErrors
-          .map((e) => `• Block ${e.blockId}: ${e.message}`)
-          .join("\n");
-        setSaveError(summary);
-        showErrorToast("Fix invalid references before saving");
+      if (validateFormSchema(syncedSchema, validation).length > 0) {
+        setIssueList({ gate: IssueGate.Save });
         return;
       }
 
@@ -1435,22 +1470,41 @@ export function FormBuilder(props: FormBuilderProps) {
     [schema],
   );
 
-  const liveValidationErrors = useMemo(
-    () => validateFormSchema(schema, validation),
-    [schema, validation],
+  const issues = useMemo(
+    () =>
+      collectFormIssues({
+        // As Save will write it, naming sub-fields a list input lacks.
+        schema: syncSchemaListInputs(schema, sourceForms),
+        groups: canvasGroups,
+        expressions,
+        validation,
+      }),
+    [canvasGroups, expressions, schema, sourceForms, validation],
   );
-  const invalidIds = useMemo(
-    () => new Set(liveValidationErrors.map((error) => error.blockId)),
-    [liveValidationErrors],
-  );
+  const issueIndex = useMemo(() => indexIssues(issues), [issues]);
+  const blockingIssues = issues.length + (loadError ? 1 : 0);
+  const retryLoad = () => setLoadAttempt((count) => count + 1);
+  const retryLoadLabel = hasUnsavedChanges
+    ? "Discard edits and retry"
+    : "Retry";
 
   const handleSaveForm = useCallback(() => {
+    if (loadError !== null || (issues.length > 0 && !sourceFormsLoading)) {
+      setIssueList({ gate: IssueGate.Save });
+      return;
+    }
     if (unresolvedVariableReferences.length > 0) {
       setConfirmUnresolvedVariables(true);
       return;
     }
     void saveForm();
-  }, [saveForm, unresolvedVariableReferences]);
+  }, [
+    issues.length,
+    loadError,
+    saveForm,
+    sourceFormsLoading,
+    unresolvedVariableReferences,
+  ]);
 
   const closeConflict = useCallback(() => setConflict(null), []);
 
@@ -1805,7 +1859,7 @@ export function FormBuilder(props: FormBuilderProps) {
     };
     return (
       <ElementExpressionScope
-        parent={`element:${currentPage.id}`}
+        parent={expressionKeys.pageElements(currentPage.id)}
         id={field.id}
       >
         <VisibilityGroupContext.Provider
@@ -1862,6 +1916,26 @@ export function FormBuilder(props: FormBuilderProps) {
         }
       />
     );
+
+  const goToIssue = (issue: FormIssue) =>
+    openIssue(issue, {
+      pages: schema.pages,
+      select: (pageIndex, target, section) => {
+        if (activeEditor !== "form") setActiveEditor("form");
+        setIsPreviewMode(false);
+        selectFromOutline({
+          page: schema.pages[pageIndex]!,
+          pageIndex,
+          target,
+          section,
+        });
+      },
+      showOutputView: (viewId) => {
+        setOutputViewId(viewId);
+        setActiveEditor("outputs");
+      },
+      showVariables: () => setActiveEditor("variables"),
+    });
 
   const renderInsertPoint = (loc: InsertLoc, options?: { prominent: true }) => (
     <InsertPoint
@@ -1952,7 +2026,7 @@ export function FormBuilder(props: FormBuilderProps) {
               : undefined;
           return (
             <ElementExpressionScope
-              parent={`element:${currentPage.id}`}
+              parent={expressionKeys.pageElements(currentPage.id)}
               id={element.id}
             >
               <ChildSettings
@@ -2022,7 +2096,17 @@ export function FormBuilder(props: FormBuilderProps) {
           >
             <div key={`${element.id || index}-${schemaLoads}`}>
               <OverrideTargetContext.Provider value={overrideTarget}>
-                {renderElementEditor(index)}
+                <ElementBoundary
+                  element={element}
+                  fallback={(message) => (
+                    <FlaggedSettings
+                      message={message}
+                      repair="Edit its JSON, or delete it, under Advanced."
+                    />
+                  )}
+                >
+                  {() => renderElementEditor(index)}
+                </ElementBoundary>
               </OverrideTargetContext.Provider>
             </div>
           </ElementSettings>
@@ -2054,7 +2138,6 @@ export function FormBuilder(props: FormBuilderProps) {
               setGroups={setGroups}
               applyGrouped={applyGrouped}
               summarize={summarize}
-              validationErrors={liveValidationErrors}
               onSelectMember={(memberIndex) =>
                 select(
                   elementTarget(currentPage.fields[memberIndex]!, memberIndex),
@@ -2160,6 +2243,35 @@ export function FormBuilder(props: FormBuilderProps) {
               <div className="bg-white border-b border-gray-200 p-4">
                 <div className="flex items-center justify-end gap-4 flex-wrap xl:flex-nowrap">
                   <div className="flex items-center space-x-2">
+                    <IssueList
+                      rows={issues.map((issue) => ({
+                        location: issueLocation(schema, issue.target),
+                        message: issue.message,
+                        onGo:
+                          issue.target.kind === IssueTargetKind.Form
+                            ? null
+                            : () => goToIssue(issue),
+                      }))}
+                      sources={{
+                        pending: pendingSourceForms.size,
+                        failed: failedSourceForms,
+                        onRetry: retrySourceForms,
+                      }}
+                      loadFailure={
+                        loadError === null
+                          ? null
+                          : {
+                              message: loadError,
+                              retryLabel: retryLoadLabel,
+                              onRetry: retryLoad,
+                            }
+                      }
+                      open={issueList !== null}
+                      gate={issueList?.gate ?? null}
+                      onOpenChange={(open) =>
+                        setIssueList(open ? { gate: null } : null)
+                      }
+                    />
                     {!isPreviewMode && (
                       <HistoryControls
                         scope={builderRef}
@@ -2180,7 +2292,15 @@ export function FormBuilder(props: FormBuilderProps) {
                     )}
                     {activeEditor === "form" && (
                       <Button
-                        onClick={() => setIsPreviewMode(!isPreviewMode)}
+                        onClick={() => {
+                          if (isPreviewMode) {
+                            setIsPreviewMode(false);
+                          } else if (blockingIssues > 0) {
+                            setIssueList({ gate: IssueGate.Preview });
+                          } else {
+                            setIsPreviewMode(true);
+                          }
+                        }}
                         color={ButtonColor.Stone}
                         size="small"
                       >
@@ -2283,6 +2403,13 @@ export function FormBuilder(props: FormBuilderProps) {
                     <span className="block sm:inline">
                       Error loading form: {loadError}
                     </span>
+                    <button
+                      type="button"
+                      onClick={retryLoad}
+                      className="ml-2 rounded border border-red-300 px-1.5 py-0.5 text-xs font-medium hover:bg-red-50"
+                    >
+                      {retryLoadLabel}
+                    </button>
                   </div>
                 )}
                 {saveError && (
@@ -2313,6 +2440,8 @@ export function FormBuilder(props: FormBuilderProps) {
                     onSchemaChange={updateSchema}
                     onUpdateBlockById={updateBlockById}
                     editorsKey={schemaLoads}
+                    selectedViewId={outputViewId}
+                    onSelectView={setOutputViewId}
                   />
                 ) : activeEditor === "aggregates" ? (
                   <AggregateBuilder
@@ -2327,10 +2456,12 @@ export function FormBuilder(props: FormBuilderProps) {
                   />
                 ) : isPreviewMode && displayOnly ? (
                   <div className="max-w-3xl mx-auto p-6">
-                    <DisplayOnlyPreview
-                      schema={schema}
-                      title={displayOnlyTitle}
-                    />
+                    <PreviewBoundary resetKeys={[schema]}>
+                      <DisplayOnlyPreview
+                        schema={schema}
+                        title={displayOnlyTitle}
+                      />
+                    </PreviewBoundary>
                   </div>
                 ) : isPreviewMode ? (
                   <div className="max-w-3xl mx-auto bg-white p-6">
@@ -2341,20 +2472,24 @@ export function FormBuilder(props: FormBuilderProps) {
                       isLoadingPreviewUsers={isLoadingPreviewUsers}
                       previewUserError={previewUserError}
                     />
-                    <FormRenderer
-                      key={resolvedPreviewUserId}
-                      id={0}
-                      formSnapshotId={null}
-                      actionId={0}
-                      form={schema}
-                      onSubmit={null}
-                      renderFormAsCompleted={false}
-                      userId={resolvedPreviewUserId}
-                      user={resolvedPreviewUser}
-                      adminPreviewUserId={resolvedPreviewUserId}
-                      showVariableError
-                      initialPageIndex={selectedPageIndex}
-                    />
+                    <PreviewBoundary
+                      resetKeys={[schema, resolvedPreviewUserId]}
+                    >
+                      <FormRenderer
+                        key={resolvedPreviewUserId}
+                        id={0}
+                        formSnapshotId={null}
+                        actionId={0}
+                        form={schema}
+                        onSubmit={null}
+                        renderFormAsCompleted={false}
+                        userId={resolvedPreviewUserId}
+                        user={resolvedPreviewUser}
+                        adminPreviewUserId={resolvedPreviewUserId}
+                        showVariableError
+                        initialPageIndex={selectedPageIndex}
+                      />
+                    </PreviewBoundary>
                   </div>
                 ) : (
                   <CanvasWorkspace
@@ -2398,6 +2533,7 @@ export function FormBuilder(props: FormBuilderProps) {
                                   keepOutline: true,
                                 })
                         }
+                        issues={issueIndex}
                         onAddPage={addPage}
                         onMovePage={movePage}
                         onMoveElement={(pageIndex, move) =>
@@ -2425,7 +2561,8 @@ export function FormBuilder(props: FormBuilderProps) {
                               }
                         }
                         summarize={summarize}
-                        invalidIds={invalidIds}
+                        issues={issueIndex}
+                        pageIndex={selectedPageIndex}
                         renderInsertPoint={renderInsertPoint}
                         onMove={moveElement}
                         onUpdateElement={(index, updates) =>
@@ -2436,7 +2573,19 @@ export function FormBuilder(props: FormBuilderProps) {
                         override={override}
                       />
                     }
-                    settings={renderSettings()}
+                    settings={
+                      <>
+                        <SidebarIssues
+                          messages={selectionIssues({
+                            index: issueIndex,
+                            page: currentPage,
+                            pageIndex: selectedPageIndex,
+                            target: resolvedTarget,
+                          })}
+                        />
+                        {renderSettings()}
+                      </>
+                    }
                   />
                 )}
               </div>

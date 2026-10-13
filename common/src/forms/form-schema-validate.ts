@@ -22,9 +22,18 @@ import {
   type VisibleIfFormula,
 } from "./visible-if-formula";
 
+export enum ValidatedFormula {
+  Visibility = "visibility",
+  RequiredIf = "requiredIf",
+}
+
 export type FormSchemaValidationError = {
   viewId?: string;
   blockId: string;
+  /** Set when the error is in one of the block's formulas. */
+  formula?: ValidatedFormula;
+  /** Set when the error is in this variable rather than in a block. */
+  variable?: string;
   message: string;
 };
 
@@ -33,8 +42,12 @@ type ContextKind = "input" | "output";
 export type FormSchemaValidationContext = {
   /** Unset while the form is being created. */
   formId?: number;
-  /** Must hold every form a variable or options formula input reads. */
+  /** Must hold every form a variable or options formula input reads, except
+   * those in `pendingSourceForms`. */
   sourceForms: SourceFormFields;
+  /** Forms whose fields are still loading. A formula reading one skips the
+   * checks that need its fields instead of reporting it missing. */
+  pendingSourceForms?: ReadonlySet<number>;
 };
 
 export function validateFormSchema(
@@ -52,7 +65,7 @@ export function validateFormSchema(
     const blockId = page.id ?? "<unnamed>";
     checkConditions(
       page.visibleIfFormula,
-      { context: "input", blockId },
+      { context: "input", blockId, formula: ValidatedFormula.Visibility },
       errors,
     );
     for (const cond of Object.values(page.visibleIfFormula?.conditions ?? {})) {
@@ -60,6 +73,7 @@ export function validateFormSchema(
       if (fieldId !== null && !earlierFieldIds.has(fieldId)) {
         errors.push({
           blockId,
+          formula: ValidatedFormula.Visibility,
           message: `Page visibility references field "${fieldId}", which must be on an earlier page`,
         });
       }
@@ -98,6 +112,7 @@ export function validateFormSchema(
           allowedOutputBlockIds: outputBlockIds,
           viewId: view.id,
           blockId,
+          formula: ValidatedFormula.Visibility,
         },
         errors,
       );
@@ -136,6 +151,7 @@ function collectCycleErrors(
     errors.push({
       viewId: view.id,
       blockId: cycle[0],
+      formula: ValidatedFormula.Visibility,
       message: `Cycle in outputBlockVisible references: ${[
         ...cycle,
         cycle[0],
@@ -176,6 +192,7 @@ function collectVisibilityCycleErrors(
   for (const cycle of findCycles(visibilityDependencies(schema))) {
     errors.push({
       blockId: cycle[0],
+      formula: ValidatedFormula.Visibility,
       message: describeVisibilityCycle(cycle),
     });
   }
@@ -284,11 +301,15 @@ function collectInputErrors(
   errors: FormSchemaValidationError[],
 ): void {
   const blockId = item.id ?? "<unnamed>";
-  checkConditions(item.visibleIfFormula, { context: "input", blockId }, errors);
+  checkConditions(
+    item.visibleIfFormula,
+    { context: "input", blockId, formula: ValidatedFormula.Visibility },
+    errors,
+  );
   if (!isQuestionField(item)) return;
   checkConditions(
     item.requiredIfFormula,
-    { context: "input", blockId },
+    { context: "input", blockId, formula: ValidatedFormula.RequiredIf },
     errors,
   );
   if (
@@ -327,6 +348,7 @@ type CheckCtx = {
   allowedOutputBlockIds?: Set<string>;
   viewId?: string;
   blockId: string;
+  formula: ValidatedFormula;
 };
 
 function checkConditions(
@@ -351,6 +373,7 @@ function checkCondition(
       errors.push({
         viewId: ctx.viewId,
         blockId: ctx.blockId,
+        formula: ctx.formula,
         message: `"${cond.kind}" condition is only valid on input fields`,
       });
     }
@@ -361,6 +384,7 @@ function checkCondition(
       errors.push({
         viewId: ctx.viewId,
         blockId: ctx.blockId,
+        formula: ctx.formula,
         message: `"firstContractSigned" condition has an invalid datetime: "${cond.date}"`,
       });
     }
@@ -371,6 +395,7 @@ function checkCondition(
       errors.push({
         viewId: ctx.viewId,
         blockId: ctx.blockId,
+        formula: ctx.formula,
         message: `"completedActionCount" condition has an invalid count: ${cond.atLeast}`,
       });
     }
@@ -381,6 +406,7 @@ function checkCondition(
     errors.push({
       viewId: ctx.viewId,
       blockId: ctx.blockId,
+      formula: ctx.formula,
       message:
         '"outputBlockVisible" condition is only valid on output-view blocks',
     });
@@ -390,6 +416,7 @@ function checkCondition(
     errors.push({
       viewId: ctx.viewId,
       blockId: ctx.blockId,
+      formula: ctx.formula,
       message: `References missing output block "${cond.outputBlockVisible}"`,
     });
   }

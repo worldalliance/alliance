@@ -232,8 +232,6 @@ type CustomValidatorSelectProps = {
   className?: string;
   label?: string;
   filter?: (validator: CustomValidatorTypeDto) => boolean;
-  /** False disables "None", for a validator the caller can't clear. */
-  allowNone?: boolean;
 };
 
 export function CustomValidatorSelect({
@@ -244,7 +242,6 @@ export function CustomValidatorSelect({
   className = "",
   label = "Custom validator",
   filter,
-  allowNone = true,
 }: CustomValidatorSelectProps) {
   const { validators, loading, error } = useCustomValidators();
   const isMemberTag = type === "MemberTag";
@@ -450,9 +447,7 @@ export function CustomValidatorSelect({
           onChange={handleChange}
           disabled={loading || (!hasValidators && !type)}
         >
-          <option value="" disabled={!allowNone}>
-            None
-          </option>
+          <option value="">None</option>
           {availableValidators.map((validator) => (
             <option key={validator.id} value={validator.id}>
               {validator.name}

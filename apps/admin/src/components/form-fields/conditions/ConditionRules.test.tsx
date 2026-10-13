@@ -307,10 +307,6 @@ describe("other rules", () => {
       expect(rule("v").queryByText("Could not load validator 4.")).toBeNull(),
     );
     expect(rule("v").queryByText("Loading validator details…")).toBeNull();
-    expect(
-      rule("v").getByRole<HTMLOptionElement>("option", { name: "None" })
-        .disabled,
-    ).toBe(true);
 
     fireEvent.change(
       rule("v").getByRole("combobox", { name: "Validator result" }),
@@ -322,6 +318,45 @@ describe("other rules", () => {
       },
       formula,
     });
+  });
+
+  it("removes a validator rule on None, keeping the expression for repair", async () => {
+    resetCustomValidatorsCache();
+    api.alsoServing({
+      "GET /user/list": () => Response.json([]),
+      "GET /tasks/customValidators": () =>
+        Response.json([
+          {
+            name: "Custom expression",
+            id: "CustomExpression",
+            withIdField: false,
+            usableForVisibility: true,
+          },
+        ]),
+      "GET /tasks/findOneCustomValidator/:id": () =>
+        Response.json({
+          id: 4,
+          type: "CustomExpression",
+          idArgument: null,
+          expression: "true",
+        }),
+    });
+    const formula = formulaOf("NOT v OR c1");
+    renderEditor({
+      initial: {
+        conditions: { v: { kind: "validator", validatorId: 4 }, c1: isRed },
+        formula,
+      },
+    });
+    // The select's label isn't tied to it, so it goes by its None option.
+    const select = (
+      await rule("v").findByRole("option", { name: "None" })
+    ).closest("select")!;
+    await waitFor(() => expect(select.disabled).toBe(false));
+
+    fireEvent.change(select, { target: { value: "" } });
+    expect(latest()).toEqual({ conditions: { c1: isRed }, formula });
+    expect(screen.getByRole("alert").textContent).toMatch(/No rule is named v/);
   });
 
   it("moves an edited saved validator to a new draft", async () => {

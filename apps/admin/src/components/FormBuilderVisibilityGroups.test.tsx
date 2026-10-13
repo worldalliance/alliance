@@ -234,29 +234,37 @@ describe("FormBuilder visibility groups", () => {
     expect(saveButton().textContent).toBe("No changes");
   });
 
-  it("flags a group's errors on the canvas, and lists them in its settings", () => {
+  it("flags a shared rule's error on the group header, and lists it once in the group's settings", () => {
     renderFormBuilder(
       schemaWith([text("a", shownWhen("a")), text("b", shownWhen("a"))]),
     );
     expect(
-      within(canvasGroups()[0]!).getByText("1 member with errors"),
+      within(canvasGroups()[0]!).getByText("Shared rule has 1 issue"),
     ).toBeTruthy();
     openGroup(0);
-    expect(settings().getByRole("alert").textContent).toBe(
-      'Label a: Visibility of "a" depends on its own answer',
+    expect(screen.getByRole("list", { name: "Issues here" }).textContent).toBe(
+      'Visibility of "a" depends on its own answer',
     );
   });
 
-  it("names the member behind each error in the group", () => {
+  it("names the member behind each of its own errors in the group", () => {
     const badDate: VisibleIfFormula = {
       conditions: {
         c1: { kind: "firstContractSigned", comparison: "before", date: "x" },
       },
       formula: "c1",
     };
-    renderFormBuilder(schemaWith([text("a", badDate), text("b", badDate)]));
+    const requiredWhenBad = (id: string): PageItem => ({
+      id,
+      type: "input",
+      kind: "text",
+      label: `Label ${id}`,
+      visibleIfFormula: X,
+      requiredIfFormula: badDate,
+    });
+    renderFormBuilder(schemaWith([requiredWhenBad("a"), requiredWhenBad("b")]));
     openGroup(0);
-    const items = within(settings().getByRole("alert"))
+    const items = within(screen.getByRole("list", { name: "Issues here" }))
       .getAllByRole("listitem")
       .map((item) => item.textContent?.split(":")[0]);
     expect(items).toEqual(["Label a", "Label b"]);

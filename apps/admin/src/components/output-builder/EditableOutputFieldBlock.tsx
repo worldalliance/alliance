@@ -40,18 +40,11 @@ export function EditableOutputFieldBlock({
   );
   const expression = useTypedExpression(block);
   const [showVisibilityControls, setShowVisibilityControls] = useState(
-    () =>
-      expression.typed ||
-      (block.visibleIfFormula?.conditions
-        ? Object.keys(block.visibleIfFormula.conditions).length > 0
-        : false),
+    () => expression.typed || block.visibleIfFormula !== undefined,
   );
 
   useEffect(() => {
-    const hasConditions = block.visibleIfFormula?.conditions
-      ? Object.keys(block.visibleIfFormula.conditions).length > 0
-      : false;
-    if (hasConditions) {
+    if (block.visibleIfFormula !== undefined) {
       setShowVisibilityControls(true);
     }
   }, [block.visibleIfFormula]);

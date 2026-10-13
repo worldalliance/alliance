@@ -118,12 +118,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     setShowConditionalVisibilityControl,
   ] = useState<boolean>(() => {
     if (!block) return false;
-    return (
-      expression.typed ||
-      (block.visibleIfFormula?.conditions
-        ? !!Object.keys(block.visibleIfFormula.conditions).length
-        : false)
-    );
+    return expression.typed || block.visibleIfFormula !== undefined;
   });
 
   const manualUserContent = useMemo(
@@ -222,11 +217,10 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   }, [isMenuOpen]);
 
   useEffect(() => {
-    const useConditions = block?.visibleIfFormula?.conditions
-      ? !!Object.keys(block.visibleIfFormula.conditions).length
-      : false;
-
-    if (useConditions && !showConditionalVisibilityControl) {
+    if (
+      block?.visibleIfFormula !== undefined &&
+      !showConditionalVisibilityControl
+    ) {
       setShowConditionalVisibilityControl(true);
     }
   }, [block, showConditionalVisibilityControl]);

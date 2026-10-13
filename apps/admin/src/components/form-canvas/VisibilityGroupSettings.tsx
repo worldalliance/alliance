@@ -1,6 +1,4 @@
-import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import type { FormSchemaValidationError } from "@alliance/common/forms/form-schema-validate";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { conditionSourceFields } from "../../lib/conditionSourceFields";
 import {
@@ -13,7 +11,10 @@ import {
   type GroupedPages,
   type VisibilityGroups,
 } from "../../lib/visibilityGroups";
-import { ExpressionScope } from "../form-fields/conditions/expressionBuffers";
+import {
+  expressionKeys,
+  ExpressionScope,
+} from "../form-fields/conditions/expressionBuffers";
 import { describeElement } from "./canvasSelection";
 import { VisibilityGroupPanel } from "./VisibilityGroupPanel";
 
@@ -25,7 +26,6 @@ type VisibilityGroupSettingsProps = {
   setGroups: (groups: VisibilityGroups) => void;
   applyGrouped: (grouped: GroupedPages) => void;
   summarize: (formula: VisibleIfFormula) => string;
-  validationErrors: FormSchemaValidationError[];
   onSelectMember: (index: number) => void;
 };
 
@@ -37,7 +37,6 @@ export function VisibilityGroupSettings({
   setGroups,
   applyGrouped,
   summarize,
-  validationErrors,
   onSelectMember,
 }: VisibilityGroupSettingsProps) {
   const fields = schema.pages[pageIndex]?.fields ?? [];
@@ -52,7 +51,6 @@ export function VisibilityGroupSettings({
   const members = fields.slice(start, end);
   const formula = members[0]?.visibleIfFormula;
   if (!formula) throw new Error(`visibility group ${key} has no condition`);
-  const memberById = new Map(members.map((member) => [member.id, member]));
 
   const { previousFields, laterFields } = conditionSourceFields({
     pages: schema.pages,
@@ -62,7 +60,7 @@ export function VisibilityGroupSettings({
   });
 
   return (
-    <ExpressionScope.Provider value={`group:${key}`}>
+    <ExpressionScope.Provider value={expressionKeys.group(key)}>
       <VisibilityGroupPanel
         firstMember={members[0]!}
         members={members.map((member, offset) => ({
@@ -88,14 +86,6 @@ export function VisibilityGroupSettings({
           )
         }
         onUngroup={() => setGroups(ungroup(groups, key))}
-        errors={validationErrors.flatMap((error) => {
-          const member = memberById.get(error.blockId);
-          return member
-            ? [
-                `${elementInternalDescriptor(member, { maxTextLength: 40 })}: ${error.message}`,
-              ]
-            : [];
-        })}
       />
     </ExpressionScope.Provider>
   );

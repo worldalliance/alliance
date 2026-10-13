@@ -17,7 +17,11 @@ type VisibilityTarget = { visibleIfFormula?: VisibleIfFormula };
 const sameOrNone = (a: FormulaNode | null, b: FormulaNode | null) =>
   a === null || b === null ? a === b : sameFormula(a, b);
 
-const typedText = (
+/**
+ * The buffer's text while the schema still holds the formula beside it, or
+ * null when the editor shows the schema's formula.
+ */
+export const typedText = (
   buffer: ExpressionBuffer | undefined,
   target: VisibilityTarget,
 ): string | null =>
@@ -41,6 +45,15 @@ export const ExpressionBuffersContext =
  * output-view block.
  */
 export const ExpressionScope = createContext<string | null>(null);
+
+/** The keys `ExpressionScope` holds, by where the editor sits. */
+export const expressionKeys = {
+  page: (pageId: string) => `page:${pageId}`,
+  pageElements: (pageId: string) => `element:${pageId}`,
+  group: (groupKey: string) => `group:${groupKey}`,
+  outputView: (viewId: string) => `output:${viewId}`,
+  within: (scope: string, id: string) => `${scope}/${id}`,
+};
 
 /**
  * Buffers kept in component state rather than the draft, so they last as
@@ -79,7 +92,9 @@ export function ElementExpressionScope({
   const base = parent ?? enclosing;
   if (!id) return <LocalExpressionBuffers>{children}</LocalExpressionBuffers>;
   return (
-    <ExpressionScope.Provider value={base === null ? null : `${base}/${id}`}>
+    <ExpressionScope.Provider
+      value={base === null ? null : expressionKeys.within(base, id)}
+    >
       {children}
     </ExpressionScope.Provider>
   );

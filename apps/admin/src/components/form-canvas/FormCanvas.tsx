@@ -1,3 +1,4 @@
+import { PlaceKind } from "@alliance/common/forms/form-conditions";
 import type { Page, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { withCount } from "@alliance/common/plural";
@@ -9,6 +10,7 @@ import {
   addressedWrite,
   type BlockWriteById,
 } from "../../lib/displayBlockById";
+import { IssueTargetKind, type IssueIndex } from "../../lib/formIssues";
 import {
   pageSegments,
   SegmentKind,
@@ -35,6 +37,7 @@ import {
   type InlineEditing,
 } from "./InlineText";
 import type { InsertLoc } from "./InsertPoint";
+import { IssueMarker } from "./IssueList";
 import {
   extendableClick,
   inRange,
@@ -53,8 +56,8 @@ type FormCanvasProps = {
   /** Shift-click's selection through `clicked`, else `alone`. Null where ranges are off. */
   onExtend: ((clicked: Span, alone: CanvasTarget) => void) | null;
   summarize: (formula: VisibleIfFormula) => string;
-  /** Elements the form's validation faults, by id. */
-  invalidIds: ReadonlySet<string>;
+  issues: IssueIndex;
+  pageIndex: number;
   renderInsertPoint: (
     loc: InsertLoc,
     options?: { prominent: true },
@@ -76,7 +79,8 @@ export function FormCanvas({
   onSelect,
   onExtend,
   summarize,
-  invalidIds,
+  issues,
+  pageIndex,
   renderInsertPoint,
   onMove,
   onUpdateElement,
@@ -135,6 +139,7 @@ export function FormCanvas({
         updateCurrent={addressedWrite(element, onUpdateBlockById)}
         inline={target ? inline : null}
         override={target && !target.child ? override : null}
+        issueCount={issues.inElement(pageIndex, index)}
         conditionSummary={
           !displayOnly && !inGroup && element.visibleIfFormula
             ? summarize(element.visibleIfFormula)
@@ -208,6 +213,15 @@ export function FormCanvas({
               className="mt-1 shrink-0"
             />
           )}
+          <IssueMarker
+            count={
+              issues.at({
+                kind: IssueTargetKind.Place,
+                place: { kind: PlaceKind.Page, pageIndex },
+              }).length
+            }
+            className="mt-2"
+          />
           {page.visibleIfFormula && (
             <ConditionsIndicator
               onClick={() =>
@@ -247,11 +261,11 @@ export function FormCanvas({
             const formula = fields[start]?.visibleIfFormula;
             const groupSelected =
               selected.kind === CanvasTargetKind.Group && selected.key === key;
-            const errors = fields
-              .slice(start, end)
-              .filter(
-                (member) => member.id && invalidIds.has(member.id),
-              ).length;
+            const errors = issues.at({
+              kind: IssueTargetKind.Group,
+              pageIndex,
+              key,
+            }).length;
             return (
               <div key={key}>
                 {renderInsertPoint({ groupKey: null, index: start })}
@@ -287,7 +301,7 @@ export function FormCanvas({
                           className="h-3.5 w-3.5"
                           aria-hidden="true"
                         />
-                        {withCount(errors, "member")} with errors
+                        Shared rule has {withCount(errors, "issue")}
                       </span>
                     )}
                   </button>

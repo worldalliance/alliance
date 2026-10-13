@@ -428,6 +428,31 @@ it("reopens the Output View's expression editor when undo restores its text", as
   expect(expression()?.value).toBe("c1 AND");
 });
 
+it("stays on the selected aggregate view through undo", async () => {
+  const view = (id: string, title: string) => ({
+    id,
+    kind: "progressbar" as const,
+    title,
+    caption: "Progress:",
+    numerator: { type: "number" as const, value: 0 },
+    denominator: { type: "number" as const, value: 100 },
+    displayType: "number" as const,
+  });
+  renderFormBuilder({
+    ...twoPages,
+    aggregateViews: [view("v1", "First"), view("v2", "Second")],
+  });
+  fireEvent.click(button("Aggregate Views"));
+  fireEvent.click(button("View 2"));
+  const title = () =>
+    screen.getByPlaceholderText<HTMLInputElement>("Progress title");
+  fireEvent.change(title(), { target: { value: "Changed" } });
+  await nextTask();
+
+  fireEvent.click(button("Undo"));
+  expect(title().value).toBe("Second");
+});
+
 const openConditionsOfA = () => {
   selectElement("A");
   openSection("Conditions");

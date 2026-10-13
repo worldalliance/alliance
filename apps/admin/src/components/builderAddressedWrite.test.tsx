@@ -53,6 +53,8 @@ describe("OutputBuilder hands a display block the addressed write", () => {
           findDisplayBlock(schema, blockId)
         )}
         editorsKey={0}
+        selectedViewId={null}
+        onSelectView={() => {}}
       />,
     );
 

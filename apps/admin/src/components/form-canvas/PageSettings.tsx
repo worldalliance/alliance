@@ -2,7 +2,10 @@ import { PlaceKind } from "@alliance/common/forms/form-conditions";
 import type { AnyField, Page } from "@alliance/common/forms/form-schema";
 import { Copy, FileJson, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { ExpressionScope } from "../form-fields/conditions/expressionBuffers";
+import {
+  ExpressionScope,
+  expressionKeys,
+} from "../form-fields/conditions/expressionBuffers";
 import { VisibilityConditions } from "../form-fields/conditions/VisibilityConditions";
 import {
   SettingsAction,
@@ -110,7 +113,7 @@ export function PageSettings({
         </label>
       }
       conditions={
-        <ExpressionScope.Provider value={`page:${page.id}`}>
+        <ExpressionScope.Provider value={expressionKeys.page(page.id)}>
           {isFirstPage && (
             <p className="text-xs text-amber-600">
               Conditions on the first page can only reference other forms or

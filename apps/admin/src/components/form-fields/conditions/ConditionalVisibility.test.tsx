@@ -239,24 +239,25 @@ describe("expressions", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("keeps a rule the expression uses until the expression stops using it", () => {
+  it("removes a rule the expression uses, keeping the expression for repair", () => {
+    const formula = formulaOf("NOT c1 OR (c1 AND c2)");
     renderEditor({
-      initial: {
-        conditions: { c1: isRed, c2: named },
-        formula: formulaOf("NOT c1 OR (c1 AND c2)"),
-      },
+      initial: { conditions: { c1: isRed, c2: named }, formula },
     });
-    expect(
-      rule("c2").queryByRole("button", { name: "Remove rule" }),
-    ).toBeNull();
-    expect(rule("c2").getByText(/Used in the expression/)).toBeTruthy();
+
+    fireEvent.click(rule("c2").getByRole("button", { name: "Remove rule" }));
+    expect(latest()).toEqual({ conditions: { c1: isRed }, formula });
+    expect(expression().value).toBe("(NOT c1) OR (c1 AND c2)");
+    expect(screen.getByRole("alert").textContent).toMatch(
+      /No rule is named c2/,
+    );
 
     fireEvent.change(expression(), { target: { value: "NOT c1 OR c1" } });
-    fireEvent.click(rule("c2").getByRole("button", { name: "Remove rule" }));
     expect(latest()).toEqual({
       conditions: { c1: isRed },
       formula: formulaOf("NOT c1 OR c1"),
     });
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("holds text naming a missing rule without saving it", () => {

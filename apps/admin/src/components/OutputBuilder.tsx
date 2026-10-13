@@ -25,7 +25,10 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { addressedWrite, type BlockWriteById } from "../lib/displayBlockById";
 import { createDisplayBlock } from "./display-blocks";
 import { renderBlockEditor } from "./display-blocks/blockEditors";
-import { ElementExpressionScope } from "./form-fields/conditions/expressionBuffers";
+import {
+  ElementExpressionScope,
+  expressionKeys,
+} from "./form-fields/conditions/expressionBuffers";
 import { EditableOutputFieldBlock } from "./output-builder/EditableOutputFieldBlock";
 
 const outputBlockKey = (block: OutputBlock, index: number) =>
@@ -157,6 +160,9 @@ interface OutputBuilderProps {
   onUpdateBlockById: BlockWriteById;
   /** Remounts the block editors when it changes, as after undo. */
   editorsKey: number;
+  /** Null, or a view that's gone, shows the first view. */
+  selectedViewId: string | null;
+  onSelectView: (viewId: string | null) => void;
 }
 
 export function OutputBuilder({
@@ -164,10 +170,9 @@ export function OutputBuilder({
   onSchemaChange,
   onUpdateBlockById,
   editorsKey,
+  selectedViewId,
+  onSelectView: setSelectedViewId,
 }: OutputBuilderProps) {
-  const [selectedViewId, setSelectedViewId] = useState<string | null>(
-    () => schema.outputViews?.[0]?.id ?? null,
-  );
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [dropPosition, setDropPosition] = useState<"before" | "after" | null>(
@@ -190,7 +195,7 @@ export function OutputBuilder({
     ) {
       setSelectedViewId(schema.outputViews[0].id);
     }
-  }, [schema.outputViews, selectedViewId]);
+  }, [schema.outputViews, selectedViewId, setSelectedViewId]);
 
   const selectedView: OutputViewSchema | null = useMemo(() => {
     if (!schema.outputViews || schema.outputViews.length === 0) {
@@ -603,7 +608,7 @@ export function OutputBuilder({
                     {selectedView.blocks.map((block, index) => (
                       <ElementExpressionScope
                         key={outputBlockKey(block, index)}
-                        parent={`output:${selectedView.id}`}
+                        parent={expressionKeys.outputView(selectedView.id)}
                         id={block.id}
                       >
                         {renderBlock(block, index)}

@@ -7,6 +7,7 @@ import { R, type Result } from "@alliance/common/result";
 import {
   formulaConditionNames,
   parseVisibilityFormula,
+  undefinedConditionNames,
 } from "@alliance/shared/forms/visibilityFormula";
 import { comparisonOf, isFieldCondition } from "./fieldConditions";
 
@@ -142,19 +143,6 @@ export function buildFormula(simple: SimpleFormula): FormulaNode | null {
   );
 }
 
-function missingConditionNames(
-  formula: FormulaNode,
-  conditions: Record<string, Condition>,
-): string[] {
-  return [
-    ...new Set(
-      formulaConditionNames(formula).filter(
-        (name) => !Object.hasOwn(conditions, name),
-      ),
-    ),
-  ];
-}
-
 /** Expression text as a formula, failing where it doesn't parse or names a
  * rule `conditions` doesn't define. */
 export function checkExpression(
@@ -168,7 +156,10 @@ export function checkExpression(
   }
   const parsed = parseVisibilityFormula(text);
   if (!parsed.ok) return parsed;
-  const missing = missingConditionNames(parsed.value, conditions);
+  const missing = undefinedConditionNames({
+    conditions,
+    formula: parsed.value,
+  });
   return missing.length === 0
     ? parsed
     : R.failure(

@@ -15,9 +15,10 @@ import { useMemo } from "react";
 export function useFormulaSourceForms(schemas: readonly FormSchema[]): {
   sourceForms: SourceFormFields;
   statusByForm: Record<number, FormFieldsStatus>;
+  retryFailed: () => void;
 } {
   const ids = useStableIds(formulaSourceFormIds(...schemas));
-  const { byForm, statusByForm } = useFormQuestionFieldsMap(ids);
+  const { byForm, statusByForm, retryFailed } = useFormQuestionFieldsMap(ids);
   const sourceForms = useMemo(
     () =>
       new Map(
@@ -28,5 +29,5 @@ export function useFormulaSourceForms(schemas: readonly FormSchema[]): {
       ),
     [byForm],
   );
-  return { sourceForms, statusByForm };
+  return { sourceForms, statusByForm, retryFailed };
 }
