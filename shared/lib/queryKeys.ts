@@ -166,6 +166,7 @@ export const queryKeys = {
     ["eventLogFindAllAdmin", page, limit, eventType] as const,
   externalShareTargetsAdmin: () => ["externalShareTargetsAdmin"] as const,
   customLinksAdmin: () => ["customLinksAdmin"] as const,
+  hostedDocsAdmin: () => ["hostedDocsAdmin"] as const,
   formsAdminAll,
   formResponsesAdmin: (formId: number | null) =>
     ["tasksGetFormResponsesAdmin", formId] as const,

@@ -45,6 +45,10 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      "/docs/": {
+        target: `http://localhost:${ports.server}`,
+        changeOrigin: true,
+      },
     },
     fs: {
       allow: [monorepoRoot, sharedPkg, sharedWebPkg],

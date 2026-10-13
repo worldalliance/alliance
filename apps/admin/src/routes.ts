@@ -45,6 +45,7 @@ export default [
       route("/share-targets", "pages/ExternalShareTargetsPage.tsx"),
       route("/share-links", "pages/ShareLinksPage.tsx"),
       route("/custom-links", "pages/CustomLinksPage.tsx"),
+      route("/hosted-docs", "pages/HostedDocsPage.tsx"),
       route("/organizations", "pages/OrganizationsPage.tsx"),
       route("/waitlist", "pages/WaitlistPage.tsx"),
       route("/waitlist-emails", "pages/WaitlistEmailsPage.tsx"),

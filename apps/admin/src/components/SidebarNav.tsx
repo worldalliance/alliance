@@ -130,6 +130,11 @@ const SidebarNav = ({
           icon: <LinkIcon size={16} />,
         },
         {
+          to: "/hosted-docs",
+          label: "Hosted Docs",
+          icon: <FileText size={16} />,
+        },
+        {
           to: "/invite-links",
           label: "Invite Links",
           icon: <LinkIcon size={16} />,

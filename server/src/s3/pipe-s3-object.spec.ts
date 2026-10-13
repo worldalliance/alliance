@@ -1,5 +1,5 @@
 import { S3Client } from "@aws-sdk/client-s3";
-import { NotFoundException } from "@nestjs/common";
+import { HttpException, NotFoundException } from "@nestjs/common";
 import express from "express";
 import { Readable } from "stream";
 import request from "supertest";
@@ -10,14 +10,24 @@ function serve(params: {
   storedType?: string;
   contentType?: string;
   maxAgeSeconds?: number;
+  contentRange?: string;
+  contentLength?: number;
+  filename?: string;
+  sendError?: Error;
 }) {
   const s3 = new S3Client({ region: "us-west-2" });
-  jest.spyOn(s3, "send").mockImplementation(async () => ({
-    Body: params.body,
-    ContentType: params.storedType,
-    ETag: '"stored"',
-    $metadata: {},
-  }));
+  jest.spyOn(s3, "send").mockImplementation(async () => {
+    if (params.sendError) throw params.sendError;
+    return {
+      Body: params.body,
+      ContentType: params.storedType,
+      ContentRange: params.contentRange,
+      ContentLength: params.contentLength,
+      AcceptRanges: "bytes",
+      ETag: '"stored"',
+      $metadata: {},
+    };
+  });
   const app = express();
   app.get("/", (_req, res) => {
     pipeS3Object({
@@ -27,8 +37,9 @@ function serve(params: {
       res,
       contentType: params.contentType,
       maxAgeSeconds: params.maxAgeSeconds,
+      filename: params.filename,
     }).catch((err) =>
-      res.status(err instanceof NotFoundException ? 404 : 500).end(),
+      res.status(err instanceof HttpException ? err.getStatus() : 500).end(),
     );
   });
   return request(app).get("/");
@@ -125,5 +136,29 @@ describe("pipeS3Object", () => {
       expect.any(Error),
     );
     log.mockRestore();
+  });
+
+  it("answers a ranged read as partial content under the given filename", async () => {
+    const res = await serve({
+      body: Readable.from([Buffer.from("PDF")]),
+      storedType: "application/pdf",
+      contentRange: "bytes 1-3/10",
+      contentLength: 3,
+      filename: "Pilot.pdf",
+    });
+    expect(res.status).toBe(206);
+    expect(res.headers["content-range"]).toBe("bytes 1-3/10");
+    expect(res.headers["content-length"]).toBe("3");
+    expect(res.headers["accept-ranges"]).toBe("bytes");
+    expect(res.headers["content-disposition"]).toBe(
+      'inline; filename="Pilot.pdf"',
+    );
+  });
+
+  it("answers 416 when S3 rejects the range", async () => {
+    const err = new Error("range");
+    err.name = "InvalidRange";
+    const res = await serve({ body: undefined, sendError: err });
+    expect(res.status).toBe(416);
   });
 });
