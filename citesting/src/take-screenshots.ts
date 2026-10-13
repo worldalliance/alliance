@@ -296,15 +296,14 @@ const takeScreenshots = async () => {
             await page.waitForSelector(target.waitForSelector, {
               timeout: target.waitForTimeoutMs ?? milliseconds({ seconds: 20 }),
             });
-          } else {
-            await page
-              .waitForLoadState("networkidle", {
-                timeout: milliseconds({ seconds: 20 }),
-              })
-              .catch(() => {
-                // Some pages keep background requests open; ignore.
-              });
           }
+          await page
+            .waitForLoadState("networkidle", {
+              timeout: milliseconds({ seconds: 20 }),
+            })
+            .catch(() => {
+              // Some pages keep background requests open; ignore.
+            });
           await settleImages(page);
           await page.waitForTimeout(100);
           await page.screenshot({ path: filePath, fullPage: true });
