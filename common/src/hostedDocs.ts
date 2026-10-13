@@ -2,8 +2,6 @@ import { z } from "zod";
 
 export const HOSTED_DOC_MAX_BYTES = 50 * 1024 * 1024;
 
-export const HOSTED_DOC_PUBLIC_ORIGIN = "https://thealliance.org";
-
 export const hostedDocSlugSchema = z
   .string()
   .trim()
@@ -27,6 +25,3 @@ export function hostedDocSlugFromFileName(fileName: string): string {
     .slice(0, 100);
   return `${stem}.pdf`;
 }
-
-export const hostedDocUrl = (slug: string): string =>
-  `${HOSTED_DOC_PUBLIC_ORIGIN}/docs/${slug}`;

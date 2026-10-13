@@ -3,11 +3,11 @@ import {
   hostedDocFieldsSchema,
   hostedDocNotesSchema,
   hostedDocSlugFromFileName,
-  hostedDocUrl,
 } from "@alliance/common/hostedDocs";
 import type { HostedDocDto } from "@alliance/shared/client";
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
+import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy, FileUp } from "lucide-react";
@@ -34,6 +34,8 @@ function pdfProblem(file: File): string | null {
   if (file.size > HOSTED_DOC_MAX_BYTES) return "PDFs can be at most 50 MB.";
   return null;
 }
+
+const docUrl = (slug: string) => `${getInviteBaseUrl()}/docs/${slug}`;
 
 const byline = (name: string | null, at: string) =>
   `${name ?? "Deleted admin"} · ${formatDateTime(new Date(at))}`;
@@ -73,7 +75,7 @@ const HostedDocsPage: React.FC = () => {
   });
 
   const copy = async (slug: string) => {
-    if (await copyToClipboard(hostedDocUrl(slug))) success("Link copied.");
+    if (await copyToClipboard(docUrl(slug))) success("Link copied.");
     else toastError("Could not copy the link.");
   };
 
@@ -203,7 +205,7 @@ const HostedDocsPage: React.FC = () => {
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1">
                       <a
-                        href={hostedDocUrl(doc.slug)}
+                        href={docUrl(doc.slug)}
                         target="_blank"
                         rel="noreferrer"
                         className="underline"

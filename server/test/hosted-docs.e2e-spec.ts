@@ -191,6 +191,27 @@ describe("Hosted docs (e2e)", () => {
     expect(after.headers.etag).not.toBe(before.headers.etag);
   });
 
+  it("serves the whole file when If-Range names a replaced file", async () => {
+    const { body } = await create({ slug: "Pilot.pdf" }).expect(201);
+    const before = await request(server()).get("/docs/Pilot.pdf").expect(200);
+    await replace(body.id).expect(201);
+    mockSend.mockClear();
+
+    const stale = await request(server())
+      .get("/docs/Pilot.pdf")
+      .set("Range", "bytes=0-3")
+      .set("If-Range", before.headers.etag)
+      .expect(200);
+    expect(Buffer.from(stale.body)).toEqual(PDF);
+    expect(sent(GetObjectCommand)[0].input.Range).toBeUndefined();
+
+    await request(server())
+      .get("/docs/Pilot.pdf")
+      .set("Range", "bytes=0-3")
+      .set("If-Range", stale.headers.etag)
+      .expect(206);
+  });
+
   it("edits notes and soft-deletes so the ID can be reused", async () => {
     const { body } = await create({ slug: "Pilot.pdf" }).expect(201);
     const patched = await request(server())

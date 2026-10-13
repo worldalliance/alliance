@@ -140,12 +140,14 @@ export class DocsController {
       return;
     }
 
-    const range = req.headers.range;
+    // Each upload gets a fresh key, so the key identifies the file's contents.
+    const etag = `"${basename(doc.s3Key, ".pdf")}"`;
+    const ifRange = req.headers["if-range"];
+    const range = ifRange && ifRange !== etag ? undefined : req.headers.range;
     if (!range || range.startsWith("bytes=0-"))
       this.hostedDocsService.countView(doc.id);
 
-    // Each upload gets a fresh key, so the key identifies the file's contents.
-    res.setHeader("ETag", `"${basename(doc.s3Key, ".pdf")}"`);
+    res.setHeader("ETag", etag);
     res.setHeader("Cache-Control", `public, max-age=${MAX_AGE_SECONDS}`);
     if (req.fresh) {
       res.status(HttpStatus.NOT_MODIFIED).end();

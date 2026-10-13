@@ -134,19 +134,27 @@ test("rejects an invalid ID without sending it", async () => {
   expect(writes).toEqual([]);
 });
 
-test("copies the thealliance.org URL", async () => {
+test("copies the URL on this environment's site", async () => {
+  const priorAlt = process.env.VITE_ALT_APP_URL;
+  process.env.VITE_ALT_APP_URL = "https://staging.thealliance.org";
   const writeText = jest.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
     value: { writeText },
   });
   renderPage();
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Copy link to 2026-Pilot.pdf" }),
-  );
-  await screen.findByText("Link copied.");
+  try {
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Copy link to 2026-Pilot.pdf",
+      }),
+    );
+    await screen.findByText("Link copied.");
+  } finally {
+    process.env.VITE_ALT_APP_URL = priorAlt;
+  }
   expect(writeText).toHaveBeenCalledWith(
-    "https://thealliance.org/docs/2026-Pilot.pdf",
+    "https://staging.thealliance.org/docs/2026-Pilot.pdf",
   );
 });
 
