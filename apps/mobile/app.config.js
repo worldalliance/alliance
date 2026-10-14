@@ -56,7 +56,7 @@ export default {
   expo: {
     name: VARIANT.name,
     slug: "alliance-mobile",
-    version: "1.3.5",
+    version: "1.3.6",
     orientation: "portrait",
     icon: "./assets/images/globe-icon.png",
     scheme: "alliance",

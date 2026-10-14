@@ -1,0 +1,14 @@
+{
+  "ios": {
+    "fingerprint": "9a2f7366839d5205bbfea7d2af0b33d85f1840d5",
+    "version": "1.3.6",
+    "gitCommit": "57f08292956ff64340bcde708bf3d6327f476728",
+    "capturedAt": "2026-10-14T05:21:16.678Z"
+  },
+  "android": {
+    "fingerprint": "f982a1d560972d2611bc43699cdf459808af55b2",
+    "version": "1.3.6",
+    "gitCommit": "57f08292956ff64340bcde708bf3d6327f476728",
+    "capturedAt": "2026-10-14T05:21:16.678Z"
+  }
+}
