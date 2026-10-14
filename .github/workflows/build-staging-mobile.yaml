@@ -1,0 +1,395 @@
+name: Build Staging Mobile
+# The commit a run builds, which a workflow_run run's head_sha (main's tip when it started) isn't.
+run-name: Staging build of ${{ github.event.workflow_run.head_sha || github.sha }}
+
+# Builds the staging app on GitHub runners and submits it to TestFlight and
+# Play internal testing when a staging deploy of main carries a staging
+# fingerprint other than the latest build's. Tag
+# staging-build/<platform>/<fingerprint> marks a submitted build, and the
+# newest per platform is the build testers run. Dispatch to rebuild main
+# regardless of tags once its backend deployed, including to retry a failed
+# build. A re-run fails without
+# building, since it would build its original commit over newer builds:
+#   gh workflow run build-staging-mobile.yaml -f platforms=ios
+
+on:
+  workflow_run:
+    workflows: [Deploy]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: Platforms to rebuild from main, even if their fingerprint already has a build
+        type: choice
+        options: [both, ios, android]
+        default: both
+
+permissions:
+  contents: read
+
+jobs:
+  # A job of its own so a run whose backend deploy didn't succeed never takes plan's concurrency slot.
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - name: Resolve source
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_RUN_ID: ${{ github.event.workflow_run.id }}
+          DEPLOY_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+          DEPLOY_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            if [ "$GITHUB_REF" != refs/heads/main ]; then
+              echo "Dispatch from main, which the staging app tracks." >&2
+              exit 1
+            fi
+            deploy=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yaml/runs?head_sha=$GITHUB_SHA&branch=main&event=push&per_page=1" \
+              --jq '.workflow_runs[0] // empty | "\(.id) \(.run_attempt)"')
+            if [ -z "$deploy" ]; then
+              echo "::error::main's HEAD $GITHUB_SHA has no Deploy run." >&2
+              exit 1
+            fi
+            read -r DEPLOY_RUN_ID DEPLOY_RUN_ATTEMPT <<<"$deploy"
+            DEPLOY_SHA=$GITHUB_SHA
+          fi
+          backend=$(gh api --paginate \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$DEPLOY_RUN_ID/attempts/$DEPLOY_RUN_ATTEMPT/jobs" \
+            --jq '.jobs[] | select(.name == "deploy-nest-backend") | .conclusion')
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ "$backend" != success ]; then
+            echo "::error::deploy-nest-backend of main's HEAD $GITHUB_SHA hasn't succeeded (Deploy run $DEPLOY_RUN_ID: '$backend'). Dispatch once it has." >&2
+            exit 1
+          fi
+          # Deploy's concurrency group cancels a pending run before it starts any job.
+          if [ -z "$backend" ] && [ "$DEPLOY_CONCLUSION" = cancelled ]; then
+            echo "Deploy run $DEPLOY_RUN_ID was cancelled before deploy-nest-backend; nothing to build."
+            exit 0
+          fi
+          if [ -z "$backend" ]; then
+            echo "::error::Deploy run $DEPLOY_RUN_ID has no deploy-nest-backend job." >&2
+            exit 1
+          fi
+          if [ "$backend" != success ]; then
+            echo "deploy-nest-backend concluded '$backend'; nothing to build."
+            exit 0
+          fi
+          echo "sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
+
+  plan:
+    needs: source
+    if: needs.source.outputs.sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # A plan sees only build jobs that exist, and a run creates them once its plan finishes.
+    concurrency:
+      group: staging-build-plan
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ needs.source.outputs.sha }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Compute staging fingerprints
+        working-directory: apps/mobile
+        env:
+          APP_VARIANT: staging
+        run: |
+          set -euo pipefail
+          # @expo/fingerprint hashes a config it failed to load instead of failing.
+          bunx expo config --type public > /dev/null
+          node scripts/fingerprint.mjs | tee "$RUNNER_TEMP/fingerprints.txt"
+
+      # The filter's input contract is this workflow's, which runs from main's tip while the deployed commit can be older.
+      # After the fingerprint step, so the extra files can't change what it hashes.
+      - name: Checkout Workflow Scripts
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: workflow
+          sparse-checkout: .github/scripts
+
+      - name: Plan builds
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.source.outputs.sha }}
+          PLATFORMS: ${{ inputs.platforms || 'both' }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          set -euo pipefail
+          # set -e is off inside $(...), so these loops write to files. Runs are listed before tags are read, so a run that
+          # finishes in between shows up in one or the other.
+          for status in queued in_progress; do
+            gh api "repos/$GITHUB_REPOSITORY/actions/workflows/build-staging-mobile.yaml/runs?status=$status&per_page=100" \
+              --jq ".workflow_runs[] | select(.id != $GITHUB_RUN_ID) | \"\(.id) \(.display_title | split(\" \") | last)\""
+          done > "$RUNNER_TEMP/active-runs.txt"
+          while read -r id head; do
+            newer=$(gh api "repos/$GITHUB_REPOSITORY/compare/$SHA...$head" --jq '.status == "ahead"')
+            gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs" \
+              --jq ".jobs[] | {name, status, conclusion, newer: $newer}"
+          done < "$RUNNER_TEMP/active-runs.txt" > "$RUNNER_TEMP/other-jobs.json"
+          # A shallow fetch of a refspec that matches nothing fails without a message.
+          tags=$(git ls-remote origin 'refs/tags/staging-build/*')
+          if [ -n "$tags" ]; then
+            git fetch --no-tags --depth=1 origin '+refs/tags/staging-build/*:refs/tags/staging-build/*'
+          fi
+          for platform in ios android; do
+            git for-each-ref --sort=-creatordate --count=1 \
+              --format="$platform: %(refname:lstrip=4)" "refs/tags/staging-build/$platform/"
+          done > "$RUNNER_TEMP/latest.txt"
+          matrix=$(jq -nc \
+            --rawfile fingerprints "$RUNNER_TEMP/fingerprints.txt" \
+            --arg platforms "$PLATFORMS" \
+            --argjson force "$FORCE" \
+            --rawfile latest "$RUNNER_TEMP/latest.txt" \
+            --slurpfile otherJobs "$RUNNER_TEMP/other-jobs.json" \
+            '$ARGS.named' | jq -c -f workflow/.github/scripts/staging-build-plan.jq)
+          echo "Builds: $matrix"
+          skipped=$(jq -nr --argjson matrix "$matrix" --arg platforms "$PLATFORMS" \
+            '(if $platforms == "both" then ["ios", "android"] else [$platforms] end) - ($matrix | map(.platform)) | join(", ")')
+          if [ "$FORCE" = true ] && [ -n "$skipped" ]; then
+            echo "::notice::Not rebuilding $skipped: another run is building or tagging it, or building a newer commit."
+          fi
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    if: github.run_attempt == 1 && needs.plan.outputs.matrix && needs.plan.outputs.matrix != '[]'
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: ${{ matrix.timeout }}
+    environment: staging
+    permissions:
+      contents: read
+    env:
+      EAS_CLI: eas-cli@18.5.0
+    concurrency:
+      group: staging-build-${{ matrix.platform }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+
+      - name: Capture Xcode Version
+        if: matrix.platform == 'ios'
+        id: xcode-version
+        run: |
+          VERSION=$(xcodebuild -version | awk 'NR==1 {printf "%s-", $2} NR==2 {printf "%s", $3}')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Cache CocoaPods
+        if: matrix.platform == 'ios'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cocoapods/repos
+            ~/Library/Caches/CocoaPods
+            ~/Library/Caches/org.cocoapods.CocoaPods
+          key: staging-ios-cocoapods-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode-version.outputs.version }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            staging-ios-cocoapods-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode-version.outputs.version }}-
+
+      - name: Setup Java
+        if: matrix.platform == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-dependency-path: bun.lock
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_ACCESS_TOKEN }}
+          PLATFORM: ${{ matrix.platform }}
+          OUTPUT: ${{ runner.temp }}/staging.${{ matrix.artifact }}
+        run: |
+          set -euo pipefail
+          # A failed local build prints its job, signing credentials included, and this repo's logs are public.
+          bunx "$EAS_CLI" build --platform "$PLATFORM" --profile staging --local --non-interactive --output "$OUTPUT" 2>&1 |
+            sed -u -E 's#(eas-cli-local-build-plugin@[^ ]+) [A-Za-z0-9+/=]+#\1 [redacted]#'
+
+      - name: Verify Built Fingerprint
+        working-directory: apps/mobile
+        env:
+          OUTPUT: ${{ runner.temp }}/staging.${{ matrix.artifact }}
+          FINGERPRINT: ${{ matrix.fingerprint }}
+        run: |
+          set -euo pipefail
+          built=$(node scripts/fingerprint.mjs artifact "$OUTPUT")
+          if [ "$built" != "$FINGERPRINT" ]; then
+            echo "::error::Built fingerprint $built differs from planned $FINGERPRINT; the tag would mark the wrong runtime as built."
+            exit 1
+          fi
+
+      - name: Submit
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_ACCESS_TOKEN }}
+          PLATFORM: ${{ matrix.platform }}
+          OUTPUT: ${{ runner.temp }}/staging.${{ matrix.artifact }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          ASC_API_KEY_P8_BASE64: ${{ secrets.ASC_API_KEY_P8_BASE64 }}
+          ASC_API_KEY_PATH: ${{ runner.temp }}/asc-api-key.p8
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          PLAY_SERVICE_ACCOUNT_KEY_PATH: ${{ runner.temp }}/play-service-account.json
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f "$ASC_API_KEY_PATH" "$PLAY_SERVICE_ACCOUNT_KEY_PATH"' EXIT
+          case "$PLATFORM" in
+            ios) base64 --decode <<<"$ASC_API_KEY_P8_BASE64" > "$ASC_API_KEY_PATH" ;;
+            android) printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON" > "$PLAY_SERVICE_ACCOUNT_KEY_PATH" ;;
+            *) echo "unknown platform: $PLATFORM" >&2; exit 1 ;;
+          esac
+          bunx "$EAS_CLI" submit --platform "$PLATFORM" --profile staging --path "$OUTPUT" --non-interactive
+
+  # A job of its own so the write token never shares a runner with the dependency install and build.
+  tag:
+    needs: [plan, build]
+    if: always() && needs.plan.outputs.matrix && needs.plan.outputs.matrix != '[]'
+    name: Tag ${{ matrix.platform }} ${{ matrix.fingerprint }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      # "Re-run failed jobs" re-queues the skipped build leg and would otherwise end green with nothing built.
+      - name: Refuse a re-run
+        if: github.run_attempt != 1
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          echo "::error::A re-run builds nothing, since its commit may be stale. Retry with: gh workflow run build-staging-mobile.yaml -f platforms=$PLATFORM"
+          exit 1
+
+      - name: Tag Built Fingerprint
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_JOB: ${{ matrix.name }}
+          TAG: staging-build/${{ matrix.platform }}/${{ matrix.fingerprint }}
+          SHA: ${{ needs.plan.outputs.sha }}
+        run: |
+          set -euo pipefail
+          job=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" \
+            --jq '.jobs[] | select(.name == env.BUILD_JOB) | "\(.conclusion) \(.completed_at)"')
+          if [ -z "$job" ]; then
+            echo "::error::This run has no $BUILD_JOB job." >&2
+            exit 1
+          fi
+          built=${job%% *}
+          completed_at=${job#* }
+          if [ "$built" != success ]; then
+            echo "$BUILD_JOB concluded '$built'; nothing to tag."
+            exit 0
+          fi
+          # Annotated and dated when its build finished, since this job waits for every platform, so tag order follows
+          # submit order. A rebuilt fingerprint's old tag is moved.
+          object=$(gh api "repos/$GITHUB_REPOSITORY/git/tags" \
+            -f tag="$TAG" -f message="$TAG" -f object="$SHA" -f type=commit \
+            -f 'tagger[name]=github-actions[bot]' \
+            -f 'tagger[email]=41898282+github-actions[bot]@users.noreply.github.com' \
+            -f "tagger[date]=$completed_at" \
+            --jq .sha)
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/$TAG" \
+            --jq 'map(select(.ref == "refs/tags/" + env.TAG)) | length')
+          if [ "$existing" = 0 ]; then
+            gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$object" --silent
+          else
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" -f sha="$object" -F force=true --silent
+          fi
+
+  notify:
+    needs: [source, plan, build, tag]
+    if: always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Compute Slack mention
+        id: slack_mention
+        uses: ./.github/actions/slack-mention
+        with:
+          github-username: ${{ github.event.workflow_run.actor.login || github.actor }}
+
+      - name: Post webhook if a job failed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+          MENTION: ${{ steps.slack_mention.outputs.mention }}
+          COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message || 'a manual run' }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          . .github/scripts/slack.sh
+          jobs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" \
+            --jq '.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out" or .conclusion == "cancelled") | "\(.id)\t\(.conclusion)\t\(.name)"')
+          failed=()
+          while IFS=$'\t' read -r id conclusion name; do
+            [ -n "$id" ] || continue
+            # Another fingerprint's build cancels a running one; only a timeout among cancellations is a failure. A failed
+            # annotations lookup counts as one, so it can't drop the post. A plan replaced while pending drops a commit that
+            # deployed, or a dispatch, so it is a failure too.
+            if [ "$conclusion" = cancelled ] && [ "$name" != plan ] &&
+              messages=$(gh api "repos/$GITHUB_REPOSITORY/check-runs/$id/annotations" --jq '.[].message') &&
+              ! grep -q 'exceeded the maximum execution time' <<<"$messages"; then
+              continue
+            fi
+            failed+=("$name")
+          done <<<"$jobs"
+          [ "${#failed[@]}" -gt 0 ] || exit 0
+          SUBJECT=$(slack_commit_subject "$COMMIT_MESSAGE")
+          FAILED=$(printf '%s, ' "${failed[@]}")
+          FAILED=${FAILED%, }
+          slack_post "$WEBHOOK" \
+            "${MENTION:+$MENTION }Staging mobile build did not succeed for $SUBJECT ($FAILED). <$RUN_URL|Open run>"

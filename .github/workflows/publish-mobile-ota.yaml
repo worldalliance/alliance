@@ -84,27 +84,6 @@ jobs:
           (cd release/apps/mobile && bun run fingerprint:check)
           git -C release checkout -- common/src/mobileFingerprints.gen.ts
 
-      # Staging builds are made by hand, so a native change on main strands the
-      # installed staging apps until someone rebuilds.
-      - name: Warn when no staging build runs this fingerprint
-        if: ${{ env.APP_VARIANT == 'staging' }}
-        working-directory: ./release/apps/mobile
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_ACCESS_TOKEN }}
-        run: |
-          set -euo pipefail
-          # @expo/fingerprint hashes a config it failed to load instead of failing.
-          bunx expo config --type public > /dev/null
-          hashes=$(node scripts/fingerprint.mjs)
-          for platform in ios android; do
-            fingerprint=$(awk -v p="$platform:" '$1 == p { print $2 }' <<<"$hashes")
-            builds=$(bunx eas-cli@16.5.0 build:list --platform "$platform" --build-profile staging \
-              --runtime-version "$fingerprint" --status finished --limit 1 --json --non-interactive)
-            if [ "$(jq length <<<"$builds")" = 0 ]; then
-              echo "::warning title=Staging app needs a rebuild::No $platform staging build runs fingerprint $fingerprint, so installed staging apps won't get this update. Run \`eas build --profile staging --platform $platform --auto-submit\` from apps/mobile."
-            fi
-          done
-
       - name: Publish EAS Update
         run: bunx eas-cli@16.5.0 update --branch "$APP_VARIANT" --message "$(git log -1 --format=%B)" --non-interactive
         working-directory: ./release/apps/mobile
