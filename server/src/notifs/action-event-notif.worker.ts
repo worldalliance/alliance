@@ -44,14 +44,13 @@ import {
 } from "./entities/action-event-notif.entity";
 import {
   Experiment,
-  ExperimentArm,
   ExperimentAssignment,
 } from "./entities/experiment-assignment.entity";
 import {
   NotificationCategory,
   type Notification,
 } from "./entities/notification.entity";
-import { assignExperimentArms } from "./experiment-assignment";
+import { assignExperimentArm } from "./experiment-assignment";
 import { LOCK_KEYS } from "./lock-keys";
 import { withPgAdvisoryLock } from "./lock-utils";
 import {
@@ -67,6 +66,10 @@ import { MissedSuitePlanService } from "./missed-suite-plans.service";
 import { NotifsService } from "./notifs.service";
 import { recordDelivery } from "./record-delivery";
 import { buildReminderMessage } from "./reminder-message";
+import {
+  assignSocialProofArm,
+  socialProofDelivery,
+} from "./reminder-social-proof";
 import { saveForLiveRecipient } from "./save-for-live-recipient";
 
 export type UncompletedTaskSummary = {
@@ -284,6 +287,7 @@ export class ActionEventNotifWorker {
     // mentioned. Matches the granularity coverage checks consult and the
     // migration backfill.
     const scopeActionIds = new Set(groupTaskScopeActionIds(plan.group));
+    const arm = await assignSocialProofArm(this.dataSource.manager, plan);
     const plannedNotif = this.actionEventNotifsRepository.create({
       user: plan.user,
       reminderGroup: plan.group,
@@ -321,13 +325,21 @@ export class ActionEventNotifWorker {
     }
     if (!notif) return;
 
+    const socialProof = await socialProofDelivery(this.dataSource.manager, {
+      arm,
+      plan,
+      actionIds: uncompletedTasks.map((task) => task.id),
+      render: (text) =>
+        this.processCustomReminderText(text, plan, uncompletedTasks),
+    });
+    Object.assign(notif, socialProof.columns);
+
     const sendingAnyNotif = await this.deliver({
       notif,
       user: plan.user,
       tracking: reminderTracking(plan, notif),
-      templates: plan.group,
-      render: (template) =>
-        this.processCustomReminderText(template, plan, uncompletedTasks),
+      templates: socialProof.templates,
+      render: socialProof.render,
       push: { screen: "/", idempotencyKey: plan.group.id.toString() },
     });
     if (sendingAnyNotif) {
@@ -353,7 +365,15 @@ export class ActionEventNotifWorker {
           standing,
           copy:
             standing.missNumber === 1
-              ? FIRST_MISS_COPY[await this.assignFirstMissArm(plan.user.id)]
+              ? FIRST_MISS_COPY[
+                  await assignExperimentArm(
+                    this.experimentAssignmentRepository.manager,
+                    {
+                      experiment: Experiment.MissedSuiteFirstNotice,
+                      userId: plan.user.id,
+                    },
+                  )
+                ]
               : MissedSuiteNoticeCopy.SecondMissReportV1,
         }
       : null;
@@ -441,19 +461,6 @@ export class ActionEventNotifWorker {
       },
     });
     await recordDelivery(this.dataSource.manager, notif);
-  }
-
-  private async assignFirstMissArm(userId: number): Promise<ExperimentArm> {
-    const arm = (
-      await assignExperimentArms(this.experimentAssignmentRepository.manager, {
-        experiment: Experiment.MissedSuiteFirstNotice,
-        userIds: [userId],
-      })
-    ).get(userId);
-    if (arm === undefined) {
-      throw new Error(`no first-miss arm for user ${userId}`);
-    }
-    return arm;
   }
 
   /** Sends on each channel the member enabled; true if any was attempted. */

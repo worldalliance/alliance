@@ -28,6 +28,11 @@ export function recordDelivery(
         ...(notif.notification && {
           notification: { id: notif.notification.id },
         }),
+        ...(notif.socialProofOutcome && {
+          socialProofOutcome: notif.socialProofOutcome,
+          socialProofUserIds: notif.socialProofUserIds,
+          socialProofActionIds: notif.socialProofActionIds,
+        }),
       },
     });
   });
