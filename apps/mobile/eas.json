@@ -46,7 +46,19 @@
     }
   },
   "submit": {
-    "staging": {},
+    "staging": {
+      "ios": {
+        "ascAppId": "6819396166",
+        "ascApiKeyPath": "$ASC_API_KEY_PATH",
+        "ascApiKeyId": "$ASC_API_KEY_ID",
+        "ascApiKeyIssuerId": "$ASC_API_ISSUER_ID"
+      },
+      "android": {
+        "serviceAccountKeyPath": "$PLAY_SERVICE_ACCOUNT_KEY_PATH",
+        "track": "internal",
+        "releaseStatus": "completed"
+      }
+    },
     "production": {}
   }
 }
