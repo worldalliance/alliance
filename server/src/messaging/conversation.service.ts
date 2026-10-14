@@ -19,7 +19,13 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
-import { assertLive, lockLive, updateLive } from "src/datasources/soft-delete";
+import {
+  assertLive,
+  lockLive,
+  softDeleteCascade,
+  softDeleteWhere,
+  updateLive,
+} from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
 import { Friend } from "src/user/entities/friend.entity";
 import { loadedUserCommunities, User } from "src/user/entities/user.entity";
@@ -520,12 +526,15 @@ export class ConversationService {
     if (participant.state !== ParticipantState.Invited) {
       throw new ForbiddenException("There's no invite to decline.");
     }
-    await this.participantRepository.remove(participant);
+    await this.softDeleteParticipants([participant]);
     await this.touchConversation(conversationId);
     const conversation = await this.getConversationEntity(conversationId);
     await this.emitConversationUpdate(conversation);
     if (conversation.type === ConversationType.Direct) {
-      await this.conversationRepository.delete(conversationId);
+      await softDeleteWhere(this.conversationRepository.manager, {
+        target: Conversation,
+        where: { id: conversationId },
+      });
       return new ConversationDto({ conversation, contextUserId: userId }); // return with info despite delete so decliner sees declined state
     }
     return new ConversationDto({ conversation, contextUserId: userId });
@@ -659,7 +668,7 @@ export class ConversationService {
       throw new ForbiddenException("Only owners can remove other owners.");
     }
 
-    await this.participantRepository.remove(targetParticipant);
+    await this.softDeleteParticipants([targetParticipant]);
     await this.touchConversation(conversationId);
     const updatedConversation =
       await this.getConversationEntity(conversationId);
@@ -667,6 +676,15 @@ export class ConversationService {
     return new ConversationDto({
       conversation: updatedConversation,
       contextUserId: actingUserId,
+    });
+  }
+
+  private async softDeleteParticipants(
+    participants: Participant[],
+  ): Promise<void> {
+    await softDeleteCascade(this.participantRepository.manager, {
+      target: Participant,
+      ids: participants.map((participant) => participant.id),
     });
   }
 
@@ -682,7 +700,7 @@ export class ConversationService {
     if (!conversationTypesUsersCanLeave[conversation.type]) {
       throw new ForbiddenException("This conversation can't be left.");
     }
-    await this.participantRepository.remove(participant);
+    await this.softDeleteParticipants([participant]);
     const updatedConversation =
       await this.getConversationEntity(conversationId);
     await this.emitConversationUpdate(updatedConversation);
@@ -816,9 +834,7 @@ export class ConversationService {
     const removable = loadedConversationParticipants(conversation).filter(
       (participant) => !desiredUsers.has(loadedParticipantUser(participant).id),
     );
-    if (removable.length) {
-      await this.participantRepository.remove(removable);
-    }
+    await this.softDeleteParticipants(removable);
 
     const updatedConversation = await this.getConversationEntity(
       conversation.id,
@@ -842,9 +858,12 @@ export class ConversationService {
         where: { community: { id: sourceCommunity.id } },
       });
       if (sourceConversation) {
-        await participantRepository.delete({
-          conversation: { id: sourceConversation.id },
-          user: { id: user.id },
+        await softDeleteWhere(manager, {
+          target: Participant,
+          where: {
+            conversation: { id: sourceConversation.id },
+            user: { id: user.id },
+          },
         });
       }
     }

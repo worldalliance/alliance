@@ -11,7 +11,8 @@ export class SessionService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  /** The session's account, unless it was deleted after the session began. */
+  /** The session's account, unless it was deleted after the session began,
+   * including when the account has since been restored. */
   async currentUser(session: JwtPayload): Promise<User> {
     const user = await this.userRepository.findOne({
       where: this.accountOf(session),

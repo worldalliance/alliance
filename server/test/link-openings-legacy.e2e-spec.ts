@@ -39,7 +39,11 @@ import { FormSnapshot } from "src/tasks/entities/formsnapshot.entity";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import supertest from "supertest";
 import { In } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import {
+  createTestApp,
+  TestContext,
+  writeDuringDeletion,
+} from "./e2e-test-utils";
 
 describe("Legacy link openings (e2e)", () => {
   let ctx: TestContext;
@@ -197,6 +201,38 @@ describe("Legacy link openings (e2e)", () => {
         .getRepository(Notification)
         .findOneByOrFail({ id: notification.id }),
     ).toMatchObject({ readAt: expect.any(Date) });
+  });
+
+  it("refuses a legacy link whose recipient is deleted while it records", async () => {
+    const leaving = await saveMember("legacy-leaving@example.org");
+    const mail = await ctx.dataSource.getRepository(Mail).save({
+      to: leaving.email,
+      status: EmailStatus.Sent,
+      emailType: EmailType.CustomActionReminder,
+      sentMessageId: null,
+      renderedHtml: null,
+      cid: "0c0c0c0c0c",
+    });
+    await ctx.dataSource.getRepository(ActionEventNotif).save({
+      user: leaving,
+      type: ActionEventNotifType.Reminder,
+      mail,
+      notifiedActionIds: [5],
+    });
+
+    const res = await writeDuringDeletion({
+      dataSource: ctx.dataSource,
+      target: User,
+      id: leaving.id,
+      write: () => post(opening("0c0c0c0c0c")).then((response) => response),
+    });
+
+    expect(res).toMatchObject({ status: 404 });
+    expect(
+      await ctx.dataSource
+        .getRepository(MessageTracking)
+        .findOne({ where: { trackingId: "0c0c0c0c0c" }, withDeleted: true }),
+    ).toBeNull();
   });
 
   it("records racing first openings of a legacy link", async () => {

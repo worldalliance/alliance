@@ -11,7 +11,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { updateLive } from "src/datasources/soft-delete";
+import { softDeleteCascade, updateLive } from "src/datasources/soft-delete";
 import type { Repository } from "src/utils/Repository";
 import type { VideoDetailResponse } from "./dto/video-response.dto";
 import { Video } from "./entities/video.entity";
@@ -195,13 +195,18 @@ export class VideosService {
     return updated ? video : null;
   }
 
+  /** Keeps the video's storage objects so a restored row plays again. Until
+   * direct storage access is blocked, a copied storage URL, or an app bundle
+   * older than API playback reading a completed response's schema snapshot,
+   * still plays the deleted video. */
   async deleteVideo(id: number): Promise<boolean> {
     const video = await this.getVideo(id);
     if (!video) return false;
 
-    await this.deletePrefix(video.key);
-
-    await this.videoRepository.delete(id);
+    await softDeleteCascade(this.videoRepository.manager, {
+      target: Video,
+      ids: [video.id],
+    });
     return true;
   }
 }

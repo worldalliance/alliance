@@ -14,6 +14,7 @@ import { Action } from "src/actions/entities/action.entity";
 import { Community } from "src/community/entities/community.entity";
 import {
   assertLive,
+  softDeleteCascade,
   updateLive,
   writeUnderLive,
 } from "src/datasources/soft-delete";
@@ -528,7 +529,10 @@ export class ShareUrlsService {
         "Your primary invite link cannot be deleted.",
       );
     }
-    await this.shareUrlRepository.remove(row);
+    await softDeleteCascade(this.shareUrlRepository.manager, {
+      target: ShareUrl,
+      ids: [row.id],
+    });
   }
 
   async deleteById(id: string): Promise<void> {
@@ -536,7 +540,10 @@ export class ShareUrlsService {
     if (!row) {
       throw new NotFoundException("share url not found");
     }
-    await this.shareUrlRepository.remove(row);
+    await softDeleteCascade(this.shareUrlRepository.manager, {
+      target: ShareUrl,
+      ids: [row.id],
+    });
   }
 
   async findForCampaign(

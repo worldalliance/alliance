@@ -5,7 +5,12 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { Expo, ExpoPushMessage, ExpoPushTicket } from "expo-server-sdk";
 import { randomUUID } from "node:crypto";
-import { lockLive, updateLive } from "src/datasources/soft-delete";
+import {
+  lockLive,
+  softDeleteCascade,
+  updateLive,
+} from "src/datasources/soft-delete";
+import { Notification } from "src/notifs/entities/notification.entity";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
 import {
@@ -103,12 +108,19 @@ export class PushService {
         const unsaved = pushEntity;
         const saved = await this.pushRepository.manager.transaction(
           async (em) =>
-            (await lockLive(em, [{ target: User, id: message.userId }]))
+            (await lockLive(em, [
+              { target: User, id: message.userId },
+              ...(message.notification
+                ? [{ target: Notification, id: message.notification.id }]
+                : []),
+            ]))
               ? em.save(unsaved)
               : null,
         );
         if (!saved) {
-          console.warn(`skipping push to deleted user ${message.userId}`);
+          console.warn(
+            `skipping push to user ${message.userId}: account or notification deleted`,
+          );
           continue;
         }
         pushEntity = saved;
@@ -175,7 +187,10 @@ export class PushService {
             where: { expoPushToken: pushEntities[i].expoPushToken },
           });
           if (userDevice) {
-            await this.userDeviceRepository.remove(userDevice); // todo: worth keeping+invalidating somehow or no?
+            await softDeleteCascade(this.userDeviceRepository.manager, {
+              target: UserDevice,
+              ids: [userDevice.id],
+            });
           }
         }
       }

@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { assertLive } from "src/datasources/soft-delete";
+import { assertLive, softDeleteCascade } from "src/datasources/soft-delete";
 import { isUniqueViolation } from "src/utils/db-errors";
 import { type EntityManager, Repository } from "typeorm";
 import type { ActionCategory } from "./action-category";
@@ -76,7 +76,7 @@ export class ProjectsService {
       const project = await em.findOneBy(Project, { id });
       if (!project) throw new NotFoundException(`Project ${id} not found`);
       await em.update(Action, { project: { id } }, { project: null });
-      await em.delete(Project, { id });
+      await softDeleteCascade(em, { target: Project, ids: [project.id] });
     });
   }
 

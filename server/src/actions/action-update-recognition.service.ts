@@ -403,11 +403,13 @@ export class ActionUpdateRecognitionService {
       ).map(({ unreadContent }) => [unreadContent.id, unreadContent]),
     );
     for (const exposure of exposures) {
-      // A batch can outlast its 10-minute claim; skip a row another run retook.
+      // A batch can outlast its 10-minute claim; skip a row another run retook
+      // or a deletion marked since the claim.
       const [renewed]: [unknown[], number] = await this.dataSource.query(
         `
         UPDATE action_update_exposure SET "deliveryClaimedAt" = now()
         WHERE id = $1 AND "deliveryClaimedAt" = $2::timestamptz
+          AND "deletedAt" IS NULL
         RETURNING id
         `,
         [exposure.id, claimed[0].claimedAt],
