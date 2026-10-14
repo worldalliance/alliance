@@ -12,6 +12,7 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { AuthContext } from "../../lib/AuthContext";
+import { InviteSessionProvider } from "../../site/invite/InviteSession";
 import { testAuthUser, testForumPosts } from "../../stories/testData";
 import { authValue } from "../../testing/authValue";
 import PostFormPage from "./PostFormPage";
@@ -93,10 +94,15 @@ const renderPostForm = (
   ...render(
     <AuthContext.Provider value={signedIn}>
       <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/forum/edit/:postId" element={<PostFormPage />} />
-          <Route path="/forum/post/:id" element={<p>the published thread</p>} />
-        </Routes>
+        <InviteSessionProvider>
+          <Routes>
+            <Route path="/forum/edit/:postId" element={<PostFormPage />} />
+            <Route
+              path="/forum/post/:id"
+              element={<p>the published thread</p>}
+            />
+          </Routes>
+        </InviteSessionProvider>
       </MemoryRouter>
     </AuthContext.Provider>,
     { wrapper },
@@ -267,7 +273,17 @@ describe("PostFormPage", () => {
 
     renderEditPage();
 
-    expect(await screen.findByText("Post not found")).toBeDefined();
+    await screen.findByRole("heading", { name: "We couldn’t find that page" });
+  });
+
+  it("says when the server fails to load the post", async () => {
+    findPost = () => Response.json({}, { status: 500 });
+
+    renderEditPage();
+
+    expect(
+      await screen.findByText("Failed to load required data"),
+    ).toBeDefined();
   });
 
   it("says when the post fails to load", async () => {

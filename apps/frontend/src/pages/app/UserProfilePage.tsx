@@ -49,6 +49,7 @@ import UserActivityCard from "../../components/UserActivityCard";
 import { useInfiniteScrollSentinel } from "../../hooks/useInfiniteScrollSentinel";
 import { useAuth } from "../../lib/AuthContext";
 import { isFeatureEnabled } from "../../lib/config";
+import { MissingRecordPage } from "../../site/NotFoundPage";
 
 enum ProfileTabs {
   Activity = "Activity",
@@ -269,15 +270,7 @@ const UserProfilePage: React.FC = () => {
     );
   }
 
-  if (!profile) {
-    return (
-      <div className="bg-page pt-20 px-8 md:px-16">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <p className="text-center text-zinc-500">User not found</p>
-        </div>
-      </div>
-    );
-  }
+  if (!profile) return <MissingRecordPage />;
 
   return (
     <div className="max-w-[800px] mx-auto mt-[var(--navbar-top-bar-height)]">
