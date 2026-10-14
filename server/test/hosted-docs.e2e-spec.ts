@@ -74,7 +74,38 @@ describe("Hosted docs (e2e)", () => {
     mockSend.mockClear();
   });
   afterAll(async () => {
-    await ctx.app.close();
+    const started = Date.now();
+    const http = ctx.app.getHttpServer();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pool = (ctx.dataSource.driver as any).master;
+    const dump = (label: string) => {
+      console.log(
+        `[close-diag] ${label} +${Date.now() - started}ms`,
+        JSON.stringify({
+          listening: http.listening,
+          pool: {
+            total: pool?.totalCount,
+            idle: pool?.idleCount,
+            waiting: pool?.waitingCount,
+            ending: pool?.ending,
+          },
+          resources: process.getActiveResourcesInfo(),
+        }),
+      );
+    };
+    dump("before close");
+    const activity = await ctx.dataSource.query(
+      `SELECT pid, state, wait_event_type, wait_event, left(query, 120) AS query
+       FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()`,
+    );
+    console.log("[close-diag] pg_stat_activity", JSON.stringify(activity));
+    const watchdog = setInterval(() => dump("still closing"), 5000);
+    try {
+      await ctx.app.close();
+      dump("closed");
+    } finally {
+      clearInterval(watchdog);
+    }
   });
 
   it("restricts management to admins", async () => {
