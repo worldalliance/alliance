@@ -18,7 +18,11 @@ import {
 import { StoredInviteAssignmentKind } from "../src/share-urls/invite-assignment";
 import { ShareUrlsService } from "../src/share-urls/share-urls.service";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import {
+  createTestApp,
+  TestContext,
+  writeDuringDeletion,
+} from "./e2e-test-utils";
 
 describe("Share URLs (e2e)", () => {
   let ctx: TestContext;
@@ -929,20 +933,38 @@ describe("Share URLs (e2e)", () => {
       expect(res.body.message).toBe("specified user not found");
     });
 
-    it("names the action when it is deleted between lookup and save", async () => {
-      const findOne = jest
-        .spyOn(actionRepo, "findOne")
-        .mockResolvedValueOnce(actionRepo.create({ id: 999999 }));
-      try {
-        const res = await request(ctx.app.getHttpServer())
-          .post("/share-urls/create-duplicate")
-          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-          .send({ userId: ctx.testUserId, actionId: action.id })
-          .expect(404);
-        expect(res.body.message).toBe("specified action not found");
-      } finally {
-        findOne.mockRestore();
-      }
+    it("names the action when it is deleted", async () => {
+      const deleted = await actionRepo.save(
+        actionRepo.create({ name: "Deleted", category: [], body: "body" }),
+      );
+      await actionRepo.softDelete(deleted.id);
+      const res = await request(ctx.app.getHttpServer())
+        .post("/share-urls/create-duplicate")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ userId: ctx.testUserId, actionId: deleted.id })
+        .expect(404);
+      expect(res.body.message).toBe("specified action not found");
+    });
+
+    it("names the action when it is deleted during the save", async () => {
+      const raced = await actionRepo.save(
+        actionRepo.create({ name: "Raced", category: [], body: "body" }),
+      );
+      expect(
+        await writeDuringDeletion({
+          dataSource: ctx.dataSource,
+          target: Action,
+          id: raced.id,
+          write: () =>
+            request(ctx.app.getHttpServer())
+              .post("/share-urls/create-duplicate")
+              .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+              .send({ userId: ctx.testUserId, actionId: raced.id }),
+        }),
+      ).toMatchObject({
+        status: 404,
+        body: { message: "specified action not found" },
+      });
     });
   });
 

@@ -43,7 +43,7 @@ import type {
   Repository as TypedRepository,
   WithRelations,
 } from "src/utils/Repository";
-import type { Repository } from "typeorm";
+import { QueryFailedError, type Repository } from "typeorm";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
   createFormWithSnapshot,
@@ -341,6 +341,115 @@ describe("ActionEventNotifWorker (e2e)", () => {
       });
     }
     expect(notif.mms?.body).toMatch(new RegExp(`\\?cid=${notif.mms?.cid}$`));
+  });
+
+  it("sends a run's other reminders when one fails to save", async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
+    const { memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName("failed-save-action"),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
+    });
+    const groups = [
+      await createReminderGroup(
+        memberEvent,
+        ReminderGroupTimingMode.Absolute,
+        ReminderCohortType.AllUncompleted,
+        { sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })) },
+      ),
+      await createReminderGroup(
+        memberEvent,
+        ReminderGroupTimingMode.Absolute,
+        ReminderCohortType.AllUncompleted,
+        { sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })) },
+      ),
+    ];
+    const reminders = ctx.app.get(ActionEventReminderService);
+    const evaluate = reminders.evaluateNotifications.bind(reminders);
+    let failNextTransaction = false;
+    const planned = jest
+      .spyOn(reminders, "evaluateNotifications")
+      .mockImplementation(async (...window) => {
+        const plans = await evaluate(...window);
+        failNextTransaction = true;
+        return plans;
+      });
+    const transaction = ctx.dataSource.transaction.bind(ctx.dataSource);
+    const failing = jest
+      .spyOn(ctx.dataSource, "transaction")
+      .mockImplementation((...args: Parameters<typeof transaction>) => {
+        if (!failNextTransaction) return transaction(...args);
+        failNextTransaction = false;
+        return Promise.reject(
+          new QueryFailedError("INSERT", [], new Error("deadlock detected")),
+        );
+      });
+
+    try {
+      await dispatch();
+    } finally {
+      planned.mockRestore();
+      failing.mockRestore();
+    }
+
+    const saved = await notifRepo.count({
+      where: groups.map((group) => ({
+        idempotency_key: `reminder:${group.id}:${user.id}`,
+      })),
+    });
+    expect(saved).toBe(1);
+  });
+
+  it("stops sending a group's planned reminders once the group is deleted", async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(
+      user.id,
+      new Date(now - milliseconds({ days: 1 })),
+    );
+    const { memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName("deleted-mid-run-action"),
+      eventDate: new Date(now - milliseconds({ hours: 1 })),
+    });
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      { sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })) },
+    );
+    const reminders = ctx.app.get(ActionEventReminderService);
+    const evaluate = reminders.evaluateNotifications.bind(reminders);
+    let plannedCount = 0;
+    const planned = jest
+      .spyOn(reminders, "evaluateNotifications")
+      .mockImplementation(async (...window) => {
+        const plans = await evaluate(...window);
+        plannedCount += plans.filter(
+          (plan) => plan.group.id === reminderGroup.id,
+        ).length;
+        await ctx.dataSource.manager.softDelete(ReminderGroup, [
+          reminderGroup.id,
+        ]);
+        return plans;
+      });
+
+    try {
+      await dispatch();
+    } finally {
+      planned.mockRestore();
+    }
+
+    expect(plannedCount).toBe(1);
+    expect(
+      await notifRepo.count({
+        where: { idempotency_key: `reminder:${reminderGroup.id}:${user.id}` },
+        withDeleted: true,
+      }),
+    ).toBe(0);
   });
 
   it("does not send reminders older than the 3 hour lookback window", async () => {

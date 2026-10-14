@@ -20,6 +20,7 @@ import {
 } from "src/link-tracking/message-tracking.entity";
 import { MailService } from "src/mail/mail.service";
 import { ActionEventNotifWorker } from "src/notifs/action-event-notif.worker";
+import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
 import {
   ActionEventNotif,
   ActionEventNotifType,
@@ -264,6 +265,40 @@ describe("missed-suite notices (e2e)", () => {
     expect(notice.mms?.body).toMatch(
       /^The deadline for Missed task passed without your completion\. If you did complete it, contact us\. \S+\/tasks/,
     );
+  });
+
+  it("sends no notice once its group is deleted after planning", async () => {
+    const closed = await createClosedSuite("Gone", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+    const reminders = ctx.app.get(ActionEventReminderService);
+    const evaluate = reminders.evaluateNotifications.bind(reminders);
+    let plannedCount = 0;
+    const planned = jest
+      .spyOn(reminders, "evaluateNotifications")
+      .mockImplementation(async (...window) => {
+        const plans = await evaluate(...window);
+        plannedCount += plans.filter(
+          (plan) => plan.group.id === group.id,
+        ).length;
+        await groupRepo.softDelete(group.id);
+        return plans;
+      });
+
+    try {
+      await dispatch();
+    } finally {
+      planned.mockRestore();
+    }
+
+    expect(plannedCount).toBe(1);
+    expect(
+      await notifRepo.count({
+        where: { type: ActionEventNotifType.MissedDeadline },
+        withDeleted: true,
+      }),
+    ).toBe(0);
   });
 
   it("totals the missed tasks' time estimates for #{tasktime}", async () => {

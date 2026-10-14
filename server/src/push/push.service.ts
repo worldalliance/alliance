@@ -5,7 +5,9 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { Expo, ExpoPushMessage, ExpoPushTicket } from "expo-server-sdk";
 import { randomUUID } from "node:crypto";
+import { lockLive } from "src/datasources/soft-delete";
 import { UserDevice } from "src/user/entities/user-device.entity";
+import { User } from "src/user/entities/user.entity";
 import {
   In,
   IsNull,
@@ -98,7 +100,18 @@ export class PushService {
         user: { id: message.userId },
       });
       try {
-        pushEntity = await this.pushRepository.save(pushEntity);
+        const unsaved = pushEntity;
+        const saved = await this.pushRepository.manager.transaction(
+          async (em) =>
+            (await lockLive(em, [{ target: User, id: message.userId }]))
+              ? em.save(unsaved)
+              : null,
+        );
+        if (!saved) {
+          console.warn(`skipping push to deleted user ${message.userId}`);
+          continue;
+        }
+        pushEntity = saved;
       } catch (error) {
         if (error instanceof QueryFailedError) {
           console.error(`skipping duplicate push: ${error.message}`);

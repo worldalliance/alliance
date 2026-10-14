@@ -18,6 +18,7 @@ import { ActionEvent } from "./entities/action-event.entity";
 import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
 import { ActionFormVariant } from "./entities/action-form-variant.entity";
 import { Action } from "./entities/action.entity";
+import { liveAssignments, variantForNewAssignment } from "./new-assignment";
 
 export interface CreateVariantInput {
   name: string;
@@ -257,16 +258,22 @@ export class ActionFormVariantService {
       actionIds: [actionId],
       userId,
     });
-    const chosenVariantId = this.variantForNewAssignment({
+    const chosenVariantId = variantForNewAssignment({
       variants,
       submittedFormId: submitted.get(actionId),
     });
     try {
-      await this.assignmentRepo.insert({
-        actionId,
-        userId,
-        variantId: chosenVariantId,
-      });
+      const inserted = await this.assignmentRepo.manager.transaction(
+        async (em) => {
+          const [live] = await liveAssignments(em, [
+            { actionId, userId, variantId: chosenVariantId },
+          ]);
+          if (!live) return false;
+          await em.insert(ActionFormAssignment, live);
+          return true;
+        },
+      );
+      if (!inserted) return null;
     } catch (err) {
       if (
         !(err instanceof QueryFailedError) ||
@@ -345,7 +352,7 @@ export class ActionFormVariantService {
         continue;
       }
 
-      const chosenVariantId = this.variantForNewAssignment({
+      const chosenVariantId = variantForNewAssignment({
         variants,
         submittedFormId: submitted.get(actionId),
       });
@@ -361,12 +368,17 @@ export class ActionFormVariantService {
     // ON CONFLICT DO NOTHING for the live-row (actionId, userId) unique
     // index — a parallel request may have inserted first. After the upsert,
     // re-read to learn the canonical assignment for the conflicted rows.
-    await this.assignmentRepo
-      .createQueryBuilder()
-      .insert()
-      .values(inserts)
-      .orIgnore()
-      .execute();
+    await this.assignmentRepo.manager.transaction(async (em) => {
+      const live = await liveAssignments(em, inserts);
+      if (live.length === 0) return;
+      await em
+        .createQueryBuilder()
+        .insert()
+        .into(ActionFormAssignment)
+        .values(live)
+        .orIgnore()
+        .execute();
+    });
 
     const insertedActionIds = inserts.map((i) => i.actionId);
     const finalAssignments = await this.assignmentRepo.find({
@@ -377,7 +389,10 @@ export class ActionFormVariantService {
 
     for (const i of inserts) {
       const final = finalByAction.get(i.actionId);
-      if (!final) continue;
+      if (!final) {
+        result.delete(i.actionId);
+        continue;
+      }
       const variants = variantsByAction.get(i.actionId);
       if (!variants) continue;
       if (final.variantId === null) {
@@ -472,29 +487,6 @@ export class ActionFormVariantService {
     return assignedFormId === formId;
   }
 
-  private variantForNewAssignment(params: {
-    variants: ActionFormVariant[];
-    submittedFormId: number | undefined;
-  }): number | null {
-    const { variants, submittedFormId } = params;
-    if (submittedFormId === undefined) {
-      return this.pickVariantForNewUser(variants);
-    }
-    return variants.find((v) => v.formId === submittedFormId)?.id ?? null;
-  }
-
-  private pickVariantForNewUser(variants: ActionFormVariant[]): number | null {
-    if (variants.length === 0) return null;
-
-    const r = Math.random();
-    let acc = 0;
-    for (const v of variants) {
-      acc += v.splitValue;
-      if (r < acc) return v.id;
-    }
-    return null;
-  }
-
   private async userExists(userId: number): Promise<boolean> {
     return this.userRepo.exists({ where: { id: userId } });
   }
@@ -516,12 +508,15 @@ export class ActionFormVariantService {
     em: EntityManager,
     actionId: number,
   ): Promise<void> {
-    await em
+    const action = await em
       .getRepository(Action)
       .createQueryBuilder("a")
       .setLock("pessimistic_write")
       .where("a.id = :id", { id: actionId })
       .getOne();
+    if (!action) {
+      throw new NotFoundException("Action not found");
+    }
   }
 
   private async assertSplitTotalValid(

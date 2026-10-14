@@ -46,6 +46,7 @@ import {
   giveActiveContract,
   signAccessToken,
   TestContext,
+  waitForLockWait,
 } from "./e2e-test-utils";
 
 describe("Users (e2e)", () => {
@@ -1880,7 +1881,7 @@ describe("Users (e2e)", () => {
       expect(updatedUser?.undergoingGroupAssignment).toBe(true);
     });
 
-    it("recovers when the reusable invite group is deleted mid-signup", async () => {
+    it("drops the group a deletion commits while the signup waits on it", async () => {
       const { inviter, doomed } = await inviterWithSpareGroup({
         slug: "raced.deleted.group",
         name: "Raced Deleted Group",
@@ -1891,32 +1892,28 @@ describe("Users (e2e)", () => {
           "Raced community invite",
           doomed.id,
         );
-      await communityRepo.delete(doomed.id);
-      // Stands in for the group being deleted after the snapshot's existence
-      // check passed but before the insert: the stale id trips the foreign key.
-      const staleSnapshot = jest
-        .spyOn(userService, "inviteAssignmentSnapshot")
-        .mockResolvedValueOnce({
-          inviteAssignmentKind: StoredInviteAssignmentKind.Community,
-          inviteAssignmentCommunityId: doomed.id,
-        });
-
+      const deletion = ctx.dataSource.createQueryRunner();
+      await deletion.startTransaction();
       let newUser: User;
-      let snapshotCalls = 0;
       try {
-        newUser = await signUpThroughInvite({
+        await deletion.manager.delete(Community, [doomed.id]);
+        const signup = signUpThroughInvite({
           name: "Raced Deleted Group Invitee",
           email: "raced.deleted.group.invitee@example.com",
           invite: reusableInvite,
         });
+        await waitForLockWait(ctx.dataSource);
+        const [waiting]: { query: string }[] = await ctx.dataSource.query(
+          `SELECT query FROM pg_stat_activity
+           WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+        );
+        expect(waiting.query).toContain("FOR KEY SHARE");
+        await deletion.commitTransaction();
+        newUser = await signup;
       } finally {
-        snapshotCalls = staleSnapshot.mock.calls.length;
-        staleSnapshot.mockRestore();
+        await deletion.release();
       }
 
-      // Without this the real check would return a null id and the assertions
-      // below would pass without the recovery path ever running.
-      expect(snapshotCalls).toBe(1);
       expect(newUser.inviteAssignmentKind).toBe(
         StoredInviteAssignmentKind.Community,
       );
@@ -3060,6 +3057,26 @@ describe("Users (e2e)", () => {
             .expect(200);
 
           expect(res.body.invitee).toBe("Admin edit");
+        });
+
+        it("refuses a deleted group", async () => {
+          const invite = await createInvite(communityLedByUserA.id);
+          const deleted = await communityRepo.save(
+            communityRepo.create({ name: "Deleted invite group" }),
+          );
+          await communityRepo.softDelete(deleted.id);
+
+          await request(ctx.app.getHttpServer())
+            .patch(`/user/onetimeInvites/${invite.id}`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+            .send({ communityId: deleted.id })
+            .expect(404);
+          expect(
+            await onetimeInviteRepo.findOneOrFail({
+              where: { id: invite.id },
+              relations: { community: true },
+            }),
+          ).toMatchObject({ community: { id: communityLedByUserA.id } });
         });
 
         it("refuses once the invite has been used", async () => {
