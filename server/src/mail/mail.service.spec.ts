@@ -8,6 +8,7 @@ import {
   type TrackedMessage,
 } from "src/link-tracking/message-tracking.service";
 import { User } from "src/user/entities/user.entity";
+import { ContractReminderCopy } from "./contract-reminder-copy";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
 import {
   MailNotSentError,
@@ -326,27 +327,74 @@ describe("sendMail", () => {
     expect(html).toContain("https://app.example.org/tasks?cid=track-1");
   });
 
-  it("attributes a contract reminder to its member", async () => {
-    const { service, tracked } = await harness(() =>
-      Promise.resolve({ accepted: ["member@example.org"], messageId: "" }),
-    );
+  const contractReminders: Record<
+    ContractReminderCopy,
+    { subject: string; paragraphs: string[] }
+  > = {
+    [ContractReminderCopy.Control]: {
+      subject: "Sign your membership contract to participate in actions",
+      paragraphs: [
+        "Dear &lt;b&gt;Jo&amp;&lt;/b&gt;,",
+        "You signed up for the Alliance platform, but did not sign the membership contract. Please note that until you do, you will be unable to participate in Alliance actions.",
+        "The contract matters because the Alliance is built on reliability. We plan precise actions based on the number of committed members; every commitment tells us who we can count on.",
+        "By signing, you’re telling other members that they can count on you. Because they’ve signed, you can count on them too.",
+        "You can sign your contract in the tasks page: https://app.example.org/tasks?cid=track-1",
+        'If you’d like to learn more about the Alliance and why reliability matters before signing, you can watch <a href="https://www.youtube.com/watch?v=fR7Upo0DlYs&amp;t=125s">this video</a>.',
+        "Thank you for your interest in the Alliance.",
+        "Best,",
+        "The Alliance Team",
+      ],
+    },
+    [ContractReminderCopy.AgreementV1]: {
+      subject: "The last step is entering into the membership agreement.",
+      paragraphs: [
+        "Hi &lt;b&gt;Jo&amp;&lt;/b&gt;,",
+        "You signed up for the Alliance, but did not enter into our membership agreement. Our project planning relies upon accurate participation expectations. Until you enter into the agreement, we cannot assign you tasks.",
+        "By signing, you are letting other members know they can count on you, just like you can count on them.",
+        'You can enter into the agreement here: <a href="https://app.example.org/membership?cid=track-1">https://app.example.org/membership</a>',
+        'If you would like to learn more about the Alliance and why reliability matters before signing, you can watch this video: <a href="https://www.youtube.com/watch?v=fR7Upo0DlYs&amp;t=125s">https://www.youtube.com/watch?v=fR7Upo0DlYs&amp;t=125s</a>',
+        "Best,",
+        "The Alliance Team",
+      ],
+    },
+  };
 
-    const mail = await service.sendContractReminderEmail({
-      userId: 7,
-      email: "member@example.org",
-      name: "Jane",
-    });
+  it.each(Object.values(ContractReminderCopy))(
+    "sends the %s contract reminder, attributed to its member",
+    async (copy) => {
+      const { subject, paragraphs } = contractReminders[copy];
+      process.env.APP_URL = "https://app.example.org";
+      const sent: ISendMailOptions[] = [];
+      const { service, tracked } = await harness((options) => {
+        sent.push(options);
+        return Promise.resolve({
+          accepted: ["member@example.org"],
+          messageId: "",
+        });
+      });
 
-    expect(mail.cid).toBe("track-1");
-    expect(tracked).toEqual([
-      {
-        owner: { userId: 7 },
-        source: MessageSource.ContractReminder,
-        context: {},
-        actionEventNotifId: null,
-      },
-    ]);
-  });
+      const mail = await service.sendContractReminderEmail({
+        userId: 7,
+        email: "member@example.org",
+        name: "<b>Jo&</b>",
+        copy,
+      });
+
+      expect(sent[0].subject).toBe(subject);
+      expect(
+        [...String(sent[0].html).matchAll(/<p>(.*?)<\/p>/g)].map((m) => m[1]),
+      ).toEqual(paragraphs);
+      expect(mail.cid).toBe("track-1");
+      expect(tracked).toEqual([
+        {
+          owner: { userId: 7 },
+          source: MessageSource.ContractReminder,
+          context: { contractReminderCopy: copy, subject },
+          actionEventNotifId: null,
+        },
+      ]);
+    },
+  );
 
   it("reports a failed tracking insert as unsent, without sending", async () => {
     const sendMail = jest.fn(() =>
@@ -359,6 +407,7 @@ describe("sendMail", () => {
         userId: 7,
         email: "member@example.org",
         name: "Jane",
+        copy: ContractReminderCopy.Control,
       }),
     ).rejects.toBeInstanceOf(MailNotSentError);
 
@@ -391,6 +440,7 @@ describe("sendMail", () => {
         userId: 7,
         email: "member@example.org",
         name: "Jane",
+        copy: ContractReminderCopy.Control,
       }),
     ).rejects.toBeInstanceOf(MailNotSentError);
     expect(tracked).toEqual([]);
@@ -407,6 +457,7 @@ describe("sendMail", () => {
         userId: 7,
         email: "member@example.org",
         name: "Jane",
+        copy: ContractReminderCopy.Control,
       }),
     ).rejects.toBeInstanceOf(MailNotSentError);
     expect(discarded).toEqual(["track-1"]);

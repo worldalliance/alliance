@@ -22,12 +22,14 @@ import {
 import { getTimeLeftString } from "src/notifs/textnotifcontents";
 import {
   groupMembersListUrl,
+  membershipUrl,
   siteBaseUrl,
   tasksUrl,
 } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import type { Repository } from "src/utils/Repository";
+import { ContractReminderCopy } from "./contract-reminder-copy";
 import { EmailStatus, EmailType, Mail } from "./mail.entity";
 
 export function mailSendingEnabled(): boolean {
@@ -143,6 +145,20 @@ export type WaitlistStaffEmail = {
 const WAITLIST_SUBJECTS: Record<WaitlistEmailType, string> = {
   [EmailType.WaitlistConfirmation]: "You’re on the Alliance waitlist",
   [EmailType.WaitlistLink]: "Your Alliance waitlist link",
+};
+
+const CONTRACT_REMINDER_CONTENT: Record<
+  ContractReminderCopy,
+  { subject: string; link: () => string }
+> = {
+  [ContractReminderCopy.Control]: {
+    subject: "Sign your membership contract to participate in actions",
+    link: () => tasksUrl(true),
+  },
+  [ContractReminderCopy.AgreementV1]: {
+    subject: "The last step is entering into the membership agreement.",
+    link: () => membershipUrl(true),
+  },
 };
 
 /** Thrown by `sendMail` when it failed before handing the message to the mail server. */
@@ -346,19 +362,23 @@ export class MailService {
     userId: number;
     email: string;
     name: string;
+    copy: ContractReminderCopy;
   }): Promise<Mail> {
+    const { subject, link } = CONTRACT_REMINDER_CONTENT[params.copy];
     return this.sendMail({
       recipient: params.email,
       emailType: EmailType.ContractReminder,
-      subject: "Sign your membership contract to participate in actions",
+      subject,
       context: {
+        copy: params.copy,
+        subject,
         name: params.name,
-        link: tasksUrl(true),
+        link: link(),
       },
       tracking: {
         owner: { userId: params.userId },
         source: MessageSource.ContractReminder,
-        context: {},
+        context: { contractReminderCopy: params.copy, subject },
         actionEventNotifId: null,
       },
     });

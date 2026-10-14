@@ -2,6 +2,7 @@ import {
   CreateDateColumnTz,
   DeleteDateColumnTz,
 } from "src/datasources/basecolumns";
+import { ContractReminderCopy } from "src/mail/contract-reminder-copy";
 import {
   ActionEventNotif,
   ActionEventNotifType,
@@ -66,6 +67,7 @@ export const messageContextSchema = z
     notificationIds: z.array(id),
     waitlistEmailBatchId: id,
     waitlistEmailRecipientId: id,
+    contractReminderCopy: z.enum(ContractReminderCopy),
     subject: z.string(),
   })
   .partial()

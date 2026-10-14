@@ -3,8 +3,11 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
+import { CONTRACT_REMINDER_COPY } from "src/mail/contract-reminder-copy";
 import { EmailType } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
+import { Experiment } from "src/notifs/entities/experiment-assignment.entity";
+import { assignExperimentArm } from "src/notifs/experiment-assignment";
 import { User } from "src/user/entities/user.entity";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { DataSource, Repository } from "typeorm";
@@ -65,10 +68,15 @@ export class ContractReminderWorker {
 
         for (const user of users) {
           try {
+            const arm = await assignExperimentArm(this.dataSource.manager, {
+              experiment: Experiment.ContractReminder,
+              userId: user.id,
+            });
             await this.mailService.sendContractReminderEmail({
               userId: user.id,
               email: user.email,
               name: nameParts(user.name).firstname,
+              copy: CONTRACT_REMINDER_COPY[arm],
             });
           } catch (err) {
             this.logger.error(
