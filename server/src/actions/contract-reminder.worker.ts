@@ -3,6 +3,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
+import { ContractReminderCopy } from "src/mail/contract-reminder-copy";
 import { EmailType } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { User } from "src/user/entities/user.entity";
@@ -69,6 +70,7 @@ export class ContractReminderWorker {
               userId: user.id,
               email: user.email,
               name: nameParts(user.name).firstname,
+              copy: ContractReminderCopy.Control,
             });
           } catch (err) {
             this.logger.error(
