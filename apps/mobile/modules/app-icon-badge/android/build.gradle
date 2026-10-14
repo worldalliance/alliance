@@ -1,0 +1,19 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.alliance'
+
+android {
+  namespace "com.alliance.appiconbadge"
+  defaultConfig {
+    // expo-module-gradle-plugin won't configure the project without it.
+    versionName '1.0.0'
+  }
+}
+
+dependencies {
+  // The version expo-notifications sets the badge with.
+  implementation 'me.leolin:ShortcutBadger:1.1.22@aar'
+}

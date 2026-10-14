@@ -25,6 +25,7 @@ import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { FormSnapshotModule } from "src/tasks/formsnapshot.module";
 import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
+import { UserDevice } from "src/user/entities/user-device.entity";
 import { ContractEvent } from "../user/entities/contract-event.entity";
 import { Tag } from "../user/entities/tag.entity";
 import { User } from "../user/entities/user.entity";
@@ -65,6 +66,7 @@ import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
 import { ProjectsController } from "./projects.controller";
 import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
+import { TaskBadgeService } from "./task-badge.service";
 
 @Module({
   imports: [
@@ -98,6 +100,7 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
       ReminderGroup,
       Tag,
       Community,
+      UserDevice,
     ]),
     ContractModule,
     UserModule,
@@ -138,6 +141,7 @@ import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
     CohortDecisionService,
     CohortDecisionStaffService,
     CohortDecisionWorker,
+    TaskBadgeService,
     CohortDivergenceService,
   ],
   exports: [

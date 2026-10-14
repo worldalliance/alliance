@@ -35,6 +35,22 @@ export class UserDevice {
   @Column({ type: "varchar", nullable: true })
   expoPushToken: string | null;
 
+  /** The task badge count last sent; null when the device may lack the current one, so the next sync resends. */
+  @Column({ type: "int", nullable: true })
+  badgeCount: number | null;
+
+  /**
+   * When the computation behind `badgeCount` began. A send claims the device
+   * only with a later start, so a slower, older computation can't overwrite
+   * a newer count.
+   */
+  @Column({ type: "timestamptz", nullable: true })
+  badgeCountComputedAt: Date | null;
+
+  /** The installed build handles badge-only pushes quietly; older builds would show them. */
+  @Column({ default: false })
+  taskBadgePushes: boolean;
+
   @UpdateDateColumnTz()
   updatedAt: Date;
 

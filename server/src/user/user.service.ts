@@ -194,6 +194,7 @@ import { CLAIMABLE_INVITE, inviteAcceptedSql } from "./invite-claim";
 import { sqlUserHasProfilePicture } from "./profile-picture";
 import {
   type AccountDeletedPayload,
+  type AwayRangesChangedPayload,
   type FriendsAcceptedPayload,
   UserEvents,
 } from "./user.events";
@@ -1683,10 +1684,12 @@ export class UserService {
       createdAt: now,
     });
 
-    return writeUnderLive(this.dataSource.manager, {
+    const saved = await writeUnderLive(this.dataSource.manager, {
       parents: [{ target: User, id: userId }],
       write: (manager) => manager.save(awayRange),
     });
+    this.emitAwayRangesChanged(userId);
+    return saved;
   }
 
   async getAwayRanges(userId: number): Promise<UserAwayRange[]> {
@@ -1722,6 +1725,7 @@ export class UserService {
         target: UserAwayRange,
         ids: [awayRange.id],
       });
+      this.emitAwayRangesChanged(userId);
       return;
     }
     if (hasAwayRangeEnded(awayRange, now)) {
@@ -1731,6 +1735,7 @@ export class UserService {
     }
     awayRange.endDate = now;
     await this.saveLiveAwayRange(awayRange);
+    this.emitAwayRangesChanged(userId);
   }
 
   async updateAwayRange(params: {
@@ -1820,7 +1825,9 @@ export class UserService {
       { validateStartDate: false },
     );
 
-    return this.saveLiveAwayRange(awayRange);
+    const saved = await this.saveLiveAwayRange(awayRange);
+    this.emitAwayRangesChanged(userId);
+    return saved;
   }
 
   private saveLiveAwayRange(awayRange: UserAwayRange): Promise<UserAwayRange> {
@@ -1830,6 +1837,12 @@ export class UserService {
       notFound: "Away range not found.",
       write: (manager) => manager.save(awayRange),
     });
+  }
+
+  private emitAwayRangesChanged(userId: number): void {
+    this.eventEmitter.emit(UserEvents.AwayRangesChanged, {
+      userId,
+    } satisfies AwayRangesChangedPayload);
   }
 
   private resolveAwayRangeEdit(params: {
@@ -3285,6 +3298,7 @@ export class UserService {
     body: RegisterDeviceDto,
   ): Promise<string> {
     const user = await this.findOneOrFail(userId, { devices: true });
+    const taskBadgePushes = body.taskBadgePushes ?? false;
     if (body.deviceId) {
       const existingDevice = await this.userDeviceRepository.findOne({
         where: { id: body.deviceId, user: { id: userId } },
@@ -3294,7 +3308,14 @@ export class UserService {
         (await updateLive(this.dataSource.manager, {
           target: UserDevice,
           id: existingDevice.id,
-          changes: { expoPushToken: body.expoPushToken },
+          changes: {
+            expoPushToken: body.expoPushToken,
+            taskBadgePushes,
+            ...(existingDevice.expoPushToken !== body.expoPushToken && {
+              badgeCount: null,
+              badgeCountComputedAt: null,
+            }),
+          },
         }))
       ) {
         return existingDevice.id;
@@ -3306,7 +3327,14 @@ export class UserService {
         where: { expoPushToken: body.expoPushToken },
         relations: { user: true },
       });
-      if (existingByToken?.user?.id === userId) {
+      if (
+        existingByToken?.user?.id === userId &&
+        (await updateLive(this.dataSource.manager, {
+          target: UserDevice,
+          id: existingByToken.id,
+          changes: { taskBadgePushes },
+        }))
+      ) {
         return existingByToken.id;
       }
       if (existingByToken) {
@@ -3320,6 +3348,9 @@ export class UserService {
               changes: {
                 user: { id: userId },
                 deviceType: body.deviceType ?? existingByToken.deviceType,
+                taskBadgePushes,
+                badgeCount: null,
+                badgeCountComputedAt: null,
               },
             }),
         });
@@ -3332,6 +3363,7 @@ export class UserService {
     const device = this.userDeviceRepository.create({
       deviceType: body.deviceType,
       expoPushToken: body.expoPushToken,
+      taskBadgePushes,
       user,
     });
     const savedDevice = await writeUnderLive(this.dataSource.manager, {
@@ -3339,6 +3371,16 @@ export class UserService {
       write: (manager) => manager.save(device),
     });
     return savedDevice.id;
+  }
+
+  async unregisterDevice(params: {
+    deviceId: string;
+    expoPushToken: string;
+  }): Promise<void> {
+    await softDeleteWhere(this.userDeviceRepository.manager, {
+      target: UserDevice,
+      where: { id: params.deviceId, expoPushToken: params.expoPushToken },
+    });
   }
 
   async testPushNotification(userId: number, message: string): Promise<Push> {

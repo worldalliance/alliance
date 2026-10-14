@@ -23,7 +23,8 @@ import PostHogProvider from "../lib/PostHogProvider";
 import { getRefreshToken, saveSessionTokens } from "../lib/SecureStorage";
 import { getApiUrl } from "../lib/config";
 import { linkOpeningSession, startLinkOpenings } from "../lib/linkOpenings";
-import { queryClient } from "../lib/queryClient";
+import { notificationBehavior } from "../lib/notificationBehavior";
+import { queryClient, refetchActions } from "../lib/queryClient";
 import { refreshingFetch } from "../lib/session";
 import "../lib/setImmediatePolyfill";
 import { hideSplash } from "../lib/splash";
@@ -38,12 +39,11 @@ setTimeout(hideSplash, SPLASH_WATCHDOG_MS);
 registerErrorStatus(client);
 
 setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  handleNotification: async (notification) =>
+    notificationBehavior({
+      data: notification.request.content.data,
+      onTaskBadgePush: refetchActions,
+    }),
 });
 
 export default function RootLayout() {

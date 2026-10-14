@@ -9,6 +9,7 @@ import {
 } from "src/auth/signup-throttle.config";
 import { LINK_PREVIEW_THROTTLE } from "src/link-preview/link-preview-throttle.config";
 import { LINK_OPENING_THROTTLE } from "src/link-tracking/link-opening-throttle.config";
+import { DEVICE_UNLINK_THROTTLE } from "src/user/device-unlink-throttle.config";
 import { ALL_THROTTLES, OnlyThrottle, UserThrottlerGuard } from "./throttle";
 
 // Metadata keys from @nestjs/throttler's internals (not re-exported from the
@@ -68,6 +69,7 @@ describe("ALL_THROTTLES", () => {
       WAITLIST_LINK_THROTTLE,
       LINK_PREVIEW_THROTTLE,
       LINK_OPENING_THROTTLE,
+      DEVICE_UNLINK_THROTTLE,
     ];
     const totalNames = groups.reduce(
       (count, group) => count + Object.keys(group).length,

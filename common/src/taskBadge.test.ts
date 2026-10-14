@@ -1,6 +1,7 @@
 import {
   countsTowardTaskBadge,
   countTaskBadge,
+  parseTaskBadgePush,
   type TaskBadgeAction,
 } from "./taskBadge";
 
@@ -102,5 +103,22 @@ describe("countTaskBadge", () => {
 
   it("is zero for no actions", () => {
     expect(countTaskBadge([], now)).toBe(0);
+  });
+});
+
+describe("parseTaskBadgePush", () => {
+  it("reads the count from a badge push", () => {
+    expect(parseTaskBadgePush({ taskBadgeCount: 3 })).toEqual({
+      ok: true,
+      value: 3,
+    });
+  });
+
+  it.each([
+    ["a regular push", { cid: 1, screen: "/messages" }],
+    ["a negative count", { taskBadgeCount: -1 }],
+    ["no data", undefined],
+  ])("rejects %s", (_label, data) => {
+    expect(parseTaskBadgePush(data).ok).toBe(false);
   });
 });

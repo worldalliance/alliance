@@ -1,15 +1,10 @@
 import { secureStorageBackend } from "./secureStorageBackend";
 import type { SecureStoreOptions } from "./secureStorageBackendContract";
+import { SecureStorageKey } from "./secureStorageKey";
+
+export { SecureStorageKey };
 
 export type SessionTokens = { access: string; refresh: string };
-
-export enum SecureStorageKey {
-  ACCESS_TOKEN = "accessToken",
-  REFRESH_TOKEN = "refreshToken",
-  GUEST_TOKEN = "guestToken",
-  DEVICE_ID = "deviceId",
-  REGISTERED_TOKEN = "registeredToken",
-}
 
 export const SecureStorage = {
   setItem: (

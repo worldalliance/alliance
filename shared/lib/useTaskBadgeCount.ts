@@ -3,7 +3,7 @@ import {
   countTaskBadge,
 } from "@alliance/common/taskBadge";
 import { milliseconds } from "date-fns";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useActionsQuery } from "./actionsListPage";
 import { isRefused } from "./retryQuery";
 import { useOnNextTimestamp } from "./useOnNextDeadline";
@@ -39,6 +39,26 @@ export function useTaskBadgeCount(): number | null {
     };
   }, [actions, deadlineTick]);
   useOnNextTimestamp(deadlines, onDeadlinePassed);
+
+  return count;
+}
+
+/**
+ * The Tasks badge count, also passed to `write` after every fetch of the
+ * action list, even one that leaves the count unchanged. `write` must be
+ * stable.
+ */
+export function useTaskBadgeMirror(
+  write: (count: number) => unknown,
+): number | null {
+  const count = useTaskBadgeCount();
+  const { dataUpdatedAt } = useActionsQuery();
+
+  useEffect(() => {
+    if (count !== null) {
+      void write(count);
+    }
+  }, [count, dataUpdatedAt, write]);
 
   return count;
 }

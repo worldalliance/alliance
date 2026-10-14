@@ -12,4 +12,5 @@ export const LOCK_KEYS = {
   cohortDecisionDivergence: [0xa11a, 0xce05] as const,
   waitlistEmail: [0xa11a, 0xce06] as const,
   actionUpdateRecognitionDelivery: [0xa11a, 0xce07] as const,
+  taskBadgeSweep: [0xa11a, 0xce08] as const,
 };

@@ -1,4 +1,3 @@
-import { useTaskBadgeCount } from "@alliance/shared/lib/useTaskBadgeCount";
 import { cn } from "@alliance/shared/styles/util";
 import { impactAsync, ImpactFeedbackStyle } from "expo-haptics";
 import { usePathname, useRouter } from "expo-router";
@@ -14,6 +13,7 @@ import {
   WalkthroughAnchor,
 } from "../lib/onboarding/walkthrough";
 import { colors } from "../lib/style/colors";
+import { useTaskBadgeSync } from "../lib/taskBadge";
 import { useUnreadNotificationCount } from "../lib/useNotificationsCache";
 import Text, { FontWeight } from "./system/Text";
 
@@ -101,7 +101,7 @@ export default function TabBar() {
   const reportChromeBottom = useReportChromeBottom();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const taskBadgeCount = useTaskBadgeCount();
+  const taskBadgeCount = useTaskBadgeSync();
   const {
     unread: unreadMessages,
     hasUpdates,

@@ -1427,10 +1427,19 @@ export type RegisterDeviceDto = {
     deviceType: string;
     expoPushToken: string;
     deviceId?: string;
+    /**
+     * The build handles badge-only pushes quietly
+     */
+    taskBadgePushes?: boolean;
 };
 
 export type UserDeviceDto = {
     id: string;
+};
+
+export type UnregisterDeviceDto = {
+    deviceId: string;
+    expoPushToken: string;
 };
 
 export type TestPushNotificationDto = {
@@ -7317,6 +7326,30 @@ export type UserRegisterDeviceResponses = {
 };
 
 export type UserRegisterDeviceResponse = UserRegisterDeviceResponses[keyof UserRegisterDeviceResponses];
+
+export type UserUnregisterDeviceData = {
+    body: UnregisterDeviceDto;
+    path?: never;
+    query?: never;
+    url: '/user/unregisterDevice';
+};
+
+export type UserUnregisterDeviceErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserUnregisterDeviceError = UserUnregisterDeviceErrors[keyof UserUnregisterDeviceErrors];
+
+export type UserUnregisterDeviceResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserUnregisterDeviceResponse = UserUnregisterDeviceResponses[keyof UserUnregisterDeviceResponses];
 
 export type UserSendPushNotificationAdminData = {
     body: TestPushNotificationDto;

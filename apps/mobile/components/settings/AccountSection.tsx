@@ -19,6 +19,7 @@ import {
   type LinkFeedback,
 } from "../../lib/oauthLink";
 import { thrownFailure } from "../../lib/oauthResult";
+import { onAppActive } from "../../lib/onAppActive";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Card, { CardStyle } from "../system/Card";
 import OAuthProviderIcon from "../system/OAuthProviderIcon";
@@ -116,14 +117,7 @@ export default function AccountSection(props: {
       focusedBefore.current = true;
     }, [reload]),
   );
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        void reload();
-      }
-    });
-    return () => subscription.remove();
-  }, [reload]);
+  useEffect(() => onAppActive(AppState, () => void reload()), [reload]);
 
   const connect = async (provider: OAuthProvider) => {
     setFeedback(null);

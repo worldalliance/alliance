@@ -1,4 +1,3 @@
-import { userRegisterDevice } from "@alliance/shared/client";
 import Constants from "expo-constants";
 import { isDevice, modelId, modelName } from "expo-device";
 import {
@@ -8,10 +7,14 @@ import {
   requestPermissionsAsync,
   setNotificationChannelAsync,
 } from "expo-notifications";
-import { useCallback, useEffect } from "react";
-import { Platform } from "react-native";
+import { useEffect } from "react";
+import { AppState, Platform } from "react-native";
+import { keepsAppIconBadgeClear } from "../lib/appIconBadge";
 import { useAuth } from "../lib/AuthContext";
-import { SecureStorage, SecureStorageKey } from "../lib/SecureStorage";
+import { onAppActive } from "../lib/onAppActive";
+import { registerDevice, retryPending } from "../lib/registeredDevice";
+import { currentSession } from "../lib/session";
+import { useClearAppIconBadgeWhileSignedOut } from "../lib/taskBadge";
 import { isVisualTestMode } from "../lib/visualTest";
 
 function handleRegistrationError(errorMessage: string) {
@@ -62,29 +65,16 @@ async function registerForPushNotificationsAsync() {
 }
 
 export default function DeviceRegistration() {
-  const { isAuthenticated } = useAuth();
+  const auth = useAuth();
+  const { isAuthenticated } = auth;
+  useClearAppIconBadgeWhileSignedOut(keepsAppIconBadgeClear(auth));
 
-  const registerToken = useCallback(async (token?: string) => {
-    if (!token) {
+  useEffect(() => {
+    if (isVisualTestMode || Platform.OS === "web") {
       return;
     }
-    try {
-      const deviceId = await SecureStorage.getItem(SecureStorageKey.DEVICE_ID);
-      const resp = await userRegisterDevice({
-        body: {
-          deviceType: modelId ?? modelName,
-          expoPushToken: token,
-          deviceId: deviceId ?? undefined,
-        },
-      });
-      if (resp.data) {
-        const id = resp.data.id;
-        await SecureStorage.setItem(SecureStorageKey.DEVICE_ID, id);
-        await SecureStorage.setItem(SecureStorageKey.REGISTERED_TOKEN, token);
-      }
-    } catch (e) {
-      console.error("push device registration failed", e);
-    }
+    void retryPending();
+    return onAppActive(AppState, () => void retryPending());
   }, []);
 
   useEffect(() => {
@@ -92,10 +82,18 @@ export default function DeviceRegistration() {
       return;
     }
 
+    const session = currentSession();
     registerForPushNotificationsAsync()
-      .then((token) => registerToken(token))
+      .then((token) => {
+        if (token) {
+          return registerDevice({
+            params: { deviceType: modelId ?? modelName, expoPushToken: token },
+            session,
+          });
+        }
+      })
       .catch((error: any) => console.error(error));
-  }, [isAuthenticated, registerToken]);
+  }, [isAuthenticated]);
 
   return null;
 }

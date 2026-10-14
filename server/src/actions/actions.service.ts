@@ -354,6 +354,12 @@ const COMPLETION_BLOCK_MESSAGE: Record<CompletionBlock, string> = {
  */
 const MIN_HOME_FEED_SOURCE_USERS = 10;
 
+const MEMBER_FEED_RELATIONS = {
+  events: true,
+  followUpForms: true,
+  reviewers: true,
+} satisfies Omit<Relations<Action>, "usersCompleted" | "status">;
+
 type FeedMemberPageRow = {
   userId: number | string;
   latestAt: Date | string;
@@ -1068,17 +1074,50 @@ export class ActionsService {
     userId?: number,
     sorted?: boolean,
   ): Promise<ActionDto[]> {
-    const relations: Omit<Relations<Action>, "usersCompleted" | "status"> = {
-      events: true,
-      followUpForms: true,
-      reviewers: true,
-    };
     const actions = sorted
-      ? await this.findAllSorted(relations)
+      ? await this.findAllSorted(MEMBER_FEED_RELATIONS)
       : await this.actionRepository
-          .find({ relations, relationLoadStrategy: "query" })
+          .find({
+            relations: MEMBER_FEED_RELATIONS,
+            relationLoadStrategy: "query",
+          })
           .then((rows) => rows.map(parseAction));
+    return this.buildMemberFeed(actions, userId);
+  }
 
+  /** The actions in their member-action phase, the only ones the task badge counts. */
+  async findOpenActionIds(): Promise<number[]> {
+    const actions = await this.actionRepository.find({
+      select: { id: true, events: { id: true, date: true, newStatus: true } },
+      relations: { events: true },
+    });
+    return actions
+      .filter((action) => action.status === ActionStatus.MemberAction)
+      .map((action) => action.id);
+  }
+
+  /** The member feed for the given actions, keeping those still open. */
+  async findMemberOpen(params: {
+    userId: number;
+    openActionIds: number[];
+  }): Promise<ActionDto[]> {
+    const actions = await this.actionRepository
+      .find({
+        where: { id: In(params.openActionIds) },
+        relations: MEMBER_FEED_RELATIONS,
+        relationLoadStrategy: "query",
+      })
+      .then((rows) => rows.map(parseAction));
+    return this.buildMemberFeed(
+      actions.filter((action) => action.status === ActionStatus.MemberAction),
+      params.userId,
+    );
+  }
+
+  private async buildMemberFeed(
+    actions: ParsedAction[],
+    userId?: number,
+  ): Promise<ActionDto[]> {
     const user = userId
       ? await this.userService.findOne(userId, {
           tags: true,
