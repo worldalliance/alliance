@@ -1,4 +1,4 @@
-import { chromium, type Page } from "@playwright/test";
+import { chromium, errors, type Page } from "@playwright/test";
 import { milliseconds } from "date-fns";
 import { promises as fs } from "fs";
 import path from "path";
@@ -201,24 +201,70 @@ const startFrontend = async () => {
 /*  Screenshot capture                                                 */
 /* ------------------------------------------------------------------ */
 
-// fullPage capture never scrolls, so images below the fold stay outside the
-// lazy-loading threshold and would be captured blank.
-const settleImages = async (page: Page) => {
-  await page.evaluate(() => {
-    for (const img of document.querySelectorAll<HTMLImageElement>(
-      'img[loading="lazy"]',
-    )) {
-      img.loading = "eager";
-    }
-  });
+const waitForNetworkIdle = (page: Page) =>
+  page
+    .waitForLoadState("networkidle", {
+      timeout: milliseconds({ seconds: 20 }),
+    })
+    .catch(() => {
+      // Some pages keep background requests open; ignore.
+    });
 
+const waitForSpinners = async (page: Page) => {
   try {
     await page.waitForFunction(
-      () => Array.from(document.images).every((img) => img.complete),
+      () => !document.querySelector(".animate-spin"),
+      undefined,
+      { timeout: milliseconds({ seconds: 20 }) },
+    );
+  } catch (error) {
+    if (!(error instanceof errors.TimeoutError)) throw error;
+    throw new Error(`${page.url()} still showed a spinner after 20s`);
+  }
+};
+
+// The app's auth spinner can clear just before the page starts fetching its
+// own data, so one idle-then-no-spinner pass can land in that gap.
+const settleContent = async (page: Page) => {
+  for (let pass = 0; pass < 2; pass++) {
+    await waitForNetworkIdle(page);
+    await waitForSpinners(page);
+  }
+};
+
+// fullPage capture never scrolls, so lazy images below the fold would never
+// load, and async-decoded ones can be captured before they paint.
+const settleImages = async (page: Page) => {
+  try {
+    await page.waitForFunction(
+      async () => {
+        for (;;) {
+          const images = Array.from(document.images);
+          for (const img of images) {
+            img.loading = "eager";
+            img.decoding = "sync";
+          }
+          const results = await Promise.allSettled(
+            images.map((img) => img.decode()),
+          );
+          const broken = images
+            .filter((_, i) => results[i].status === "rejected")
+            .map((img) => img.currentSrc || img.src);
+          if (broken.length > 0) {
+            throw new Error(`images failed to load: ${broken.join(", ")}`);
+          }
+          await new Promise(requestAnimationFrame);
+          if (Array.from(document.images).every((img) => images.includes(img)))
+            return true;
+        }
+      },
       undefined,
       { timeout: milliseconds({ seconds: 30 }) },
     );
-  } catch {
+  } catch (error) {
+    if (!(error instanceof errors.TimeoutError)) {
+      throw new Error(`${page.url()}: ${String(error)}`);
+    }
     const pending = await page.evaluate(() =>
       Array.from(document.images)
         .filter((img) => !img.complete)
@@ -297,15 +343,8 @@ const takeScreenshots = async () => {
               timeout: target.waitForTimeoutMs ?? milliseconds({ seconds: 20 }),
             });
           }
-          await page
-            .waitForLoadState("networkidle", {
-              timeout: milliseconds({ seconds: 20 }),
-            })
-            .catch(() => {
-              // Some pages keep background requests open; ignore.
-            });
+          await settleContent(page);
           await settleImages(page);
-          await page.waitForTimeout(100);
           await page.screenshot({ path: filePath, fullPage: true });
         } finally {
           await page.close();
