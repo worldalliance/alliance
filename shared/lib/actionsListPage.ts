@@ -1,5 +1,6 @@
 import {
   QueryClient,
+  UseQueryOptions,
   UseQueryResult,
   useMutation,
   useQuery,
@@ -17,17 +18,19 @@ import {
   withOptimisticDismissal,
   withOptimisticRelation,
 } from "./actionUtils";
+import { thrownRefusalMessage } from "./hey-api";
 import { queryKeys } from "./queryKeys";
 
 export const useActionsQuery = (options?: {
-  refetchInterval?: number | false;
+  refetchInterval?: UseQueryOptions<ActionDto[], Error>["refetchInterval"];
 }): UseQueryResult<ActionDto[], Error> =>
   useQuery({
     queryKey: queryKeys.actions(),
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       actionsFindAllLoggedIn({
         query: { sorted: true },
         throwOnError: true,
+        signal,
       }).then((response) =>
         response.data.filter(
           (action) => action.status !== "draft" || action.viewer?.staffPreview,
@@ -47,9 +50,9 @@ export function useDismissActionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (actionId: number) =>
-      actionsDismissAction({ path: { id: actionId } }),
+      actionsDismissAction({ path: { id: actionId }, throwOnError: true }),
     onSuccess: (_data, actionId) =>
-      patchCachedAction({
+      applyConfirmedChange({
         queryClient,
         actionId,
         patch: withOptimisticDismissal,
@@ -57,22 +60,36 @@ export function useDismissActionMutation() {
   });
 }
 
-export function useMarkActionCompleted(): (actionId: number) => void {
+export const dismissActionErrorMessage = (error: unknown): string =>
+  thrownRefusalMessage({
+    error,
+    fallback: "Couldn't dismiss this task. Please try again.",
+    sessionExpired: "Your session has expired. Sign in again.",
+  });
+
+/** Applies a completion or withdrawal the server has just confirmed. */
+export function useRecordActionRelation(): (
+  actionId: number,
+  relation: "completed" | "declined",
+) => void {
   const queryClient = useQueryClient();
   return useCallback(
-    (actionId) => {
-      patchCachedAction({
+    (actionId, relation) =>
+      applyConfirmedChange({
         queryClient,
         actionId,
-        patch: (action) => withOptimisticRelation(action, "completed"),
-      });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.actions() });
-    },
+        patch: (action) => withOptimisticRelation(action, relation),
+      }),
     [queryClient],
   );
 }
 
-function patchCachedAction(params: {
+/**
+ * Patches the cached list, then refetches. The invalidation cancels any
+ * fetch already in flight, whose response predates the change and would
+ * otherwise restore the action.
+ */
+function applyConfirmedChange(params: {
   queryClient: QueryClient;
   actionId: number;
   patch: (action: ActionDto) => ActionDto;
@@ -83,6 +100,7 @@ function patchCachedAction(params: {
     (prev) =>
       prev?.map((action) => (action.id === actionId ? patch(action) : action)),
   );
+  void queryClient.invalidateQueries({ queryKey: queryKeys.actions() });
 }
 
 export const filterActions = (

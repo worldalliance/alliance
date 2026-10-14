@@ -4,8 +4,8 @@ import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
 import { FollowUpFormDto } from "@alliance/shared/client";
 import {
+  dismissActionErrorMessage,
   useInvalidateActions,
-  useMarkActionCompleted,
 } from "@alliance/shared/lib/actionsListPage";
 import {
   ActionWithAwayStatus,
@@ -17,6 +17,7 @@ import {
 } from "@alliance/shared/lib/copy";
 import {
   compareFollowUpFormsByStartDateDesc,
+  homeItemKey,
   useHomePageActions,
 } from "@alliance/shared/lib/homePage";
 import { getTaskDismissInfo } from "@alliance/shared/lib/largeActionCard";
@@ -31,7 +32,6 @@ import LargeGeneralUpdateCard from "@alliance/sharedweb/ui/LargeGeneralUpdateCar
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useQueryClient } from "@tanstack/react-query";
-import { milliseconds } from "date-fns";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { href, Link } from "react-router";
 import FollowUpFormPanel from "../../components/FollowUpFormPanel";
@@ -78,9 +78,7 @@ function TaskNavigatorListShell({ children }: { children: ReactNode }) {
 const HomePage = () => {
   const queryClient = useQueryClient();
   const invalidateActions = useInvalidateActions();
-  const markActionCompleted = useMarkActionCompleted();
-  const { warning } = useToast();
-  const hasNoTasks = useRef(true);
+  const { warning, error: toastError } = useToast();
   const {
     actions: liveActions,
     generalUpdates,
@@ -88,9 +86,7 @@ const HomePage = () => {
     actionsFailure,
     handleDismissAction,
     handleDismissGeneralUpdate,
-  } = useTaskActionsData({
-    refetchInterval: hasNoTasks.current ? milliseconds({ minutes: 1 }) : false,
-  });
+  } = useTaskActionsData();
 
   const mocked = useMockTasks();
   const actions = mocked ? MOCK_TASKS : liveActions;
@@ -210,19 +206,22 @@ const HomePage = () => {
     return [...actionCards, ...followUpCards];
   }, [todoActions, activeCompletableFollowUpForms]);
 
-  hasNoTasks.current = taskNavigatorItems.length === 0;
-
+  const taskNavigatorKeys = useMemo(
+    () => taskNavigatorItems.map(homeItemKey),
+    [taskNavigatorItems],
+  );
   const { index: taskNavigatorIndex, setIndex: setTaskNavigatorIndex } =
-    useBoundedIndex(taskNavigatorItems.length);
+    useBoundedIndex(taskNavigatorKeys);
 
   const sortedGeneralUpdates = useMemo(
     () => [...(generalUpdates ?? [])].sort(homePagePriorityComparator),
     [generalUpdates],
   );
 
-  const selectedTaskNavigatorItem = hasNoTasks.current
-    ? undefined
-    : taskNavigatorItems[taskNavigatorIndex];
+  const selectedTaskNavigatorItem =
+    taskNavigatorItems.length === 0
+      ? undefined
+      : taskNavigatorItems[taskNavigatorIndex];
 
   const taskNavigatorListContent = useMemo(() => {
     const activeActionId =
@@ -452,6 +451,8 @@ const HomePage = () => {
                         onDismiss: () =>
                           handleDismissAction(
                             selectedTaskNavigatorItem.action.id,
+                          ).catch((caught: unknown) =>
+                            toastError(dismissActionErrorMessage(caught)),
                           ),
                       }
                     : undefined
@@ -460,7 +461,6 @@ const HomePage = () => {
                   selectedTaskNavigatorItem.action.userRelation ?? "none"
                 }
                 onCompleteAction={() => {
-                  markActionCompleted(selectedTaskNavigatorItem.action.id);
                   resetHomeFeed(queryClient);
                 }}
                 onUpdateActionState={() => {
@@ -577,8 +577,8 @@ const HomePage = () => {
     taskNavigatorListContent,
     queryClient,
     invalidateActions,
-    markActionCompleted,
     warning,
+    toastError,
     activeCompletableFollowUpForms,
     isLargeScreen,
     mocked,

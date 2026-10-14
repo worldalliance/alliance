@@ -132,6 +132,23 @@ export type HomeSequenceItem =
   | { kind: "action"; action: ActionWithAwayStatus }
   | { kind: "generalUpdate"; generalUpdate: ParsedGeneralUpdate };
 
+export function homeItemKey(
+  item:
+    | HomeSequenceItem
+    | { kind: "followUpForm"; followUpForm: Pick<FollowUpFormDto, "id"> },
+): string {
+  switch (item.kind) {
+    case "action":
+      return `action-${item.action.id}`;
+    case "generalUpdate":
+      return `generalUpdate-${item.generalUpdate.id}`;
+    case "followUpForm":
+      return `followUpForm-${item.followUpForm.id}`;
+    default:
+      throw new Error(`unknown kind: ${item satisfies never}`);
+  }
+}
+
 export function interleaveActionsAndUpdates(params: {
   todoActions: ActionWithAwayStatus[];
   generalUpdates: ParsedGeneralUpdate[];

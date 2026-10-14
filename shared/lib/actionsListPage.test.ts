@@ -5,7 +5,7 @@ import {
   filterActions,
   useDismissActionMutation,
   useInvalidateActions,
-  useMarkActionCompleted,
+  useRecordActionRelation,
 } from "./actionsListPage";
 import { queryKeys } from "./queryKeys";
 import { makeAction, makeViewer } from "./testFixtures";
@@ -71,10 +71,11 @@ it("marks only the given cached action completed and marks the list stale", () =
   const { client, wrapper } = queryWrapper();
   const other = makeAction({ id: 2 });
   client.setQueryData(queryKeys.actions(), [makeAction({ id: 1 }), other]);
-  const markCompleted = renderHook(() => useMarkActionCompleted(), { wrapper })
-    .result.current;
+  const recordRelation = renderHook(() => useRecordActionRelation(), {
+    wrapper,
+  }).result.current;
 
-  act(() => markCompleted(1));
+  act(() => recordRelation(1, "completed"));
 
   const [marked, untouched] =
     client.getQueryData<ActionDto[]>(queryKeys.actions()) ?? [];
@@ -102,4 +103,21 @@ it("dismisses an action on the server, then hides it in the cached list", async 
   expect(client.getQueryData<ActionDto[]>(queryKeys.actions())?.[0]).toEqual(
     withOptimisticDismissal(makeAction({ id: 1 })),
   );
+});
+
+it("leaves the cached action alone when the server refuses the dismissal", async () => {
+  api.alsoServing({
+    "POST /actions/dismiss/:id": () =>
+      Response.json({ message: "Nope" }, { status: 500 }),
+  });
+  const { client, wrapper } = queryWrapper();
+  client.setQueryData(queryKeys.actions(), [makeAction({ id: 1 })]);
+  const view = renderHook(() => useDismissActionMutation(), { wrapper });
+
+  await act(() => view.result.current.mutateAsync(1).catch(() => {}));
+
+  await waitFor(() => expect(view.result.current.isError).toBe(true));
+  expect(client.getQueryData<ActionDto[]>(queryKeys.actions())).toEqual([
+    makeAction({ id: 1 }),
+  ]);
 });

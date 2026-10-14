@@ -25,7 +25,7 @@ export function msUntilNextTimestamp(
  * `timestamps` and `onPassed` are effect dependencies — memoize both (e.g.
  * via `useMemo`/`useCallback`) or the timer re-arms on every render.
  */
-function useOnNextTimestamp(
+export function useOnNextTimestamp(
   timestamps: (number | null | undefined)[] | undefined,
   onPassed: () => void,
 ): void {

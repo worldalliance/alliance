@@ -1,7 +1,9 @@
+import { countsTowardTaskBadge } from "@alliance/common/taskBadge";
 import type {
   ActionStatus,
   UserActionRelationDetailDto,
   UserActionRelationPillStatus,
+  UserActionStatusDto,
   UserActionSummaryDto,
 } from "../client/types.gen";
 import {
@@ -210,6 +212,38 @@ describe("viewer-based action predicates", () => {
     expect(shouldCompleteAction(action)).toBe(false);
     expect(showActionInSidebarList(action)).toBe(false);
   });
+});
+
+const withViewer = (patch: Partial<UserActionStatusDto>) =>
+  makeAction({ viewer: makeViewer(patch) });
+
+it.each([
+  makeAction(),
+  makeAction({ status: "office_action", shouldCompleteAfterDeadline: true }),
+  makeAction({ publicOnly: true }),
+  makeAction({ onboarding: true }),
+  makeAction({ optional: true }),
+  makeAction({ shouldCompleteAfterDeadline: true }),
+  withViewer({ assigned: false }),
+  withViewer({ dismissed: true }),
+  withViewer({ contractGap: true }),
+  withViewer({ canComplete: false }),
+  withViewer({ memberActionStarted: false }),
+  withViewer({ staffPreview: true }),
+  withViewer({ relation: "completed" }),
+  withViewer({ relation: "withdrawn" }),
+  withViewer({ away: "away_currently" }),
+  withViewer({ away: "away_previously" }),
+  withViewer({ away: "away_later" }),
+  withViewer({ optional: true, optionalReason: "contract_gap" }),
+  withViewer({ deadlinePassed: true }),
+  withViewer({ display: "optional_task" }),
+  withViewer({ deadlineAt: new Date(Date.now() + 60_000).toISOString() }),
+])("counts only actions Home lists among its tasks (case %#)", (action) => {
+  expect(
+    countsTowardTaskBadge(action, new Date()) &&
+      !showActionInSidebarList(action),
+  ).toBe(false);
 });
 
 // The optimistic patches must flip the predicates the same way the next real

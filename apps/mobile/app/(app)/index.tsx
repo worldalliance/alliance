@@ -1,14 +1,16 @@
 import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
 import type { FollowUpFormDto } from "@alliance/shared/client";
-import { actionsDismissAction } from "@alliance/shared/client";
 import {
+  dismissActionErrorMessage,
   useActionsQuery,
+  useDismissActionMutation,
   useInvalidateActions,
 } from "@alliance/shared/lib/actionsListPage";
 import { type ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { ParsedHomeFeedItemDto } from "@alliance/shared/lib/feedHelpers";
 import {
+  homeItemKey,
   type HomeSequenceItem,
   interleaveActionsAndUpdates,
   useHomePageActions,
@@ -20,7 +22,6 @@ import useHomeFeed, { resetHomeFeed } from "@alliance/shared/lib/useHomeFeed";
 import { useInvalidateTaskForms } from "@alliance/shared/lib/useTaskForm";
 import { LegendList, type LegendListRef } from "@legendapp/list";
 import { useQueryClient } from "@tanstack/react-query";
-import { milliseconds } from "date-fns";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -68,7 +69,6 @@ export default function HomeScreen() {
   const invalidateActions = useInvalidateActions();
   const [refreshing, setRefreshing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const hasNoTasks = useRef(true);
 
   const handleSubmitSuccess = useCallback(() => {
     setShowSuccess(true);
@@ -77,9 +77,7 @@ export default function HomeScreen() {
   const handleSuccessComplete = useCallback(() => {
     setShowSuccess(false);
   }, []);
-  const actionsQuery = useActionsQuery({
-    refetchInterval: hasNoTasks.current ? milliseconds({ minutes: 1 }) : false,
-  });
+  const actionsQuery = useActionsQuery();
   const {
     data: actions,
     isPending,
@@ -111,20 +109,14 @@ export default function HomeScreen() {
     dismissGeneralUpdate: handleDismissGeneralUpdate,
   } = useUnreadGeneralUpdates();
 
+  const { mutate: dismissAction } = useDismissActionMutation();
   const handleDismissAction = useCallback(
-    async (actionId: number) => {
-      const action = actions?.find((a) => a.id === actionId);
-      if (!action) {
-        return;
-      }
-
-      await actionsDismissAction({
-        path: { id: action.id },
-      });
-
-      refetch();
-    },
-    [actions, refetch],
+    (actionId: number) =>
+      dismissAction(actionId, {
+        onError: (error) =>
+          Alert.alert("Error", dismissActionErrorMessage(error)),
+      }),
+    [dismissAction],
   );
 
   const loading =
@@ -157,8 +149,7 @@ export default function HomeScreen() {
 
     return [...actionAndUpdateItems, ...followUpItems];
   }, [todoActions, generalUpdates, activeCompletableFollowUpForms]);
-
-  hasNoTasks.current = allItems.length === 0;
+  const allItemKeys = useMemo(() => allItems.map(homeItemKey), [allItems]);
 
   const {
     index: safeIndex,
@@ -167,7 +158,7 @@ export default function HomeScreen() {
     canGoNext,
     canGoPrev,
     hasMultiple: showTaskNavigator,
-  } = useBoundedIndex(allItems.length);
+  } = useBoundedIndex(allItemKeys);
   const currentItem = allItems[safeIndex] ?? null;
 
   const scrollViewRef = useRef<KeyboardAwareScrollViewRef>(null);

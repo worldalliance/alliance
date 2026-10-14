@@ -1,27 +1,38 @@
 import { useCallback, useEffect, useState } from "react";
 
 /**
- * Manages an index into a list of length N, clamped to [0, N-1].
- * When the list length shrinks (e.g. after removing an item), the index
- * is adjusted to stay in bounds.
+ * Manages a selection in a list of keyed items. The selection follows its
+ * item when others are added or removed around it; when the item itself
+ * leaves, the selection stays at its position, clamped to the list.
  */
-export function useBoundedIndex(length: number) {
-  const [index, setIndex] = useState(0);
-  const safeIndex = Math.min(index, Math.max(0, length - 1));
+export function useBoundedIndex(keys: readonly string[]) {
+  const [selected, setSelected] = useState<{
+    key: string | null;
+    index: number;
+  }>({ key: null, index: 0 });
+  const length = keys.length;
+  const found = selected.key === null ? -1 : keys.indexOf(selected.key);
+  const safeIndex =
+    found >= 0 ? found : Math.min(selected.index, Math.max(0, length - 1));
 
   useEffect(() => {
-    if (length > 0 && index >= length) {
-      setIndex(Math.max(0, length - 1));
+    if (length > 0 && (found < 0 || found !== selected.index)) {
+      setSelected({ key: keys[safeIndex], index: safeIndex });
     }
-  }, [length, index]);
+  }, [keys, length, found, safeIndex, selected.index]);
+
+  const setIndex = useCallback(
+    (index: number) => setSelected({ key: keys[index] ?? null, index }),
+    [keys],
+  );
 
   const goNext = useCallback(() => {
-    setIndex((i) => Math.min(length - 1, i + 1));
-  }, [length]);
+    setIndex(Math.min(length - 1, safeIndex + 1));
+  }, [setIndex, length, safeIndex]);
 
   const goPrev = useCallback(() => {
-    setIndex((i) => Math.max(0, i - 1));
-  }, []);
+    setIndex(Math.max(0, safeIndex - 1));
+  }, [setIndex, safeIndex]);
 
   return {
     index: safeIndex,

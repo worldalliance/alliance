@@ -2098,6 +2098,7 @@ export type UserActionStatusDto = {
     assigned: boolean;
     optional: boolean;
     optionalReason: ViewerOptionalReason | null;
+    contractGap: boolean;
     canComplete: boolean;
     relation: ViewerActionRelation;
     withdrawal?: UserActionWithdrawalDto;

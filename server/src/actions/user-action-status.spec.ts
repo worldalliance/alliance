@@ -140,6 +140,7 @@ describe("resolveUserActionStatus", () => {
       assigned: true,
       optional: false,
       optionalReason: null,
+      contractGap: false,
       canComplete: true,
       relation: ViewerActionRelation.None,
       withdrawal: null,
@@ -212,6 +213,7 @@ describe("resolveUserActionStatus", () => {
       expect(status.assigned).toBe(true);
       expect(status.optional).toBe(true);
       expect(status.optionalReason).toBe(ViewerOptionalReason.ContractGap);
+      expect(status.contractGap).toBe(true);
       expect(status.canComplete).toBe(true);
       expect(status.display).toBe(UserActionRelationPillStatus.OptionalTask);
     });
@@ -236,15 +238,17 @@ describe("resolveUserActionStatus", () => {
       expect(status.assigned).toBe(false);
       expect(status.optional).toBe(false);
       expect(status.optionalReason).toBeNull();
+      expect(status.contractGap).toBe(false);
     });
 
-    it("reports no reason on an action that is optional for everyone", () => {
+    it("reports no reason on an action that is optional for everyone, but still flags the gap", () => {
       const status = resolve({
         action: makeAction({ optional: true }),
         user: joinedMidWindow(),
       });
       expect(status.optional).toBe(true);
       expect(status.optionalReason).toBeNull();
+      expect(status.contractGap).toBe(true);
     });
   });
 
@@ -261,6 +265,7 @@ describe("resolveUserActionStatus", () => {
     });
     expect(status.assigned).toBe(true);
     expect(status.canComplete).toBe(true);
+    expect(status.contractGap).toBe(false);
   });
 
   it("preventCompletion blocks completion but not assignment", () => {

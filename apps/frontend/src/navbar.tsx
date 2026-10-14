@@ -1,24 +1,18 @@
-import { showActionInSidebarList } from "@alliance/shared/lib/actionUtils";
 import { NotificationsProvider } from "@alliance/shared/lib/useNotifications";
+import { useTaskBadgeCount } from "@alliance/shared/lib/useTaskBadgeCount";
 import { cn } from "@alliance/shared/styles/util";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useNavigation } from "react-router";
 import NavbarTopBar from "./components/NavbarTopBar";
 import NavbarVertical from "./components/NavbarVertical";
 import { RefreshNotificationsOnOpening } from "./lib/linkOpenings";
 import { NavbarOptionsProvider } from "./lib/NavbarOptionsContext";
-import { useTaskActionsData } from "./lib/useTaskActionsData";
 import { Walkthrough } from "./onboarding/walkthrough/Walkthrough";
 
 function Navbar() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const { actions } = useTaskActionsData();
-
-  const nTasks = useMemo(
-    () => (actions ? actions.filter(showActionInSidebarList).length : 0),
-    [actions],
-  );
+  const nTasks = useTaskBadgeCount() ?? 0;
 
   useEffect(() => {
     const href = nTasks > 0 ? "/planet-earth-notif.png" : "/planet-earth.png";

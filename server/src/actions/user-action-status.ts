@@ -59,6 +59,12 @@ export type UserActionStatus = {
    */
   optionalReason: ViewerOptionalReason | null;
   /**
+   * Assigned optionally because the viewer's contract misses part of the
+   * member-action window. Unlike
+   * `optionalReason`, also set where `Action.optional` is true.
+   */
+  contractGap: boolean;
+  /**
    * May the viewer complete this action? Deliberately looser than `assigned`:
    * members without an active contract may still complete regular actions —
    * they're just not expected to (no home-page listing, no reminders, no
@@ -307,6 +313,7 @@ export function resolveUserActionStatus(params: {
   return {
     assigned,
     ...optionality,
+    contractGap: assignment === ActionAssignment.Optional,
     canComplete: computeCanCompleteAction({
       action,
       user,
