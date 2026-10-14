@@ -1,7 +1,7 @@
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { cn } from "@alliance/shared/styles/util";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
-import { DocProse } from "../../../site/DocProse";
+import { DocProse, DocProseSize } from "../../../site/DocProse";
 import { SiteFooter } from "../../../site/Footer";
 import { WAITLIST_HREF } from "../../../site/links";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
@@ -10,16 +10,11 @@ import {
   BandHeadingSize,
   SiteRoot,
 } from "../../../site/PageShell";
-import {
-  DisplayHeading,
-  SITE_COL,
-  SiteSubtitle,
-  SubtitleSize,
-} from "../../../site/ui";
+import { DisplayHeading, SITE_COL } from "../../../site/ui";
 import { MEMBER_GOAL_LABEL } from "./GrantmakingMemberProgress";
 import { MemberWaitlistBar } from "./MemberWaitlistBar";
-import { PersonRow } from "./PersonRow";
-import { ABOUT_SECTIONS, FEATURED_PEOPLE } from "./placeholders";
+// import { PersonRow } from "./PersonRow";
+import { ABOUT_SECTIONS /* , FEATURED_PEOPLE */ } from "./placeholders";
 import { ProjectTimeline } from "./ProjectTimeline";
 import { useWaitlistCount } from "./useWaitlist";
 import { WaitlistSignupForm } from "./WaitlistSignupForm";
@@ -43,7 +38,7 @@ function ProjectProgress() {
     );
   }
   return (
-    <p className="site-sans text-sm text-white/80">
+    <p className="site-sans text-base text-[var(--site-ink)]/70">
       {members.isError || waitlist.isError
         ? "Member and waitlist counts unavailable"
         : "Loading member and waitlist counts…"}
@@ -51,25 +46,25 @@ function ProjectProgress() {
   );
 }
 
-function FeaturedPeople({ className }: { className?: string }) {
-  return (
-    <ul className={cn("flex flex-wrap gap-x-8 gap-y-3", className)}>
-      {FEATURED_PEOPLE.map((person) => (
-        <li key={person.name} className="first:basis-full lg:first:basis-auto">
-          <PersonRow person={person} />
-        </li>
-      ))}
-    </ul>
-  );
-}
+// function FeaturedPeople() {
+//   return (
+//     <ul className="flex flex-wrap justify-center gap-x-10 gap-y-4">
+//       {FEATURED_PEOPLE.map((person) => (
+//         <li key={person.name}>
+//           <PersonRow person={person} />
+//         </li>
+//       ))}
+//     </ul>
+//   );
+// }
 
 export default function DemocraticGrantmaking26() {
   return (
     <SiteRoot className="bg-white">
-      <Navbar overPrimary />
+      <Navbar />
       <main>
         <div
-          className="bg-[var(--site-primary)] pb-10 text-white lg:flex lg:min-h-svh lg:flex-col lg:pb-0"
+          className="bg-white pb-10 lg:flex lg:min-h-svh lg:flex-col lg:pb-0"
           style={{ paddingTop: NAV_HEIGHT }}
         >
           <div
@@ -79,28 +74,31 @@ export default function DemocraticGrantmaking26() {
             <div
               className={cn(
                 PROJECT_COL,
-                "grid grid-cols-1 gap-y-6 pt-10 [@media(max-width:480px)_and_(max-height:700px)]:pt-6 lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-center lg:gap-x-[1.5%] lg:pt-[clamp(1.5rem,4svh,4rem)]",
+                "grid grid-cols-1 gap-y-6 pt-10 [@media(max-width:480px)_and_(max-height:700px)]:pt-6 lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-center lg:gap-x-[10%] lg:pt-[clamp(1.5rem,4svh,4rem)]",
               )}
             >
               <div className="flex flex-col gap-4 lg:gap-[clamp(1rem,2.5vh,2rem)]">
-                <p className="site-sans text-left text-[1.05rem] text-white/80 sm:text-[1.2rem] lg:-mb-2">
+                <p className="text-left text-[1.05rem] text-[var(--site-ink)]/70 sm:text-[1.2rem] lg:-mb-2">
                   An Alliance project · Fall 2026
                 </p>
                 <DisplayHeading
                   as="h1"
-                  onDark
                   leading={1.2}
                   className="text-5xl sm:text-6xl lg:text-[clamp(3rem,min(5vw,8vh),6rem)]"
                 >
-                  Help decide where to donate{" "}
-                  <span className="site-display text-green">$100,000</span>
+                  Decide where to donate{" "}
+                  <span className="site-display">$100,000</span>
                 </DisplayHeading>
-                <SiteSubtitle size={SubtitleSize.Page} onDark>
-                  Nominate and vote on non-profits.
-                </SiteSubtitle>
-                <FeaturedPeople className="mt-4 hidden lg:flex" />
+                {/* <SiteSubtitle size={SubtitleSize.Page}>
+                  Once the Alliance reaches 1,000 members, we will nominate and
+                  vote on non-profits together.
+                </SiteSubtitle> */}
+                <p className="text-left text-2xl sm:text-3xl">
+                  Once the Alliance reaches 1,000 members, we will nominate and
+                  vote on non-profits together.
+                </p>
               </div>
-              <WaitlistSignupForm className="w-full lg:gap-[clamp(0.75rem,1.5vh,1.25rem)]" />
+              <WaitlistSignupForm className="w-full" />
             </div>
             <div
               className={cn(
@@ -111,41 +109,42 @@ export default function DemocraticGrantmaking26() {
               <ProjectProgress />
             </div>
           </div>
+          {/* <section
+            className={cn(PROJECT_COL, "mt-10 lg:mt-[clamp(1.5rem,4svh,3rem)]")}
+          >
+            <FeaturedPeople />
+          </section> */}
           <div
             className={cn(
               PROJECT_COL,
-              "mt-10 lg:mt-[clamp(1.5rem,4svh,3rem)] lg:pb-[clamp(1.5rem,6svh,6rem)]",
+              "mt-12 lg:mt-[clamp(2.25rem,6svh,3.75rem)] lg:pb-[clamp(1.5rem,6svh,6rem)]",
             )}
           >
             <ProjectTimeline currentIdx={0} />
           </div>
-          <section className={cn(PROJECT_COL, "mt-10 lg:hidden")}>
-            <BandHeading
-              onDark
-              size={BandHeadingSize.Section}
-              className="mb-6 text-center"
-            >
-              Experts
-            </BandHeading>
-            <FeaturedPeople />
-          </section>
         </div>
-        <div className={cn(PROJECT_COL, "py-6 md:py-[1.05rem] lg:py-12")}>
-          <div className="grid gap-10 md:grid-cols-2 md:gap-4">
+        <div
+          className={cn(
+            PROJECT_COL,
+            "pt-6 pb-20 md:pt-[1.05rem] md:pb-24 lg:pt-12 lg:pb-32",
+          )}
+        >
+          <div className="mx-auto flex max-w-4xl flex-col gap-12 md:gap-16">
             {ABOUT_SECTIONS.map(({ heading, body }) => (
               <section
                 key={heading}
-                className="flex flex-col items-start gap-5 md:rounded-[var(--site-radius-card)] md:bg-zinc-100 md:p-10 lg:px-12"
+                className="flex flex-col items-start gap-5 text-left"
               >
                 <BandHeading
                   size={BandHeadingSize.Section}
-                  className="text-[var(--site-primary)]"
+                  className="text-left"
                 >
                   {heading}
                 </BandHeading>
                 <DocProse
+                  size={DocProseSize.Large}
                   markdown={body}
-                  className="w-full md:max-w-lg text-left"
+                  className="w-full text-left"
                 />
               </section>
             ))}

@@ -23,7 +23,6 @@ import { RotateCw } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { ACCOUNT_BUTTON } from "../../../onboarding/chrome";
 import { useInviteSession } from "../../../site/invite/InviteSession";
-import { SiteArrow } from "../../../site/ui";
 import {
   useWaitlistBrowser,
   useWaitlistMailEnabled,
@@ -50,7 +49,7 @@ function ReferralBanner({ referral }: { referral: WaitlistReferralDto }) {
     organization &&
     organization.entryCount >= SOCIAL_PROOF_THRESHOLD;
   return (
-    <p className="mb-3 flex items-center justify-center gap-x-2 text-base text-white/85">
+    <p className="mb-3 flex items-center justify-center gap-x-2 text-base text-[var(--site-ink)]/70">
       {!inviterName && organization?.picture && (
         <AvatarProfile
           pfp={organization.picture}
@@ -63,12 +62,14 @@ function ReferralBanner({ referral }: { referral: WaitlistReferralDto }) {
       {counted ? (
         <span>
           Join {organization.entryCount.toLocaleString("en-US")} others from{" "}
-          <span className="font-medium text-white">{organization.name}</span>
+          <span className="font-medium text-[var(--site-ink)]">
+            {organization.name}
+          </span>
         </span>
       ) : (
         <span>
-          <span className="font-medium text-white">{inviter}</span> invited you
-          to the Alliance
+          <span className="font-medium text-[var(--site-ink)]">{inviter}</span>{" "}
+          invited you to the Alliance
         </span>
       )}
     </p>
@@ -147,7 +148,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
     });
   };
 
-  const card = cn("flex flex-col gap-3 text-white", className);
+  const card = cn("flex flex-col gap-2.5 text-[var(--site-ink)]", className);
 
   const confirmed = submit.isSuccess
     ? {
@@ -208,7 +209,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         <ReferralBanner referral={referral.data} />
       ) : (
         hasCode && (
-          <p className="mb-3 text-center text-base text-white/85">
+          <p className="mb-3 text-center text-base text-[var(--site-ink)]/70">
             Checking your invitation link…
           </p>
         )
@@ -243,15 +244,14 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
       />
       <Button
         type="submit"
-        color={ButtonColor.Green}
+        color={ButtonColor.Black}
         disabled={restoring || submit.isPending || !referralKnown || linkFailed}
-        className={ACCOUNT_BUTTON}
+        className={cn(ACCOUNT_BUTTON, "p-4 text-base sm:text-lg")}
       >
         {submit.isPending ? "Joining…" : "Join the Alliance waitlist"}
-        <SiteArrow className="size-2.5" />
       </Button>
       {submit.isError && !linkFailed && (
-        <p className="text-sm text-red-200" role="alert">
+        <p className="text-sm text-red-700" role="alert">
           {thrownRefusalMessage({
             error: submit.error,
             fallback: SUBMIT_FALLBACK,
@@ -259,7 +259,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
           })}
         </p>
       )}
-      <p className="text-center text-sm text-white/85">
+      <p className="text-center text-base text-[var(--site-ink)]/70">
         When we&apos;re ready, we&apos;ll send you an invite link.
       </p>
     </form>

@@ -58,8 +58,8 @@ export function WaitlistContactInput({
       <div
         className={cn(
           WAITLIST_FIELD,
-          "flex items-center px-0 focus-within:border-white",
-          error && "border-red-200",
+          "flex items-center px-0 focus-within:border-[var(--site-primary)]",
+          error && "border-red-700",
         )}
         onBlur={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget)) onBlur();
@@ -73,9 +73,8 @@ export function WaitlistContactInput({
               country={country}
               onChange={onCountryChange}
               disabled={disabled}
-              className="text-white"
             />
-            <span className="my-2 w-px self-stretch bg-white/45" aria-hidden />
+            <span className="my-2 w-px self-stretch bg-zinc-300" aria-hidden />
           </>
         )}
         <input
@@ -94,11 +93,11 @@ export function WaitlistContactInput({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           disabled={disabled}
-          className="h-full min-w-0 flex-1 bg-transparent! px-3.5 outline-none placeholder:text-white/80"
+          className="h-full min-w-0 flex-1 bg-transparent! px-3.5 outline-none placeholder:text-zinc-500"
         />
       </div>
       {error && (
-        <p id={ERROR_ID} className="text-sm text-red-200" role="alert">
+        <p id={ERROR_ID} className="text-sm text-red-700" role="alert">
           {error}
         </p>
       )}

@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import remarkGfm from "remark-gfm";
 
 export enum DocProseSize {
+  Large = "large",
   Default = "default",
   /** For a dialog, where the reader is mid-flow and scrolling is the cost. */
   Compact = "compact",
@@ -14,6 +15,12 @@ type ProseType = { h2: string; h3: string; body: string; rule: string };
 // `tailwind-merge` counts `text-[length]` as a font size and drops a `leading-*`
 // it merges over, so each line height travels with its own size.
 const PROSE: Record<DocProseSize, ProseType> = {
+  [DocProseSize.Large]: {
+    h2: "mt-12 text-[1.75rem] leading-tight sm:text-[2rem]",
+    h3: "mt-10 text-[1.5rem] leading-tight sm:text-[1.75rem]",
+    body: "mt-6 text-[1.25rem] leading-[1.65] sm:text-[1.5rem]",
+    rule: "mt-12",
+  },
   [DocProseSize.Default]: {
     h2: "mt-10 text-[1.5rem] leading-tight sm:text-[1.75rem]",
     h3: "mt-8 text-[1.2rem] leading-tight",

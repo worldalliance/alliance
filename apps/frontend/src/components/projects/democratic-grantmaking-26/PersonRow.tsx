@@ -15,11 +15,11 @@ export function PersonRow({ person }: { person: ProjectPerson }) {
           href={person.href}
           target="_blank"
           rel="noreferrer"
-          className="text-white underline decoration-white/40 underline-offset-2 hover:decoration-white"
+          className="text-[var(--site-ink)] underline decoration-[var(--site-ink)]/40 underline-offset-2 hover:decoration-[var(--site-ink)]"
         >
           {person.name}
         </a>
-        <span className="text-white/80">{person.role}</span>
+        <span className="text-[var(--site-ink)]/70">{person.role}</span>
       </div>
     </div>
   );
