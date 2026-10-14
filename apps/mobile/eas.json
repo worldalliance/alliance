@@ -28,6 +28,7 @@
     "staging": {
       "extends": "base",
       "distribution": "store",
+      "autoIncrement": true,
       "channel": "staging",
       "env": {
         "APP_VARIANT": "staging"
