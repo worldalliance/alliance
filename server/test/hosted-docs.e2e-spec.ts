@@ -4,6 +4,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { Client, type ClientConfig } from "pg";
 import { Readable } from "stream";
 import request from "supertest";
 import { HostedDoc } from "../src/hosted-docs/entities/hosted-doc.entity";
@@ -93,13 +94,41 @@ describe("Hosted docs (e2e)", () => {
         }),
       );
     };
+    const httpClose = http.close.bind(http);
+    http.close = (cb?: (err?: Error) => void) => {
+      dump("http.close called");
+      return httpClose((err?: Error) => {
+        dump(`http.close done ${err?.message ?? "ok"}`);
+        cb?.(err);
+      });
+    };
+    const poolEnd = pool.end.bind(pool);
+    pool.end = async (...args: unknown[]) => {
+      dump("pool.end called");
+      const result = await poolEnd(...args);
+      dump("pool.end done");
+      return result;
+    };
+    const activity = async () => {
+      const client = new Client({
+        ...(ctx.dataSource.options as ClientConfig),
+        user: (ctx.dataSource.options as { username?: string }).username,
+      });
+      await client.connect();
+      const { rows } = await client.query(
+        `SELECT pid, state, wait_event_type, wait_event, left(query, 120) AS query
+         FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()`,
+      );
+      await client.end();
+      console.log("[close-diag] pg_stat_activity", JSON.stringify(rows));
+    };
     dump("before close");
-    const activity = await ctx.dataSource.query(
-      `SELECT pid, state, wait_event_type, wait_event, left(query, 120) AS query
-       FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()`,
-    );
-    console.log("[close-diag] pg_stat_activity", JSON.stringify(activity));
-    const watchdog = setInterval(() => dump("still closing"), 5000);
+    const watchdog = setInterval(() => {
+      dump("still closing");
+      void activity().catch((err) =>
+        console.log("[close-diag] pg_stat_activity failed", err),
+      );
+    }, 5000);
     try {
       await ctx.app.close();
       dump("closed");
