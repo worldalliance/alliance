@@ -1,9 +1,16 @@
-import { Body, Controller, Post, Request, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  NotFoundException,
+  Post,
+  Request,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiOkResponse } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
 import { AuthGuard } from "src/auth/guards/auth.guard";
 import type { JwtRequest } from "src/auth/tokens";
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { PushOpenedDto } from "./dto/push-opened.dto";
 import { Push } from "./push.entity";
 
@@ -21,11 +28,12 @@ export class PushController {
     @Body() body: PushOpenedDto,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    const push = await this.pushRepository.findOneByOrFail({
-      id: body.cid,
-      user: { id: req.user.sub },
-    });
-    push.openedAt = new Date();
-    await this.pushRepository.save(push);
+    const { affected } = await this.pushRepository.update(
+      { id: body.cid, user: { id: req.user.sub }, deletedAt: IsNull() },
+      { openedAt: new Date() },
+    );
+    if (!affected) {
+      throw new NotFoundException("Push not found.");
+    }
   }
 }

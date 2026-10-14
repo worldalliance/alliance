@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { softDeleteCascade } from "src/datasources/soft-delete";
 import { isUniqueViolation } from "src/utils/db-errors";
 import type { Repository } from "src/utils/Repository";
 import {
@@ -71,8 +72,11 @@ export class CustomLinksService {
   }
 
   async remove(id: number): Promise<void> {
-    const deleted = await this.repository.delete(id);
-    if (!deleted.affected) throw new NotFoundException("Custom link not found");
+    const deleted = await softDeleteCascade(this.repository.manager, {
+      target: CustomLink,
+      ids: [id],
+    });
+    if (!deleted) throw new NotFoundException("Custom link not found");
   }
 
   async resolve(slug: string): Promise<Pick<CustomLink, "destination">> {

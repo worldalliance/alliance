@@ -10,7 +10,7 @@ import { CommunityService } from "src/community/community.service";
 import { Community } from "src/community/entities/community.entity";
 import { GroupJoinNotifsService } from "src/community/group-join-notifs.service";
 import { ContractService } from "src/contract/contract.service";
-import { lockLiveIds } from "src/datasources/soft-delete";
+import { lockForSave, lockLiveIds } from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
 import { Push } from "src/push/push.entity";
 import { PushService } from "src/push/push.service";
@@ -34,6 +34,7 @@ import { UserService } from "src/user/user.service";
 import type { Repository } from "typeorm";
 import {
   createTestApp,
+  deleteAfterUserLoad,
   giveActiveContract,
   TestContext,
   waitForLockWait,
@@ -54,18 +55,6 @@ describe("Writers beside a deletion (e2e)", () => {
         ...overrides,
       }),
     );
-
-  /** Soft-deletes `deleted` right after the next account load. */
-  const deleteAfterUserLoad = (deleted: User) => {
-    const findOneOrFail = userService.findOneOrFail.bind(userService);
-    jest
-      .spyOn(userService, "findOneOrFail")
-      .mockImplementationOnce(async (id, relations) => {
-        const loaded = await findOneOrFail(id, relations);
-        await userRepo.softDelete(deleted.id);
-        return loaded;
-      });
-  };
 
   beforeAll(async () => {
     ctx = await createTestApp([]);
@@ -114,6 +103,14 @@ describe("Writers beside a deletion (e2e)", () => {
     expect([...locked]).toEqual([id]);
   });
 
+  it("refuses to lock a row for a save outside a transaction", async () => {
+    const live = await member();
+
+    await expect(
+      lockForSave(ctx.dataSource.manager, { target: User, id: live.id }),
+    ).rejects.toThrow("row locks need an active transaction");
+  });
+
   it("leaves a guest unlinked from a deleted account", async () => {
     const user = await member();
     const { guestId } = await ctx.app.get(AuthService).createGuestSession();
@@ -129,7 +126,7 @@ describe("Writers beside a deletion (e2e)", () => {
 
   it("refuses an away range for an account deleted after it loads", async () => {
     const user = await member();
-    deleteAfterUserLoad(user);
+    deleteAfterUserLoad({ ctx, deleted: user });
 
     await expect(
       userService.createAwayRange({
@@ -151,7 +148,7 @@ describe("Writers beside a deletion (e2e)", () => {
 
   it("refuses a one-time invite from an inviter deleted after it loads", async () => {
     const inviter = await member();
-    deleteAfterUserLoad(inviter);
+    deleteAfterUserLoad({ ctx, deleted: inviter });
 
     await expect(
       userService.createOnetimeInvite(
@@ -198,7 +195,7 @@ describe("Writers beside a deletion (e2e)", () => {
 
   it("registers no device for an account deleted after it loads", async () => {
     const user = await member();
-    deleteAfterUserLoad(user);
+    deleteAfterUserLoad({ ctx, deleted: user });
 
     await expect(
       userService.registerDevice(user.id, {
@@ -216,7 +213,7 @@ describe("Writers beside a deletion (e2e)", () => {
 
   it("enrolls no account deleted after it loads in the ambassador program", async () => {
     const user = await member();
-    deleteAfterUserLoad(user);
+    deleteAfterUserLoad({ ctx, deleted: user });
 
     await expect(
       userService.upsertAmbassadorProgramMember({
@@ -322,7 +319,7 @@ describe("Writers beside a deletion (e2e)", () => {
   it("records no suspension for an account deleted after it loads", async () => {
     const suspender = await member();
     await giveActiveContract(ctx, suspender.id);
-    deleteAfterUserLoad(suspender);
+    deleteAfterUserLoad({ ctx, deleted: suspender });
 
     await expect(
       ctx.app.get(ContractService).suspendContract({ userId: suspender.id }),
@@ -340,7 +337,7 @@ describe("Writers beside a deletion (e2e)", () => {
 
   it("tags no account deleted after it loads", async () => {
     const tagged = await member();
-    deleteAfterUserLoad(tagged);
+    deleteAfterUserLoad({ ctx, deleted: tagged });
 
     await expect(
       userService.addUserToTag(ctx.defaultTag.id, tagged.id),

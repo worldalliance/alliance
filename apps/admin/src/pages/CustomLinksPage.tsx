@@ -245,7 +245,7 @@ const CustomLinksPage: React.FC = () => {
       <ConfirmDialog
         isOpen={deleting !== null}
         title="Delete this custom link?"
-        message={`/${deleting?.slug} will stop working. Its visit count will be deleted. This cannot be undone.`}
+        message={`/${deleting?.slug} will stop working. This cannot be undone.`}
         onConfirm={() => deleting && remove.mutate(deleting.id)}
         onCancel={() => setDeleting(null)}
         isLoading={remove.isPending}

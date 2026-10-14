@@ -126,9 +126,13 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
             Delete {userName}&apos;s account
           </ModalTitle>
           <ModalDescription className="text-sm text-zinc-600">
-            This permanently deletes the account and everything attached to it —
-            forum posts and comments, action activity, and messages. Action
-            completion counts will drop accordingly. This cannot be undone.
+            This hides the account and everything attached to it — forum posts
+            and comments, action activity, and messages — and permanently ends
+            its sessions. Action completion counts will drop accordingly. The
+            records are kept, so an operator can restore them from the database,
+            though not its links to other records, such as its groups, likes,
+            tags and reminders, the members it referred or invited, and its name
+            on staff actions like cohort corrections and waitlist emails.
           </ModalDescription>
         </div>
       </ModalHeader>

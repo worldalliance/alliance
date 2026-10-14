@@ -12,7 +12,12 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Action } from "src/actions/entities/action.entity";
 import { Community } from "src/community/entities/community.entity";
-import { assertLive, writeUnderLive } from "src/datasources/soft-delete";
+import {
+  assertLive,
+  softDeleteCascade,
+  updateLive,
+  writeUnderLive,
+} from "src/datasources/soft-delete";
 import { InviteFeedEvents } from "src/invite-feed.events";
 import {
   generateCIDForExternalTarget,
@@ -27,6 +32,7 @@ import {
   IsNull,
   MoreThanOrEqual,
   Not,
+  type QueryDeepPartialEntity,
   QueryFailedError,
   Repository,
 } from "typeorm";
@@ -39,7 +45,7 @@ import {
   type StoredInviteAssignment,
   StoredInviteAssignmentKind,
 } from "./invite-assignment";
-import { lockOwner } from "./share-url-locks";
+import { lockOwner, updateLiveShareUrl } from "./share-url-locks";
 import { shareUrlPublicUrl } from "./share-url-public-url";
 import type {
   ReusableInviteFeedItem,
@@ -491,21 +497,23 @@ export class ShareUrlsService {
       await this.assertLeadsCommunity(userId, communityId);
     }
 
+    const changes: QueryDeepPartialEntity<ShareUrl> = {};
     if (label !== undefined) {
       const trimmed = label.trim();
-      row.label = trimmed ? trimmed : null;
+      changes.label = trimmed ? trimmed : null;
     }
     if (communityId !== undefined) {
-      const columns = inviteAssignmentColumns(inviteAssignmentFor(communityId));
-      row.inviteAssignmentKind = columns.inviteAssignmentKind;
-      row.inviteAssignmentCommunityId = columns.inviteAssignmentCommunityId;
+      Object.assign(
+        changes,
+        inviteAssignmentColumns(inviteAssignmentFor(communityId)),
+      );
     }
     return writeUnderLive(this.shareUrlRepository.manager, {
       parents:
         communityId === undefined || communityId === null
           ? []
           : [{ target: Community, id: communityId }],
-      write: (manager) => manager.save(row),
+      write: (manager) => updateLiveShareUrl(manager, { id, changes }),
     });
   }
 
@@ -521,7 +529,10 @@ export class ShareUrlsService {
         "Your primary invite link cannot be deleted.",
       );
     }
-    await this.shareUrlRepository.remove(row);
+    await softDeleteCascade(this.shareUrlRepository.manager, {
+      target: ShareUrl,
+      ids: [row.id],
+    });
   }
 
   async deleteById(id: string): Promise<void> {
@@ -529,7 +540,10 @@ export class ShareUrlsService {
     if (!row) {
       throw new NotFoundException("share url not found");
     }
-    await this.shareUrlRepository.remove(row);
+    await softDeleteCascade(this.shareUrlRepository.manager, {
+      target: ShareUrl,
+      ids: [row.id],
+    });
   }
 
   async findForCampaign(
@@ -544,15 +558,11 @@ export class ShareUrlsService {
   ): Promise<ShareUrl> {
     const trimmed = rawLabel?.trim();
     const nextLabel = trimmed ? trimmed : null;
-    const row = await this.shareUrlRepository.findOne({
-      where: { id },
+    return updateLiveShareUrl(this.shareUrlRepository.manager, {
+      id,
+      changes: { label: nextLabel },
       relations: { action: true, externalTarget: true },
     });
-    if (!row) {
-      throw new NotFoundException("share url not found");
-    }
-    row.label = nextLabel;
-    return this.shareUrlRepository.save(row);
   }
 
   private async getOrCreateForExternalTargetId(
@@ -640,10 +650,13 @@ export class ShareUrlsService {
     });
     for (const row of rows) {
       if (!row.sid) continue;
-      row.url = appendQueryParam(target.url, target.paramName, row.sid);
-    }
-    if (rows.length > 0) {
-      await repo.save(rows);
+      await updateLive(repo.manager, {
+        target: ShareUrl,
+        id: row.id,
+        changes: {
+          url: appendQueryParam(target.url, target.paramName, row.sid),
+        },
+      });
     }
   }
 

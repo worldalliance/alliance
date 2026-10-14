@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { writeUnderLive } from "src/datasources/soft-delete";
+import { softDeleteCascade, writeUnderLive } from "src/datasources/soft-delete";
 import type {
   Repository as TypedRepository,
   WithRelationsExact,
@@ -70,6 +70,9 @@ export class ActionPartnershipsService {
       throw new NotFoundException("Action partnership response not found");
     }
 
-    await this.responseRepository.remove(response);
+    await softDeleteCascade(this.responseRepository.manager, {
+      target: ActionPartnershipResponse,
+      ids: [response.id],
+    });
   }
 }

@@ -49,6 +49,9 @@ import { Community } from "src/community/entities/community.entity";
 import {
   liveOrNull,
   lockLive,
+  softDeleteCascade,
+  softDeleteWhere,
+  updateLive,
   writeUnderLive,
 } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
@@ -108,6 +111,7 @@ import {
   IsNull,
   MoreThan,
   Not,
+  type QueryDeepPartialEntity,
   type Repository,
 } from "typeorm";
 import {
@@ -216,6 +220,7 @@ const REFERRAL_SOURCE_BY_SHARE_KIND: Record<
 };
 
 const AMBASSADOR_INVITES_URL = "/invites";
+const AMBASSADOR_MEMBER_NOT_FOUND = "Ambassador program member not found";
 const AMBASSADOR_GOAL_NOTIFICATION_LOOKBACK_MS = milliseconds({ hours: 1 });
 const AMBASSADOR_PROJECTION_DAYS = [14, 30] as const;
 const AMBASSADOR_REFERRAL_SOURCE_ELIGIBILITY: Record<ReferralSource, boolean> =
@@ -443,7 +448,14 @@ export class UserService {
       user.profilePicture = nextPicture;
     }
 
-    await this.userRepository.save(user);
+    await writeUnderLive(this.dataSource.manager, {
+      saved: {
+        target: User,
+        id,
+        notFound: `User ${id} not found`,
+      },
+      write: (manager) => manager.save(user),
+    });
 
     return this.findOneOrFail(id, {
       contractEvents: true,
@@ -453,16 +465,21 @@ export class UserService {
 
   async markDomainSwitched(id: number): Promise<void> {
     await this.userRepository.update(
-      { id, switchedDomainAt: IsNull() },
+      { id, switchedDomainAt: IsNull(), deletedAt: IsNull() },
       { switchedDomainAt: new Date() },
     );
   }
 
-  async setPassword(id: number, password: string): Promise<User> {
+  async setPassword(id: number, password: string): Promise<void> {
     const user = await this.findOneOrFail(id);
     user.password = password;
     await user.hashPassword();
-    return this.userRepository.save(user);
+    await updateLive(this.dataSource.manager, {
+      target: User,
+      id,
+      changes: { password: user.password },
+      notFound: `User ${id} not found`,
+    });
   }
 
   findAll(relations?: Relations<User>): Promise<User[]> {
@@ -559,14 +576,18 @@ export class UserService {
   ): Promise<User[]> {
     await Promise.all(
       items.map((item) =>
-        this.userRepository.update(item.id, {
-          staffDisplayOrder: item.staffDisplayOrder,
-          ...(item.staffTitle !== undefined
-            ? { staffTitle: item.staffTitle }
-            : {}),
-          ...(item.staffLink !== undefined
-            ? { staffLink: item.staffLink }
-            : {}),
+        updateLive(this.dataSource.manager, {
+          target: User,
+          id: item.id,
+          changes: {
+            staffDisplayOrder: item.staffDisplayOrder,
+            ...(item.staffTitle !== undefined
+              ? { staffTitle: item.staffTitle }
+              : {}),
+            ...(item.staffLink !== undefined
+              ? { staffLink: item.staffLink }
+              : {}),
+          },
         }),
       ),
     );
@@ -697,12 +718,12 @@ export class UserService {
     return this.insertUser({ data, assignment });
   }
 
-  async remove(id: number): Promise<void> {
-    await this.userRepository.delete(id);
-  }
-
   async setAdmin(id: number, admin: boolean): Promise<void> {
-    await this.userRepository.update(id, { admin });
+    await updateLive(this.dataSource.manager, {
+      target: User,
+      id,
+      changes: { admin },
+    });
   }
 
   async updateRolesAdmin(params: {
@@ -723,7 +744,12 @@ export class UserService {
     });
 
     const forwardAudit = await this.dataSource.transaction(async (manager) => {
-      await manager.update(User, id, roles);
+      await updateLive(manager, {
+        target: User,
+        id,
+        changes: roles,
+        notFound: "User not found",
+      });
       if (!audit) return null;
       return this.eventLogService.sendMessageInTransaction(manager, audit);
     });
@@ -805,7 +831,11 @@ export class UserService {
       name: user.name,
       verifyToken: token,
     });
-    await this.userRepository.update(userId, { welcomeMail: mail });
+    await updateLive(this.dataSource.manager, {
+      target: User,
+      id: userId,
+      changes: { welcomeMail: mail },
+    });
   }
 
   async verifyEmail(token: string) {
@@ -813,12 +843,16 @@ export class UserService {
       token,
       tokenType: JWTTokenType.verifyEmail,
     });
-    const user = userId.ok ? await this.findOne(userId.value) : null;
-    if (!user) {
+    if (
+      !userId.ok ||
+      !(await updateLive(this.dataSource.manager, {
+        target: User,
+        id: userId.value,
+        changes: { emailVerified: true },
+      }))
+    ) {
       throw new BadRequestException("Invalid or expired verification link");
     }
-    user.emailVerified = true;
-    await this.userRepository.save(user);
   }
 
   async getVerifyEmailToken(userId: number) {
@@ -916,6 +950,7 @@ export class UserService {
     return saveFriendOfLiveUsers(this.dataSource.manager, {
       rel,
       userIds: [requesterId, addresseeId],
+      notFound: "Friendship not found",
     });
   }
 
@@ -975,6 +1010,7 @@ export class UserService {
     const saved = await saveFriendOfLiveUsers(this.dataSource.manager, {
       rel: { ...rel, sentNotif: undefined },
       userIds: [requesterId, addresseeId],
+      notFound: "No pending request found",
     });
 
     if (status === FriendStatus.Accepted) {
@@ -1018,7 +1054,10 @@ export class UserService {
       await this.notifsService.setRead(rel.acceptedNotif.id, rel.requester.id);
     }
 
-    await this.friendRepository.delete(rel.id);
+    await softDeleteCascade(this.friendRepository.manager, {
+      target: Friend,
+      ids: [rel.id],
+    });
   }
 
   async findFriends(userId: number): Promise<User[]> {
@@ -1250,6 +1289,7 @@ export class UserService {
     await saveFriendOfLiveUsers(this.dataSource.manager, {
       rel,
       userIds: [requesterId, addresseeId],
+      notFound: "Friendship not found",
     });
     this.emitFriendsAccepted(requesterId, addresseeId);
   }
@@ -1513,7 +1553,11 @@ export class UserService {
   }
 
   async setOptInMms(userId: number, mmsId: number) {
-    await this.userRepository.update(userId, { optInMms: { id: mmsId } });
+    await updateLive(this.dataSource.manager, {
+      target: User,
+      id: userId,
+      changes: { optInMms: { id: mmsId } },
+    });
   }
 
   async findAllUsers(): Promise<User[]> {
@@ -1674,7 +1718,10 @@ export class UserService {
       [AwayRangeEditor.Member]: !isAwayRangeStartLocked(awayRange, now),
     } satisfies Record<AwayRangeEditor, boolean>;
     if (removes[editor]) {
-      await this.userAwayRangeRepository.remove(awayRange);
+      await softDeleteCascade(this.userAwayRangeRepository.manager, {
+        target: UserAwayRange,
+        ids: [awayRange.id],
+      });
       return;
     }
     if (hasAwayRangeEnded(awayRange, now)) {
@@ -1779,6 +1826,7 @@ export class UserService {
   private saveLiveAwayRange(awayRange: UserAwayRange): Promise<UserAwayRange> {
     return writeUnderLive(this.dataSource.manager, {
       parents: [{ target: User, id: awayRange.userId }],
+      saved: { target: UserAwayRange, id: awayRange.id },
       notFound: "Away range not found.",
       write: (manager) => manager.save(awayRange),
     });
@@ -1874,7 +1922,10 @@ export class UserService {
   }
 
   async deleteTag(tagId: string): Promise<void> {
-    await this.tagRepository.delete(tagId);
+    await softDeleteWhere(this.tagRepository.manager, {
+      target: Tag,
+      where: { id: tagId },
+    });
   }
 
   async getAmbassadorProgramDashboard(): Promise<AmbassadorProgramDashboard> {
@@ -1987,7 +2038,7 @@ export class UserService {
     });
 
     if (!member) {
-      throw new NotFoundException("Ambassador program member not found");
+      throw new NotFoundException(AMBASSADOR_MEMBER_NOT_FOUND);
     }
 
     return member;
@@ -2025,6 +2076,13 @@ export class UserService {
 
     await writeUnderLive(this.dataSource.manager, {
       parents: [{ target: User, id: body.userId }],
+      ...(existing && {
+        saved: {
+          target: AmbassadorProgramMember,
+          id: existing.id,
+          notFound: AMBASSADOR_MEMBER_NOT_FOUND,
+        },
+      }),
       write: (manager) => manager.save(member),
     });
     return this.findAmbassadorProgramMemberOrFail(body.userId);
@@ -2043,7 +2101,14 @@ export class UserService {
       member.activeParticipant = body.activeParticipant;
     }
 
-    await this.ambassadorProgramMemberRepository.save(member);
+    await writeUnderLive(this.dataSource.manager, {
+      saved: {
+        target: AmbassadorProgramMember,
+        id: member.id,
+        notFound: AMBASSADOR_MEMBER_NOT_FOUND,
+      },
+      write: (manager) => manager.save(member),
+    });
     return this.findAmbassadorProgramMemberOrFail(userId);
   }
 
@@ -2203,7 +2268,14 @@ export class UserService {
       goal.targetSuccessfulRecruits = body.targetSuccessfulRecruits;
     }
 
-    return this.ambassadorInviteGoalRepository.save(goal);
+    return writeUnderLive(this.dataSource.manager, {
+      saved: {
+        target: AmbassadorInviteGoal,
+        id: goal.id,
+        notFound: "Ambassador invite goal not found",
+      },
+      write: (manager) => manager.save(goal),
+    });
   }
 
   async deleteAmbassadorInviteGoal(
@@ -2218,7 +2290,10 @@ export class UserService {
     const goal = await this.ambassadorInviteGoalRepository.findOneOrFail({
       where: { id: goalId, ambassador: { id: userId } },
     });
-    await this.ambassadorInviteGoalRepository.delete(goal.id);
+    await softDeleteCascade(this.ambassadorInviteGoalRepository.manager, {
+      target: AmbassadorInviteGoal,
+      ids: [goal.id],
+    });
   }
 
   async getAmbassadorInviteDashboard(
@@ -2693,18 +2768,25 @@ export class UserService {
     if (invitee !== undefined && !trimmedInvitee) {
       throw new BadRequestException("Invitee name cannot be empty");
     }
-    await writeUnderLive(this.dataSource.manager, {
-      parents:
-        communityId != null ? [{ target: Community, id: communityId }] : [],
-      write: (manager) =>
-        manager.save(OnetimeInvite, {
-          id: inviteId,
-          ...(trimmedInvitee !== undefined && { invitee: trimmedInvitee }),
-          ...(communityId !== undefined && {
-            community: communityId === null ? null : { id: communityId },
+    const changes: QueryDeepPartialEntity<OnetimeInvite> = {
+      ...(trimmedInvitee !== undefined && { invitee: trimmedInvitee }),
+      ...(communityId !== undefined && {
+        community: communityId === null ? null : { id: communityId },
+      }),
+    };
+    if (Object.keys(changes).length > 0) {
+      await writeUnderLive(this.dataSource.manager, {
+        parents:
+          communityId != null ? [{ target: Community, id: communityId }] : [],
+        write: (manager) =>
+          updateLive(manager, {
+            target: OnetimeInvite,
+            id: inviteId,
+            changes,
+            notFound: "Invite not found",
           }),
-        }),
-    });
+      });
+    }
     return this.onetimeInviteRepository.findOneOrFail({
       where: { id: inviteId },
       relations: { invitingUser: true, community: true, invitedUser: true },
@@ -2853,7 +2935,14 @@ export class UserService {
           `Unhandled status: ${newStatus satisfies never}`,
         );
     }
-    const savedInvite = await this.onetimeInviteRepository.save(request);
+    const savedInvite = await writeUnderLive(this.dataSource.manager, {
+      saved: {
+        target: OnetimeInvite,
+        id: request.id,
+        notFound: "Invite not found",
+      },
+      write: (em) => em.save(request),
+    });
 
     const invitingUser = loadedOnetimeInviteInvitingUser(savedInvite);
     if (invitingUser) {
@@ -3016,15 +3105,21 @@ export class UserService {
   }
 
   async joinGroupAssignment(userId: number): Promise<void> {
-    const user = await this.findOneOrFail(userId);
-    user.undergoingGroupAssignment = true;
-    await this.userRepository.save(user);
+    await updateLive(this.dataSource.manager, {
+      target: User,
+      id: userId,
+      changes: { undergoingGroupAssignment: true },
+      notFound: `User ${userId} not found`,
+    });
   }
 
   async leaveGroupAssignment(userId: number): Promise<void> {
-    const user = await this.findOneOrFail(userId);
-    user.undergoingGroupAssignment = false;
-    await this.userRepository.save(user);
+    await updateLive(this.dataSource.manager, {
+      target: User,
+      id: userId,
+      changes: { undergoingGroupAssignment: false },
+      notFound: `User ${userId} not found`,
+    });
   }
 
   async findGroupAssignmentMembers(): Promise<User[]> {
@@ -3194,10 +3289,14 @@ export class UserService {
       const existingDevice = await this.userDeviceRepository.findOne({
         where: { id: body.deviceId, user: { id: userId } },
       });
-      if (existingDevice) {
-        await this.userDeviceRepository.update(existingDevice.id, {
-          expoPushToken: body.expoPushToken,
-        });
+      if (
+        existingDevice &&
+        (await updateLive(this.dataSource.manager, {
+          target: UserDevice,
+          id: existingDevice.id,
+          changes: { expoPushToken: body.expoPushToken },
+        }))
+      ) {
         return existingDevice.id;
       }
     }
@@ -3207,19 +3306,26 @@ export class UserService {
         where: { expoPushToken: body.expoPushToken },
         relations: { user: true },
       });
+      if (existingByToken?.user?.id === userId) {
+        return existingByToken.id;
+      }
       if (existingByToken) {
-        if (existingByToken.user?.id !== userId) {
-          console.log("Reassigning device by expo push token to user", userId);
-          await writeUnderLive(this.dataSource.manager, {
-            parents: [{ target: User, id: userId }],
-            write: (manager) =>
-              manager.update(UserDevice, existingByToken.id, {
+        console.log("Reassigning device by expo push token to user", userId);
+        const reassigned = await writeUnderLive(this.dataSource.manager, {
+          parents: [{ target: User, id: userId }],
+          write: (manager) =>
+            updateLive(manager, {
+              target: UserDevice,
+              id: existingByToken.id,
+              changes: {
                 user: { id: userId },
                 deviceType: body.deviceType ?? existingByToken.deviceType,
-              }),
-          });
+              },
+            }),
+        });
+        if (reassigned) {
+          return existingByToken.id;
         }
-        return existingByToken.id;
       }
     }
 
@@ -3268,18 +3374,21 @@ export class UserService {
   }
 
   /**
-   * Hard-deletes a member. Everything keyed to them goes with the row: forum
-   * posts and comments, action activity (so completion counts drop), messages,
-   * notifications, and their own event-log history. The click history of a
-   * waitlist entry whose invite they claimed is deleted first, while the claim
-   * still links it to them.
+   * Soft-deletes a member. Everything keyed to them is hidden with the row:
+   * forum posts and comments, action activity (so completion counts drop),
+   * messages, notifications, and their own event-log history. The rows stay
+   * in the database for an operator to restore by hand; join rows such as
+   * group memberships, likes, tags and co-authorships are deleted instead. The
+   * click history of a waitlist entry whose invite they claimed is hidden too.
    *
-   * The record of the deletion is therefore written with a null `userId` —
-   * `EventLog.user` cascades, so an entry attributed to the deleted member
-   * would delete itself along with everything else. It shares the deletion's
-   * transaction: once the row is gone that entry is the only evidence the
-   * account ever existed, so a failure to write it has to take the deletion
-   * with it rather than leave an unrecorded one behind.
+   * The deletion also bumps the account's session generation, so every
+   * session issued before it stays invalid, even after a restore.
+   *
+   * The record of the deletion is written with a null `userId`: it is the
+   * admin's act, not part of the member's history that the deletion hides and
+   * a restore brings back. It shares the deletion's transaction, so a
+   * failure to write it takes the deletion with it rather than leave an
+   * unrecorded one behind.
    */
   async deleteUserAdmin(params: {
     userId: number;
@@ -3322,8 +3431,9 @@ export class UserService {
       : "";
 
     const forwardAudit = await this.dataSource.transaction(async (manager) => {
+      await manager.increment(User, { id: deleted.id }, "sessionGeneration", 1);
       await deleteClaimedWaitlistTracking({ manager, userId: deleted.id });
-      await manager.delete(User, deleted.id);
+      await softDeleteCascade(manager, { target: User, ids: [deleted.id] });
 
       return this.eventLogService.sendMessageInTransaction(manager, {
         type: EventType.AccountDeleted,

@@ -16,7 +16,7 @@ import { assertNotInStaffPreview } from "src/actions/staff-preview";
 import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
 import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
 import { findWithDeletedRoot } from "src/datasources/find-with-deleted-root";
-import { assertLive } from "src/datasources/soft-delete";
+import { assertLive, softDeleteCascade } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { FacepileService } from "src/likes/facepile.service";
@@ -101,8 +101,6 @@ export class ForumService {
     private postRepository: Repository<Post>,
     @InjectRepository(Comment)
     private commentRepository: Repository<Comment>,
-    @InjectRepository(Notification)
-    private notifRepository: Repository<Notification>,
     @InjectRepository(Action)
     private actionRepository: Repository<Action>,
     @InjectRepository(User)
@@ -1131,7 +1129,17 @@ export class ForumService {
       throw new NotFoundException("You can only delete your own replies");
     }
 
-    await this.notifRepository.delete({ comment: { id } });
+    const notifications = await this.commentRepository.manager.find(
+      Notification,
+      {
+        select: { id: true },
+        where: { comment: { id } },
+      },
+    );
+    await softDeleteCascade(this.commentRepository.manager, {
+      target: Notification,
+      ids: notifications.map((notification) => notification.id),
+    });
 
     await this.commentRepository.update(
       { id, deletedAt: IsNull() },
@@ -1420,9 +1428,10 @@ export class ForumService {
     );
     const removed = existing.filter((tag) => !keptIds.has(tag.id));
 
-    if (removed.length > 0) {
-      await tagRepository.remove(removed);
-    }
+    await softDeleteCascade(manager, {
+      target: PostTag,
+      ids: removed.map((tag) => tag.id),
+    });
     await tagRepository.save(kept);
   }
 

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
-import { assertLive } from "src/datasources/soft-delete";
+import { assertLive, updateLive } from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
@@ -102,8 +102,15 @@ export class MessageService {
         });
 
         const saved = await manager.save(message);
-        participant.lastReadMessage = saved;
-        await manager.save(participant);
+        await updateLive(manager, {
+          target: Participant,
+          id: participant.id,
+          changes: {
+            lastReadMessage: { id: saved.id },
+            state: participant.state,
+            joinedAt: participant.joinedAt,
+          },
+        });
         await manager.update(Conversation, conversation.id, {
           updatedAt: new Date(),
         });

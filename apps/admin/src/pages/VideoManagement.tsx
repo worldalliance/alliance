@@ -45,7 +45,7 @@ const VideoManagement: React.FC = () => {
       if (
         !(await confirm({
           title: "Confirm Delete",
-          message: `Are you sure you want to delete video ${id}?`,
+          message: `Delete video ${id}? It disappears from the app, but its files stay in storage, so a direct link someone already copied keeps playing it.`,
           confirmLabel: "Delete",
         }))
       )

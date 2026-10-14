@@ -1,4 +1,4 @@
-import { writeUnderLive } from "src/datasources/soft-delete";
+import { updateLive, writeUnderLive } from "src/datasources/soft-delete";
 import { User } from "src/user/entities/user.entity";
 import type { EntityManager } from "typeorm";
 import {
@@ -21,5 +21,17 @@ export function saveInviteOfLiveParents(
       { target: Community, id: loadedCommunityInviteCommunity(invite).id },
     ],
     write: (em) => em.save(invite),
+  });
+}
+
+export async function setLiveInviteStatus(
+  manager: EntityManager,
+  invite: CommunityInvite,
+): Promise<void> {
+  await updateLive(manager, {
+    target: CommunityInvite,
+    id: invite.id,
+    changes: { status: invite.status },
+    notFound: "Invite not found",
   });
 }

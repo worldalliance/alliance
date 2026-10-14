@@ -179,7 +179,10 @@ export class AuthService {
         .createQueryBuilder()
         .update(Guest)
         .set({ linkedUser: { id: userId } })
-        .where('id = :guestId AND "linkedUserId" IS NULL', { guestId })
+        .where(
+          'id = :guestId AND "linkedUserId" IS NULL AND "deletedAt" IS NULL',
+          { guestId },
+        )
         .execute();
     });
   }

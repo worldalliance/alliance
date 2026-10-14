@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { softDeleteWhere, writeUnderLive } from "src/datasources/soft-delete";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
@@ -179,20 +180,29 @@ export class ActionFormVariantService {
 
     return this.variantRepo.manager.transaction(async (em) => {
       await this.lockActionRow(em, variant.actionId);
-      const variantTxRepo = em.getRepository(ActionFormVariant);
-      await this.assertSplitTotalValid(
-        variant.actionId,
-        {
-          excludeVariantId: variantId,
-          addValue: nextValue,
+      return writeUnderLive(em, {
+        saved: {
+          target: ActionFormVariant,
+          id: variantId,
+          notFound: "Variant not found",
         },
-        variantTxRepo,
-      );
-      Object.assign(variant, {
-        ...(input.name !== undefined ? { name: input.name } : {}),
-        splitValue: nextValue,
+        write: async () => {
+          const variantTxRepo = em.getRepository(ActionFormVariant);
+          await this.assertSplitTotalValid(
+            variant.actionId,
+            {
+              excludeVariantId: variantId,
+              addValue: nextValue,
+            },
+            variantTxRepo,
+          );
+          Object.assign(variant, {
+            ...(input.name !== undefined ? { name: input.name } : {}),
+            splitValue: nextValue,
+          });
+          return variantTxRepo.save(variant);
+        },
       });
-      return variantTxRepo.save(variant);
     });
   }
 
@@ -215,8 +225,19 @@ export class ActionFormVariantService {
       }))
     ) {
       await this.variantRepo.manager.transaction(async (em) => {
-        await em.getRepository(ActionFormAssignment).delete({ variantId });
-        await em.getRepository(ActionFormVariant).delete({ id: variantId });
+        // Waits out an assignment being written, so the deletion below sees it.
+        await em.findOne(ActionFormVariant, {
+          where: { id: variantId },
+          lock: { mode: "pessimistic_write" },
+        });
+        await softDeleteWhere(em, {
+          target: ActionFormAssignment,
+          where: { variantId },
+        });
+        await softDeleteWhere(em, {
+          target: ActionFormVariant,
+          where: { id: variantId },
+        });
       });
       return;
     }
@@ -230,8 +251,11 @@ export class ActionFormVariantService {
           `Variants with existing assignments must be kept.`,
       );
     }
-    const result = await this.variantRepo.delete({ id: variantId });
-    if (result.affected === 0) {
+    const deleted = await softDeleteWhere(this.variantRepo.manager, {
+      target: ActionFormVariant,
+      where: { id: variantId },
+    });
+    if (deleted === 0) {
       throw new NotFoundException("Variant not found");
     }
   }

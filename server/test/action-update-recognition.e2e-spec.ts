@@ -695,6 +695,40 @@ describe("action update recognition (e2e)", () => {
     expect(skipped.mms).toBeNull();
   });
 
+  it("reaches no channel for a recipient deleted after this batch's claim", async () => {
+    const first = await createMember({ arm: ExperimentArm.Control });
+    const deleted = await createMember({ arm: ExperimentArm.Control });
+    const id = await createUpdate();
+    await notify(id).expect(200);
+    const mms = ctx.app.get(MmsService);
+    const sendMms = mms.sendMms.bind(mms);
+    const send = jest
+      .spyOn(mms, "sendMms")
+      .mockImplementationOnce(async (params) => {
+        await ctx.dataSource.query(
+          `UPDATE action_update_exposure SET "deletedAt" = now() WHERE "userId" = $1`,
+          [deleted.id],
+        );
+        return sendMms(params);
+      });
+    try {
+      await recognition.deliverPrepared();
+    } finally {
+      send.mockRestore();
+    }
+
+    expect((await exposureOf(id, first.id)).deliveredAt).not.toBeNull();
+    const skipped = await ctx.dataSource
+      .getRepository(ActionUpdateExposure)
+      .findOneOrFail({
+        where: { actionUpdateId: id, userId: deleted.id },
+        relations: { mms: true },
+        withDeleted: true,
+      });
+    expect(skipped.deliveredAt).toBeNull();
+    expect(skipped.mms).toBeNull();
+  });
+
   it("records a failed text apart from one never attempted", async () => {
     const member = await createMember({ arm: ExperimentArm.Control });
     const id = await createUpdate();

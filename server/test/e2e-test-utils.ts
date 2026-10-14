@@ -37,6 +37,7 @@ import { AuthModule } from "../src/auth/auth.module";
 import { ContractModule } from "../src/contract/contract.module";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
 import { UserModule } from "../src/user/user.module";
+import { UserService } from "../src/user/user.service";
 
 export interface TestContext {
   app: INestApplication;
@@ -98,6 +99,23 @@ export function waitForLockWait(
     ([row]) => row.waiting >= queries,
     `${queries} queries to wait on a lock`,
   );
+}
+
+/** Soft-deletes `deleted` right after the next account load. */
+export function deleteAfterUserLoad(params: {
+  ctx: TestContext;
+  deleted: User;
+}): void {
+  const { ctx, deleted } = params;
+  const userService = ctx.app.get(UserService);
+  const findOneOrFail = userService.findOneOrFail.bind(userService);
+  jest
+    .spyOn(userService, "findOneOrFail")
+    .mockImplementationOnce(async (id, relations) => {
+      const loaded = await findOneOrFail(id, relations);
+      await ctx.dataSource.getRepository(User).softDelete(deleted.id);
+      return loaded;
+    });
 }
 
 /**

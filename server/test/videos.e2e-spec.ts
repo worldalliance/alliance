@@ -121,6 +121,46 @@ describe("Videos (e2e)", () => {
     expect(deleted).toBeNull();
   });
 
+  it("keeps a deleted video's files and refuses to play it until restored", async () => {
+    const video = await videoRepo.save(
+      videoRepo.create({
+        key: "videos/test-retained",
+        originalFilename: "test.mp4",
+        mime: "video/mp4",
+        size: 1000,
+      }),
+    );
+    const server = ctx.app.getHttpServer();
+    const admin = `Bearer ${ctx.adminAccessToken}`;
+
+    await request(server)
+      .delete(`/videos/${video.id}`)
+      .set("Authorization", admin)
+      .expect(200);
+
+    expect(mockSend).not.toHaveBeenCalled();
+    expect(
+      await videoRepo.findOne({ where: { id: video.id }, withDeleted: true }),
+    ).toMatchObject({
+      key: "videos/test-retained",
+      deletedAt: expect.any(Date),
+    });
+    await request(server).get(`/videos/${video.id}/playlist.m3u8`).expect(404);
+    await request(server).get(`/videos/${video.id}/segment0.ts`).expect(404);
+    await request(server)
+      .get(`/videos/${video.id}/details`)
+      .set("Authorization", admin)
+      .expect(404);
+    const list = await request(server)
+      .get("/videos")
+      .set("Authorization", admin)
+      .expect(200);
+    expect(list.body.videos).toEqual([]);
+
+    await videoRepo.update(video.id, { deletedAt: null });
+    await request(server).get(`/videos/${video.id}/playlist.m3u8`).expect(200);
+  });
+
   it("returns 404 when deleting a non-existent video", async () => {
     await request(ctx.app.getHttpServer())
       .delete("/videos/99999")
@@ -266,5 +306,41 @@ describe("Videos (e2e)", () => {
     expect(replaced.dateUpdated.getTime()).toBeGreaterThan(
       video.dateUpdated.getTime(),
     );
+  });
+
+  it("answers 404 for a video deleted while its content is replaced", async () => {
+    const video = await videoRepo.save(
+      videoRepo.create({
+        key: "videos/test-replace-deleted",
+        originalFilename: "replace.mp4",
+        mime: "video/mp4",
+        size: 3000,
+      }),
+    );
+    mockSend.mockImplementation(async (command) => {
+      if (command instanceof ListObjectsV2Command) {
+        await videoRepo.softDelete(video.id);
+      }
+      return { Contents: [] };
+    });
+
+    await request(ctx.app.getHttpServer())
+      .post(`/videos/${video.id}/replace`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .attach("files", Buffer.from("fake-m3u8"), {
+        filename: "playlist.m3u8",
+        contentType: "application/vnd.apple.mpegurl",
+      })
+      .expect(404);
+
+    expect(
+      await videoRepo.findOneOrFail({
+        where: { id: video.id },
+        withDeleted: true,
+      }),
+    ).toMatchObject({
+      dateUpdated: video.dateUpdated,
+      deletedAt: expect.any(Date),
+    });
   });
 });

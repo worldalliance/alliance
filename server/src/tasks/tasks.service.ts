@@ -101,7 +101,11 @@ import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.
 import { Guest } from "src/auth/entities/guest.entity";
 import { ContractService } from "src/contract/contract.service";
 import { ContractDto } from "src/contract/dto/contract.dto";
-import { writeUnderLive } from "src/datasources/soft-delete";
+import {
+  softDeleteCascade,
+  softDeleteWhere,
+  writeUnderLive,
+} from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { ForumService } from "src/forum/forum.service";
@@ -847,6 +851,7 @@ export class TasksService {
         .update(Form)
         .set({ title: nextTitle, formSnapshotId: nextSnapshotId })
         .where("id = :formId", { formId })
+        .andWhere('"deletedAt" IS NULL')
         .andWhere(
           expected === undefined ? "1 = 1" : '"formSnapshotId" = :expected',
           expected === undefined ? {} : { expected },
@@ -854,6 +859,9 @@ export class TasksService {
         .execute();
 
       if (result.affected === 0) {
+        if (!(await em.exists(Form, { where: { id: formId } }))) {
+          throw new NotFoundException("Form not found");
+        }
         throw new ConflictException(
           "This form was changed by someone else since you opened it.",
         );
@@ -1529,7 +1537,10 @@ export class TasksService {
         `Variables or options formulas in ${names} read this form's answers. Change them to stop reading it, then delete it`,
       );
     }
-    await this.formRepository.remove(form);
+    await softDeleteCascade(this.formRepository.manager, {
+      target: Form,
+      ids: [form.id],
+    });
   }
 
   async getFormResponses(formId: number): Promise<FormResponseDto[]> {
@@ -1814,7 +1825,10 @@ export class TasksService {
   }
 
   async deleteFormDraft(userId: number, formId: number): Promise<void> {
-    await this.formResponseDraftRepository.delete({ userId, formId });
+    await softDeleteWhere(this.formResponseDraftRepository.manager, {
+      target: FormResponseDraft,
+      where: { userId, formId },
+    });
   }
 
   /**

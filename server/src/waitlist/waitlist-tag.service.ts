@@ -4,7 +4,11 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { writeUnderLive } from "src/datasources/soft-delete";
+import {
+  softDeleteCascade,
+  updateLive,
+  writeUnderLive,
+} from "src/datasources/soft-delete";
 import { isUniqueViolation } from "src/utils/db-errors";
 import type { Repository } from "src/utils/Repository";
 import { In } from "typeorm";
@@ -72,9 +76,9 @@ export class WaitlistTagService {
     return tag;
   }
 
-  private async saveNamed(tag: WaitlistTag): Promise<WaitlistTag> {
+  private async uniquelyNamed<T>(write: Promise<T>): Promise<T> {
     try {
-      return await this.tagRepository.save(tag);
+      return await write;
     } catch (err) {
       if (isUniqueViolation(err)) {
         throw new ConflictException("A tag with that name already exists");
@@ -84,13 +88,21 @@ export class WaitlistTagService {
   }
 
   create(name: string): Promise<WaitlistTag> {
-    return this.saveNamed(this.tagRepository.create({ name }));
+    return this.uniquelyNamed(
+      this.tagRepository.save(this.tagRepository.create({ name })),
+    );
   }
 
   async rename(id: number, name: string): Promise<WaitlistTag> {
-    const tag = await this.findOne(id);
-    tag.name = name;
-    return this.saveNamed(tag);
+    await this.uniquelyNamed(
+      updateLive(this.tagRepository.manager, {
+        target: WaitlistTag,
+        id,
+        changes: { name },
+        notFound: TAG_NOT_FOUND,
+      }),
+    );
+    return this.findOne(id);
   }
 
   /**
@@ -117,7 +129,7 @@ export class WaitlistTagService {
           `Cohorts filter by this tag: ${cohorts.map((c) => c.name).join(", ")}`,
         );
       }
-      await manager.remove(tag);
+      await softDeleteCascade(manager, { target: WaitlistTag, ids: [tag.id] });
     });
   }
 

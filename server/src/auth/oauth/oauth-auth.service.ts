@@ -12,7 +12,11 @@ import { JwtService, TokenExpiredError } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { lockLive } from "src/datasources/soft-delete";
+import {
+  lockLive,
+  softDeleteWhere,
+  updateLive,
+} from "src/datasources/soft-delete";
 import { hasPassword, User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { requestContext } from "src/utils/request-context";
@@ -424,7 +428,11 @@ export class OAuthAuthService {
       if (!linked.ok) {
         return linked;
       }
-      await this.userRepository.update(byEmail.id, { emailVerified: true });
+      await updateLive(this.userRepository.manager, {
+        target: User,
+        id: byEmail.id,
+        changes: { emailVerified: true },
+      });
       return R.success({
         user: await this.usersService.findOneOrFail(byEmail.id),
         outcome: OAuthOutcome.Linked,
@@ -514,9 +522,9 @@ export class OAuthAuthService {
         if (!hasPassword(user) && others === 0) {
           return false;
         }
-        await accounts.delete({
-          userId: params.userId,
-          provider: params.provider,
+        await softDeleteWhere(manager, {
+          target: OAuthAccount,
+          where: { userId: params.userId, provider: params.provider },
         });
         return true;
       },
