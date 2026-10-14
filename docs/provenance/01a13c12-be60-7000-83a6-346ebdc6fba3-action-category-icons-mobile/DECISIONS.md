@@ -1,0 +1,3 @@
+- Labels, display order, and `sortActionCategories` live in `shared/lib/actionCategory.ts`, which has no icon dependency, so mobile can import it.
+- Icons stay per platform: `sharedweb/lib/actionCategory.ts` maps categories to `lucide-react` icons, `apps/mobile/lib/actionCategoryIcons.ts` to the same-named `lucide-react-native` icons. Each map is a `Record<ActionCategory, …>`, so a new category fails the build in both until it gets an icon.
+- The mobile card mirrors web's left gutter: one category → its icon, several → `Workflow`, none → empty gutter so titles stay aligned. The category labels go in an `accessibilityLabel` in place of the web tooltip.

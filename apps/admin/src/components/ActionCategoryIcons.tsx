@@ -1,10 +1,11 @@
 import type { ActionCategory } from "@alliance/shared/client";
-import { cn } from "@alliance/shared/styles/util";
 import {
   ACTION_CATEGORIES,
-  ACTION_CATEGORY_DISPLAY,
+  ACTION_CATEGORY_LABELS,
   sortActionCategories,
-} from "@alliance/sharedweb/lib/actionCategory";
+} from "@alliance/shared/lib/actionCategory";
+import { cn } from "@alliance/shared/styles/util";
+import { ACTION_CATEGORY_ICONS } from "@alliance/sharedweb/lib/actionCategory";
 import {
   Tooltip,
   TooltipContent,
@@ -20,7 +21,8 @@ export function ActionCategoryIcons({
   return (
     <span className="inline-flex items-center gap-1 text-zinc-500">
       {sortActionCategories(categories).map((category) => {
-        const { label, Icon } = ACTION_CATEGORY_DISPLAY[category];
+        const label = ACTION_CATEGORY_LABELS[category];
+        const Icon = ACTION_CATEGORY_ICONS[category];
         return (
           <Tooltip key={category}>
             <TooltipTrigger
@@ -49,7 +51,8 @@ export function ActionCategoryPicker({
   return (
     <div role="group" aria-label="Categories" className="flex flex-row gap-1">
       {ACTION_CATEGORIES.map((category) => {
-        const { label, Icon } = ACTION_CATEGORY_DISPLAY[category];
+        const label = ACTION_CATEGORY_LABELS[category];
+        const Icon = ACTION_CATEGORY_ICONS[category];
         const selected = value.includes(category);
         return (
           <Tooltip key={category}>

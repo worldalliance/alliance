@@ -1,15 +1,16 @@
 import type { ActionCategory } from "@alliance/shared/client";
 import {
+  ACTION_CATEGORY_LABELS,
+  sortActionCategories,
+} from "@alliance/shared/lib/actionCategory";
+import {
   ActionItemCardPropsShared,
   showCompletedBar,
 } from "@alliance/shared/lib/actionItemCard";
 import { hasViewerCompletedAction } from "@alliance/shared/lib/actionUtils";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
-import {
-  ACTION_CATEGORY_DISPLAY,
-  sortActionCategories,
-} from "@alliance/sharedweb/lib/actionCategory";
+import { ACTION_CATEGORY_ICONS } from "@alliance/sharedweb/lib/actionCategory";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import {
@@ -33,11 +34,9 @@ const ActionCategoryGutter: React.FC<{
   categories: readonly ActionCategory[];
 }> = ({ categories }) => {
   const sorted = sortActionCategories(categories);
-  const labels = sorted.map(
-    (category) => ACTION_CATEGORY_DISPLAY[category].label,
-  );
+  const labels = sorted.map((category) => ACTION_CATEGORY_LABELS[category]);
   const Icon =
-    sorted.length === 1 ? ACTION_CATEGORY_DISPLAY[sorted[0]].Icon : Workflow;
+    sorted.length === 1 ? ACTION_CATEGORY_ICONS[sorted[0]] : Workflow;
   return (
     <div className="flex w-8 md:w-11 shrink-0 items-center justify-center text-zinc-500 opacity-70 transition-opacity group-hover/card:opacity-100">
       {sorted.length > 0 && (
