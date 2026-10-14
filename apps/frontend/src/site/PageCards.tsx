@@ -172,6 +172,7 @@ function ContractMarkdown({ size }: { size: DocProseSize }) {
 const CONTRACT_PAD: Record<DocProseSize, string> = {
   [DocProseSize.Default]: "p-6 sm:p-8",
   [DocProseSize.Compact]: "p-4",
+  [DocProseSize.Large]: "p-6 sm:p-8",
 };
 
 export function ContractCard({
