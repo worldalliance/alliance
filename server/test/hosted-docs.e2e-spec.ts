@@ -74,6 +74,8 @@ describe("Hosted docs (e2e)", () => {
     mockSend.mockClear();
   });
   afterAll(async () => {
+    // Bun's server.close() waits on open connections, so app.close() would hang.
+    ctx.app.getHttpServer().closeAllConnections();
     await ctx.app.close();
   });
 
