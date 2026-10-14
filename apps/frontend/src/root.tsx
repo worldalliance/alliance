@@ -21,7 +21,10 @@ import {
   useLocation,
 } from "react-router";
 import { HtmlBackgroundManager } from "./components/HtmlBackgroundManager";
-import { ErrorBoundary as RootErrorBoundary } from "./ErrorBoundary";
+import {
+  isNotFound,
+  ErrorBoundary as RootErrorBoundary,
+} from "./ErrorBoundary";
 import { AuthProvider } from "./lib/AuthContext";
 import { getApiUrl, getPosthogHost } from "./lib/config";
 import { registerArrival, useLinkOpenings } from "./lib/linkOpenings";
@@ -30,6 +33,7 @@ import { posthogRequestContext } from "./lib/posthogRequestContext";
 import { ShareLinkViewerFromAuth } from "./lib/ShareLinkViewerFromAuth";
 import { socialPreviewMeta } from "./lib/socialPreviewMeta";
 import { InviteSessionProvider } from "./site/invite/InviteSession";
+import { NOT_FOUND_TITLE } from "./site/NotFoundPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,8 +56,10 @@ registerPosthogRequestContext({
   getContext: () => posthogRequestContext(posthog),
 });
 
-export function meta() {
-  return socialPreviewMeta({ title: "Alliance" });
+export function meta({ error }: { error?: unknown }) {
+  return socialPreviewMeta({
+    title: isNotFound(error) ? NOT_FOUND_TITLE : "Alliance",
+  });
 }
 
 const options: Partial<PostHogConfig> = {

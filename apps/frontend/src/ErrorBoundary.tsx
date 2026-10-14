@@ -1,7 +1,22 @@
-import { isRouteErrorResponse } from "react-router";
+import { type ErrorResponse, isRouteErrorResponse } from "react-router";
 import { Route } from "../.react-router/types/src/+types/root";
+import { NotFoundPage, NotFoundSource } from "./site/NotFoundPage";
+
+export const isNotFound = (error: unknown): error is ErrorResponse =>
+  isRouteErrorResponse(error) && error.status === 404;
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  if (isNotFound(error)) {
+    return (
+      <NotFoundPage
+        source={
+          error.data === NotFoundSource.MissingRecord
+            ? NotFoundSource.MissingRecord
+            : NotFoundSource.UnmatchedRoute
+        }
+      />
+    );
+  }
   if (import.meta.env.PROD) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">

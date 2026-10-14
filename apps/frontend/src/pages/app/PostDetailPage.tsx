@@ -15,6 +15,7 @@ import Comments from "../../components/Comments";
 import LikeFooter from "../../components/LikeFooter";
 import { useAuth } from "../../lib/AuthContext";
 import { useSidFromParams } from "../../lib/utils";
+import { MissingRecordPage } from "../../site/NotFoundPage";
 
 const PostDetailPage: React.FC = () => {
   const { id: postId } = useParams<{ id: string }>();
@@ -64,19 +65,17 @@ const PostDetailPage: React.FC = () => {
   }
 
   // After a delete the post page stays mounted while /forum loads.
-  if (loading || removed || !post) {
+  if (loading || removed) {
     return (
       <div className="bg-page pt-20 px-8 md:px-16">
         <div className="absolute inset-0 flex items-center justify-center">
-          {loading || removed ? (
-            <Spinner size="large" />
-          ) : (
-            <p className="text-center text-zinc-500">Post not found</p>
-          )}
+          <Spinner size="large" />
         </div>
       </div>
     );
   }
+
+  if (!post) return <MissingRecordPage />;
 
   const amAuthor = isPostAuthor(post, user?.id);
 

@@ -11,6 +11,7 @@ export function useActionHandlers(
 ) {
   const [action, setAction] = useState<ActionDto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   const fetchAction = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -25,6 +26,7 @@ export function useActionHandlers(
       });
       if (data) {
         setAction(data);
+        setNotFound(false);
       } else if (!silent) {
         // Only initial (non-silent) loads report absence. A background refetch
         // that comes back empty keeps the last good payload: besides network
@@ -34,6 +36,7 @@ export function useActionHandlers(
         // Worst case for a truly deleted action: the stale page lingers and
         // submits fail server-side until navigation.
         setAction(null);
+        setNotFound(result.ok && result.value.response.status === 404);
       }
       if (!silent) setLoading(false);
     },
@@ -71,6 +74,7 @@ export function useActionHandlers(
   return {
     action,
     loading,
+    notFound,
     refetchAction: fetchAction,
     onCompleteAction,
     onOptOutAction,

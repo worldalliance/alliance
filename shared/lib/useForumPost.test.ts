@@ -58,6 +58,29 @@ it("loads the post with the given id", async () => {
   await waitFor(() => expect(hook.result.current.post).toEqual(post));
 });
 
+it("loads no post, without an error, once the server says it's missing", async () => {
+  getResponse = () => Response.json({}, { status: 404 });
+  const { wrapper } = queryWrapper();
+
+  const hook = renderHook(() => useForumPost("7"), { wrapper });
+
+  await waitFor(() => expect(hook.result.current.isLoading).toBe(false));
+  expect(hook.result.current.post).toBeNull();
+  expect(hook.result.current.error).toBeNull();
+});
+
+it("reports a server failure as an error, not a missing post", async () => {
+  getResponse = () => Response.json({}, { status: 500 });
+  const { wrapper } = queryWrapper();
+
+  const hook = renderHook(() => useForumPost("7"), { wrapper });
+
+  await waitFor(() =>
+    expect(hook.result.current.error).toMatchObject({ statusCode: 500 }),
+  );
+  expect(hook.result.current.post).toBeNull();
+});
+
 it("does not fetch without an id", async () => {
   const { wrapper } = queryWrapper();
 

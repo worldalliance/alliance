@@ -41,9 +41,10 @@ export function useForumPost(
     queryKey,
     queryFn: postId
       ? () =>
-          forumFindOnePost({ path: { id: postId } }).then(
-            (res) => res.data ?? null,
-          )
+          forumFindOnePost({ path: { id: postId } }).then((res) => {
+            if (res.error && res.response.status !== 404) throw res.error;
+            return res.data ?? null;
+          })
       : skipToken,
     refetchOnMount,
   });

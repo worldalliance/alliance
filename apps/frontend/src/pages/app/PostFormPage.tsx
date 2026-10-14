@@ -21,6 +21,7 @@ import {
   useSearchParams,
 } from "react-router";
 import { useAuth } from "../../lib/AuthContext";
+import { MissingRecordPage } from "../../site/NotFoundPage";
 
 type FormMode = "create" | "edit";
 
@@ -82,10 +83,8 @@ const PostFormPage: React.FC = () => {
 
   const awaitingPost = mode === "edit" && filledPostId !== post?.id;
   const loadErrorMessage =
-    awaitingPost && isFetchedAfterMount
-      ? loadError
-        ? "Failed to load required data"
-        : "Post not found"
+    awaitingPost && isFetchedAfterMount && loadError
+      ? "Failed to load required data"
       : null;
   const shownError = error ?? loadErrorMessage;
 
@@ -165,6 +164,8 @@ const PostFormPage: React.FC = () => {
       </div>
     );
   }
+
+  if (awaitingPost && !loadError && !post) return <MissingRecordPage />;
 
   return (
     <div className="container max-w-4xl mx-auto px-4 py-8 mt-4">

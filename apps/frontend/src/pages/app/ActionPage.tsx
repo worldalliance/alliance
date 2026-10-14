@@ -36,6 +36,7 @@ import { isNonmemberOnPublicActionReferral } from "../../lib/publicActionReferra
 import { socialPreviewMeta } from "../../lib/socialPreviewMeta";
 import { useSidFromParams } from "../../lib/utils";
 import { NAV_HEIGHT, Navbar } from "../../site/Navbar";
+import { MissingRecordPage } from "../../site/NotFoundPage";
 import ActionCompletedBarWithInfo from "./ActionCompletedBarWithInfo";
 
 export async function loader({
@@ -144,6 +145,7 @@ export default function ActionPage() {
   const {
     action,
     loading,
+    notFound,
     onCompleteAction,
     onOptOutAction,
     onDeadlinePassed,
@@ -175,6 +177,8 @@ export default function ActionPage() {
       </div>
     );
   }
+
+  if (!action && !loading && notFound) return <MissingRecordPage />;
 
   if (!action) {
     return (

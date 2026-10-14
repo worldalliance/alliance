@@ -26,6 +26,9 @@ export enum AnalyticsEvent {
   NotificationsMarkedAllAsRead = "notifications_marked_all_as_read",
   NotifLinkClick = "notif_link_click",
 
+  // Navigation
+  NotFound = "not_found",
+
   // Signup / invites
   InvitePageOpened = "invite_page_opened",
   NewUser = "new_user",
@@ -158,6 +161,9 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [AnalyticsEvent.NotificationMarkedRead]: false,
   [AnalyticsEvent.NotificationsMarkedAllAsRead]: false,
   [AnalyticsEvent.NotifLinkClick]: false,
+
+  // Navigation
+  [AnalyticsEvent.NotFound]: false,
 
   // Signup / invites
   [AnalyticsEvent.InvitePageOpened]: false,
