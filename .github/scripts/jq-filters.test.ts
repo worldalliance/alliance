@@ -325,3 +325,150 @@ describe("superseded.jq", () => {
     ).toEqual([1, 2]);
   });
 });
+
+describe("staging-build-plan.jq", () => {
+  const IOS = "a".repeat(40);
+  const ANDROID = "b".repeat(40);
+  const OTHER = "c".repeat(40);
+  const lines = (byPlatform: Record<string, string>) =>
+    Object.entries(byPlatform)
+      .map(([platform, fingerprint]) => `${platform}: ${fingerprint}\n`)
+      .join("");
+  const running = (name: string) => ({
+    name,
+    status: "in_progress",
+    conclusion: null,
+    newer: false,
+  });
+  const plan = (input: {
+    platforms?: string;
+    force?: boolean;
+    latest?: Record<string, string>;
+    otherJobs?: unknown[];
+    fingerprints?: Record<string, string>;
+  }) =>
+    jq({
+      filter: "scripts/staging-build-plan.jq",
+      input: {
+        platforms: "both",
+        force: false,
+        otherJobs: [],
+        ...input,
+        fingerprints: lines(
+          input.fingerprints ?? { ios: IOS, android: ANDROID },
+        ),
+        latest: lines(input.latest ?? {}),
+      },
+    })[0];
+  const platforms = (input: Parameters<typeof plan>[0]) =>
+    (plan(input) as { platform: string }[]).map((p) => p.platform);
+
+  test("builds every platform with no submitted build", () => {
+    expect(plan({})).toEqual([
+      {
+        platform: "ios",
+        fingerprint: IOS,
+        name: `Build ios ${IOS}`,
+        runner: "macos-26",
+        timeout: 60,
+        artifact: "ipa",
+      },
+      {
+        platform: "android",
+        fingerprint: ANDROID,
+        name: `Build android ${ANDROID}`,
+        runner: "ubuntu-latest",
+        timeout: 45,
+        artifact: "aab",
+      },
+    ]);
+  });
+
+  test("skips a platform whose fingerprint is its latest submitted build", () => {
+    expect(platforms({ latest: { ios: IOS } })).toEqual(["android"]);
+    expect(platforms({ latest: { ios: ANDROID } })).toEqual(["ios", "android"]);
+  });
+
+  test("rebuilds an older fingerprint after a revert", () => {
+    expect(platforms({ latest: { ios: OTHER, android: ANDROID } })).toEqual([
+      "ios",
+    ]);
+  });
+
+  test("force rebuilds the latest fingerprint", () => {
+    expect(
+      plan({
+        force: true,
+        platforms: "android",
+        latest: { android: ANDROID },
+      }),
+    ).toMatchObject([{ platform: "android" }]);
+  });
+
+  test("skips a fingerprint another run is already building", () => {
+    expect(
+      plan({
+        platforms: "ios",
+        force: true,
+        otherJobs: [running(`Build ios ${IOS}`)],
+      }),
+    ).toEqual([]);
+    expect(
+      plan({ platforms: "ios", otherJobs: [running(`Build ios ${OTHER}`)] }),
+    ).toMatchObject([{ platform: "ios" }]);
+  });
+
+  test("skips a fingerprint another run built and has yet to tag", () => {
+    expect(
+      plan({
+        platforms: "ios",
+        otherJobs: [
+          {
+            name: `Build ios ${IOS}`,
+            status: "completed",
+            conclusion: "success",
+            newer: false,
+          },
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  test("ignores another run's failed or cancelled build", () => {
+    expect(
+      platforms({
+        latest: { ios: IOS, android: ANDROID },
+        otherJobs: ["failure", "cancelled"].map((conclusion) => ({
+          name: `Build ios ${OTHER}`,
+          status: "completed",
+          conclusion,
+          newer: false,
+        })),
+      }),
+    ).toEqual([]);
+  });
+
+  test("supersedes another fingerprint's running build of the same platform", () => {
+    expect(
+      platforms({
+        latest: { ios: IOS, android: ANDROID },
+        otherJobs: [running(`Build ios ${OTHER}`)],
+      }),
+    ).toEqual(["ios"]);
+  });
+
+  test("leaves a platform to a newer commit's build of another fingerprint", () => {
+    expect(
+      platforms({
+        force: true,
+        otherJobs: [{ ...running(`Build ios ${OTHER}`), newer: true }],
+      }),
+    ).toEqual(["android"]);
+  });
+
+  test("fails without a fingerprint for a requested platform", () => {
+    expect(() => plan({ fingerprints: { ios: IOS } })).toThrow(
+      "no android fingerprint",
+    );
+  });
+});
