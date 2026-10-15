@@ -11,6 +11,7 @@ import {
 import { formulaSourcesChanged } from "@alliance/shared/forms/formulaChoices";
 import { useRecordActionRelation } from "@alliance/shared/lib/actionsListPage";
 import {
+  formAlreadySubmitted,
   memberActionDeadlinePassed,
   type ActionWithdrawal,
 } from "@alliance/shared/lib/actionTaskPanel";
@@ -126,7 +127,7 @@ const ActionTaskPanelForm = ({
           onCompleteAction();
           return true;
         }
-        if (response.error?.message === "Form already submitted") {
+        if (formAlreadySubmitted(response)) {
           window.location.reload();
           return false;
         }

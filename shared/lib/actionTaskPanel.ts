@@ -1,4 +1,7 @@
-import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
+import {
+  FORM_ALREADY_SUBMITTED,
+  MEMBER_ACTION_DEADLINE_PASSED,
+} from "@alliance/common/actionActivity";
 import { useCallback, useState } from "react";
 import {
   ActionDto,
@@ -33,6 +36,13 @@ export function memberActionDeadlinePassed(result: SubmitResult): boolean {
   return (
     result.response.status === 403 &&
     result.error?.message === MEMBER_ACTION_DEADLINE_PASSED
+  );
+}
+
+export function formAlreadySubmitted(result: SubmitResult): boolean {
+  return (
+    result.response.status === 400 &&
+    result.error?.message === FORM_ALREADY_SUBMITTED
   );
 }
 

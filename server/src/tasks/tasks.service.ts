@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
   ActionActivityType,
+  FORM_ALREADY_SUBMITTED,
   withdrawalHasRequiredReason,
 } from "@alliance/common/actionActivity";
 import { thrownMessage } from "@alliance/common/errorMessage";
@@ -1176,7 +1177,7 @@ export class TasksService {
         where: { formId, guest: { id: guestId } },
       });
       if (existing) {
-        throw new BadRequestException("Form already submitted");
+        throw new BadRequestException(FORM_ALREADY_SUBMITTED);
       }
     }
 
@@ -1276,7 +1277,7 @@ export class TasksService {
       userId: params.userId,
     });
     if (submitted.has(params.actionId)) {
-      throw new BadRequestException("Form already submitted");
+      throw new BadRequestException(FORM_ALREADY_SUBMITTED);
     }
   }
 

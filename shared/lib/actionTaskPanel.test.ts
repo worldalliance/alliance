@@ -1,8 +1,12 @@
-import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
+import {
+  FORM_ALREADY_SUBMITTED,
+  MEMBER_ACTION_DEADLINE_PASSED,
+} from "@alliance/common/actionActivity";
 import { act, renderHook } from "@testing-library/react";
 import type { ActionDto } from "../client";
 import {
   type ActionWithdrawal,
+  formAlreadySubmitted,
   memberActionDeadlinePassed,
   useTaskFormHandlers,
 } from "./actionTaskPanel";
@@ -34,6 +38,20 @@ describe("memberActionDeadlinePassed", () => {
         refusal(403, "This action is not available to you"),
       ),
     ).toBe(false);
+  });
+});
+
+describe("formAlreadySubmitted", () => {
+  it("recognizes only the already-submitted refusal", () => {
+    expect(formAlreadySubmitted(refusal(400, FORM_ALREADY_SUBMITTED))).toBe(
+      true,
+    );
+    expect(
+      formAlreadySubmitted(refusal(400, "A withdrawal reason is required")),
+    ).toBe(false);
+    expect(formAlreadySubmitted(refusal(500, FORM_ALREADY_SUBMITTED))).toBe(
+      false,
+    );
   });
 });
 

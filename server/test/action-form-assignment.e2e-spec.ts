@@ -1,3 +1,4 @@
+import { FORM_ALREADY_SUBMITTED } from "@alliance/common/actionActivity";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { milliseconds } from "date-fns";
 import type { ActionDto, CreateActionDto } from "src/actions/dto/action.dto";
@@ -146,7 +147,7 @@ describe("Form variant assignment (e2e)", () => {
       .send({ actionId, formSnapshotId: 0, answers: {} })
       .expect(400);
 
-    expect(refused.body.message).toBe("Form already submitted");
+    expect(refused.body.message).toBe(FORM_ALREADY_SUBMITTED);
     expect(await assignedVariantId(actionId)).toBeNull();
   });
 
