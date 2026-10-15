@@ -30,9 +30,11 @@ test("loads and decodes a lazy image below the fold", async () => {
       '<div style="height:10000px"></div><img loading="lazy" decoding="async" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%2210%22%3E%3Crect width=%2210%22 height=%2210%22 fill=%22red%22/%3E%3C/svg%3E">',
     );
     expect((await settleImages(page)).ok).toBe(true);
-    expect(await page.locator("img").evaluate((img) => img.naturalWidth)).toBe(
-      10,
-    );
+    expect(
+      await page
+        .locator("img")
+        .evaluate((img: HTMLImageElement) => img.naturalWidth),
+    ).toBe(10);
   } finally {
     await page.close();
   }

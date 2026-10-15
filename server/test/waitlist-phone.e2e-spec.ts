@@ -115,6 +115,7 @@ describe("Waitlist phone contact (e2e)", () => {
       expect(remembered.body.entry).toEqual({
         shareCode: entry.code,
         mobilized: false,
+        nonprofitNominations: null,
       });
     });
 
