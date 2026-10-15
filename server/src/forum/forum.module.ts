@@ -18,6 +18,7 @@ import { ForumDigestLog } from "./entities/forum-digest-log.entity";
 import { PostTag } from "./entities/post-tag.entity";
 import { Post } from "./entities/post.entity";
 import { ForumAdminService } from "./forum-admin.service";
+import { ForumCommentService } from "./forum-comment.service";
 import { ForumDigestService } from "./forum-digest.service";
 import { ForumExportService } from "./forum-export.service";
 import { ForumLikesService } from "./forum-likes.service";
@@ -51,6 +52,7 @@ import { LegacyDeletedFlagService } from "./legacy-deleted-flag.service";
   providers: [
     ForumService,
     ForumAdminService,
+    ForumCommentService,
     ForumDigestService,
     ForumExportService,
     ForumLikesService,

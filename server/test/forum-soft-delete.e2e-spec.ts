@@ -14,6 +14,7 @@ import {
   CommentParentObject,
 } from "src/forum/entities/comment.entity";
 import { Post } from "src/forum/entities/post.entity";
+import { ForumCommentService } from "src/forum/forum-comment.service";
 import { ForumService } from "src/forum/forum.service";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
@@ -717,6 +718,7 @@ describe("Forum soft deletion (e2e)", () => {
     const author = await member();
     const postId = await createPost(ctx.accessToken);
     const forum = ctx.app.get(ForumService);
+    const commentService = ctx.app.get(ForumCommentService);
     const deletion = ctx.dataSource.createQueryRunner();
     await deletion.startTransaction();
     try {
@@ -739,7 +741,7 @@ describe("Forum soft deletion (e2e)", () => {
         ),
       );
       const commented = settle(
-        forum.createComment(
+        commentService.createComment(
           {
             parentObjectType: CommentParentObject.Post,
             parentObjectId: postId,
@@ -775,7 +777,7 @@ describe("Forum soft deletion (e2e)", () => {
         { deletedAt: () => "CURRENT_TIMESTAMP", legacyDeleted: true },
       );
       const commented = ctx.app
-        .get(ForumService)
+        .get(ForumCommentService)
         .createComment(
           {
             parentObjectType: CommentParentObject.Post,
@@ -817,7 +819,7 @@ describe("Forum soft deletion (e2e)", () => {
         { deletedAt: () => "CURRENT_TIMESTAMP", legacyDeleted: true },
       );
       const replied = ctx.app
-        .get(ForumService)
+        .get(ForumCommentService)
         .createComment(
           {
             parentObjectType: CommentParentObject.Post,

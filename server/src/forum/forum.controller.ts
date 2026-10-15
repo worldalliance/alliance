@@ -32,6 +32,7 @@ import {
   UpdatePostSettingsDto,
 } from "./dto/post.dto";
 import { ForumAdminService } from "./forum-admin.service";
+import { ForumCommentService } from "./forum-comment.service";
 import { ForumExportService } from "./forum-export.service";
 import { ForumLikesService } from "./forum-likes.service";
 import { ForumService } from "./forum.service";
@@ -42,6 +43,7 @@ export class ForumController {
   constructor(
     private readonly forumService: ForumService,
     private readonly forumAdminService: ForumAdminService,
+    private readonly forumCommentService: ForumCommentService,
     private readonly forumExportService: ForumExportService,
     private readonly forumLikesService: ForumLikesService,
     private readonly posthog: PosthogService,
@@ -252,7 +254,7 @@ export class ForumController {
     @Body() createReplyDto: CreateCommentDto,
     @ReqUser() user: JwtPayload,
   ): Promise<CommentDto> {
-    const comment = await this.forumService.createComment(
+    const comment = await this.forumCommentService.createComment(
       createReplyDto,
       user.sub,
     );
@@ -276,7 +278,11 @@ export class ForumController {
     @ReqUser() user: JwtPayload,
   ): Promise<CommentDto> {
     return new CommentDto(
-      await this.forumService.updateComment(id, updateCommentDto, user.sub),
+      await this.forumCommentService.updateComment(
+        id,
+        updateCommentDto,
+        user.sub,
+      ),
       { requestingUserId: user.sub },
     );
   }
@@ -371,7 +377,7 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @ReqUser() user: JwtPayload,
   ): Promise<void> {
-    return this.forumService.deleteReply(+id, user.sub);
+    return this.forumCommentService.deleteReply(+id, user.sub);
   }
 
   @Get("admin/posts")

@@ -6,6 +6,7 @@ import {
   Comment,
   CommentParentObject,
 } from "src/forum/entities/comment.entity";
+import { ForumCommentService } from "src/forum/forum-comment.service";
 import { ForumService } from "src/forum/forum.service";
 import { Friend } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
@@ -105,6 +106,7 @@ describe("Writers locking the parents they attach to (e2e)", () => {
     const departing = await member();
     const replier = await member();
     const forum = ctx.app.get(ForumService);
+    const commentService = ctx.app.get(ForumCommentService);
     const post = await forum.createPost(
       {
         title: "Discussion",
@@ -118,11 +120,11 @@ describe("Writers locking the parents they attach to (e2e)", () => {
       parentId,
       editableContent: { body, attachments: [] },
     });
-    const ancestor = await forum.createComment(
+    const ancestor = await commentService.createComment(
       onPost("Ancestor"),
       departing.id,
     );
-    const parent = await forum.createComment(
+    const parent = await commentService.createComment(
       onPost("Parent", ancestor.id),
       replier.id,
     );
@@ -133,7 +135,7 @@ describe("Writers locking the parents they attach to (e2e)", () => {
         target: User,
         id: departing.id,
         write: () =>
-          forum.createComment(onPost("Raced", parent.id), replier.id),
+          commentService.createComment(onPost("Raced", parent.id), replier.id),
       }),
     ).toBeInstanceOf(NotFoundException);
     expect(
