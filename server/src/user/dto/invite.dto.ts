@@ -1,4 +1,4 @@
-/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { publicDisplayName } from "@alliance/common/displayName";
 import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { Type } from "class-transformer";

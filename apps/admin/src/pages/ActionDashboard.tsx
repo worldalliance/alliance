@@ -1,4 +1,4 @@
-/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import {
   fieldHasOptions,

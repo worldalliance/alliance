@@ -1,4 +1,4 @@
-/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
   ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
   WITHDRAWAL_OPTIONS,

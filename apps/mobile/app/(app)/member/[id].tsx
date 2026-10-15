@@ -1,4 +1,4 @@
-/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { postBylineAuthors } from "@alliance/common/postAuthors";
 import { run } from "@alliance/common/run";
 import { ActionActivityDto, HomeFeedItemDto } from "@alliance/shared/client";
