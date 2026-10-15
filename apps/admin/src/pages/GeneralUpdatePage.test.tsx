@@ -21,6 +21,7 @@ let saved: UpdateGeneralUpdateDto | null = null;
 let servedName = "Weekly note";
 let findStatus = 200;
 let updateStatus = 200;
+let suitesStatus = 200;
 
 serveApi(
   routes({
@@ -43,7 +44,8 @@ serveApi(
         }),
       );
     },
-    "GET /actions/suites": () => Response.json([]),
+    "GET /actions/suites": () =>
+      Response.json(suitesStatus === 200 ? [] : {}, { status: suitesStatus }),
     "GET /user/members": () => Response.json([]),
     "GET /user/tags": () => Response.json([]),
   }),
@@ -55,6 +57,7 @@ beforeEach(() => {
   servedName = "Weekly note";
   findStatus = 200;
   updateStatus = 200;
+  suitesStatus = 200;
   process.env.TZ = "America/New_York";
 });
 afterEach(() => {
@@ -187,6 +190,14 @@ it("reports a failed load", async () => {
   expect(
     await screen.findByText("Failed to load general update"),
   ).toBeDefined();
+});
+
+it("reports suites that failed to load", async () => {
+  suitesStatus = 500;
+  renderPage();
+
+  expect(await screen.findByText("Failed to load suites.")).toBeDefined();
+  expect(screen.queryByText("No suites available.")).toBeNull();
 });
 
 it("reports a failed save and keeps the form", async () => {

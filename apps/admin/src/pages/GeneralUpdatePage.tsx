@@ -4,8 +4,6 @@ import {
   readDisplayOnlySchema,
 } from "@alliance/common/forms/display-only-schema";
 import {
-  actionsSuitesAdmin,
-  ActionSuiteDto,
   CreateGeneralUpdateDto,
   GeneralUpdateAdminDto,
   UpdateGeneralUpdateDto,
@@ -25,6 +23,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { FormBuilder } from "../components/FormBuilder";
 import FormSection from "../components/FormSection";
+import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useGeneralUpdateAdmin } from "../lib/useGeneralUpdateAdmin";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 
@@ -99,8 +98,8 @@ const GeneralUpdatePage: React.FC = () => {
   }
 
   const { tags: availableTags, isLoading: tagsLoading } = useTagsAdmin();
-  const [availableSuites, setAvailableSuites] = useState<ActionSuiteDto[]>([]);
-  const [suitesLoading, setSuitesLoading] = useState<boolean>(true);
+  const { suites } = useActionSuitesAdmin();
+  const availableSuites = suites.data ?? [];
   const {
     users: availableUsers,
     isLoading: usersLoading,
@@ -119,25 +118,6 @@ const GeneralUpdatePage: React.FC = () => {
         : { ...prev, suiteIds: [...prev.suiteIds, suiteId] },
     );
   }, [isNew, searchParams]);
-
-  // Load suites
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const response = await actionsSuitesAdmin();
-        if (!cancelled && response.data) setAvailableSuites(response.data);
-      } catch (err) {
-        console.error("Failed to load suites:", err);
-      } finally {
-        if (!cancelled) setSuitesLoading(false);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const hasSuites = form.suiteIds.length > 0;
 
@@ -283,8 +263,10 @@ const GeneralUpdatePage: React.FC = () => {
               })}
             </ul>
           )}
-          {suitesLoading ? (
+          {suites.isPending ? (
             <p className="text-sm text-gray-500">Loading suites...</p>
+          ) : suites.isLoadingError ? (
+            <p className="text-sm text-red-600">Failed to load suites.</p>
           ) : availableSuites.length ? (
             <div className="flex items-center gap-2">
               <label htmlFor="add-suite" className="sr-only">
