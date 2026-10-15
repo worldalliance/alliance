@@ -1,4 +1,8 @@
-import { Features } from "@alliance/shared/lib/features";
+import {
+  INFO_CONTACTS,
+  InfoEntryId,
+  visibleInfoResources,
+} from "@alliance/shared/lib/informationPage";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import {
   BookOpenText,
@@ -8,6 +12,7 @@ import {
   Handshake,
   Info,
   ListOrdered,
+  type LucideIcon,
   Mail,
   Map as MapIcon,
   Megaphone,
@@ -23,102 +28,42 @@ import InfoResourceCard, {
 } from "../../components/InfoResourceCard";
 import { isFeatureEnabled } from "../../lib/config";
 
+const ICONS: Record<InfoEntryId, LucideIcon> = {
+  [InfoEntryId.Email]: Mail,
+  [InfoEntryId.Visit]: CalendarCheck,
+  [InfoEntryId.WhatIsTheAlliance]: Info,
+  [InfoEntryId.MemberDirectory]: BookUser,
+  [InfoEntryId.Roadmap]: MapIcon,
+  [InfoEntryId.AboutGroups]: Users,
+  [InfoEntryId.AboutAmbassadors]: Handshake,
+  [InfoEntryId.HowToDesignActions]: PenTool,
+  [InfoEntryId.ActionUpdates]: ClipboardList,
+  [InfoEntryId.GeneralUpdates]: Megaphone,
+  [InfoEntryId.Priorities]: ListOrdered,
+  [InfoEntryId.Governance]: Scale,
+  [InfoEntryId.Terminology]: BookOpenText,
+};
+
 const InformationPage: React.FC = () => {
   useWhiteBackground();
 
-  const contacts: InfoResourceCardProps[] = [
-    {
-      title: "Email",
-      description: "Email the office with questions, feedback, or ideas.",
-      href: "mailto:contact@worldalliance.org",
-      icon: Mail,
-    },
-    {
-      title: "Schedule a visit",
-      description:
-        "Schedule a visit to the Alliance's physical office in San Francisco, CA, USA.",
-      href: "mailto:contact@worldalliance.org?subject=Request to visit the office&body=I would like to schedule a visit to the Alliance's physical office on [DATE] at [TIME].",
-      icon: CalendarCheck,
-    },
-  ];
+  const contacts: InfoResourceCardProps[] = INFO_CONTACTS.map(
+    ({ id, title, description, href }) => ({
+      title,
+      description,
+      href,
+      icon: ICONS[id],
+    }),
+  );
 
-  const resources: InfoResourceCardProps[] = [
-    {
-      title: "What is the Alliance?",
-      description:
-        "The Alliance is a global group of individuals cooperating to improve the world.",
-      href: href("/guide"),
-      icon: Info,
-    },
-    {
-      title: "Member directory",
-      description: "A list of all members of the Alliance.",
-      href: href("/members"),
-      icon: BookUser,
-    },
-    {
-      title: "Roadmap",
-      description:
-        "The Alliance is in an experimental phase and building up to a public launch.",
-      href: href("/roadmap"),
-      icon: MapIcon,
-    },
-    {
-      title: "About groups",
-      description:
-        "The Alliance is organized into groups that help members hold each other accountable.",
-      href: href("/groups-guide"),
-      icon: Users,
-    },
-    {
-      title: "About ambassadors",
-      description:
-        "How ambassadors help introduce the Alliance to new members.",
-      href: href("/ambassadors"),
-      icon: Handshake,
-    },
-    {
-      title: "How to design actions",
-      description: "A basic guide that the office uses to design actions.",
-      href: href("/action-design"),
-      icon: PenTool,
-    },
-    {
-      title: "Action updates",
-      description: "Progress updates on our actions.",
-      href: href("/action-updates"),
-      icon: ClipboardList,
-    },
-    ...(isFeatureEnabled(Features.GeneralUpdatesLink)
-      ? [
-          {
-            title: "General updates",
-            description:
-              "Updates about the Alliance's progress as an organization.",
-            href: href("/general-updates"),
-            icon: Megaphone,
-          },
-        ]
-      : []),
-    {
-      title: "Priorities",
-      description: "An overview of our current priorities.",
-      href: href("/priorities"),
-      icon: ListOrdered,
-    },
-    {
-      title: "Governance",
-      description: "Members participate in a regular oversight process.",
-      href: href("/internal-governance"),
-      icon: Scale,
-    },
-    {
-      title: "Terminology",
-      description: "Some terms used in the Alliance.",
-      href: href("/terminology"),
-      icon: BookOpenText,
-    },
-  ];
+  const resources: InfoResourceCardProps[] = visibleInfoResources(
+    isFeatureEnabled,
+  ).map(({ id, title, description, path }) => ({
+    title,
+    description,
+    href: href(path),
+    icon: ICONS[id],
+  }));
 
   return (
     <CenterLayout>
