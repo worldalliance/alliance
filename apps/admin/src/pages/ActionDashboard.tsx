@@ -6,14 +6,12 @@ import {
 } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
 import { ensureHttpProtocol } from "@alliance/common/url";
-import type { ActionSuiteDto } from "@alliance/shared/client";
 import {
   ActionCategory,
   ActionDto,
   actionsExportActionAdmin,
   actionsGetIncompleteUsersAdmin,
   actionsShareUrlStatsAdmin,
-  actionsSuitesAdmin,
   analyticsGetActionStatsByIdAdmin,
   CreateActionDto,
   FormResponseDto,
@@ -97,6 +95,7 @@ import { getSiteUrl } from "../lib/config";
 import type { FormResponseFilter } from "../lib/responseFilter";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { makeTempId } from "../lib/tempId";
+import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useAllActions } from "../lib/useAllActions";
 import { useCoverImage } from "../lib/useCoverImage";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
@@ -203,8 +202,13 @@ const ActionDashboard: React.FC = () => {
     isLoadingError: tagsError,
   } = useTagsAdmin();
   const invalidateFormsIndex = useInvalidateFormsIndex();
-  const [availableSuites, setAvailableSuites] = useState<ActionSuiteDto[]>([]);
-  const [suitesLoading, setSuitesLoading] = useState<boolean>(true);
+  const {
+    suites: {
+      data: availableSuites,
+      isPending: suitesLoading,
+      isLoadingError: suitesError,
+    },
+  } = useActionSuitesAdmin();
   const [cohortExpression, setCohortExpression] =
     useState<CohortExpression | null>(null);
   const {
@@ -231,31 +235,6 @@ const ActionDashboard: React.FC = () => {
   const [incompleteUsersExpanded, setIncompleteUsersExpanded] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedTab, onTabChange] = useSearchParamTab(tabs, "overview");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadSuites = async () => {
-      try {
-        const response = await actionsSuitesAdmin();
-        if (!cancelled && response.data) {
-          setAvailableSuites(response.data);
-        }
-      } catch (err) {
-        console.error("Failed to load suites:", err);
-      } finally {
-        if (!cancelled) {
-          setSuitesLoading(false);
-        }
-      }
-    };
-
-    loadSuites();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const [form, setForm] = useState<CreateActionDto>({
     name: "",
@@ -950,6 +929,7 @@ const ActionDashboard: React.FC = () => {
             tagsError={tagsError}
             availableSuites={availableSuites}
             suitesLoading={suitesLoading}
+            suitesError={suitesError}
             availableUsers={availableUsers}
             usersLoading={usersLoading}
             usersError={usersError}
@@ -1529,6 +1509,7 @@ const ActionDashboard: React.FC = () => {
                   tagsError={tagsError}
                   availableSuites={availableSuites}
                   suitesLoading={suitesLoading}
+                  suitesError={suitesError}
                   availableUsers={availableUsers}
                   usersLoading={usersLoading}
                   usersError={usersError}
