@@ -92,6 +92,7 @@ export class ContractSuspenderWorker {
               () =>
                 this.mmsService.sendMms({
                   to: user.phoneNumber!,
+                  userId: user.id,
                   body: suspensionMessage,
                   mediaUrls: [],
                   tracking: null,

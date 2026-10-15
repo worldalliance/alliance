@@ -80,6 +80,7 @@ describe("MmsService sendMms", () => {
     const result = await asProduction(() =>
       service.sendMms({
         to: TO,
+        userId: 1,
         body: BODY,
         mediaUrls: ["https://example.com/task.png"],
         tracking: null,
@@ -108,6 +109,7 @@ describe("MmsService sendMms", () => {
     try {
       await service.sendMms({
         to: TO,
+        userId: 1,
         body: "Tasks: https://app.example.org/tasks",
         mediaUrls: [],
         tracking: {
@@ -137,6 +139,7 @@ describe("MmsService sendMms", () => {
     const result = await asProduction(() =>
       service.sendMms({
         to: TO,
+        userId: 1,
         body: BODY,
         mediaUrls: [],
         tracking: {
@@ -174,6 +177,7 @@ describe("MmsService sendMms", () => {
     await asProduction(() =>
       service.sendMms({
         to: TO,
+        userId: 1,
         body: BODY,
         mediaUrls: [],
         tracking: {
@@ -188,6 +192,49 @@ describe("MmsService sendMms", () => {
     expect(discard.mock.calls).toEqual(result ? [] : [["track-1"]]);
   });
 
+  it("names the user, not the number, in the server log", async () => {
+    const logged = (["log", "warn", "error"] as const).map((level) =>
+      jest.spyOn(Logger.prototype, level).mockImplementation(() => {}),
+    );
+    service["twilioClient"] = {
+      messages: {
+        create: () =>
+          Promise.reject(
+            new Error(`The 'To' number ${TO} is not a valid phone number.`),
+          ),
+      },
+    } as unknown as Twilio.Twilio;
+
+    await asProduction(() =>
+      service.sendMms({
+        to: TO,
+        userId: 42,
+        body: BODY,
+        mediaUrls: [],
+        tracking: null,
+      }),
+    );
+    for (const sending of [
+      Promise.resolve(message),
+      Promise.reject(new Error(`${TO} is not currently reachable`)),
+    ]) {
+      service["recordLateSend"]({
+        sending,
+        to: TO,
+        userId: 42,
+        body: BODY,
+        cid: null,
+      });
+    }
+    await delay(0);
+
+    const lines = logged.flatMap((spy) =>
+      spy.mock.calls.flatMap((args) => args.map(String)),
+    );
+    expect(lines.filter((line) => line.includes("user 42"))).toHaveLength(4);
+    expect(lines.filter((line) => line.includes(TO))).toEqual([]);
+  });
+
   it("sends to UK numbers from the alphanumeric sender", async () => {
     const create = jest.fn(() => Promise.resolve(message));
     service["twilioClient"] = {
@@ -197,6 +244,7 @@ describe("MmsService sendMms", () => {
     await asProduction(() =>
       service.sendMms({
         to: "+447700900123",
+        userId: 1,
         body: BODY,
         mediaUrls: [],
         tracking: null,
@@ -218,6 +266,7 @@ describe("MmsService sendMms", () => {
     const result = await asProduction(() =>
       service.sendMms({
         to: TO,
+        userId: 1,
         body: BODY,
         mediaUrls: ["https://example.com/task.png"],
         tracking: null,
@@ -241,6 +290,7 @@ describe("MmsService sendMms", () => {
     service["recordLateSend"]({
       sending: Promise.resolve(message),
       to: TO,
+      userId: 1,
       body: BODY,
       cid: "cid-1",
     });
@@ -267,6 +317,7 @@ describe("MmsService sendMms", () => {
     service["recordLateSend"]({
       sending: Promise.reject(new Error("network down")),
       to: TO,
+      userId: 1,
       body: BODY,
       cid: "cid-1",
     });

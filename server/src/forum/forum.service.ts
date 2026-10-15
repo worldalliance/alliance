@@ -852,6 +852,7 @@ export class ForumService {
           if (userActionNotifsEnabled_text(parentAuthor)) {
             await this.mmsService.sendMms({
               to: parentAuthor.phoneNumber!,
+              userId: parentAuthor.id,
               body: `${authorDto.displayName} replied to your comment on ${post.title}: ${url}`,
               mediaUrls: [],
               tracking,
