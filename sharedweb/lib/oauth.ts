@@ -12,8 +12,9 @@ import {
 } from "@alliance/common/oauth";
 import type { PosthogContext } from "@alliance/common/posthog";
 import { deviceTimeZone, signupTimeZone } from "@alliance/shared/lib/timeZone";
-import { useEffect, useState } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router";
+import { useState } from "react";
+import { useSearchParams } from "react-router";
+import { useStripSearchParams } from "./useStripSearchParams";
 
 /**
  * For a top-level navigation, not a fetch. The server answers with a redirect
@@ -61,12 +62,14 @@ export function oauthNoticeMessage(notice: OAuthNotice): string | null {
   }
 }
 
+const OAUTH_PARAMS = Object.values(OAuthProvider).flatMap((provider) => [
+  oauthOutcomeParam(provider),
+  oauthErrorParam(provider),
+]);
+
 /** Drops what the callback appended, so a later navigation cannot replay it. */
 export function clearOAuthParams(params: URLSearchParams) {
-  for (const provider of Object.values(OAuthProvider)) {
-    params.delete(oauthOutcomeParam(provider));
-    params.delete(oauthErrorParam(provider));
-  }
+  for (const name of OAUTH_PARAMS) params.delete(name);
 }
 
 function readNotice(params: URLSearchParams): OAuthNotice | null {
@@ -90,24 +93,8 @@ function readNotice(params: URLSearchParams): OAuthNotice | null {
  */
 export function useOAuthNotice(): OAuthNotice | null {
   const [searchParams] = useSearchParams();
-  const { hash } = useLocation();
-  const navigate = useNavigate();
   const [notice] = useState(() => readNotice(searchParams));
-
-  useEffect(() => {
-    if (!notice || !readNotice(searchParams)) {
-      return;
-    }
-    const next = new URLSearchParams(searchParams);
-    clearOAuthParams(next);
-    // Not setSearchParams, which drops the hash.
-    navigate(
-      { search: next.toString(), hash },
-      // Without this, ScrollRestoration answers the strip by scrolling the
-      // member to the top of whatever they were reading.
-      { replace: true, preventScrollReset: true },
-    );
-  }, [notice, searchParams, hash, navigate]);
+  useStripSearchParams(OAUTH_PARAMS);
 
   return notice;
 }

@@ -55,6 +55,17 @@ describe("useOAuthNotice", () => {
     expect(router.state.location.hash).toBe("#account");
   });
 
+  test("strips a provider parameter it cannot read", async () => {
+    router = createMemoryRouter([{ path: "/settings", element: <Page /> }], {
+      initialEntries: ["/settings?google=bogus&tab=1#account"],
+    });
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => expect(router.state.location.search).toBe("?tab=1"));
+    expect(router.state.location.hash).toBe("#account");
+    expect(screen.queryByText("notice")).toBeNull();
+  });
+
   test("leaves later navigations alone once stripped", async () => {
     router = createMemoryRouter([{ path: "/settings", element: <Page /> }], {
       initialEntries: ["/settings?apple=linked"],
