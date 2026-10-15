@@ -1,13 +1,14 @@
 import { hoursInDay } from "@alliance/common/duration";
-import { analyticsGetActionCompletionCurvesAdmin } from "@alliance/shared/client";
 import { ActionCompletionCurveDto } from "@alliance/shared/client/types.gen";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   buildActionCompletionCurveChartData,
   curveDurationDays,
 } from "../lib/actionCompletionCurveChartData";
+import {
+  type GranularityMode,
+  useActionCompletionCurvesAdmin,
+} from "../lib/useActionCompletionCurvesAdmin";
 import { TimeSeriesChart } from "./TimeSeriesChart";
 
 type ActionCompletionCurveChartProps = {
@@ -15,8 +16,6 @@ type ActionCompletionCurveChartProps = {
   actionId?: number;
   showSelector?: boolean;
 };
-
-type GranularityMode = "daily" | "hourly";
 
 const noCurves: ActionCompletionCurveDto[] = [];
 
@@ -42,16 +41,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
     isPending,
     isPlaceholderData,
     isError,
-  } = useQuery({
-    queryKey: queryKeys.actionCompletionCurvesAdmin(granularity),
-    // Always fetch all curves - needed to compute the average line
-    queryFn: () =>
-      analyticsGetActionCompletionCurvesAdmin({
-        query: { granularity },
-        throwOnError: true,
-      }).then((r) => r.data),
-    placeholderData: keepPreviousData,
-  });
+  } = useActionCompletionCurvesAdmin(granularity);
   const loading = isPending || isPlaceholderData;
 
   const completionCurveActionOptions = useMemo(() => {
