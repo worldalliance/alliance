@@ -15,8 +15,6 @@ import {
 
 export enum Experiment {
   MissedSuiteFirstNotice = "missed_suite_first_notice",
-  /** Variant completers read branch A of `RecognitionBranch`; everyone else, branch B. */
-  ActionUpdateRecognition = "action_update_recognition",
   ReminderSocialProof = "reminder_social_proof",
   ContractReminder = "contract_reminder",
 }

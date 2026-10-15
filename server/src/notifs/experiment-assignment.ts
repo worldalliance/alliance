@@ -36,7 +36,7 @@ export async function assignExperimentArms(
 }
 
 /** Each member's arm, without drawing one for a member who has none. */
-export async function readExperimentArms(
+async function readExperimentArms(
   em: EntityManager,
   params: { experiment: Experiment; userIds: readonly number[] },
 ): Promise<Map<number, ExperimentArm>> {

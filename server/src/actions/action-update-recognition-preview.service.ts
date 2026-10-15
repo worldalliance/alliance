@@ -1,7 +1,5 @@
 import { Injectable } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
-import { Experiment } from "src/notifs/entities/experiment-assignment.entity";
-import { readExperimentArms } from "src/notifs/experiment-assignment";
 import { DataSource, In, Raw } from "typeorm";
 import {
   findLatestCompletions,
@@ -21,7 +19,7 @@ export class ActionUpdateRecognitionPreviewService {
     private readonly participants: ActionParticipantsService,
   ) {}
 
-  /** Reads arms and the saved roster without drawing or deciding anything. */
+  /** Reads the saved roster without deciding anything. */
   async counts(params: {
     actionId: number;
     userIds: readonly number[];
@@ -41,13 +39,8 @@ export class ActionUpdateRecognitionPreviewService {
     const participantIds = new Set(
       await this.participants.findParticipantIdsForActionById(actionId),
     );
-    const arms = await readExperimentArms(em, {
-      experiment: Experiment.ActionUpdateRecognition,
-      userIds,
-    });
     return countRecognitionPreview(
       userIds.map((userId) => ({
-        arm: arms.get(userId) ?? null,
         completed: completedIds.has(userId),
         participant: participantIds.has(userId),
       })),

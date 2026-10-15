@@ -1,3 +1,4 @@
+import { RecognitionGroup } from "@alliance/common/action-update-copy";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsEnum, IsOptional, IsString } from "class-validator";
 import type {
@@ -112,15 +113,7 @@ export class RecognitionPreviewAudienceDto {
 
 export class RecognitionPreviewCountsDto {
   @ApiProperty()
-  completedPersonal: number;
-
-  @ApiProperty()
-  completedCollective: number;
-
-  @ApiProperty({
-    description: "Completers with no experiment arm yet.",
-  })
-  completedUndrawn: number;
+  completed: number;
 
   @ApiProperty()
   didNotComplete: number;
@@ -129,10 +122,8 @@ export class RecognitionPreviewCountsDto {
   uninvolved: number;
 
   constructor(input: RecognitionPreviewCounts) {
-    this.completedPersonal = input.completedPersonal;
-    this.completedCollective = input.completedCollective;
-    this.completedUndrawn = input.completedUndrawn;
-    this.didNotComplete = input.didNotComplete;
-    this.uninvolved = input.uninvolved;
+    this.completed = input[RecognitionGroup.Completed];
+    this.didNotComplete = input[RecognitionGroup.DidNotComplete];
+    this.uninvolved = input[RecognitionGroup.Uninvolved];
   }
 }

@@ -16,13 +16,11 @@ import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import type { TrackedMessage } from "src/link-tracking/message-tracking.service";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
-import { Experiment } from "src/notifs/entities/experiment-assignment.entity";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
   UnreadContent,
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
-import { assignExperimentArms } from "src/notifs/experiment-assignment";
 import { NotifsService } from "src/notifs/notifs.service";
 import { PushService } from "src/push/push.service";
 import { actionUrl } from "src/search/approutes";
@@ -115,7 +113,6 @@ export class ActionUpdateRecognitionService {
     );
   }
 
-  /** Draws the experiment arm of any recipient who has none yet. */
   async plan(params: {
     em: EntityManager;
     update: ActionUpdate;
@@ -158,10 +155,6 @@ export class ActionUpdateRecognitionService {
         })
       ).map((snapshot) => [snapshot.id, snapshot.schema]),
     );
-    const arms = await assignExperimentArms(em, {
-      experiment: Experiment.ActionUpdateRecognition,
-      userIds,
-    });
 
     const completionByUser = new Map(
       completions.map((completion) => [completion.userId, completion]),
@@ -170,16 +163,11 @@ export class ActionUpdateRecognitionService {
       config: config.value,
       now,
       recipients: users.map((user) => {
-        const arm = arms.get(user.id);
-        if (arm === undefined) {
-          throw new Error(`no recognition arm for user ${user.id}`);
-        }
         const completion = completionByUser.get(user.id);
         const response = completion?.taskFormResponse;
         return {
           userId: user.id,
           name: user.name,
-          arm,
           participant: participantIds.has(user.id),
           completion: completion
             ? {
@@ -343,7 +331,6 @@ export class ActionUpdateRecognitionService {
               actionUpdateId: id,
               userId: plan.userId,
               mode: update.notificationMode,
-              assignedArm: plan.arm,
               completed: plan.completed,
               branch: plan.message.branch,
               contribution: plan.contribution,

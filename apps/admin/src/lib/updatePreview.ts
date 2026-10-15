@@ -18,19 +18,15 @@ export const PREVIEW_PLACEHOLDERS = {
 } as const;
 
 export enum PreviewVariation {
-  CompletedPersonal = "completed_personal",
-  CompletedCollective = "completed_collective",
+  Completed = "completed",
   DidNotComplete = "did_not_complete",
   Uninvolved = "uninvolved",
-  /** Every recipient but personal-recognition completers, while unsplit. */
+  /** Every recipient but completers, while unsplit. */
   EveryoneElse = "everyone_else",
 }
 
 export const PREVIEW_VARIATION_LABELS: Record<PreviewVariation, string> = {
-  [PreviewVariation.CompletedPersonal]:
-    "Completed the action · personal recognition",
-  [PreviewVariation.CompletedCollective]:
-    "Completed the action · collective result only",
+  [PreviewVariation.Completed]: "Completed the action",
   [PreviewVariation.DidNotComplete]: "Didn't complete the action",
   [PreviewVariation.Uninvolved]: "Away or not involved",
   [PreviewVariation.EveryoneElse]: "Everyone else",
@@ -40,13 +36,11 @@ export const previewVariationCount: Record<
   PreviewVariation,
   (counts: RecognitionPreviewCountsDto) => number
 > = {
-  [PreviewVariation.CompletedPersonal]: (counts) => counts.completedPersonal,
-  [PreviewVariation.CompletedCollective]: (counts) =>
-    counts.completedCollective,
+  [PreviewVariation.Completed]: (counts) => counts.completed,
   [PreviewVariation.DidNotComplete]: (counts) => counts.didNotComplete,
   [PreviewVariation.Uninvolved]: (counts) => counts.uninvolved,
   [PreviewVariation.EveryoneElse]: (counts) =>
-    counts.completedCollective + counts.didNotComplete + counts.uninvolved,
+    counts.didNotComplete + counts.uninvolved,
 };
 
 export type CollectiveResultTexts = {
@@ -87,7 +81,7 @@ export function previewVariations(params: {
     (results) => {
       const completed = results[RecognitionGroup.Completed];
       const personal: PreviewVariationCopy = {
-        variation: PreviewVariation.CompletedPersonal,
+        variation: PreviewVariation.Completed,
         copy:
           completed === null
             ? null
@@ -116,10 +110,6 @@ export function previewVariations(params: {
       }
       return [
         personal,
-        {
-          variation: PreviewVariation.CompletedCollective,
-          copy: collectiveCopy(completed),
-        },
         {
           variation: PreviewVariation.DidNotComplete,
           copy: collectiveCopy(results[RecognitionGroup.DidNotComplete]),

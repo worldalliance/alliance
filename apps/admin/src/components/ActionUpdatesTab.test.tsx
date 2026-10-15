@@ -183,7 +183,7 @@ describe("ActionUpdatesTab", () => {
     expect(document.body.textContent).toContain(
       "PushUpdate: a hearing; there's still time",
     );
-    expect(screen.getAllByText(/Not notified/)).toHaveLength(3);
+    expect(screen.getAllByText(/Not notified/)).toHaveLength(2);
     expect(screen.queryByText(/^\d+ members?$/)).toBeNull();
     fireEvent.click(create);
     expect(await screen.findByText("Update 9")).toBeTruthy();

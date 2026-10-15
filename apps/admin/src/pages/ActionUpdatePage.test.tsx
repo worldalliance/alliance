@@ -52,9 +52,7 @@ const api = serveApi(
     }) => {
       countedAudiences.push(await request.json());
       return Response.json({
-        completedPersonal: 1,
-        completedCollective: 2,
-        completedUndrawn: 0,
+        completed: 2,
         didNotComplete: 3,
         uninvolved: 4,
       });
@@ -232,7 +230,7 @@ describe("ActionUpdatePage", () => {
       target: { value: "a vote" },
     });
     expect(preview().textContent).toContain("PushUpdate: a vote");
-    expect(await within(preview()).findByText("9 members")).toBeTruthy();
+    expect(await within(preview()).findByText("7 members")).toBeTruthy();
 
     fireEvent.click(
       screen.getByRole("checkbox", {

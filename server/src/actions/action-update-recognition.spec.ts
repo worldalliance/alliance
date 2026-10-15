@@ -5,7 +5,6 @@ import {
   type GroupResults,
 } from "@alliance/common/action-update-copy";
 import { addDays } from "date-fns";
-import { ExperimentArm } from "src/notifs/entities/experiment-assignment.entity";
 import {
   countRecognitionPreview,
   evaluateContribution,
@@ -51,7 +50,6 @@ const recipient = (
 ): RecognitionRecipient => ({
   userId: 1,
   name: "Avery Example",
-  arm: ExperimentArm.Variant,
   participant: true,
   completion: { completedAt: addDays(now, -3), response: answered(3) },
   ...overrides,
@@ -81,22 +79,17 @@ const copyOf = (
   });
 
 describe("planRecognition", () => {
-  it("gives completers assigned the variant their contribution", () => {
+  it("gives every completer their contribution", () => {
     const plan = planOne({});
     expect(plan.message.branch).toBe(RecognitionBranch.A);
     expect(plan.contribution).toBe("3 letters");
     expect(plan.completed).toBe(true);
   });
 
-  it("gives control completers and every non-completer the collective result", () => {
-    expect(planOne({ arm: ExperimentArm.Control })).toMatchObject({
-      completed: true,
-      arm: ExperimentArm.Control,
-      message: { branch: RecognitionBranch.B },
-    });
+  it("gives every non-completer the collective result", () => {
     expect(planOne({ completion: null })).toMatchObject({
       completed: false,
-      arm: ExperimentArm.Variant,
+      contribution: null,
       message: { branch: RecognitionBranch.B },
     });
   });
@@ -108,7 +101,7 @@ describe("planRecognition", () => {
     ).toBe("0 letters");
   });
 
-  it("fails with every branch-A member whose contribution doesn't resolve, and only them", () => {
+  it("fails with every completer whose contribution doesn't resolve, and only them", () => {
     const planned = planRecognition({
       config: config(
         ActionUpdateNotificationMode.Normal,
@@ -122,7 +115,7 @@ describe("planRecognition", () => {
         recipient({ userId: 2 }),
         recipient({
           userId: 3,
-          arm: ExperimentArm.Control,
+          participant: false,
           completion: { completedAt: now, response: null },
         }),
         recipient({ userId: 4, completion: null }),
@@ -131,7 +124,7 @@ describe("planRecognition", () => {
     });
     expect(planned.ok).toBe(false);
     if (planned.ok) return;
-    expect(planned.error.map((issue) => issue.userId)).toEqual([1]);
+    expect(planned.error.map((issue) => issue.userId)).toEqual([1, 3]);
     expect(planned.error[0].error).toMatch(/empty/);
   });
 
@@ -170,7 +163,6 @@ describe("split collective result", () => {
     expect(
       planned([
         {},
-        { arm: ExperimentArm.Control },
         { completion: null },
         { completion: null, participant: false },
       ]),
@@ -183,16 +175,15 @@ describe("split collective result", () => {
           subject: "Your 3 letters led to a hearing.",
         },
       ],
-      [2, { branch: RecognitionBranch.B, allianceResult: "a hearing" }],
       [
-        3,
+        2,
         {
           branch: RecognitionBranch.B,
           allianceResult: "a hearing without you",
         },
       ],
       [
-        4,
+        3,
         {
           branch: RecognitionBranch.B,
           allianceResult: "a hearing while you were away",
@@ -202,10 +193,15 @@ describe("split collective result", () => {
   });
 
   it("puts a completer in the completed group even off the roster", () => {
-    expect(
-      planned([{ arm: ExperimentArm.Control, participant: false }]),
-    ).toEqual([
-      [1, { branch: RecognitionBranch.B, allianceResult: "a hearing" }],
+    expect(planned([{ participant: false }])).toEqual([
+      [
+        1,
+        {
+          branch: RecognitionBranch.A,
+          body: "Your 3 letters led to a hearing.",
+          subject: "Your 3 letters led to a hearing.",
+        },
+      ],
     ]);
   });
 
@@ -214,7 +210,7 @@ describe("split collective result", () => {
       planned(
         [
           { completion: { completedAt: now, response: null } },
-          { arm: ExperimentArm.Control },
+          {},
           { completion: null },
         ],
         {
@@ -235,22 +231,19 @@ describe("split collective result", () => {
 });
 
 describe("countRecognitionPreview", () => {
-  it("counts completers by side, and undrawn ones apart", () => {
+  it("counts each group, with completers off the roster as completed", () => {
     expect(
       countRecognitionPreview([
-        { arm: ExperimentArm.Variant, completed: true, participant: true },
-        { arm: ExperimentArm.Control, completed: true, participant: false },
-        { arm: null, completed: true, participant: true },
-        { arm: null, completed: false, participant: true },
-        { arm: ExperimentArm.Variant, completed: false, participant: false },
-        { arm: null, completed: false, participant: false },
+        { completed: true, participant: true },
+        { completed: true, participant: false },
+        { completed: false, participant: true },
+        { completed: false, participant: false },
+        { completed: false, participant: false },
       ]),
     ).toEqual({
-      completedPersonal: 1,
-      completedCollective: 1,
-      completedUndrawn: 1,
-      didNotComplete: 1,
-      uninvolved: 2,
+      [RecognitionGroup.Completed]: 2,
+      [RecognitionGroup.DidNotComplete]: 1,
+      [RecognitionGroup.Uninvolved]: 2,
     });
   });
 });
@@ -317,7 +310,7 @@ describe("recognitionCopy", () => {
   it("keeps branch B's normal copy in retrospective mode", () => {
     expect(
       copyOf(
-        { arm: ExperimentArm.Control },
+        { completion: null },
         config(ActionUpdateNotificationMode.Retrospective),
       ).push,
     ).toBe("Update: a hearing on the bill");
@@ -345,7 +338,7 @@ describe("email subjects", () => {
 
   it("ends at the collective result's first sentence", () => {
     const subjects = (allianceResult: string) =>
-      [{}, { arm: ExperimentArm.Control }].map(
+      [{}, { completion: null }].map(
         (overrides) =>
           recognitionCopy({
             message: planOne(overrides, {

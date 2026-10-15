@@ -27,9 +27,7 @@ describe("UpdatePreview", () => {
         counts={{
           kind: PreviewCountsKind.Counted,
           counts: {
-            completedPersonal: 1,
-            completedCollective: 2,
-            completedUndrawn: 3,
+            completed: 1,
             didNotComplete: 4,
             uninvolved: 5,
           },
@@ -37,18 +35,13 @@ describe("UpdatePreview", () => {
       />,
     );
 
-    expect(
-      card("Completed the action · personal recognition").getByText("1 member"),
-    ).toBeTruthy();
+    expect(card("Completed the action").getByText("1 member")).toBeTruthy();
     const skipped = card("Didn't complete the action");
     expect(skipped.getByText("4 members")).toBeTruthy();
     expect(skipped.getByText(/Not notified/)).toBeTruthy();
     expect(cardOf("Away or not involved").textContent).toContain(
       "PushUpdate: a hearing; join the next one",
     );
-    expect(
-      screen.getByText(/3 completers have no recognition side/),
-    ).toBeTruthy();
   });
 
   it("highlights the parts that differ per member", () => {

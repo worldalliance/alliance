@@ -18,7 +18,7 @@ const texts = (
 const { contribution, weeksAgo, name, link } = PREVIEW_PLACEHOLDERS;
 
 describe("previewVariations", () => {
-  it("gives personal recognition and everyone else until the result is split", () => {
+  it("gives completers their recognition and everyone else the result until it is split", () => {
     const variations = previewVariations({
       mode: "normal",
       texts: texts({ nonCompleterResult: "unused" }),
@@ -27,7 +27,7 @@ describe("previewVariations", () => {
       ok: true,
       value: [
         {
-          variation: PreviewVariation.CompletedPersonal,
+          variation: PreviewVariation.Completed,
           copy: {
             inApp: `Your ${contribution} led to a hearing.`,
             push: `Your ${contribution} led to a hearing.`,
@@ -76,8 +76,7 @@ describe("previewVariations", () => {
           copy?.inApp ?? null,
         ]),
     ).toEqual([
-      [PreviewVariation.CompletedPersonal, null],
-      [PreviewVariation.CompletedCollective, null],
+      [PreviewVariation.Completed, null],
       [PreviewVariation.DidNotComplete, "a hearing without you"],
       [PreviewVariation.Uninvolved, null],
     ]);

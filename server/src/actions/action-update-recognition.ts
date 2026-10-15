@@ -25,7 +25,6 @@ import {
 import { compileVariableExpression } from "@alliance/common/forms/variable-expression-compile";
 import { R, type Result } from "@alliance/common/result";
 import { milliseconds } from "date-fns";
-import { ExperimentArm } from "src/notifs/entities/experiment-assignment.entity";
 import {
   ActionUpdateNotificationMode,
   type ActionUpdate,
@@ -176,46 +175,18 @@ export function recognitionGroupOf(params: {
     : RecognitionGroup.Uninvolved;
 }
 
-export type RecognitionPreviewCounts = {
-  completedPersonal: number;
-  completedCollective: number;
-  /** Completers with no experiment arm yet, so no recognition side. */
-  completedUndrawn: number;
-  didNotComplete: number;
-  uninvolved: number;
-};
+export type RecognitionPreviewCounts = Record<RecognitionGroup, number>;
 
 export function countRecognitionPreview(
-  recipients: readonly {
-    arm: ExperimentArm | null;
-    completed: boolean;
-    participant: boolean;
-  }[],
+  recipients: readonly { completed: boolean; participant: boolean }[],
 ): RecognitionPreviewCounts {
   const counts: RecognitionPreviewCounts = {
-    completedPersonal: 0,
-    completedCollective: 0,
-    completedUndrawn: 0,
-    didNotComplete: 0,
-    uninvolved: 0,
+    [RecognitionGroup.Completed]: 0,
+    [RecognitionGroup.DidNotComplete]: 0,
+    [RecognitionGroup.Uninvolved]: 0,
   };
-  for (const { arm, completed, participant } of recipients) {
-    const group = recognitionGroupOf({ completed, participant });
-    switch (group) {
-      case RecognitionGroup.Completed:
-        if (arm === null) counts.completedUndrawn++;
-        else if (arm === ExperimentArm.Variant) counts.completedPersonal++;
-        else counts.completedCollective++;
-        break;
-      case RecognitionGroup.DidNotComplete:
-        counts.didNotComplete++;
-        break;
-      case RecognitionGroup.Uninvolved:
-        counts.uninvolved++;
-        break;
-      default:
-        throw new Error(`unknown recognition group: ${group satisfies never}`);
-    }
+  for (const recipient of recipients) {
+    counts[recognitionGroupOf(recipient)]++;
   }
   return counts;
 }
@@ -223,7 +194,6 @@ export function countRecognitionPreview(
 export type RecognitionRecipient = {
   userId: number;
   name: string;
-  arm: ExperimentArm;
   participant: boolean;
   completion: { completedAt: Date; response: CompletionAnswers | null } | null;
 };
@@ -231,7 +201,6 @@ export type RecognitionRecipient = {
 export type RecognitionPlan = {
   userId: number;
   name: string;
-  arm: ExperimentArm;
   completed: boolean;
   contribution: string | null;
   weeksAgo: number | null;
@@ -246,7 +215,7 @@ export type RecognitionMemberIssue = {
 
 /**
  * Leaves out every recipient whose group has no result. Fails with every
- * branch-A recipient whose contribution doesn't resolve.
+ * completer whose contribution doesn't resolve.
  */
 export function planRecognition(params: {
   config: RecognitionConfig;
@@ -256,20 +225,19 @@ export function planRecognition(params: {
   const { config, recipients, now } = params;
   const plans: RecognitionPlan[] = [];
   const issues: RecognitionMemberIssue[] = [];
-  for (const { userId, name, arm, participant, completion } of recipients) {
+  for (const { userId, name, participant, completion } of recipients) {
     const allianceResult =
       config.results[
         recognitionGroupOf({ completed: completion !== null, participant })
       ];
     if (allianceResult === null) continue;
-    if (completion === null || arm !== ExperimentArm.Variant) {
+    if (completion === null) {
       plans.push({
         userId,
         name,
-        arm,
-        completed: completion !== null,
+        completed: false,
         contribution: null,
-        weeksAgo: completion && wholeWeeksBetween(completion.completedAt, now),
+        weeksAgo: null,
         message: { branch: RecognitionBranch.B, allianceResult },
       });
       continue;
@@ -286,7 +254,6 @@ export function planRecognition(params: {
     plans.push({
       userId,
       name,
-      arm,
       completed: true,
       weeksAgo,
       contribution: contribution.value,

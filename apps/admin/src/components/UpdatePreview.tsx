@@ -1,5 +1,5 @@
 import type { RecognitionCopy } from "@alliance/common/action-update-copy";
-import { pickForCount, withCount } from "@alliance/common/plural";
+import { withCount } from "@alliance/common/plural";
 import type { RecognitionPreviewCountsDto } from "@alliance/shared/client";
 import { escapeRegExp } from "es-toolkit";
 import type { RecognitionMode } from "../lib/actionUpdateDetails";
@@ -65,18 +65,10 @@ export function UpdatePreview({
     return <p className="text-sm text-amber-700">{variations.error}</p>;
   }
   const counted = counts?.kind === PreviewCountsKind.Counted && counts.counts;
-  const undrawn = counted ? counted.completedUndrawn : 0;
   return (
     <div className="space-y-3">
       {counts?.kind === PreviewCountsKind.Unavailable && (
         <p className="text-xs text-gray-500">{counts.reason}</p>
-      )}
-      {undrawn > 0 && texts.shortNotifString.trim() && (
-        <p className="text-xs text-gray-500">
-          {withCount(undrawn, "completer")}{" "}
-          {pickForCount(undrawn, "has", "have")} no recognition side drawn yet,
-          so each will get one of the two completed variations.
-        </p>
       )}
       {variations.value.map(({ variation, copy }) => (
         <div

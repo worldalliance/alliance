@@ -61,9 +61,9 @@ const FORMULA_COPY: Record<
 
 export const COLLECTIVE_RESULT_DESCRIPTIONS: Record<RecognitionMode, string> = {
   normal:
-    "Members who completed the action and drew personal recognition read “Your #{contribution} led to” this. Everyone else reads it on its own, after “Update: ” in pushes and texts.",
+    "Members who completed the action read “Your #{contribution} led to” this. Everyone else reads it on its own, after “Update: ” in pushes and texts.",
   retrospective:
-    "Members who completed the action and drew personal recognition read “#{weeksago} weeks ago you #{contribution}.” (or “Recently you …” within a week) and then this as its own sentence. Everyone else reads it on its own, after “Update: ” in pushes and texts.",
+    "Members who completed the action read “#{weeksago} weeks ago you #{contribution}.” (or “Recently you …” within a week) and then this as its own sentence. Everyone else reads it on its own, after “Update: ” in pushes and texts.",
 };
 
 export function RecognitionModeSelect({
@@ -251,10 +251,7 @@ export function RecognitionCopySection({
 }) {
   const { formulas } = form;
   return (
-    <FormSection
-      title="Recognition copy"
-      description="Completers are split once, at random, between personal recognition and the collective result alone, and keep their side for every update."
-    >
+    <FormSection title="Recognition copy">
       {prepared ? (
         <p className="text-sm text-gray-700">
           Each member&apos;s copy was frozen when this update came due, so

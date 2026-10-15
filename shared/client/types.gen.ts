@@ -3323,12 +3323,7 @@ export type RecognitionPreviewAudienceDto = {
 };
 
 export type RecognitionPreviewCountsDto = {
-    completedPersonal: number;
-    completedCollective: number;
-    /**
-     * Completers with no experiment arm yet.
-     */
-    completedUndrawn: number;
+    completed: number;
     didNotComplete: number;
     uninvolved: number;
 };

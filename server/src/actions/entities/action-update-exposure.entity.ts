@@ -5,7 +5,6 @@ import {
 } from "src/datasources/basecolumns";
 import { Mail } from "src/mail/mail.entity";
 import { Mms } from "src/mms/mms.entity";
-import { ExperimentArm } from "src/notifs/entities/experiment-assignment.entity";
 import { UnreadContent } from "src/notifs/entities/unread-content.entity";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
@@ -55,14 +54,6 @@ export class ActionUpdateExposure {
     nullable: true,
   })
   mode: ActionUpdateNotificationMode | null;
-
-  @Column({
-    type: "enum",
-    enum: ExperimentArm,
-    enumName: "ExperimentArm",
-    nullable: true,
-  })
-  assignedArm: ExperimentArm | null;
 
   @Column({ type: "boolean", nullable: true })
   completed: boolean | null;

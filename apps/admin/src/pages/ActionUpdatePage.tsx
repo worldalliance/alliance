@@ -99,9 +99,7 @@ const previewCountsOf = (
     return {
       kind: PreviewCountsKind.Counted,
       counts: {
-        completedPersonal: 0,
-        completedCollective: 0,
-        completedUndrawn: 0,
+        completed: 0,
         didNotComplete: 0,
         uninvolved: 0,
       },
