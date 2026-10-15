@@ -1,3 +1,4 @@
+import { AWAY_RANGE_NOTE_MISSING } from "@alliance/common/awayRange";
 import { DEFAULT_TIME_ZONE } from "@alliance/common/timezone";
 import { Temporal } from "@js-temporal/polyfill";
 import {
@@ -97,7 +98,7 @@ describe("Away ranges (e2e)", () => {
       });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain("note");
+      expect(res.body.message).toBe(AWAY_RANGE_NOTE_MISSING);
     });
 
     it("rejects a whitespace-only note", async () => {
@@ -107,7 +108,7 @@ describe("Away ranges (e2e)", () => {
       });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain("note");
+      expect(res.body.message).toBe(AWAY_RANGE_NOTE_MISSING);
     });
 
     it("accepts a real note", async () => {
@@ -169,6 +170,7 @@ describe("Away ranges (e2e)", () => {
       });
 
       expect(res.status).toBe(400);
+      expect(res.body.message).toBe(AWAY_RANGE_NOTE_MISSING);
       expect(await awayRangeRepo.findOneByOrFail({ id: rangeId })).toEqual(
         expect.objectContaining({ note: "original" }),
       );

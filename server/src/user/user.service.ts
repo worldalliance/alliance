@@ -1,7 +1,9 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
+  AWAY_RANGE_NOTE_MISSING,
   hasAwayRangeEnded,
   isAwayRangeActiveAt,
+  isAwayRangeNoteMissing,
   isAwayRangeStartLocked,
 } from "@alliance/common/awayRange";
 import {
@@ -1628,10 +1630,8 @@ export class UserService {
       throw new BadRequestException(start.error);
     }
 
-    if (reason === UserAwayRangeReason.OTHER && !note) {
-      throw new BadRequestException(
-        "Please provide a note for your away period.",
-      );
+    if (isAwayRangeNoteMissing({ reason, note })) {
+      throw new BadRequestException(AWAY_RANGE_NOTE_MISSING);
     }
   }
 

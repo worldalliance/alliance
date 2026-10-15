@@ -1,6 +1,8 @@
 import {
   hasAwayRangeEnded,
   isAwayRangeActiveAt,
+  isAwayRangeNoteMissing,
+  isAwayRangeNoteRequired,
   isAwayRangeStartLocked,
 } from "./awayRange";
 
@@ -80,6 +82,39 @@ describe("hasAwayRangeEnded", () => {
       true,
     );
     expect(hasAwayRangeEnded({ endDate: "2026-10-05T12:00:01Z" }, now)).toBe(
+      false,
+    );
+  });
+});
+
+describe("isAwayRangeNoteRequired", () => {
+  it("requires a note only for the other reason", () => {
+    expect(isAwayRangeNoteRequired("other")).toBe(true);
+    expect(isAwayRangeNoteRequired("vacation")).toBe(false);
+    expect(isAwayRangeNoteRequired("emergency")).toBe(false);
+  });
+
+  it("requires none before a reason is chosen", () => {
+    expect(isAwayRangeNoteRequired(null)).toBe(false);
+    expect(isAwayRangeNoteRequired("")).toBe(false);
+  });
+});
+
+describe("isAwayRangeNoteMissing", () => {
+  it("counts a blank note as missing", () => {
+    for (const note of [null, undefined, "", "   "]) {
+      expect(isAwayRangeNoteMissing({ reason: "other", note })).toBe(true);
+    }
+  });
+
+  it("accepts a real note", () => {
+    expect(
+      isAwayRangeNoteMissing({ reason: "other", note: " jury duty " }),
+    ).toBe(false);
+  });
+
+  it("never flags a reason that needs no note", () => {
+    expect(isAwayRangeNoteMissing({ reason: "vacation", note: null })).toBe(
       false,
     );
   });

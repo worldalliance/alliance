@@ -33,3 +33,25 @@ export function hasAwayRangeEnded(
 ): boolean {
   return new Date(range.endDate) <= now;
 }
+
+const AWAY_RANGE_NOTE_REQUIRED = {
+  vacation: false,
+  emergency: false,
+  other: true,
+} as const;
+
+type AwayRangeReasonInput = keyof typeof AWAY_RANGE_NOTE_REQUIRED | null | "";
+
+export const AWAY_RANGE_NOTE_MISSING =
+  "Add a note explaining this away period.";
+
+export function isAwayRangeNoteRequired(reason: AwayRangeReasonInput): boolean {
+  return reason ? AWAY_RANGE_NOTE_REQUIRED[reason] : false;
+}
+
+export function isAwayRangeNoteMissing(params: {
+  reason: AwayRangeReasonInput;
+  note: string | null | undefined;
+}): boolean {
+  return isAwayRangeNoteRequired(params.reason) && !params.note?.trim();
+}
