@@ -16,7 +16,10 @@ import {
 } from "@alliance/shared/lib/inviteGoals";
 import { onetimeInviteSettings } from "@alliance/shared/lib/inviteSettings";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
-import { bucketOnetimeInvitesByActionability } from "@alliance/shared/lib/inviteUtils";
+import {
+  acceptedInviteCountLabel,
+  bucketOnetimeInvitesByActionability,
+} from "@alliance/shared/lib/inviteUtils";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { useAmbassadorInviteDashboard } from "@alliance/shared/lib/useAmbassadorInviteDashboard";
 import {
@@ -90,7 +93,11 @@ const InvitesPage = () => {
     deleteInvite,
   } = useOnetimeInvitesOverview({ enabled: Boolean(user) });
   const { communities } = useMyCommunities({});
-  const { links: reusableInviteLinks } = useReusableInvites({
+  const {
+    links: reusableInviteLinks,
+    isPending: loadingReusableInvites,
+    isError: reusableInvitesError,
+  } = useReusableInvites({
     enabled: Boolean(user),
   });
   const [settingsInviteId, setSettingsInviteId] = useState<number | null>(null);
@@ -168,9 +175,13 @@ const InvitesPage = () => {
       [invites, leaderCommunityIds, user?.id],
     );
 
-  const acceptedInvites = useMemo(() => {
-    return invites.filter((invite) => invite.accepted);
-  }, [invites]);
+  const acceptedCount = acceptedInviteCountLabel({
+    onetimeInvites: invites,
+    onetimeInvitesError: isError,
+    reusableLinks: reusableInviteLinks,
+    reusableLinksPending: loadingReusableInvites,
+    reusableLinksError: reusableInvitesError,
+  });
   const hasSingleUseInvites =
     actionable.length > 0 ||
     unverifiableActionable.length > 0 ||
@@ -399,7 +410,7 @@ const InvitesPage = () => {
               <UserCheck className="w-10 h-10 bg-green/10 rounded p-2 text-green" />
               <div>
                 <p className="font-semibold text-black text-lg sm:text-xl">
-                  {acceptedInvites.length}
+                  {acceptedCount}
                 </p>
                 <p className="leading-none text-zinc-500 text-sm sm:text-base">
                   Your accepted invites
@@ -416,7 +427,7 @@ const InvitesPage = () => {
                   <UserCheck className="w-10 h-10 bg-green/10 rounded p-2 text-green" />
                   <div>
                     <p className="font-semibold text-black text-lg sm:text-xl">
-                      {acceptedInvites.length}
+                      {acceptedCount}
                     </p>
                     <p className="leading-none text-zinc-500 text-sm sm:text-base">
                       Accepted invites
