@@ -439,7 +439,7 @@ export class AuthService {
   async forgotPassword(email: string) {
     const user = await this.usersService.findOneByEmail(email);
     // Staging copies a review account's password from production each night,
-    // so a reset here would change the credentials the stores hold.
+    // so a production reset would change the credentials the stores hold.
     if (!user || isRefusedReviewAccount(user)) {
       return; // fail silently to avoid leaking emails
     }
