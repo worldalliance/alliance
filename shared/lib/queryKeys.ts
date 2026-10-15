@@ -230,6 +230,8 @@ export const queryKeys = {
   timeSpentPerUserAdmin: () => ["analyticsGetTimeSpentPerUserAdmin"] as const,
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
+  userAwayRangesAdmin: (userId: number) =>
+    ["userGetAwayRangeForUserAdmin", userId] as const,
   userCityCountsAdmin: () => ["userCityCountsAdmin"] as const,
   usersAdmin: () => ["userListAdmin"] as const,
   waitlistCohortsAdmin: () => ["waitlistAdminFindCohortsAdmin"] as const,
