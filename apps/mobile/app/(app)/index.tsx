@@ -1,4 +1,7 @@
-import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
+import {
+  FORM_ALREADY_SUBMITTED,
+  MEMBER_ACTION_DEADLINE_PASSED,
+} from "@alliance/common/actionActivity";
 import type { FollowUpFormDto } from "@alliance/shared/client";
 import {
   dismissActionErrorMessage,
@@ -327,6 +330,10 @@ export default function HomeScreen() {
                 currentItem.action.name,
                 MEMBER_ACTION_DEADLINE_PASSED,
               );
+              refetch();
+            }}
+            onAlreadySubmitted={() => {
+              Alert.alert(currentItem.action.name, FORM_ALREADY_SUBMITTED);
               refetch();
             }}
             onCompleteAction={handleSubmitSuccess}

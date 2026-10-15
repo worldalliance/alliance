@@ -1,4 +1,7 @@
-import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
+import {
+  FORM_ALREADY_SUBMITTED,
+  MEMBER_ACTION_DEADLINE_PASSED,
+} from "@alliance/common/actionActivity";
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { GUEST_HEADER } from "@alliance/common/guest";
@@ -11,6 +14,7 @@ import {
 import { useFormulaSourcesRefetch } from "@alliance/shared/forms/useFormulaSourcesRefetch";
 import { useRecordActionRelation } from "@alliance/shared/lib/actionsListPage";
 import {
+  formAlreadySubmitted,
   memberActionDeadlinePassed,
   type ActionWithdrawal,
 } from "@alliance/shared/lib/actionTaskPanel";
@@ -31,6 +35,7 @@ interface ActionTaskPanelFormProps {
   onFormStarted: () => void;
   onAbandonAction?: (withdrawal: ActionWithdrawal) => void;
   onDeadlinePassed: () => void;
+  onAlreadySubmitted: () => void;
   actionId: number;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
@@ -46,6 +51,7 @@ const ActionTaskPanelForm = ({
   onFormStarted,
   onAbandonAction,
   onDeadlinePassed,
+  onAlreadySubmitted,
   actionId,
   scrollPageTo,
   scrollToEnd,
@@ -103,6 +109,11 @@ const ActionTaskPanelForm = ({
           onCompleteAction();
           return true;
         } else {
+          if (formAlreadySubmitted(response)) {
+            setError(FORM_ALREADY_SUBMITTED);
+            onAlreadySubmitted();
+            return false;
+          }
           if (memberActionDeadlinePassed(response)) {
             setError(MEMBER_ACTION_DEADLINE_PASSED);
             onDeadlinePassed();
