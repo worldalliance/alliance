@@ -1,7 +1,6 @@
 import { phoneSearchDigits, phoneSearchTerm } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
 import {
-  actionsActionRelationsAdmin,
   analyticsGetTimeSpentPerUserAdmin,
   analyticsGetTimeSpentPerUserTotalAdmin,
   communityGetAllMemberContactInfoAdmin,
@@ -30,6 +29,7 @@ import {
   ROLE_FILTERS,
   RoleFilter,
 } from "../lib/memberRoleFilter";
+import { useActionRelationsAdmin } from "../lib/useActionRelationsAdmin";
 import { useCompletedAllActiveActions } from "../lib/useCompletedAllActiveActions";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
 
@@ -54,13 +54,7 @@ const UsersList: React.FC = () => {
       ),
   });
   const { tags, addUserToTag, removeUserFromTag } = useTagsAdmin();
-  const { data: relationsResponse } = useQuery({
-    queryKey: queryKeys.actionRelationsAdmin(),
-    queryFn: () =>
-      actionsActionRelationsAdmin({ throwOnError: true }).then(
-        (response) => response.data,
-      ),
-  });
+  const { data: relationsResponse } = useActionRelationsAdmin();
   // latest on the right
   const actionSummaries = useMemo(
     () => (relationsResponse?.actions ?? []).slice().reverse(),
