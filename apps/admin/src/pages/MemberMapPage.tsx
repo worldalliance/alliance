@@ -1,16 +1,17 @@
 import { withCount } from "@alliance/common/plural";
-import { userCityCountsAdmin } from "@alliance/shared/client";
 import type { UserCityCountDto } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Card from "@alliance/sharedweb/ui/Card";
 import chroma from "chroma-js";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
   ComposableMap,
   Geographies,
   Geography,
   Marker,
 } from "react-simple-maps";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import { useUserCityCountsAdmin } from "../lib/useUserCityCountsAdmin";
 
 type AggregatedPoint = {
   key: string;
@@ -25,28 +26,21 @@ const svgHeight = 480;
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
-const MemberMapPage: React.FC = () => {
-  const [cityCounts, setCityCounts] = useState<UserCityCountDto[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+const noCityCounts: UserCityCountDto[] = [];
 
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    userCityCountsAdmin()
-      .then((resp) => {
-        if (resp.data) {
-          setCityCounts(resp.data);
-        }
-      })
-      .catch((err: unknown) => {
-        console.error("Failed to load member contact info", err);
-        setError("Unable to load member locations. Please try again later.");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
+const MemberMapPage: React.FC = () => {
+  const {
+    data,
+    isPending: loading,
+    error: loadError,
+  } = useUserCityCountsAdmin();
+  const cityCounts = data ?? noCityCounts;
+  const error = loadError
+    ? adminRefusalMessage(
+        loadError,
+        "Unable to load member locations. Please try again later.",
+      )
+    : null;
 
   const aggregatedPoints: AggregatedPoint[] = useMemo(() => {
     const points: AggregatedPoint[] = [];
@@ -206,77 +200,79 @@ const MemberMapPage: React.FC = () => {
           </div>
         </Card>
 
-        <Card style={CardStyle.White}>
-          <div className="flex flex-col gap-4">
-            <div>
-              <p className="text-sm font-medium text-zinc-700">
-                Location coverage
-              </p>
-              <p className="text-xs text-zinc-500">
-                Summary of member locations across the world.
-              </p>
-            </div>
+        {data && (
+          <Card style={CardStyle.White}>
+            <div className="flex flex-col gap-4">
+              <div>
+                <p className="text-sm font-medium text-zinc-700">
+                  Location coverage
+                </p>
+                <p className="text-xs text-zinc-500">
+                  Summary of member locations across the world.
+                </p>
+              </div>
 
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2">
-                <p className="text-xs text-zinc-500">Members with location</p>
-                <p className="mt-1 text-xl font-semibold text-zinc-900">
-                  {membersWithLocation}
-                </p>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2">
+                  <p className="text-xs text-zinc-500">Members with location</p>
+                  <p className="mt-1 text-xl font-semibold text-zinc-900">
+                    {membersWithLocation}
+                  </p>
+                </div>
+                <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2">
+                  <p className="text-xs text-zinc-500">Total members</p>
+                  <p className="mt-1 text-xl font-semibold text-zinc-900">
+                    {totalMembers}
+                  </p>
+                </div>
+                <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2">
+                  <p className="text-xs text-zinc-500">Non-US members</p>
+                  <p className="mt-1 text-xl font-semibold text-zinc-900">
+                    {nonUsMembers}
+                  </p>
+                </div>
+                <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2">
+                  <p className="text-xs text-zinc-500">Non-US percentage</p>
+                  <p className="mt-1 text-xl font-semibold text-zinc-900">
+                    {nonUsPercentage == null
+                      ? "—"
+                      : `${nonUsPercentage.toFixed(1)}%`}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-tight text-zinc-500">
+                    Calculated only from members who report a location.
+                  </p>
+                </div>
+                <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 col-span-2">
+                  <p className="text-xs text-zinc-500">Distinct locations</p>
+                  <p className="mt-1 text-xl font-semibold text-zinc-900">
+                    {aggregatedPoints.length}
+                  </p>
+                </div>
               </div>
-              <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2">
-                <p className="text-xs text-zinc-500">Total members</p>
-                <p className="mt-1 text-xl font-semibold text-zinc-900">
-                  {totalMembers}
-                </p>
-              </div>
-              <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2">
-                <p className="text-xs text-zinc-500">Non-US members</p>
-                <p className="mt-1 text-xl font-semibold text-zinc-900">
-                  {nonUsMembers}
-                </p>
-              </div>
-              <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2">
-                <p className="text-xs text-zinc-500">Non-US percentage</p>
-                <p className="mt-1 text-xl font-semibold text-zinc-900">
-                  {nonUsPercentage == null
-                    ? "—"
-                    : `${nonUsPercentage.toFixed(1)}%`}
-                </p>
-                <p className="mt-1 text-[11px] leading-tight text-zinc-500">
-                  Calculated only from members who report a location.
-                </p>
-              </div>
-              <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 col-span-2">
-                <p className="text-xs text-zinc-500">Distinct locations</p>
-                <p className="mt-1 text-xl font-semibold text-zinc-900">
-                  {aggregatedPoints.length}
-                </p>
-              </div>
-            </div>
 
-            {aggregatedPoints.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
-                  Top regions
-                </p>
-                <ul className="flex flex-col gap-1 max-h-96 overflow-y-auto pr-1">
-                  {aggregatedPoints.slice(0, 12).map((point) => (
-                    <li
-                      key={point.key}
-                      className="flex items-center justify-between text-sm"
-                    >
-                      <span className="text-zinc-700">{point.label}</span>
-                      <span className="text-zinc-500">
-                        {withCount(point.count, "member")}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </Card>
+              {aggregatedPoints.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
+                    Top regions
+                  </p>
+                  <ul className="flex flex-col gap-1 max-h-96 overflow-y-auto pr-1">
+                    {aggregatedPoints.slice(0, 12).map((point) => (
+                      <li
+                        key={point.key}
+                        className="flex items-center justify-between text-sm"
+                      >
+                        <span className="text-zinc-700">{point.label}</span>
+                        <span className="text-zinc-500">
+                          {withCount(point.count, "member")}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );
