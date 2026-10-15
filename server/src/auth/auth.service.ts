@@ -33,7 +33,10 @@ import { UserService } from "../user/user.service";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { Guest } from "./entities/guest.entity";
 import type { OAuthProfile } from "./oauth/oauth-client";
-import { isRefusedReviewAccount } from "./review-account";
+import {
+  isRefusedReviewAccount,
+  refusesReviewAccounts,
+} from "./review-account";
 import { SessionService } from "./session.service";
 import {
   ACCESS_COOKIE,
@@ -56,6 +59,14 @@ export type ReferredUser = {
   timeZone: string | null;
   referralCode: string | undefined;
   oauth?: OAuthProfile;
+};
+
+type PasswordSession = {
+  access_token: string;
+  refresh_token: string;
+  isAdmin: boolean;
+  userId: number;
+  switchedDomainAt: Date | null;
 };
 
 @Injectable()
@@ -347,13 +358,35 @@ export class AuthService {
     email: string,
     password: string,
     adminOnly: boolean = false,
-  ): Promise<{
-    access_token: string;
-    refresh_token: string;
-    isAdmin: boolean;
-    userId: number;
-    switchedDomainAt: Date | null;
-  }> {
+  ): Promise<PasswordSession> {
+    const user = await this.userWithPassword(email, password);
+
+    if (adminOnly && !user.admin) {
+      throw new UnauthorizedException();
+    }
+
+    if (isRefusedReviewAccount(user)) {
+      throw new ForbiddenException(REVIEW_ACCOUNT_MESSAGE);
+    }
+
+    return this.passwordSession(user);
+  }
+
+  async reviewLogin(email: string, password: string): Promise<PasswordSession> {
+    if (refusesReviewAccounts()) {
+      throw new UnauthorizedException();
+    }
+    const user = await this.userWithPassword(email, password);
+    if (!user.isTestUser) {
+      throw new UnauthorizedException();
+    }
+    return this.passwordSession(user);
+  }
+
+  private async userWithPassword(
+    email: string,
+    password: string,
+  ): Promise<User> {
     const user = await this.usersService.findOneByEmail(email);
 
     if (!user) {
@@ -364,14 +397,10 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    if (adminOnly && !user.admin) {
-      throw new UnauthorizedException();
-    }
+    return user;
+  }
 
-    if (isRefusedReviewAccount(user)) {
-      throw new ForbiddenException(REVIEW_ACCOUNT_MESSAGE);
-    }
-
+  private async passwordSession(user: User): Promise<PasswordSession> {
     return {
       access_token: await this.generateAccessToken(user),
       refresh_token: await this.generateRefreshToken(user),

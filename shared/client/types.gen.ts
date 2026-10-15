@@ -29,6 +29,11 @@ export type SignInResponseDto = {
     refresh_token?: string;
 };
 
+export type ReviewSignInDto = {
+    email: string;
+    password: string;
+};
+
 export type SignUpDto = {
     name: string;
     email: string;
@@ -5168,6 +5173,31 @@ export type AuthAdminLoginResponses = {
 };
 
 export type AuthAdminLoginResponse = AuthAdminLoginResponses[keyof AuthAdminLoginResponses];
+
+export type AuthReviewLoginData = {
+    body: ReviewSignInDto;
+    path?: never;
+    query?: never;
+    url: '/auth/review-login';
+};
+
+export type AuthReviewLoginErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type AuthReviewLoginError = AuthReviewLoginErrors[keyof AuthReviewLoginErrors];
+
+export type AuthReviewLoginResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type AuthReviewLoginResponse = AuthReviewLoginResponses[keyof AuthReviewLoginResponses];
 
 export type AuthRegisterData = {
     body: SignUpDto;

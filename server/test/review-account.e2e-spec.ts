@@ -1,3 +1,4 @@
+import { AnalyticsEvent } from "@alliance/common/analytics";
 import { NodeEnv } from "@alliance/common/node-env";
 import {
   OAuthError,
@@ -5,13 +6,17 @@ import {
   OAuthProvider,
 } from "@alliance/common/oauth";
 import { R } from "@alliance/common/result";
-import { REVIEW_ACCOUNT_MESSAGE } from "@alliance/common/review-account";
+import {
+  REVIEW_ACCOUNT_MESSAGE,
+  REVIEW_SIGN_IN_FAILED_PARAM,
+} from "@alliance/common/review-account";
 import { io } from "socket.io-client";
 import { TokenMode } from "src/auth/dto/signin.dto";
 import { mintProof, OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
-import { ACCESS_COOKIE } from "src/auth/tokens";
+import { ACCESS_COOKIE, REFRESH_COOKIE } from "src/auth/tokens";
 import { MailService } from "src/mail/mail.service";
 import { MessagingModule } from "src/messaging/messaging.module";
+import { PosthogService } from "src/posthog/posthog.service";
 import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import request from "supertest";
@@ -48,6 +53,12 @@ describe("Review accounts (e2e)", () => {
       .post("/auth/login")
       .send({ email, password, mode: TokenMode.Header });
 
+  const reviewLogin = (email: string, password = PASSWORD) =>
+    request(server())
+      .post("/auth/review-login")
+      .type("form")
+      .send({ email, password });
+
   const me = (token: string) =>
     request(server()).get("/auth/me").set("Authorization", `Bearer ${token}`);
 
@@ -60,6 +71,7 @@ describe("Review accounts (e2e)", () => {
 
   afterEach(() => {
     process.env.NODE_ENV = env;
+    jest.restoreAllMocks();
   });
 
   afterAll(async () => {
@@ -232,6 +244,88 @@ describe("Review accounts (e2e)", () => {
         .expect(403);
 
       expect(res.headers["set-cookie"]).toBeUndefined();
+    });
+
+    it("refuses the staging handoff", async () => {
+      const reviewer = await createMember({ isTestUser: true });
+
+      const res = await reviewLogin(reviewer.email).expect(303);
+
+      expect(res.headers.location).toContain(
+        `${REVIEW_SIGN_IN_FAILED_PARAM}=1`,
+      );
+      expect(res.headers["set-cookie"]).toBeUndefined();
+    });
+  });
+
+  describe("on staging", () => {
+    beforeEach(() => runningAs(NodeEnv.Staging));
+
+    it("signs a review account in with its password", async () => {
+      const reviewer = await createMember({ isTestUser: true });
+
+      const { access_token } = (await login(reviewer.email).expect(200)).body;
+
+      await me(access_token).expect(200);
+    });
+
+    it("hands a review account from production's web login to a cookie session", async () => {
+      const reviewer = await createMember({ isTestUser: true });
+
+      const res = await reviewLogin(reviewer.email).expect(303);
+
+      expect(res.headers.location).toBe(`${process.env.APP_URL}/tasks`);
+      const cookies = String(res.headers["set-cookie"]);
+      expect(cookies).toContain(`${ACCESS_COOKIE}=ey`);
+      expect(cookies).toContain(`${REFRESH_COOKIE}=ey`);
+    });
+
+    it("records the handoff as a login", async () => {
+      const reviewer = await createMember({ isTestUser: true });
+      const capture = jest.spyOn(ctx.app.get(PosthogService), "capture");
+
+      await reviewLogin(reviewer.email).expect(303);
+
+      expect(capture).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: AnalyticsEvent.Login,
+          distinctId: String(reviewer.id),
+        }),
+      );
+    });
+
+    it.each([
+      ["an ordinary account", { isTestUser: false }, PASSWORD],
+      ["a wrong password", { isTestUser: true }, "wrong"],
+    ])(
+      "sends the handoff of %s back to the login page",
+      async (_name, overrides, password) => {
+        const member = await createMember(overrides);
+
+        const res = await reviewLogin(member.email, password).expect(303);
+
+        expect(res.headers.location).toBe(
+          `${process.env.APP_URL}/login?${REVIEW_SIGN_IN_FAILED_PARAM}=1`,
+        );
+        expect(res.headers["set-cookie"]).toBeUndefined();
+      },
+    );
+
+    it("logs a broken account lookup and sends the handoff back to the login page", async () => {
+      jest
+        .spyOn(ctx.app.get(UserService), "findOneByEmail")
+        .mockRejectedValue(new Error("database unavailable"));
+      const logged = jest.spyOn(console, "error").mockImplementation(() => {});
+
+      const res = await reviewLogin("review@example.com").expect(303);
+
+      expect(res.headers.location).toBe(
+        `${process.env.APP_URL}/login?${REVIEW_SIGN_IN_FAILED_PARAM}=1`,
+      );
+      expect(logged).toHaveBeenCalledWith(
+        "review sign-in failed",
+        expect.stringContaining("database unavailable"),
+      );
     });
   });
 });

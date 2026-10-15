@@ -1,4 +1,7 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
+import { thrownStack } from "@alliance/common/errorMessage";
+import { R } from "@alliance/common/result";
+import { REVIEW_SIGN_IN_FAILED_PARAM } from "@alliance/common/review-account";
 import {
   ACCOUNT_MOVED_MESSAGE,
   isLegacyAllianceHost,
@@ -16,6 +19,7 @@ import {
   Query,
   Request,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
@@ -42,12 +46,17 @@ import {
 } from "./dto/authtokens.dto";
 import ForgotPasswordDto, { ResetPasswordDto } from "./dto/forgotpassword.dto";
 import { SignUpDto } from "./dto/sign-up.dto";
-import { SignInDto, SignInResponseDto, TokenMode } from "./dto/signin.dto";
+import {
+  ReviewSignInDto,
+  SignInDto,
+  SignInResponseDto,
+  TokenMode,
+} from "./dto/signin.dto";
 import { AdminGuard } from "./guards/admin.guard";
 import { AuthGuard } from "./guards/auth.guard";
 import { RefreshTokenGuard } from "./guards/refresh.guard";
 import { Public } from "./public.decorator";
-import { SIGNUP_THROTTLE } from "./signup-throttle.config";
+import { OAUTH_THROTTLE, SIGNUP_THROTTLE } from "./signup-throttle.config";
 import { siteUrlForHost } from "./site-url";
 import {
   extractGuestTokenFromCookie,
@@ -110,15 +119,7 @@ export class AuthController {
     }
 
     await this.mergeGuestSession(signInDto.guestToken, req, res, userId);
-    this.posthog.identify({
-      distinctId: String(userId),
-      properties: { email: signInDto.email },
-    });
-    this.posthog.capture({
-      event: AnalyticsEvent.Login,
-      distinctId: String(userId),
-      properties: { isAdmin },
-    });
+    this.recordLogin({ userId, email: signInDto.email, isAdmin });
     return new SignInResponseDto({
       ...this.deliverTokens({
         res,
@@ -145,15 +146,7 @@ export class AuthController {
       await this.authService.login(signInDto.email, signInDto.password, true);
 
     await this.mergeGuestSession(signInDto.guestToken, req, res, userId);
-    this.posthog.identify({
-      distinctId: String(userId),
-      properties: { email: signInDto.email },
-    });
-    this.posthog.capture({
-      event: AnalyticsEvent.Login,
-      distinctId: String(userId),
-      properties: { isAdmin: true },
-    });
+    this.recordLogin({ userId, email: signInDto.email, isAdmin: true });
     return new SignInResponseDto({
       ...this.deliverTokens({
         res,
@@ -162,6 +155,68 @@ export class AuthController {
         refresh_token,
       }),
       isAdmin,
+    });
+  }
+
+  /**
+   * Production's web login hands a review account here as a top-level form
+   * post, which can set this host's cookies even from a cross-site page.
+   */
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @OnlyThrottle(OAUTH_THROTTLE)
+  @Post("review-login")
+  @ApiResponse({
+    status: HttpStatus.SEE_OTHER,
+    description: "Redirects to the web app, signed in or with the failure",
+  })
+  async reviewLogin(
+    @Request() req: ExpressRequest,
+    @Body() body: ReviewSignInDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    const siteUrl = this.siteUrl(req);
+    const tokens = await R.fromPromise(
+      this.authService.reviewLogin(body.email, body.password),
+    );
+    if (!tokens.ok) {
+      // The reviewer is mid-navigation, where an exception filter's JSON body
+      // would strand them.
+      if (!(tokens.error instanceof UnauthorizedException)) {
+        console.error("review sign-in failed", thrownStack(tokens.error));
+      }
+      res.redirect(
+        HttpStatus.SEE_OTHER,
+        `${siteUrl}/login?${REVIEW_SIGN_IN_FAILED_PARAM}=1`,
+      );
+      return;
+    }
+    this.recordLogin({
+      userId: tokens.value.userId,
+      email: body.email,
+      isAdmin: tokens.value.isAdmin,
+    });
+    this.authService.setAuthCookies(
+      res,
+      tokens.value.access_token,
+      tokens.value.refresh_token,
+    );
+    res.redirect(HttpStatus.SEE_OTHER, `${siteUrl}/tasks`);
+  }
+
+  private recordLogin(params: {
+    userId: number;
+    email: string;
+    isAdmin: boolean;
+  }): void {
+    this.posthog.identify({
+      distinctId: String(params.userId),
+      properties: { email: params.email },
+    });
+    this.posthog.capture({
+      event: AnalyticsEvent.Login,
+      distinctId: String(params.userId),
+      properties: { isAdmin: params.isAdmin },
     });
   }
 
@@ -345,15 +400,17 @@ export class AuthController {
 
     this.authService.setAuthCookies(res, access_token, refresh_token);
 
+    res.redirect(this.siteUrl(req) + "/tasks");
+  }
+
+  private siteUrl(req: ExpressRequest): string {
     if (!process.env.APP_URL) {
       throw new Error("APP_URL is not set");
     }
-
-    const siteUrl = siteUrlForHost({
+    return siteUrlForHost({
       host: req.get("host"),
       appUrl: process.env.APP_URL,
       altAppUrl: process.env.ALT_APP_URL,
     });
-    res.redirect(siteUrl + "/tasks");
   }
 }

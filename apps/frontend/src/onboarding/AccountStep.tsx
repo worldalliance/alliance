@@ -1,4 +1,9 @@
 import { OAuthIntent } from "@alliance/common/oauth";
+import {
+  REVIEW_ACCOUNT_MESSAGE,
+  REVIEW_SIGN_IN_FAILED_PARAM,
+  REVIEW_SIGN_IN_UNAVAILABLE_MESSAGE,
+} from "@alliance/common/review-account";
 import { ACCOUNT_MOVED_MESSAGE, ALLIANCE_DOMAIN } from "@alliance/common/url";
 import { authForgotPassword, authLogin } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
@@ -16,6 +21,7 @@ import {
   redirectToNewDomain,
 } from "@alliance/sharedweb/lib/domainMigration";
 import { oauthStartUrl } from "@alliance/sharedweb/lib/oauth";
+import { useStripSearchParams } from "@alliance/sharedweb/lib/useStripSearchParams";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import OAuthButtons from "@alliance/sharedweb/ui/OAuthButtons";
@@ -26,6 +32,7 @@ import { z } from "zod";
 import { useAuth } from "../lib/AuthContext";
 import { getApiUrl, isFeatureEnabled } from "../lib/config";
 import { posthogRequestContext } from "../lib/posthogRequestContext";
+import { signInOnStaging } from "../lib/reviewSignIn";
 import { WAITLIST_HREF } from "../site/links";
 import { SiteArrow } from "../site/ui";
 import {
@@ -34,6 +41,8 @@ import {
   EmailDivider,
   riseStyle,
 } from "./chrome";
+
+const REVIEW_FAILURE_PARAMS = [REVIEW_SIGN_IN_FAILED_PARAM];
 
 const handedNotice = z.object({ message: z.string() });
 
@@ -97,8 +106,15 @@ export function AccountStep({
     const handed = handedNotice.safeParse(location.state);
     return handed.success ? handed.data.message : null;
   });
+  const [reviewFailure, setReviewFailure] = useState(() =>
+    new URLSearchParams(location.search).has(REVIEW_SIGN_IN_FAILED_PARAM)
+      ? REVIEW_SIGN_IN_UNAVAILABLE_MESSAGE
+      : null,
+  );
+  useStripSearchParams(REVIEW_FAILURE_PARAMS);
   const [pending, setPending] = useState(false);
   const showForm = loggingIn || (!inviteOnly && !invitePending);
+  const alert = providerError ?? reviewFailure;
 
   // Back into the flow rather than to the app, so a new account still passes
   // through the agreement.
@@ -133,6 +149,7 @@ export function AccountStep({
     const next = syncFromForm(e.currentTarget);
     setError(null);
     setNotice(null);
+    setReviewFailure(null);
 
     if (!loggingIn) {
       if (inviteOnly) return;
@@ -171,6 +188,10 @@ export function AccountStep({
         return;
       }
       redirectToNewDomain(target, new Date());
+      return;
+    }
+    if (res.error?.message === REVIEW_ACCOUNT_MESSAGE) {
+      signInOnStaging(next);
       return;
     }
     setError("Invalid email or password");
@@ -218,9 +239,9 @@ export function AccountStep({
               </span>
             </div>
           )}
-          {providerError && (
+          {alert && (
             <p className="mt-6 text-sm font-medium text-red-600" role="alert">
-              {providerError}
+              {alert}
             </p>
           )}
           {showForm && (

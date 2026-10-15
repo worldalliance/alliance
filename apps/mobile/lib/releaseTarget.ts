@@ -1,6 +1,6 @@
 import { NodeEnv } from "@alliance/common/node-env";
 import { R, type Result } from "@alliance/common/result";
-import { ALLIANCE_DOMAIN } from "@alliance/common/url";
+import { ALLIANCE_DOMAIN, STAGING_SITE_URL } from "@alliance/common/url";
 
 /** Mirrors the `VARIANTS` keys in app.config.js. */
 export enum AppVariant {
@@ -48,7 +48,7 @@ const RELEASE_TARGETS: Record<AppVariant, ReleaseTarget> = {
   [AppVariant.Development]: PRODUCTION,
   [AppVariant.Staging]: {
     apiUrl: "https://staging.worldalliance.org/api",
-    siteUrl: `https://staging.${ALLIANCE_DOMAIN}`,
+    siteUrl: STAGING_SITE_URL,
     env: NodeEnv.Staging,
     posthog: {
       apiKey: "phc_Af7iQMRPzZS1T0MkYp20WgXyThUnWkNChHuYhuxomPS",

@@ -1,4 +1,9 @@
-import { ACCOUNT_MOVED_MESSAGE } from "@alliance/common/url";
+import {
+  REVIEW_ACCOUNT_MESSAGE,
+  REVIEW_SIGN_IN_FAILED_PARAM,
+  REVIEW_SIGN_IN_UNAVAILABLE_MESSAGE,
+} from "@alliance/common/review-account";
+import { ACCOUNT_MOVED_MESSAGE, STAGING_SITE_URL } from "@alliance/common/url";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as configModule from "@alliance/sharedweb/lib/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -10,7 +15,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { useState } from "react";
-import { MemoryRouter, type InitialEntry } from "react-router";
+import { MemoryRouter, useLocation, type InitialEntry } from "react-router";
 import { AuthContext, type AuthContextType } from "../lib/AuthContext";
 import { AccountStep } from "./AccountStep";
 
@@ -95,6 +100,8 @@ const authValue: AuthContextType = {
   loading: false,
 };
 
+const Search = () => <span data-testid="search">{useLocation().search}</span>;
+
 const Harness = ({ entry = "/" }: { entry?: InitialEntry }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -107,6 +114,7 @@ const Harness = ({ entry = "/" }: { entry?: InitialEntry }) => {
             parent update
           </button>
           <span data-testid="tick">{tick}</span>
+          <Search />
           <AccountStep
             email={email}
             onEmailChange={setEmail}
@@ -273,5 +281,64 @@ describe("AccountStep", () => {
       "https://worldalliance.org/login?redirect=%2Ftasks",
     );
     expect(onLogin).not.toHaveBeenCalled();
+  });
+
+  it("posts a review account's credentials to staging instead of signing it in", async () => {
+    const submitted: HTMLFormElement[] = [];
+    jest
+      .spyOn(HTMLFormElement.prototype, "submit")
+      .mockImplementation(function (this: HTMLFormElement) {
+        submitted.push(this);
+      });
+    loginReply = () =>
+      Response.json(
+        { statusCode: 403, message: REVIEW_ACCOUNT_MESSAGE },
+        { status: 403 },
+      );
+    render(<Harness />);
+
+    fillWithoutReact("reviewer@example.com", "s3cret");
+    fireEvent.click(screen.getByRole("button", { name: /log in/i }));
+
+    await waitFor(() => expect(submitted).toHaveLength(1));
+    const [form] = submitted;
+    expect(form.method.toUpperCase()).toBe("POST");
+    expect(form.action).toBe(`${STAGING_SITE_URL}/api/auth/review-login`);
+    expect(Object.fromEntries(new FormData(form))).toEqual({
+      email: "reviewer@example.com",
+      password: "s3cret",
+    });
+    expect(onLogin).not.toHaveBeenCalled();
+    expect(screen.queryByText("Invalid email or password")).toBeNull();
+  });
+
+  it("says review sign-in is unavailable when staging sends the reviewer back", () => {
+    render(<Harness entry={`/login?${REVIEW_SIGN_IN_FAILED_PARAM}=1`} />);
+
+    expect(screen.getByRole("alert").textContent).toBe(
+      REVIEW_SIGN_IN_UNAVAILABLE_MESSAGE,
+    );
+  });
+
+  it("strips the review sign-in failure from the URL so a reload doesn't replay it", () => {
+    render(
+      <Harness entry={`/login?ref=abc&${REVIEW_SIGN_IN_FAILED_PARAM}=1`} />,
+    );
+
+    expect(screen.getByTestId("search").textContent).toBe("?ref=abc");
+    expect(screen.getByRole("alert").textContent).toBe(
+      REVIEW_SIGN_IN_UNAVAILABLE_MESSAGE,
+    );
+  });
+
+  it("drops the review sign-in failure once the member tries again", async () => {
+    loginReply = () => Response.json({ statusCode: 401 }, { status: 401 });
+    render(<Harness entry={`/login?${REVIEW_SIGN_IN_FAILED_PARAM}=1`} />);
+
+    fillWithoutReact("reviewer@example.com", "wrong");
+    fireEvent.click(screen.getByRole("button", { name: /log in/i }));
+
+    await screen.findByText("Invalid email or password");
+    expect(screen.queryByText(REVIEW_SIGN_IN_UNAVAILABLE_MESSAGE)).toBeNull();
   });
 });
