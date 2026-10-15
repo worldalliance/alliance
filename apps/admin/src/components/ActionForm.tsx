@@ -19,6 +19,7 @@ import UploadingWithCancel from "@alliance/sharedweb/ui/UploadingWithCancel";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import React, { useMemo, useRef } from "react";
+import { suiteOptions } from "../lib/suiteOptions";
 import { makeTempId } from "../lib/tempId";
 import { ActionCategoryPicker } from "./ActionCategoryIcons";
 import CohortExpressionBuilder from "./CohortExpressionBuilder";
@@ -51,6 +52,7 @@ interface ActionFormProps {
   tagsError: boolean;
   availableSuites?: ActionSuiteDto[];
   suitesLoading: boolean;
+  suitesError: boolean;
   availableUsers?: UserSelectUser[];
   usersLoading: boolean;
   usersError: boolean;
@@ -130,6 +132,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
   tagsError,
   availableSuites = [],
   suitesLoading = false,
+  suitesError,
   availableUsers = [],
   usersLoading,
   usersError,
@@ -196,17 +199,13 @@ const ActionForm: React.FC<ActionFormProps> = ({
   );
 
   const suiteSelectOptions = useMemo(
-    () => [
-      {
-        value: "",
-        label: suitesLoading ? "Loading suites..." : "No suite",
-      },
-      ...availableSuites.map((suite) => ({
-        value: suite.id,
-        label: suite.name,
-      })),
-    ],
-    [availableSuites, suitesLoading],
+    () =>
+      suiteOptions({
+        suites: availableSuites,
+        loading: suitesLoading,
+        failed: suitesError,
+      }),
+    [availableSuites, suitesLoading, suitesError],
   );
 
   const fieldDefs = useMemo(

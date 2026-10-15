@@ -135,6 +135,7 @@ export const queryKeys = {
     ["actionsFindOneUpdateAdmin", id] as const,
   actionSuiteAdmin: (suiteId: number) =>
     ["actionsSuiteAdmin", suiteId] as const,
+  actionSuitesAdmin: () => ["actionsSuitesAdmin"] as const,
   actionsAllAdmin: () => ["actionsFindAllWithDraftsAdmin"] as const,
   actionCohortDecisionsAdmin: (actionId: number) =>
     ["cohortDecisionsListForActionAdmin", actionId] as const,
