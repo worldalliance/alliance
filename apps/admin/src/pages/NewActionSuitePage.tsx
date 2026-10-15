@@ -1,13 +1,15 @@
-import { errorMessage } from "@alliance/common/errorMessage";
-import { actionsCreateSuiteAdmin } from "@alliance/shared/client";
+import { R } from "@alliance/common/result";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 
 const NewActionSuitePage = () => {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const { createSuite } = useActionSuitesAdmin();
 
   const handleCancel = () => {
     navigate("/actions");
@@ -17,19 +19,15 @@ const NewActionSuitePage = () => {
     event.preventDefault();
     const formData = new FormData(event.target as HTMLFormElement);
     const suiteName = formData.get("suiteName") as string;
-    const response = await actionsCreateSuiteAdmin({
-      body: { name: suiteName },
-    });
-    if (response.error) {
-      setError(
-        errorMessage({
-          error: response.error,
-          fallback: "Failed to create suite",
-        }),
-      );
-    } else if (response.data) {
-      navigate(`/suites/${response.data.id}`);
+    const created = await R.fromPromise(
+      createSuite.mutateAsync(suiteName),
+      (thrown) => adminRefusalMessage(thrown, "Failed to create suite"),
+    );
+    if (!created.ok) {
+      setError(created.error);
+      return;
     }
+    navigate(`/suites/${created.value.id}`);
   };
 
   return (
