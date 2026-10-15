@@ -9,7 +9,7 @@ registerErrorStatus(client);
 
 // happy-dom refuses to construct a Request from a relative URL, and the client
 // is configured without a baseUrl outside an app.
-const BASE_URL = "http://api.test";
+export const SERVED_API_URL = "http://api.test";
 
 type ApiHandler = (request: Request) => Response | Promise<Response>;
 
@@ -74,7 +74,7 @@ const serve = (
   { throwOnError }: { throwOnError: boolean },
 ): void => {
   client.setConfig({
-    baseUrl: BASE_URL,
+    baseUrl: SERVED_API_URL,
     throwOnError,
     fetch: async (request) => {
       try {

@@ -18,6 +18,17 @@ export const SecureStorage = {
     secureStorageBackend.deleteItem(key, options),
 };
 
+/** {@link SecureStorage} under keys of its own, for what a review session
+ * keeps apart from the binary's deployment. */
+export const ReviewSecureStorage: typeof SecureStorage = {
+  setItem: (key, value, options) =>
+    secureStorageBackend.setItem(`review.${key}`, value, options),
+  getItem: (key, options) =>
+    secureStorageBackend.getItem(`review.${key}`, options),
+  deleteItem: (key, options) =>
+    secureStorageBackend.deleteItem(`review.${key}`, options),
+};
+
 export const getAccessToken = () =>
   SecureStorage.getItem(SecureStorageKey.ACCESS_TOKEN);
 export const getRefreshToken = () =>

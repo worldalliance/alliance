@@ -1,4 +1,8 @@
 import { R, type Result } from "@alliance/common/result";
+import {
+  REVIEW_ACCOUNT_MESSAGE,
+  REVIEW_SIGN_IN_UNAVAILABLE_MESSAGE,
+} from "@alliance/common/review-account";
 import { run } from "@alliance/common/run";
 import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import {
@@ -12,6 +16,10 @@ import {
 import { client } from "@alliance/shared/client/client.gen";
 import { milliseconds } from "date-fns";
 import { isNetworkFailure, NETWORK_FAILURE_MESSAGE } from "./network";
+import {
+  ReviewAccountError,
+  ReviewSignInUnavailableError,
+} from "./reviewSignInErrors";
 import type { SessionTokens } from "./SecureStorage";
 
 export class CredentialsRefusedError extends Error {
@@ -21,14 +29,18 @@ export class CredentialsRefusedError extends Error {
   }
 }
 
-export async function requestTokens(credentials: {
-  email: string;
-  password: string;
-  guestToken?: string;
-}): Promise<Result<SessionTokensDto, Error>> {
+export async function requestTokens(
+  credentials: {
+    email: string;
+    password: string;
+    guestToken?: string;
+  },
+  baseUrl: string,
+): Promise<Result<SessionTokensDto, Error>> {
   const sent = await R.fromPromise(
     authLogin({
       body: { ...credentials, mode: "header" },
+      baseUrl,
       throwOnError: false,
     }),
   );
@@ -39,6 +51,9 @@ export async function requestTokens(credentials: {
   // 400 is a malformed email or an empty password.
   if (response.status === 400 || response.status === 401) {
     return R.failure(new CredentialsRefusedError());
+  }
+  if (response.status === 403 && error?.message === REVIEW_ACCOUNT_MESSAGE) {
+    return R.failure(new ReviewAccountError());
   }
   const { access_token, refresh_token } = data ?? {};
   if (!access_token || !refresh_token) {
@@ -54,6 +69,10 @@ export function passwordLoginFailure(error: unknown): {
 } {
   if (error instanceof CredentialsRefusedError) {
     return { message: "Invalid email or password", report: false };
+  }
+  if (error instanceof ReviewSignInUnavailableError) {
+    const report = !isNetworkFailure(error.cause);
+    return { message: REVIEW_SIGN_IN_UNAVAILABLE_MESSAGE, report };
   }
   if (
     isNetworkFailure(error) ||
@@ -200,15 +219,17 @@ export function clearClosedSessionTokens(
   });
 }
 
-export async function closeSession(
-  clearTokens: () => Promise<Result<void, Error>>,
-): Promise<Result<void, Error>> {
+export async function closeSession(params: {
+  clearTokens: () => Promise<Result<void, Error>>;
+  leaveDeployment: () => void;
+}): Promise<Result<void, Error>> {
   session = undefined;
-  // The server attributes the logout to the token this request carries, which
-  // the client reads when the call starts.
+  // The client reads the token, which the server attributes the logout to, and
+  // the deployment when the call starts, so both can change right after.
   authLogout().catch((error) => console.error("logout request failed", error));
   setAuthHeader(undefined);
-  return await clearClosedSessionTokens(clearTokens);
+  params.leaveDeployment();
+  return await clearClosedSessionTokens(params.clearTokens);
 }
 
 export async function clearStoredTokens<Key extends string>(

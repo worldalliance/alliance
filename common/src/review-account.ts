@@ -1,7 +1,7 @@
 /**
  * What production's `POST /auth/login` refuses a review account with once its
- * password checks out. The web login matches on it to hand the account to
- * staging instead.
+ * password checks out. Clients match on it to sign in on staging instead, so
+ * rewording it strands the builds already in the stores.
  */
 export const REVIEW_ACCOUNT_MESSAGE =
   "This review account requires an updated app or the staging website.";

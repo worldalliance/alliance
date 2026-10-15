@@ -5,4 +5,5 @@ export enum SecureStorageKey {
   DEVICE_ID = "deviceId",
   REGISTERED_TOKEN = "registeredToken",
   UNLINK_PENDING = "unlinkPending",
+  REVIEW_SESSION = "reviewSession",
 }
