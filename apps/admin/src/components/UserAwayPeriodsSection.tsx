@@ -1,9 +1,4 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  userCreateAwayRangeAdmin,
-  userDeleteAwayRangeAdmin,
-  userUpdateAwayRangeAdmin,
-} from "@alliance/shared/client";
 import type {
   UserAdminDetailDto,
   UserAwayRangeDto,
@@ -23,24 +18,25 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import FormInput from "@alliance/sharedweb/ui/FormInput";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Pencil, X } from "lucide-react";
-import {
-  type Dispatch,
-  type SetStateAction,
-  useCallback,
-  useState,
-} from "react";
+import { useCallback, useState } from "react";
+import { adminRefusalMessage } from "../lib/adminRefusal";
+import { useUserAwayRangesAdmin } from "../lib/useUserAwayRangesAdmin";
 
 export default function UserAwayPeriodsSection({
   user,
-  sortedAwayRanges,
-  setAwayRanges,
 }: {
   user: Pick<UserAdminDetailDto, "id" | "name">;
-  sortedAwayRanges: UserAwayRangeDto[];
-  setAwayRanges: Dispatch<SetStateAction<UserAwayRangeDto[]>>;
 }) {
+  const {
+    query: awayRangesQuery,
+    sortedAwayRanges,
+    createAwayRange,
+    updateAwayRange,
+    deleteAwayRange,
+  } = useUserAwayRangesAdmin(user.id);
   const [awayStartDate, setAwayStartDate] = useState("");
   const [awayEndDate, setAwayEndDate] = useState("");
   const [awayReason, setAwayReason] = useState<UserAwayRangeReason | "">("");
@@ -48,7 +44,6 @@ export default function UserAwayPeriodsSection({
   const [awayMutationError, setAwayMutationError] = useState<string | null>(
     null,
   );
-  const [isAwayMutationPending, setIsAwayMutationPending] = useState(false);
   const [editingAwayRangeId, setEditingAwayRangeId] = useState<number | null>(
     null,
   );
@@ -63,6 +58,10 @@ export default function UserAwayPeriodsSection({
   >("");
   const [editAwayNote, setEditAwayNote] = useState("");
   const { confirm, success } = useToast();
+  const isAwayMutationPending =
+    createAwayRange.isPending ||
+    updateAwayRange.isPending ||
+    deleteAwayRange.isPending;
 
   const resetAwayCreateForm = useCallback(() => {
     setAwayStartDate("");
@@ -106,37 +105,28 @@ export default function UserAwayPeriodsSection({
       return;
     }
 
-    setIsAwayMutationPending(true);
     try {
-      const response = await userCreateAwayRangeAdmin({
-        path: { userId: user.id },
-        body: {
-          startDay: awayStartDate,
-          endDay: awayEndDate,
-          reason: awayReason,
-          note: awayNote.trim() || null,
-        },
-        throwOnError: true,
+      await createAwayRange.mutateAsync({
+        startDay: awayStartDate,
+        endDay: awayEndDate,
+        reason: awayReason,
+        note: awayNote.trim() || null,
       });
-      setAwayRanges((prev) => [...prev, response.data]);
       resetAwayCreateForm();
       success("Away period scheduled", user.name);
     } catch (error) {
       setAwayMutationError(
         errorMessage({ error, fallback: "Could not schedule away period." }),
       );
-    } finally {
-      setIsAwayMutationPending(false);
     }
   }, [
     awayEndDate,
     awayNote,
     awayReason,
     awayStartDate,
+    createAwayRange,
     resetAwayCreateForm,
-    setAwayRanges,
     success,
-    user.id,
     user.name,
   ]);
 
@@ -155,10 +145,9 @@ export default function UserAwayPeriodsSection({
       return;
     }
 
-    setIsAwayMutationPending(true);
     try {
-      const response = await userUpdateAwayRangeAdmin({
-        path: { userId: user.id, id: editingAwayRangeId },
+      await updateAwayRange.mutateAsync({
+        id: editingAwayRangeId,
         body: {
           ...changedAwayRangeDays({
             edited: { start: editAwayStartDate, end: editAwayEndDate },
@@ -167,21 +156,13 @@ export default function UserAwayPeriodsSection({
           reason: editAwayReason,
           note: editAwayNote.trim() || null,
         },
-        throwOnError: true,
       });
-      setAwayRanges((prev) =>
-        prev.map((range) =>
-          range.id === response.data.id ? response.data : range,
-        ),
-      );
       cancelAwayEdit();
       success("Away period updated", user.name);
     } catch (error) {
       setAwayMutationError(
         errorMessage({ error, fallback: "Could not update away period." }),
       );
-    } finally {
-      setIsAwayMutationPending(false);
     }
   }, [
     cancelAwayEdit,
@@ -191,9 +172,8 @@ export default function UserAwayPeriodsSection({
     editAwayReason,
     editAwayStartDate,
     editingAwayRangeId,
-    setAwayRanges,
     success,
-    user.id,
+    updateAwayRange,
     user.name,
   ]);
 
@@ -206,15 +186,8 @@ export default function UserAwayPeriodsSection({
       if (!confirmed) return;
 
       setAwayMutationError(null);
-      setIsAwayMutationPending(true);
       try {
-        await userDeleteAwayRangeAdmin({
-          path: { userId: user.id, id: range.id },
-          throwOnError: true,
-        });
-        setAwayRanges((prev) =>
-          prev.filter((existing) => existing.id !== range.id),
-        );
+        await deleteAwayRange.mutateAsync(range.id);
         if (editingAwayRangeId === range.id) {
           cancelAwayEdit();
         }
@@ -223,17 +196,14 @@ export default function UserAwayPeriodsSection({
         setAwayMutationError(
           errorMessage({ error, fallback: "Could not delete away period." }),
         );
-      } finally {
-        setIsAwayMutationPending(false);
       }
     },
     [
       cancelAwayEdit,
       confirm,
+      deleteAwayRange,
       editingAwayRangeId,
-      setAwayRanges,
       success,
-      user.id,
       user.name,
     ],
   );
@@ -241,12 +211,23 @@ export default function UserAwayPeriodsSection({
   return (
     <section className="border border-zinc-200 rounded p-3">
       <h2 className="text-sm font-semibold text-zinc-700 mb-2">
-        Away Periods ({sortedAwayRanges.length})
+        Away Periods
+        {awayRangesQuery.data && ` (${sortedAwayRanges.length})`}
       </h2>
       {awayMutationError && (
         <p className="text-xs text-red-500 mb-2">{awayMutationError}</p>
       )}
-      {sortedAwayRanges.length ? (
+      {awayRangesQuery.isError && (
+        <p role="alert" className="text-xs text-red-500 mb-2">
+          {adminRefusalMessage(
+            awayRangesQuery.error,
+            "Could not load away periods.",
+          )}
+        </p>
+      )}
+      {awayRangesQuery.isPending ? (
+        <Spinner size="small" />
+      ) : !awayRangesQuery.data ? null : sortedAwayRanges.length ? (
         <div className="space-y-2 max-h-48 overflow-y-auto">
           {sortedAwayRanges.map((range) => {
             const status = awayRangeStatus(range);

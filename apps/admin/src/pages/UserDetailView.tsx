@@ -9,7 +9,6 @@ import {
   notifsNotifsForUserAdmin,
   tasksGetFormsForUserSidAdmin,
   userAddUserToTagAdmin,
-  userGetAwayRangeForUserAdmin,
   userGetTagSummariesAdmin,
   userListFriends,
   userRemoveUserFromTagAdmin,
@@ -28,9 +27,7 @@ import {
   UserActionSummaryDto,
   UserAdminDetailDto,
   UserAdminInvitedByDto,
-  UserAwayRangeDto,
 } from "@alliance/shared/client/types.gen";
-import { useAwayRanges } from "@alliance/shared/lib/useAwayRanges";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -61,6 +58,7 @@ import MemberGroupMoveSection from "../components/MemberGroupMoveSection";
 import UserAwayPeriodsSection from "../components/UserAwayPeriodsSection";
 import { useAuth } from "../lib/AuthContext";
 import { getApiUrl } from "../lib/config";
+import { useUserAwayRangesAdmin } from "../lib/useUserAwayRangesAdmin";
 
 export async function clientLoader({ params }: Route.LoaderArgs) {
   const userIdParam = params.userId;
@@ -74,7 +72,6 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
 
   const [
     userRes,
-    awayRangesRes,
     tagsRes,
     actionRelationsRes,
     timeSpentRes,
@@ -84,7 +81,6 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
     friendsRes,
   ] = await Promise.all([
     userUserDetailAdmin({ path: { id: userId } }),
-    userGetAwayRangeForUserAdmin({ path: { id: userId } }),
     userGetTagSummariesAdmin(),
     actionsActionRelationsForUserAdmin({ path: { userId } }),
     analyticsGetTimeSpentPerUserAdmin(),
@@ -101,7 +97,6 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
     throw new Error("Not found");
   }
 
-  const awayRanges = awayRangesRes.data ?? [];
   const timeSpent = findTimeForUser(timeSpentRes.data ?? [], userId);
   const timeSpentTotal = findTimeForUser(timeSpentTotalRes.data ?? [], userId);
 
@@ -119,7 +114,6 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
     actionRelations,
     timeSpent,
     timeSpentTotal,
-    awayRanges,
     notifs: notifRes.data ?? [],
     formResponses: formResponsesRes.data ?? [],
     friends: friendsRes.data ?? [],
@@ -128,14 +122,8 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
 
 const UserDetailView: React.FC = () => {
   const loaderData = useLoaderData<typeof clientLoader>();
-  const {
-    actionSummaries,
-    actionRelations,
-    awayRanges,
-    notifs,
-    formResponses,
-    friends,
-  } = loaderData;
+  const { actionSummaries, actionRelations, notifs, formResponses, friends } =
+    loaderData;
 
   const [user, setUser] = useState<UserAdminDetailDto>(loaderData.user);
   const [actionRelationsState, setActionRelationsState] =
@@ -159,8 +147,6 @@ const UserDetailView: React.FC = () => {
   >(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [expandedEmailId, setExpandedEmailId] = useState<number | null>(null);
-  const [awayRangesState, setAwayRangesState] =
-    useState<UserAwayRangeDto[]>(awayRanges);
   const { confirm, success } = useToast();
 
   useEffect(() => {
@@ -170,10 +156,6 @@ const UserDetailView: React.FC = () => {
   useEffect(() => {
     setActionRelationsState(actionRelations);
   }, [actionRelations]);
-
-  useEffect(() => {
-    setAwayRangesState(awayRanges);
-  }, [awayRanges]);
 
   const sortedAllTags = useMemo(() => {
     return [...allTags].sort((a, b) => a.name.localeCompare(b.name));
@@ -246,7 +228,7 @@ const UserDetailView: React.FC = () => {
     return Math.round((opened / pushNotifs.length) * 100);
   }, [pushNotifs]);
 
-  const { sortedAwayRanges, currentAwayRange } = useAwayRanges(awayRangesState);
+  const { currentAwayRange } = useUserAwayRangesAdmin(user.id);
 
   const latestEvent = user.lastContractEvent ?? null;
 
@@ -1064,11 +1046,7 @@ const UserDetailView: React.FC = () => {
           </section>
 
           {/* Away Periods */}
-          <UserAwayPeriodsSection
-            user={user}
-            sortedAwayRanges={sortedAwayRanges}
-            setAwayRanges={setAwayRangesState}
-          />
+          <UserAwayPeriodsSection user={user} />
 
           {/* Contract Details */}
           <section className="border border-zinc-200 rounded p-3">
