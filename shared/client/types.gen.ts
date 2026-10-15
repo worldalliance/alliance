@@ -482,7 +482,7 @@ export type Action = {
     /**
      * Date and time when the action was computed for autocomplete
      */
-    computedAutocompleteAt?: string;
+    computedAutocompleteAt: string | null;
     customStatType?: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
@@ -2226,7 +2226,7 @@ export type ActionDto = {
     /**
      * Date and time when the action was computed for autocomplete
      */
-    computedAutocompleteAt?: string;
+    computedAutocompleteAt: string | null;
     customStatType?: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
@@ -2579,7 +2579,7 @@ export type AdminActionListItemDto = {
     /**
      * Date and time when the action was computed for autocomplete
      */
-    computedAutocompleteAt?: string;
+    computedAutocompleteAt: string | null;
     customStatType?: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
@@ -2758,7 +2758,7 @@ export type AdminActionDto = {
     /**
      * Date and time when the action was computed for autocomplete
      */
-    computedAutocompleteAt?: string;
+    computedAutocompleteAt: string | null;
     customStatType?: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
@@ -2987,10 +2987,6 @@ export type CreateActionDto = {
      * Whether to autocomplete action based on forum participation
      */
     isForumParticipationAction: boolean;
-    /**
-     * Date and time when the action was computed for autocomplete
-     */
-    computedAutocompleteAt?: string;
     customStatType?: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
@@ -3003,6 +2999,10 @@ export type CreateActionDto = {
      * When using forumParticipationPostId, also count replies to nested child posts
      */
     forumParticipationIncludeChildren?: boolean;
+    /**
+     * Date and time when the action was computed for autocomplete
+     */
+    computedAutocompleteAt?: string | null;
     suiteId?: number | null;
     staffPreview?: boolean;
     reviewers?: Array<ActionReviewerDto>;
@@ -3082,10 +3082,6 @@ export type UpdateActionDto = {
      * Whether to autocomplete action based on forum participation
      */
     isForumParticipationAction?: boolean;
-    /**
-     * Date and time when the action was computed for autocomplete
-     */
-    computedAutocompleteAt?: string;
     customStatType?: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;
@@ -3098,6 +3094,10 @@ export type UpdateActionDto = {
      * When using forumParticipationPostId, also count replies to nested child posts
      */
     forumParticipationIncludeChildren?: boolean;
+    /**
+     * Date and time when the action was computed for autocomplete
+     */
+    computedAutocompleteAt?: string | null;
     suiteId?: number | null;
     staffPreview?: boolean;
     reviewers?: Array<ActionReviewerDto>;
@@ -3462,7 +3462,7 @@ export type ExportActionDto = {
     /**
      * Date and time when the action was computed for autocomplete
      */
-    computedAutocompleteAt?: string;
+    computedAutocompleteAt: string | null;
     customStatType?: CustomActionStat;
     customStatLabel?: string;
     customStatValue?: number;

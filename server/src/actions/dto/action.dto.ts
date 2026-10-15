@@ -675,7 +675,6 @@ export class CreateActionDto extends IntersectionType(
     "publicOnly",
     "shouldCompleteAfterDeadline",
     "isForumParticipationAction",
-    "computedAutocompleteAt",
     "customStatType",
     "customStatLabel",
     "customStatValue",
@@ -685,6 +684,7 @@ export class CreateActionDto extends IntersectionType(
     PickType(ActionDto, [
       "forumParticipationPostId",
       "forumParticipationIncludeChildren",
+      "computedAutocompleteAt",
     ]),
   ),
 ) {

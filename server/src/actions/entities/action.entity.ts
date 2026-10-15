@@ -303,13 +303,14 @@ export class Action {
   forumParticipationIncludeChildren: boolean;
 
   @Column({ type: "timestamptz", nullable: true })
-  @ApiPropertyOptional({
+  @ApiProperty({
+    type: Date,
+    nullable: true,
     description: "Date and time when the action was computed for autocomplete",
   })
   @IsOptional()
   @Type(() => Date)
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  computedAutocompleteAt?: Date;
+  computedAutocompleteAt: Date | null;
 
   @Column({ type: "enum", enum: CustomActionStat, nullable: true })
   @Type(() => String)

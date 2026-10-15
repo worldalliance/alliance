@@ -25,6 +25,7 @@ export const adminActionListItem = (
   isForumParticipationAction: false,
   forumParticipationPostId: null,
   forumParticipationIncludeChildren: false,
+  computedAutocompleteAt: null,
   reviewers: [],
   followUpForms: [],
   usersCompleted: 0,

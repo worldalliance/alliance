@@ -123,4 +123,35 @@ describe("Action forum participation settings (e2e)", () => {
         .expect(400);
     },
   );
+
+  it("returns null for the autocomplete timestamp on an action created without it", async () => {
+    const created = await create({}).expect(201);
+    expect(created.body.computedAutocompleteAt).toBeNull();
+
+    const fetched = await getAdmin(created.body.id).expect(200);
+    expect(fetched.body.computedAutocompleteAt).toBeNull();
+  });
+
+  it("sets the autocomplete timestamp, keeps it when a patch leaves it out, and clears it with null", async () => {
+    const computedAt = "2026-01-02T03:04:05.000Z";
+    const created = await create({
+      computedAutocompleteAt: new Date(computedAt),
+    }).expect(201);
+    expect(created.body.computedAutocompleteAt).toBe(computedAt);
+
+    const renamed = await patch(created.body.id, {
+      name: `${NAME_PREFIX} renamed`,
+    }).expect(200);
+    expect(renamed.body.computedAutocompleteAt).toBe(computedAt);
+
+    const cleared = await patch(created.body.id, {
+      computedAutocompleteAt: null,
+    }).expect(200);
+    expect(cleared.body.computedAutocompleteAt).toBeNull();
+
+    const stored = await ctx.dataSource
+      .getRepository(Action)
+      .findOneByOrFail({ id: created.body.id });
+    expect(stored.computedAutocompleteAt).toBeNull();
+  });
 });

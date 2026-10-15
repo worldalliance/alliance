@@ -77,6 +77,7 @@ export function makeAction(
     isForumParticipationAction: false,
     forumParticipationPostId: null,
     forumParticipationIncludeChildren: false,
+    computedAutocompleteAt: null,
     archived: false,
     followUpForms: [],
     reviewers: [],
