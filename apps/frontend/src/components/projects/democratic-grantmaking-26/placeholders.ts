@@ -37,10 +37,22 @@ export const FEATURED_PEOPLE: ProjectPerson[] = [
     href: "https://www.linkedin.com/in/cantino/",
   },
   {
+    name: "Bastian Herre",
+    imageSrc: "/assets/democratic-grantmaking-26/bastian.jpeg",
+    role: "Politics & Society Lead, Our World in Data",
+    href: "https://www.linkedin.com/in/bastian-herre-33264623/",
+  },
+  {
     name: "Eli Sepulveda",
     imageSrc: "/assets/democratic-grantmaking-26/eli.jpeg",
-    role: "Global Catastrophic Risks at Founders Pledge",
+    role: "Global Catastrophic Risks, Founders Pledge",
     href: "https://www.linkedin.com/in/sepllveda/",
+  },
+  {
+    name: "Kyle Gracey",
+    imageSrc: "/assets/democratic-grantmaking-26/kyle-gracey.png",
+    role: "AI Strategy Program Leader, Rethink Priorities",
+    href: "https://www.linkedin.com/in/kylegracey/",
   },
 ];
 

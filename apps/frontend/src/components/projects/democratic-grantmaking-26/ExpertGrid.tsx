@@ -6,7 +6,7 @@ export function ExpertGrid({ className }: { className?: string }) {
     <ul
       aria-label="Expert panel"
       className={cn(
-        "grid w-fit grid-cols-[repeat(3,80px)] gap-x-3 gap-y-5 text-center md:grid-cols-[repeat(6,100px)] lg:grid-cols-[repeat(6,125px)] sm:gap-x-4 sm:gap-y-6",
+        "grid w-fit grid-cols-4 gap-x-3 gap-y-5 text-center lg:grid-cols-8 sm:gap-x-4 sm:gap-y-6",
         className,
       )}
     >
@@ -21,7 +21,7 @@ export function ExpertGrid({ className }: { className?: string }) {
             <img
               src={person.imageSrc}
               alt=""
-              className="mb-3 size-[80px] md:size-[100px] lg:size-[125px] rounded-md object-cover"
+              className="mb-3 aspect-square rounded-md object-cover"
             />
             <span className="site-sans text-lg leading-tight font-medium text-[var(--site-ink)] underline decoration-transparent underline-offset-2 group-hover:decoration-[var(--site-ink)]">
               {person.name}
