@@ -1,4 +1,9 @@
 import {
+  collectiveEmailSubject,
+  recognitionCopy,
+  recognitionCopySchema,
+} from "@alliance/common/action-update-copy";
+import {
   CONTRIBUTION_FORMULA_KEY,
   contributionFormulaSchema,
   type ContributionFormulaMode,
@@ -11,13 +16,11 @@ import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import type { TrackedMessage } from "src/link-tracking/message-tracking.service";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
-import { Experiment } from "src/notifs/entities/experiment-assignment.entity";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
   UnreadContent,
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
-import { assignExperimentArms } from "src/notifs/experiment-assignment";
 import { NotifsService } from "src/notifs/notifs.service";
 import { PushService } from "src/push/push.service";
 import { actionUrl } from "src/search/approutes";
@@ -34,11 +37,10 @@ import {
   findLatestCompletions,
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
+import { ActionParticipantsService } from "./action-participants.service";
 import {
-  collectiveEmailSubject,
   planRecognition,
   readRecognitionConfig,
-  recognitionCopy,
   recognitionModeOf,
   type RecognitionMemberIssue,
   type RecognitionPlan,
@@ -46,10 +48,7 @@ import {
 import { actionUpdateEntrySendTime } from "./action-update-visibility";
 import type { RecognitionCheckDtoArgs } from "./dto/action-update-recognition.dto";
 import { ActionActivity } from "./entities/action-activity.entity";
-import {
-  ActionUpdateExposure,
-  recognitionCopySchema,
-} from "./entities/action-update-exposure.entity";
+import { ActionUpdateExposure } from "./entities/action-update-exposure.entity";
 import {
   ActionUpdate,
   ActionUpdateNotificationMode,
@@ -105,16 +104,23 @@ export class ActionUpdateRecognitionService {
     private readonly mailService: MailService,
     private readonly mmsService: MmsService,
     private readonly pushService: PushService,
+    private readonly participants: ActionParticipantsService,
   ) {}
 
-  /** Draws the experiment arm of any recipient who has none yet. */
+  async participantIdsOf(actionId: number): Promise<Set<number>> {
+    return new Set(
+      await this.participants.findParticipantIdsForActionById(actionId),
+    );
+  }
+
   async plan(params: {
     em: EntityManager;
     update: ActionUpdate;
     userIds: readonly number[];
+    participantIds: ReadonlySet<number>;
     now: Date;
   }): Promise<Result<RecognitionPlan[], RecognitionCheck>> {
-    const { em, update, userIds, now } = params;
+    const { em, update, userIds, participantIds, now } = params;
     const config = readRecognitionConfig(update);
     if (!config.ok) {
       return R.failure({ problems: config.error, members: [] });
@@ -149,10 +155,6 @@ export class ActionUpdateRecognitionService {
         })
       ).map((snapshot) => [snapshot.id, snapshot.schema]),
     );
-    const arms = await assignExperimentArms(em, {
-      experiment: Experiment.ActionUpdateRecognition,
-      userIds,
-    });
 
     const completionByUser = new Map(
       completions.map((completion) => [completion.userId, completion]),
@@ -161,16 +163,12 @@ export class ActionUpdateRecognitionService {
       config: config.value,
       now,
       recipients: users.map((user) => {
-        const arm = arms.get(user.id);
-        if (arm === undefined) {
-          throw new Error(`no recognition arm for user ${user.id}`);
-        }
         const completion = completionByUser.get(user.id);
         const response = completion?.taskFormResponse;
         return {
           userId: user.id,
           name: user.name,
-          arm,
+          participant: participantIds.has(user.id),
           completion: completion
             ? {
                 completedAt: completion.createdAt,
@@ -197,6 +195,7 @@ export class ActionUpdateRecognitionService {
     const planned = await this.plan({
       ...params,
       em: this.dataSource.manager,
+      participantIds: await this.participantIdsOf(params.update.actionId),
       now: new Date(),
     });
     return planned.ok ? { problems: [], members: [] } : planned.error;
@@ -272,6 +271,12 @@ export class ActionUpdateRecognitionService {
     id: number,
     now: Date,
   ): Promise<Result<void, RecognitionCheck>> {
+    // Read on its own pool connections, so it runs before the transaction
+    // rather than while holding one.
+    const participantIds = await this.participantIdsOf(
+      (await this.dataSource.manager.findOneByOrFail(ActionUpdate, { id }))
+        .actionId,
+    );
     const held = await this.dataSource.transaction(
       async (em): Promise<RecognitionCheck | null> => {
         await lockActionUpdateRow(em, id);
@@ -291,6 +296,7 @@ export class ActionUpdateRecognitionService {
           em,
           update,
           userIds: exposures.map((exposure) => exposure.userId),
+          participantIds,
           now,
         });
         if (!planned.ok) {
@@ -325,7 +331,6 @@ export class ActionUpdateRecognitionService {
               actionUpdateId: id,
               userId: plan.userId,
               mode: update.notificationMode,
-              assignedArm: plan.arm,
               completed: plan.completed,
               branch: plan.message.branch,
               contribution: plan.contribution,
@@ -341,6 +346,18 @@ export class ActionUpdateRecognitionService {
             "actionUpdateId",
             "userId",
           ]);
+        }
+        const plannedIds = new Set(planned.value.map((plan) => plan.userId));
+        const skippedIds = exposures
+          .filter((exposure) => !plannedIds.has(exposure.userId))
+          .map((exposure) => exposure.id);
+        if (skippedIds.length) {
+          await em
+            .createQueryBuilder()
+            .softDelete()
+            .from(ActionUpdateExposure)
+            .where("id = ANY(:ids)", { ids: skippedIds })
+            .execute();
         }
         await em.update(ActionUpdate, id, {
           recognitionPreparedAt: now,

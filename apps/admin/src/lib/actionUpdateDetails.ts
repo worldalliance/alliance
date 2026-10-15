@@ -11,6 +11,7 @@ import type {
   UpdateActionUpdateDto,
 } from "@alliance/shared/client";
 import { parseContributionFormula } from "@alliance/shared/parsed-dtos";
+import type { CollectiveResultTexts } from "./updatePreview";
 
 export type RecognitionMode = ActionUpdateRecognitionMode;
 
@@ -32,9 +33,8 @@ export type ContributionFormulas = {
   retrospectiveContributionFormula: ContributionFormula | null;
 };
 
-export type ActionUpdateForm = {
+export type ActionUpdateForm = CollectiveResultTexts & {
   title: string;
-  shortNotifString: string;
   notifyType: ActionUpdateNotifyType;
   tagId: string;
   date: string;
@@ -72,6 +72,9 @@ export const withActiveFormula = (params: {
 export const formOf = (update: AdminActionUpdateDto): ActionUpdateForm => ({
   title: update.title,
   shortNotifString: update.shortNotifString,
+  splitCollectiveResult: update.splitCollectiveResult,
+  nonCompleterResult: update.nonCompleterResult ?? "",
+  uninvolvedResult: update.uninvolvedResult ?? "",
   notifyType: update.notifyType,
   tagId: update.tag?.id ?? "",
   date: update.date,
@@ -93,7 +96,13 @@ export const detailsBody = (form: ActionUpdateForm): UpdateActionUpdateDto => {
     associatedEventId: form.associatedEventId
       ? Number(form.associatedEventId)
       : null,
-    ...(mode && { notificationMode: mode, ...form.formulas }),
+    ...(mode && {
+      notificationMode: mode,
+      ...form.formulas,
+      splitCollectiveResult: form.splitCollectiveResult,
+      nonCompleterResult: form.nonCompleterResult || null,
+      uninvolvedResult: form.uninvolvedResult || null,
+    }),
   };
 };
 

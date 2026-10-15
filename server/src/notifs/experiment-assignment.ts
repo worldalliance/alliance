@@ -32,8 +32,17 @@ export async function assignExperimentArms(
       .orIgnore()
       .execute();
   }
-  // The unique index covers a deleted member's assignment, which the insert
-  // then skips.
+  return readExperimentArms(em, { experiment, userIds });
+}
+
+/** Each member's arm, without drawing one for a member who has none. */
+async function readExperimentArms(
+  em: EntityManager,
+  params: { experiment: Experiment; userIds: readonly number[] },
+): Promise<Map<number, ExperimentArm>> {
+  const { experiment, userIds } = params;
+  // The unique index covers a deleted member's assignment, so drawing skips
+  // them and their arm still has to be read.
   const assignments = await em.find(ExperimentAssignment, {
     where: {
       experiment,

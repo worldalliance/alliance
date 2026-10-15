@@ -1,15 +1,18 @@
-import { addDays } from "date-fns";
-import { ExperimentArm } from "src/notifs/entities/experiment-assignment.entity";
 import {
+  RecognitionBranch,
+  recognitionCopy,
+  RecognitionGroup,
+  type GroupResults,
+} from "@alliance/common/action-update-copy";
+import { addDays } from "date-fns";
+import {
+  countRecognitionPreview,
   evaluateContribution,
-  firstSentence,
   planRecognition,
   readRecognitionConfig,
-  recognitionCopy,
   type RecognitionConfig,
   type RecognitionRecipient,
 } from "./action-update-recognition";
-import { RecognitionBranch } from "./entities/action-update-exposure.entity";
 import { ActionUpdateNotificationMode } from "./entities/action-update.entity";
 
 const now = new Date("2026-06-15T12:00:00Z");
@@ -27,13 +30,19 @@ const lettersFormula = (formula: string) => ({
 });
 const answered = (letters: number) => ({ answers: { letters }, schema });
 
+const everyGroup = (text: string): GroupResults => ({
+  [RecognitionGroup.Completed]: text,
+  [RecognitionGroup.DidNotComplete]: text,
+  [RecognitionGroup.Uninvolved]: text,
+});
+
 const config = (
   mode: RecognitionConfig["mode"],
   formula = '(input1 ?? 0) + " letters"',
 ): RecognitionConfig => ({
   mode,
   formula: lettersFormula(formula),
-  allianceResult: "a hearing on the bill",
+  results: everyGroup("a hearing on the bill"),
 });
 
 const recipient = (
@@ -41,7 +50,7 @@ const recipient = (
 ): RecognitionRecipient => ({
   userId: 1,
   name: "Avery Example",
-  arm: ExperimentArm.Variant,
+  participant: true,
   completion: { completedAt: addDays(now, -3), response: answered(3) },
   ...overrides,
 });
@@ -70,22 +79,17 @@ const copyOf = (
   });
 
 describe("planRecognition", () => {
-  it("gives completers assigned the variant their contribution", () => {
+  it("gives every completer their contribution", () => {
     const plan = planOne({});
     expect(plan.message.branch).toBe(RecognitionBranch.A);
     expect(plan.contribution).toBe("3 letters");
     expect(plan.completed).toBe(true);
   });
 
-  it("gives control completers and every non-completer the collective result", () => {
-    expect(planOne({ arm: ExperimentArm.Control })).toMatchObject({
-      completed: true,
-      arm: ExperimentArm.Control,
-      message: { branch: RecognitionBranch.B },
-    });
+  it("gives every non-completer the collective result", () => {
     expect(planOne({ completion: null })).toMatchObject({
       completed: false,
-      arm: ExperimentArm.Variant,
+      contribution: null,
       message: { branch: RecognitionBranch.B },
     });
   });
@@ -97,7 +101,7 @@ describe("planRecognition", () => {
     ).toBe("0 letters");
   });
 
-  it("fails with every branch-A member whose contribution doesn't resolve, and only them", () => {
+  it("fails with every completer whose contribution doesn't resolve, and only them", () => {
     const planned = planRecognition({
       config: config(
         ActionUpdateNotificationMode.Normal,
@@ -111,7 +115,7 @@ describe("planRecognition", () => {
         recipient({ userId: 2 }),
         recipient({
           userId: 3,
-          arm: ExperimentArm.Control,
+          participant: false,
           completion: { completedAt: now, response: null },
         }),
         recipient({ userId: 4, completion: null }),
@@ -120,7 +124,7 @@ describe("planRecognition", () => {
     });
     expect(planned.ok).toBe(false);
     if (planned.ok) return;
-    expect(planned.error.map((issue) => issue.userId)).toEqual([1]);
+    expect(planned.error.map((issue) => issue.userId)).toEqual([1, 3]);
     expect(planned.error[0].error).toMatch(/empty/);
   });
 
@@ -131,6 +135,116 @@ describe("planRecognition", () => {
       now,
     });
     expect(planned.ok).toBe(false);
+  });
+});
+
+describe("split collective result", () => {
+  const split: RecognitionConfig = {
+    ...config(ActionUpdateNotificationMode.Normal),
+    results: {
+      [RecognitionGroup.Completed]: "a hearing",
+      [RecognitionGroup.DidNotComplete]: "a hearing without you",
+      [RecognitionGroup.Uninvolved]: "a hearing while you were away",
+    },
+  };
+  const planned = (recipients: Partial<RecognitionRecipient>[], c = split) => {
+    const plans = planRecognition({
+      config: c,
+      recipients: recipients.map((overrides, index) =>
+        recipient({ userId: index + 1, ...overrides }),
+      ),
+      now,
+    });
+    if (!plans.ok) throw new Error(JSON.stringify(plans.error));
+    return plans.value.map((plan) => [plan.userId, plan.message]);
+  };
+
+  it("gives each group its own result", () => {
+    expect(
+      planned([
+        {},
+        { completion: null },
+        { completion: null, participant: false },
+      ]),
+    ).toEqual([
+      [
+        1,
+        {
+          branch: RecognitionBranch.A,
+          body: "Your 3 letters led to a hearing.",
+          subject: "Your 3 letters led to a hearing.",
+        },
+      ],
+      [
+        2,
+        {
+          branch: RecognitionBranch.B,
+          allianceResult: "a hearing without you",
+        },
+      ],
+      [
+        3,
+        {
+          branch: RecognitionBranch.B,
+          allianceResult: "a hearing while you were away",
+        },
+      ],
+    ]);
+  });
+
+  it("puts a completer in the completed group even off the roster", () => {
+    expect(planned([{ participant: false }])).toEqual([
+      [
+        1,
+        {
+          branch: RecognitionBranch.A,
+          body: "Your 3 letters led to a hearing.",
+          subject: "Your 3 letters led to a hearing.",
+        },
+      ],
+    ]);
+  });
+
+  it("leaves out every recipient in a skipped group, without resolving their contribution", () => {
+    expect(
+      planned(
+        [
+          { completion: { completedAt: now, response: null } },
+          {},
+          { completion: null },
+        ],
+        {
+          ...config(ActionUpdateNotificationMode.Normal, 'input1 + " letters"'),
+          results: { ...split.results, [RecognitionGroup.Completed]: null },
+        },
+      ),
+    ).toEqual([
+      [
+        3,
+        {
+          branch: RecognitionBranch.B,
+          allianceResult: "a hearing without you",
+        },
+      ],
+    ]);
+  });
+});
+
+describe("countRecognitionPreview", () => {
+  it("counts each group, with completers off the roster as completed", () => {
+    expect(
+      countRecognitionPreview([
+        { completed: true, participant: true },
+        { completed: true, participant: false },
+        { completed: false, participant: true },
+        { completed: false, participant: false },
+        { completed: false, participant: false },
+      ]),
+    ).toEqual({
+      [RecognitionGroup.Completed]: 2,
+      [RecognitionGroup.DidNotComplete]: 1,
+      [RecognitionGroup.Uninvolved]: 2,
+    });
   });
 });
 
@@ -167,7 +281,7 @@ describe("recognitionCopy", () => {
         ActionUpdateNotificationMode.Retrospective,
         '"sent " + input1 + " letters"',
       ),
-      allianceResult: "A hearing was scheduled",
+      results: everyGroup("A hearing was scheduled"),
     };
     const copy = copyOf(
       {
@@ -186,7 +300,7 @@ describe("recognitionCopy", () => {
   it("adds no period after a quote that already ends the sentence", () => {
     const quoted: RecognitionConfig = {
       ...config(ActionUpdateNotificationMode.Normal),
-      allianceResult: 'the Senate saying "yes."',
+      results: everyGroup('the Senate saying "yes."'),
     };
     expect(copyOf({}, quoted).push).toBe(
       'Your 3 letters led to the Senate saying "yes."',
@@ -196,7 +310,7 @@ describe("recognitionCopy", () => {
   it("keeps branch B's normal copy in retrospective mode", () => {
     expect(
       copyOf(
-        { arm: ExperimentArm.Control },
+        { completion: null },
         config(ActionUpdateNotificationMode.Retrospective),
       ).push,
     ).toBe("Update: a hearing on the bill");
@@ -224,12 +338,12 @@ describe("email subjects", () => {
 
   it("ends at the collective result's first sentence", () => {
     const subjects = (allianceResult: string) =>
-      [{}, { arm: ExperimentArm.Control }].map(
+      [{}, { completion: null }].map(
         (overrides) =>
           recognitionCopy({
             message: planOne(overrides, {
               ...config(ActionUpdateNotificationMode.Normal),
-              allianceResult,
+              results: everyGroup(allianceResult),
             }).message,
             recipientName: "Avery Example",
             link: "https://example.org",
@@ -239,54 +353,6 @@ describe("email subjects", () => {
       "Your 3 letters led to a hearing.",
       "a hearing.",
     ]);
-  });
-});
-
-describe("firstSentence", () => {
-  it("stops at the first sentence end followed by whitespace", () => {
-    expect(firstSentence("We won 3.5 seats. Then more!")).toBe(
-      "We won 3.5 seats.",
-    );
-    expect(firstSentence("No ending")).toBe("No ending");
-  });
-
-  it("reads past abbreviations", () => {
-    expect(
-      firstSentence("Your 3 letters led to Dr. Lee's testimony. More soon."),
-    ).toBe("Your 3 letters led to Dr. Lee's testimony.");
-    expect(firstSentence("Sen. Smith voted yes! Great.")).toBe(
-      "Sen. Smith voted yes!",
-    );
-  });
-
-  it("reads past the abbreviations civic copy names mid-sentence", () => {
-    expect(firstSentence("the U.S. Senate passing the bill. More soon.")).toBe(
-      "the U.S. Senate passing the bill.",
-    );
-    expect(firstSentence("Prop. 50 passing. More.")).toBe("Prop. 50 passing.");
-    expect(firstSentence("a hearing in the U.K. Parliament. Next.")).toBe(
-      "a hearing in the U.K. Parliament.",
-    );
-  });
-
-  it("reads past bill numbers", () => {
-    expect(firstSentence("a vote on H.R. 1")).toBe("a vote on H.R. 1");
-    expect(firstSentence("A.B. 5 passing. Thanks!")).toBe("A.B. 5 passing.");
-    expect(firstSentence("S.B. 54 passing. Next.")).toBe("S.B. 54 passing.");
-  });
-
-  it("ends a sentence at a number", () => {
-    expect(firstSentence("a hearing on Oct. 5. More soon.")).toBe(
-      "a hearing on Oct. 5.",
-    );
-    expect(firstSentence("we sent 500. Thanks!")).toBe("we sent 500.");
-    expect(firstSentence("A.B. 5. More soon.")).toBe("A.B. 5.");
-  });
-
-  it("ends a sentence even when the next one starts lowercase", () => {
-    expect(
-      firstSentence("2 weeks ago you sent 3 letters. a hearing on the bill."),
-    ).toBe("2 weeks ago you sent 3 letters.");
   });
 });
 
@@ -320,6 +386,9 @@ describe("readRecognitionConfig", () => {
     contributionFormula: lettersFormula("input1"),
     retrospectiveContributionFormula: null,
     shortNotifString: "a hearing",
+    splitCollectiveResult: false,
+    nonCompleterResult: null,
+    uninvolvedResult: null,
   };
 
   it("reads only the selected mode's formula", () => {
@@ -357,6 +426,39 @@ describe("readRecognitionConfig", () => {
       },
     });
     expect(read.ok).toBe(false);
+  });
+
+  it("reads every group from the collective result until it's split", () => {
+    const read = readRecognitionConfig({
+      ...update,
+      nonCompleterResult: "unused",
+    });
+    expect(read.ok && read.value.results).toEqual(everyGroup("a hearing"));
+  });
+
+  it("skips each split group left empty", () => {
+    const read = readRecognitionConfig({
+      ...update,
+      splitCollectiveResult: true,
+      shortNotifString: "",
+      nonCompleterResult: "  ",
+      uninvolvedResult: "a hearing, which you can still join",
+    });
+    expect(read.ok && read.value.results).toEqual({
+      [RecognitionGroup.Completed]: null,
+      [RecognitionGroup.DidNotComplete]: null,
+      [RecognitionGroup.Uninvolved]: "a hearing, which you can still join",
+    });
+  });
+
+  it("refuses a split result with every group empty", () => {
+    expect(
+      readRecognitionConfig({
+        ...update,
+        splitCollectiveResult: true,
+        shortNotifString: " ",
+      }),
+    ).toEqual({ ok: false, error: ["Write at least one group's result."] });
   });
 
   it("refuses legacy updates", () => {

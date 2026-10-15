@@ -154,6 +154,47 @@ describe("ActionUpdatesTab", () => {
     expect(body).toMatchObject({ notificationMode: "retrospective" });
   });
 
+  it("previews a split result as it's typed, and creates it split", async () => {
+    let body: unknown;
+    answer = async (request) => {
+      body = await request.json();
+      return Response.json({ id: 9 }, { status: 201 });
+    };
+    renderTab();
+    fireEvent.change(screen.getByPlaceholderText("Title..."), {
+      target: { value: "Hearing scheduled" },
+    });
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: "Split by who completed the action",
+      }),
+    );
+    const create = screen.getByRole("button", {
+      name: "Create and write content",
+    });
+    expect(screen.getByText("Write at least one group's result.")).toBeTruthy();
+    expect(create).toHaveProperty("disabled", true);
+
+    fireEvent.change(
+      screen.getByRole("textbox", { name: /^Didn't complete the action/ }),
+      { target: { value: "a hearing; there's still time" } },
+    );
+
+    expect(document.body.textContent).toContain(
+      "PushUpdate: a hearing; there's still time",
+    );
+    expect(screen.getAllByText(/Not notified/)).toHaveLength(2);
+    expect(screen.queryByText(/^\d+ members?$/)).toBeNull();
+    fireEvent.click(create);
+    expect(await screen.findByText("Update 9")).toBeTruthy();
+    expect(body).toMatchObject({
+      shortNotifString: "",
+      splitCollectiveResult: true,
+      nonCompleterResult: "a hearing; there's still time",
+      uninvolvedResult: null,
+    });
+  });
+
   it("sends one create while the first is in flight", async () => {
     let requests = 0;
     answer = async () => {

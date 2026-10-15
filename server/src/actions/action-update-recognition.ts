@@ -1,4 +1,13 @@
 import {
+  readGroupResults,
+  recognitionBody,
+  RecognitionBranch,
+  RecognitionGroup,
+  weeksAgoLead,
+  type GroupResults,
+  type RecognitionMessage,
+} from "@alliance/common/action-update-copy";
+import {
   CONTRIBUTION_FORMULA_KEY,
   contributionFormulaSchema,
   type ContributionFormula,
@@ -14,19 +23,8 @@ import {
   prepareFormula,
 } from "@alliance/common/forms/variable-evaluation";
 import { compileVariableExpression } from "@alliance/common/forms/variable-expression-compile";
-import { nameParts } from "@alliance/common/nameParts";
 import { R, type Result } from "@alliance/common/result";
 import { milliseconds } from "date-fns";
-import {
-  DefaultAbbrMarkerOptions,
-  SentenceSplitterSyntax,
-  split,
-} from "sentence-splitter";
-import { ExperimentArm } from "src/notifs/entities/experiment-assignment.entity";
-import {
-  RecognitionBranch,
-  type RecognitionCopy,
-} from "./entities/action-update-exposure.entity";
 import {
   ActionUpdateNotificationMode,
   type ActionUpdate,
@@ -63,7 +61,7 @@ const FORMULA_LABEL: Record<RecognitionMode, string> = {
 export type RecognitionConfig = {
   mode: RecognitionMode;
   formula: ContributionFormula;
-  allianceResult: string;
+  results: GroupResults;
 };
 
 /** The selected mode's settings, or every problem that blocks a send. */
@@ -74,6 +72,9 @@ export function readRecognitionConfig(
     | "contributionFormula"
     | "retrospectiveContributionFormula"
     | "shortNotifString"
+    | "splitCollectiveResult"
+    | "nonCompleterResult"
+    | "uninvolvedResult"
   >,
 ): Result<RecognitionConfig, string[]> {
   const mode = recognitionModeOf(update.notificationMode);
@@ -81,9 +82,14 @@ export function readRecognitionConfig(
     return R.failure(["This update uses the legacy notification copy."]);
   }
   const problems: string[] = [];
-  const allianceResult = update.shortNotifString.trim();
-  if (!allianceResult) {
-    problems.push("Write the collective result.");
+  const results = readGroupResults({
+    split: update.splitCollectiveResult,
+    completed: update.shortNotifString,
+    didNotComplete: update.nonCompleterResult,
+    uninvolved: update.uninvolvedResult,
+  });
+  if (!results.ok) {
+    problems.push(results.error);
   }
   const key = CONTRIBUTION_FORMULA_KEY[mode];
   const label = FORMULA_LABEL[mode];
@@ -91,8 +97,8 @@ export function readRecognitionConfig(
   if (!formula.ok) {
     problems.push(formula.error);
   }
-  return formula.ok && problems.length === 0
-    ? R.success({ mode, formula: formula.value, allianceResult })
+  return formula.ok && results.ok && problems.length === 0
+    ? R.success({ mode, formula: formula.value, results: results.value })
     : R.failure(problems);
 }
 
@@ -159,140 +165,42 @@ export function wholeWeeksBetween(from: Date, to: Date): number {
   return Math.floor((to.getTime() - from.getTime()) / WEEK_MS);
 }
 
-const asSentence = (text: string) =>
-  /[.!?]["'”’)\]]*$/.test(text) ? text : `${text}.`;
-
-// Civic copy names these and dotted initialisms like "H.R." mid-sentence, and
-// the default list would end a subject at them. One that does end a sentence
-// keeps the next one too.
-const SUBJECT_LANGUAGE = {
-  ...DefaultAbbrMarkerOptions.language,
-  PREPOSITIVE_ABBREVIATIONS: [
-    ...DefaultAbbrMarkerOptions.language.PREPOSITIVE_ABBREVIATIONS,
-    "Prop.",
-    "No.",
-  ],
-};
-const ENDS_IN_INITIALISM = /(?:^|\s)(?:\p{Lu}\.){2,}["'”’)\]]*\s*$/u;
-// sentence-splitter reads every "5." as a list index, so it never ends a
-// sentence after a number.
-const ENDS_AFTER_NUMBER = /^.*?\S\s+\S*\d\.["'”’)\]]*(?=\s+\p{Lu})/su;
-
-export function firstSentence(text: string): string {
-  let sentence = "";
-  for (const node of split(text, {
-    AbbrMarker: { language: SUBJECT_LANGUAGE },
-  })) {
-    sentence += node.raw;
-    if (
-      node.type === SentenceSplitterSyntax.Sentence &&
-      !ENDS_IN_INITIALISM.test(node.raw)
-    )
-      break;
-  }
-  return ENDS_AFTER_NUMBER.exec(sentence)?.[0] ?? sentence.trim();
+export function recognitionGroupOf(params: {
+  completed: boolean;
+  participant: boolean;
+}): RecognitionGroup {
+  if (params.completed) return RecognitionGroup.Completed;
+  return params.participant
+    ? RecognitionGroup.DidNotComplete
+    : RecognitionGroup.Uninvolved;
 }
 
-function weeksAgoLead(weeksAgo: number): string {
-  if (weeksAgo < 1) return "Recently";
-  if (weeksAgo === 1) return "1 week ago";
-  return `${weeksAgo} weeks ago`;
-}
+export type RecognitionPreviewCounts = Record<RecognitionGroup, number>;
 
-export const collectiveEmailSubject = (allianceResult: string) =>
-  firstSentence(allianceResult);
-
-/**
- * Branch A's content body, the same on every channel, and its email subject.
- * The subject comes from the template's own first sentence, so only the
- * authored result is split, never a member's contribution.
- */
-export function recognitionBody(params: {
-  mode: RecognitionMode;
-  contribution: string;
-  allianceResult: string;
-  weeksAgo: number;
-}): { body: string; subject: string } {
-  const { mode, contribution, allianceResult, weeksAgo } = params;
-  switch (mode) {
-    case ActionUpdateNotificationMode.Normal:
-      return {
-        body: asSentence(`Your ${contribution} led to ${allianceResult}`),
-        subject: asSentence(
-          `Your ${contribution} led to ${collectiveEmailSubject(allianceResult)}`,
-        ),
-      };
-    case ActionUpdateNotificationMode.Retrospective: {
-      const subject = asSentence(
-        `${weeksAgoLead(weeksAgo)} you ${contribution}`,
-      );
-      return { body: `${subject} ${asSentence(allianceResult)}`, subject };
-    }
-    default:
-      throw new Error(`unknown recognition mode: ${mode satisfies never}`);
+export function countRecognitionPreview(
+  recipients: readonly { completed: boolean; participant: boolean }[],
+): RecognitionPreviewCounts {
+  const counts: RecognitionPreviewCounts = {
+    [RecognitionGroup.Completed]: 0,
+    [RecognitionGroup.DidNotComplete]: 0,
+    [RecognitionGroup.Uninvolved]: 0,
+  };
+  for (const recipient of recipients) {
+    counts[recognitionGroupOf(recipient)]++;
   }
-}
-
-export type RecognitionMessage =
-  | { branch: RecognitionBranch.A; body: string; subject: string }
-  | { branch: RecognitionBranch.B; allianceResult: string };
-
-/**
- * The inbox labels every entry "Action update:", so branch B's entry leaves
- * out the "Update:" its push and text lead with.
- */
-export function recognitionCopy(params: {
-  message: RecognitionMessage;
-  recipientName: string;
-  link: string;
-}): RecognitionCopy {
-  const { message, recipientName, link } = params;
-  const { firstname } = nameParts(recipientName);
-  const channels = (params: {
-    content: string;
-    headline: string;
-    subject: string;
-  }) => ({
-    push: params.headline,
-    sms: `${params.headline} ${link}`,
-    emailSubject: params.subject,
-    emailBody: `Hi ${firstname},\n${params.content}\n${link}`,
-  });
-  switch (message.branch) {
-    case RecognitionBranch.A:
-      return {
-        inApp: message.body,
-        ...channels({
-          content: message.body,
-          headline: message.body,
-          subject: message.subject,
-        }),
-      };
-    case RecognitionBranch.B:
-      return {
-        inApp: message.allianceResult,
-        ...channels({
-          content: message.allianceResult,
-          headline: `Update: ${message.allianceResult}`,
-          subject: collectiveEmailSubject(message.allianceResult),
-        }),
-      };
-    default:
-      throw new Error(`unknown branch: ${message satisfies never}`);
-  }
+  return counts;
 }
 
 export type RecognitionRecipient = {
   userId: number;
   name: string;
-  arm: ExperimentArm;
+  participant: boolean;
   completion: { completedAt: Date; response: CompletionAnswers | null } | null;
 };
 
 export type RecognitionPlan = {
   userId: number;
   name: string;
-  arm: ExperimentArm;
   completed: boolean;
   contribution: string | null;
   weeksAgo: number | null;
@@ -305,7 +213,10 @@ export type RecognitionMemberIssue = {
   error: string;
 };
 
-/** Fails with every branch-A recipient whose contribution doesn't resolve. */
+/**
+ * Leaves out every recipient whose group has no result. Fails with every
+ * completer whose contribution doesn't resolve.
+ */
 export function planRecognition(params: {
   config: RecognitionConfig;
   recipients: readonly RecognitionRecipient[];
@@ -314,19 +225,20 @@ export function planRecognition(params: {
   const { config, recipients, now } = params;
   const plans: RecognitionPlan[] = [];
   const issues: RecognitionMemberIssue[] = [];
-  for (const { userId, name, arm, completion } of recipients) {
-    if (completion === null || arm !== ExperimentArm.Variant) {
+  for (const { userId, name, participant, completion } of recipients) {
+    const allianceResult =
+      config.results[
+        recognitionGroupOf({ completed: completion !== null, participant })
+      ];
+    if (allianceResult === null) continue;
+    if (completion === null) {
       plans.push({
         userId,
         name,
-        arm,
-        completed: completion !== null,
+        completed: false,
         contribution: null,
-        weeksAgo: completion && wholeWeeksBetween(completion.completedAt, now),
-        message: {
-          branch: RecognitionBranch.B,
-          allianceResult: config.allianceResult,
-        },
+        weeksAgo: null,
+        message: { branch: RecognitionBranch.B, allianceResult },
       });
       continue;
     }
@@ -342,7 +254,6 @@ export function planRecognition(params: {
     plans.push({
       userId,
       name,
-      arm,
       completed: true,
       weeksAgo,
       contribution: contribution.value,
@@ -351,8 +262,8 @@ export function planRecognition(params: {
         ...recognitionBody({
           mode: config.mode,
           contribution: contribution.value,
-          allianceResult: config.allianceResult,
-          weeksAgo,
+          allianceResult,
+          weeksAgoText: weeksAgoLead(weeksAgo),
         }),
       },
     });

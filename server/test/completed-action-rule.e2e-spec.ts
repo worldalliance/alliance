@@ -1,4 +1,5 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { ActionParticipantsService } from "../src/actions/action-participants.service";
 import { ActionsService } from "../src/actions/actions.service";
 import { Action } from "../src/actions/entities/action.entity";
 import { SingleMemberCohortService } from "../src/actions/single-member-cohort.service";
@@ -136,7 +137,9 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
       const actionsService = ctx.app.get(ActionsService);
 
       const [participantIds, incomplete, stored] = await Promise.all([
-        actionsService.findParticipantIdsForActionById(action.id),
+        ctx.app
+          .get(ActionParticipantsService)
+          .findParticipantIdsForActionById(action.id),
         actionsService.findIncompleteUsersForAction(action.id),
         ctx.dataSource.getRepository(Action).findOneByOrFail({ id: action.id }),
       ]);

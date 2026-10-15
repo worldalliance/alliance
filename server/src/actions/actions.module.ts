@@ -32,7 +32,9 @@ import { Tag } from "../user/entities/tag.entity";
 import { User } from "../user/entities/user.entity";
 import { UserModule } from "../user/user.module";
 import { ActionFormVariantService } from "./action-form-variant.service";
+import { ActionParticipantsService } from "./action-participants.service";
 import { ActionStatsService } from "./action-stats.service";
+import { ActionUpdateRecognitionPreviewService } from "./action-update-recognition-preview.service";
 import { ActionUpdateRecognitionService } from "./action-update-recognition.service";
 import { ActionUpdateRecognitionWorker } from "./action-update-recognition.worker";
 import { ActionVisibilityModule } from "./action-visibility.module";
@@ -129,7 +131,9 @@ import { TaskBadgeService } from "./task-badge.service";
     ActionsGateway,
     ActionEventNotifWorker,
     ActionEventNotifDeliveryService,
+    ActionParticipantsService,
     ActionUpdateRecognitionService,
+    ActionUpdateRecognitionPreviewService,
     ActionUpdateRecognitionWorker,
     ActionEventRecipientService,
     ActionEventReminderService,

@@ -522,6 +522,9 @@ export type ActionUpdate = {
      */
     visibleAt: string | null;
     shortNotifString: string;
+    splitCollectiveResult: boolean;
+    nonCompleterResult: string | null;
+    uninvolvedResult: string | null;
     associatedEvent?: ActionEvent | null;
     associatedEventId: number | null;
     notifyType: ActionUpdateNotifyType;
@@ -3223,6 +3226,9 @@ export type CreateActionUpdateDto = {
     date: string;
     shortNotifString: string;
     notifyType: ActionUpdateNotifyType;
+    splitCollectiveResult?: boolean;
+    nonCompleterResult?: string | null;
+    uninvolvedResult?: string | null;
     associatedEventId?: number;
     tagId?: string;
     notificationMode: ActionUpdateRecognitionMode;
@@ -3266,6 +3272,9 @@ export type AdminActionUpdateDto = {
     retrospectiveContributionFormula: {
         [key: string]: unknown;
     } | null;
+    splitCollectiveResult: boolean;
+    nonCompleterResult: string | null;
+    uninvolvedResult: string | null;
     recognitionPreparedAt: string | null;
     notificationHeldReason: string | null;
 };
@@ -3277,6 +3286,9 @@ export type UpdateActionUpdateDto = {
      */
     date?: string;
     shortNotifString?: string;
+    splitCollectiveResult?: boolean;
+    nonCompleterResult?: string | null;
+    uninvolvedResult?: string | null;
     notifyType?: ActionUpdateNotifyType;
     notificationMode?: ActionUpdateRecognitionMode;
     contributionFormula?: {
@@ -3303,6 +3315,17 @@ export type RecognitionCheckDto = {
     problems: Array<string>;
     members: Array<RecognitionMemberIssueDto>;
     collectiveSubject: string;
+};
+
+export type RecognitionPreviewAudienceDto = {
+    notifyType: ActionUpdateNotifyType;
+    tagId?: string | null;
+};
+
+export type RecognitionPreviewCountsDto = {
+    completed: number;
+    didNotComplete: number;
+    uninvolved: number;
 };
 
 export type ActionSuiteDto = {
@@ -11229,6 +11252,30 @@ export type ActionsCheckUpdateRecognitionAdminResponses = {
 };
 
 export type ActionsCheckUpdateRecognitionAdminResponse = ActionsCheckUpdateRecognitionAdminResponses[keyof ActionsCheckUpdateRecognitionAdminResponses];
+
+export type ActionsPreviewUpdateRecognitionCountsAdminData = {
+    body: RecognitionPreviewAudienceDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/updates/{id}/recognition-preview-counts';
+};
+
+export type ActionsPreviewUpdateRecognitionCountsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionsPreviewUpdateRecognitionCountsAdminError = ActionsPreviewUpdateRecognitionCountsAdminErrors[keyof ActionsPreviewUpdateRecognitionCountsAdminErrors];
+
+export type ActionsPreviewUpdateRecognitionCountsAdminResponses = {
+    200: RecognitionPreviewCountsDto;
+};
+
+export type ActionsPreviewUpdateRecognitionCountsAdminResponse = ActionsPreviewUpdateRecognitionCountsAdminResponses[keyof ActionsPreviewUpdateRecognitionCountsAdminResponses];
 
 export type ActionsUnpublishUpdateAdminData = {
     body?: never;

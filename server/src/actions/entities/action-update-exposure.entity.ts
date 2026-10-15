@@ -1,10 +1,10 @@
+import { RecognitionBranch } from "@alliance/common/action-update-copy";
 import {
   CreateDateColumnTz,
   DeleteDateColumnTz,
 } from "src/datasources/basecolumns";
 import { Mail } from "src/mail/mail.entity";
 import { Mms } from "src/mms/mms.entity";
-import { ExperimentArm } from "src/notifs/entities/experiment-assignment.entity";
 import { UnreadContent } from "src/notifs/entities/unread-content.entity";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
@@ -17,27 +17,10 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { z } from "zod";
 import {
   ActionUpdate,
   ActionUpdateNotificationMode,
 } from "./action-update.entity";
-
-/** A: the member's own contribution. B: the collective result alone. */
-export enum RecognitionBranch {
-  A = "a",
-  B = "b",
-}
-
-export const recognitionCopySchema = z.strictObject({
-  inApp: z.string(),
-  push: z.string(),
-  sms: z.string(),
-  emailSubject: z.string(),
-  /** Plain text; escape before it reaches HTML. */
-  emailBody: z.string(),
-});
-export type RecognitionCopy = z.infer<typeof recognitionCopySchema>;
 
 /**
  * One recipient of a recognition update. Created at send with only the
@@ -71,14 +54,6 @@ export class ActionUpdateExposure {
     nullable: true,
   })
   mode: ActionUpdateNotificationMode | null;
-
-  @Column({
-    type: "enum",
-    enum: ExperimentArm,
-    enumName: "ExperimentArm",
-    nullable: true,
-  })
-  assignedArm: ExperimentArm | null;
 
   @Column({ type: "boolean", nullable: true })
   completed: boolean | null;

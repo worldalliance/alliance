@@ -1,3 +1,7 @@
+import {
+  RecognitionBranch,
+  recognitionCopySchema,
+} from "@alliance/common/action-update-copy";
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { addDays, milliseconds } from "date-fns";
 import { ActionUpdateRecognitionService } from "src/actions/action-update-recognition.service";
@@ -7,11 +11,7 @@ import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
-import {
-  ActionUpdateExposure,
-  RecognitionBranch,
-  recognitionCopySchema,
-} from "src/actions/entities/action-update-exposure.entity";
+import { ActionUpdateExposure } from "src/actions/entities/action-update-exposure.entity";
 import {
   ActionUpdate,
   ActionUpdateNotificationMode,
@@ -26,21 +26,20 @@ import { Mail } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { Mms } from "src/mms/mms.entity";
 import { MmsService } from "src/mms/mms.service";
-import {
-  Experiment,
-  ExperimentArm,
-  ExperimentAssignment,
-} from "src/notifs/entities/experiment-assignment.entity";
+import { ExperimentAssignment } from "src/notifs/entities/experiment-assignment.entity";
 import {
   UnreadContent,
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
 import { Push } from "src/push/push.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import { ContractEvent } from "src/user/entities/contract-event.entity";
 import { Tag } from "src/user/entities/tag.entity";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import request from "supertest";
+import { In } from "typeorm";
+import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
   createFormWithSnapshot,
   createTestApp,
@@ -75,10 +74,9 @@ describe("action update recognition (e2e)", () => {
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .send(body);
 
-  const createMember = async (params: {
-    arm: ExperimentArm;
-    inAudience?: boolean;
-  }) => {
+  const createMember = async (
+    params: { inAudience?: boolean; inCohort?: boolean } = {},
+  ) => {
     const index = ++memberCount;
     const users = ctx.dataSource.getRepository(User);
     const user = await users.save(
@@ -88,18 +86,22 @@ describe("action update recognition (e2e)", () => {
         name: `Member${index} Example`,
         referralSource: ReferralSource.None,
         phoneNumber: `+1415555${String(1000 + index)}`,
-        tags: params.inAudience === false ? [] : [audience],
+        tags: [
+          ...(params.inAudience === false ? [] : [audience]),
+          ...(params.inCohort ? [ctx.defaultTag] : []),
+        ],
       }),
     );
     await giveActiveContract(ctx, user.id);
+    if (params.inCohort) {
+      // Assigned only with a contract held since the action launched.
+      await ctx.dataSource
+        .getRepository(ContractEvent)
+        .update({ user: { id: user.id } }, { date: addDays(new Date(), -60) });
+    }
     await ctx.dataSource.getRepository(UserDevice).save({
       user: { id: user.id },
       expoPushToken: `ExponentPushToken[recognition-${index}]`,
-    });
-    await ctx.dataSource.getRepository(ExperimentAssignment).save({
-      userId: user.id,
-      experiment: Experiment.ActionUpdateRecognition,
-      arm: params.arm,
     });
     return user;
   };
@@ -240,17 +242,14 @@ describe("action update recognition (e2e)", () => {
     );
   });
 
-  it("sends A to variant completers and B to everyone else in the audience, on each channel", async () => {
-    const variant = await createMember({ arm: ExperimentArm.Variant });
-    const control = await createMember({ arm: ExperimentArm.Control });
-    const nonCompleter = await createMember({ arm: ExperimentArm.Variant });
-    const adminRecorded = await createMember({ arm: ExperimentArm.Variant });
-    const outsider = await createMember({
-      arm: ExperimentArm.Variant,
-      inAudience: false,
-    });
-    await complete(variant, { letters: 3 });
-    await complete(control, { letters: 5 });
+  it("sends A to every completer and B to everyone else in the audience, on each channel, drawing no arm", async () => {
+    const completer = await createMember();
+    const otherCompleter = await createMember();
+    const nonCompleter = await createMember();
+    const adminRecorded = await createMember();
+    const outsider = await createMember({ inAudience: false });
+    await complete(completer, { letters: 3 });
+    await complete(otherCompleter, { letters: 5 });
     await complete(adminRecorded);
     await complete(outsider, { letters: 2 });
 
@@ -264,10 +263,13 @@ describe("action update recognition (e2e)", () => {
     ).toEqual(
       new Map([
         [
-          variant.id,
+          completer.id,
           { message: ["Your 3 letters led to a hearing on the bill."] },
         ],
-        [control.id, { message: ["a hearing on the bill"] }],
+        [
+          otherCompleter.id,
+          { message: ["Your 5 letters led to a hearing on the bill."] },
+        ],
         [nonCompleter.id, { message: ["a hearing on the bill"] }],
         [
           adminRecorded.id,
@@ -277,10 +279,9 @@ describe("action update recognition (e2e)", () => {
     );
     expect(entries.every((entry) => !entry.shouldPush)).toBe(true);
 
-    const a = await exposureOf(id, variant.id);
+    const a = await exposureOf(id, completer.id);
     expect(a).toMatchObject({
       mode: ActionUpdateNotificationMode.Normal,
-      assignedArm: ExperimentArm.Variant,
       completed: true,
       branch: RecognitionBranch.A,
       contribution: "3 letters",
@@ -297,13 +298,13 @@ describe("action update recognition (e2e)", () => {
     ).toMatchObject({
       channel: MessageChannel.Sms,
       source: MessageSource.ActionUpdate,
-      userId: variant.id,
+      userId: completer.id,
       context: { actionId: expect.any(Number), actionUpdateId: id },
     });
     expect(recognitionCopySchema.parse(a.copy).emailSubject).toBe(
       "Your 3 letters led to a hearing on the bill.",
     );
-    expect(a.mail?.to).toBe(variant.email);
+    expect(a.mail?.to).toBe(completer.email);
     const pushes = await ctx.dataSource
       .getRepository(Push)
       .findBy({ unreadContent: { id: a.unreadContentId ?? -1 } });
@@ -311,14 +312,13 @@ describe("action update recognition (e2e)", () => {
       "Your 3 letters led to a hearing on the bill.",
     ]);
 
-    expect(await exposureOf(id, control.id)).toMatchObject({
-      assignedArm: ExperimentArm.Control,
+    expect(await exposureOf(id, otherCompleter.id)).toMatchObject({
       completed: true,
-      branch: RecognitionBranch.B,
+      branch: RecognitionBranch.A,
+      contribution: "5 letters",
     });
     const b = await exposureOf(id, nonCompleter.id);
     expect(b).toMatchObject({
-      assignedArm: ExperimentArm.Variant,
       completed: false,
       branch: RecognitionBranch.B,
     });
@@ -332,6 +332,16 @@ describe("action update recognition (e2e)", () => {
         .getRepository(ActionUpdateExposure)
         .countBy({ actionUpdateId: id, userId: outsider.id }),
     ).toBe(0);
+    expect(
+      await ctx.dataSource.getRepository(ExperimentAssignment).countBy({
+        userId: In([
+          completer.id,
+          otherCompleter.id,
+          nonCompleter.id,
+          adminRecorded.id,
+        ]),
+      }),
+    ).toBe(0);
 
     await notify(id).expect(409);
     await ctx.dataSource
@@ -342,12 +352,12 @@ describe("action update recognition (e2e)", () => {
       );
     await deliverAll();
     expect(
-      await ctx.dataSource.getRepository(Mail).countBy({ to: variant.email }),
+      await ctx.dataSource.getRepository(Mail).countBy({ to: completer.email }),
     ).toBe(1);
     expect(
       await ctx.dataSource
         .getRepository(Mms)
-        .countBy({ to: variant.phoneNumber ?? "" }),
+        .countBy({ to: completer.phoneNumber ?? "" }),
     ).toBe(1);
     expect(
       await ctx.dataSource
@@ -356,8 +366,79 @@ describe("action update recognition (e2e)", () => {
     ).toBe(1);
   });
 
+  it("splits the collective result by group, and skips a group left empty", async () => {
+    const completer = await createMember();
+    const nonCompleter = await createMember({ inCohort: true });
+    const uninvolved = await createMember();
+    const withdrawn = await createMember({ inCohort: true });
+    await complete(completer, { letters: 3 });
+    await ctx.dataSource.getRepository(ActionActivity).save({
+      actionId: action.id,
+      userId: withdrawn.id,
+      type: ActionActivityType.USER_WONT_COMPLETE,
+    });
+    await saveLiveCohortDecisions(ctx, [action.id]);
+
+    const id = await createUpdate({
+      splitCollectiveResult: true,
+      shortNotifString: "a hearing",
+      nonCompleterResult: "",
+      uninvolvedResult: "a hearing; join the next one",
+    });
+    await notify(id).expect(200);
+    await deliverAll();
+
+    expect(
+      new Map(
+        (await entriesFor(id)).map((entry) => [entry.user?.id, entry.content]),
+      ),
+    ).toEqual(
+      new Map([
+        [completer.id, { message: ["Your 3 letters led to a hearing."] }],
+        [uninvolved.id, { message: ["a hearing; join the next one"] }],
+        [withdrawn.id, { message: ["a hearing; join the next one"] }],
+      ]),
+    );
+    const skipped = await ctx.dataSource
+      .getRepository(ActionUpdateExposure)
+      .findOneOrFail({
+        where: { actionUpdateId: id, userId: nonCompleter.id },
+        withDeleted: true,
+      });
+    expect(skipped.deletedAt).not.toBeNull();
+    expect(skipped.deliveredAt).toBeNull();
+  });
+
+  it("counts an unsaved audience by group", async () => {
+    const completers = [
+      await createMember(),
+      await createMember(),
+      await createMember(),
+    ];
+    await createMember({ inCohort: true });
+    await createMember();
+    await createMember({ inAudience: false });
+    for (const completer of completers) {
+      await complete(completer, { letters: 1 });
+    }
+    await saveLiveCohortDecisions(ctx, [action.id]);
+    const id = await createUpdate({ notifyType: "none", tagId: undefined });
+
+    const counts = await admin(
+      "post",
+      `/actions/updates/${id}/recognition-preview-counts`,
+      { notifyType: "tag", tagId: audience.id },
+    ).expect(200);
+
+    expect(counts.body).toEqual({
+      completed: 3,
+      didNotComplete: 1,
+      uninvolved: 1,
+    });
+  });
+
   it("sends B to a completer who later withdrew", async () => {
-    const withdrawn = await createMember({ arm: ExperimentArm.Variant });
+    const withdrawn = await createMember();
     await complete(withdrawn, { letters: 3, daysAgo: 2 });
     await ctx.dataSource.getRepository(ActionActivity).save({
       actionId: action.id,
@@ -370,32 +451,6 @@ describe("action update recognition (e2e)", () => {
     const exposure = await exposureOf(id, withdrawn.id);
     expect(exposure.completed).toBe(false);
     expect(exposure.branch).toBe(RecognitionBranch.B);
-  });
-
-  it("draws a member's arm once and keeps it across updates", async () => {
-    const member = await createMember({ arm: ExperimentArm.Control });
-    await ctx.dataSource
-      .getRepository(ExperimentAssignment)
-      .delete({ userId: member.id });
-
-    await notify(await createUpdate()).expect(200);
-    const [{ arm }] = await ctx.dataSource
-      .getRepository(ExperimentAssignment)
-      .findBy({
-        userId: member.id,
-        experiment: Experiment.ActionUpdateRecognition,
-      });
-
-    await complete(member, { letters: 1 });
-    const second = await createUpdate();
-    await notify(second).expect(200);
-    expect(
-      await ctx.dataSource.getRepository(ExperimentAssignment).findBy({
-        userId: member.id,
-        experiment: Experiment.ActionUpdateRecognition,
-      }),
-    ).toEqual([expect.objectContaining({ arm })]);
-    expect((await exposureOf(second, member.id)).assignedArm).toBe(arm);
   });
 
   it("refuses legacy copy on new updates, and recognition copy on old ones", async () => {
@@ -461,11 +516,11 @@ describe("action update recognition (e2e)", () => {
     expect(stored.contributionFormula).toEqual(LETTERS);
   });
 
-  it("blocks a send on an A recipient's broken contribution, and names them", async () => {
-    const variant = await createMember({ arm: ExperimentArm.Variant });
-    const control = await createMember({ arm: ExperimentArm.Control });
-    await complete(variant);
-    await complete(control);
+  it("blocks a send on any completer's broken contribution, and names each", async () => {
+    const completer = await createMember();
+    const otherCompleter = await createMember();
+    await complete(completer);
+    await complete(otherCompleter);
     const id = await createUpdate({
       retrospectiveContributionFormula: lettersFormula("(("),
     });
@@ -477,14 +532,15 @@ describe("action update recognition (e2e)", () => {
     expect(check.body).toEqual({
       problems: [],
       collectiveSubject: "a hearing on the bill",
-      members: [
-        {
-          userId: variant.id,
-          name: variant.name,
+      members: expect.arrayContaining(
+        [completer, otherCompleter].map((member) => ({
+          userId: member.id,
+          name: member.name,
           error: "The formula resolves to empty text.",
-        },
-      ],
+        })),
+      ),
     });
+    expect(check.body.members).toHaveLength(2);
     await notify(id).expect(400);
     expect(await entriesFor(id)).toHaveLength(0);
 
@@ -492,11 +548,16 @@ describe("action update recognition (e2e)", () => {
       contributionFormula: LETTERS_OR_SOME,
     }).expect(200);
     await notify(id).expect(200);
-    expect((await exposureOf(id, variant.id)).branch).toBe(RecognitionBranch.A);
+    expect((await exposureOf(id, completer.id)).branch).toBe(
+      RecognitionBranch.A,
+    );
+    expect((await exposureOf(id, otherCompleter.id)).branch).toBe(
+      RecognitionBranch.A,
+    );
   });
 
   it("blocks a send on missing configuration or a formula that doesn't compile", async () => {
-    await createMember({ arm: ExperimentArm.Control });
+    await createMember();
     const id = await createUpdate({
       contributionFormula: lettersFormula("(("),
     });
@@ -512,8 +573,8 @@ describe("action update recognition (e2e)", () => {
   });
 
   it("holds a scheduled send that turns invalid, then delivers it once repaired", async () => {
-    const variant = await createMember({ arm: ExperimentArm.Variant });
-    await complete(variant, { letters: 3, daysAgo: 1 });
+    const completer = await createMember();
+    await complete(completer, { letters: 3, daysAgo: 1 });
     const due = addDays(new Date(), 14);
     const id = await createUpdate({
       date: due.toISOString(),
@@ -525,7 +586,7 @@ describe("action update recognition (e2e)", () => {
     await notify(id).expect(200);
     expect(await entriesFor(id)).toHaveLength(0);
 
-    await setAnswers(variant, {});
+    await setAnswers(completer, {});
     expect((await recognition.prepare(id, due)).ok).toBe(false);
     const held = await ctx.dataSource
       .getRepository(ActionUpdate)
@@ -533,17 +594,16 @@ describe("action update recognition (e2e)", () => {
     expect(held.notificationHeldReason).toMatch(/1 member/);
     expect(await entriesFor(id)).toHaveLength(0);
     await deliverAll();
-    expect((await exposureOf(id, variant.id)).deliveryClaimedAt).toBeNull();
+    expect((await exposureOf(id, completer.id)).deliveryClaimedAt).toBeNull();
 
-    await setAnswers(variant, { letters: 4 });
+    await setAnswers(completer, { letters: 4 });
     expect((await recognition.prepare(id, due)).ok).toBe(true);
     expect((await recognition.prepare(id, due)).ok).toBe(true);
     await deliverAll();
 
-    const exposure = await exposureOf(id, variant.id);
+    const exposure = await exposureOf(id, completer.id);
     expect(exposure).toMatchObject({
       branch: RecognitionBranch.A,
-      assignedArm: ExperimentArm.Variant,
       weeksAgo: 2,
       contribution: "sent 4 letters",
     });
@@ -559,18 +619,18 @@ describe("action update recognition (e2e)", () => {
   });
 
   it("freezes copy at the snapshot, so later edits leave every channel alone", async () => {
-    const variant = await createMember({ arm: ExperimentArm.Variant });
-    await complete(variant, { letters: 3 });
+    const completer = await createMember();
+    await complete(completer, { letters: 3 });
     const id = await createUpdate();
     await notify(id).expect(200);
 
-    await setAnswers(variant, { letters: 9 });
+    await setAnswers(completer, { letters: 9 });
     await admin("patch", `/actions/updateUpdate/${id}`, {
       shortNotifString: "something else",
     }).expect(200);
     await deliverAll();
 
-    const exposure = await exposureOf(id, variant.id);
+    const exposure = await exposureOf(id, completer.id);
     expect(exposure.unreadContent?.content).toEqual({
       message: ["Your 3 letters led to a hearing on the bill."],
     });
@@ -578,7 +638,7 @@ describe("action update recognition (e2e)", () => {
       /^Your 3 letters led to a hearing on the bill\. /,
     );
 
-    await setAnswers(variant, {});
+    await setAnswers(completer, {});
     const check = await admin(
       "post",
       `/actions/updates/${id}/recognition-check`,
@@ -597,7 +657,7 @@ describe("action update recognition (e2e)", () => {
     ],
     ["who turned off all notifications", { turnedOffAllNotifs: true }],
   ] as const)("reaches a member %s on no channel", async (_, settings) => {
-    const member = await createMember({ arm: ExperimentArm.Control });
+    const member = await createMember();
     await ctx.dataSource.getRepository(User).update(member.id, settings);
     const id = await createUpdate();
     await notify(id).expect(200);
@@ -617,7 +677,7 @@ describe("action update recognition (e2e)", () => {
   });
 
   it("records a recipient who can't see the entry at delivery as hidden, and reaches them on no channel", async () => {
-    const member = await createMember({ arm: ExperimentArm.Control });
+    const member = await createMember();
     const id = await createUpdate();
     await notify(id).expect(200);
     await ctx.dataSource.getRepository(Action).update(action.id, {
@@ -643,8 +703,8 @@ describe("action update recognition (e2e)", () => {
   });
 
   it("keeps delivering a batch past a recipient whose email fails, and doesn't retry that email", async () => {
-    const failing = await createMember({ arm: ExperimentArm.Control });
-    const next = await createMember({ arm: ExperimentArm.Control });
+    const failing = await createMember();
+    const next = await createMember();
     const id = await createUpdate();
     await notify(id).expect(200);
     const mail = ctx.app.get(MailService);
@@ -668,8 +728,8 @@ describe("action update recognition (e2e)", () => {
   });
 
   it("skips a recipient another run retook after this batch's claim expired", async () => {
-    const first = await createMember({ arm: ExperimentArm.Control });
-    const retaken = await createMember({ arm: ExperimentArm.Control });
+    const first = await createMember();
+    const retaken = await createMember();
     const id = await createUpdate();
     await notify(id).expect(200);
     const mms = ctx.app.get(MmsService);
@@ -696,8 +756,8 @@ describe("action update recognition (e2e)", () => {
   });
 
   it("reaches no channel for a recipient deleted after this batch's claim", async () => {
-    const first = await createMember({ arm: ExperimentArm.Control });
-    const deleted = await createMember({ arm: ExperimentArm.Control });
+    const first = await createMember();
+    const deleted = await createMember();
     const id = await createUpdate();
     await notify(id).expect(200);
     const mms = ctx.app.get(MmsService);
@@ -730,7 +790,7 @@ describe("action update recognition (e2e)", () => {
   });
 
   it("records a failed text apart from one never attempted", async () => {
-    const member = await createMember({ arm: ExperimentArm.Control });
+    const member = await createMember();
     const id = await createUpdate();
     await notify(id).expect(200);
     const send = jest
@@ -749,7 +809,7 @@ describe("action update recognition (e2e)", () => {
   });
 
   it("prepares scheduled updates once due, and never legacy ones", async () => {
-    const member = await createMember({ arm: ExperimentArm.Control });
+    const member = await createMember();
     const due = addDays(new Date(), 3);
     const scheduled = await createUpdate({ date: due.toISOString() });
     await notify(scheduled).expect(200);
@@ -801,7 +861,7 @@ describe("action update recognition (e2e)", () => {
   });
 
   it("prepares the rest of the due updates past one that fails", async () => {
-    const member = await createMember({ arm: ExperimentArm.Control });
+    const member = await createMember();
     const due = addDays(new Date(), 3);
     const first = await createUpdate({ date: due.toISOString() });
     const second = await createUpdate({ date: due.toISOString() });
@@ -823,7 +883,7 @@ describe("action update recognition (e2e)", () => {
   });
 
   it("answers a send whose copy fails to prepare with the claimed update", async () => {
-    await createMember({ arm: ExperimentArm.Control });
+    await createMember();
     const id = await createUpdate();
     const prepare = jest
       .spyOn(recognition, "prepare")

@@ -133,6 +133,10 @@ export const queryKeys = {
   actionStatsAdmin: () => ["analyticsGetActionStatsAdmin"] as const,
   actionUpdateAdmin: (id: number | null) =>
     ["actionsFindOneUpdateAdmin", id] as const,
+  actionUpdateRecognitionPreviewCountsAdmin: (
+    id: number,
+    audience: { notifyType: string; tagId: string | null },
+  ) => ["actionsPreviewUpdateRecognitionCountsAdmin", id, audience] as const,
   actionSuiteAdmin: (suiteId: number) =>
     ["actionsSuiteAdmin", suiteId] as const,
   actionSuitesAdmin: () => ["actionsSuitesAdmin"] as const,
