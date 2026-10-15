@@ -51,9 +51,8 @@ export class ContractSuspenderWorker {
         const candidates = await this.actionsService.findUsersToSuspend(now);
 
         if (candidates.length > 0) {
-          console.log(
-            "suspending users for action failure: ",
-            candidates.map(({ user }) => user.name),
+          this.logger.log(
+            `Suspending contracts for user(s) ${candidates.map(({ user }) => user.id).join(", ")}`,
           );
         }
 
@@ -67,7 +66,7 @@ export class ContractSuspenderWorker {
           );
           if (R.isFailure(suspension)) {
             this.logger.error(
-              `Failed to suspend contract for ${user.name} (${user.id}), failure code ${reasonKey}`,
+              `Failed to suspend contract for user ${user.id}, failure code ${reasonKey}`,
               suspension.error,
             );
             continue;
