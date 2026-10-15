@@ -32,6 +32,7 @@ import {
   UpdatePostSettingsDto,
 } from "./dto/post.dto";
 import { ForumAdminService } from "./forum-admin.service";
+import { ForumCommentQueryService } from "./forum-comment-query.service";
 import { ForumCommentService } from "./forum-comment.service";
 import { ForumExportService } from "./forum-export.service";
 import { ForumLikesService } from "./forum-likes.service";
@@ -44,6 +45,7 @@ export class ForumController {
     private readonly forumService: ForumService,
     private readonly forumAdminService: ForumAdminService,
     private readonly forumCommentService: ForumCommentService,
+    private readonly forumCommentQueryService: ForumCommentQueryService,
     private readonly forumExportService: ForumExportService,
     private readonly forumLikesService: ForumLikesService,
     private readonly posthog: PosthogService,
@@ -122,7 +124,7 @@ export class ForumController {
     @Request() req: JwtRequest,
   ): Promise<CommentDto[]> {
     await this.forumService.assertPostVisible(+id, req.user?.sub);
-    return this.forumService
+    return this.forumCommentQueryService
       .findCommentsForPost(+id)
       .then((comments) =>
         comments.map(
@@ -140,7 +142,7 @@ export class ForumController {
     @Param("id") id: string,
     @Request() req: JwtRequest,
   ): Promise<CommentDto[]> {
-    return this.forumService
+    return this.forumCommentQueryService
       .findCommentsForActivity(+id)
       .then((comments) =>
         comments.map(
@@ -158,7 +160,7 @@ export class ForumController {
     @Param("id") id: string,
     @Request() req: JwtRequest,
   ): Promise<CommentDto[]> {
-    return this.forumService
+    return this.forumCommentQueryService
       .findCommentsForAction(+id)
       .then((comments) =>
         comments.map(
@@ -195,7 +197,8 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @Request() req: JwtRequest,
   ): Promise<UserCommentDto[]> {
-    const userComments = await this.forumService.findCommentsByUser(id);
+    const userComments =
+      await this.forumCommentQueryService.findCommentsByUser(id);
     return userComments.map(
       (userComment) =>
         new UserCommentDto({ ...userComment, requestingUserId: req.user?.sub }),
@@ -210,7 +213,7 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @Request() req: JwtRequest,
   ): Promise<CommentDto[]> {
-    return this.forumService
+    return this.forumCommentQueryService
       .findForumCommentsByUser(id)
       .then((comments) =>
         comments.map(

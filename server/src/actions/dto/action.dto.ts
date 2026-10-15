@@ -41,7 +41,7 @@ import {
 import { CommentDto } from "src/forum/dto/comment.dto";
 import { EditableContentDto } from "src/forum/dto/editablecontent.dto";
 import type { Comment } from "src/forum/entities/comment.entity";
-import type { ForumFeedComment } from "src/forum/forum.service";
+import type { ForumFeedComment } from "src/forum/forum-comment-query.service";
 import { getImageSource } from "src/images/images.service";
 import { isMissedSuiteReminderGroup } from "src/notifs/missed-suite-notice";
 import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";

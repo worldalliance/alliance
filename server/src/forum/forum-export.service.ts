@@ -20,7 +20,7 @@ import type { EditableContent } from "./entities/editablecontent.entity";
 import type { ParsedPost } from "./entities/post.entity";
 import { flattenComments } from "./flatten-comments";
 import { ForumAdminService } from "./forum-admin.service";
-import { ForumService } from "./forum.service";
+import { ForumCommentQueryService } from "./forum-comment-query.service";
 
 export type PostExport = {
   filename: string;
@@ -33,14 +33,15 @@ export class ForumExportService {
   private readonly bucket = process.env.ASSETS_BUCKET!;
 
   constructor(
-    private readonly forumService: ForumService,
     private readonly forumAdminService: ForumAdminService,
+    private readonly forumCommentQueryService: ForumCommentQueryService,
     @Inject("S3_CLIENT") private readonly s3: S3Client,
   ) {}
 
   async exportPost(postId: number): Promise<PostExport> {
     const post = await this.forumAdminService.findPostForAdmin(postId);
-    const comments = await this.forumService.findCommentsForPost(postId);
+    const comments =
+      await this.forumCommentQueryService.findCommentsForPost(postId);
     const contents = [
       contentOf(post.editableContent, `Post ${post.id}`),
       ...flattenComments(comments).map((comment) =>

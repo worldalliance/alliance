@@ -109,7 +109,7 @@ import {
 } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
-import { ForumService } from "src/forum/forum.service";
+import { ForumCommentQueryService } from "src/forum/forum-comment-query.service";
 import { MmsService } from "src/mms/mms.service";
 import { welcomeMessage } from "src/notifs/textnotifcontents";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
@@ -293,7 +293,7 @@ export class TasksService {
     @InjectRepository(FollowUpForm)
     private followUpFormRepository: TypedRepository<FollowUpForm>,
     private userService: UserService,
-    private forumService: ForumService,
+    private forumCommentQueryService: ForumCommentQueryService,
     private actionsService: ActionsService,
     private mmsService: MmsService,
     @InjectRepository(CustomValidator)
@@ -2057,7 +2057,7 @@ export class TasksService {
         if (!validator.idArgument) {
           throw new BadRequestException("Validator has no id argument");
         }
-        const replies = await this.forumService.findCommentsForPost(
+        const replies = await this.forumCommentQueryService.findCommentsForPost(
           Number(validator.idArgument),
         );
         if (
@@ -2074,9 +2074,10 @@ export class TasksService {
         if (!validator.idArgument) {
           throw new BadRequestException("Validator has no id argument");
         }
-        const replies2 = await this.forumService.findCommentsForPostRaw(
-          Number(validator.idArgument),
-        );
+        const replies2 =
+          await this.forumCommentQueryService.findCommentsForPostRaw(
+            Number(validator.idArgument),
+          );
         if (!replies2.some((reply) => reply.authorId === user.id)) {
           return {
             isValid: false,

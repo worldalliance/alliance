@@ -18,6 +18,7 @@ import { ForumDigestLog } from "./entities/forum-digest-log.entity";
 import { PostTag } from "./entities/post-tag.entity";
 import { Post } from "./entities/post.entity";
 import { ForumAdminService } from "./forum-admin.service";
+import { ForumCommentQueryService } from "./forum-comment-query.service";
 import { ForumCommentService } from "./forum-comment.service";
 import { ForumDigestService } from "./forum-digest.service";
 import { ForumExportService } from "./forum-export.service";
@@ -53,11 +54,12 @@ import { LegacyDeletedFlagService } from "./legacy-deleted-flag.service";
     ForumService,
     ForumAdminService,
     ForumCommentService,
+    ForumCommentQueryService,
     ForumDigestService,
     ForumExportService,
     ForumLikesService,
     LegacyDeletedFlagService,
   ],
-  exports: [ForumService],
+  exports: [ForumService, ForumCommentQueryService],
 })
 export class ForumModule {}
