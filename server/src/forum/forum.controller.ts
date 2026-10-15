@@ -31,6 +31,7 @@ import {
   UpdatePostDto,
   UpdatePostSettingsDto,
 } from "./dto/post.dto";
+import { ForumAdminService } from "./forum-admin.service";
 import { ForumExportService } from "./forum-export.service";
 import { ForumService } from "./forum.service";
 
@@ -39,6 +40,7 @@ import { ForumService } from "./forum.service";
 export class ForumController {
   constructor(
     private readonly forumService: ForumService,
+    private readonly forumAdminService: ForumAdminService,
     private readonly forumExportService: ForumExportService,
     private readonly posthog: PosthogService,
   ) {}
@@ -365,7 +367,7 @@ export class ForumController {
   @ApiOperation({ summary: "Get all posts for admin management" })
   @ApiOkResponse({ type: [PostDto] })
   async getPostsForAdmin(): Promise<PostDto[]> {
-    const posts = await this.forumService.getPostsForAdmin();
+    const posts = await this.forumAdminService.getPostsForAdmin();
     return posts.map((post) => new PostDto({ post }));
   }
 
@@ -391,7 +393,7 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @Body() updatePostSettingsDto: UpdatePostSettingsDto,
   ): Promise<PostDto> {
-    const post = await this.forumService.updatePostSettings(
+    const post = await this.forumAdminService.updatePostSettings(
       id,
       updatePostSettingsDto,
     );
@@ -405,6 +407,6 @@ export class ForumController {
   async pinCommentAdmin(
     @Param("id", ParseIntPipe) id: number,
   ): Promise<CommentDto> {
-    return new CommentDto(await this.forumService.togglePinComment(id));
+    return new CommentDto(await this.forumAdminService.togglePinComment(id));
   }
 }

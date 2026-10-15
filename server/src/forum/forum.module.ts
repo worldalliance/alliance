@@ -17,6 +17,7 @@ import { EditableContent } from "./entities/editablecontent.entity";
 import { ForumDigestLog } from "./entities/forum-digest-log.entity";
 import { PostTag } from "./entities/post-tag.entity";
 import { Post } from "./entities/post.entity";
+import { ForumAdminService } from "./forum-admin.service";
 import { ForumDigestService } from "./forum-digest.service";
 import { ForumExportService } from "./forum-export.service";
 import { ForumController } from "./forum.controller";
@@ -48,6 +49,7 @@ import { LegacyDeletedFlagService } from "./legacy-deleted-flag.service";
   controllers: [ForumController],
   providers: [
     ForumService,
+    ForumAdminService,
     ForumDigestService,
     ForumExportService,
     LegacyDeletedFlagService,

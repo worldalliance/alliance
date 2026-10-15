@@ -19,6 +19,7 @@ import { type Comment, loadedCommentAuthor } from "./entities/comment.entity";
 import type { EditableContent } from "./entities/editablecontent.entity";
 import type { ParsedPost } from "./entities/post.entity";
 import { flattenComments } from "./flatten-comments";
+import { ForumAdminService } from "./forum-admin.service";
 import { ForumService } from "./forum.service";
 
 export type PostExport = {
@@ -33,11 +34,12 @@ export class ForumExportService {
 
   constructor(
     private readonly forumService: ForumService,
+    private readonly forumAdminService: ForumAdminService,
     @Inject("S3_CLIENT") private readonly s3: S3Client,
   ) {}
 
   async exportPost(postId: number): Promise<PostExport> {
-    const post = await this.forumService.findPostForAdmin(postId);
+    const post = await this.forumAdminService.findPostForAdmin(postId);
     const comments = await this.forumService.findCommentsForPost(postId);
     const contents = [
       contentOf(post.editableContent, `Post ${post.id}`),
