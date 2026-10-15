@@ -1,3 +1,4 @@
+import { DEFAULT_TIME_ZONE } from "@alliance/common/timezone";
 import { Temporal } from "@js-temporal/polyfill";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
@@ -6,7 +7,7 @@ import { millisecondsInSecond } from "date-fns/constants";
 import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
 import { Tag } from "src/user/entities/tag.entity";
-import { DEFAULT_TIME_ZONE, User } from "src/user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
 import {
   Check,

@@ -13,6 +13,7 @@ import type { AccountDerivedConditionKind } from "@alliance/common/forms/visible
 import { forCount } from "@alliance/common/plural";
 import { hasProfilePicture } from "@alliance/common/profilePicture";
 import { R, type Result } from "@alliance/common/result";
+import { DEFAULT_TIME_ZONE } from "@alliance/common/timezone";
 import { Temporal } from "@js-temporal/polyfill";
 import {
   BadRequestException,
@@ -178,7 +179,6 @@ import {
 import { UserDevice } from "./entities/user-device.entity";
 import {
   assertCanManageCommunity,
-  DEFAULT_TIME_ZONE,
   loadedUserCommunities,
   ReferralSource,
   sqlUserHasActiveContractAt,

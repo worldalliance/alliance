@@ -64,8 +64,6 @@ import { Tag } from "./tag.entity";
 import { UserAwayRange } from "./user-away-range.entity";
 import { UserDevice } from "./user-device.entity";
 
-export const DEFAULT_TIME_ZONE = "America/Los_Angeles";
-
 export enum NotificationPreference {
   All = "all",
   Digest = "digest",

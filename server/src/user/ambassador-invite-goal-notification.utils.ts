@@ -1,7 +1,8 @@
 import { forCount, withCount } from "@alliance/common/plural";
+import { DEFAULT_TIME_ZONE } from "@alliance/common/timezone";
 import { Temporal } from "@js-temporal/polyfill";
 import { millisecondsInDay } from "date-fns/constants";
-import { DEFAULT_TIME_ZONE, type User } from "./entities/user.entity";
+import { type User } from "./entities/user.entity";
 
 type GoalWindow = {
   startAt: Date;

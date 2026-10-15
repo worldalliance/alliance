@@ -15,7 +15,7 @@ import { itemClassName, listClassName, popupClassName } from "./optionPicker";
 type Props = {
   labelId?: string;
   value?: string;
-  defaultValue?: string; // defaults to America/Los_Angeles
+  defaultValue?: string;
   onChange?: (tz: string) => void;
 
   placeholder?: string;
@@ -39,7 +39,7 @@ function ZoneLabel({ zoneName, city }: TimeZoneSelectItem) {
 export default function TimeZoneSelectPretty({
   labelId,
   value,
-  defaultValue = "America/Los_Angeles",
+  defaultValue,
   onChange,
   placeholder = "Select time zone…",
   disabled,

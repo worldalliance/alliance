@@ -1,9 +1,10 @@
+import { DEFAULT_TIME_ZONE } from "@alliance/common/timezone";
 import { Temporal } from "@js-temporal/polyfill";
 import {
   UserAwayRange,
   UserAwayRangeReason,
 } from "src/user/entities/user-away-range.entity";
-import { DEFAULT_TIME_ZONE, User } from "src/user/entities/user.entity";
+import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { createTestApp, TestContext } from "./e2e-test-utils";

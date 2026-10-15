@@ -1,4 +1,8 @@
-import { isCatalogued, isTimeZoneIdentifier } from "@alliance/common/timezone";
+import {
+  DEFAULT_TIME_ZONE,
+  isCatalogued,
+  isTimeZoneIdentifier,
+} from "@alliance/common/timezone";
 import {
   TIME_ZONE_ALIASES,
   TIME_ZONE_CATALOG,
@@ -34,8 +38,6 @@ export type TimeZoneSelectItem = {
 };
 
 export const NO_TIME_LABEL = "—";
-
-export const DEFAULT_TIMEZONE = "America/Los_Angeles";
 
 type BaseLabel = {
   tz: string;
@@ -364,7 +366,7 @@ export type UseTimeZoneSelectParams = {
 
 export function useTimeZoneSelect({
   value,
-  defaultValue = DEFAULT_TIMEZONE,
+  defaultValue = DEFAULT_TIME_ZONE,
   onChange,
   hour12 = true,
   disabled,
