@@ -6,6 +6,7 @@ import { AuthContext } from "../../../lib/AuthContext";
 import { InviteSessionProvider } from "../../../site/invite/InviteSession";
 import { authValue } from "../../../testing/authValue";
 import DemocraticGrantmaking26 from "./DemocraticGrantmaking26";
+import { FEATURED_PEOPLE } from "./placeholders";
 
 let membersReply: () => Response;
 let waitlistReply: () => Response;
@@ -38,6 +39,40 @@ const renderPage = () =>
       </AuthContext.Provider>
     </QueryClientProvider>,
   );
+
+test("shows each expert once in a six-column grid between the waitlist bar and the timeline", async () => {
+  renderPage();
+
+  const bar = await screen.findByRole("img", {
+    name: "213 members and 309 on the waitlist, toward 1,000",
+  });
+  const line = screen.getByText(
+    "Experts will provide comments that help you vote.",
+  );
+  const grid = screen.getByRole("list", { name: "Expert panel" });
+  const timeline = screen.getByRole("region", { name: "Timeline" });
+  expect(
+    bar.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).not.toBe(0);
+  expect(
+    line.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).not.toBe(0);
+  expect(
+    grid.compareDocumentPosition(timeline) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).not.toBe(0);
+  expect(timeline.contains(grid)).toBe(false);
+  expect(grid.className).toContain("lg:grid-cols-[repeat(6,125px)]");
+  const cards = [...grid.querySelectorAll(":scope > li")];
+  expect(cards).toHaveLength(FEATURED_PEOPLE.length);
+  FEATURED_PEOPLE.forEach((person, index) => {
+    const card = cards[index];
+    expect(card?.textContent).toContain(person.name);
+    expect(card?.textContent).toContain(person.role);
+    const face = card?.querySelector("img");
+    expect(face?.getAttribute("src")).toBe(person.imageSrc);
+    expect(face?.className).toContain("size-[125px]");
+  });
+});
 
 test("marks preparation as the current phase", () => {
   renderPage();

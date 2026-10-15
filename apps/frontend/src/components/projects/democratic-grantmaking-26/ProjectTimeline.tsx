@@ -40,10 +40,7 @@ export function ProjectTimeline({
 }) {
   return (
     <section
-      className={cn(
-        "rounded-lg bg-zinc-100 px-8 py-10 sm:px-12 sm:py-12 lg:py-16 lg:[container-type:inline-size]",
-        className,
-      )}
+      className={cn("lg:[container-type:inline-size]", className)}
       aria-label="Timeline"
     >
       <ol className="site-sans relative flex flex-col gap-4 text-base lg:mx-[min(5rem,6cqw)] lg:grid lg:grid-cols-[repeat(5,minmax(0,1fr))_0] lg:gap-0 lg:before:absolute lg:before:top-[5px] lg:before:right-0 lg:before:left-0 lg:before:h-0.5 lg:before:bg-[var(--site-ink)]/25">
@@ -59,7 +56,7 @@ export function ProjectTimeline({
               <div className="flex h-5 items-center gap-1 lg:h-auto lg:-translate-x-1/2">
                 <span
                   className={cn(
-                    "size-3 lg:size-4 shrink-0 rounded-sm ring-4 ring-zinc-100",
+                    "size-3 lg:size-4 shrink-0 rounded-sm ring-4 ring-white",
                     current ? "bg-green" : "bg-zinc-400",
                   )}
                 />

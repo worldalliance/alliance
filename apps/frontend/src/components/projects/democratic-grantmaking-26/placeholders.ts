@@ -7,23 +7,41 @@ export interface ProjectPerson {
 
 export const FEATURED_PEOPLE: ProjectPerson[] = [
   {
-    name: "Advised by Jan Maly",
+    name: "Jan Maly",
     imageSrc: "/assets/democratic-grantmaking-26/jan-maly.jpg",
-    role: "Expert on group decision-making, WU Wien",
+    role: "Online Decision-Making, WU Wien",
     href: "https://janmaly.de/",
   },
-  // {
-  //   name: "Healy Hamilton",
-  //   imageSrc: "/assets/democratic-grantmaking-26/healy-hamilton.jpg",
-  //   role: "Expert Panel",
-  //   href: "https://www.linkedin.com/in/healy-hamilton-a1a20942/",
-  // },
-  // {
-  //   name: "Dustin Palmer",
-  //   imageSrc: "/assets/democratic-grantmaking-26/dustin-palmer.jpg",
-  //   role: "Expert Panel",
-  //   href: "https://www.linkedin.com/in/dustin-palmer/",
-  // },
+  {
+    name: "Healy Hamilton",
+    imageSrc: "/assets/democratic-grantmaking-26/healy-hamilton.jpg",
+    role: "Chief Scientist, Sustainable Forestry Initiative",
+    href: "https://www.linkedin.com/in/healy-hamilton-a1a20942/",
+  },
+  {
+    name: "Dustin Palmer",
+    imageSrc: "/assets/democratic-grantmaking-26/dustin-palmer.jpg",
+    role: "Executive Director, US Programs at GiveDirectly",
+    href: "https://www.linkedin.com/in/dustin-palmer/",
+  },
+  {
+    name: "Brendan Nyhan",
+    imageSrc: "/assets/democratic-grantmaking-26/brendan.jpeg",
+    role: "Professor of Government, Dartmouth College",
+    href: "https://govt.dartmouth.edu/people/brendan-nyhan",
+  },
+  {
+    name: "Andrew Cantino",
+    imageSrc: "/assets/democratic-grantmaking-26/andrew.jpg",
+    role: "Program Advisor, Renaissance Philanthropy",
+    href: "https://www.linkedin.com/in/cantino/",
+  },
+  {
+    name: "Eli Sepulveda",
+    imageSrc: "/assets/democratic-grantmaking-26/eli.jpeg",
+    role: "Global Catastrophic Risks at Founders Pledge",
+    href: "https://www.linkedin.com/in/sepllveda/",
+  },
 ];
 
 export const ABOUT_SECTIONS = [

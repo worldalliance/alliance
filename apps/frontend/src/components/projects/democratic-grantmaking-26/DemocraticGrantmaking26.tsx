@@ -11,10 +11,10 @@ import {
   SiteRoot,
 } from "../../../site/PageShell";
 import { DisplayHeading, SITE_COL } from "../../../site/ui";
+import { ExpertGrid } from "./ExpertGrid";
 import { MEMBER_GOAL_LABEL } from "./GrantmakingMemberProgress";
 import { MemberWaitlistBar } from "./MemberWaitlistBar";
-// import { PersonRow } from "./PersonRow";
-import { ABOUT_SECTIONS /* , FEATURED_PEOPLE */ } from "./placeholders";
+import { ABOUT_SECTIONS } from "./placeholders";
 import { ProjectTimeline } from "./ProjectTimeline";
 import { useWaitlistCount } from "./useWaitlist";
 import { WaitlistSignupForm } from "./WaitlistSignupForm";
@@ -46,18 +46,6 @@ function ProjectProgress() {
   );
 }
 
-// function FeaturedPeople() {
-//   return (
-//     <ul className="flex flex-wrap justify-center gap-x-10 gap-y-4">
-//       {FEATURED_PEOPLE.map((person) => (
-//         <li key={person.name}>
-//           <PersonRow person={person} />
-//         </li>
-//       ))}
-//     </ul>
-//   );
-// }
-
 export default function DemocraticGrantmaking26() {
   return (
     <SiteRoot className="bg-white">
@@ -74,12 +62,12 @@ export default function DemocraticGrantmaking26() {
             <div
               className={cn(
                 PROJECT_COL,
-                "grid grid-cols-1 gap-y-6 pt-10 [@media(max-width:480px)_and_(max-height:700px)]:pt-6 lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-center lg:gap-x-[10%] lg:pt-[clamp(1.5rem,4svh,4rem)]",
+                "grid grid-cols-1 gap-y-6 pt-16 [@media(max-width:480px)_and_(max-height:700px)]:pt-8 lg:grid-cols-[minmax(0,1fr)_max(24rem,34%)] lg:items-center lg:gap-x-[10%] lg:pt-[clamp(4rem,10svh,8rem)]",
               )}
             >
               <div className="flex flex-col gap-4 lg:gap-[clamp(1rem,2.5vh,2rem)]">
                 <p className="text-left text-[1.05rem] text-[var(--site-ink)]/70 sm:text-[1.2rem] lg:-mb-2">
-                  An Alliance project · Fall 2026
+                  An Alliance project / Fall 2026
                 </p>
                 <DisplayHeading
                   as="h1"
@@ -109,18 +97,14 @@ export default function DemocraticGrantmaking26() {
               <ProjectProgress />
             </div>
           </div>
-          {/* <section
-            className={cn(PROJECT_COL, "mt-10 lg:mt-[clamp(1.5rem,4svh,3rem)]")}
-          >
-            <FeaturedPeople />
-          </section> */}
-          <div
-            className={cn(
-              PROJECT_COL,
-              "mt-12 lg:mt-[clamp(2.25rem,6svh,3.75rem)] lg:pb-[clamp(1.5rem,6svh,6rem)]",
-            )}
-          >
-            <ProjectTimeline currentIdx={0} />
+          <div className={cn(PROJECT_COL, "mt-12 lg:mt-24 lg:pb-24")}>
+            <div className="flex flex-col items-center gap-8 rounded-lg bg-zinc-100 px-8 py-10 sm:px-12 sm:py-12">
+              <p className="text-center text-lg text-[var(--site-ink)]/70 sm:text-xl">
+                Experts will provide comments that help you vote.
+              </p>
+              <ExpertGrid />
+            </div>
+            <ProjectTimeline currentIdx={0} className="mt-14 lg:mt-20" />
           </div>
         </div>
         <div
