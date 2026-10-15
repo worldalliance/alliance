@@ -1,5 +1,6 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { collectCohortDependencies } from "@alliance/common/cohort-expression";
+import { DEFAULT_TIME_ZONE } from "@alliance/common/timezone";
 import { Temporal } from "@js-temporal/polyfill";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -45,11 +46,7 @@ import {
   loadedActionEventAction,
 } from "../actions/entities/action-event.entity";
 import { memberActionPhase } from "../actions/utils/action-event";
-import {
-  DEFAULT_TIME_ZONE,
-  loadedUserCommunities,
-  User,
-} from "../user/entities/user.entity";
+import { loadedUserCommunities, User } from "../user/entities/user.entity";
 import { ActionEventRecipientService } from "./action-event-recipient.service";
 import { NotificationPlan } from "./dto/notification-plan.dto";
 import { ActionEventNotifDto } from "./entities/action-event-notif.dto";

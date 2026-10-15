@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { checkCommunityAccessRules } from "@alliance/common/community";
 import { run } from "@alliance/common/run";
+import { DEFAULT_TIME_ZONE } from "@alliance/common/timezone";
 import {
   BadRequestException,
   Injectable,
@@ -37,7 +38,6 @@ import { CommunityMemberContactInfo } from "src/user/dto/user-action-relations.d
 import {
   assertCanManageCommunity,
   canManageCommunity,
-  DEFAULT_TIME_ZONE,
   loadedUserCommunities,
   sqlUserHasActiveContractAt,
   User,

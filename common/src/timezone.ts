@@ -1,6 +1,9 @@
 import { R } from "./result";
 import { TIME_ZONE_ALIASES, TIME_ZONE_CATALOG } from "./timezone-catalog.gen";
 
+/** The zone for a user who has saved none. */
+export const DEFAULT_TIME_ZONE = "America/Los_Angeles";
+
 const TZDB_NAMES: ReadonlySet<string> = new Set([
   ...TIME_ZONE_CATALOG.map((entry) => entry.tz),
   ...TIME_ZONE_ALIASES.keys(),
