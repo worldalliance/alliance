@@ -84,6 +84,7 @@ import EventManagementTab from "../components/EventManagementTab";
 import { FormBuilder } from "../components/FormBuilder";
 import FormResponseStatistics from "../components/FormResponseStatistics";
 import type { FormWithSchema } from "../components/FormResponsesView";
+import { actionFormInputValue } from "../lib/actionFormInputValue";
 import {
   changedActionImages,
   duplicatedActionImages,
@@ -573,17 +574,9 @@ const ActionDashboard: React.FC = () => {
       return;
     }
 
-    if (name === "suiteId") {
-      setForm((prev) => ({
-        ...prev,
-        suiteId: value === "" ? null : parseInt(value, 10),
-      }));
-      return;
-    }
-
     setForm((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: actionFormInputValue(name, value),
     }));
   };
 
