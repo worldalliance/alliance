@@ -61,7 +61,6 @@ import {
 } from "./dto/action-form-variant.dto";
 import {
   AdminActionUpdateDto,
-  RecognitionCheckDto,
   RecognitionPreviewAudienceDto,
   RecognitionPreviewCountsDto,
 } from "./dto/action-update-recognition.dto";
@@ -1051,18 +1050,6 @@ export class ActionsController {
   ): Promise<AdminActionUpdateDto> {
     return new AdminActionUpdateDto(
       await this.actionsService.notifyActionUpdate(id),
-    );
-  }
-
-  @Post("updates/:id/recognition-check")
-  @UseGuards(AdminGuard)
-  @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ type: RecognitionCheckDto })
-  async checkUpdateRecognitionAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<RecognitionCheckDto> {
-    return new RecognitionCheckDto(
-      await this.actionsService.checkActionUpdateRecognition(id),
     );
   }
 

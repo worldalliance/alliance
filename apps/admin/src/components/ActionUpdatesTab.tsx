@@ -21,10 +21,7 @@ import {
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import type { CollectiveResultTexts } from "../lib/updatePreview";
 import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
-import {
-  COLLECTIVE_RESULT_DESCRIPTIONS,
-  RecognitionModeSelect,
-} from "./ActionUpdateRecognition";
+import { COLLECTIVE_RESULT_DESCRIPTION } from "./ActionUpdateRecognition";
 import { CollectiveResultSplitFields } from "./CollectiveResultSplitFields";
 import { UPDATE_PREVIEW_DESCRIPTION, UpdatePreview } from "./UpdatePreview";
 
@@ -41,7 +38,6 @@ const defaultNewUpdate: CreateActionUpdateDto = {
   notifyType: "none",
   shortNotifString: "",
   splitCollectiveResult: false,
-  notificationMode: "normal",
 };
 
 const ActionUpdatesTab = ({
@@ -162,10 +158,7 @@ const ActionUpdatesTab = ({
           <label className="flex flex-col text-sm gap-1">
             <span className="font-bold">Collective result</span>
             <span className="text-xs text-zinc-600">
-              What the action achieved.{" "}
-              {COLLECTIVE_RESULT_DESCRIPTIONS[newUpdate.notificationMode]}{" "}
-              You&apos;ll write each member&apos;s contribution formula after
-              creating the update.
+              What the action achieved. {COLLECTIVE_RESULT_DESCRIPTION}
             </span>
             <input
               type="text"
@@ -213,19 +206,6 @@ const ActionUpdatesTab = ({
                   </option>
                 ))}
               </select>
-            </label>
-            <label className="flex flex-col text-sm gap-1">
-              <span className="font-bold">Recognition copy</span>
-              <span className="text-xs text-zinc-600">
-                How completers&apos; own contributions are worded.
-              </span>
-              <RecognitionModeSelect
-                className="p-2 rounded-md bg-white text-base"
-                value={newUpdate.notificationMode}
-                onChange={(mode) =>
-                  setNewUpdate({ ...newUpdate, notificationMode: mode })
-                }
-              />
             </label>
             <label className="flex flex-col text-sm gap-1">
               <span className="font-bold">Date</span>
@@ -302,7 +282,7 @@ const ActionUpdatesTab = ({
             <span className="text-xs text-zinc-600">
               {UPDATE_PREVIEW_DESCRIPTION}
             </span>
-            <UpdatePreview mode={newUpdate.notificationMode} texts={texts} />
+            <UpdatePreview texts={texts} />
           </div>
         </div>
       </Card>

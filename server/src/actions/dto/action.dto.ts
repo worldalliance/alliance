@@ -58,10 +58,6 @@ import { User } from "src/user/entities/user.entity";
 import { TaskAwayStatus } from "src/utils/action-user";
 import { UserActionRelation } from "../action-activity-status";
 import {
-  RECOGNITION_MODES,
-  type RecognitionMode,
-} from "../action-update-recognition";
-import {
   ActionActivity,
   loadedActionActivityAction,
   loadedActionActivityUser,
@@ -1043,42 +1039,18 @@ export class CreateActionUpdateDto extends IntersectionType(
   @ApiPropertyOptional()
   @IsOptional()
   tagId?: string;
-
-  @ApiProperty({
-    enum: RECOGNITION_MODES,
-    enumName: "ActionUpdateRecognitionMode",
-  })
-  @IsEnum(RECOGNITION_MODES)
-  notificationMode: RecognitionMode;
-
-  @ApiPropertyOptional({ type: Object, nullable: true })
-  @IsOptional()
-  @IsObject()
-  contributionFormula?: Record<string, unknown> | null;
-
-  @ApiPropertyOptional({ type: Object, nullable: true })
-  @IsOptional()
-  @IsObject()
-  retrospectiveContributionFormula?: Record<string, unknown> | null;
 }
 
 export class UpdateActionUpdateDto extends PartialType(
-  IntersectionType(
-    PickType(ActionUpdate, [
-      "title",
-      "date",
-      "notifyType",
-      "shortNotifString",
-      "splitCollectiveResult",
-      "nonCompleterResult",
-      "uninvolvedResult",
-    ]),
-    PickType(CreateActionUpdateDto, [
-      "notificationMode",
-      "contributionFormula",
-      "retrospectiveContributionFormula",
-    ]),
-  ),
+  PickType(ActionUpdate, [
+    "title",
+    "date",
+    "notifyType",
+    "shortNotifString",
+    "splitCollectiveResult",
+    "nonCompleterResult",
+    "uninvolvedResult",
+  ]),
 ) {
   @ApiPropertyOptional({ type: Number, nullable: true })
   @IsOptional()

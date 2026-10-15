@@ -22,7 +22,6 @@ describe("UpdatePreview", () => {
   it("counts each variation and marks a skipped group as not notified", () => {
     render(
       <UpdatePreview
-        mode="normal"
         texts={split}
         counts={{
           kind: PreviewCountsKind.Counted,
@@ -45,12 +44,10 @@ describe("UpdatePreview", () => {
   });
 
   it("highlights the parts that differ per member", () => {
-    render(<UpdatePreview mode="normal" texts={split} />);
+    render(<UpdatePreview texts={split} />);
 
     expect(
-      screen
-        .getAllByText("[contribution]")
-        .every((part) => part.tagName === "MARK"),
+      screen.getAllByText("[link]").every((part) => part.tagName === "MARK"),
     ).toBe(true);
     expect(screen.queryByText(/^\d+ members?$/)).toBeNull();
   });
@@ -58,7 +55,6 @@ describe("UpdatePreview", () => {
   it("says why the counts are missing", () => {
     render(
       <UpdatePreview
-        mode="normal"
         texts={split}
         counts={{
           kind: PreviewCountsKind.Unavailable,
@@ -73,7 +69,6 @@ describe("UpdatePreview", () => {
   it("shows what blocks a send in place of the variations", () => {
     render(
       <UpdatePreview
-        mode="normal"
         texts={{ ...split, shortNotifString: "", uninvolvedResult: "" }}
       />,
     );

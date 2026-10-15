@@ -15,29 +15,15 @@ const texts = (
   ...overrides,
 });
 
-const { contribution, weeksAgo, name, link } = PREVIEW_PLACEHOLDERS;
+const { name, link } = PREVIEW_PLACEHOLDERS;
 
 describe("previewVariations", () => {
-  it("gives completers their recognition and everyone else the result until it is split", () => {
-    const variations = previewVariations({
-      mode: "normal",
-      texts: texts({ nonCompleterResult: "unused" }),
-    });
-    expect(variations).toEqual({
+  it("gives everyone the collective result as written until it's split", () => {
+    expect(previewVariations(texts({ nonCompleterResult: "unused" }))).toEqual({
       ok: true,
       value: [
         {
-          variation: PreviewVariation.Completed,
-          copy: {
-            inApp: `Your ${contribution} led to a hearing.`,
-            push: `Your ${contribution} led to a hearing.`,
-            sms: `Your ${contribution} led to a hearing. ${link}`,
-            emailSubject: `Your ${contribution} led to a hearing.`,
-            emailBody: `Hi ${name},\nYour ${contribution} led to a hearing.\n${link}`,
-          },
-        },
-        {
-          variation: PreviewVariation.EveryoneElse,
+          variation: PreviewVariation.Everyone,
           copy: {
             inApp: "a hearing",
             push: "Update: a hearing",
@@ -50,25 +36,14 @@ describe("previewVariations", () => {
     });
   });
 
-  it("leads retrospective recognition with the weeks-ago placeholder", () => {
-    const variations = previewVariations({
-      mode: "retrospective",
-      texts: texts(),
-    });
-    expect(variations.ok && variations.value[0].copy?.push).toBe(
-      `${weeksAgo} you ${contribution}. a hearing.`,
-    );
-  });
-
   it("lists each split group, with no copy for one left empty", () => {
-    const variations = previewVariations({
-      mode: "normal",
-      texts: texts({
+    const variations = previewVariations(
+      texts({
         splitCollectiveResult: true,
         shortNotifString: "",
         nonCompleterResult: "a hearing without you",
       }),
-    });
+    );
     expect(
       variations.ok &&
         variations.value.map(({ variation, copy }) => [
@@ -83,17 +58,14 @@ describe("previewVariations", () => {
   });
 
   it("says what blocks a send instead of previewing nothing", () => {
+    expect(previewVariations(texts({ shortNotifString: " " }))).toEqual({
+      ok: false,
+      error: "Write the collective result.",
+    });
     expect(
-      previewVariations({
-        mode: "normal",
-        texts: texts({ shortNotifString: " " }),
-      }),
-    ).toEqual({ ok: false, error: "Write the collective result." });
-    expect(
-      previewVariations({
-        mode: "normal",
-        texts: texts({ splitCollectiveResult: true, shortNotifString: "" }),
-      }),
+      previewVariations(
+        texts({ splitCollectiveResult: true, shortNotifString: "" }),
+      ),
     ).toEqual({ ok: false, error: "Write at least one group's result." });
   });
 });

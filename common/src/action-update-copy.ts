@@ -4,15 +4,8 @@ import {
   split,
 } from "sentence-splitter";
 import { z } from "zod";
-import type { ContributionFormulaMode } from "./forms/contribution-formula";
 import { nameParts } from "./nameParts";
 import { R, type Result } from "./result";
-
-/** A: the member's own contribution. B: the collective result alone. */
-export enum RecognitionBranch {
-  A = "a",
-  B = "b",
-}
 
 export enum RecognitionGroup {
   Completed = "completed",
@@ -61,9 +54,6 @@ export const recognitionCopySchema = z.strictObject({
 });
 export type RecognitionCopy = z.infer<typeof recognitionCopySchema>;
 
-const asSentence = (text: string) =>
-  /[.!?]["'”’)\]]*$/.test(text) ? text : `${text}.`;
-
 // Civic copy names these and dotted initialisms like "H.R." mid-sentence, and
 // the default list would end a subject at them. One that does end a sentence
 // keeps the next one too.
@@ -95,90 +85,26 @@ export function firstSentence(text: string): string {
   return ENDS_AFTER_NUMBER.exec(sentence)?.[0] ?? sentence.trim();
 }
 
-export function weeksAgoLead(weeksAgo: number): string {
-  if (weeksAgo < 1) return "Recently";
-  if (weeksAgo === 1) return "1 week ago";
-  return `${weeksAgo} weeks ago`;
-}
-
 export const collectiveEmailSubject = (allianceResult: string) =>
   firstSentence(allianceResult);
 
 /**
- * Branch A's content body, the same on every channel, and its email subject.
- * The subject comes from the template's own first sentence, so only the
- * authored result is split, never a member's contribution.
- */
-export function recognitionBody(params: {
-  mode: ContributionFormulaMode;
-  contribution: string;
-  allianceResult: string;
-  /** `weeksAgoLead`'s text, read in retrospective mode. */
-  weeksAgoText: string;
-}): { body: string; subject: string } {
-  const { mode, contribution, allianceResult, weeksAgoText } = params;
-  switch (mode) {
-    case "normal":
-      return {
-        body: asSentence(`Your ${contribution} led to ${allianceResult}`),
-        subject: asSentence(
-          `Your ${contribution} led to ${collectiveEmailSubject(allianceResult)}`,
-        ),
-      };
-    case "retrospective": {
-      const subject = asSentence(`${weeksAgoText} you ${contribution}`);
-      return { body: `${subject} ${asSentence(allianceResult)}`, subject };
-    }
-    default:
-      throw new Error(`unknown recognition mode: ${mode satisfies never}`);
-  }
-}
-
-export type RecognitionMessage =
-  | { branch: RecognitionBranch.A; body: string; subject: string }
-  | { branch: RecognitionBranch.B; allianceResult: string };
-
-/**
- * The inbox labels every entry "Action update:", so branch B's entry leaves
- * out the "Update:" its push and text lead with.
+ * The inbox labels every entry "Action update:", so the entry leaves out the
+ * "Update:" its push and text lead with.
  */
 export function recognitionCopy(params: {
-  message: RecognitionMessage;
+  allianceResult: string;
   recipientName: string;
   link: string;
 }): RecognitionCopy {
-  const { message, recipientName, link } = params;
+  const { allianceResult, recipientName, link } = params;
   const { firstname } = nameParts(recipientName);
-  const channels = (params: {
-    content: string;
-    headline: string;
-    subject: string;
-  }) => ({
-    push: params.headline,
-    sms: `${params.headline} ${link}`,
-    emailSubject: params.subject,
-    emailBody: `Hi ${firstname},\n${params.content}\n${link}`,
-  });
-  switch (message.branch) {
-    case RecognitionBranch.A:
-      return {
-        inApp: message.body,
-        ...channels({
-          content: message.body,
-          headline: message.body,
-          subject: message.subject,
-        }),
-      };
-    case RecognitionBranch.B:
-      return {
-        inApp: message.allianceResult,
-        ...channels({
-          content: message.allianceResult,
-          headline: `Update: ${message.allianceResult}`,
-          subject: collectiveEmailSubject(message.allianceResult),
-        }),
-      };
-    default:
-      throw new Error(`unknown branch: ${message satisfies never}`);
-  }
+  const headline = `Update: ${allianceResult}`;
+  return {
+    inApp: allianceResult,
+    push: headline,
+    sms: `${headline} ${link}`,
+    emailSubject: collectiveEmailSubject(allianceResult),
+    emailBody: `Hi ${firstname},\n${allianceResult}\n${link}`,
+  };
 }
