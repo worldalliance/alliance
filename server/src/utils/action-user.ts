@@ -6,6 +6,10 @@ import {
   type ActionEvent,
 } from "src/actions/entities/action-event.entity";
 import { Action, loadedActionEvents } from "src/actions/entities/action.entity";
+import {
+  eventInEffectAt,
+  hasTakenEffect,
+} from "src/actions/utils/action-event";
 import type { Community } from "src/community/entities/community.entity";
 import type { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { loadedUserTags, User } from "src/user/entities/user.entity";
@@ -183,7 +187,7 @@ export function computeActionAssignment(
       // task has already been open.
       return user &&
         event &&
-        event.date <= now &&
+        hasTakenEffect(event.date, now) &&
         user.hasActiveContractAt(deadlineEvent?.date ?? now)
         ? ActionAssignment.Optional
         : ActionAssignment.Unassigned;
@@ -245,27 +249,14 @@ export enum TaskAwayStatus {
   NotAway = "not_away",
 }
 
-function findActionEventWindowAt(
-  events: { date: Date }[],
-  date: Date,
-): { startDate: Date | null; endDate: Date | null } {
-  const event = events.find((e) => e.date <= date) ?? null;
-  const nextEvent = events.find((e) => e.date > date) ?? null;
-  return { startDate: event?.date ?? null, endDate: nextEvent?.date ?? null };
-}
-
-/**
- * The first loaded member-action event that has already opened
- * (`date <= now`), or undefined when no member-action phase has started. Any
- * past member-action event counts (not just the latest phase's), so a
- * re-scheduled action whose earlier phase already ran still reads started.
- */
+/** The member-action event, once it has taken effect. */
 export function findStartedMemberActionEvent<
   E extends Pick<ActionEvent, "date" | "newStatus">,
 >(events: E[], now: Date): E | undefined {
   return events.find(
     (event) =>
-      event.date <= now && event.newStatus === ActionStatus.MemberAction,
+      hasTakenEffect(event.date, now) &&
+      event.newStatus === ActionStatus.MemberAction,
   );
 }
 
@@ -281,7 +272,7 @@ export function hasMemberActionDeadlinePassed(
   deadline: Date | null | undefined,
   now: Date,
 ): boolean {
-  return !!deadline && deadline <= now;
+  return !!deadline && hasTakenEffect(deadline, now);
 }
 
 /**
@@ -350,13 +341,8 @@ export function computeMemberActionAwayStatus(params: {
     return TaskAwayStatus.NotAway;
   }
 
-  const { startDate, endDate } = findActionEventWindowAt(
-    events,
-    memberActionEvent.date,
-  );
-  if (!startDate) {
-    return TaskAwayStatus.NotAway;
-  }
+  const startDate = memberActionEvent.date;
+  const endDate = eventInEffectAt(events, startDate).nextEvent?.date ?? null;
 
   for (const awayRange of user.awayRanges ?? []) {
     const { startDate: awayStartDate, endDate: awayEndDate } = awayRange;

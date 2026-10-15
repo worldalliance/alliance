@@ -10,10 +10,9 @@ import {
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
 import { ActionActivity } from "./entities/action-activity.entity";
-import { ActionEvent, ActionStatus } from "./entities/action-event.entity";
+import { ActionEvent } from "./entities/action-event.entity";
 import {
   Action,
-  loadedActionEvents,
   parseAction,
   type ParsedAction,
 } from "./entities/action.entity";
@@ -74,9 +73,7 @@ export class ActionParticipantsService {
     // Build entries for actions that have a MemberAction event
     const entries: Array<{ action: ParsedAction; event: ActionEvent }> = [];
     for (const action of actions) {
-      const event = loadedActionEvents(action).find(
-        (e) => e.newStatus === ActionStatus.MemberAction,
-      );
+      const { event } = action.memberActionPhase;
       if (event) {
         entries.push({ action, event });
       }

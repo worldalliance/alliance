@@ -1,13 +1,20 @@
 import { millisecondsInSecond } from "date-fns/constants";
-import { ActionStatus } from "../actions/entities/action-event.entity";
+import {
+  ActionEvent,
+  ActionStatus,
+} from "../actions/entities/action-event.entity";
+import { UserAwayRange } from "../user/entities/user-away-range.entity";
 import type { User } from "../user/entities/user.entity";
 import {
   ActionAssignment,
   computeActionAssignment,
   computeContractSignedAfterOnboardingStart,
   computeIsRequiredForAction,
+  computeMemberActionAwayStatus,
   computeMissedActionDeadline,
   hasMemberActionDeadlinePassed,
+  hasMemberActionStarted,
+  TaskAwayStatus,
 } from "./action-user";
 
 type Params = Parameters<typeof computeActionAssignment>[0];
@@ -288,6 +295,44 @@ describe("computeContractSignedAfterOnboardingStart", () => {
         memberActionPhaseStart: null,
       }),
     ).toBe(false);
+  });
+});
+
+describe("hasMemberActionStarted", () => {
+  const events = [{ newStatus: ActionStatus.MemberAction, date: PHASE_START }];
+
+  it("is false before the member-action event", () => {
+    expect(
+      hasMemberActionStarted(
+        events,
+        new Date(PHASE_START.getTime() - millisecondsInSecond),
+      ),
+    ).toBe(false);
+  });
+
+  it("is true at the instant of the member-action event", () => {
+    expect(hasMemberActionStarted(events, PHASE_START)).toBe(true);
+  });
+});
+
+describe("computeMemberActionAwayStatus", () => {
+  it("measures the window from the member-action event, not an earlier event", () => {
+    const events = [
+      { newStatus: ActionStatus.Planned, date: new Date("2019-12-01") },
+      { newStatus: ActionStatus.MemberAction, date: PHASE_START },
+      { newStatus: ActionStatus.Resolution, date: DEADLINE },
+    ].map((event) => Object.assign(new ActionEvent(), event));
+    const awayRange = Object.assign(new UserAwayRange(), {
+      startDate: new Date("2019-12-05"),
+      endDate: new Date("2019-12-10"),
+    });
+    expect(
+      computeMemberActionAwayStatus({
+        action: { events },
+        user: { awayRanges: [awayRange] },
+        now: NOW,
+      }),
+    ).toBe(TaskAwayStatus.NotAway);
   });
 });
 

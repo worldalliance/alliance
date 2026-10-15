@@ -176,7 +176,7 @@ function statusAt(params: {
   now: Date;
 }): ActionStatus {
   const { events, now } = params;
-  const past = events.filter((event) => new Date(event.date) < now);
+  const past = events.filter((event) => new Date(event.date) <= now);
   if (past.length === 0) return "draft";
   return past.reduce((latest, event) =>
     new Date(event.date) > new Date(latest.date) ? event : latest,
@@ -241,7 +241,7 @@ export function followUpHomePlacement(params: {
   const reachesMembersAt = (time: number) =>
     firstOpen <= time &&
     isFollowUpFormActiveAt(followUpForm, new Date(time)) &&
-    statusAt({ events: parent.events, now: new Date(time + 1) }) !== "draft";
+    statusAt({ events: parent.events, now: new Date(time) }) !== "draft";
   const firstReach = [
     now.getTime(),
     start.getTime(),

@@ -5,6 +5,7 @@ import {
 } from "src/user/entities/contract-event.entity";
 import {
   closedEnrollmentsInCatchUp,
+  CohortEnrollmentState,
   decisionReadActionIds,
   findReadClosedEnrollments,
   isSettled,
@@ -96,6 +97,14 @@ describe("openEnrollments", () => {
         ({ action }) => action,
       ),
     ).toEqual([open, onboarding]);
+  });
+
+  it("opens at the instant of the member-action event", () => {
+    const action = makeAction({ start: NOW });
+    expect(openEnrollments([action], NOW)).toEqual([
+      { action, enrollment: { state: CohortEnrollmentState.Open, start: NOW } },
+    ]);
+    expect(openEnrollments([action], new Date(NOW.getTime() - 1))).toEqual([]);
   });
 });
 

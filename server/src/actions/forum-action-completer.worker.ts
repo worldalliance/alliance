@@ -41,6 +41,7 @@ import {
   parseAction,
   type ParsedAction,
 } from "./entities/action.entity";
+import { hasTakenEffect } from "./utils/action-event";
 
 const [PROCESS_ONE_LOCK_KEY1, PROCESS_ONE_LOCK_KEY2] =
   LOCK_KEYS.forumActionCompleter;
@@ -100,7 +101,7 @@ export class ForumActionCompleterWorker {
           // started and its closing event hasn't happened yet.
           if (
             !memberActionEvent ||
-            memberActionEvent.date > now ||
+            !hasTakenEffect(memberActionEvent.date, now) ||
             !deadlineEvent ||
             hasMemberActionDeadlinePassed(deadlineEvent.date, now)
           ) {
