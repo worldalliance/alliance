@@ -90,9 +90,7 @@ const renderTab = (
   return { client: query.client, actionInvalidated };
 };
 
-const createUpdate = (
-  params: { mode?: string; actionReloadHangs?: boolean } = {},
-) => {
+const createUpdate = (params: { actionReloadHangs?: boolean } = {}) => {
   const tab = renderTab([], params);
   fireEvent.change(screen.getByPlaceholderText("Title..."), {
     target: { value: "Hearing scheduled" },
@@ -100,12 +98,6 @@ const createUpdate = (
   fireEvent.change(screen.getByPlaceholderText("Notification message"), {
     target: { value: "a hearing on the bill" },
   });
-  if (params.mode) {
-    fireEvent.change(
-      screen.getByRole("combobox", { name: /Recognition copy/ }),
-      { target: { value: params.mode } },
-    );
-  }
   fireEvent.click(
     screen.getByRole("button", { name: "Create and write content" }),
   );
@@ -141,17 +133,18 @@ describe("ActionUpdatesTab", () => {
     expect(await screen.findByText("Update 9")).toBeTruthy();
   });
 
-  it("creates the update in the recognition mode picked", async () => {
+  it("creates the update with the collective result as written", async () => {
     let body: unknown;
     answer = async (request) => {
       body = await request.json();
       return Response.json({ id: 9 }, { status: 201 });
     };
 
-    createUpdate({ mode: "retrospective" });
+    createUpdate();
 
     expect(await screen.findByText("Update 9")).toBeTruthy();
-    expect(body).toMatchObject({ notificationMode: "retrospective" });
+    expect(body).toMatchObject({ shortNotifString: "a hearing on the bill" });
+    expect(body).not.toHaveProperty("notificationMode");
   });
 
   it("previews a split result as it's typed, and creates it split", async () => {

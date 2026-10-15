@@ -3216,8 +3216,6 @@ export type ReminderAnchorCandidateDto = {
     deadlineEventDate: string;
 };
 
-export type ActionUpdateRecognitionMode = 'normal' | 'retrospective';
-
 export type CreateActionUpdateDto = {
     title: string;
     /**
@@ -3231,16 +3229,9 @@ export type CreateActionUpdateDto = {
     uninvolvedResult?: string | null;
     associatedEventId?: number;
     tagId?: string;
-    notificationMode: ActionUpdateRecognitionMode;
-    contributionFormula?: {
-        [key: string]: unknown;
-    } | null;
-    retrospectiveContributionFormula?: {
-        [key: string]: unknown;
-    } | null;
 };
 
-export type ActionUpdateNotificationMode = 'legacy' | 'normal' | 'retrospective';
+export type ActionUpdateNotificationMode = 'legacy' | 'normal';
 
 export type AdminActionUpdateDto = {
     id: number;
@@ -3266,12 +3257,6 @@ export type AdminActionUpdateDto = {
     };
     actionName?: string;
     notificationMode: ActionUpdateNotificationMode;
-    contributionFormula: {
-        [key: string]: unknown;
-    } | null;
-    retrospectiveContributionFormula: {
-        [key: string]: unknown;
-    } | null;
     splitCollectiveResult: boolean;
     nonCompleterResult: string | null;
     uninvolvedResult: string | null;
@@ -3290,31 +3275,12 @@ export type UpdateActionUpdateDto = {
     nonCompleterResult?: string | null;
     uninvolvedResult?: string | null;
     notifyType?: ActionUpdateNotifyType;
-    notificationMode?: ActionUpdateRecognitionMode;
-    contributionFormula?: {
-        [key: string]: unknown;
-    } | null;
-    retrospectiveContributionFormula?: {
-        [key: string]: unknown;
-    } | null;
     associatedEventId?: number | null;
     tagId?: string | null;
     schema?: {
         [key: string]: unknown;
     };
     expectedSchemaSnapshotId?: number;
-};
-
-export type RecognitionMemberIssueDto = {
-    userId: number;
-    name: string;
-    error: string;
-};
-
-export type RecognitionCheckDto = {
-    problems: Array<string>;
-    members: Array<RecognitionMemberIssueDto>;
-    collectiveSubject: string;
 };
 
 export type RecognitionPreviewAudienceDto = {
@@ -11228,30 +11194,6 @@ export type ActionsNotifyUpdateAdminResponses = {
 };
 
 export type ActionsNotifyUpdateAdminResponse = ActionsNotifyUpdateAdminResponses[keyof ActionsNotifyUpdateAdminResponses];
-
-export type ActionsCheckUpdateRecognitionAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/updates/{id}/recognition-check';
-};
-
-export type ActionsCheckUpdateRecognitionAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsCheckUpdateRecognitionAdminError = ActionsCheckUpdateRecognitionAdminErrors[keyof ActionsCheckUpdateRecognitionAdminErrors];
-
-export type ActionsCheckUpdateRecognitionAdminResponses = {
-    200: RecognitionCheckDto;
-};
-
-export type ActionsCheckUpdateRecognitionAdminResponse = ActionsCheckUpdateRecognitionAdminResponses[keyof ActionsCheckUpdateRecognitionAdminResponses];
 
 export type ActionsPreviewUpdateRecognitionCountsAdminData = {
     body: RecognitionPreviewAudienceDto;

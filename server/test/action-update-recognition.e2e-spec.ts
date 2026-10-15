@@ -1,7 +1,4 @@
-import {
-  RecognitionBranch,
-  recognitionCopySchema,
-} from "@alliance/common/action-update-copy";
+import { recognitionCopySchema } from "@alliance/common/action-update-copy";
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { addDays, milliseconds } from "date-fns";
 import { ActionUpdateRecognitionService } from "src/actions/action-update-recognition.service";
@@ -26,42 +23,29 @@ import { Mail } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { Mms } from "src/mms/mms.entity";
 import { MmsService } from "src/mms/mms.service";
-import { ExperimentAssignment } from "src/notifs/entities/experiment-assignment.entity";
 import {
   UnreadContent,
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
 import { Push } from "src/push/push.entity";
-import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { ContractEvent } from "src/user/entities/contract-event.entity";
 import { Tag } from "src/user/entities/tag.entity";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import request from "supertest";
-import { In } from "typeorm";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
-  createFormWithSnapshot,
   createTestApp,
   giveActiveContract,
   stubExpoClient,
   type TestContext,
 } from "./e2e-test-utils";
 
-const lettersFormula = (formula: string) => ({
-  inputs: { input1: { kind: "field", fieldId: "letters" } },
-  formula,
-});
-const LETTERS = lettersFormula('input1 + " letters"');
-const LETTERS_OR_SOME = lettersFormula('(input1 ?? "some") + " letters"');
-
 describe("action update recognition (e2e)", () => {
   let ctx: TestContext;
   let recognition: ActionUpdateRecognitionService;
   let action: Action;
   let audience: Tag;
-  let formId: number;
-  let formSnapshotId: number;
   let memberCount = 0;
 
   const admin = (
@@ -106,37 +90,12 @@ describe("action update recognition (e2e)", () => {
     return user;
   };
 
-  const complete = async (
-    user: User,
-    params: { letters?: number; daysAgo?: number } = {},
-  ) => {
-    const response =
-      params.letters === undefined
-        ? undefined
-        : await ctx.dataSource.getRepository(FormResponse).save({
-            formId,
-            formSnapshotId,
-            user: { id: user.id },
-            answers: { letters: params.letters },
-          });
-    const activity = await ctx.dataSource.getRepository(ActionActivity).save({
+  const complete = (user: User) =>
+    ctx.dataSource.getRepository(ActionActivity).save({
       actionId: action.id,
       userId: user.id,
       type: ActionActivityType.USER_COMPLETED,
-      taskFormResponse: response,
     });
-    if (params.daysAgo !== undefined) {
-      await ctx.dataSource.getRepository(ActionActivity).update(activity.id, {
-        createdAt: addDays(new Date(), -params.daysAgo),
-      });
-    }
-  };
-
-  const setAnswers = (user: User, answers: Record<string, number>) =>
-    ctx.dataSource.query(
-      'UPDATE form_response SET answers = $1 WHERE "userId" = $2',
-      [answers, user.id],
-    );
 
   const createUpdate = async (body: Record<string, unknown> = {}) => {
     const created = await admin("post", `/actions/createUpdate/${action.id}`, {
@@ -145,8 +104,6 @@ describe("action update recognition (e2e)", () => {
       date: new Date(Date.now() - milliseconds({ minutes: 1 })).toISOString(),
       notifyType: "tag",
       tagId: audience.id,
-      notificationMode: "normal",
-      contributionFormula: LETTERS,
       ...body,
     }).expect(201);
     await admin("patch", `/actions/updateUpdate/${created.body.id}`, {
@@ -191,26 +148,6 @@ describe("action update recognition (e2e)", () => {
     audience = await ctx.dataSource
       .getRepository(Tag)
       .save({ name: "Recognition audience", description: "" });
-    const { form, snapshot } = await createFormWithSnapshot(ctx.dataSource, {
-      title: "Letters form",
-      schema: {
-        pages: [
-          {
-            id: "p1",
-            fields: [
-              {
-                id: "letters",
-                type: "input",
-                kind: "number",
-                label: "Letters",
-              },
-            ],
-          },
-        ],
-      },
-    });
-    formId = form.id;
-    formSnapshotId = snapshot.id;
     action = await ctx.dataSource.getRepository(Action).save({
       name: "Write to your representative",
       category: [],
@@ -218,7 +155,6 @@ describe("action update recognition (e2e)", () => {
       shortDescription: "Short",
       visibilityMode: VisibilityMode.Public,
       cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
-      taskFormId: form.id,
     });
     await ctx.dataSource.getRepository(ActionEvent).save({
       title: "Launch",
@@ -242,18 +178,14 @@ describe("action update recognition (e2e)", () => {
     );
   });
 
-  it("sends A to every completer and B to everyone else in the audience, on each channel, drawing no arm", async () => {
+  it("sends every member the collective result as written, on each channel", async () => {
     const completer = await createMember();
-    const otherCompleter = await createMember();
     const nonCompleter = await createMember();
-    const adminRecorded = await createMember();
     const outsider = await createMember({ inAudience: false });
-    await complete(completer, { letters: 3 });
-    await complete(otherCompleter, { letters: 5 });
-    await complete(adminRecorded);
-    await complete(outsider, { letters: 2 });
+    await complete(completer);
+    await complete(outsider);
 
-    const id = await createUpdate({ contributionFormula: LETTERS_OR_SOME });
+    const id = await createUpdate();
     await notify(id).expect(200);
     await deliverAll();
 
@@ -262,85 +194,45 @@ describe("action update recognition (e2e)", () => {
       new Map(entries.map((entry) => [entry.user?.id, entry.content])),
     ).toEqual(
       new Map([
-        [
-          completer.id,
-          { message: ["Your 3 letters led to a hearing on the bill."] },
-        ],
-        [
-          otherCompleter.id,
-          { message: ["Your 5 letters led to a hearing on the bill."] },
-        ],
+        [completer.id, { message: ["a hearing on the bill"] }],
         [nonCompleter.id, { message: ["a hearing on the bill"] }],
-        [
-          adminRecorded.id,
-          { message: ["Your some letters led to a hearing on the bill."] },
-        ],
       ]),
     );
     expect(entries.every((entry) => !entry.shouldPush)).toBe(true);
 
-    const a = await exposureOf(id, completer.id);
-    expect(a).toMatchObject({
-      mode: ActionUpdateNotificationMode.Normal,
-      completed: true,
-      branch: RecognitionBranch.A,
-      contribution: "3 letters",
-    });
-    expect(a.deliveredAt).not.toBeNull();
-    expect(a.mms?.body).toMatch(
-      /^Your 3 letters led to a hearing on the bill\. \S+\/actions\/\d+\?cid=/,
+    const exposure = await exposureOf(id, completer.id);
+    expect(exposure.completed).toBe(true);
+    expect((await exposureOf(id, nonCompleter.id)).completed).toBe(false);
+    expect(exposure.deliveredAt).not.toBeNull();
+    expect(exposure.mms?.body).toMatch(
+      /^Update: a hearing on the bill \S+\/actions\/\d+\?cid=/,
     );
-    expect(a.mms?.body.endsWith(`?cid=${a.mms?.cid}`)).toBe(true);
+    expect(exposure.mms?.body.endsWith(`?cid=${exposure.mms?.cid}`)).toBe(true);
     expect(
       await ctx.dataSource
         .getRepository(MessageTracking)
-        .findOneByOrFail({ trackingId: a.mms?.cid ?? "" }),
+        .findOneByOrFail({ trackingId: exposure.mms?.cid ?? "" }),
     ).toMatchObject({
       channel: MessageChannel.Sms,
       source: MessageSource.ActionUpdate,
       userId: completer.id,
       context: { actionId: expect.any(Number), actionUpdateId: id },
     });
-    expect(recognitionCopySchema.parse(a.copy).emailSubject).toBe(
-      "Your 3 letters led to a hearing on the bill.",
-    );
-    expect(a.mail?.to).toBe(completer.email);
-    const pushes = await ctx.dataSource
-      .getRepository(Push)
-      .findBy({ unreadContent: { id: a.unreadContentId ?? -1 } });
-    expect(pushes.map((push) => push.body)).toEqual([
-      "Your 3 letters led to a hearing on the bill.",
-    ]);
-
-    expect(await exposureOf(id, otherCompleter.id)).toMatchObject({
-      completed: true,
-      branch: RecognitionBranch.A,
-      contribution: "5 letters",
-    });
-    const b = await exposureOf(id, nonCompleter.id);
-    expect(b).toMatchObject({
-      completed: false,
-      branch: RecognitionBranch.B,
-    });
-    expect(b.mms?.body).toMatch(/^Update: a hearing on the bill \S+/);
-    expect(recognitionCopySchema.parse(b.copy).emailSubject).toBe(
+    expect(recognitionCopySchema.parse(exposure.copy).emailSubject).toBe(
       "a hearing on the bill",
     );
+    expect(exposure.mail?.to).toBe(completer.email);
+    const pushes = await ctx.dataSource
+      .getRepository(Push)
+      .findBy({ unreadContent: { id: exposure.unreadContentId ?? -1 } });
+    expect(pushes.map((push) => push.body)).toEqual([
+      "Update: a hearing on the bill",
+    ]);
 
     expect(
       await ctx.dataSource
         .getRepository(ActionUpdateExposure)
         .countBy({ actionUpdateId: id, userId: outsider.id }),
-    ).toBe(0);
-    expect(
-      await ctx.dataSource.getRepository(ExperimentAssignment).countBy({
-        userId: In([
-          completer.id,
-          otherCompleter.id,
-          nonCompleter.id,
-          adminRecorded.id,
-        ]),
-      }),
     ).toBe(0);
 
     await notify(id).expect(409);
@@ -362,7 +254,7 @@ describe("action update recognition (e2e)", () => {
     expect(
       await ctx.dataSource
         .getRepository(Push)
-        .countBy({ unreadContent: { id: a.unreadContentId ?? -1 } }),
+        .countBy({ unreadContent: { id: exposure.unreadContentId ?? -1 } }),
     ).toBe(1);
   });
 
@@ -371,7 +263,7 @@ describe("action update recognition (e2e)", () => {
     const nonCompleter = await createMember({ inCohort: true });
     const uninvolved = await createMember();
     const withdrawn = await createMember({ inCohort: true });
-    await complete(completer, { letters: 3 });
+    await complete(completer);
     await ctx.dataSource.getRepository(ActionActivity).save({
       actionId: action.id,
       userId: withdrawn.id,
@@ -394,7 +286,7 @@ describe("action update recognition (e2e)", () => {
       ),
     ).toEqual(
       new Map([
-        [completer.id, { message: ["Your 3 letters led to a hearing."] }],
+        [completer.id, { message: ["a hearing"] }],
         [uninvolved.id, { message: ["a hearing; join the next one"] }],
         [withdrawn.id, { message: ["a hearing; join the next one"] }],
       ]),
@@ -419,7 +311,7 @@ describe("action update recognition (e2e)", () => {
     await createMember();
     await createMember({ inAudience: false });
     for (const completer of completers) {
-      await complete(completer, { letters: 1 });
+      await complete(completer);
     }
     await saveLiveCohortDecisions(ctx, [action.id]);
     const id = await createUpdate({ notifyType: "none", tagId: undefined });
@@ -437,9 +329,9 @@ describe("action update recognition (e2e)", () => {
     });
   });
 
-  it("sends B to a completer who later withdrew", async () => {
+  it("treats a completer who later withdrew as not completed", async () => {
     const withdrawn = await createMember();
-    await complete(withdrawn, { letters: 3, daysAgo: 2 });
+    await complete(withdrawn);
     await ctx.dataSource.getRepository(ActionActivity).save({
       actionId: action.id,
       userId: withdrawn.id,
@@ -450,165 +342,59 @@ describe("action update recognition (e2e)", () => {
 
     const exposure = await exposureOf(id, withdrawn.id);
     expect(exposure.completed).toBe(false);
-    expect(exposure.branch).toBe(RecognitionBranch.B);
   });
 
-  it("refuses legacy copy on new updates, and recognition copy on old ones", async () => {
-    const legacy = {
-      title: "Legacy",
-      shortNotifString: "x",
-      date: new Date().toISOString(),
-      notifyType: "none",
-    };
-    await admin("post", `/actions/createUpdate/${action.id}`, legacy).expect(
-      400,
-    );
-    await admin("post", `/actions/createUpdate/${action.id}`, {
-      ...legacy,
-      notificationMode: "legacy",
-    }).expect(400);
-
+  it("creates every new update with recognition copy", async () => {
     const id = await createUpdate();
-    await admin("patch", `/actions/updateUpdate/${id}`, {
-      notificationMode: "legacy",
-    }).expect(400);
-    await ctx.dataSource
-      .getRepository(ActionUpdate)
-      .update(id, { notificationMode: ActionUpdateNotificationMode.Legacy });
-    await admin("patch", `/actions/updateUpdate/${id}`, {
-      notificationMode: "normal",
-    }).expect(400);
+    expect(
+      (await ctx.dataSource.getRepository(ActionUpdate).findOneByOrFail({ id }))
+        .notificationMode,
+    ).toBe(ActionUpdateNotificationMode.Normal);
   });
 
-  it("refuses a malformed formula, or one reading another form, on create and update", async () => {
-    const otherForm = {
-      inputs: {
-        input1: {
-          kind: "sourceField",
-          sourceFormId: formId,
-          fieldId: "letters",
-        },
-      },
-      formula: "input1",
-    };
-    const malformed = { formula: 7 };
-    for (const contributionFormula of [otherForm, malformed]) {
-      await admin("post", `/actions/createUpdate/${action.id}`, {
-        title: "Recognition",
-        shortNotifString: "x",
-        date: new Date().toISOString(),
-        notifyType: "none",
-        notificationMode: "normal",
-        contributionFormula,
-      }).expect(400);
-    }
-
-    const id = await createUpdate();
-    for (const retrospectiveContributionFormula of [otherForm, malformed]) {
-      await admin("patch", `/actions/updateUpdate/${id}`, {
-        retrospectiveContributionFormula,
-      }).expect(400);
-    }
-    const stored = await ctx.dataSource
-      .getRepository(ActionUpdate)
-      .findOneByOrFail({ id });
-    expect(stored.retrospectiveContributionFormula).toBeNull();
-    expect(stored.contributionFormula).toEqual(LETTERS);
-  });
-
-  it("blocks a send on any completer's broken contribution, and names each", async () => {
-    const completer = await createMember();
-    const otherCompleter = await createMember();
-    await complete(completer);
-    await complete(otherCompleter);
-    const id = await createUpdate({
-      retrospectiveContributionFormula: lettersFormula("(("),
-    });
-
-    const check = await admin(
-      "post",
-      `/actions/updates/${id}/recognition-check`,
-    ).expect(200);
-    expect(check.body).toEqual({
-      problems: [],
-      collectiveSubject: "a hearing on the bill",
-      members: expect.arrayContaining(
-        [completer, otherCompleter].map((member) => ({
-          userId: member.id,
-          name: member.name,
-          error: "The formula resolves to empty text.",
-        })),
-      ),
-    });
-    expect(check.body.members).toHaveLength(2);
-    await notify(id).expect(400);
-    expect(await entriesFor(id)).toHaveLength(0);
-
-    await admin("patch", `/actions/updateUpdate/${id}`, {
-      contributionFormula: LETTERS_OR_SOME,
-    }).expect(200);
-    await notify(id).expect(200);
-    expect((await exposureOf(id, completer.id)).branch).toBe(
-      RecognitionBranch.A,
-    );
-    expect((await exposureOf(id, otherCompleter.id)).branch).toBe(
-      RecognitionBranch.A,
-    );
-  });
-
-  it("blocks a send on missing configuration or a formula that doesn't compile", async () => {
+  it("blocks a send with no collective result", async () => {
     await createMember();
     const id = await createUpdate({
-      contributionFormula: lettersFormula("(("),
+      splitCollectiveResult: true,
+      shortNotifString: "",
     });
-    const response = await notify(id).expect(400);
-    expect(response.body.message).toMatch(/doesn't compile/);
-
-    await admin("patch", `/actions/updateUpdate/${id}`, {
-      notificationMode: "retrospective",
-    }).expect(200);
-    expect((await notify(id).expect(400)).body.message).toMatch(
-      /Write the retrospective contribution formula/,
+    expect((await notify(id).expect(400)).body.message).toBe(
+      "Write at least one group's result.",
     );
   });
 
   it("holds a scheduled send that turns invalid, then delivers it once repaired", async () => {
-    const completer = await createMember();
-    await complete(completer, { letters: 3, daysAgo: 1 });
+    const member = await createMember();
     const due = addDays(new Date(), 14);
-    const id = await createUpdate({
-      date: due.toISOString(),
-      notificationMode: "retrospective",
-      retrospectiveContributionFormula: lettersFormula(
-        '"sent " + input1 + " letters"',
-      ),
-    });
+    const id = await createUpdate({ date: due.toISOString() });
     await notify(id).expect(200);
     expect(await entriesFor(id)).toHaveLength(0);
 
-    await setAnswers(completer, {});
+    await ctx.dataSource.getRepository(ActionUpdate).update(id, {
+      splitCollectiveResult: true,
+      shortNotifString: "",
+    });
     expect((await recognition.prepare(id, due)).ok).toBe(false);
     const held = await ctx.dataSource
       .getRepository(ActionUpdate)
       .findOneByOrFail({ id });
-    expect(held.notificationHeldReason).toMatch(/1 member/);
+    expect(held.notificationHeldReason).toBe(
+      "Write at least one group's result.",
+    );
     expect(await entriesFor(id)).toHaveLength(0);
     await deliverAll();
-    expect((await exposureOf(id, completer.id)).deliveryClaimedAt).toBeNull();
+    expect((await exposureOf(id, member.id)).deliveryClaimedAt).toBeNull();
 
-    await setAnswers(completer, { letters: 4 });
+    await ctx.dataSource
+      .getRepository(ActionUpdate)
+      .update(id, { uninvolvedResult: "a hearing while you were away" });
     expect((await recognition.prepare(id, due)).ok).toBe(true);
     expect((await recognition.prepare(id, due)).ok).toBe(true);
     await deliverAll();
 
-    const exposure = await exposureOf(id, completer.id);
-    expect(exposure).toMatchObject({
-      branch: RecognitionBranch.A,
-      weeksAgo: 2,
-      contribution: "sent 4 letters",
-    });
-    expect(recognitionCopySchema.parse(exposure.copy).emailSubject).toBe(
-      "2 weeks ago you sent 4 letters.",
+    const exposure = await exposureOf(id, member.id);
+    expect(recognitionCopySchema.parse(exposure.copy).inApp).toBe(
+      "a hearing while you were away",
     );
     expect(exposure.mail).not.toBeNull();
     expect(await entriesFor(id)).toHaveLength(1);
@@ -619,31 +405,20 @@ describe("action update recognition (e2e)", () => {
   });
 
   it("freezes copy at the snapshot, so later edits leave every channel alone", async () => {
-    const completer = await createMember();
-    await complete(completer, { letters: 3 });
+    const member = await createMember();
     const id = await createUpdate();
     await notify(id).expect(200);
 
-    await setAnswers(completer, { letters: 9 });
     await admin("patch", `/actions/updateUpdate/${id}`, {
       shortNotifString: "something else",
     }).expect(200);
     await deliverAll();
 
-    const exposure = await exposureOf(id, completer.id);
+    const exposure = await exposureOf(id, member.id);
     expect(exposure.unreadContent?.content).toEqual({
-      message: ["Your 3 letters led to a hearing on the bill."],
+      message: ["a hearing on the bill"],
     });
-    expect(exposure.mms?.body).toMatch(
-      /^Your 3 letters led to a hearing on the bill\. /,
-    );
-
-    await setAnswers(completer, {});
-    const check = await admin(
-      "post",
-      `/actions/updates/${id}/recognition-check`,
-    ).expect(200);
-    expect(check.body.members).toEqual([]);
+    expect(exposure.mms?.body).toMatch(/^Update: a hearing on the bill /);
   });
 
   it.each([

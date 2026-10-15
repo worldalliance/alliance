@@ -1,7 +1,4 @@
-import type {
-  AdminActionUpdateDto,
-  UpdateActionUpdateDto,
-} from "@alliance/shared/client";
+import type { AdminActionUpdateDto } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
@@ -25,8 +22,6 @@ afterEach(() => {
 });
 
 let served: AdminActionUpdateDto = update();
-let variantsAnswer: () => Response = () =>
-  Response.json({ variants: [], stats: [] });
 let countedAudiences: unknown[] = [];
 
 const api = serveApi(
@@ -44,7 +39,6 @@ const api = serveApi(
           },
         ],
       }),
-    "GET /actions/:id/form-variants": () => variantsAnswer(),
     "GET /user/tags": () => Response.json([]),
     "GET /tasks/listForms": () => Response.json([]),
     "POST /actions/updates/:id/recognition-preview-counts": async ({
@@ -97,7 +91,6 @@ const renderDetails = async () => {
 describe("ActionUpdatePage", () => {
   beforeEach(() => {
     served = update();
-    variantsAnswer = () => Response.json({ variants: [], stats: [] });
     countedAudiences = [];
   });
 
@@ -187,24 +180,21 @@ describe("ActionUpdatePage", () => {
 
     await renderDetails();
 
-    expect(screen.queryByText("Recognition copy")).toBeNull();
     expect(screen.queryByText("Preview Update")).toBeNull();
     expect(screen.queryByText("Split by who completed the action")).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: "Check recipients" }),
-    ).toBeNull();
   });
 
-  it("offers the check and the formula until each member's copy is frozen", async () => {
+  it("offers the split until each member's copy is frozen", async () => {
     await renderDetails();
 
     expect(
-      await screen.findByRole("button", { name: "Check recipients" }),
+      screen.getByRole("checkbox", {
+        name: "Split by who completed the action",
+      }),
     ).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: "Mode" })).toBeTruthy();
   });
 
-  it("stops offering the check and the formula once copy is frozen", async () => {
+  it("stops offering the split once copy is frozen", async () => {
     served = update({
       notifiedAt: "2026-10-01T00:00:00.000Z",
       recognitionPreparedAt: "2026-10-01T00:00:00.000Z",
@@ -213,10 +203,7 @@ describe("ActionUpdatePage", () => {
     await renderDetails();
 
     expect(await screen.findByText(/copy was frozen/)).toBeTruthy();
-    expect(
-      screen.queryByRole("button", { name: "Check recipients" }),
-    ).toBeNull();
-    expect(screen.queryByRole("combobox", { name: "Mode" })).toBeNull();
+    expect(screen.queryByText("Split by who completed the action")).toBeNull();
     expect(screen.queryByText("Preview Update")).toBeNull();
     expect(countedAudiences).toEqual([]);
   });
@@ -230,7 +217,7 @@ describe("ActionUpdatePage", () => {
       target: { value: "a vote" },
     });
     expect(preview().textContent).toContain("PushUpdate: a vote");
-    expect(await within(preview()).findByText("7 members")).toBeTruthy();
+    expect(await within(preview()).findByText("9 members")).toBeTruthy();
 
     fireEvent.click(
       screen.getByRole("checkbox", {
@@ -266,86 +253,11 @@ describe("ActionUpdatePage", () => {
     ).toBeTruthy();
     expect(countedAudiences).toHaveLength(1);
   });
-
-  it("keeps the action's events when its form variants fail to load", async () => {
-    variantsAnswer = () =>
-      Response.json({ statusCode: 500, message: "boom" }, { status: 500 });
-
-    await renderDetails();
-
-    expect(
-      await screen.findByText(/The action's forms couldn't be loaded/),
-    ).toBeTruthy();
-    expect(screen.getByRole("option", { name: /^Launch/ })).toBeTruthy();
-  });
-
-  it("reads the questions of the action's variant forms", async () => {
-    const formsRequested: string[] = [];
-    variantsAnswer = () =>
-      Response.json({
-        variants: [
-          {
-            id: 1,
-            actionId: 2,
-            formId: 8,
-            name: "Variant A",
-            splitValue: 0.5,
-            createdAt: "2026-10-01T00:00:00.000Z",
-            updatedAt: "2026-10-01T00:00:00.000Z",
-          },
-        ],
-        stats: [],
-      });
-    api.alsoServing({
-      "GET /tasks/slug/:id": ({ params }) => {
-        formsRequested.push(params.id);
-        return Response.json({
-          id: Number(params.id),
-          title: "Survey",
-          formSnapshotId: 7,
-          schema: { pages: [], outputViews: [] },
-        });
-      },
-    });
-
-    await renderDetails();
-
-    await waitFor(() => expect(formsRequested).toContain("8"));
-    expect(screen.queryByText(/This action has no form/)).toBeNull();
-  });
-
-  it("holds the check until a typed formula is saved into the active mode's column", async () => {
-    let saved: UpdateActionUpdateDto | undefined;
-    api.alsoServing({
-      "PATCH /actions/updateUpdate/:id": async ({ request }) => {
-        saved = await request.json();
-        return Response.json({ ...served, ...saved });
-      },
-    });
-    await renderDetails();
-
-    const [formula] = screen
-      .getAllByRole("textbox")
-      .filter((box) => box instanceof HTMLTextAreaElement);
-    fireEvent.change(formula, { target: { value: '"3 letters"' } });
-    expect(screen.getByText("Save your changes before checking.")).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
-
-    expect(
-      await screen.findByText(
-        "Resolves each recipient's contribution, as sending would.",
-      ),
-    ).toBeTruthy();
-    expect(saved).toMatchObject({
-      notificationMode: "normal",
-      contributionFormula: { inputs: {}, formula: '"3 letters"' },
-      retrospectiveContributionFormula: null,
-    });
-  });
 });
 
 describe("while an update's notifications are on hold", () => {
+  const SENDABLE =
+    "Nothing has been sent yet. Members are notified when you send it.";
   const realSetInterval = globalThis.setInterval;
 
   beforeEach(() => {
@@ -423,18 +335,15 @@ describe("while an update's notifications are on hold", () => {
     });
     await waitFor(() => expect(pollWaiting).toBe(true));
 
-    const [formula] = screen
-      .getAllByRole("textbox")
-      .filter((box) => box instanceof HTMLTextAreaElement);
-    fireEvent.change(formula, { target: { value: '"3 letters"' } });
+    fireEvent.change(screen.getByDisplayValue("a hearing on the bill"), {
+      target: { value: "a vote" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
-    await screen.findByText(
-      "Resolves each recipient's contribution, as sending would.",
-    );
+    await screen.findByText(SENDABLE);
     releasePoll();
     await Bun.sleep(30);
 
-    expect(screen.queryByText("Save your changes before checking.")).toBeNull();
+    expect(screen.queryByText("Save your changes before sending.")).toBeNull();
   });
 
   it("keeps a save whose response lands in the same tick as the poll's", async () => {
@@ -461,21 +370,16 @@ describe("while an update's notifications are on hold", () => {
     });
     await waitFor(() => expect(pollWaiting).toBe(true));
 
-    const [formula] = screen
-      .getAllByRole("textbox")
-      .filter((box) => box instanceof HTMLTextAreaElement);
-    fireEvent.change(formula, { target: { value: '"3 letters"' } });
+    fireEvent.change(screen.getByDisplayValue("a hearing on the bill"), {
+      target: { value: "a vote" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
     await waitFor(() => expect(saveWaiting).toBe(true));
     releaseSave();
     releasePoll();
 
-    expect(
-      await screen.findByText(
-        "Resolves each recipient's contribution, as sending would.",
-      ),
-    ).toBeTruthy();
+    expect(await screen.findByText(SENDABLE)).toBeTruthy();
     await Bun.sleep(30);
-    expect(screen.queryByText("Save your changes before checking.")).toBeNull();
+    expect(screen.queryByText("Save your changes before sending.")).toBeNull();
   });
 });

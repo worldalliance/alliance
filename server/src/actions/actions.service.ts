@@ -169,15 +169,12 @@ import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionParticipantsService } from "./action-participants.service";
 import { replaceReviewers } from "./action-reviewers";
 import {
-  recognitionModeOf,
+  readRecognitionConfig,
+  usesRecognition,
   type RecognitionPreviewCounts,
 } from "./action-update-recognition";
 import { ActionUpdateRecognitionPreviewService } from "./action-update-recognition-preview.service";
-import {
-  ActionUpdateRecognitionService,
-  assertContributionFormulasWritable,
-  describeRecognitionCheck,
-} from "./action-update-recognition.service";
+import { ActionUpdateRecognitionService } from "./action-update-recognition.service";
 import {
   checkActionShowsWhenEntriesArrive,
   isActionUpdatePublished,
@@ -256,6 +253,7 @@ import {
 } from "./entities/action-suite.entity";
 import {
   ActionUpdate,
+  ActionUpdateNotificationMode,
   ActionUpdateNotifyType,
   lockActionUpdateRow,
 } from "./entities/action-update.entity";
@@ -3113,7 +3111,6 @@ export class ActionsService {
     id: number,
     createActionUpdateDto: CreateActionUpdateDto,
   ): Promise<ActionUpdate> {
-    assertContributionFormulasWritable(createActionUpdateDto);
     const action = await this.actionRepository.findOneOrFail({
       where: { id },
     });
@@ -3149,6 +3146,7 @@ export class ActionsService {
           em.save(
             em.create(ActionUpdate, {
               ...createActionUpdateDto,
+              notificationMode: ActionUpdateNotificationMode.Normal,
               schemaSnapshotId: emptySnapshot.id,
               visibleAt: null,
               action,
@@ -3205,16 +3203,10 @@ export class ActionsService {
     // Resolve the audience before claiming: a failure here (a deleted tag, say)
     // has sent nothing, and leaving the claim unset keeps the retry open.
     const recipients = await this.findActionUpdateNotifRecipients(actionUpdate);
-    const recognition =
-      recognitionModeOf(actionUpdate.notificationMode) !== null;
+    const recognition = usesRecognition(actionUpdate.notificationMode);
     if (recognition) {
-      const check = await this.recognitionService.check({
-        update: actionUpdate,
-        userIds: recipients.map((user) => user.id),
-      });
-      if (check.problems.length || check.members.length) {
-        throw new BadRequestException(describeRecognitionCheck(check));
-      }
+      const config = readRecognitionConfig(actionUpdate);
+      if (!config.ok) throw new BadRequestException(config.error);
     }
 
     // The claim and the sends commit together. The claim is the only thing
@@ -3281,17 +3273,6 @@ export class ActionsService {
     return this.findOneActionUpdate(id);
   }
 
-  async checkActionUpdateRecognition(id: number) {
-    const actionUpdate = await this.findOneActionUpdate(id);
-    return this.recognitionService.checkForAdmin({
-      update: actionUpdate,
-      recipientIds: async () =>
-        (await this.findActionUpdateNotifRecipients(actionUpdate)).map(
-          (user) => user.id,
-        ),
-    });
-  }
-
   private async assertActionShowsWhenEntriesArrive(
     actionUpdate: ActionUpdate,
     em: EntityManager = this.actionUpdateRepository.manager,
@@ -3356,7 +3337,6 @@ export class ActionsService {
       }
       return { schema, expectedSchemaSnapshotId };
     });
-    assertContributionFormulasWritable(rest);
 
     // The freeze takes its own pool connections, so it runs before the
     // transaction rather than while holding one.
@@ -3387,15 +3367,6 @@ export class ActionsService {
         gone: () => new NotFoundException("Action, tag or event not found"),
       });
       const actionUpdate = await this.lockActionUpdate(id, em);
-
-      if (
-        rest.notificationMode !== undefined &&
-        recognitionModeOf(actionUpdate.notificationMode) === null
-      ) {
-        throw new BadRequestException(
-          "This update predates recognition copy, so it keeps its original notification.",
-        );
-      }
 
       if (schemaWrite) {
         const written = await this.writeSchemaOrThrow({

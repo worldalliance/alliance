@@ -44,7 +44,6 @@ export enum ActionUpdateNotifyType {
 export enum ActionUpdateNotificationMode {
   Legacy = "legacy",
   Normal = "normal",
-  Retrospective = "retrospective",
 }
 
 @Entity()
@@ -188,16 +187,6 @@ export class ActionUpdate {
   })
   @IsEnum(ActionUpdateNotificationMode)
   notificationMode: ActionUpdateNotificationMode;
-
-  /** `ContributionFormula`, read in normal mode. */
-  @Column({ type: "jsonb", nullable: true })
-  @IsOptional()
-  contributionFormula: unknown | null;
-
-  /** `ContributionFormula`, read in retrospective mode. */
-  @Column({ type: "jsonb", nullable: true })
-  @IsOptional()
-  retrospectiveContributionFormula: unknown | null;
 
   /** When recognition copy was frozen for every recipient. */
   @Column({ type: "timestamptz", nullable: true })

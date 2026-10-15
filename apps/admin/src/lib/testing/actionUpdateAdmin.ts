@@ -20,8 +20,6 @@ export const actionUpdateAdmin = (
     blocks: [{ type: "display", kind: "header", id: "b1", text: "Body" }],
   },
   notificationMode: "normal",
-  contributionFormula: null,
-  retrospectiveContributionFormula: null,
   recognitionPreparedAt: null,
   notificationHeldReason: null,
   ...overrides,

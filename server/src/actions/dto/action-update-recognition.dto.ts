@@ -1,11 +1,7 @@
 import { RecognitionGroup } from "@alliance/common/action-update-copy";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsEnum, IsOptional, IsString } from "class-validator";
-import type {
-  RecognitionMemberIssue,
-  RecognitionPreviewCounts,
-} from "../action-update-recognition";
-import type { RecognitionCheck } from "../action-update-recognition.service";
+import type { RecognitionPreviewCounts } from "../action-update-recognition";
 import {
   type ActionUpdate,
   ActionUpdateNotificationMode,
@@ -19,12 +15,6 @@ export class AdminActionUpdateDto extends ActionUpdateDto {
     enumName: "ActionUpdateNotificationMode",
   })
   notificationMode: ActionUpdateNotificationMode;
-
-  @ApiProperty({ type: Object, nullable: true })
-  contributionFormula: unknown | null;
-
-  @ApiProperty({ type: Object, nullable: true })
-  retrospectiveContributionFormula: unknown | null;
 
   @ApiProperty()
   splitCollectiveResult: boolean;
@@ -44,55 +34,11 @@ export class AdminActionUpdateDto extends ActionUpdateDto {
   constructor(input: ActionUpdate) {
     super(input);
     this.notificationMode = input.notificationMode;
-    this.contributionFormula = input.contributionFormula;
-    this.retrospectiveContributionFormula =
-      input.retrospectiveContributionFormula;
     this.splitCollectiveResult = input.splitCollectiveResult;
     this.nonCompleterResult = input.nonCompleterResult;
     this.uninvolvedResult = input.uninvolvedResult;
     this.recognitionPreparedAt = input.recognitionPreparedAt;
     this.notificationHeldReason = input.notificationHeldReason;
-  }
-}
-
-export class RecognitionMemberIssueDto {
-  @ApiProperty()
-  userId: number;
-
-  @ApiProperty()
-  name: string;
-
-  @ApiProperty()
-  error: string;
-
-  constructor(input: RecognitionMemberIssue) {
-    this.userId = input.userId;
-    this.name = input.name;
-    this.error = input.error;
-  }
-}
-
-export type RecognitionCheckDtoArgs = RecognitionCheck & {
-  collectiveSubject: string;
-};
-
-export class RecognitionCheckDto {
-  @ApiProperty({ type: String, isArray: true })
-  problems: string[];
-
-  @ApiProperty({ type: RecognitionMemberIssueDto, isArray: true })
-  members: RecognitionMemberIssueDto[];
-
-  /** The collective result's email subject, which normal-mode branch A's also ends with. */
-  @ApiProperty()
-  collectiveSubject: string;
-
-  constructor(input: RecognitionCheckDtoArgs) {
-    this.problems = input.problems;
-    this.collectiveSubject = input.collectiveSubject;
-    this.members = input.members.map(
-      (member) => new RecognitionMemberIssueDto(member),
-    );
   }
 }
 

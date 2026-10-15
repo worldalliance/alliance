@@ -17,7 +17,6 @@ import { ActionFormVariant } from "src/actions/entities/action-form-variant.enti
 import { ActionSuite } from "src/actions/entities/action-suite.entity";
 import {
   ActionUpdate,
-  ActionUpdateNotificationMode,
   ActionUpdateNotifyType,
 } from "src/actions/entities/action-update.entity";
 import { Action, VisibilityMode } from "src/actions/entities/action.entity";
@@ -167,7 +166,6 @@ describe("Action writers under a deleted parent (e2e)", () => {
         title: "News",
         date: new Date(),
         notifyType: ActionUpdateNotifyType.None,
-        notificationMode: ActionUpdateNotificationMode.Normal,
         shortNotifString: "",
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
@@ -936,7 +934,6 @@ describe("Action writers under a deleted parent (e2e)", () => {
       title: "News",
       date: new Date(),
       notifyType: ActionUpdateNotifyType.None,
-      notificationMode: ActionUpdateNotificationMode.Normal,
       shortNotifString: "",
     });
     const tags = ctx.dataSource.getRepository(Tag);
@@ -970,7 +967,6 @@ describe("Action writers under a deleted parent (e2e)", () => {
       title: "News",
       date: new Date(),
       notifyType: ActionUpdateNotifyType.None,
-      notificationMode: ActionUpdateNotificationMode.Normal,
       shortNotifString: "",
     });
     const runner = ctx.dataSource.createQueryRunner();
