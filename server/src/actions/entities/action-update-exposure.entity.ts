@@ -1,4 +1,3 @@
-import { RecognitionBranch } from "@alliance/common/action-update-copy";
 import {
   CreateDateColumnTz,
   DeleteDateColumnTz,
@@ -17,10 +16,7 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import {
-  ActionUpdate,
-  ActionUpdateNotificationMode,
-} from "./action-update.entity";
+import { ActionUpdate } from "./action-update.entity";
 
 /**
  * One recipient of a recognition update. Created at send with only the
@@ -47,30 +43,8 @@ export class ActionUpdateExposure {
   @Column()
   userId: number;
 
-  @Column({
-    type: "enum",
-    enum: ActionUpdateNotificationMode,
-    enumName: "ActionUpdateNotificationMode",
-    nullable: true,
-  })
-  mode: ActionUpdateNotificationMode | null;
-
   @Column({ type: "boolean", nullable: true })
   completed: boolean | null;
-
-  @Column({
-    type: "enum",
-    enum: RecognitionBranch,
-    enumName: "RecognitionBranch",
-    nullable: true,
-  })
-  branch: RecognitionBranch | null;
-
-  @Column({ type: "text", nullable: true })
-  contribution: string | null;
-
-  @Column({ type: "integer", nullable: true })
-  weeksAgo: number | null;
 
   /** `RecognitionCopy`. */
   @Column({ type: "jsonb", nullable: true })

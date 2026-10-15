@@ -9,7 +9,6 @@ import {
   actionsFindOneAdmin,
   ActionUpdateNotifyType,
   type ActionEventDto,
-  type ActionFormVariantsListDto,
   type AdminActionUpdateDto,
   type RecognitionPreviewCountsDto,
 } from "@alliance/shared/client";
@@ -22,12 +21,8 @@ import { Eye, EyeOff } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
-  ActionFormStatus,
-  COLLECTIVE_RESULT_DESCRIPTIONS,
+  COLLECTIVE_RESULT_DESCRIPTION,
   NotificationHeldBanner,
-  RecognitionCheck,
-  RecognitionCopySection,
-  type ActionForm,
 } from "../components/ActionUpdateRecognition";
 import { CollectiveResultSplitFields } from "../components/CollectiveResultSplitFields";
 import { FormBuilder } from "../components/FormBuilder";
@@ -39,11 +34,10 @@ import {
   type PreviewCounts,
 } from "../components/UpdatePreview";
 import {
-  checkBlockedReasonOf,
   detailsBody,
   formOf,
   notifyBlockedReasonOf,
-  recognitionModeOf,
+  usesRecognition,
   type ActionUpdateForm,
 } from "../lib/actionUpdateDetails";
 import {
@@ -52,7 +46,6 @@ import {
 } from "../lib/actionUpdateNotifyTypes";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
-import { useFormVariantsAdmin } from "../lib/useFormVariantsAdmin";
 import { useRecognitionPreviewCounts } from "../lib/useRecognitionPreviewCounts";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 
@@ -68,13 +61,6 @@ type Visibility =
   | { state: VisibilityState.Unpublished }
   | { state: VisibilityState.Scheduled; visibleAt: Date }
   | { state: VisibilityState.Published; visibleAt: Date };
-
-type ActionTaskForm =
-  | Exclude<ActionForm, { status: ActionFormStatus.Loaded }>
-  | { status: ActionFormStatus.Loaded; taskFormId: number | undefined };
-
-const variantFormIdsOf = (list: ActionFormVariantsListDto) =>
-  list.variants.map((variant) => variant.formId);
 
 const visibilityOf = (
   update: AdminActionUpdateDto,
@@ -144,13 +130,6 @@ const ActionUpdatePage: React.FC = () => {
   } = useActionUpdateAdmin(updateId);
   const update = query.data;
   const [events, setEvents] = useState<ActionEventDto[]>([]);
-  const [actionTaskForm, setActionTaskForm] = useState<ActionTaskForm>({
-    status: ActionFormStatus.Loading,
-  });
-  const { variants: variantFormIds } = useFormVariantsAdmin(
-    actionId,
-    variantFormIdsOf,
-  );
   const [form, setForm] = useState<ActionUpdateForm | null>(null);
   const [formSource, setFormSource] = useState<AdminActionUpdateDto | null>(
     null,
@@ -189,7 +168,7 @@ const ActionUpdatePage: React.FC = () => {
     tagId: countsTagId,
     enabled:
       !!form &&
-      recognitionModeOf(form.notificationMode) !== null &&
+      usesRecognition(form.notificationMode) &&
       !update?.recognitionPreparedAt &&
       form.notifyType !== "none" &&
       (form.notifyType !== "tag" || countsTagId !== null),
@@ -206,34 +185,13 @@ const ActionUpdatePage: React.FC = () => {
       if (!action.ok) {
         console.error("Failed to load the action:", action.error);
       }
-      const actionData = action.ok ? action.value.data : undefined;
-      if (!actionData) {
-        setActionTaskForm({ status: ActionFormStatus.LoadFailed });
-        return;
-      }
-      setEvents(actionData.events ?? []);
-      setActionTaskForm({
-        status: ActionFormStatus.Loaded,
-        taskFormId: actionData.taskFormId,
-      });
+      setEvents((action.ok && action.value.data?.events) || []);
     };
     load();
     return () => {
       cancelled = true;
     };
   }, [actionId]);
-
-  const actionForm = useMemo(
-    (): ActionForm =>
-      actionTaskForm.status !== ActionFormStatus.Loaded
-        ? actionTaskForm
-        : variantFormIds.data
-          ? { ...actionTaskForm, variantFormIds: variantFormIds.data }
-          : variantFormIds.isError
-            ? { status: ActionFormStatus.LoadFailed }
-            : { status: ActionFormStatus.Loading },
-    [actionTaskForm, variantFormIds.data, variantFormIds.isError],
-  );
 
   const saveDetails = updateMutation.mutateAsync;
   const handleSubmitDetails = useCallback(
@@ -326,7 +284,7 @@ const ActionUpdatePage: React.FC = () => {
   }
 
   const storedSchema = readDisplayOnlySchema(update.schema);
-  const recognitionMode = recognitionModeOf(form.notificationMode);
+  const recognition = usesRecognition(form.notificationMode);
   const hasUnsavedDetails = JSON.stringify(form) !== JSON.stringify(savedForm);
 
   const now = Date.now();
@@ -335,7 +293,6 @@ const ActionUpdatePage: React.FC = () => {
 
   const notifyBlockedReason = notifyBlockedReasonOf({
     notifyType: update.notifyType,
-    formulasReadable: savedForm.formulas !== null,
     hasUnsavedDetails,
     hasBody: !!storedSchema && storedSchema.blocks.length > 0,
   });
@@ -443,14 +400,10 @@ const ActionUpdatePage: React.FC = () => {
       </FormSection>
 
       <FormSection
-        title={
-          recognitionMode
-            ? "Collective result (#{alliance_result})"
-            : "Short notification text"
-        }
+        title={recognition ? "Collective result" : "Short notification text"}
         description={
-          recognitionMode
-            ? COLLECTIVE_RESULT_DESCRIPTIONS[recognitionMode]
+          recognition
+            ? COLLECTIVE_RESULT_DESCRIPTION
             : 'An automatic "Update: " prefix is added to this text.'
         }
       >
@@ -460,27 +413,23 @@ const ActionUpdatePage: React.FC = () => {
           onChange={(e) =>
             setForm({ ...form, shortNotifString: e.target.value })
           }
-          required={!(recognitionMode && form.splitCollectiveResult)}
+          required={!(recognition && form.splitCollectiveResult)}
           className={TEXT_INPUT_CLASS}
         />
-        {recognitionMode && !update.recognitionPreparedAt && (
-          <CollectiveResultSplitFields
-            texts={form}
-            onChange={(texts) => setForm({ ...form, ...texts })}
-            inputClassName={TEXT_INPUT_CLASS}
-          />
-        )}
+        {recognition &&
+          (update.recognitionPreparedAt ? (
+            <p className="mt-2 text-sm text-gray-700">
+              Each member&apos;s copy was frozen when this update came due, so
+              changing the collective result no longer reaches anyone.
+            </p>
+          ) : (
+            <CollectiveResultSplitFields
+              texts={form}
+              onChange={(texts) => setForm({ ...form, ...texts })}
+              inputClassName={TEXT_INPUT_CLASS}
+            />
+          ))}
       </FormSection>
-
-      {recognitionMode && (
-        <RecognitionCopySection
-          form={form}
-          mode={recognitionMode}
-          prepared={update.recognitionPreparedAt !== null}
-          actionForm={actionForm}
-          onChange={setForm}
-        />
-      )}
 
       <FormSection title="Notification audience">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -525,16 +474,6 @@ const ActionUpdatePage: React.FC = () => {
           {update.notificationHeldReason && (
             <NotificationHeldBanner reason={update.notificationHeldReason} />
           )}
-          {recognitionMode && !update.recognitionPreparedAt && (
-            <RecognitionCheck
-              key={JSON.stringify(savedForm)}
-              updateId={update.id}
-              disabledReason={checkBlockedReasonOf({
-                notifyType: update.notifyType,
-                hasUnsavedDetails,
-              })}
-            />
-          )}
           {update.notifiedAt ? (
             <p className="text-sm text-gray-700">
               Sent {new Date(update.notifiedAt).toLocaleString()} to{" "}
@@ -542,9 +481,9 @@ const ActionUpdatePage: React.FC = () => {
                 update.notifyType
               ].toLowerCase()}
               . An update can only be notified about once.
-              {recognitionMode &&
+              {recognition &&
                 !update.recognitionPreparedAt &&
-                " Each member's copy is resolved and sent when the update comes due."}
+                " Each member's copy is sent when the update comes due."}
             </p>
           ) : (
             <div className="flex flex-wrap items-center gap-3">
@@ -605,13 +544,12 @@ const ActionUpdatePage: React.FC = () => {
         </FormSection>
       )}
 
-      {recognitionMode && !update.recognitionPreparedAt && (
+      {recognition && !update.recognitionPreparedAt && (
         <FormSection
           title="Preview Update"
           description={UPDATE_PREVIEW_DESCRIPTION}
         >
           <UpdatePreview
-            mode={recognitionMode}
             texts={form}
             counts={previewCountsOf(form, countsQuery)}
           />

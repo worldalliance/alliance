@@ -1,17 +1,11 @@
 import {
-  collectiveEmailSubject,
   recognitionCopy,
   recognitionCopySchema,
 } from "@alliance/common/action-update-copy";
-import {
-  CONTRIBUTION_FORMULA_KEY,
-  contributionFormulaSchema,
-  type ContributionFormulaMode,
-} from "@alliance/common/forms/contribution-formula";
 import { R, type Result } from "@alliance/common/result";
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
-import { chunk, escape, uniq } from "es-toolkit";
+import { chunk, escape } from "es-toolkit";
 import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import type { TrackedMessage } from "src/link-tracking/message-tracking.service";
 import { MailService } from "src/mail/mail.service";
@@ -24,7 +18,6 @@ import {
 import { NotifsService } from "src/notifs/notifs.service";
 import { PushService } from "src/push/push.service";
 import { actionUrl } from "src/search/approutes";
-import { FormSnapshot } from "src/tasks/entities/formsnapshot.entity";
 import { User } from "src/user/entities/user.entity";
 import {
   notificationPushesEnabled,
@@ -41,12 +34,10 @@ import { ActionParticipantsService } from "./action-participants.service";
 import {
   planRecognition,
   readRecognitionConfig,
-  recognitionModeOf,
-  type RecognitionMemberIssue,
+  usesRecognition,
   type RecognitionPlan,
 } from "./action-update-recognition";
 import { actionUpdateEntrySendTime } from "./action-update-visibility";
-import type { RecognitionCheckDtoArgs } from "./dto/action-update-recognition.dto";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionUpdateExposure } from "./entities/action-update-exposure.entity";
 import {
@@ -55,44 +46,10 @@ import {
   lockActionUpdateRow,
 } from "./entities/action-update.entity";
 
-export type RecognitionCheck = {
-  problems: string[];
-  members: RecognitionMemberIssue[];
-};
-
 const DELIVERY_BATCH = 200;
 
 const anyOf = (ids: readonly number[]) =>
   Raw((column) => `${column} = ANY(:ids)`, { ids });
-
-export function describeRecognitionCheck(check: RecognitionCheck): string {
-  const memberProblem =
-    check.members.length === 0
-      ? []
-      : [
-          `The contribution doesn't resolve for ${check.members.length} member${check.members.length === 1 ? "" : "s"} who would see it; check the recognition copy to see who.`,
-        ];
-  return [...check.problems, ...memberProblem].join(" ");
-}
-
-/** Drafts may save a formula that doesn't compile yet, but not a malformed one. */
-export function assertContributionFormulasWritable(
-  formulas: Partial<
-    Record<(typeof CONTRIBUTION_FORMULA_KEY)[ContributionFormulaMode], unknown>
-  >,
-) {
-  for (const formula of Object.values(CONTRIBUTION_FORMULA_KEY).map(
-    (key) => formulas[key],
-  )) {
-    if (formula === undefined || formula === null) continue;
-    const parsed = contributionFormulaSchema.safeParse(formula);
-    if (!parsed.success) {
-      throw new BadRequestException(
-        parsed.error.issues.map((issue) => issue.message).join("; "),
-      );
-    }
-  }
-}
 
 @Injectable()
 export class ActionUpdateRecognitionService {
@@ -118,13 +75,10 @@ export class ActionUpdateRecognitionService {
     update: ActionUpdate;
     userIds: readonly number[];
     participantIds: ReadonlySet<number>;
-    now: Date;
-  }): Promise<Result<RecognitionPlan[], RecognitionCheck>> {
-    const { em, update, userIds, participantIds, now } = params;
-    const config = readRecognitionConfig(update);
-    if (!config.ok) {
-      return R.failure({ problems: config.error, members: [] });
-    }
+  }): Promise<Result<RecognitionPlan[], string>> {
+    const { em, update, userIds, participantIds } = params;
+    const results = readRecognitionConfig(update);
+    if (!results.ok) return results;
 
     const users = await em.find(User, {
       where: { id: anyOf(userIds) },
@@ -136,93 +90,21 @@ export class ActionUpdateRecognitionService {
         type: In(TERMINAL_ACTIVITY_TYPES),
         userId: anyOf(userIds),
       },
-      relations: { taskFormResponse: true },
     });
-    const completions = findLatestCompletions(terminal);
-    // A whole action shares a few snapshots, so each schema loads once.
-    const snapshotIds = uniq(
-      completions.flatMap((completion) =>
-        completion.taskFormResponse
-          ? [completion.taskFormResponse.formSnapshotId]
-          : [],
-      ),
+    const completedIds = new Set(
+      findLatestCompletions(terminal).map((completion) => completion.userId),
     );
-    const schemaBySnapshot = new Map(
-      (
-        await em.find(FormSnapshot, {
-          where: { id: anyOf(snapshotIds) },
-          select: { id: true, schema: true },
-        })
-      ).map((snapshot) => [snapshot.id, snapshot.schema]),
-    );
-
-    const completionByUser = new Map(
-      completions.map((completion) => [completion.userId, completion]),
-    );
-    const planned = planRecognition({
-      config: config.value,
-      now,
-      recipients: users.map((user) => {
-        const completion = completionByUser.get(user.id);
-        const response = completion?.taskFormResponse;
-        return {
+    return R.success(
+      planRecognition({
+        results: results.value,
+        recipients: users.map((user) => ({
           userId: user.id,
           name: user.name,
+          completed: completedIds.has(user.id),
           participant: participantIds.has(user.id),
-          completion: completion
-            ? {
-                completedAt: completion.createdAt,
-                response: response
-                  ? {
-                      answers: response.answers,
-                      schema: schemaBySnapshot.get(response.formSnapshotId),
-                    }
-                  : null,
-              }
-            : null,
-        };
+        })),
       }),
-    });
-    return planned.ok
-      ? planned
-      : R.failure({ problems: [], members: planned.error });
-  }
-
-  async check(params: {
-    update: ActionUpdate;
-    userIds: readonly number[];
-  }): Promise<RecognitionCheck> {
-    const planned = await this.plan({
-      ...params,
-      em: this.dataSource.manager,
-      participantIds: await this.participantIdsOf(params.update.actionId),
-      now: new Date(),
-    });
-    return planned.ok ? { problems: [], members: [] } : planned.error;
-  }
-
-  /** Who a send would block on now, once sent what holds it, and nothing once its copy is frozen. */
-  async checkForAdmin(params: {
-    update: ActionUpdate;
-    recipientIds: () => Promise<number[]>;
-  }): Promise<RecognitionCheckDtoArgs> {
-    const { update } = params;
-    const collectiveSubject = collectiveEmailSubject(update.shortNotifString);
-    if (update.recognitionPreparedAt) {
-      return { problems: [], members: [], collectiveSubject };
-    }
-    const userIds = update.notifiedAt
-      ? (
-          await this.dataSource.manager.find(ActionUpdateExposure, {
-            where: { actionUpdateId: update.id },
-            select: { userId: true },
-          })
-        ).map((exposure) => exposure.userId)
-      : await params.recipientIds();
-    return {
-      ...(await this.check({ update, userIds })),
-      collectiveSubject,
-    };
+    );
   }
 
   async recordAudience(params: {
@@ -267,10 +149,7 @@ export class ActionUpdateRecognitionService {
    * Freezes every recipient's copy and creates the inbox entries in one
    * transaction, or holds the whole update when any recipient's copy fails.
    */
-  async prepare(
-    id: number,
-    now: Date,
-  ): Promise<Result<void, RecognitionCheck>> {
+  async prepare(id: number, now: Date): Promise<Result<void, string>> {
     // Read on its own pool connections, so it runs before the transaction
     // rather than while holding one.
     const participantIds = await this.participantIdsOf(
@@ -278,13 +157,13 @@ export class ActionUpdateRecognitionService {
         .actionId,
     );
     const held = await this.dataSource.transaction(
-      async (em): Promise<RecognitionCheck | null> => {
+      async (em): Promise<string | null> => {
         await lockActionUpdateRow(em, id);
         const update = await em.findOneByOrFail(ActionUpdate, { id });
         if (
           !update.notifiedAt ||
           update.recognitionPreparedAt ||
-          recognitionModeOf(update.notificationMode) === null ||
+          !usesRecognition(update.notificationMode) ||
           actionUpdateEntrySendTime(update) > now
         ) {
           return null;
@@ -297,11 +176,10 @@ export class ActionUpdateRecognitionService {
           update,
           userIds: exposures.map((exposure) => exposure.userId),
           participantIds,
-          now,
         });
         if (!planned.ok) {
           await em.update(ActionUpdate, id, {
-            notificationHeldReason: describeRecognitionCheck(planned.error),
+            notificationHeldReason: planned.error,
           });
           return planned.error;
         }
@@ -309,7 +187,7 @@ export class ActionUpdateRecognitionService {
         const prepared = planned.value.map((plan) => ({
           plan,
           copy: recognitionCopy({
-            message: plan.message,
+            allianceResult: plan.allianceResult,
             recipientName: plan.name,
             link: actionUrl(update.actionId, true),
           }),
@@ -330,11 +208,7 @@ export class ActionUpdateRecognitionService {
             ({
               actionUpdateId: id,
               userId: plan.userId,
-              mode: update.notificationMode,
               completed: plan.completed,
-              branch: plan.message.branch,
-              contribution: plan.contribution,
-              weeksAgo: plan.weeksAgo,
               copy,
               preparedAt: now,
               unreadContentId: entries[index].id,
@@ -368,9 +242,7 @@ export class ActionUpdateRecognitionService {
     );
     if (held === null) return R.success(undefined);
 
-    this.logger.warn(
-      `holding action update ${id}: ${describeRecognitionCheck(held)}`,
-    );
+    this.logger.warn(`holding action update ${id}: ${held}`);
     return R.failure(held);
   }
 

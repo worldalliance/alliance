@@ -2,7 +2,6 @@ import type { RecognitionCopy } from "@alliance/common/action-update-copy";
 import { withCount } from "@alliance/common/plural";
 import type { RecognitionPreviewCountsDto } from "@alliance/shared/client";
 import { escapeRegExp } from "es-toolkit";
-import type { RecognitionMode } from "../lib/actionUpdateDetails";
 import {
   PREVIEW_PLACEHOLDERS,
   PREVIEW_VARIATION_LABELS,
@@ -51,16 +50,14 @@ function Highlighted({ text }: { text: string }) {
 }
 
 export function UpdatePreview({
-  mode,
   texts,
   counts,
 }: {
-  mode: RecognitionMode;
   texts: CollectiveResultTexts;
   /** Omitted where there's no audience to count. */
   counts?: PreviewCounts;
 }) {
-  const variations = previewVariations({ mode, texts });
+  const variations = previewVariations(texts);
   if (!variations.ok) {
     return <p className="text-sm text-amber-700">{variations.error}</p>;
   }
