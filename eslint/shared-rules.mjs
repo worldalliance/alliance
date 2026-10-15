@@ -7,7 +7,7 @@ const maxLines = {
     ...coreMaxLines.meta,
     messages: {
       exceed:
-        "File has too many lines ({{actual}}). Maximum allowed is {{max}}. A file past the limit is already overdue for a split: move a cohesive unit (subcomponent, hook, helper) into its own file.",
+        "File has too many lines ({{actual}}). Maximum allowed is {{max}}. A file past the limit is already overdue for a split: split it before adding to it.",
     },
   },
 };

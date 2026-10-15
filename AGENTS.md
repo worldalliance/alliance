@@ -142,7 +142,7 @@ Follow YAGNI. Prefer one-liners. An abstraction earns its place at the second ca
 
 ## File size
 
-Aim for files under ~500 lines to help optimize this codebase for coding agents. When your change adds a separable unit (subcomponent, hook, helper) to a file past that, put the unit in its own file. Split along cohesive boundaries; a file doing one thing may run longer.
+Aim for files well under 500 lines to help optimize this codebase for coding agents. A file past 500 is already overdue for a split. When your change adds to a file and would leave it past that, split the file first: ask `codex exec -s read-only`, naming only the file and not your change, for a few splits along cohesive boundaries, then apply the one you judge best.
 
 ## Surgical changes
 
