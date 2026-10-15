@@ -15,6 +15,7 @@ import { AdminGuard } from "src/auth/guards/admin.guard";
 import { AuthGuard } from "src/auth/guards/auth.guard";
 import type { JwtRequest } from "src/auth/tokens";
 import { PosthogService } from "src/posthog/posthog.service";
+import { ConversationCreationService } from "./conversation-creation.service";
 import { ConversationUnreadService } from "./conversation-unread.service";
 import { ConversationService } from "./conversation.service";
 import {
@@ -33,6 +34,7 @@ import {
 export class ConversationController {
   constructor(
     private readonly conversationService: ConversationService,
+    private readonly creationService: ConversationCreationService,
     private readonly unreadService: ConversationUnreadService,
     private readonly posthog: PosthogService,
   ) {}
@@ -73,11 +75,10 @@ export class ConversationController {
     @Body() dto: CreateDirectConversationDto,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
-    const conversation =
-      await this.conversationService.createDirectConversation(
-        req.user.sub,
-        dto,
-      );
+    const conversation = await this.creationService.createDirectConversation(
+      req.user.sub,
+      dto,
+    );
     this.posthog.capture({
       event: AnalyticsEvent.ConversationCreated,
       distinctId: String(req.user.sub),
@@ -97,7 +98,7 @@ export class ConversationController {
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
     const conversation =
-      await this.conversationService.createOrGetGroupConversation(
+      await this.creationService.createOrGetGroupConversation(
         req.user.sub,
         dto,
       );

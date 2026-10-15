@@ -29,3 +29,18 @@ export async function loadConversation(
   );
   return conversation;
 }
+
+export function findLastMessage(
+  messageRepository: Repository<Message>,
+  conversationId: number,
+): Promise<Message | null> {
+  return messageRepository
+    .createQueryBuilder("message")
+    .leftJoinAndSelect("message.author", "author")
+    .leftJoinAndSelect("message.replyTo", "replyTo")
+    .leftJoinAndSelect("replyTo.author", "replyToAuthor")
+    .where("message.conversationId = :conversationId", { conversationId })
+    .orderBy("message.createdAt", "DESC")
+    .limit(1)
+    .getOne();
+}

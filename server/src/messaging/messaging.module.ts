@@ -7,6 +7,7 @@ import { Friend } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
 import { CommunityConversationService } from "./community-conversation.service";
+import { ConversationCreationService } from "./conversation-creation.service";
 import { ConversationUnreadService } from "./conversation-unread.service";
 import { ConversationController } from "./conversation.controller";
 import { ConversationService } from "./conversation.service";
@@ -36,6 +37,7 @@ import { MessagingOverviewGateway } from "./messaging.overview.gateway";
   controllers: [ConversationController, MessageController],
   providers: [
     CommunityConversationService,
+    ConversationCreationService,
     ConversationService,
     ConversationUnreadService,
     MessageService,

@@ -3,6 +3,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
 import { softDeleteCascade } from "src/datasources/soft-delete";
 import { CommunityConversationService } from "src/messaging/community-conversation.service";
+import { ConversationCreationService } from "src/messaging/conversation-creation.service";
 import { ConversationService } from "src/messaging/conversation.service";
 import {
   ConversationAdminSummaryDto,
@@ -370,7 +371,7 @@ describe("Messaging soft deletion (e2e)", () => {
         ids: [target.id],
       });
       const started = ctx.app
-        .get(ConversationService)
+        .get(ConversationCreationService)
         .createDirectConversation(initiator.id, { targetUserId: target.id });
       const outcome = started.then(
         () => "started",
@@ -427,7 +428,7 @@ describe("Messaging soft deletion (e2e)", () => {
       ),
     );
     const { id: conversationId } = await ctx.app
-      .get(ConversationService)
+      .get(ConversationCreationService)
       .createDirectConversation(initiator.id, { targetUserId: invitee.id });
     const deletion = ctx.dataSource.createQueryRunner();
     await deletion.startTransaction();
@@ -503,7 +504,7 @@ describe("Messaging soft deletion (e2e)", () => {
         id: invitee.id,
         write: () =>
           ctx.app
-            .get(ConversationService)
+            .get(ConversationCreationService)
             .createOrGetGroupConversation(owner.id, {
               title: "Raced group",
               participantIds: [invitee.id],
@@ -515,10 +516,11 @@ describe("Messaging soft deletion (e2e)", () => {
 
   it("adds no one to a group chat when the account or the chat is deleted meanwhile", async () => {
     const conversations = ctx.app.get(ConversationService);
+    const creation = ctx.app.get(ConversationCreationService);
     const [owner, member, newcomer, latecomer] = await Promise.all(
       [0, 1, 2, 3].map(() => account()),
     );
-    const group = await conversations.createOrGetGroupConversation(owner.id, {
+    const group = await creation.createOrGetGroupConversation(owner.id, {
       title: "Joined group",
       participantIds: [member.id],
     });

@@ -12,7 +12,7 @@ import { OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
 import { Community } from "src/community/entities/community.entity";
 import { softDeleteCascade } from "src/datasources/soft-delete";
 import { CommunityConversationService } from "src/messaging/community-conversation.service";
-import { ConversationService } from "src/messaging/conversation.service";
+import { ConversationCreationService } from "src/messaging/conversation-creation.service";
 import { Conversation } from "src/messaging/entities/conversation.entity";
 import { Participant } from "src/messaging/entities/participant.entity";
 import { MessagingModule } from "src/messaging/messaging.module";
@@ -198,7 +198,7 @@ describe("Soft-deleted records' lifecycle (e2e)", () => {
     const leaver = await member();
     const other = await member();
     const conversation = await ctx.app
-      .get(ConversationService)
+      .get(ConversationCreationService)
       .createOrGetGroupConversation(owner.user.id, {
         title: "Group",
         participantIds: [leaver.user.id, other.user.id],
