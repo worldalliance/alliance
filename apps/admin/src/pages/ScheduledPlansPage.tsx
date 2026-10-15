@@ -1,38 +1,19 @@
 import { withCount } from "@alliance/common/plural";
-import { actionsScheduledPlansAdmin } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Card from "@alliance/sharedweb/ui/Card";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { useQuery } from "@tanstack/react-query";
-import { milliseconds } from "date-fns";
 import { ChevronDown, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
+import { useScheduledPlansAdmin } from "../lib/useScheduledPlansAdmin";
 
 const ScheduledPlansPage = () => {
   const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set());
-  const {
-    data: plans,
-    isPending: isLoading,
-    error,
-  } = useQuery({
-    queryKey: queryKeys.scheduledPlansAdmin(),
-    queryFn: () =>
-      actionsScheduledPlansAdmin({
-        query: {
-          rangeStart: new Date(Date.now()).toISOString(),
-          rangeEnd: new Date(
-            Date.now() + milliseconds({ days: 7 }),
-          ).toISOString(),
-        },
-        throwOnError: true,
-      }).then((r) => r.data),
-  });
+  const { data: plans, isPending: isLoading, error } = useScheduledPlansAdmin();
 
   const timelineItems = useMemo(() => {
     const suspensionItems = (plans?.suspensionPlans ?? []).map(
