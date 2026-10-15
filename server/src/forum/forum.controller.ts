@@ -33,6 +33,7 @@ import {
 } from "./dto/post.dto";
 import { ForumAdminService } from "./forum-admin.service";
 import { ForumExportService } from "./forum-export.service";
+import { ForumLikesService } from "./forum-likes.service";
 import { ForumService } from "./forum.service";
 
 @ApiTags("forum")
@@ -42,6 +43,7 @@ export class ForumController {
     private readonly forumService: ForumService,
     private readonly forumAdminService: ForumAdminService,
     private readonly forumExportService: ForumExportService,
+    private readonly forumLikesService: ForumLikesService,
     private readonly posthog: PosthogService,
   ) {}
 
@@ -287,7 +289,12 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @ReqUser() user: JwtPayload,
   ): Promise<void> {
-    await this.forumService.likePostOrComment(id, user.sub, false, "comment");
+    await this.forumLikesService.likePostOrComment(
+      id,
+      user.sub,
+      false,
+      "comment",
+    );
     this.posthog.capture({
       event: AnalyticsEvent.ForumCommentLiked,
       distinctId: String(user.sub),
@@ -305,7 +312,12 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @ReqUser() user: JwtPayload,
   ): Promise<void> {
-    await this.forumService.likePostOrComment(id, user.sub, true, "comment");
+    await this.forumLikesService.likePostOrComment(
+      id,
+      user.sub,
+      true,
+      "comment",
+    );
     this.posthog.capture({
       event: AnalyticsEvent.ForumCommentUnliked,
       distinctId: String(user.sub),
@@ -323,7 +335,7 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @ReqUser() user: JwtPayload,
   ): Promise<void> {
-    await this.forumService.likePostOrComment(id, user.sub, false, "post");
+    await this.forumLikesService.likePostOrComment(id, user.sub, false, "post");
     this.posthog.capture({
       event: AnalyticsEvent.ForumPostLiked,
       distinctId: String(user.sub),
@@ -341,7 +353,7 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @ReqUser() user: JwtPayload,
   ): Promise<void> {
-    await this.forumService.likePostOrComment(id, user.sub, true, "post");
+    await this.forumLikesService.likePostOrComment(id, user.sub, true, "post");
     this.posthog.capture({
       event: AnalyticsEvent.ForumPostUnliked,
       distinctId: String(user.sub),

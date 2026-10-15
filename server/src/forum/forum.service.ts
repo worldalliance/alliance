@@ -11,7 +11,6 @@ import {
   loadedActionActivityUser,
 } from "src/actions/entities/action-activity.entity";
 import { Action } from "src/actions/entities/action.entity";
-import { assertNotInStaffPreview } from "src/actions/staff-preview";
 import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
 import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
 import { findWithDeletedRoot } from "src/datasources/find-with-deleted-root";
@@ -25,15 +24,13 @@ import { EmailType } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { UnreadContentType } from "src/notifs/entities/unread-content.entity";
-import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { NotifsService } from "src/notifs/notifs.service";
-import { commentUrl, postUrl } from "src/search/approutes";
+import { commentUrl } from "src/search/approutes";
 import { ProfileDto } from "src/user/dto/user.dto";
 import {
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_text,
 } from "src/user/user.utils";
-import { isUniqueViolation } from "src/utils/db-errors";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import {
   In,
@@ -48,6 +45,7 @@ import {
 } from "typeorm";
 import { Notification } from "../notifs/entities/notification.entity";
 import { User } from "../user/entities/user.entity";
+import { assertCommentParentNotInStaffPreview } from "./comment-staff-preview";
 import {
   CreateCommentDto,
   UpdateCommentDto,
@@ -102,7 +100,6 @@ export class ForumService {
     private actionActivityRepository: Repository<ActionActivity>,
     @InjectRepository(EditableContent)
     private editableContentRepository: TypedRepository<EditableContent>,
-    private readonly likeNotificationService: LikeNotificationService,
     private readonly eventLogService: EventLogService,
     private readonly notifsService: NotifsService,
     private readonly aiDetectionQueueService: AiDetectionQueueService,
@@ -303,8 +300,12 @@ export class ForumService {
     return parsePost(post);
   }
 
+  async isPostVisible(id: number, userId?: number): Promise<boolean> {
+    return this.visiblePostQuery(id, userId).getExists();
+  }
+
   async assertPostVisible(id: number, userId?: number): Promise<void> {
-    if (!(await this.visiblePostQuery(id, userId).getExists())) {
+    if (!(await this.isPostVisible(id, userId))) {
       throw new NotFoundException(`Post with ID "${id}" not found`);
     }
   }
@@ -613,35 +614,6 @@ export class ForumService {
     );
   }
 
-  private async assertCommentParentNotInStaffPreview(
-    parent: Pick<Comment, "parentObjectType" | "parentObjectId">,
-  ): Promise<void> {
-    let action: Action | null;
-    switch (parent.parentObjectType) {
-      case CommentParentObject.Post:
-        return;
-      case CommentParentObject.Action:
-        action = await this.actionRepository.findOne({
-          where: { id: parent.parentObjectId },
-          relations: { events: true },
-        });
-        break;
-      case CommentParentObject.Activity:
-        action = await this.actionRepository.findOne({
-          where: { activities: { id: parent.parentObjectId } },
-          relations: { events: true },
-        });
-        break;
-      default:
-        throw new Error(
-          `unknown comment parent: ${parent.parentObjectType satisfies never}`,
-        );
-    }
-    if (action) {
-      assertNotInStaffPreview(action);
-    }
-  }
-
   private async resolveCommentTag(
     manager: EntityManager,
     createCommentDto: CreateCommentDto,
@@ -676,7 +648,10 @@ export class ForumService {
     createCommentDto: CreateCommentDto,
     userId: number,
   ): Promise<Comment> {
-    await this.assertCommentParentNotInStaffPreview(createCommentDto);
+    await assertCommentParentNotInStaffPreview(
+      this.commentRepository.manager,
+      createCommentDto,
+    );
     if (createCommentDto.parentObjectType === CommentParentObject.Post) {
       await this.assertPostVisible(createCommentDto.parentObjectId, userId);
     }
@@ -925,188 +900,6 @@ export class ForumService {
       entityId: updatedReply.id,
     });
     return updatedReply;
-  }
-
-  async refreshLikesCount(comment: Comment): Promise<void> {
-    const result = await this.commentRepository
-      .createQueryBuilder("comment")
-      .innerJoin("comment.likes", "like")
-      .where("comment.id = :id", { id: comment.id })
-      .select("COUNT(*)", "count")
-      .getRawOne<{ count: string }>();
-    await this.commentRepository.update(comment.id, {
-      likesCount: Number(result?.count ?? 0),
-    });
-  }
-
-  async likePostOrComment(
-    id: number,
-    userId: number,
-    unlike = false,
-    type: "comment" | "post",
-  ): Promise<void> {
-    const object =
-      type === "comment"
-        ? await this.commentRepository.findOne({
-            where: { id },
-            relations: { likes: true, author: true, editableContent: true },
-          })
-        : await this.postRepository.findOne({
-            where: { id },
-            relations: { likes: true, author: true, authors: true },
-          });
-
-    if (
-      !object ||
-      !(await this.isLikeTargetVisible(object, userId)) ||
-      ("parentObjectType" in object &&
-        (await isCommentHidden(this.commentRepository.manager, object)))
-    ) {
-      throw new NotFoundException(`${type} with ID "${id}" not found`);
-    }
-    if ("parentObjectType" in object) {
-      await this.assertCommentParentNotInStaffPreview(object);
-    }
-
-    const user = await this.userRepository.findOneOrFail({
-      where: { id: userId },
-    });
-
-    const likes = object.likes ?? [];
-    if (unlike) {
-      if (!likes.some((like) => like.id === userId)) {
-        throw new NotFoundException(`User has not liked this ${type}`);
-      }
-    } else if (likes.some((like) => like.id === userId)) {
-      throw new NotFoundException(`User has already liked this ${type}`);
-    }
-    const likeRows = this.postRepository.manager
-      .createQueryBuilder()
-      .relation(type === "comment" ? Comment : Post, "likes")
-      .of(id);
-    try {
-      await (unlike ? likeRows.remove(userId) : likeRows.add(userId));
-    } catch (error) {
-      if (!isUniqueViolation(error)) throw error;
-      throw new NotFoundException(`User has already liked this ${type}`);
-    }
-
-    if (type === "comment") {
-      await this.refreshLikesCount(object as Comment);
-    }
-
-    if (!unlike) {
-      if (type === "comment") {
-        await this.sendCommentLikeNotification(object as Comment, user);
-      } else {
-        await this.sendPostLikeNotification(object as Post, user);
-      }
-    } else {
-      if (type === "comment") {
-        await this.removeCommentLikeNotification(object as Comment, user);
-      } else {
-        await this.removePostLikeNotification(object as Post, user);
-      }
-    }
-  }
-
-  private async isLikeTargetVisible(
-    target: Post | Comment,
-    userId: number,
-  ): Promise<boolean> {
-    if (!("parentObjectType" in target)) {
-      return this.visiblePostQuery(target.id, userId).getExists();
-    }
-    return (
-      target.parentObjectType !== CommentParentObject.Post ||
-      this.visiblePostQuery(target.parentObjectId, userId).getExists()
-    );
-  }
-
-  private getUniquePostAuthors(post: Post): User[] {
-    if (!post.author) {
-      throw new Error(`Post ${post.id} was loaded without author`);
-    }
-    const allAuthors: User[] = [post.author];
-    if (post.authors?.length) {
-      allAuthors.push(...post.authors);
-    }
-    const seenIds = new Set<number>();
-    return allAuthors.filter((u) => {
-      if (seenIds.has(u.id)) return false;
-      seenIds.add(u.id);
-      return true;
-    });
-  }
-
-  private async sendPostLikeNotification(post: Post, liker: User) {
-    for (const owner of this.getUniquePostAuthors(post)) {
-      if (owner.id === liker.id) {
-        continue;
-      }
-      await this.likeNotificationService.createOrUpdate({
-        owner,
-        liker,
-        targetType: "post",
-        targetId: post.id,
-        targetContent: post.title,
-        webAppLocation: postUrl(post.id),
-      });
-    }
-  }
-
-  private async sendCommentLikeNotification(comment: Comment, liker: User) {
-    if (comment.authorId === liker.id) {
-      return;
-    }
-    let actionIdForActivity: number | undefined;
-    if (comment.parentObjectType === CommentParentObject.Activity) {
-      const activity = await this.actionActivityRepository.findOne({
-        where: { id: comment.parentObjectId },
-      });
-      if (!activity) {
-        return;
-      }
-      actionIdForActivity = activity.actionId;
-    }
-    const webAppLocation = commentUrl(comment, actionIdForActivity);
-    if (!webAppLocation) {
-      return;
-    }
-    await this.likeNotificationService.createOrUpdate({
-      owner: loadedCommentAuthor(comment),
-      liker,
-      targetType: "comment",
-      targetId: comment.id,
-      targetContent: comment.editableContent?.body ?? null,
-      webAppLocation,
-    });
-  }
-
-  private async removePostLikeNotification(post: Post, unliker: User) {
-    for (const owner of this.getUniquePostAuthors(post)) {
-      if (owner.id === unliker.id) {
-        continue;
-      }
-      await this.likeNotificationService.removeOnUnlike({
-        ownerId: owner.id,
-        unlikerId: unliker.id,
-        targetType: "post",
-        targetId: post.id,
-      });
-    }
-  }
-
-  private async removeCommentLikeNotification(comment: Comment, unliker: User) {
-    if (comment.authorId === unliker.id) {
-      return;
-    }
-    await this.likeNotificationService.removeOnUnlike({
-      ownerId: comment.authorId,
-      unlikerId: unliker.id,
-      targetType: "comment",
-      targetId: comment.id,
-    });
   }
 
   async deleteReply(id: number, userId: number): Promise<void> {

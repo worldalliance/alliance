@@ -20,6 +20,7 @@ import { Post } from "./entities/post.entity";
 import { ForumAdminService } from "./forum-admin.service";
 import { ForumDigestService } from "./forum-digest.service";
 import { ForumExportService } from "./forum-export.service";
+import { ForumLikesService } from "./forum-likes.service";
 import { ForumController } from "./forum.controller";
 import { ForumService } from "./forum.service";
 import { LegacyDeletedFlagService } from "./legacy-deleted-flag.service";
@@ -52,6 +53,7 @@ import { LegacyDeletedFlagService } from "./legacy-deleted-flag.service";
     ForumAdminService,
     ForumDigestService,
     ForumExportService,
+    ForumLikesService,
     LegacyDeletedFlagService,
   ],
   exports: [ForumService],
