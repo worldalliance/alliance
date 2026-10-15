@@ -7,7 +7,6 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 import { IoAdapter } from "@nestjs/platform-socket.io";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { useContainer } from "class-validator";
-import { PostHog } from "posthog-node";
 import type { ServerOptions } from "socket.io";
 import { AppModule } from "./app.module";
 import { mailSendingEnabled } from "./mail/mail.service";
@@ -15,6 +14,7 @@ import { MetricsInterceptor } from "./metrics";
 import { twilioSignatureEnforced } from "./mms/twilio-signature.guard";
 import { injectResponseSchemas } from "./openapi-errors";
 import { capturePosthogExceptions } from "./posthog.filter";
+import { posthogClientIfEnabled } from "./posthog/posthog-client";
 import { configureApp } from "./utils/configure-app";
 import { socketCorsOrigins } from "./utils/cors-origins";
 import { RouteContextGuard } from "./utils/request-context.guard";
@@ -97,13 +97,7 @@ async function bootstrap() {
   validateEnv();
 
   const port = devPorts(PortCaller.Server).server;
-  let client: PostHog | null = null;
-
-  if (process.env.NODE_ENV === "production") {
-    client = new PostHog(process.env.POSTHOG_KEY!, {
-      host: "https://us.i.posthog.com",
-    });
-  }
+  const client = posthogClientIfEnabled();
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false,
