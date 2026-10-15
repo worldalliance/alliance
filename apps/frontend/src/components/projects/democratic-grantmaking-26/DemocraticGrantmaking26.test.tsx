@@ -40,7 +40,7 @@ const renderPage = () =>
     </QueryClientProvider>,
   );
 
-test("shows each expert once in a six-column grid between the waitlist bar and the timeline", async () => {
+test("shows each expert once in an eight-column grid between the waitlist bar and the timeline", async () => {
   renderPage();
 
   const bar = await screen.findByRole("img", {
@@ -61,7 +61,8 @@ test("shows each expert once in a six-column grid between the waitlist bar and t
     grid.compareDocumentPosition(timeline) & Node.DOCUMENT_POSITION_FOLLOWING,
   ).not.toBe(0);
   expect(timeline.contains(grid)).toBe(false);
-  expect(grid.className).toContain("lg:grid-cols-[repeat(6,125px)]");
+  expect(grid.className).toContain("grid-cols-4");
+  expect(grid.className).toContain("lg:grid-cols-8");
   const cards = [...grid.querySelectorAll(":scope > li")];
   expect(cards).toHaveLength(FEATURED_PEOPLE.length);
   FEATURED_PEOPLE.forEach((person, index) => {
@@ -70,7 +71,7 @@ test("shows each expert once in a six-column grid between the waitlist bar and t
     expect(card?.textContent).toContain(person.role);
     const face = card?.querySelector("img");
     expect(face?.getAttribute("src")).toBe(person.imageSrc);
-    expect(face?.className).toContain("size-[125px]");
+    expect(face?.className).toContain("aspect-square");
   });
 });
 
