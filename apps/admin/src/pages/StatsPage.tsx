@@ -2,7 +2,6 @@
 import {
   analyticsGetAggregateStatsAdmin,
   analyticsGetContractStatusHistoryAdmin,
-  analyticsGetDailyStatsAdmin,
   analyticsGetInviteFunnelAdmin,
   analyticsGetMemberCompletionRetentionAdmin,
   analyticsGetMemberReliabilityWindowAdmin,
@@ -53,8 +52,10 @@ import {
   type DataPoint,
   type MultiLineSeries,
 } from "../components/TimeSeriesChart";
+import { adminRefusalMessage } from "../lib/adminRefusal";
 import { defaultInviteFunnelRange } from "../lib/defaultInviteFunnelRange";
 import { useActionStats } from "../lib/useActionStats";
+import { useDailyStatsAdmin } from "../lib/useDailyStatsAdmin";
 import { useReminderGroupClickRatesAdmin } from "../lib/useReminderGroupClickRatesAdmin";
 
 type ParsedDailyStats = DailyStatsDto & { parsedDate: Date };
@@ -160,6 +161,27 @@ const getDefaultRange = () => {
     start: dateToInputValue(start),
     end: dateToInputValue(end),
   };
+};
+
+const invalidRangeMessage = (range: {
+  start: string;
+  end: string;
+}): string | null => {
+  const parsedStart = new Date(range.start);
+  const parsedEnd = new Date(range.end);
+
+  if (
+    Number.isNaN(parsedStart.getTime()) ||
+    Number.isNaN(parsedEnd.getTime())
+  ) {
+    return "Please provide valid start and end dates.";
+  }
+
+  if (parsedStart > parsedEnd) {
+    return "Start date must be before the end date.";
+  }
+
+  return null;
 };
 
 const parseIsoDate = (value?: string | null): Date | null => {
@@ -269,7 +291,7 @@ const StatsPage: React.FC = () => {
   const [startInput, setStartInput] = useState<string>(defaultRange.start);
   const [endInput, setEndInput] = useState<string>(defaultRange.end);
   const [queryRange, setQueryRange] = useState(defaultRange);
-  const [stats, setStats] = useState<DailyStatsDto[]>([]);
+  const [rangeError, setRangeError] = useState<string | null>(null);
   const [aggregateStats, setAggregateStats] =
     useState<AggregateStatsDto | null>(null);
   const [aggregateStatsLoading, setAggregateStatsLoading] =
@@ -277,9 +299,7 @@ const StatsPage: React.FC = () => {
   const [retentionCohorts, setRetentionCohorts] = useState<
     MemberCompletionRetentionCohortDto[]
   >([]);
-  const [loading, setLoading] = useState<boolean>(false);
   const [retentionLoading, setRetentionLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
   const [hoveredActionBar, setHoveredActionBar] =
     useState<HoveredActionBar | null>(null);
   const [hoveredReminderActionBar, setHoveredReminderActionBar] =
@@ -368,52 +388,18 @@ const StatsPage: React.FC = () => {
   const [hoveredRetentionCell, setHoveredRetentionCell] =
     useState<HoveredRetentionCell | null>(null);
 
-  const loadStats = useCallback(async (startDate: string, endDate: string) => {
-    setLoading(true);
-    setError(null);
-
-    const parsedStart = new Date(startDate);
-    const parsedEnd = new Date(endDate);
-
-    if (
-      Number.isNaN(parsedStart.getTime()) ||
-      Number.isNaN(parsedEnd.getTime())
-    ) {
-      setError("Please provide valid start and end dates.");
-      setLoading(false);
-      return;
-    }
-
-    if (parsedStart > parsedEnd) {
-      setError("Start date must be before the end date.");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await analyticsGetDailyStatsAdmin({
-        query: {
-          date: parsedStart.toISOString(),
-          endDate: parsedEnd.toISOString(),
-        },
-      });
-
-      const orderedData = (response.data ?? []).slice().sort((a, b) => {
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
-      });
-
-      setStats(orderedData);
-    } catch (err) {
-      console.error("Failed to load daily stats", err);
-      setError("Unable to load analytics right now. Please try again soon.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadStats(queryRange.start, queryRange.end);
-  }, [loadStats, queryRange.end, queryRange.start]);
+  const {
+    data: stats = [],
+    isPending: loading,
+    error: statsError,
+  } = useDailyStatsAdmin(queryRange);
+  const error =
+    rangeError ??
+    (statsError &&
+      adminRefusalMessage(
+        statsError,
+        "Unable to load analytics right now. Please try again soon.",
+      ));
 
   const {
     stats: {
@@ -1360,7 +1346,10 @@ const StatsPage: React.FC = () => {
   }, [inviteFunnel]);
 
   const handleApplyRange = useCallback(() => {
-    setQueryRange({ start: startInput, end: endInput });
+    const range = { start: startInput, end: endInput };
+    const invalid = invalidRangeMessage(range);
+    setRangeError(invalid);
+    if (!invalid) setQueryRange(range);
   }, [endInput, startInput]);
 
   const handleQuickRange = useCallback((days: number) => {
@@ -1371,6 +1360,7 @@ const StatsPage: React.FC = () => {
     const endValue = dateToInputValue(end);
     setStartInput(startValue);
     setEndInput(endValue);
+    setRangeError(null);
     setQueryRange({ start: startValue, end: endValue });
   }, []);
 
@@ -2310,7 +2300,7 @@ const StatsPage: React.FC = () => {
         </div>
       )}
       {loading && <p className="text-sm text-gray-600">Loading daily stats…</p>}
-      {!loading && parsedStats.length === 0 && (
+      {!loading && !statsError && parsedStats.length === 0 && (
         <p className="text-sm text-gray-600">No daily stats for this range.</p>
       )}
 
