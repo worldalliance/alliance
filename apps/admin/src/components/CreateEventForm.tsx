@@ -14,6 +14,7 @@ import DateTimePicker, {
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { milliseconds } from "date-fns";
 import { useState } from "react";
+import { ACTION_STATUS_LABELS } from "../lib/actionStatusDisplay";
 import { sendConfirmingDeadlineShortening } from "../lib/confirmDeadlineShortening";
 
 const DEADLINE_DECLINED_MESSAGE =
@@ -39,17 +40,6 @@ export type CreateEventFormProps = {
       ) => Promise<ActionSuiteDto | null>;
     }
 );
-
-const statusOptions: Record<ActionStatus, string> = {
-  draft: "Draft",
-  planned: "Planned",
-  office_action: "Office Action",
-  member_action: "Member Action",
-  resolution: "Resolution",
-  completed: "Completed",
-  failed: "Failed",
-  abandoned: "Abandoned",
-};
 
 const defaultEventNames: Record<ActionStatus, string> = {
   draft: "Draft",
@@ -256,7 +246,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
           required
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          {Object.entries(statusOptions).map(([key, label]) => {
+          {Object.entries(ACTION_STATUS_LABELS).map(([key, label]) => {
             return (
               <option key={key} value={key}>
                 {label}
@@ -429,8 +419,12 @@ const CreateEventForm = (props: CreateEventFormProps) => {
                   }
                   className="w-full max-w-80 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="office_action">Office Action</option>
-                  <option value="completed">Completed</option>
+                  <option value="office_action">
+                    {ACTION_STATUS_LABELS.office_action}
+                  </option>
+                  <option value="completed">
+                    {ACTION_STATUS_LABELS.completed}
+                  </option>
                 </select>
               </div>
             </div>

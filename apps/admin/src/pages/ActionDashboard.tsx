@@ -88,6 +88,10 @@ import {
   changedActionImages,
   duplicatedActionImages,
 } from "../lib/actionImages";
+import {
+  ACTION_STATUS_COLORS,
+  ACTION_STATUS_LABELS,
+} from "../lib/actionStatusDisplay";
 import { getSiteUrl } from "../lib/config";
 import type { FormResponseFilter } from "../lib/responseFilter";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
@@ -95,38 +99,6 @@ import { makeTempId } from "../lib/tempId";
 import { useAllActions } from "../lib/useAllActions";
 import { useCoverImage } from "../lib/useCoverImage";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
-
-// Status color mapping
-export const getStatusColor = (status: ActionDto["status"]) => {
-  switch (status) {
-    case "draft":
-      return "bg-gray-100 text-gray-800";
-    case "planned":
-      return "bg-blue-100 text-blue-800";
-    case "office_action":
-      return "bg-orange-100 text-orange-800";
-    case "member_action":
-      return "bg-purple-100 text-purple-800";
-    case "resolution":
-      return "bg-indigo-100 text-indigo-800";
-    case "completed":
-      return "bg-green-100 text-green-800";
-    case "failed":
-      return "bg-red-100 text-red-800";
-    case "abandoned":
-      return "bg-gray-100 text-gray-600";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
-};
-
-// Format status for display
-export const formatStatus = (status: string) => {
-  return status
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-};
 
 const tabs = [
   "overview",
@@ -1138,11 +1110,11 @@ const ActionDashboard: React.FC = () => {
                       <span
                         className={cn(
                           "inline-flex items-center px-3 py-1 rounded-full cursor-pointer text-sm font-medium",
-                          getStatusColor(action.status),
+                          ACTION_STATUS_COLORS[action.status],
                         )}
                         onClick={() => onTabChange("events")}
                       >
-                        {formatStatus(action.status)}
+                        {ACTION_STATUS_LABELS[action.status]}
                       </span>
                     </div>
                   </div>

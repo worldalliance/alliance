@@ -1,8 +1,9 @@
-import { Action, ActionStatus } from "@alliance/shared/client";
+import { Action } from "@alliance/shared/client";
 import { startOfDay } from "date-fns";
 import { millisecondsInDay } from "date-fns/constants";
 import React from "react";
 import { useNavigate } from "react-router";
+import { ACTION_STATUS_LABELS } from "../lib/actionStatusDisplay";
 import type { PhaseSegment } from "../lib/actionTimelineData";
 
 interface ActionTimelineBarProps {
@@ -15,17 +16,6 @@ interface ActionTimelineBarProps {
   scrollLeft?: number;
   containerWidth?: number;
 }
-
-const STATUS_LABELS: Record<ActionStatus, string> = {
-  draft: "Draft",
-  planned: "Planned",
-  office_action: "Office Action",
-  member_action: "Member Action",
-  resolution: "Resolution",
-  completed: "Completed",
-  failed: "Failed",
-  abandoned: "Abandoned",
-};
 
 const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
   action,
@@ -119,7 +109,7 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
           2,
           phaseDurationMs * pixelsPerMillisecond - 2,
         ); // Min 2px width, reduced spacing
-        const labelText = STATUS_LABELS[phase.status];
+        const labelText = ACTION_STATUS_LABELS[phase.status];
         const stickyLabel = calculateStickyLabelPosition(
           barLeft,
           barWidth,
@@ -180,7 +170,7 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
               ...backgroundStyle,
             }}
             title={`${action.name}: ${
-              STATUS_LABELS[phase.status]
+              ACTION_STATUS_LABELS[phase.status]
             } (${phase.startDate.toLocaleDateString()} - ${phase.endDate.toLocaleDateString()})`}
           >
             {stickyLabel && (

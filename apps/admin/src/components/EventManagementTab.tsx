@@ -4,7 +4,10 @@ import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
-import { formatStatus, getStatusColor } from "../pages/ActionDashboard";
+import {
+  ACTION_STATUS_COLORS,
+  ACTION_STATUS_LABELS,
+} from "../lib/actionStatusDisplay";
 import CreateEventForm from "./CreateEventForm";
 
 // Status options for event creation
@@ -66,10 +69,10 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
                   <span
                     className={cn(
                       "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
-                      getStatusColor(event.newStatus),
+                      ACTION_STATUS_COLORS[event.newStatus],
                     )}
                   >
-                    {formatStatus(event.newStatus)}
+                    {ACTION_STATUS_LABELS[event.newStatus]}
                   </span>
                 </div>
 
