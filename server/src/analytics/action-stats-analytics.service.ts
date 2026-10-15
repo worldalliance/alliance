@@ -3,7 +3,10 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { millisecondsInDay, millisecondsInHour } from "date-fns/constants";
-import { sqlIsLatestCompletion } from "src/actions/action-activity-status";
+import {
+  sqlIsLatestCompletion,
+  sqlIsLatestWithdrawal,
+} from "src/actions/action-activity-status";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ActionStatus } from "src/actions/entities/action-event.entity";
 import {
@@ -68,9 +71,7 @@ export class ActionStatsAnalyticsService {
         .select("activity.actionId", "actionId")
         .addSelect("COUNT(DISTINCT activity.userId)", "withdrawnCount")
         .where("activity.actionId IN (:...actionIds)", { actionIds })
-        .andWhere("activity.type IN (:...types)", {
-          types: [ActionActivityType.USER_WONT_COMPLETE],
-        })
+        .andWhere(sqlIsLatestWithdrawal("activity"))
         .groupBy("activity.actionId")
         .getRawMany<{ actionId: string; withdrawnCount: string }>();
 

@@ -3,6 +3,7 @@ import { ActionsService } from "../src/actions/actions.service";
 import { Action } from "../src/actions/entities/action.entity";
 import { SingleMemberCohortService } from "../src/actions/single-member-cohort.service";
 import { ActionStatsAnalyticsService } from "../src/analytics/action-stats-analytics.service";
+import { ActionStatsRecord } from "../src/analytics/actionstats.entity";
 import { AnalyticsModule } from "../src/analytics/analytics.module";
 import { AnalyticsService } from "../src/analytics/analytics.service";
 import { DailyStatsRecord } from "../src/analytics/dailystats.entity";
@@ -23,7 +24,11 @@ import {
   type CohortDecisionFixtures,
   saveLiveCohortDecisions,
 } from "./cohort-decision-fixtures";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import {
+  createFormWithSnapshot,
+  createTestApp,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("A member's latest completion or withdrawal decides completion (e2e)", () => {
   let ctx: TestContext;
@@ -149,6 +154,36 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
         participant: completed,
         incomplete: [],
         usersJoined: completed ? 1 : 0,
+      });
+    },
+  );
+
+  it.each(orders)(
+    "counts a member who $order as withdrawn only when that is their latest",
+    async ({ types, completed }) => {
+      const { member, action } = await setUp(types);
+      const { form } = await createFormWithSnapshot(ctx.dataSource, {
+        title: "Withdrawals",
+        schema: { title: "Withdrawals", pages: [], outputViews: [] },
+      });
+      await ctx.dataSource
+        .getRepository(Action)
+        .update(action.id, { taskFormId: form.id });
+      await ctx.app.get(ActionStatsAnalyticsService).calculateActionStats();
+
+      const [withdrawals, stats] = await Promise.all([
+        ctx.app.get(ActionsService).getWithdrawalsForForm(form.id),
+        ctx.dataSource
+          .getRepository(ActionStatsRecord)
+          .findOneByOrFail({ actionId: action.id }),
+      ]);
+
+      expect({
+        withdrawals: withdrawals.map((activity) => activity.userId),
+        usersWithdrawn: stats.usersWithdrawn,
+      }).toEqual({
+        withdrawals: completed ? [] : [member.id],
+        usersWithdrawn: completed ? 0 : 1,
       });
     },
   );

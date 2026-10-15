@@ -164,6 +164,7 @@ import {
   isTerminalActivity,
   resolveUserActionRelation,
   sqlIsLatestCompletion,
+  sqlIsLatestWithdrawal,
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
 import { ActionFormVariantService } from "./action-form-variant.service";
@@ -4311,23 +4312,12 @@ export class ActionsService {
     if (!action) {
       return [];
     }
-    const activities = await this.actionActivityRepository.find({
-      where: {
-        actionId: action.id,
-        type: ActionActivityType.USER_WONT_COMPLETE,
-      },
-      order: { createdAt: "DESC" },
-    });
-    const seen = new Set<number>();
-    const results: ActionActivity[] = [];
-    for (const a of activities) {
-      if (seen.has(a.userId)) {
-        continue;
-      }
-      seen.add(a.userId);
-      results.push(a);
-    }
-    return results;
+    return this.actionActivityRepository
+      .createQueryBuilder("activity")
+      .where("activity.actionId = :actionId", { actionId: action.id })
+      .andWhere(sqlIsLatestWithdrawal("activity"))
+      .orderBy("activity.createdAt", "DESC")
+      .getMany();
   }
 
   async findUserActionRelations(): Promise<UserActionRelations> {
