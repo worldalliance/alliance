@@ -1,4 +1,4 @@
-/* eslint-disable max-lines -- TODO: legacy file over the 500-line limit; split it up */
+/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { publicDisplayName } from "@alliance/common/displayName";
 import { type UserPropertyPresence } from "@alliance/common/forms/user-properties";
 import { Temporal } from "@js-temporal/polyfill";
