@@ -154,4 +154,16 @@ describe("Action forum participation settings (e2e)", () => {
       .findOneByOrFail({ id: created.body.id });
     expect(stored.computedAutocompleteAt).toBeNull();
   });
+
+  it.each(["", "not a date", "1", "2024-02-30", true, 0])(
+    "rejects an autocomplete timestamp of %p",
+    async (computedAutocompleteAt) => {
+      const created = await create({}).expect(201);
+      await request(ctx.app.getHttpServer())
+        .patch(`/actions/${created.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ computedAutocompleteAt })
+        .expect(400);
+    },
+  );
 });

@@ -3,11 +3,12 @@ import {
   type CohortExpression,
 } from "@alliance/common/cohort-expression";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Expose, Type } from "class-transformer";
+import { Expose, Transform, Type } from "class-transformer";
 import {
   Allow,
   ArrayUnique,
   IsArray,
+  IsDate,
   IsDefined,
   IsEmpty,
   IsEnum,
@@ -26,6 +27,7 @@ import {
 import { User } from "src/user/entities/user.entity";
 import { findLeast } from "src/utils/filter";
 import type { Relation } from "src/utils/Repository";
+import { toDateTime } from "src/utils/transforms";
 import {
   Column,
   Entity,
@@ -309,7 +311,8 @@ export class Action {
     description: "Date and time when the action was computed for autocomplete",
   })
   @IsOptional()
-  @Type(() => Date)
+  @Transform(toDateTime)
+  @IsDate()
   computedAutocompleteAt: Date | null;
 
   @Column({ type: "enum", enum: CustomActionStat, nullable: true })
