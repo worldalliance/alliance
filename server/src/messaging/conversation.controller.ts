@@ -16,6 +16,7 @@ import { AuthGuard } from "src/auth/guards/auth.guard";
 import type { JwtRequest } from "src/auth/tokens";
 import { PosthogService } from "src/posthog/posthog.service";
 import { ConversationCreationService } from "./conversation-creation.service";
+import { ConversationMembershipService } from "./conversation-membership.service";
 import { ConversationUnreadService } from "./conversation-unread.service";
 import { ConversationService } from "./conversation.service";
 import {
@@ -35,6 +36,7 @@ export class ConversationController {
   constructor(
     private readonly conversationService: ConversationService,
     private readonly creationService: ConversationCreationService,
+    private readonly membershipService: ConversationMembershipService,
     private readonly unreadService: ConversationUnreadService,
     private readonly posthog: PosthogService,
   ) {}
@@ -135,7 +137,7 @@ export class ConversationController {
     @Param("conversationId", ParseIntPipe) conversationId: number,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
-    return this.conversationService.acceptInvite(conversationId, req.user.sub);
+    return this.membershipService.acceptInvite(conversationId, req.user.sub);
   }
 
   @Post(":conversationId/decline")
@@ -145,7 +147,7 @@ export class ConversationController {
     @Param("conversationId", ParseIntPipe) conversationId: number,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
-    return this.conversationService.declineInvite(conversationId, req.user.sub);
+    return this.membershipService.declineInvite(conversationId, req.user.sub);
   }
 
   @Post(":conversationId/participants")
@@ -156,7 +158,7 @@ export class ConversationController {
     @Body() body: ConversationParticipantDto,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
-    return this.conversationService.addParticipantToConversation(
+    return this.membershipService.addParticipantToConversation(
       conversationId,
       req.user.sub,
       body,
@@ -171,7 +173,7 @@ export class ConversationController {
     @Param("userId", ParseIntPipe) targetUserId: number,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
-    return this.conversationService.removeParticipantFromConversation(
+    return this.membershipService.removeParticipantFromConversation(
       conversationId,
       req.user.sub,
       targetUserId,
@@ -219,7 +221,7 @@ export class ConversationController {
     @Param("conversationId", ParseIntPipe) conversationId: number,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
-    return this.conversationService.leaveConversation(
+    return this.membershipService.leaveConversation(
       conversationId,
       req.user.sub,
     );

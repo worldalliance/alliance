@@ -4,7 +4,7 @@ import { Community } from "src/community/entities/community.entity";
 import { softDeleteCascade } from "src/datasources/soft-delete";
 import { CommunityConversationService } from "src/messaging/community-conversation.service";
 import { ConversationCreationService } from "src/messaging/conversation-creation.service";
-import { ConversationService } from "src/messaging/conversation.service";
+import { ConversationMembershipService } from "src/messaging/conversation-membership.service";
 import {
   ConversationAdminSummaryDto,
   ConversationDto,
@@ -515,7 +515,7 @@ describe("Messaging soft deletion (e2e)", () => {
   });
 
   it("adds no one to a group chat when the account or the chat is deleted meanwhile", async () => {
-    const conversations = ctx.app.get(ConversationService);
+    const membership = ctx.app.get(ConversationMembershipService);
     const creation = ctx.app.get(ConversationCreationService);
     const [owner, member, newcomer, latecomer] = await Promise.all(
       [0, 1, 2, 3].map(() => account()),
@@ -525,7 +525,7 @@ describe("Messaging soft deletion (e2e)", () => {
       participantIds: [member.id],
     });
     const add = (userId: number) => () =>
-      conversations.addParticipantToConversation(group.id, owner.id, {
+      membership.addParticipantToConversation(group.id, owner.id, {
         userId,
       });
 

@@ -5,6 +5,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
 import { ImagesService } from "src/images/images.service";
 import { CommunityConversationService } from "src/messaging/community-conversation.service";
+import { ConversationMembershipService } from "src/messaging/conversation-membership.service";
 import { ConversationService } from "src/messaging/conversation.service";
 import { Conversation } from "src/messaging/entities/conversation.entity";
 import { Message } from "src/messaging/entities/message.entity";
@@ -175,8 +176,20 @@ describe("Chat updates to a row deleted after its load (e2e)", () => {
     };
 
     it.each([
-      ["accepting its invite", "acceptInvite"],
-      ["marking the chat read", "markConversationRead"],
+      [
+        "accepting its invite",
+        (conversationId: number, userId: number) =>
+          ctx.app
+            .get(ConversationMembershipService)
+            .acceptInvite(conversationId, userId),
+      ],
+      [
+        "marking the chat read",
+        (conversationId: number, userId: number) =>
+          ctx.app
+            .get(ConversationService)
+            .markConversationRead(conversationId, userId),
+      ],
     ] as const)("stays deleted through %s", async (_, write) => {
       const {
         conversations,
@@ -194,9 +207,9 @@ describe("Chat updates to a row deleted after its load (e2e)", () => {
           return loaded;
         });
 
-      await expect(
-        conversations[write](conversationId, invitee.id),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(write(conversationId, invitee.id)).rejects.toThrow(
+        ForbiddenException,
+      );
       expect(await stored()).toMatchObject(unchanged);
     });
 
