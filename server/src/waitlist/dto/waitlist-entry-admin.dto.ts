@@ -268,6 +268,9 @@ export class AdminWaitlistEntryDto {
   @ApiProperty({ type: String, nullable: true })
   reason: string | null;
 
+  @ApiProperty({ type: String, nullable: true })
+  nonprofitNominations: string | null;
+
   @ApiProperty({ type: () => WaitlistNamedRefDto, nullable: true })
   organization: WaitlistNamedRefDto | null;
 
@@ -306,6 +309,7 @@ export class AdminWaitlistEntryDto {
     this.phoneNumber = entry.phoneNumber;
     this.shareCode = entry.code;
     this.reason = entry.reason;
+    this.nonprofitNominations = entry.nonprofitNominations;
     this.organization = entry.organization
       ? new WaitlistNamedRefDto(entry.organization)
       : null;

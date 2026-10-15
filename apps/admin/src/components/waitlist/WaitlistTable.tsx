@@ -148,6 +148,9 @@ const WaitlistTable: React.FC<WaitlistTableProps> = ({
             </th>
             <th className="px-3 py-2 font-medium text-zinc-600">Person</th>
             <th className="px-3 py-2 font-medium text-zinc-600">Reason</th>
+            <th className="px-3 py-2 font-medium text-zinc-600">
+              Nonprofit nominations
+            </th>
             <SortHeader
               column={SortColumn.Organization}
               label="Organization"
@@ -212,6 +215,9 @@ const WaitlistTable: React.FC<WaitlistTableProps> = ({
                 >
                   {entry.reason}
                 </p>
+              </td>
+              <td className="px-3 py-2 min-w-48 max-w-sm whitespace-pre-wrap break-words">
+                {entry.nonprofitNominations}
               </td>
               <td className="px-3 py-2">{entry.organization?.name}</td>
               <td className="px-3 py-2">{entry.sourceLink?.channel}</td>

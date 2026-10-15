@@ -34,6 +34,7 @@ import {
   parseWaitlistContact,
   WaitlistContactInput,
 } from "./WaitlistContactInput";
+import { WaitlistNominations } from "./WaitlistNominations";
 import { WAITLIST_FIELD } from "./waitlistStyles";
 
 const SOCIAL_PROOF_THRESHOLD = 3;
@@ -165,6 +166,12 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
     return (
       <div className={card}>
         <WaitlistConfirmation {...confirmed} mailEnabled={mailEnabled} />
+        {confirmed.shareCode && (
+          <WaitlistNominations
+            key={confirmed.shareCode}
+            initialValue={remembered?.nonprofitNominations ?? null}
+          />
+        )}
         {browserMemory}
       </div>
     );

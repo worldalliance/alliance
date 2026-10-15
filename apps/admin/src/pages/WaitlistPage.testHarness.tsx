@@ -24,6 +24,7 @@ const entry = (
   phoneNumber: null,
   shareCode: `share${id}`,
   reason: null,
+  nonprofitNominations: null,
   organization: null,
   sourceLink: null,
   referrer: null,

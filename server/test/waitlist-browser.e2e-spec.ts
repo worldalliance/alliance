@@ -50,8 +50,100 @@ describe("Waitlist browser state (e2e)", () => {
     expect(cookies[0]).toContain("SameSite=Strict");
     expect(cookies[0]).not.toMatch(/Max-Age|Expires/i);
     expect(await state(browser)).toEqual({
-      entry: { shareCode: res.body.shareCode, mobilized: false },
+      entry: {
+        shareCode: res.body.shareCode,
+        mobilized: false,
+        nonprofitNominations: null,
+      },
     });
+  });
+
+  it("saves, restores, replaces, and clears nominations only for the session's entry", async () => {
+    const browser = newBrowser();
+    const email = uniqueEmail();
+    await join(browser, email);
+    const other = newBrowser();
+    const otherEmail = uniqueEmail();
+    await join(other, otherEmail);
+    for (const value of [
+      "  Example Foundation\nhttps://example.org  ",
+      "Another nonprofit",
+      "   ",
+    ]) {
+      await browser
+        .patch("/waitlist/browser/nominations")
+        .send({ nonprofitNominations: value })
+        .expect(204);
+      const expected = value.trim() || null;
+      expect((await state(browser)).entry.nonprofitNominations).toBe(expected);
+      const admin = await request(ctx.app.getHttpServer())
+        .post("/waitlist/admin/entries/search")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          filter: { search: email },
+          sort: "joined_desc",
+          offset: 0,
+          limit: 25,
+        })
+        .expect(200);
+      expect(admin.body.entries).toHaveLength(1);
+      expect(admin.body.entries[0].nonprofitNominations).toBe(expected);
+      expect(
+        (await entryRepo.findOneByOrFail({ email })).nonprofitNominations,
+      ).toBe(expected);
+      expect(
+        (await entryRepo.findOneByOrFail({ email: otherEmail }))
+          .nonprofitNominations,
+      ).toBeNull();
+    }
+    await browser.delete("/waitlist/browser").expect(204);
+    await browser
+      .patch("/waitlist/browser/nominations")
+      .send({ nonprofitNominations: "No session" })
+      .expect(401);
+  });
+
+  it("rejects missing, invalid, and oversized nominations", async () => {
+    const browser = newBrowser();
+    const email = uniqueEmail();
+    await join(browser, email);
+    for (const body of [
+      {},
+      { nonprofitNominations: null },
+      { nonprofitNominations: 5 },
+      { nonprofitNominations: "a".repeat(4001) },
+    ]) {
+      await browser
+        .patch("/waitlist/browser/nominations")
+        .send(body)
+        .expect(400);
+    }
+    expect(
+      (await entryRepo.findOneByOrFail({ email })).nonprofitNominations,
+    ).toBeNull();
+  });
+
+  it("refuses edits using a public sharing code or an expired session", async () => {
+    const browser = newBrowser();
+    const email = uniqueEmail();
+    const joined = await join(browser, email);
+    await newBrowser()
+      .patch("/waitlist/browser/nominations")
+      .set("Cookie", `waitlist_session=${joined.body.shareCode}`)
+      .send({ nonprofitNominations: "Unauthorized" })
+      .expect(401);
+    const entry = await entryRepo.findOneByOrFail({ email });
+    await browserRepo.update(
+      { entryId: entry.id },
+      { expiresAt: new Date(Date.now() - 1000) },
+    );
+    await browser
+      .patch("/waitlist/browser/nominations")
+      .send({ nonprofitNominations: "Expired" })
+      .expect(401);
+    expect(
+      (await entryRepo.findOneByOrFail({ email })).nonprofitNominations,
+    ).toBeNull();
   });
 
   it("stores only a hash of the cookie's token", async () => {

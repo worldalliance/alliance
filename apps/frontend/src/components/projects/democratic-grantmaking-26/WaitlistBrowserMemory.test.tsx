@@ -35,7 +35,11 @@ serveApi(
     },
     "POST /waitlist/entries": () => {
       browser = {
-        entry: { shareCode: "new123", mobilized: false },
+        entry: {
+          shareCode: "new123",
+          mobilized: false,
+          nonprofitNominations: null,
+        },
       };
       return Response.json({ shareCode: "new123" });
     },
@@ -74,7 +78,11 @@ const forgetButton = () =>
 
 test("restores a remembered entry's link instead of the form", async () => {
   browser = {
-    entry: { shareCode: "abc123", mobilized: false },
+    entry: {
+      shareCode: "abc123",
+      mobilized: false,
+      nonprofitNominations: null,
+    },
   };
   renderForm();
 
@@ -86,7 +94,7 @@ test("restores a remembered entry's link instead of the form", async () => {
 
 test("tells a remembered mobilized entry it was invited, without an invite link", async () => {
   browser = {
-    entry: { shareCode: "abc123", mobilized: true },
+    entry: { shareCode: "abc123", mobilized: true, nonprofitNominations: null },
   };
   renderForm();
 
@@ -108,7 +116,11 @@ test("offers signup through the tab's invitation", async () => {
 
 test("forgets the browser and the tab's invitation, and shows the form again", async () => {
   browser = {
-    entry: { shareCode: "abc123", mobilized: false },
+    entry: {
+      shareCode: "abc123",
+      mobilized: false,
+      nonprofitNominations: null,
+    },
   };
   saveInvite("invite1");
   renderForm();
@@ -139,7 +151,11 @@ test("keeps the tab's invitation when forgetting the browser fails", async () =>
 
 test("keeps the remembered state and says so when forgetting fails", async () => {
   browser = {
-    entry: { shareCode: "abc123", mobilized: false },
+    entry: {
+      shareCode: "abc123",
+      mobilized: false,
+      nonprofitNominations: null,
+    },
   };
   forgetReply = () => new Response(null, { status: 500 });
   renderForm();

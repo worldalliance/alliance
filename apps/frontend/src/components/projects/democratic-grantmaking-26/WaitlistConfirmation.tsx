@@ -32,7 +32,7 @@ export function WaitlistConfirmation({
   const url = shareCode && personalShareUrl(shareCode);
 
   return (
-    <div role="status" className="flex flex-col gap-3">
+    <div role="status" className="flex flex-col gap-2">
       <p className="flex items-center gap-2 text-2xl">
         <Check className="text-green size-6 shrink-0" aria-hidden />
         {mobilized ? "You’re invited to join" : "You’re on the waitlist."}
@@ -44,23 +44,21 @@ export function WaitlistConfirmation({
       </p>
       {url && (
         <>
-          <p className="mt-2 font-medium">
-            Invite others with your personal link
-          </p>
+          <p className="font-medium">Invite others with your personal link</p>
           <div className="flex gap-2">
             <input
               readOnly
               value={url}
               aria-label="Your personal link"
               onFocus={(e) => e.currentTarget.select()}
-              className={cn(WAITLIST_FIELD, "min-w-0 flex-1")}
+              className={cn(WAITLIST_FIELD, "h-10 min-w-0 flex-1")}
             />
             <button
               type="button"
               aria-label="Copy link"
               title="Copy link"
               onClick={async () => setCopied(await copyOutcome(url))}
-              className="bg-green flex size-11 shrink-0 items-center justify-center rounded-md text-white hover:bg-[#4d8c1d]"
+              className="bg-green flex size-10 shrink-0 items-center justify-center rounded-md text-white hover:bg-[#4d8c1d]"
             >
               {copied ? copyFeedback[copied].icon : COPY_ICON}
             </button>

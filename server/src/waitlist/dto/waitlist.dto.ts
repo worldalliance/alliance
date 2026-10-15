@@ -67,6 +67,14 @@ export class CreateWaitlistEntryDto extends WaitlistReferralCodesDto {
   committed?: boolean | null;
 }
 
+export class UpdateWaitlistNominationsDto {
+  @ApiProperty({ maxLength: 4000 })
+  @Transform(trim)
+  @IsString()
+  @MaxLength(4000)
+  nonprofitNominations: string;
+}
+
 export class WaitlistLinkRequestDto {
   @ApiProperty()
   @IsWaitlistEmail()
@@ -170,7 +178,11 @@ export class RememberedWaitlistEntryDto {
   @ApiProperty()
   mobilized: boolean;
 
+  @ApiProperty({ type: String, nullable: true })
+  nonprofitNominations: string | null;
+
   constructor(input: WaitlistEntry) {
+    this.nonprofitNominations = input.nonprofitNominations;
     this.shareCode = input.code;
     this.mobilized = input.mobilizedAt !== null;
   }

@@ -23,6 +23,7 @@ const phoneEntry: AdminWaitlistEntryDto = {
   phoneNumber: "+14155552671",
   shareCode: "share7",
   reason: null,
+  nonprofitNominations: null,
   organization: null,
   sourceLink: null,
   referrer: null,

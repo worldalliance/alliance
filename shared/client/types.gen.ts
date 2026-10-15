@@ -4538,12 +4538,17 @@ export type WaitlistEntryResultDto = {
     shareCode: string | null;
 };
 
+export type UpdateWaitlistNominationsDto = {
+    nonprofitNominations: string;
+};
+
 export type RememberedWaitlistEntryDto = {
     /**
      * The entry's personal code
      */
     shareCode: string;
     mobilized: boolean;
+    nonprofitNominations: string | null;
 };
 
 export type WaitlistBrowserDto = {
@@ -4660,6 +4665,7 @@ export type AdminWaitlistEntryDto = {
      */
     shareCode: string;
     reason: string | null;
+    nonprofitNominations: string | null;
     organization: WaitlistNamedRefDto | null;
     sourceLink: WaitlistSourceLinkDto | null;
     referrer: WaitlistNamedRefDto | null;
@@ -14334,6 +14340,30 @@ export type WaitlistCreateResponses = {
 };
 
 export type WaitlistCreateResponse = WaitlistCreateResponses[keyof WaitlistCreateResponses];
+
+export type WaitlistUpdateNominationsData = {
+    body: UpdateWaitlistNominationsDto;
+    path?: never;
+    query?: never;
+    url: '/waitlist/browser/nominations';
+};
+
+export type WaitlistUpdateNominationsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type WaitlistUpdateNominationsError = WaitlistUpdateNominationsErrors[keyof WaitlistUpdateNominationsErrors];
+
+export type WaitlistUpdateNominationsResponses = {
+    204: {
+        [key: string]: never;
+    };
+};
+
+export type WaitlistUpdateNominationsResponse = WaitlistUpdateNominationsResponses[keyof WaitlistUpdateNominationsResponses];
 
 export type WaitlistForgetBrowserData = {
     body?: never;

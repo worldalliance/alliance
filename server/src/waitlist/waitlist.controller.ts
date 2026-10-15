@@ -8,11 +8,13 @@ import {
   HttpCode,
   HttpStatus,
   NotFoundException,
+  Patch,
   Post,
   Query,
   Req,
   Res,
   ServiceUnavailableException,
+  UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
 import { ApiNoContentResponse, ApiOkResponse } from "@nestjs/swagger";
@@ -27,6 +29,7 @@ import { EmailType } from "src/mail/mail.entity";
 import { OnlyThrottle } from "src/utils/throttle";
 import {
   CreateWaitlistEntryDto,
+  UpdateWaitlistNominationsDto,
   WaitlistBrowserDto,
   WaitlistCountDto,
   WaitlistEntryResultDto,
@@ -98,6 +101,29 @@ export class WaitlistController {
       entryId: created.value.id,
     });
     return new WaitlistEntryResultDto(created.value.code);
+  }
+
+  @Patch("browser/nominations")
+  @Public()
+  @UseGuards(ThrottlerGuard)
+  @OnlyThrottle(WAITLIST_ENTRY_THROTTLE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse()
+  async updateNominations(
+    @Body() dto: UpdateWaitlistNominationsDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    const entry = await this.browserService.findEntry(req, res);
+    if (!entry) {
+      throw new UnauthorizedException(
+        "Your waitlist session has expired. Refresh the page to continue.",
+      );
+    }
+    await this.waitlistService.updateNominations({
+      entryId: entry.id,
+      nonprofitNominations: dto.nonprofitNominations,
+    });
   }
 
   @Get("browser")

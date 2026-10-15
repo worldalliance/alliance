@@ -60,6 +60,15 @@ export class WaitlistService {
     private readonly linkRepository: Repository<WaitlistLink>,
   ) {}
 
+  async updateNominations(params: {
+    entryId: number;
+    nonprofitNominations: string;
+  }): Promise<void> {
+    await this.entryRepository.update(params.entryId, {
+      nonprofitNominations: params.nonprofitNominations.trim() || null,
+    });
+  }
+
   private async resolveReferral({
     linkCode,
     referrerCode,

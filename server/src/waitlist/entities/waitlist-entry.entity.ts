@@ -58,6 +58,9 @@ export class WaitlistEntry {
   @Column({ type: "text", nullable: true })
   reason: string | null;
 
+  @Column({ type: "text", nullable: true })
+  nonprofitNominations: string | null;
+
   @Column({ type: "timestamptz", nullable: true })
   committedAt: Date | null;
 

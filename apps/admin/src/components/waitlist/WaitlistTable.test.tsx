@@ -13,6 +13,7 @@ const entry: AdminWaitlistEntryDto = {
   phoneNumber: null,
   shareCode: "share1",
   reason: null,
+  nonprofitNominations: "Example Foundation\nhttps://example.org",
   organization: null,
   sourceLink: null,
   referrer: null,
@@ -74,6 +75,12 @@ it("shows account creation and every dated signing and suspension", () => {
     </ToastProvider>,
     queryWrapper(),
   );
+  expect(
+    screen.getByRole("columnheader", { name: "Nonprofit nominations" }),
+  ).toBeTruthy();
+  expect(
+    screen.getAllByText("Example Foundation https://example.org"),
+  ).toHaveLength(3);
   const headers = screen.getAllByRole("columnheader");
   const accountIndex = headers.findIndex(
     (header) => header.textContent === "Account created",
