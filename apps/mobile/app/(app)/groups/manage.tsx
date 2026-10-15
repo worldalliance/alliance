@@ -3,20 +3,15 @@ import {
   validateCommunitySettings,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
-import {
-  communityCreateCommunity,
-  communityJoinPublicCommunity,
-} from "@alliance/shared/client";
+import { communityCreateCommunity } from "@alliance/shared/client";
 import type {
   CommunityDto,
   CommunityInviteDto,
   CreateCommunityDto,
 } from "@alliance/shared/client/types.gen";
 import {
-  getMemberCount,
   groupRemovalMessage,
   isLedBy,
-  publicGroupJoinState,
 } from "@alliance/shared/lib/communityUtils";
 import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { useIncomingCommunityInvites } from "@alliance/shared/lib/useIncomingCommunityInvites";
@@ -35,6 +30,7 @@ import {
 import { CreateGroupForm } from "../../../components/groups/CreateGroupForm";
 import { LedGroupsSection } from "../../../components/groups/LedGroupsSection";
 import { MemberGroupsSection } from "../../../components/groups/MemberGroupsSection";
+import { PublicGroupsSection } from "../../../components/groups/PublicGroupsSection";
 import KeyboardAwareScrollView from "../../../components/KeyboardAwareScrollView";
 import LoadFailed from "../../../components/LoadFailed";
 import Button, {
@@ -86,9 +82,6 @@ export default function GroupManageScreen() {
     useState<CreateCommunityDto>(INITIAL_COMMUNITY);
   const [creating, setCreating] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [joiningCommunityId, setJoiningCommunityId] = useState<number | null>(
-    null,
-  );
   const [acceptingInviteId, setAcceptingInviteId] = useState<number | null>(
     null,
   );
@@ -177,39 +170,6 @@ export default function GroupManageScreen() {
       setCreating(false);
     }
   }, [newCommunity, refreshAll, refreshUser]);
-
-  const handleJoinPublicCommunity = useCallback(
-    (community: CommunityDto) => {
-      const message = groupRemovalMessage(memberCommunities, community.name);
-      const proceed = async () => {
-        setJoiningCommunityId(community.id);
-        try {
-          const res = await communityJoinPublicCommunity({
-            path: { communityId: community.id },
-          });
-          if (!res.data) {
-            throw new Error("no community returned");
-          }
-          await refreshAll();
-          await refreshUser();
-        } catch (e) {
-          console.error("Failed to join public group", e);
-          Alert.alert("Error", "Unable to join that group right now.");
-        } finally {
-          setJoiningCommunityId(null);
-        }
-      };
-      if (message) {
-        Alert.alert("Join public group?", message, [
-          { text: "Cancel", style: "cancel" },
-          { text: "Join group", onPress: () => void proceed() },
-        ]);
-      } else {
-        void proceed();
-      }
-    },
-    [memberCommunities, refreshAll, refreshUser],
-  );
 
   const handleAcceptInvite = useCallback(
     (invite: CommunityInviteDto) => {
@@ -397,103 +357,18 @@ export default function GroupManageScreen() {
                 </View>
               ) : null}
 
-              <View className="p-4 bg-white">
-                <Text
-                  className="text-xl text-zinc-900"
-                  weight={FontWeight.Semibold}
-                >
-                  Public groups
-                </Text>
-                <Text className="text-base text-zinc-500 mt-0.5">
-                  Groups you can join at any time.
-                </Text>
-                {publicCommunitiesError ? (
-                  <View className="px-4 py-4">
-                    <Text className="text-sm text-red-500">
-                      Unable to load public groups.
-                    </Text>
-                  </View>
-                ) : sortedPublicCommunities.length ? (
-                  <View className="gap-y-2 mt-4">
-                    {sortedPublicCommunities.map((community) => {
-                      const { disabled: joinDisabled, label: joinLabel } =
-                        publicGroupJoinState({
-                          community,
-                          userId: user?.id,
-                          isMember: memberCommunityIds.has(community.id),
-                          isJoining: joiningCommunityId === community.id,
-                          didGroupsFail,
-                        });
-                      return (
-                        <PublicCommunityCard
-                          key={community.id}
-                          community={community}
-                          joinLabel={joinLabel}
-                          joinDisabled={joinDisabled}
-                          onJoin={() => handleJoinPublicCommunity(community)}
-                        />
-                      );
-                    })}
-                  </View>
-                ) : (
-                  <View className="px-4 py-4">
-                    <Text className="text-sm text-zinc-500">
-                      No public groups are available right now.
-                    </Text>
-                  </View>
-                )}
-              </View>
+              <PublicGroupsSection
+                communities={sortedPublicCommunities}
+                isError={publicCommunitiesError}
+                memberCommunities={memberCommunities}
+                memberCommunityIds={memberCommunityIds}
+                didGroupsFail={didGroupsFail}
+                refreshAll={refreshAll}
+              />
             </View>
           </KeyboardAwareScrollView>
         </>
       )}
-    </View>
-  );
-}
-
-function PublicCommunityCard({
-  community,
-  joinLabel,
-  joinDisabled,
-  onJoin,
-}: {
-  community: CommunityDto;
-  joinLabel: string;
-  joinDisabled: boolean;
-  onJoin: () => void;
-}) {
-  const memberCount = getMemberCount(community);
-  const cap =
-    community.maxCapacity !== null
-      ? ` / ${Math.max(community.maxCapacity, memberCount)}`
-      : "";
-
-  return (
-    <View
-      className="rounded p-3 gap-y-2"
-      style={{ backgroundColor: colors.grey[0] }}
-    >
-      <View className="flex-row items-start justify-between gap-3">
-        <View className="flex-1 gap-y-1 pr-2">
-          <Text className="font-semibold text-zinc-900">{community.name}</Text>
-          {community.description ? (
-            <Text className="text-sm text-zinc-500" numberOfLines={3}>
-              {community.description}
-            </Text>
-          ) : null}
-          <Text className="text-sm text-zinc-600">
-            {memberCount}
-            {cap} members
-          </Text>
-        </View>
-        <Button
-          title={joinLabel}
-          onPress={onJoin}
-          color={ButtonColor.Black}
-          size={ButtonSize.Small}
-          disabled={joinDisabled}
-        />
-      </View>
     </View>
   );
 }
