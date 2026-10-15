@@ -1,13 +1,14 @@
 import type { ShareUrlMineDto } from "../client";
 import { automaticInviteNote, inviteDestination } from "./copy";
 import {
+  acceptedInviteCountLabel,
   automaticInviteReason,
   bucketOnetimeInvitesByActionability,
   inviteDestinationLabel,
   inviteDestinationSelection,
   reusableInviteNotes,
 } from "./inviteUtils";
-import { makeOnetimeInvite } from "./testFixtures";
+import { makeOnetimeInvite, makeShareUrlMine } from "./testFixtures";
 
 describe("inviteDestinationLabel", () => {
   const link = (overrides: Partial<ShareUrlMineDto> = {}): ShareUrlMineDto => ({
@@ -235,5 +236,42 @@ describe("bucketOnetimeInvitesByActionability", () => {
         userId: 1,
       }).settled,
     ).toEqual([invite]);
+  });
+});
+
+describe("acceptedInviteCountLabel", () => {
+  const loaded = {
+    onetimeInvites: [
+      makeOnetimeInvite({ id: 1, accepted: true }),
+      makeOnetimeInvite({ id: 2, accepted: false }),
+    ],
+    onetimeInvitesError: false,
+    reusableLinks: [
+      makeShareUrlMine({ signupCount: 16 }),
+      makeShareUrlMine({ signupCount: 3 }),
+    ],
+    reusableLinksPending: false,
+    reusableLinksError: false,
+  };
+
+  it("adds multi-use link signups to accepted single-use invites", () => {
+    expect(acceptedInviteCountLabel(loaded)).toBe("20");
+  });
+
+  it("waits for multi-use links instead of showing a partial count", () => {
+    expect(
+      acceptedInviteCountLabel({
+        ...loaded,
+        reusableLinks: [],
+        reusableLinksPending: true,
+      }),
+    ).toBe("...");
+  });
+
+  it.each([
+    { onetimeInvitesError: true, reusableLinksError: false },
+    { onetimeInvitesError: false, reusableLinksError: true },
+  ])("shows no count when a list fails to load (%o)", (errors) => {
+    expect(acceptedInviteCountLabel({ ...loaded, ...errors })).toBe("—");
   });
 });

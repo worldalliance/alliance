@@ -121,6 +121,21 @@ const createdAtComparator = (
   b: { createdAt: string },
 ) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 
+export function acceptedInviteCountLabel(params: {
+  onetimeInvites: OnetimeInviteDto[];
+  onetimeInvitesError: boolean;
+  reusableLinks: ShareUrlMineDto[];
+  reusableLinksPending: boolean;
+  reusableLinksError: boolean;
+}): string {
+  if (params.onetimeInvitesError || params.reusableLinksError) return "—";
+  if (params.reusableLinksPending) return "...";
+  return String(
+    params.onetimeInvites.filter((invite) => invite.accepted).length +
+      params.reusableLinks.reduce((sum, link) => sum + link.signupCount, 0),
+  );
+}
+
 export function bucketOnetimeInvitesByActionability(params: {
   invites: OnetimeInviteDto[];
   leaderCommunityIds: Set<number>;
