@@ -1,3 +1,4 @@
+import { Logger } from "@nestjs/common";
 import { milliseconds } from "date-fns";
 import { ContractReminderWorker } from "src/actions/contract-reminder.worker";
 import {
@@ -181,9 +182,17 @@ describe("ContractReminderWorker (e2e)", () => {
           ? Promise.reject(new Error("tracking insert failed"))
           : original(params),
       );
+    const error = jest
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => {});
 
     await run();
 
+    expect(error).toHaveBeenCalledWith(
+      `Failed to send contract reminder to user ${failing.id}`,
+      expect.any(Error),
+    );
+    error.mockRestore();
     expect(await remindersTo(failing.email)).toEqual([]);
     expect(await remindersTo(next.email)).toHaveLength(1);
     const [assignment] = await assignmentsOf(failing.id);

@@ -80,7 +80,7 @@ export class ContractReminderWorker {
             });
           } catch (err) {
             this.logger.error(
-              `Failed to send contract reminder to ${user.email}`,
+              `Failed to send contract reminder to user ${user.id}`,
               err,
             );
           }
