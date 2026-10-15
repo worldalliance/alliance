@@ -5,11 +5,11 @@
 // semver is the tiebreak because fingerprints are unordered hashes.
 export const MOBILE_STORE_FINGERPRINTS = {
   ios: {
-    fingerprint: "ca96e132ab7e2aa4a87c8fe30ef5f1a17034f273",
-    version: "1.3.5",
+    fingerprint: "9a2f7366839d5205bbfea7d2af0b33d85f1840d5",
+    version: "1.3.6",
   },
   android: {
-    fingerprint: "44f9eecd50bceafcf6044bbb8f3d6bf07da28cc9",
-    version: "1.3.5",
+    fingerprint: "f982a1d560972d2611bc43699cdf459808af55b2",
+    version: "1.3.6",
   },
 } as const;
