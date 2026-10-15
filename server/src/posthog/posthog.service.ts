@@ -5,8 +5,8 @@ import {
   SLACK_PROPERTY,
 } from "@alliance/common/analytics";
 import { Injectable, OnModuleDestroy } from "@nestjs/common";
-import { PostHog } from "posthog-node";
 import { captureEvent, captureException } from "../utils/posthog";
+import { posthogClientIfEnabled } from "./posthog-client";
 
 /**
  * Singleton PostHog client for the server. Captures typed analytics events and
@@ -15,14 +15,7 @@ import { captureEvent, captureException } from "../utils/posthog";
  */
 @Injectable()
 export class PosthogService implements OnModuleDestroy {
-  private readonly client: PostHog | null = null;
-
-  constructor() {
-    if (process.env.NODE_ENV !== "production") return;
-    this.client = new PostHog(process.env.POSTHOG_KEY!, {
-      host: "https://us.i.posthog.com",
-    });
-  }
+  private readonly client = posthogClientIfEnabled();
 
   capture(params: {
     event: AnalyticsEvent;

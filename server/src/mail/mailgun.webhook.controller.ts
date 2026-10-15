@@ -5,6 +5,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import crypto from "crypto";
 import { millisecondsInSecond, secondsInMinute } from "date-fns/constants";
 import { PostHog } from "posthog-node";
+import { newPosthogClient } from "src/posthog/posthog-client";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
 import { captureEvent } from "../utils/posthog";
@@ -56,9 +57,9 @@ export class MailgunWebhookController {
     private userRepository: Repository<User>,
   ) {
     if (process.env.NODE_ENV === "test") return;
-    this.posthog = new PostHog(process.env.POSTHOG_KEY!, {
-      host: "https://us.i.posthog.com",
-    });
+    // Not posthogClientIfEnabled: Mailgun may deliver production mail events
+    // to a non-production server, so the mail's `production` tag decides.
+    this.posthog = newPosthogClient();
   }
 
   @Post("/handle-event")

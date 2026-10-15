@@ -12,15 +12,19 @@ describe("backend PostHog event sessions", () => {
   afterEach(() => jest.restoreAllMocks());
 
   it("links slow queries to the same identity used by the frontend", () => {
+    const nodeEnv = process.env.NODE_ENV;
     const apiKey = process.env.POSTHOG_KEY;
     const capture = jest
       .spyOn(PostHog.prototype, "capture")
       .mockImplementation(() => {});
     let logger: AppTypeOrmLogger;
     try {
+      process.env.NODE_ENV = "production";
       process.env.POSTHOG_KEY = "test-key";
       logger = new AppTypeOrmLogger();
     } finally {
+      if (nodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = nodeEnv;
       if (apiKey === undefined) delete process.env.POSTHOG_KEY;
       else process.env.POSTHOG_KEY = apiKey;
     }

@@ -2,10 +2,10 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { Logger as NestLogger } from "@nestjs/common";
 import { millisecondsInSecond } from "date-fns/constants";
-import { PostHog } from "posthog-node";
 import client from "prom-client";
 import { Logger as TypeOrmLogger } from "typeorm";
 import { register } from "../metrics";
+import { posthogClientIfEnabled } from "../posthog/posthog-client";
 import { captureEvent } from "./posthog";
 import { requestContext } from "./request-context";
 
@@ -39,16 +39,7 @@ function getQueryType(query: string): string {
 
 export class AppTypeOrmLogger implements TypeOrmLogger {
   private readonly logger = new NestLogger("TypeORM");
-  private readonly client?: PostHog;
-
-  constructor() {
-    if (!process.env.POSTHOG_KEY) {
-      return;
-    }
-    this.client = new PostHog(process.env.POSTHOG_KEY!, {
-      host: "https://us.i.posthog.com",
-    });
-  }
+  private readonly client = posthogClientIfEnabled();
 
   logQuery(query: string) {
     const type = getQueryType(query);
