@@ -162,6 +162,8 @@ export const queryKeys = {
   contractsAdmin: () => ["contractAllAdmin"] as const,
   customValidatorAdmin: (id: number) =>
     ["tasksFindOneCustomValidatorAdmin", id] as const,
+  dailyStatsAdmin: (range: { start: string; end: string }) =>
+    ["analyticsGetDailyStatsAdmin", range] as const,
   eventLogAdmin: (page: number, limit: number, eventType: EventType | "") =>
     ["eventLogFindAllAdmin", page, limit, eventType] as const,
   externalShareTargetsAdmin: () => ["externalShareTargetsAdmin"] as const,
