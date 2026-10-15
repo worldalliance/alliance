@@ -55,7 +55,7 @@ import {
   Participant,
   ParticipantState,
 } from "./entities/participant.entity";
-import { MessagingEvents } from "./messaging.events";
+import { emitConversationUpdated } from "./messaging.events";
 import { notInConversation } from "./not-in-conversation";
 import { loadHiddenReadCursors } from "./read-cursor";
 
@@ -328,7 +328,7 @@ export class ConversationService {
     const hydratedConversation = await this.getConversationEntity(
       conversation.id,
     );
-    await this.emitConversationUpdate(hydratedConversation);
+    emitConversationUpdated(this.eventEmitter, hydratedConversation.id);
     return new ConversationDto({
       conversation: hydratedConversation,
       contextUserId: userId,
@@ -428,7 +428,7 @@ export class ConversationService {
     const hydratedConversation = await this.getConversationEntity(
       conversation.id,
     );
-    await this.emitConversationUpdate(hydratedConversation);
+    emitConversationUpdated(this.eventEmitter, hydratedConversation.id);
     return new ConversationDto({
       conversation: hydratedConversation,
       contextUserId: userId,
@@ -460,7 +460,7 @@ export class ConversationService {
     await this.touchConversation(conversationId);
 
     const conversation = await this.getConversationEntity(conversationId);
-    await this.emitConversationUpdate(conversation);
+    emitConversationUpdated(this.eventEmitter, conversation.id);
     return this.buildConversationDto(conversationId, userId);
   }
 
@@ -516,7 +516,7 @@ export class ConversationService {
     await this.touchConversation(conversation.id);
 
     const hydrated = await this.getConversationEntity(conversation.id);
-    await this.emitConversationUpdate(hydrated);
+    emitConversationUpdated(this.eventEmitter, hydrated.id);
   }
 
   async declineInvite(
@@ -533,7 +533,7 @@ export class ConversationService {
     await this.softDeleteParticipants([participant]);
     await this.touchConversation(conversationId);
     const conversation = await this.getConversationEntity(conversationId);
-    await this.emitConversationUpdate(conversation);
+    emitConversationUpdated(this.eventEmitter, conversation.id);
     if (conversation.type === ConversationType.Direct) {
       await softDeleteWhere(this.conversationRepository.manager, {
         target: Conversation,
@@ -571,7 +571,7 @@ export class ConversationService {
       changes: { title: conversation.title, photo: conversation.photo },
       notFound: "Conversation not found",
     });
-    await this.emitConversationUpdate(conversation);
+    emitConversationUpdated(this.eventEmitter, conversation.id);
     return new ConversationDto({ conversation, contextUserId: userId });
   }
 
@@ -633,7 +633,7 @@ export class ConversationService {
     await this.touchConversation(conversationId);
     const updatedConversation =
       await this.getConversationEntity(conversationId);
-    await this.emitConversationUpdate(updatedConversation);
+    emitConversationUpdated(this.eventEmitter, updatedConversation.id);
     return new ConversationDto({
       conversation: updatedConversation,
       contextUserId: actingUserId,
@@ -676,7 +676,7 @@ export class ConversationService {
     await this.touchConversation(conversationId);
     const updatedConversation =
       await this.getConversationEntity(conversationId);
-    await this.emitConversationUpdate(updatedConversation);
+    emitConversationUpdated(this.eventEmitter, updatedConversation.id);
     return new ConversationDto({
       conversation: updatedConversation,
       contextUserId: actingUserId,
@@ -707,7 +707,7 @@ export class ConversationService {
     await this.softDeleteParticipants([participant]);
     const updatedConversation =
       await this.getConversationEntity(conversationId);
-    await this.emitConversationUpdate(updatedConversation);
+    emitConversationUpdated(this.eventEmitter, updatedConversation.id);
     return new ConversationDto({
       conversation: updatedConversation,
       contextUserId: userId,
@@ -843,7 +843,7 @@ export class ConversationService {
     const updatedConversation = await this.getConversationEntity(
       conversation.id,
     );
-    await this.emitConversationUpdate(updatedConversation);
+    emitConversationUpdated(this.eventEmitter, updatedConversation.id);
     return updatedConversation;
   }
 
@@ -946,7 +946,7 @@ export class ConversationService {
       conversationId,
       userId,
     );
-    await this.emitConversationUpdate(conversation);
+    emitConversationUpdated(this.eventEmitter, conversation.id);
 
     return new ConversationDto({
       conversation,
@@ -1133,12 +1133,6 @@ export class ConversationService {
     });
 
     return map;
-  }
-
-  private async emitConversationUpdate(conversation: Conversation) {
-    this.eventEmitter.emit(MessagingEvents.ConversationUpdated, {
-      conversationId: conversation.id,
-    });
   }
 
   private async touchConversation(conversationId: number) {
