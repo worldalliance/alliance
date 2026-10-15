@@ -14,6 +14,8 @@ import {
   IsInt,
   IsNotEmpty,
   IsOptional,
+  Max,
+  Min,
 } from "class-validator";
 import { millisecondsInWeek } from "date-fns/constants";
 import {
@@ -287,6 +289,9 @@ export class Action {
       "When set, takes precedence over any forum validator on the task form.",
   })
   @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(2_147_483_647)
   forumParticipationPostId: number | null;
 
   @Column({ default: false })

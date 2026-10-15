@@ -111,4 +111,16 @@ describe("Action forum participation settings (e2e)", () => {
       .findOneByOrFail({ id: created.body.id });
     expect(stored.forumParticipationPostId).toBeNull();
   });
+
+  it.each(["", "42", 4.2, 0, 2_147_483_648])(
+    "rejects a post override of %p",
+    async (forumParticipationPostId) => {
+      const created = await create({}).expect(201);
+      await request(ctx.app.getHttpServer())
+        .patch(`/actions/${created.body.id}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ forumParticipationPostId })
+        .expect(400);
+    },
+  );
 });
