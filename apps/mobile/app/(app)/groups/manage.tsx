@@ -1,14 +1,11 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
   isMaxCapacityRequired,
   validateCommunitySettings,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
-import { forCount, withCount } from "@alliance/common/plural";
 import {
   communityCreateCommunity,
   communityJoinPublicCommunity,
-  communityLeave,
 } from "@alliance/shared/client";
 import type {
   CommunityDto,
@@ -17,14 +14,11 @@ import type {
 } from "@alliance/shared/client/types.gen";
 import {
   getMemberCount,
-  groupAssignmentLabels,
   groupRemovalMessage,
   isLedBy,
   publicGroupJoinState,
 } from "@alliance/shared/lib/communityUtils";
 import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
-import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
-import { useGroupAssignment } from "@alliance/shared/lib/useGroupAssignment";
 import { useIncomingCommunityInvites } from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { usePublicCommunities } from "@alliance/shared/lib/usePublicCommunities";
@@ -40,6 +34,7 @@ import {
 } from "react-native";
 import { CreateGroupForm } from "../../../components/groups/CreateGroupForm";
 import { LedGroupsSection } from "../../../components/groups/LedGroupsSection";
+import { MemberGroupsSection } from "../../../components/groups/MemberGroupsSection";
 import KeyboardAwareScrollView from "../../../components/KeyboardAwareScrollView";
 import LoadFailed from "../../../components/LoadFailed";
 import Button, {
@@ -92,9 +87,6 @@ export default function GroupManageScreen() {
   const [creating, setCreating] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [joiningCommunityId, setJoiningCommunityId] = useState<number | null>(
-    null,
-  );
-  const [leavingCommunityId, setLeavingCommunityId] = useState<number | null>(
     null,
   );
   const [acceptingInviteId, setAcceptingInviteId] = useState<number | null>(
@@ -186,49 +178,6 @@ export default function GroupManageScreen() {
     }
   }, [newCommunity, refreshAll, refreshUser]);
 
-  const runLeaveGroup = useCallback(
-    async (community: CommunityDto) => {
-      setLeavingCommunityId(community.id);
-      try {
-        const res = await communityLeave({
-          path: { communityId: community.id },
-        });
-        if (!res.response.ok) {
-          throw new Error("leave failed");
-        }
-        await refreshAll();
-        await refreshUser();
-      } catch (e) {
-        console.error("Failed to leave community", e);
-        Alert.alert("Error", "Unable to leave this group right now.");
-      } finally {
-        setLeavingCommunityId(null);
-      }
-    },
-    [refreshAll, refreshUser],
-  );
-
-  const promptLeaveGroup = useCallback(
-    (community: CommunityDto) => {
-      const extra = !user?.undergoingGroupAssignment
-        ? 'Consider using "Request reassignment" above so staff can place you in a new group (this may take a few days).\n\n'
-        : "";
-      Alert.alert(
-        "Leave this group?",
-        `${extra}Are you sure? You won't be able to rejoin without an invite.`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Leave group",
-            style: "destructive",
-            onPress: () => void runLeaveGroup(community),
-          },
-        ],
-      );
-    },
-    [user?.undergoingGroupAssignment, runLeaveGroup],
-  );
-
   const handleJoinPublicCommunity = useCallback(
     (community: CommunityDto) => {
       const message = groupRemovalMessage(memberCommunities, community.name);
@@ -261,45 +210,6 @@ export default function GroupManageScreen() {
     },
     [memberCommunities, refreshAll, refreshUser],
   );
-
-  const { join, leave } = useGroupAssignment({
-    onChanged: async () => {
-      await refreshUser();
-      await refreshAll();
-    },
-  });
-  const assignmentBusy = join.isPending || leave.isPending;
-
-  const handleRequestAssignment = useCallback(() => {
-    const needsConfirm = memberCommunities.length > 0;
-    const run = () =>
-      join.mutate(undefined, {
-        onError: (e) => {
-          console.error("Failed to join group assignment", e);
-          Alert.alert(
-            "Error",
-            "Unable to start reassignment. Please try again.",
-          );
-        },
-      });
-    if (needsConfirm) {
-      Alert.alert("Group assignment", requestGroupAssignmentConfirmation, [
-        { text: "No", style: "cancel" },
-        { text: "Yes, reassign me", onPress: run },
-      ]);
-    } else {
-      run();
-    }
-  }, [memberCommunities.length, join]);
-
-  const handleCancelAssignment = useCallback(() => {
-    leave.mutate(undefined, {
-      onError: (e) => {
-        console.error("Failed to cancel assignment", e);
-        Alert.alert("Error", "Unable to cancel. Please try again.");
-      },
-    });
-  }, [leave]);
 
   const handleAcceptInvite = useCallback(
     (invite: CommunityInviteDto) => {
@@ -348,11 +258,6 @@ export default function GroupManageScreen() {
 
   const inviteRowBusy =
     acceptingInviteId !== null || decliningInviteId !== null;
-
-  const assignmentLabels = groupAssignmentLabels({
-    isMember: memberCommunities.length > 0,
-    didGroupsFail,
-  });
 
   return (
     <View className="flex-1">
@@ -431,74 +336,11 @@ export default function GroupManageScreen() {
                 didGroupsFail={didGroupsFail}
               />
 
-              <View className="p-4 bg-white">
-                <View className="flex-row flex-wrap items-start justify-between gap-2">
-                  <View className="flex-1 min-w-[200px]">
-                    <Text
-                      className="text-xl text-zinc-900"
-                      weight={FontWeight.Semibold}
-                    >
-                      Groups you&apos;re a member of
-                      {user?.undergoingGroupAssignment
-                        ? assignmentLabels.headingSuffix
-                        : ""}
-                    </Text>
-                    <Text className="text-base text-zinc-500 mt-0.5">
-                      For now, you can only be a member of one group.
-                    </Text>
-                  </View>
-                  {user?.undergoingGroupAssignment ? (
-                    <Button
-                      title={assignmentLabels.cancelLabel}
-                      onPress={handleCancelAssignment}
-                      color={ButtonColor.Black}
-                      size={ButtonSize.Small}
-                      disabled={assignmentBusy}
-                      loading={assignmentBusy}
-                    />
-                  ) : memberCommunities.length ? (
-                    <Button
-                      title="Request reassignment"
-                      onPress={handleRequestAssignment}
-                      color={ButtonColor.Light}
-                      size={ButtonSize.Small}
-                      disabled={assignmentBusy}
-                      loading={assignmentBusy}
-                    />
-                  ) : null}
-                </View>
-                {memberCommunities.length ? (
-                  <View className="gap-y-2 mt-4">
-                    {memberCommunities.map((community) => (
-                      <MemberCommunityCard
-                        key={community.id}
-                        community={community}
-                        onLeave={() => promptLeaveGroup(community)}
-                        leaving={leavingCommunityId === community.id}
-                      />
-                    ))}
-                  </View>
-                ) : didGroupsFail ? null : (
-                  <View className="flex flex-col gap-y-3 items-center py-4 px-2">
-                    <Text className="text-center text-sm text-zinc-500">
-                      You are not a member of any group.
-                      {user?.undergoingGroupAssignment
-                        ? " Staff will assign you to a group in a few days."
-                        : ""}
-                    </Text>
-                    {user && !user.undergoingGroupAssignment ? (
-                      <Button
-                        title="Request assignment"
-                        onPress={handleRequestAssignment}
-                        color={ButtonColor.Black}
-                        size={ButtonSize.Medium}
-                        disabled={assignmentBusy}
-                        loading={assignmentBusy}
-                      />
-                    ) : null}
-                  </View>
-                )}
-              </View>
+              <MemberGroupsSection
+                communities={memberCommunities}
+                didGroupsFail={didGroupsFail}
+                refreshAll={refreshAll}
+              />
 
               {didInvitesFail && (
                 <View className="bg-white">
@@ -605,54 +447,6 @@ export default function GroupManageScreen() {
           </KeyboardAwareScrollView>
         </>
       )}
-    </View>
-  );
-}
-
-function MemberCommunityCard({
-  community,
-  onLeave,
-  leaving,
-}: {
-  community: CommunityDto;
-  onLeave: () => void;
-  leaving: boolean;
-}) {
-  const memberCount = getMemberCount(community);
-  const leaderCount = community.leaders.length;
-  const capacity = community.allowStaffAssignments
-    ? community.maxCapacity
-    : null;
-
-  return (
-    <View
-      className="rounded p-3 gap-y-2"
-      style={{ backgroundColor: colors.grey[0] }}
-    >
-      <View className="flex-row items-start justify-between gap-3">
-        <View className="flex-1 gap-y-1">
-          <Text className="text-zinc-900" weight={FontWeight.Semibold}>
-            {community.name}
-          </Text>
-          <Text className="text-sm text-zinc-500" numberOfLines={3}>
-            {community.description || "No description yet."}
-          </Text>
-          <Text className="text-sm text-zinc-600">
-            {memberCount}
-            {capacity ? ` / ${capacity}` : ""}{" "}
-            {forCount(capacity || memberCount, "member")}
-            {leaderCount > 0 ? ` · ${withCount(leaderCount, "leader")}` : ""}
-          </Text>
-        </View>
-        <Button
-          title={leaving ? "…" : "Leave"}
-          onPress={onLeave}
-          color={ButtonColor.Red}
-          size={ButtonSize.Small}
-          disabled={leaving}
-          loading={leaving}
-        />
-      </View>
     </View>
   );
 }
