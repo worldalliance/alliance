@@ -1,6 +1,6 @@
 import { NodeEnv } from "@alliance/common/node-env";
 import { R, type Result } from "@alliance/common/result";
-import { ALLIANCE_DOMAIN } from "@alliance/common/url";
+import { ALLIANCE_DOMAIN, STAGING_SITE_URL } from "@alliance/common/url";
 
 /** Mirrors the `VARIANTS` keys in app.config.js. */
 export enum AppVariant {
@@ -43,18 +43,21 @@ const PRODUCTION: ReleaseTarget = {
   },
 };
 
+/** Also where any binary takes an app-store review account's session. */
+export const STAGING: ReleaseTarget = {
+  apiUrl: "https://staging.worldalliance.org/api",
+  siteUrl: STAGING_SITE_URL,
+  env: NodeEnv.Staging,
+  posthog: {
+    apiKey: "phc_Af7iQMRPzZS1T0MkYp20WgXyThUnWkNChHuYhuxomPS",
+    host: "https://staging.worldalliance.org/events/",
+  },
+};
+
 // A dev build running a published update has no local server to reach.
 const RELEASE_TARGETS: Record<AppVariant, ReleaseTarget> = {
   [AppVariant.Development]: PRODUCTION,
-  [AppVariant.Staging]: {
-    apiUrl: "https://staging.worldalliance.org/api",
-    siteUrl: `https://staging.${ALLIANCE_DOMAIN}`,
-    env: NodeEnv.Staging,
-    posthog: {
-      apiKey: "phc_Af7iQMRPzZS1T0MkYp20WgXyThUnWkNChHuYhuxomPS",
-      host: "https://staging.worldalliance.org/events/",
-    },
-  },
+  [AppVariant.Staging]: STAGING,
   [AppVariant.Production]: PRODUCTION,
 };
 

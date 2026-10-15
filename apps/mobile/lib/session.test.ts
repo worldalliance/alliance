@@ -5,6 +5,7 @@ import {
   routes,
   type RouteTable,
   serveApi,
+  SERVED_API_URL,
 } from "@alliance/shared/lib/testing/serveApi";
 import { afterEach, expect, it, jest, mock, spyOn } from "bun:test";
 import { milliseconds } from "date-fns";
@@ -48,6 +49,9 @@ afterEach(() => {
 const tokens = { access_token: "access", refresh_token: "refresh" };
 
 const cleared = async (): Promise<Result<void, Error>> => R.success(undefined);
+
+const close = (clearTokens: () => Promise<Result<void, Error>>) =>
+  closeSession({ clearTokens, leaveDeployment: () => {} });
 
 const start = ({
   saveTokens = mock(async (_tokens: SessionTokens) => {}),
@@ -173,12 +177,34 @@ it("sends the logout with the token, then drops it", async () => {
   setAuthHeader("access");
   const clearTokens = mock(cleared);
 
-  const closed = await closeSession(clearTokens);
+  const closed = await close(clearTokens);
 
   expect(closed.ok).toBe(true);
   expect(await logout.promise).toBe("Bearer access");
   expect(clearTokens).toHaveBeenCalled();
   expect(await nextAuthorization()).toBeNull();
+});
+
+it("sends the logout to the session's deployment before leaving it", async () => {
+  const logout = Promise.withResolvers<string>();
+  api.throwingOnRefusal({
+    "POST /auth/logout": ({ request }) => {
+      logout.resolve(new URL(request.url).origin);
+      return new Response(null, { status: 200 });
+    },
+    "GET /auth/me": ({ request }) =>
+      Response.json({ user: { id: 1 }, origin: new URL(request.url).origin }),
+  });
+  const { baseUrl } = client.getConfig();
+  client.setConfig({ baseUrl: "http://staging.test" });
+
+  await closeSession({
+    clearTokens: cleared,
+    leaveDeployment: () => client.setConfig({ baseUrl }),
+  });
+
+  expect(await logout.promise).toBe("http://staging.test");
+  expect((await authMe()).data).toMatchObject({ origin: baseUrl });
 });
 
 it("reports a failure to clear the tokens", async () => {
@@ -188,7 +214,7 @@ it("reports a failure to clear the tokens", async () => {
   setAuthHeader("access");
   const keychainDelete = new Error("keychain delete");
 
-  const closed = await closeSession(async () => R.failure(keychainDelete));
+  const closed = await close(async () => R.failure(keychainDelete));
 
   expect(closed.ok ? undefined : closed.error).toBe(keychainDelete);
   expect(await nextAuthorization()).toBeNull();
@@ -200,7 +226,7 @@ it("closes the session when the logout request fails", async () => {
   });
   setAuthHeader("access");
 
-  const closed = await closeSession(cleared);
+  const closed = await close(cleared);
 
   expect(closed.ok).toBe(true);
   expect(await nextAuthorization()).toBeNull();
@@ -580,7 +606,7 @@ it("leaves a logout that lands while the launch load is out alone", async () => 
 
   const { dropSession, reportFailure, restored } = restore();
   await launchSent.promise;
-  expect((await closeSession(cleared)).ok).toBe(true);
+  expect((await close(cleared)).ok).toBe(true);
   launchAnswered.resolve();
   const result = await restored;
 
@@ -959,7 +985,7 @@ it("ignores a missing token read that returns after logout", async () => {
     getRefreshToken: () => token.promise,
     saveTokens: async () => {},
   });
-  await closeSession(cleared);
+  await close(cleared);
   token.resolve(null);
 
   expect(await refreshing).toEqual(R.success(undefined));
@@ -1027,7 +1053,7 @@ it("drops a session refused by several requests once", async () => {
   const dropping = Promise.withResolvers<void>();
   const dropSession = mock(async () => {
     await dropping.promise;
-    await closeSession(cleared);
+    await close(cleared);
   });
   dropSessionOnRefusal({ signedIn: true, dropSession });
   setAuthHeader("expired");
@@ -1078,7 +1104,7 @@ it("drops a refresh that returns after logout", async () => {
   serveLogout();
   setAuthHeader("access");
   const session = openedSession();
-  await closeSession(cleared);
+  await close(cleared);
   const saveTokens = mock(async () => {});
 
   const applied = await applyRefresh({
@@ -1102,7 +1128,7 @@ it("clears the tokens after a refresh save that logout lands in", async () => {
     await saving.promise;
     order.push("saved");
   });
-  const closing = closeSession(async () => {
+  const closing = close(async () => {
     order.push("cleared");
     return R.success(undefined);
   });
@@ -1131,7 +1157,7 @@ it("drops a refresh save still queued when logout lands", async () => {
       order.push("saved fast");
     },
   });
-  const closing = closeSession(async () => {
+  const closing = close(async () => {
     order.push("cleared");
     return R.success(undefined);
   });
@@ -1162,7 +1188,7 @@ it("returns the 401 when logout lands while the refresh is out", async () => {
 
   const me = authMe({ throwOnError: false });
   await refreshing.promise;
-  await closeSession(cleared);
+  await close(cleared);
   answer.resolve();
 
   expect((await me).response.status).toBe(401);
@@ -1185,7 +1211,7 @@ it("skips the refresh for a request sent after logout", async () => {
     },
   });
   setAuthHeader("access");
-  const closing = closeSession(async () => {
+  const closing = close(async () => {
     await deleting.promise;
     return R.success(undefined);
   });
@@ -1226,7 +1252,7 @@ it("skips the refresh for a request whose session a login replaced", async () =>
 
   const me = authMe({ throwOnError: false });
   await sent.promise;
-  await closeSession(cleared);
+  await close(cleared);
   await openSession({
     tokens,
     saveTokens: async () => {},
@@ -1240,7 +1266,7 @@ it("skips the refresh for a request whose session a login replaced", async () =>
 
 it("refreshes again once a login follows a logout", async () => {
   serveLogout();
-  await closeSession(cleared);
+  await close(cleared);
   api.throwingOnRefusal({
     "GET /auth/me": () => Response.json({ user: { id: 1 } }),
   });
@@ -1275,7 +1301,7 @@ it("skips the refresh after a login that failed to load the profile", async () =
       });
     },
   });
-  await closeSession(async () => R.failure(new Error("keychain delete")));
+  await close(async () => R.failure(new Error("keychain delete")));
   const opened = await openSession({
     tokens,
     saveTokens,
@@ -1292,7 +1318,7 @@ it("skips the refresh after a login that failed to load the profile", async () =
 
 it("leaves the session closed after a login that failed to save its tokens", async () => {
   serveLogout();
-  await closeSession(cleared);
+  await close(cleared);
   api.throwingOnRefusal({
     "GET /auth/me": () => Response.json({ user: { id: 1 } }),
   });
@@ -1315,7 +1341,7 @@ it("deletes the tokens even when a refresh save never settles", async () => {
   const clearTokens = mock(cleared);
   await startRefreshSave(() => new Promise<void>(() => {}));
 
-  const closing = closeSession(clearTokens);
+  const closing = close(clearTokens);
   jest.advanceTimersByTime(milliseconds({ seconds: 5 }));
 
   expect((await closing).ok).toBe(true);
@@ -1338,7 +1364,7 @@ it("saves a login's tokens after a refresh save from the session it replaces", a
     await storage.saveTokens({ access: "refreshed", refresh: "next" });
   });
 
-  const closing = closeSession(storage.clearTokens);
+  const closing = close(storage.clearTokens);
   const opening = openSession({
     tokens,
     saveTokens: storage.saveTokens,
@@ -1385,7 +1411,7 @@ it("saves a login's tokens after a delete the logout already started", async () 
   const deleting = Promise.withResolvers<void>();
   const order: string[] = [];
 
-  const closing = closeSession(async () => {
+  const closing = close(async () => {
     await deleting.promise;
     order.push("cleared");
     return R.success(undefined);
@@ -1414,7 +1440,7 @@ it("saves a login's tokens even when a logout's delete never settles", async () 
     "GET /auth/me": () => Response.json({ user: { id: 1 } }),
   });
   const storage = keychain();
-  void closeSession(() => new Promise(() => {}));
+  void close(() => new Promise(() => {}));
 
   const opened = await settleAfterDeadlines(
     openSession({
@@ -1436,7 +1462,7 @@ it("writes the login's tokens again when a delete lands after the deadline", asy
   });
   const storage = keychain({ access: "old", refresh: "old" });
   const deleting = Promise.withResolvers<void>();
-  void closeSession(async () => {
+  void close(async () => {
     await deleting.promise;
     return await storage.clearTokens();
   });
@@ -1495,7 +1521,7 @@ it("deletes the tokens again when a save lands after the deadline", async () => 
   const clearTokens = mock(cleared);
   await startRefreshSave(() => saving.promise);
 
-  const closing = closeSession(clearTokens);
+  const closing = close(clearTokens);
   jest.advanceTimersByTime(milliseconds({ seconds: 5 }));
   expect((await closing).ok).toBe(true);
   expect(clearTokens).toHaveBeenCalledTimes(1);
@@ -1520,7 +1546,7 @@ it("writes the login's tokens again when a save lands after the deadline", async
     await storage.saveTokens({ access: "refreshed", refresh: "next" });
   });
 
-  const closing = closeSession(storage.clearTokens);
+  const closing = close(storage.clearTokens);
   jest.advanceTimersByTime(milliseconds({ seconds: 5 }));
   await closing;
   jest.useRealTimers();
@@ -1549,7 +1575,7 @@ it("writes the open session's refreshed tokens again when a save lands after the
     await storage.saveTokens({ access: "refreshed", refresh: "next" });
   });
 
-  const closing = closeSession(storage.clearTokens);
+  const closing = close(storage.clearTokens);
   jest.advanceTimersByTime(milliseconds({ seconds: 5 }));
   await closing;
   jest.useRealTimers();
@@ -1602,7 +1628,7 @@ it("stops waiting on a refresh save the deadline gave up on", async () => {
   jest.useFakeTimers();
   serveLogout();
   await startRefreshSave(() => new Promise<void>(() => {}));
-  const first = closeSession(mock(cleared));
+  const first = close(mock(cleared));
   jest.advanceTimersByTime(milliseconds({ seconds: 5 }));
   await first;
   jest.useRealTimers();
@@ -1617,7 +1643,7 @@ it("stops waiting on a refresh save the deadline gave up on", async () => {
   });
 
   let settled = false;
-  const second = closeSession(mock(cleared)).then((closed) => {
+  const second = close(mock(cleared)).then((closed) => {
     settled = true;
     return closed;
   });
@@ -1629,7 +1655,7 @@ it("stops waiting on a refresh save the deadline gave up on", async () => {
 
 it("retries the delete while no session is open", async () => {
   serveLogout();
-  await closeSession(async () => R.failure(new Error("keychain delete")));
+  await close(async () => R.failure(new Error("keychain delete")));
   const clearTokens = mock(cleared);
 
   expect((await clearClosedSessionTokens(clearTokens)).ok).toBe(true);
@@ -1641,7 +1667,7 @@ it("skips a retried delete once a login has opened a session", async () => {
     "POST /auth/logout": () => new Response(null, { status: 200 }),
     "GET /auth/me": () => Response.json({ user: { id: 1 } }),
   });
-  await closeSession(async () => R.failure(new Error("keychain delete")));
+  await close(async () => R.failure(new Error("keychain delete")));
   await openSession({
     tokens,
     saveTokens: async () => {},
@@ -1762,7 +1788,7 @@ it("resolves to no token when logout lands while the refresh is out", async () =
   const saveTokens = mock(async (_tokens: SessionTokens) => {});
 
   const refreshed = refreshing(saveTokens);
-  await closeSession(cleared);
+  await close(cleared);
   answer.resolve();
 
   expect(R.unwrap(await refreshed)).toBeUndefined();
@@ -1786,7 +1812,7 @@ it("refreshes a login's session apart from an earlier session's refresh", async 
   });
 
   const earlier = refreshing();
-  await closeSession(cleared);
+  await close(cleared);
   await openSession({
     tokens,
     saveTokens: async () => {},
@@ -1835,7 +1861,7 @@ it("refreshes whatever session is open", async () => {
 
 it("never asks the server for a refresh while no session is open", async () => {
   serveLogout();
-  await closeSession(cleared);
+  await close(cleared);
   const getRefreshToken = mock(async (): Promise<string | null> => "refresh");
   const saveTokens = mock(async (_tokens: SessionTokens) => {});
 
@@ -1853,7 +1879,7 @@ it("returns the tokens the server issues for the credentials", async () => {
     "POST /auth/login": () => Response.json({ isAdmin: false, ...tokens }),
   });
 
-  const result = await requestTokens(credentials);
+  const result = await requestTokens(credentials, SERVED_API_URL);
 
   expect(result.ok && result.value).toEqual(tokens);
 });
@@ -1866,7 +1892,7 @@ it.each([400, 401])(
         Response.json({ message: "Unauthorized" }, { status }),
     });
 
-    const result = await requestTokens(credentials);
+    const result = await requestTokens(credentials, SERVED_API_URL);
 
     expect(result.ok ? undefined : result.error).toBeInstanceOf(
       CredentialsRefusedError,
@@ -1879,7 +1905,7 @@ it("reports a server failure apart from refused credentials", async () => {
     "POST /auth/login": () => new Response(null, { status: 500 }),
   });
 
-  const result = await requestTokens(credentials);
+  const result = await requestTokens(credentials, SERVED_API_URL);
 
   expect(result.ok).toBe(false);
   expect(result.ok ? undefined : result.error).not.toBeInstanceOf(
@@ -1895,7 +1921,7 @@ it("reports a request that never gets a response", async () => {
     },
   });
 
-  const result = await requestTokens(credentials);
+  const result = await requestTokens(credentials, SERVED_API_URL);
 
   expect(result.ok ? undefined : result.error).toBe(unreachable);
 });

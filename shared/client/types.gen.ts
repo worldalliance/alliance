@@ -29,6 +29,11 @@ export type SignInResponseDto = {
     refresh_token?: string;
 };
 
+export type ReviewSignInDto = {
+    email: string;
+    password: string;
+};
+
 export type SignUpDto = {
     name: string;
     email: string;
@@ -867,7 +872,7 @@ export type SessionTokensDto = {
     refresh_token: string;
 };
 
-export type OAuthError = 'cancelled' | 'failed' | 'no_account' | 'email_not_verified' | 'claimed_by_another_account' | 'invite_required' | 'last_sign_in_method' | 'provider_already_connected' | 'expired';
+export type OAuthError = 'cancelled' | 'failed' | 'no_account' | 'email_not_verified' | 'claimed_by_another_account' | 'invite_required' | 'last_sign_in_method' | 'provider_already_connected' | 'expired' | 'review_account';
 
 export type MobileOAuthSignInDto = {
     session?: SessionTokensDto;
@@ -5133,6 +5138,10 @@ export type AuthLoginData = {
 export type AuthLoginErrors = {
     401: HeyApiError;
     /**
+     * Review account, which signs in on staging
+     */
+    403: HeyApiError;
+    /**
      * Migrated account signing in on the legacy domain
      */
     409: HeyApiError;
@@ -5164,6 +5173,31 @@ export type AuthAdminLoginResponses = {
 };
 
 export type AuthAdminLoginResponse = AuthAdminLoginResponses[keyof AuthAdminLoginResponses];
+
+export type AuthReviewLoginData = {
+    body: ReviewSignInDto;
+    path?: never;
+    query?: never;
+    url: '/auth/review-login';
+};
+
+export type AuthReviewLoginErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type AuthReviewLoginError = AuthReviewLoginErrors[keyof AuthReviewLoginErrors];
+
+export type AuthReviewLoginResponses = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type AuthReviewLoginResponse = AuthReviewLoginResponses[keyof AuthReviewLoginResponses];
 
 export type AuthRegisterData = {
     body: SignUpDto;

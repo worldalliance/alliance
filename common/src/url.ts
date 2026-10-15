@@ -66,6 +66,8 @@ export function appendQueryParam(
 export const ALLIANCE_LEGACY_DOMAIN = "worldalliance.org";
 export const ALLIANCE_DOMAIN = "thealliance.org";
 
+export const STAGING_SITE_URL = `https://staging.${ALLIANCE_DOMAIN}`;
+
 /** `host` may be a `Host` header, which carries a port in local runs. */
 export const isLegacyAllianceHost = (host: string): boolean =>
   hostnameMatchesDomain(host.split(":")[0], ALLIANCE_LEGACY_DOMAIN);

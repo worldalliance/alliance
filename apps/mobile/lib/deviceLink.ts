@@ -180,3 +180,29 @@ export function createDeviceLink(deps: DeviceLinkDeps) {
       ),
   };
 }
+
+type DeviceLink = ReturnType<typeof createDeviceLink>;
+
+/** Routes to the active session's deployment's link, so one deployment's
+ * device id never stands in for, or unlinks, the other's. A retry covers both,
+ * so an unlink pending from the other deployment's session still lands. */
+export const sessionDeviceLinks = (params: {
+  binary: DeviceLink;
+  review: DeviceLink;
+  isReviewSession: () => boolean;
+}) => {
+  const active = () =>
+    params.isReviewSession() ? params.review : params.binary;
+  return {
+    registerDevice: (
+      registration: Parameters<DeviceLink["registerDevice"]>[0],
+    ) => active().registerDevice(registration),
+    unregisterDevice: (): Promise<void> => active().unregisterDevice(),
+    retryPending: async (): Promise<void> => {
+      await Promise.all([
+        params.binary.retryPending(),
+        params.review.retryPending(),
+      ]);
+    },
+  };
+};

@@ -3,7 +3,7 @@ import {
   registerAnalytics,
 } from "@alliance/shared/lib/analytics";
 import { afterEach, expect, it, mock } from "bun:test";
-import { createDeviceLink } from "./deviceLink";
+import { createDeviceLink, sessionDeviceLinks } from "./deviceLink";
 import { SecureStorageKey } from "./secureStorageKey";
 
 const setUp = ({ requestDeadlineMs = 1000, failWrites = false } = {}) => {
@@ -425,3 +425,46 @@ it("unlinks even when recording the pending unlink fails", async () => {
     expoPushToken: "token-a",
   });
 });
+
+const fakeLink = () => ({
+  registerDevice: mock(async () => {}),
+  unregisterDevice: mock(async () => {}),
+  retryPending: mock(async () => {}),
+});
+
+it("links and unlinks through the active session's deployment", async () => {
+  const binary = fakeLink();
+  const review = fakeLink();
+  let reviewing = true;
+  const links = sessionDeviceLinks({
+    binary,
+    review,
+    isReviewSession: () => reviewing,
+  });
+  await links.registerDevice(device);
+  await links.unregisterDevice();
+  reviewing = false;
+  await links.unregisterDevice();
+
+  expect(review.registerDevice).toHaveBeenCalledWith(device);
+  expect(review.unregisterDevice).toHaveBeenCalledTimes(1);
+  expect(binary.registerDevice).not.toHaveBeenCalled();
+  expect(binary.unregisterDevice).toHaveBeenCalledTimes(1);
+});
+
+it.each([true, false])(
+  "retries both deployments' pending steps (review session: %p)",
+  async (reviewing) => {
+    const binary = fakeLink();
+    const review = fakeLink();
+
+    await sessionDeviceLinks({
+      binary,
+      review,
+      isReviewSession: () => reviewing,
+    }).retryPending();
+
+    expect(binary.retryPending).toHaveBeenCalledTimes(1);
+    expect(review.retryPending).toHaveBeenCalledTimes(1);
+  },
+);

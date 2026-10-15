@@ -15,29 +15,32 @@ import React, {
   useState,
 } from "react";
 import { Alert } from "react-native";
-import { authMe, UserDto, type SessionTokensDto } from "../../../shared/client";
+import { authMe, UserDto } from "../../../shared/client";
+import { getBinaryApiUrl, setReviewSession } from "./config";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
 import { signInWithProvider } from "./oauth";
 import { thrownFailure, type OAuthFailure } from "./oauthResult";
 import { unregisterDevice } from "./registeredDevice";
+import { requestSession, type RequestedSession } from "./reviewSignIn";
 import {
   getAccessToken,
   getRefreshToken,
-  saveSessionTokens,
   SecureStorage,
-  SecureStorageKey,
 } from "./SecureStorage";
 import {
   clearClosedSessionTokens,
-  clearStoredTokens,
   closeSession,
   dropSessionOnRefusal,
   openSession,
-  requestTokens,
   restoreSession,
   retryClearTokens,
   SessionOvertakenError,
 } from "./session";
+import {
+  clearMarkedSession,
+  openMarkedSession,
+  restoreMarkedSession,
+} from "./sessionMarker";
 import { getDeviceTimeZone } from "./timeZone";
 import {
   getVisualTestAutoLoginCredentials,
@@ -69,11 +72,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const clearSessionTokens = () =>
-  clearStoredTokens(SecureStorage, [
-    SecureStorageKey.ACCESS_TOKEN,
-    SecureStorageKey.REFRESH_TOKEN,
-  ]);
+const clearSessionTokens = () => clearMarkedSession(SecureStorage);
 
 const askToRetryLogout = () =>
   new Promise<boolean>((resolve) =>
@@ -110,7 +109,10 @@ export const AuthProvider: React.FC<
 
   const clearSession = useCallback(() => {
     void unregisterDevice();
-    const closed = closeSession(clearTokensAndReport);
+    const closed = closeSession({
+      clearTokens: clearTokensAndReport,
+      leaveDeployment: () => setReviewSession(false),
+    });
     queryClient.clear();
     setUser(undefined);
     setSessionUnavailable(false);
@@ -164,14 +166,21 @@ export const AuthProvider: React.FC<
     setIsLoading(true);
     setSessionUnavailable(false);
     try {
-      // refreshingFetch refreshes an expired access token and retries
-      // before this call returns.
-      const restored = await restoreSession({
-        getAccessToken,
-        getRefreshToken,
-        dropSession: dropRefusedSession,
-        reportFailure: (error) =>
-          captureException(ExceptionEvent.SessionLoadFailed, error),
+      const reportFailure = (error: Error) =>
+        captureException(ExceptionEvent.SessionLoadFailed, error);
+      const restored = await restoreMarkedSession({
+        storage: SecureStorage,
+        setReviewSession,
+        reportFailure,
+        // refreshingFetch refreshes an expired access token and retries
+        // before this call returns.
+        restore: () =>
+          restoreSession({
+            getAccessToken,
+            getRefreshToken,
+            dropSession: dropRefusedSession,
+            reportFailure,
+          }),
       });
       if (!restored.ok) {
         if (!(restored.error instanceof SessionOvertakenError)) {
@@ -190,13 +199,19 @@ export const AuthProvider: React.FC<
   }, [restoreStoredSession]);
 
   const startSession = useCallback(
-    async (tokens: SessionTokensDto) => {
+    async (params: RequestedSession) => {
       queryClient.clear();
 
-      const opened = await openSession({
-        tokens,
-        saveTokens: saveSessionTokens,
-        clearTokens: clearTokensAndReport,
+      const opened = await openMarkedSession({
+        storage: SecureStorage,
+        review: params.review,
+        setReviewSession,
+        open: (saveTokens) =>
+          openSession({
+            tokens: params.tokens,
+            saveTokens,
+            clearTokens: clearTokensAndReport,
+          }),
       });
       if (!opened.ok) {
         throw opened.error;
@@ -218,12 +233,13 @@ export const AuthProvider: React.FC<
       setIsLoading(true);
       try {
         const guestToken = (await getStoredGuestToken()) ?? undefined;
-        const requested = await requestTokens({ email, password, guestToken });
+        const requested = await requestSession({
+          credentials: { email, password, guestToken },
+          binaryApiUrl: getBinaryApiUrl(),
+          clearGuestToken,
+        });
         if (!requested.ok) {
           throw requested.error;
-        }
-        if (guestToken) {
-          await clearGuestToken();
         }
 
         await startSession(requested.value);
@@ -252,7 +268,7 @@ export const AuthProvider: React.FC<
           if (guestToken) {
             await clearGuestToken();
           }
-          await startSession(signedIn.value);
+          await startSession({ tokens: signedIn.value, review: false });
           return R.success(undefined);
         },
         thrownFailure,

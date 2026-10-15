@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
 import {
   IsDefined,
@@ -34,6 +34,11 @@ export class SignInDto {
   @IsString()
   guestToken?: string;
 }
+
+export class ReviewSignInDto extends PickType(SignInDto, [
+  "email",
+  "password",
+]) {}
 
 export class SignInResponseDto {
   @ApiProperty()

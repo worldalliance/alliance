@@ -42,6 +42,7 @@ export const testUser = new User({
   switchedDomainAt: null,
   password: "",
   admin: false,
+  isTestUser: false,
   staff: false,
   staffTitle: null,
   staffLink: null,

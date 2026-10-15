@@ -46,9 +46,10 @@ export const WAITLIST_LINK_THROTTLE: Record<string, ThrottlerOptions> = {
 };
 
 /**
- * Sign-in through a provider. Looser than {@link SIGNUP_THROTTLE} because
- * /start is one click of a login button, not a registration, and a roomful of
- * members behind one NAT shares the bucket.
+ * Sign-in through a provider, and the review-account handoff to staging.
+ * Looser than {@link SIGNUP_THROTTLE} because each is one submission per
+ * sign-in, not a registration, and a roomful of members behind one NAT shares
+ * the bucket.
  */
 export const OAUTH_THROTTLE: Record<string, ThrottlerOptions> = {
   oauthBurst: { limit: 30, ttl: milliseconds({ minutes: 1 }) },

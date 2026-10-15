@@ -252,6 +252,11 @@ export class User {
   @ApiProperty()
   admin: boolean;
 
+  /** An app-store review account, which production refuses a session. Set by
+   * hand in the database only. */
+  @Column({ default: false })
+  isTestUser: boolean;
+
   @Column({ default: false })
   @ApiProperty()
   staff: boolean;

@@ -1,8 +1,11 @@
 import request from "supertest";
-import { SIGNUP_THROTTLE } from "../src/auth/signup-throttle.config";
+import {
+  OAUTH_THROTTLE,
+  SIGNUP_THROTTLE,
+} from "../src/auth/signup-throttle.config";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
-describe("Auth register rate limiting (e2e)", () => {
+describe("Auth rate limiting (e2e)", () => {
   let ctx: TestContext;
   const burstLimit = SIGNUP_THROTTLE.signupBurst.limit as number;
 
@@ -39,5 +42,20 @@ describe("Auth register rate limiting (e2e)", () => {
 
     const blocked = await register(burstLimit);
     expect(blocked.status).toBe(429);
+  });
+
+  it("limits the review-account handoff", async () => {
+    const reviewLogin = () =>
+      request(ctx.app.getHttpServer())
+        .post("/auth/review-login")
+        .type("form")
+        .send({ email: "reviewer@example.com", password: "password" });
+    const limit = OAUTH_THROTTLE.oauthBurst.limit as number;
+
+    for (let n = 0; n < limit; n++) {
+      expect((await reviewLogin()).status).not.toBe(429);
+    }
+
+    expect((await reviewLogin()).status).toBe(429);
   });
 });
