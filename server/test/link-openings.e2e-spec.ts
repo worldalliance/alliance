@@ -120,6 +120,7 @@ describe("Link openings (e2e)", () => {
   it("gives each channel its own ID and credits an opening only to its own", async () => {
     const mms = await mmsService.sendMms({
       to: "+15555550123",
+      userId: member.id,
       body: "Tasks: https://app.example.org/tasks",
       mediaUrls: [],
       tracking: reminder(member.id),
@@ -161,6 +162,7 @@ describe("Link openings (e2e)", () => {
   it("stores a separate opening once, however often it is retried", async () => {
     const mms = await mmsService.sendMms({
       to: "+15555550123",
+      userId: member.id,
       body: "https://app.example.org/tasks",
       mediaUrls: [],
       tracking: reminder(member.id),
@@ -201,6 +203,7 @@ describe("Link openings (e2e)", () => {
   it("stores its own normalization of a destination", async () => {
     const mms = await mmsService.sendMms({
       to: "+15555550123",
+      userId: member.id,
       body: "https://app.example.org/tasks",
       mediaUrls: [],
       tracking: reminder(member.id),
@@ -240,6 +243,7 @@ describe("Link openings (e2e)", () => {
   ])("rejects %s without storing it", async (_, overrides) => {
     const mms = await mmsService.sendMms({
       to: "+15555550123",
+      userId: member.id,
       body: "https://app.example.org/tasks",
       mediaUrls: [],
       tracking: reminder(member.id),
@@ -286,6 +290,7 @@ describe("Link openings (e2e)", () => {
     });
     const mms = await mmsService.sendMms({
       to: "+15555550123",
+      userId: member.id,
       body: "https://app.example.org/tasks",
       mediaUrls: [],
       tracking: { ...reminder(member.id), actionEventNotifId: notif.id },
@@ -338,6 +343,7 @@ describe("Link openings (e2e)", () => {
     const leaving = await saveMember("leaving@example.org");
     const mms = await mmsService.sendMms({
       to: "+15555550124",
+      userId: leaving.id,
       body: "https://app.example.org/tasks",
       mediaUrls: [],
       tracking: reminder(leaving.id),
@@ -357,6 +363,7 @@ describe("Link openings (e2e)", () => {
   it("refuses an opening of a tracking deleted while it records", async () => {
     const mms = await mmsService.sendMms({
       to: "+15555550125",
+      userId: member.id,
       body: "https://app.example.org/tasks",
       mediaUrls: [],
       tracking: reminder(member.id),

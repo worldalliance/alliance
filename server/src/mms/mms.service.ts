@@ -92,11 +92,12 @@ export class MmsService {
 
   async sendMms(params: {
     to: string;
+    userId: number;
     body: string;
     mediaUrls: string[];
     tracking: TrackedMessage | null;
   }): Promise<Mms | null> {
-    const { to, mediaUrls, tracking } = params;
+    const { to, userId, mediaUrls, tracking } = params;
     let cid: string | null = null;
     if (tracking) {
       const tracked = await R.fromPromise(
@@ -105,7 +106,8 @@ export class MmsService {
           channel: MessageChannel.Sms,
         }),
       );
-      if (!tracked.ok) return this.reportFailure(to, tracked.error);
+      if (!tracked.ok)
+        return this.reportFailure({ to, userId, error: tracked.error });
       cid = tracked.value;
     }
     const body = cid
@@ -129,7 +131,7 @@ export class MmsService {
       return this.mmsRepository.save(mms);
     }
     this.logger.log(
-      `Attempting to send MMS to ${to} with ${mediaUrls.length} media items.`,
+      `Attempting to send MMS to user ${userId} with ${mediaUrls.length} media items.`,
     );
 
     if (mediaUrls.length === 0) {
@@ -159,7 +161,7 @@ export class MmsService {
       );
 
       if (message === TIMED_OUT) {
-        this.recordLateSend({ sending, to, body, cid });
+        this.recordLateSend({ sending, to, userId, body, cid });
         throw new Error(`sendMms timed out after ${this.sendTimeoutMs}ms`);
       }
 
@@ -167,16 +169,22 @@ export class MmsService {
 
       return this.saveSent({ message, to, body, cid });
     } catch (error) {
-      return this.reportFailure(to, error);
+      return this.reportFailure({ to, userId, error });
     }
   }
 
-  private reportFailure(to: string, error: unknown): null {
+  private reportFailure(params: {
+    to: string;
+    userId: number;
+    error: unknown;
+  }): null {
+    const { to, userId, error } = params;
     const errorMessage = thrownMessage(error);
-    this.logger.error(
-      `Failed to send MMS to ${to}: ${errorMessage}`,
-      thrownStack(error),
-    );
+    this.logError({
+      to,
+      text: `Failed to send MMS to user ${userId}: ${errorMessage}`,
+      error,
+    });
     if (process.env.NODE_ENV === "production") {
       this.eventLogService.sendMessage({
         type: EventType.SmsFailure,
@@ -186,6 +194,13 @@ export class MmsService {
       });
     }
     return null;
+  }
+
+  /** Twilio's error text quotes the number it rejected. */
+  private logError(params: { to: string; text: string; error: unknown }) {
+    const { to, text, error } = params;
+    const redact = (logged: string) => logged.replaceAll(to, "[redacted]");
+    this.logger.error(redact(text), redact(thrownStack(error)));
   }
 
   private senderFor(to: string): string {
@@ -223,16 +238,17 @@ export class MmsService {
   private recordLateSend(params: {
     sending: Promise<SentMessage>;
     to: string;
+    userId: number;
     body: string;
     cid: string | null;
   }): void {
-    const { sending, to, body, cid } = params;
+    const { sending, to, userId, body, cid } = params;
     void sending
       .then(
         async (message) => {
           const mms = await this.saveSent({ message, to, body, cid });
           this.logger.warn(
-            `MMS to ${to} landed after ${this.sendTimeoutMs}ms and was recorded as ${mms.id} (SID ${message.sid})`,
+            `MMS to user ${userId} landed after ${this.sendTimeoutMs}ms and was recorded as ${mms.id} (SID ${message.sid})`,
           );
         },
         async (error: unknown) => {
@@ -241,10 +257,11 @@ export class MmsService {
         },
       )
       .catch((error: unknown) => {
-        this.logger.error(
-          `MMS to ${to} failed after ${this.sendTimeoutMs}ms: ${thrownMessage(error)}`,
-          thrownStack(error),
-        );
+        this.logError({
+          to,
+          text: `MMS to user ${userId} failed after ${this.sendTimeoutMs}ms: ${thrownMessage(error)}`,
+          error,
+        });
       });
   }
 
