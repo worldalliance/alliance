@@ -23,6 +23,7 @@ import {
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCookieAuth,
+  ApiForbiddenResponse,
   ApiOkResponse,
   ApiPropertyOptional,
   ApiResponse,
@@ -83,6 +84,9 @@ export class AuthController {
   @ApiUnauthorizedResponse()
   @ApiConflictResponse({
     description: "Migrated account signing in on the legacy domain",
+  })
+  @ApiForbiddenResponse({
+    description: "Review account, which signs in on staging",
   })
   @Post("login")
   async login(

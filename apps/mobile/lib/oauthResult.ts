@@ -73,6 +73,7 @@ const FAILURE_TONE: Record<OAuthFailure, FailureTone> = {
   [OAuthError.LastSignInMethod]: FailureTone.Error,
   [OAuthError.ProviderAlreadyConnected]: FailureTone.Error,
   [OAuthError.Expired]: FailureTone.Error,
+  [OAuthError.ReviewAccount]: FailureTone.Error,
   [ClientFailure.Network]: FailureTone.Error,
 };
 

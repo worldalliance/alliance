@@ -867,7 +867,7 @@ export type SessionTokensDto = {
     refresh_token: string;
 };
 
-export type OAuthError = 'cancelled' | 'failed' | 'no_account' | 'email_not_verified' | 'claimed_by_another_account' | 'invite_required' | 'last_sign_in_method' | 'provider_already_connected' | 'expired';
+export type OAuthError = 'cancelled' | 'failed' | 'no_account' | 'email_not_verified' | 'claimed_by_another_account' | 'invite_required' | 'last_sign_in_method' | 'provider_already_connected' | 'expired' | 'review_account';
 
 export type MobileOAuthSignInDto = {
     session?: SessionTokensDto;
@@ -5132,6 +5132,10 @@ export type AuthLoginData = {
 
 export type AuthLoginErrors = {
     401: HeyApiError;
+    /**
+     * Review account, which signs in on staging
+     */
+    403: HeyApiError;
     /**
      * Migrated account signing in on the legacy domain
      */

@@ -39,6 +39,7 @@ export enum OAuthError {
   LastSignInMethod = "last_sign_in_method",
   ProviderAlreadyConnected = "provider_already_connected",
   Expired = "expired",
+  ReviewAccount = "review_account",
 }
 
 export const MOBILE_OAUTH_RETURN_URL = "alliance://oauth-callback";
@@ -69,6 +70,8 @@ export const OAUTH_ERROR_MESSAGE: Record<
   [OAuthError.ProviderAlreadyConnected]: (label) =>
     `A different ${label} account is already connected to your Alliance account. Disconnect that one first.`,
   [OAuthError.Expired]: () => "That took too long. Please try again.",
+  [OAuthError.ReviewAccount]: () =>
+    "Use your review account's email and password to sign in.",
 };
 
 export function oauthErrorMessage(

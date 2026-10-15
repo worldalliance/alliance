@@ -23,6 +23,8 @@ import { requestContext } from "src/utils/request-context";
 import { Not, type Repository } from "typeorm";
 import { z } from "zod";
 import { AuthService } from "../auth.service";
+import { isRefusedReviewAccount } from "../review-account";
+import { sessionAccount } from "../session.service";
 import { SpentTokenService } from "../spent-token.service";
 import { generationOf, JWTTokenType } from "../tokens";
 import {
@@ -275,10 +277,12 @@ export class OAuthAuthService {
     if (!handoff.ok) {
       return handoff;
     }
-    const user = await this.userRepository.findOneBy({
-      id: handoff.value.userId,
-      sessionGeneration: generationOf(handoff.value),
-    });
+    const user = await this.userRepository.findOneBy(
+      sessionAccount({
+        userId: handoff.value.userId,
+        sessionGeneration: generationOf(handoff.value),
+      }),
+    );
     if (!user) {
       return R.failure(OAuthError.Failed);
     }
@@ -411,19 +415,23 @@ export class OAuthAuthService {
       where: { provider: profile.provider, subject: profile.subject },
     });
     if (account) {
+      const user = await this.usersService.findOneOrFail(account.userId);
+      if (isRefusedReviewAccount(user)) {
+        return R.failure(OAuthError.ReviewAccount);
+      }
       if (account.email !== profile.email) {
         await this.accountRepository.update(account.id, {
           email: profile.email,
         });
       }
-      return R.success({
-        user: await this.usersService.findOneOrFail(account.userId),
-        outcome: OAuthOutcome.SignedIn,
-      });
+      return R.success({ user, outcome: OAuthOutcome.SignedIn });
     }
 
     const byEmail = await this.usersService.findOneByEmail(profile.email);
     if (byEmail) {
+      if (isRefusedReviewAccount(byEmail)) {
+        return R.failure(OAuthError.ReviewAccount);
+      }
       const linked = await this.link({ userId: byEmail.id, profile });
       if (!linked.ok) {
         return linked;
