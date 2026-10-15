@@ -21,6 +21,8 @@ export enum ActionActivityType {
 export const MEMBER_ACTION_DEADLINE_PASSED =
   "The deadline for this action has passed.";
 
+export const FORM_ALREADY_SUBMITTED = "Form already submitted";
+
 /** Which `ActionActivityType`s appear in feeds. */
 const ACTION_ACTIVITY_FEED_VISIBLE = {
   user_completed: true,

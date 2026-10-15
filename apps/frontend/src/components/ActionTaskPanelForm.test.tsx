@@ -1,4 +1,7 @@
-import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
+import {
+  FORM_ALREADY_SUBMITTED,
+  MEMBER_ACTION_DEADLINE_PASSED,
+} from "@alliance/common/actionActivity";
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
 import type { ActionDto } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -216,6 +219,24 @@ it("refetches the action, unreported, when the deadline passed before the submit
   expect(await screen.findByText(MEMBER_ACTION_DEADLINE_PASSED)).toBeTruthy();
   expect(onDeadlinePassed).toHaveBeenCalledTimes(1);
   expect(reported).toEqual([]);
+});
+
+it("reloads the page, unreported, when the form was already submitted", async () => {
+  const reload = jest
+    .spyOn(window.location, "reload")
+    .mockImplementation(() => {});
+
+  try {
+    await submitRefusedWith({
+      statusCode: 400,
+      message: FORM_ALREADY_SUBMITTED,
+    });
+
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    expect(reported).toEqual([]);
+  } finally {
+    reload.mockRestore();
+  }
 });
 
 it("marks the cached action completed once the server accepts the submission", async () => {

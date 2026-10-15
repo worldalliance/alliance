@@ -1,5 +1,6 @@
 import {
   ActionActivityType,
+  FORM_ALREADY_SUBMITTED,
   MEMBER_ACTION_DEADLINE_PASSED,
 } from "@alliance/common/actionActivity";
 import { AnalyticsEvent, ExceptionEvent } from "@alliance/common/analytics";
@@ -822,7 +823,7 @@ describe("Tasks (e2e)", () => {
 
       const retried = await submit().expect(400);
 
-      expect(retried.body.message).toBe("Form already submitted");
+      expect(retried.body.message).toBe(FORM_ALREADY_SUBMITTED);
     });
 
     it("reports only a member's own completion to PostHog", async () => {
@@ -1856,7 +1857,7 @@ describe("Tasks (e2e)", () => {
         })
         .expect(400);
 
-      expect(refused.body.message).toBe("Form already submitted");
+      expect(refused.body.message).toBe(FORM_ALREADY_SUBMITTED);
     });
 
     it("offers no linked guest draft once the member submitted another of the action's forms", async () => {
