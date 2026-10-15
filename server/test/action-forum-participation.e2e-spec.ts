@@ -83,4 +83,32 @@ describe("Action forum participation settings (e2e)", () => {
       .findOneByOrFail({ id: created.body.id });
     expect(stored.forumParticipationIncludeChildren).toBe(false);
   });
+
+  it("returns null for the post override on an action created without it", async () => {
+    const created = await create({}).expect(201);
+    expect(created.body.forumParticipationPostId).toBeNull();
+
+    const fetched = await getAdmin(created.body.id).expect(200);
+    expect(fetched.body.forumParticipationPostId).toBeNull();
+  });
+
+  it("sets the post override, keeps it when a patch leaves it out, and clears it with null", async () => {
+    const created = await create({ forumParticipationPostId: 42 }).expect(201);
+    expect(created.body.forumParticipationPostId).toBe(42);
+
+    const renamed = await patch(created.body.id, {
+      name: `${NAME_PREFIX} renamed`,
+    }).expect(200);
+    expect(renamed.body.forumParticipationPostId).toBe(42);
+
+    const cleared = await patch(created.body.id, {
+      forumParticipationPostId: null,
+    }).expect(200);
+    expect(cleared.body.forumParticipationPostId).toBeNull();
+
+    const stored = await ctx.dataSource
+      .getRepository(Action)
+      .findOneByOrFail({ id: created.body.id });
+    expect(stored.forumParticipationPostId).toBeNull();
+  });
 });

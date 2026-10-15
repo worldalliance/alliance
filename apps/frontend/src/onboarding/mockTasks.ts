@@ -24,6 +24,7 @@ function mockTask(
     visibilityMode: "public",
     isContractSigningAction: false,
     isForumParticipationAction: false,
+    forumParticipationPostId: null,
     forumParticipationIncludeChildren: false,
     onboarding: false,
     optional: false,

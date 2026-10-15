@@ -675,14 +675,18 @@ export class CreateActionDto extends IntersectionType(
     "publicOnly",
     "shouldCompleteAfterDeadline",
     "isForumParticipationAction",
-    "forumParticipationPostId",
     "computedAutocompleteAt",
     "customStatType",
     "customStatLabel",
     "customStatValue",
     "customStatGoal",
   ]),
-  PartialType(PickType(ActionDto, ["forumParticipationIncludeChildren"])),
+  PartialType(
+    PickType(ActionDto, [
+      "forumParticipationPostId",
+      "forumParticipationIncludeChildren",
+    ]),
+  ),
 ) {
   @ApiPropertyOptional({
     type: Number,
