@@ -173,6 +173,7 @@ describe("Admin reminder groups (e2e)", () => {
 
   describe("rejects a group that could never send, from preview, create, and update alike", () => {
     let noDeadlineEvent: ActionEvent;
+    let deadlineEvent: ActionEvent;
     let nonMemberEvent: ActionEvent;
 
     beforeAll(async () => {
@@ -194,6 +195,25 @@ describe("Admin reminder groups (e2e)", () => {
         newStatus: ActionStatus.Planned,
         date: new Date(Date.now() - milliseconds({ days: 2 })),
         action,
+      });
+      const deadlineAction = await ctx.dataSource.getRepository(Action).save({
+        name: "reminder-groups-admin e2e with deadline",
+        body: "reminder-groups-admin e2e with deadline",
+        category: [],
+      });
+      deadlineEvent = await ctx.dataSource.getRepository(ActionEvent).save({
+        title: "Member action",
+        description: "Member action",
+        newStatus: ActionStatus.MemberAction,
+        date: new Date(Date.now() - milliseconds({ days: 1 })),
+        action: deadlineAction,
+      });
+      await ctx.dataSource.getRepository(ActionEvent).save({
+        title: "Deadline",
+        description: "Deadline",
+        newStatus: ActionStatus.Resolution,
+        date: new Date(Date.now() + milliseconds({ days: 7 })),
+        action: deadlineAction,
       });
     });
 
@@ -225,24 +245,57 @@ describe("Admin reminder groups (e2e)", () => {
     };
     const invalidBodies = {
       "relative timing with no deadline or anchor": {
-        ...validBody,
-        timingMode: ReminderGroupTimingMode.FromDeadline,
-        sendAtAbsolute: undefined,
-        sendAtSecondsFromDeadline: 3600,
+        event: () => noDeadlineEvent,
+        body: {
+          ...validBody,
+          timingMode: ReminderGroupTimingMode.FromDeadline,
+          sendAtAbsolute: undefined,
+          sendAtSecondsFromDeadline: 3600,
+        },
       },
       "a send range that starts after it ends": {
-        ...validBody,
-        timingMode: ReminderGroupTimingMode.WithinRange,
-        sendAtAbsolute: undefined,
-        send_range_start: new Date(Date.now() + milliseconds({ days: 2 })),
-        send_range_end: new Date(Date.now()),
+        event: () => deadlineEvent,
+        body: {
+          ...validBody,
+          timingMode: ReminderGroupTimingMode.WithinRange,
+          sendAtAbsolute: undefined,
+          send_range_start: new Date(Date.now() + milliseconds({ days: 2 })),
+          send_range_end: new Date(Date.now()),
+        },
+      },
+      "a send range with no end": {
+        event: () => deadlineEvent,
+        body: {
+          ...validBody,
+          timingMode: ReminderGroupTimingMode.WithinRange,
+          sendAtAbsolute: undefined,
+          send_range_start: new Date(Date.now()),
+        },
+      },
+      "a relative range that starts after it ends": {
+        event: () => deadlineEvent,
+        body: {
+          ...validBody,
+          timingMode: ReminderGroupTimingMode.WithinRelativeRange,
+          sendAtAbsolute: undefined,
+          relative_range_start_seconds_from_deadline: 3600,
+          relative_range_end_seconds_from_deadline: 7200,
+        },
+      },
+      "an absolute group carrying an inverted relative range": {
+        event: () => deadlineEvent,
+        body: {
+          ...validBody,
+          relative_range_start_seconds_from_deadline: 3600,
+          relative_range_end_seconds_from_deadline: 7200,
+        },
       },
     };
 
     for (const [name, submit] of Object.entries({ preview, create, update })) {
-      for (const [label, body] of Object.entries(invalidBodies)) {
+      for (const [label, { event, body }] of Object.entries(invalidBodies)) {
         it(`${name} rejects ${label}`, async () => {
-          expect((await submit(noDeadlineEvent.id, body)).status).toBe(400);
+          expect((await submit(event().id, body)).status).toBe(400);
         });
       }
     }
