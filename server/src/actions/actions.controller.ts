@@ -62,6 +62,8 @@ import {
 import {
   AdminActionUpdateDto,
   RecognitionCheckDto,
+  RecognitionPreviewAudienceDto,
+  RecognitionPreviewCountsDto,
 } from "./dto/action-update-recognition.dto";
 import {
   ActionActivityDto,
@@ -1061,6 +1063,22 @@ export class ActionsController {
   ): Promise<RecognitionCheckDto> {
     return new RecognitionCheckDto(
       await this.actionsService.checkActionUpdateRecognition(id),
+    );
+  }
+
+  @Post("updates/:id/recognition-preview-counts")
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: RecognitionPreviewCountsDto })
+  async previewUpdateRecognitionCountsAdmin(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() audience: RecognitionPreviewAudienceDto,
+  ): Promise<RecognitionPreviewCountsDto> {
+    return new RecognitionPreviewCountsDto(
+      await this.actionsService.previewActionUpdateRecognitionCounts(id, {
+        notifyType: audience.notifyType,
+        tagId: audience.tagId ?? null,
+      }),
     );
   }
 

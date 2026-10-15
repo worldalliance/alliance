@@ -1,3 +1,7 @@
+import {
+  RecognitionBranch,
+  recognitionCopySchema,
+} from "@alliance/common/action-update-copy";
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { addDays, milliseconds } from "date-fns";
 import { ActionUpdateRecognitionService } from "src/actions/action-update-recognition.service";
@@ -7,11 +11,7 @@ import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
-import {
-  ActionUpdateExposure,
-  RecognitionBranch,
-  recognitionCopySchema,
-} from "src/actions/entities/action-update-exposure.entity";
+import { ActionUpdateExposure } from "src/actions/entities/action-update-exposure.entity";
 import {
   ActionUpdate,
   ActionUpdateNotificationMode,
@@ -37,10 +37,12 @@ import {
 } from "src/notifs/entities/unread-content.entity";
 import { Push } from "src/push/push.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import { ContractEvent } from "src/user/entities/contract-event.entity";
 import { Tag } from "src/user/entities/tag.entity";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { ReferralSource, User } from "src/user/entities/user.entity";
 import request from "supertest";
+import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
   createFormWithSnapshot,
   createTestApp,
@@ -76,8 +78,9 @@ describe("action update recognition (e2e)", () => {
       .send(body);
 
   const createMember = async (params: {
-    arm: ExperimentArm;
+    arm: ExperimentArm | null;
     inAudience?: boolean;
+    inCohort?: boolean;
   }) => {
     const index = ++memberCount;
     const users = ctx.dataSource.getRepository(User);
@@ -88,19 +91,30 @@ describe("action update recognition (e2e)", () => {
         name: `Member${index} Example`,
         referralSource: ReferralSource.None,
         phoneNumber: `+1415555${String(1000 + index)}`,
-        tags: params.inAudience === false ? [] : [audience],
+        tags: [
+          ...(params.inAudience === false ? [] : [audience]),
+          ...(params.inCohort ? [ctx.defaultTag] : []),
+        ],
       }),
     );
     await giveActiveContract(ctx, user.id);
+    if (params.inCohort) {
+      // Assigned only with a contract held since the action launched.
+      await ctx.dataSource
+        .getRepository(ContractEvent)
+        .update({ user: { id: user.id } }, { date: addDays(new Date(), -60) });
+    }
     await ctx.dataSource.getRepository(UserDevice).save({
       user: { id: user.id },
       expoPushToken: `ExponentPushToken[recognition-${index}]`,
     });
-    await ctx.dataSource.getRepository(ExperimentAssignment).save({
-      userId: user.id,
-      experiment: Experiment.ActionUpdateRecognition,
-      arm: params.arm,
-    });
+    if (params.arm !== null) {
+      await ctx.dataSource.getRepository(ExperimentAssignment).save({
+        userId: user.id,
+        experiment: Experiment.ActionUpdateRecognition,
+        arm: params.arm,
+      });
+    }
     return user;
   };
 
@@ -354,6 +368,88 @@ describe("action update recognition (e2e)", () => {
         .getRepository(Push)
         .countBy({ unreadContent: { id: a.unreadContentId ?? -1 } }),
     ).toBe(1);
+  });
+
+  it("splits the collective result by group, and skips a group left empty", async () => {
+    const completer = await createMember({ arm: ExperimentArm.Variant });
+    const nonCompleter = await createMember({
+      arm: ExperimentArm.Control,
+      inCohort: true,
+    });
+    const uninvolved = await createMember({ arm: ExperimentArm.Variant });
+    const withdrawn = await createMember({
+      arm: ExperimentArm.Control,
+      inCohort: true,
+    });
+    await complete(completer, { letters: 3 });
+    await ctx.dataSource.getRepository(ActionActivity).save({
+      actionId: action.id,
+      userId: withdrawn.id,
+      type: ActionActivityType.USER_WONT_COMPLETE,
+    });
+    await saveLiveCohortDecisions(ctx, [action.id]);
+
+    const id = await createUpdate({
+      splitCollectiveResult: true,
+      shortNotifString: "a hearing",
+      nonCompleterResult: "",
+      uninvolvedResult: "a hearing; join the next one",
+    });
+    await notify(id).expect(200);
+    await deliverAll();
+
+    expect(
+      new Map(
+        (await entriesFor(id)).map((entry) => [entry.user?.id, entry.content]),
+      ),
+    ).toEqual(
+      new Map([
+        [completer.id, { message: ["Your 3 letters led to a hearing."] }],
+        [uninvolved.id, { message: ["a hearing; join the next one"] }],
+        [withdrawn.id, { message: ["a hearing; join the next one"] }],
+      ]),
+    );
+    const skipped = await ctx.dataSource
+      .getRepository(ActionUpdateExposure)
+      .findOneOrFail({
+        where: { actionUpdateId: id, userId: nonCompleter.id },
+        withDeleted: true,
+      });
+    expect(skipped.deletedAt).not.toBeNull();
+    expect(skipped.deliveredAt).toBeNull();
+  });
+
+  it("counts an unsaved audience by group without drawing an arm", async () => {
+    const variant = await createMember({ arm: ExperimentArm.Variant });
+    const control = await createMember({ arm: ExperimentArm.Control });
+    const undrawn = await createMember({ arm: null });
+    await createMember({ arm: null, inCohort: true });
+    await createMember({ arm: ExperimentArm.Variant });
+    await createMember({ arm: ExperimentArm.Variant, inAudience: false });
+    for (const completer of [variant, control, undrawn]) {
+      await complete(completer, { letters: 1 });
+    }
+    await saveLiveCohortDecisions(ctx, [action.id]);
+    const id = await createUpdate({ notifyType: "none", tagId: undefined });
+
+    const counts = await admin(
+      "post",
+      `/actions/updates/${id}/recognition-preview-counts`,
+      { notifyType: "tag", tagId: audience.id },
+    ).expect(200);
+
+    expect(counts.body).toEqual({
+      completedPersonal: 1,
+      completedCollective: 1,
+      completedUndrawn: 1,
+      didNotComplete: 1,
+      uninvolved: 1,
+    });
+    expect(
+      await ctx.dataSource
+        .getRepository(ExperimentAssignment)
+        .countBy({ userId: undrawn.id }),
+    ).toBe(0);
   });
 
   it("sends B to a completer who later withdrew", async () => {

@@ -1,3 +1,4 @@
+import { readGroupResults } from "@alliance/common/action-update-copy";
 import { R } from "@alliance/common/result";
 import {
   ActionEventDto,
@@ -18,11 +19,14 @@ import {
   ACTION_UPDATE_NOTIFY_TYPES,
 } from "../lib/actionUpdateNotifyTypes";
 import { adminRefusalMessage } from "../lib/adminRefusal";
+import type { CollectiveResultTexts } from "../lib/updatePreview";
 import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
 import {
   COLLECTIVE_RESULT_DESCRIPTIONS,
   RecognitionModeSelect,
 } from "./ActionUpdateRecognition";
+import { CollectiveResultSplitFields } from "./CollectiveResultSplitFields";
+import { UPDATE_PREVIEW_DESCRIPTION, UpdatePreview } from "./UpdatePreview";
 
 interface ActionUpdatesTabProps {
   actionId: number;
@@ -36,6 +40,7 @@ const defaultNewUpdate: CreateActionUpdateDto = {
   date: new Date().toISOString(),
   notifyType: "none",
   shortNotifString: "",
+  splitCollectiveResult: false,
   notificationMode: "normal",
 };
 
@@ -56,11 +61,28 @@ const ActionUpdatesTab = ({
   const { create, remove } = useActionUpdateAdmin(null);
   const creating = create.isPending;
 
-  const shortNotifString = newUpdate.shortNotifString ?? "";
+  const texts: CollectiveResultTexts = {
+    shortNotifString: newUpdate.shortNotifString ?? "",
+    splitCollectiveResult: newUpdate.splitCollectiveResult ?? false,
+    nonCompleterResult: newUpdate.nonCompleterResult ?? "",
+    uninvolvedResult: newUpdate.uninvolvedResult ?? "",
+  };
+  const setTexts = (next: CollectiveResultTexts) =>
+    setNewUpdate({
+      ...newUpdate,
+      ...next,
+      nonCompleterResult: next.nonCompleterResult || null,
+      uninvolvedResult: next.uninvolvedResult || null,
+    });
   const isSubmitDisabled =
     creating ||
     !newUpdate.title.trim() ||
-    !shortNotifString.trim() ||
+    !readGroupResults({
+      split: texts.splitCollectiveResult,
+      completed: texts.shortNotifString,
+      didNotComplete: texts.nonCompleterResult,
+      uninvolved: texts.uninvolvedResult,
+    }).ok ||
     (newUpdate.notifyType === "tag" && !newUpdate.tagId);
 
   const handleSubmit = async () => {
@@ -156,9 +178,14 @@ const ActionUpdatesTab = ({
                   shortNotifString: e.target.value,
                 })
               }
-              required
+              required={!texts.splitCollectiveResult}
             />
           </label>
+          <CollectiveResultSplitFields
+            texts={texts}
+            onChange={setTexts}
+            inputClassName="p-2 rounded-md bg-white text-base"
+          />
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2 mt-3">
             <label className="flex flex-col text-sm gap-1">
               <span className="font-bold">Notification audience</span>
@@ -269,6 +296,13 @@ const ActionUpdatesTab = ({
                 </select>
               </label>
             )}
+          </div>
+          <div className="flex flex-col gap-1 text-sm">
+            <span className="font-bold">Preview Update</span>
+            <span className="text-xs text-zinc-600">
+              {UPDATE_PREVIEW_DESCRIPTION}
+            </span>
+            <UpdatePreview mode={newUpdate.notificationMode} texts={texts} />
           </div>
         </div>
       </Card>

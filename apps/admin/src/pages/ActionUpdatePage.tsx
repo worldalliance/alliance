@@ -11,11 +11,13 @@ import {
   type ActionEventDto,
   type ActionFormVariantsListDto,
   type AdminActionUpdateDto,
+  type RecognitionPreviewCountsDto,
 } from "@alliance/shared/client";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { Eye, EyeOff } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -27,8 +29,15 @@ import {
   RecognitionCopySection,
   type ActionForm,
 } from "../components/ActionUpdateRecognition";
+import { CollectiveResultSplitFields } from "../components/CollectiveResultSplitFields";
 import { FormBuilder } from "../components/FormBuilder";
 import FormSection from "../components/FormSection";
+import {
+  PreviewCountsKind,
+  UPDATE_PREVIEW_DESCRIPTION,
+  UpdatePreview,
+  type PreviewCounts,
+} from "../components/UpdatePreview";
 import {
   checkBlockedReasonOf,
   detailsBody,
@@ -44,6 +53,7 @@ import {
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
 import { useFormVariantsAdmin } from "../lib/useFormVariantsAdmin";
+import { useRecognitionPreviewCounts } from "../lib/useRecognitionPreviewCounts";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 
 const tabs = ["details", "content"] as const;
@@ -76,6 +86,42 @@ const visibilityOf = (
   return visibleAt.getTime() > now
     ? { state: VisibilityState.Scheduled, visibleAt }
     : { state: VisibilityState.Published, visibleAt };
+};
+
+const TEXT_INPUT_CLASS =
+  "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm";
+
+const previewCountsOf = (
+  form: ActionUpdateForm,
+  query: UseQueryResult<RecognitionPreviewCountsDto>,
+): PreviewCounts => {
+  if (form.notifyType === "none") {
+    return {
+      kind: PreviewCountsKind.Counted,
+      counts: {
+        completedPersonal: 0,
+        completedCollective: 0,
+        completedUndrawn: 0,
+        didNotComplete: 0,
+        uninvolved: 0,
+      },
+    };
+  }
+  if (form.notifyType === "tag" && !form.tagId) {
+    return {
+      kind: PreviewCountsKind.Unavailable,
+      reason: "Pick a tag to count recipients.",
+    };
+  }
+  if (query.data) {
+    return { kind: PreviewCountsKind.Counted, counts: query.data };
+  }
+  return query.isError
+    ? {
+        kind: PreviewCountsKind.Unavailable,
+        reason: "Couldn't count the recipients.",
+      }
+    : { kind: PreviewCountsKind.Pending };
 };
 
 const ActionUpdatePage: React.FC = () => {
@@ -138,6 +184,18 @@ const ActionUpdatePage: React.FC = () => {
 
   const { tags: availableTags } = useTagsAdmin();
   const savedForm = useMemo(() => update && formOf(update), [update]);
+  const countsTagId = form?.notifyType === "tag" ? form.tagId || null : null;
+  const countsQuery = useRecognitionPreviewCounts({
+    updateId: updateId ?? 0,
+    notifyType: form?.notifyType ?? "none",
+    tagId: countsTagId,
+    enabled:
+      !!form &&
+      recognitionModeOf(form.notificationMode) !== null &&
+      !update?.recognitionPreparedAt &&
+      form.notifyType !== "none" &&
+      (form.notifyType !== "tag" || countsTagId !== null),
+  });
 
   useEffect(() => {
     if (isNaN(actionId)) return;
@@ -404,9 +462,16 @@ const ActionUpdatePage: React.FC = () => {
           onChange={(e) =>
             setForm({ ...form, shortNotifString: e.target.value })
           }
-          required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+          required={!(recognitionMode && form.splitCollectiveResult)}
+          className={TEXT_INPUT_CLASS}
         />
+        {recognitionMode && !update.recognitionPreparedAt && (
+          <CollectiveResultSplitFields
+            texts={form}
+            onChange={(texts) => setForm({ ...form, ...texts })}
+            inputClassName={TEXT_INPUT_CLASS}
+          />
+        )}
       </FormSection>
 
       {recognitionMode && (
@@ -539,6 +604,19 @@ const ActionUpdatePage: React.FC = () => {
               </option>
             ))}
           </select>
+        </FormSection>
+      )}
+
+      {recognitionMode && !update.recognitionPreparedAt && (
+        <FormSection
+          title="Preview Update"
+          description={UPDATE_PREVIEW_DESCRIPTION}
+        >
+          <UpdatePreview
+            mode={recognitionMode}
+            texts={form}
+            counts={previewCountsOf(form, countsQuery)}
+          />
         </FormSection>
       )}
 

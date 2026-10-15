@@ -1026,12 +1026,16 @@ export class ActionUpdateDto extends PickType(ActionUpdate, [
   }
 }
 
-export class CreateActionUpdateDto extends PickType(ActionUpdate, [
-  "title",
-  "date",
-  "notifyType",
-  "shortNotifString",
-]) {
+export class CreateActionUpdateDto extends IntersectionType(
+  PickType(ActionUpdate, ["title", "date", "notifyType", "shortNotifString"]),
+  PartialType(
+    PickType(ActionUpdate, [
+      "splitCollectiveResult",
+      "nonCompleterResult",
+      "uninvolvedResult",
+    ]),
+  ),
+) {
   @ApiPropertyOptional({ type: Number })
   @IsOptional()
   associatedEventId?: number;
@@ -1060,7 +1064,15 @@ export class CreateActionUpdateDto extends PickType(ActionUpdate, [
 
 export class UpdateActionUpdateDto extends PartialType(
   IntersectionType(
-    PickType(ActionUpdate, ["title", "date", "notifyType", "shortNotifString"]),
+    PickType(ActionUpdate, [
+      "title",
+      "date",
+      "notifyType",
+      "shortNotifString",
+      "splitCollectiveResult",
+      "nonCompleterResult",
+      "uninvolvedResult",
+    ]),
     PickType(CreateActionUpdateDto, [
       "notificationMode",
       "contributionFormula",

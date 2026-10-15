@@ -12,6 +12,9 @@ afterEach(cleanup);
 const form = (overrides: Partial<ActionUpdateForm> = {}): ActionUpdateForm => ({
   title: "Letters delivered",
   shortNotifString: "the council voted yes",
+  splitCollectiveResult: false,
+  nonCompleterResult: "",
+  uninvolvedResult: "",
   notifyType: "none",
   tagId: "",
   date: "2026-10-01T00:00:00.000Z",

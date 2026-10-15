@@ -2,10 +2,13 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
   Allow,
+  IsBoolean,
   IsEmpty,
   IsEnum,
   IsNotEmpty,
   IsOptional,
+  IsString,
+  ValidateIf,
 } from "class-validator";
 import { DeleteDateColumnTz } from "src/datasources/basecolumns";
 import { Notification } from "src/notifs/entities/notification.entity";
@@ -116,10 +119,31 @@ export class ActionUpdate {
   @IsOptional()
   visibleAt: Date | null;
 
+  /** The collective result; with the result split, the completed group's. */
   @Column({ type: "text" })
+  @ValidateIf((update: ActionUpdate) => !update.splitCollectiveResult)
   @IsNotEmpty()
   @ApiProperty()
   shortNotifString: string;
+
+  @Column({ default: false })
+  @IsBoolean()
+  @ApiProperty()
+  splitCollectiveResult: boolean;
+
+  /** Read only while the result is split; empty skips the group. */
+  @Column({ type: "text", nullable: true })
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ type: String, nullable: true })
+  nonCompleterResult: string | null;
+
+  /** Read only while the result is split; empty skips the group. */
+  @Column({ type: "text", nullable: true })
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ type: String, nullable: true })
+  uninvolvedResult: string | null;
 
   @ManyToOne(() => ActionEvent, (event) => event.updates, { nullable: true })
   @JoinColumn({ name: "associatedEventId" })

@@ -12,6 +12,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { actionUpdateAdmin as update } from "../lib/testing/actionUpdateAdmin";
@@ -26,6 +27,7 @@ afterEach(() => {
 let served: AdminActionUpdateDto = update();
 let variantsAnswer: () => Response = () =>
   Response.json({ variants: [], stats: [] });
+let countedAudiences: unknown[] = [];
 
 const api = serveApi(
   routes({
@@ -45,6 +47,18 @@ const api = serveApi(
     "GET /actions/:id/form-variants": () => variantsAnswer(),
     "GET /user/tags": () => Response.json([]),
     "GET /tasks/listForms": () => Response.json([]),
+    "POST /actions/updates/:id/recognition-preview-counts": async ({
+      request,
+    }) => {
+      countedAudiences.push(await request.json());
+      return Response.json({
+        completedPersonal: 1,
+        completedCollective: 2,
+        completedUndrawn: 0,
+        didNotComplete: 3,
+        uninvolved: 4,
+      });
+    },
   }),
 );
 
@@ -86,6 +100,7 @@ describe("ActionUpdatePage", () => {
   beforeEach(() => {
     served = update();
     variantsAnswer = () => Response.json({ variants: [], stats: [] });
+    countedAudiences = [];
   });
 
   it("says an update id that isn't a number is invalid", async () => {
@@ -175,6 +190,8 @@ describe("ActionUpdatePage", () => {
     await renderDetails();
 
     expect(screen.queryByText("Recognition copy")).toBeNull();
+    expect(screen.queryByText("Preview Update")).toBeNull();
+    expect(screen.queryByText("Split by who completed the action")).toBeNull();
     expect(
       screen.queryByRole("button", { name: "Check recipients" }),
     ).toBeNull();
@@ -202,6 +219,54 @@ describe("ActionUpdatePage", () => {
       screen.queryByRole("button", { name: "Check recipients" }),
     ).toBeNull();
     expect(screen.queryByRole("combobox", { name: "Mode" })).toBeNull();
+    expect(screen.queryByText("Preview Update")).toBeNull();
+    expect(countedAudiences).toEqual([]);
+  });
+
+  it("previews every variation as the collective result is typed and split", async () => {
+    await renderDetails();
+    const preview = () =>
+      screen.getByText("Preview Update").closest("div.border") as HTMLElement;
+
+    fireEvent.change(screen.getByDisplayValue("a hearing on the bill"), {
+      target: { value: "a vote" },
+    });
+    expect(preview().textContent).toContain("PushUpdate: a vote");
+    expect(await within(preview()).findByText("9 members")).toBeTruthy();
+
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: "Split by who completed the action",
+      }),
+    );
+    fireEvent.change(
+      screen.getByRole("textbox", { name: /^Away or not involved/ }),
+      { target: { value: "a vote while you were away" } },
+    );
+
+    expect(preview().textContent).toContain(
+      "PushUpdate: a vote while you were away",
+    );
+    expect(within(preview()).getByText("4 members")).toBeTruthy();
+    expect(within(preview()).getAllByText(/Not notified/)).toHaveLength(1);
+  });
+
+  it("counts the audience as picked, before it's saved", async () => {
+    await renderDetails();
+    await waitFor(() =>
+      expect(countedAudiences).toEqual([
+        { notifyType: "all_members", tagId: null },
+      ]),
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Audience" }), {
+      target: { value: "tag" },
+    });
+
+    expect(
+      await screen.findByText("Pick a tag to count recipients."),
+    ).toBeTruthy();
+    expect(countedAudiences).toHaveLength(1);
   });
 
   it("keeps the action's events when its form variants fail to load", async () => {
