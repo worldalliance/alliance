@@ -1,3 +1,5 @@
+import { R } from "@alliance/common/result";
+import { Logger } from "@nestjs/common";
 import { milliseconds } from "date-fns";
 import { ContractSuspenderWorker } from "src/actions/contract-suspender.worker";
 import {
@@ -6,6 +8,8 @@ import {
 } from "src/actions/entities/action-event.entity";
 import { ActionSuite } from "src/actions/entities/action-suite.entity";
 import { Action } from "src/actions/entities/action.entity";
+import { ContractService } from "src/contract/contract.service";
+import { EventLogService } from "src/eventlog/eventlog.service";
 import { suspensionMessage } from "src/notifs/textnotifcontents";
 import { Push } from "src/push/push.entity";
 import {
@@ -31,6 +35,73 @@ describe("ContractSuspenderWorker (e2e)", () => {
     await ctx.app.close();
   });
 
+  afterEach(() => jest.restoreAllMocks());
+
+  const suspendable = async (label: string, pushOn: boolean) => {
+    const ago = (days: number) => new Date(Date.now() - milliseconds({ days }));
+    const member = await ctx.app.get(UserService).create({
+      email: `suspension-${label}@example.com`,
+      password: "Password123!",
+      name: "Suspended Member",
+      tags: [ctx.defaultTag],
+      contractEvents: [
+        {
+          type: ContractEventType.SIGNED,
+          date: ago(60),
+          automatic: false,
+          contractId: ctx.defaultContractId,
+        },
+      ],
+    });
+    await ctx.dataSource.getRepository(User).update(member.id, {
+      emailNotifsForActions: false,
+      textNotifsForActions: false,
+      pushNotifsForActions: pushOn,
+    });
+    const deviceRepo = ctx.dataSource.getRepository(UserDevice);
+    const expoPushToken = `ExponentPushToken[suspension_${label}]`;
+    await deviceRepo.save(
+      deviceRepo.create({ user: member, deviceType: "iOS", expoPushToken }),
+    );
+
+    const suiteRepo = ctx.dataSource.getRepository(ActionSuite);
+    const actionRepo = ctx.dataSource.getRepository(Action);
+    const eventRepo = ctx.dataSource.getRepository(ActionEvent);
+    for (const deadlineDaysAgo of [21, 14, 7]) {
+      const suite = await suiteRepo.save(
+        suiteRepo.create({ name: `Suite ${deadlineDaysAgo} ${label}` }),
+      );
+      const action = await actionRepo.save(
+        actionRepo.create({
+          name: `Task ${deadlineDaysAgo}`,
+          category: [],
+          body: "Body",
+          shortDescription: "Short",
+          suite,
+          cohortExpression: { type: "Manual", userIds: [member.id] },
+        }),
+      );
+      await eventRepo.save([
+        eventRepo.create({
+          title: "Member phase",
+          description: "Member phase",
+          newStatus: ActionStatus.MemberAction,
+          date: ago(deadlineDaysAgo + 5),
+          action,
+        }),
+        eventRepo.create({
+          title: "Deadline",
+          description: "Office phase",
+          newStatus: ActionStatus.OfficeAction,
+          date: ago(deadlineDaysAgo),
+          action,
+        }),
+      ]);
+    }
+    await saveLiveCohortDecisions(ctx);
+    return { member, expoPushToken };
+  };
+
   it.each([
     {
       pushOn: true,
@@ -40,68 +111,10 @@ describe("ContractSuspenderWorker (e2e)", () => {
   ])(
     "pushes the suspension notice only with push on: $pushOn",
     async ({ pushOn, pushed }) => {
-      const ago = (days: number) =>
-        new Date(Date.now() - milliseconds({ days }));
-      const member = await ctx.app.get(UserService).create({
-        email: `suspension-push-${pushOn}@example.com`,
-        password: "Password123!",
-        name: "Suspended Member",
-        tags: [ctx.defaultTag],
-        contractEvents: [
-          {
-            type: ContractEventType.SIGNED,
-            date: ago(60),
-            automatic: false,
-            contractId: ctx.defaultContractId,
-          },
-        ],
-      });
-      await ctx.dataSource.getRepository(User).update(member.id, {
-        emailNotifsForActions: false,
-        textNotifsForActions: false,
-        pushNotifsForActions: pushOn,
-      });
-      const deviceRepo = ctx.dataSource.getRepository(UserDevice);
-      const expoPushToken = `ExponentPushToken[suspension_push_${pushOn}]`;
-      await deviceRepo.save(
-        deviceRepo.create({ user: member, deviceType: "iOS", expoPushToken }),
+      const { member, expoPushToken } = await suspendable(
+        `push-${pushOn}`,
+        pushOn,
       );
-
-      const suiteRepo = ctx.dataSource.getRepository(ActionSuite);
-      const actionRepo = ctx.dataSource.getRepository(Action);
-      const eventRepo = ctx.dataSource.getRepository(ActionEvent);
-      for (const deadlineDaysAgo of [21, 14, 7]) {
-        const suite = await suiteRepo.save(
-          suiteRepo.create({ name: `Suite ${deadlineDaysAgo} ${pushOn}` }),
-        );
-        const action = await actionRepo.save(
-          actionRepo.create({
-            name: `Task ${deadlineDaysAgo}`,
-            category: [],
-            body: "Body",
-            shortDescription: "Short",
-            suite,
-            cohortExpression: { type: "Manual", userIds: [member.id] },
-          }),
-        );
-        await eventRepo.save([
-          eventRepo.create({
-            title: "Member phase",
-            description: "Member phase",
-            newStatus: ActionStatus.MemberAction,
-            date: ago(deadlineDaysAgo + 5),
-            action,
-          }),
-          eventRepo.create({
-            title: "Deadline",
-            description: "Office phase",
-            newStatus: ActionStatus.OfficeAction,
-            date: ago(deadlineDaysAgo),
-            action,
-          }),
-        ]);
-      }
-      await saveLiveCohortDecisions(ctx);
 
       await ctx.app.get(ContractSuspenderWorker).processSuspensions();
 
@@ -119,4 +132,53 @@ describe("ContractSuspenderWorker (e2e)", () => {
       );
     },
   );
+
+  it("logs suspended and failed members by id, not name", async () => {
+    const suspended = await suspendable("logged", false);
+    const failing = await suspendable("log-failing", false);
+    const contractService = ctx.app.get(ContractService);
+    const original = contractService.suspendContract.bind(contractService);
+    jest
+      .spyOn(contractService, "suspendContract")
+      .mockImplementation((params) =>
+        params.userId === failing.member.id
+          ? Promise.reject(new Error("suspend failed"))
+          : original(params),
+      );
+    jest
+      .spyOn(ctx.app.get(EventLogService), "sendMessage")
+      .mockResolvedValue(R.success(undefined));
+    const logs = [
+      jest.spyOn(Logger.prototype, "log").mockImplementation(() => {}),
+      jest.spyOn(Logger.prototype, "error").mockImplementation(() => {}),
+      jest.spyOn(console, "log").mockImplementation(() => {}),
+    ];
+
+    await ctx.app.get(ContractSuspenderWorker).processSuspensions();
+
+    const [log, error] = logs;
+    for (const { member } of [suspended, failing]) {
+      expect(log).toHaveBeenCalledWith(
+        expect.stringMatching(
+          new RegExp(
+            `^Suspending contracts for user\\(s\\) (.*, )?${member.id}(, |$)`,
+          ),
+        ),
+      );
+    }
+    expect(error).toHaveBeenCalledWith(
+      expect.stringMatching(
+        new RegExp(
+          `^Failed to suspend contract for user ${failing.member.id}, failure code `,
+        ),
+      ),
+      expect.any(Error),
+    );
+    expect(
+      logs
+        .flatMap((spy) => spy.mock.calls.flat())
+        .map(String)
+        .join("\n"),
+    ).not.toContain("Suspended Member");
+  });
 });
