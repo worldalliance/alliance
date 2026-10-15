@@ -474,7 +474,7 @@ export type Action = {
     /**
      * Manual override: forum post id whose repliers should be autocompleted. When set, takes precedence over any forum validator on the task form.
      */
-    forumParticipationPostId?: number;
+    forumParticipationPostId: number | null;
     /**
      * When using forumParticipationPostId, also count replies to nested child posts
      */
@@ -2218,7 +2218,7 @@ export type ActionDto = {
     /**
      * Manual override: forum post id whose repliers should be autocompleted. When set, takes precedence over any forum validator on the task form.
      */
-    forumParticipationPostId?: number;
+    forumParticipationPostId: number | null;
     /**
      * When using forumParticipationPostId, also count replies to nested child posts
      */
@@ -2571,7 +2571,7 @@ export type AdminActionListItemDto = {
     /**
      * Manual override: forum post id whose repliers should be autocompleted. When set, takes precedence over any forum validator on the task form.
      */
-    forumParticipationPostId?: number;
+    forumParticipationPostId: number | null;
     /**
      * When using forumParticipationPostId, also count replies to nested child posts
      */
@@ -2750,7 +2750,7 @@ export type AdminActionDto = {
     /**
      * Manual override: forum post id whose repliers should be autocompleted. When set, takes precedence over any forum validator on the task form.
      */
-    forumParticipationPostId?: number;
+    forumParticipationPostId: number | null;
     /**
      * When using forumParticipationPostId, also count replies to nested child posts
      */
@@ -2988,10 +2988,6 @@ export type CreateActionDto = {
      */
     isForumParticipationAction: boolean;
     /**
-     * Manual override: forum post id whose repliers should be autocompleted. When set, takes precedence over any forum validator on the task form.
-     */
-    forumParticipationPostId?: number;
-    /**
      * Date and time when the action was computed for autocomplete
      */
     computedAutocompleteAt?: string;
@@ -2999,6 +2995,10 @@ export type CreateActionDto = {
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
+    /**
+     * Manual override: forum post id whose repliers should be autocompleted. When set, takes precedence over any forum validator on the task form.
+     */
+    forumParticipationPostId?: number | null;
     /**
      * When using forumParticipationPostId, also count replies to nested child posts
      */
@@ -3083,10 +3083,6 @@ export type UpdateActionDto = {
      */
     isForumParticipationAction?: boolean;
     /**
-     * Manual override: forum post id whose repliers should be autocompleted. When set, takes precedence over any forum validator on the task form.
-     */
-    forumParticipationPostId?: number;
-    /**
      * Date and time when the action was computed for autocomplete
      */
     computedAutocompleteAt?: string;
@@ -3094,6 +3090,10 @@ export type UpdateActionDto = {
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
+    /**
+     * Manual override: forum post id whose repliers should be autocompleted. When set, takes precedence over any forum validator on the task form.
+     */
+    forumParticipationPostId?: number | null;
     /**
      * When using forumParticipationPostId, also count replies to nested child posts
      */
@@ -3454,7 +3454,7 @@ export type ExportActionDto = {
     /**
      * Manual override: forum post id whose repliers should be autocompleted. When set, takes precedence over any forum validator on the task form.
      */
-    forumParticipationPostId?: number;
+    forumParticipationPostId: number | null;
     /**
      * When using forumParticipationPostId, also count replies to nested child posts
      */

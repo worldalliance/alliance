@@ -23,6 +23,7 @@ export const adminActionListItem = (
   publicOnly: false,
   shouldCompleteAfterDeadline: false,
   isForumParticipationAction: false,
+  forumParticipationPostId: null,
   forumParticipationIncludeChildren: false,
   reviewers: [],
   followUpForms: [],

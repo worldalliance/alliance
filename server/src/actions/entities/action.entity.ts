@@ -14,6 +14,8 @@ import {
   IsInt,
   IsNotEmpty,
   IsOptional,
+  Max,
+  Min,
 } from "class-validator";
 import { millisecondsInWeek } from "date-fns/constants";
 import {
@@ -279,14 +281,18 @@ export class Action {
   isForumParticipationAction: boolean;
 
   @Column({ type: "int", nullable: true })
-  @ApiPropertyOptional({
+  @ApiProperty({
+    type: Number,
+    nullable: true,
     description:
       "Manual override: forum post id whose repliers should be autocompleted. " +
       "When set, takes precedence over any forum validator on the task form.",
   })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  forumParticipationPostId?: number;
+  @IsInt()
+  @Min(1)
+  @Max(2_147_483_647)
+  forumParticipationPostId: number | null;
 
   @Column({ default: false })
   @ApiProperty({
