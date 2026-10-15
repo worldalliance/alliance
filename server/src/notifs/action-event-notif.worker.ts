@@ -16,20 +16,12 @@ import {
   reminderContext,
 } from "src/link-tracking/message-tracking.entity";
 import type { TrackedMessage } from "src/link-tracking/message-tracking.service";
-import { EmailStatus } from "src/mail/mail.entity";
-import { MailService, processKeywordReplacements } from "src/mail/mail.service";
-import { MmsService } from "src/mms/mms.service";
-import { PushService } from "src/push/push.service";
+import { processKeywordReplacements } from "src/mail/mail.service";
 import { tasksUrl } from "src/search/approutes";
-import type { User } from "src/user/entities/user.entity";
-import {
-  userActionNotifsEnabled_email,
-  userActionNotifsEnabled_push,
-  userActionNotifsEnabled_text,
-} from "src/user/user.utils";
 import { isUniqueViolation } from "src/utils/db-errors";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { DataSource, QueryFailedError, type Repository } from "typeorm";
+import { ActionEventNotifDeliveryService } from "./action-event-notif-delivery.service";
 import {
   ActionEventReminderService,
   groupTaskScopeActionIds,
@@ -46,10 +38,7 @@ import {
   Experiment,
   ExperimentAssignment,
 } from "./entities/experiment-assignment.entity";
-import {
-  NotificationCategory,
-  type Notification,
-} from "./entities/notification.entity";
+import { NotificationCategory } from "./entities/notification.entity";
 import { assignExperimentArm } from "./experiment-assignment";
 import { LOCK_KEYS } from "./lock-keys";
 import { withPgAdvisoryLock } from "./lock-utils";
@@ -60,7 +49,6 @@ import {
   missedSuiteNoticeTemplates,
   MissedSuitePlanKind,
   resolveMissedSuitePlan,
-  type ChannelTemplates,
 } from "./missed-suite-notice";
 import { MissedSuitePlanService } from "./missed-suite-plans.service";
 import { NotifsService } from "./notifs.service";
@@ -105,14 +93,12 @@ export class ActionEventNotifWorker {
   private readonly logger = new Logger(ActionEventNotifWorker.name);
   constructor(
     private readonly dataSource: DataSource,
-    private readonly mailService: MailService,
-    private readonly mmsService: MmsService,
     private readonly actionsService: ActionsService,
     @InjectRepository(ActionEventNotif)
     private readonly actionEventNotifsRepository: Repository<ActionEventNotif>,
     private readonly reminderService: ActionEventReminderService,
     private readonly missedSuitePlans: MissedSuitePlanService,
-    private readonly pushService: PushService,
+    private readonly delivery: ActionEventNotifDeliveryService,
     private readonly notifsService: NotifsService,
     @InjectRepository(ExperimentAssignment)
     private readonly experimentAssignmentRepository: Repository<ExperimentAssignment>,
@@ -334,7 +320,7 @@ export class ActionEventNotifWorker {
     });
     Object.assign(notif, socialProof.columns);
 
-    const sendingAnyNotif = await this.deliver({
+    const sendingAnyNotif = await this.delivery.deliver({
       notif,
       user: plan.user,
       tracking: reminderTracking(plan, notif),
@@ -448,7 +434,7 @@ export class ActionEventNotifWorker {
     // when a later send fails.
     if (notif.notification)
       await recordDelivery(this.dataSource.manager, notif);
-    await this.deliver({
+    await this.delivery.deliver({
       notif,
       user: plan.user,
       tracking: reminderTracking(plan, notif),
@@ -461,66 +447,5 @@ export class ActionEventNotifWorker {
       },
     });
     await recordDelivery(this.dataSource.manager, notif);
-  }
-
-  /** Sends on each channel the member enabled; true if any was attempted. */
-  private async deliver(params: {
-    notif: ActionEventNotif;
-    user: User;
-    tracking: TrackedMessage;
-    templates: ChannelTemplates;
-    render: (template: string) => Promise<string>;
-    push: {
-      screen: string;
-      idempotencyKey: string;
-      notification?: Notification;
-    };
-  }): Promise<boolean> {
-    const { notif, user, tracking, templates, render, push } = params;
-    let sendingAnyNotif = false;
-    if (userActionNotifsEnabled_push(user)) {
-      sendingAnyNotif = true;
-      const pushes = await this.pushService.getPushForAllUserDevices(user.id, {
-        userId: user.id,
-        body: await render(templates.pushMessage),
-        screen: push.screen,
-        idempotencyKey: push.idempotencyKey,
-        notification: push.notification,
-      });
-
-      const result = await this.pushService.sendMessages(pushes);
-      notif.pushes = result;
-      if (result.length > 0) {
-        notif.sent = true;
-      }
-    }
-    if (userActionNotifsEnabled_text(user)) {
-      sendingAnyNotif = true;
-      const result = await this.mmsService.sendMms({
-        to: user.phoneNumber!,
-        body: await render(templates.textMessage),
-        mediaUrls: [],
-        tracking,
-      });
-
-      if (result && !result.errorCode) {
-        notif.sent = true;
-      }
-      notif.mms = result;
-    }
-    if (userActionNotifsEnabled_email(user)) {
-      sendingAnyNotif = true;
-      const result = await this.mailService.sendActionEventNotificationEmail({
-        subject: await render(templates.emailSubject),
-        message: await render(templates.emailMessage),
-        tracking,
-        recipient: user.email,
-      });
-      notif.mail = result;
-      if (result.status === EmailStatus.Sent) {
-        notif.sent = true;
-      }
-    }
-    return sendingAnyNotif;
   }
 }

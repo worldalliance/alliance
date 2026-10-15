@@ -13,11 +13,9 @@ import {
   ReminderGroupTimingMode,
   getGroupSendTimeForUser,
 } from "src/actions/entities/reminder-group.entity";
-import { MailService } from "src/mail/mail.service";
-import { MmsService } from "src/mms/mms.service";
-import { PushService } from "src/push/push.service";
 import { User } from "src/user/entities/user.entity";
 import { DataSource, type Repository } from "typeorm";
+import { ActionEventNotifDeliveryService } from "./action-event-notif-delivery.service";
 import { ActionEventNotifWorker } from "./action-event-notif.worker";
 import {
   ActionEventReminderService,
@@ -53,13 +51,11 @@ describe("ActionEventNotifWorker.processCustomReminderText", () => {
 
     worker = new ActionEventNotifWorker(
       {} as DataSource,
-      {} as MailService,
-      {} as MmsService,
       actionsService,
       {} as Repository<ActionEventNotif>,
       {} as ActionEventReminderService,
       {} as MissedSuitePlanService,
-      {} as PushService,
+      {} as ActionEventNotifDeliveryService,
       {} as NotifsService,
       {} as Repository<ExperimentAssignment>,
     );
@@ -188,13 +184,11 @@ describe("ActionEventNotifWorker.findUncompletedTasksForPlan", () => {
 
     worker = new ActionEventNotifWorker(
       {} as DataSource,
-      {} as MailService,
-      {} as MmsService,
       actionsService,
       {} as Repository<ActionEventNotif>,
       {} as ActionEventReminderService,
       {} as MissedSuitePlanService,
-      {} as PushService,
+      {} as ActionEventNotifDeliveryService,
       {} as NotifsService,
       {} as Repository<ExperimentAssignment>,
     );
