@@ -9,6 +9,7 @@ import { useCallback } from "react";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
 
 export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
+  onAlreadySubmitted: () => void;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
 };
@@ -18,6 +19,7 @@ const ActionTaskPanel = ({
   onCompleteAction,
   onOptOutAction,
   onDeadlinePassed,
+  onAlreadySubmitted,
   scrollPageTo,
   scrollToEnd,
   disabled,
@@ -49,6 +51,7 @@ const ActionTaskPanel = ({
         scrollToEnd={scrollToEnd}
         onCompleteAction={null}
         onDeadlinePassed={noop}
+        onAlreadySubmitted={noop}
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
         actionId={action.id}
@@ -66,6 +69,7 @@ const ActionTaskPanel = ({
         scrollToEnd={scrollToEnd}
         onCompleteAction={null}
         onDeadlinePassed={noop}
+        onAlreadySubmitted={noop}
         onFormStarted={noop}
         actionId={action.id}
         preview
@@ -83,6 +87,7 @@ const ActionTaskPanel = ({
         onFormStarted={handleFormStarted}
         onAbandonAction={onAbandonAction}
         onDeadlinePassed={onDeadlinePassed}
+        onAlreadySubmitted={onAlreadySubmitted}
         actionId={action.id}
         disabled={disabled}
       />

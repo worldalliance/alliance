@@ -23,6 +23,7 @@ export interface LargeActionCardProps extends LargeActionCardPropsShared {
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
   onCompleteAction?: () => void;
+  onAlreadySubmitted: () => void;
 }
 
 function Banner({
@@ -85,6 +86,7 @@ export default function LargeActionCard({
   dismissProps,
   onUpdateActionState,
   onDeadlinePassed,
+  onAlreadySubmitted,
   scrollPageTo,
   scrollToEnd,
   onCompleteAction = onUpdateActionState,
@@ -151,6 +153,7 @@ export default function LargeActionCard({
           onCompleteAction={onCompleteAction}
           onOptOutAction={onUpdateActionState}
           onDeadlinePassed={onDeadlinePassed}
+          onAlreadySubmitted={onAlreadySubmitted}
           scrollPageTo={scrollPageTo}
           scrollToEnd={scrollToEnd}
         />

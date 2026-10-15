@@ -36,6 +36,7 @@ export interface ActionPageTaskPanelProps {
   onCompleteAction: () => void;
   onOptOutAction: () => void;
   onDeadlinePassed: () => void;
+  onAlreadySubmitted: () => void;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
 }
@@ -122,6 +123,7 @@ const ActionPageTaskPanel = ({
   onCompleteAction,
   onOptOutAction,
   onDeadlinePassed,
+  onAlreadySubmitted,
   scrollPageTo,
   scrollToEnd,
 }: ActionPageTaskPanelProps) => {
@@ -199,6 +201,7 @@ const ActionPageTaskPanel = ({
     onCompleteAction,
     onOptOutAction,
     onDeadlinePassed,
+    onAlreadySubmitted,
   };
 
   switch (state) {

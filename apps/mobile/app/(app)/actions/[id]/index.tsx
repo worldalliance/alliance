@@ -148,6 +148,11 @@ export default function ActionDetailScreen() {
     }
   }, [action, refetchAction, refreshActivities, activeTab]);
 
+  const onAlreadySubmitted = useCallback(() => {
+    void refetchAction({ silent: true });
+    reloadTasks();
+  }, [refetchAction, reloadTasks]);
+
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center p-5 bg-white">
@@ -212,6 +217,7 @@ export default function ActionDetailScreen() {
                   onCompleteAction={onCompleteAction}
                   onOptOutAction={onOptOutAction}
                   onDeadlinePassed={onDeadlinePassed}
+                  onAlreadySubmitted={onAlreadySubmitted}
                 />
               </View>
             ) : (
