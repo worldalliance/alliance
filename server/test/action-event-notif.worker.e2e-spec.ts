@@ -1924,6 +1924,15 @@ describe("ActionEventNotifWorker (e2e)", () => {
         actionId: dependencyAction.id,
       },
     });
+    await eventRepo.save(
+      eventRepo.create({
+        title: "Dependent deadline",
+        description: "desc",
+        newStatus: ActionStatus.Resolution,
+        date: new Date(now + milliseconds({ days: 2 })),
+        action: dependentAction,
+      }),
+    );
 
     const baseDto = {
       name: "Anchor validation group",

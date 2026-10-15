@@ -88,7 +88,6 @@ import { FacepileService } from "src/likes/facepile.service";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import {
   ActionEventReminderService,
-  assertExcludePreviouslyNotifiedAllowed,
   NOTIFICATION_LOOKBACK_WINDOW_MS,
 } from "src/notifs/action-event-reminder.service";
 import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
@@ -276,10 +275,7 @@ import {
   GeneralUpdate,
   loadedGeneralUpdateTags,
 } from "./entities/general-update.entity";
-import {
-  ReminderGroup,
-  ReminderGroupTimingMode,
-} from "./entities/reminder-group.entity";
+import { ReminderGroup } from "./entities/reminder-group.entity";
 import { lockLiveTagsAndSuites } from "./general-update-locks";
 import {
   SUSPENSION_MISSED_SUITE_COUNT,
@@ -3838,7 +3834,6 @@ export class ActionsService {
     eventId: number,
     body: CreateReminderGroupDto,
   ): Promise<NotificationPlan[]> {
-    assertExcludePreviouslyNotifiedAllowed(body);
     const event = await this.actionEventRepository.findOneOrFail({
       where: { id: eventId },
       relations: {
@@ -3847,18 +3842,11 @@ export class ActionsService {
         },
       },
     });
-
-    let tag: Tag | undefined = undefined;
-    if (body.userTagId) {
-      tag = await this.tagRepository.findOneOrFail({
-        where: { id: body.userTagId },
-      });
-    }
-
-    let users: User[] = [];
-    if (body.userIds) {
-      users = await this.userService.findByIds(body.userIds);
-    }
+    const fields =
+      await this.actionEventReminderService.reminderGroupFieldsFromDto(
+        body,
+        event,
+      );
 
     let actionSuite: ActionSuite | undefined = undefined;
     if (body.suiteId) {
@@ -3868,63 +3856,17 @@ export class ActionsService {
       });
     }
 
-    const timingAnchorEvent =
-      await this.actionEventReminderService.resolveTimingAnchorEvent(
-        body,
-        event,
-      );
-
-    const { timingAnchorEventId: _timingAnchorEventId, ...bodyRest } = body;
-    const fakeGroup = {
-      ...bodyRest,
-      sendAtAbsolute: bodyRest.sendAtAbsolute ?? null,
-      sendAtSecondsFromDeadline: bodyRest.sendAtSecondsFromDeadline ?? null,
-      send_range_start: bodyRest.send_range_start ?? null,
-      send_range_end: bodyRest.send_range_end ?? null,
-      relative_range_start_seconds_from_deadline:
-        bodyRest.relative_range_start_seconds_from_deadline ?? null,
-      relative_range_end_seconds_from_deadline:
-        bodyRest.relative_range_end_seconds_from_deadline ?? null,
-      id: 0,
-      name: "Tentative Reminder Group",
-      memberActionEvent: event,
-      notifications: [],
-      users,
-      userTag: tag,
-      allSent: false,
-      actionSuite,
-      timingAnchorEvent,
-      deletedAt: null,
-    } satisfies ReminderGroup;
-
     const withDeadlineEvent =
-      await this.actionEventReminderService.attachDeadlineEvent(fakeGroup);
-
-    if (
-      fakeGroup.timingMode === ReminderGroupTimingMode.FromDeadline ||
-      fakeGroup.timingMode === ReminderGroupTimingMode.WithinRelativeRange
-    ) {
-      if (
-        !withDeadlineEvent.deadlineEvent &&
-        !withDeadlineEvent.timingAnchorEvent
-      ) {
-        throw new BadRequestException(
-          "Deadline or anchor event is required for relative timing modes",
-        );
-      }
-    }
-    if (fakeGroup.timingMode === ReminderGroupTimingMode.WithinRange) {
-      if (
-        fakeGroup.send_range_start &&
-        fakeGroup.send_range_end &&
-        new Date(fakeGroup.send_range_start).getTime() >
-          new Date(fakeGroup.send_range_end).getTime()
-      ) {
-        throw new BadRequestException(
-          "Send range start must be before the end",
-        );
-      }
-    }
+      await this.actionEventReminderService.attachSendableDeadlineEvent({
+        ...fields,
+        id: 0,
+        name: "Tentative Reminder Group",
+        memberActionEvent: event,
+        notifications: [],
+        allSent: false,
+        actionSuite,
+        deletedAt: null,
+      } satisfies ReminderGroup);
 
     return this.actionEventReminderService.findPlansForGroup(
       withDeadlineEvent,
