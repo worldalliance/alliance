@@ -25,6 +25,17 @@ import React, {
   useRef,
   useState,
 } from "react";
+import {
+  groupShareLinks,
+  type PickableKind,
+  type Target,
+  targetColumns,
+  targetKey,
+  type TargetKind,
+  targetKindLabel,
+  targetName,
+  targetSubtitle,
+} from "../components/share-links/shareLinkTargets";
 import { actionsLoadError } from "../lib/actionsLoadError";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
@@ -41,62 +52,6 @@ import {
   shareLinksLoadError,
   useShareLinksAdmin,
 } from "../lib/useShareLinksAdmin";
-
-type TargetKind = "action" | "external" | "invite";
-type PickableKind = Exclude<TargetKind, "invite">;
-
-type Target =
-  | { kind: "action"; id: number; name: string }
-  | { kind: "external"; id: number; name: string }
-  | { kind: "invite" };
-
-const targetKey = (t: Target): string =>
-  t.kind === "invite" ? "invite" : `${t.kind}-${t.id}`;
-
-const targetName = (t: Target): string =>
-  t.kind === "invite" ? "Signup invite" : t.name;
-
-const targetKindLabel = (kind: TargetKind): string => {
-  switch (kind) {
-    case "action":
-      return "Action";
-    case "external":
-      return "External target";
-    case "invite":
-      return "Invite (signup link)";
-    default:
-      throw new Error(`unknown target kind: ${kind satisfies never}`);
-  }
-};
-
-const targetSubtitle = (t: Target): string => {
-  switch (t.kind) {
-    case "action":
-      return `Action #${t.id}`;
-    case "external":
-      return "External share target";
-    case "invite":
-      return "Signup invite link";
-    default:
-      throw new Error(`unknown target kind: ${t satisfies never}`);
-  }
-};
-
-/** The target identity to send to the create-duplicate endpoint. */
-const targetColumns = (
-  t: Target,
-): { actionId?: number; externalTargetId?: number; invite?: true } => {
-  switch (t.kind) {
-    case "action":
-      return { actionId: t.id };
-    case "external":
-      return { externalTargetId: t.id };
-    case "invite":
-      return { invite: true };
-    default:
-      throw new Error(`unknown target kind: ${t satisfies never}`);
-  }
-};
 
 type OwnerKind = ShareLinkOwner["type"];
 
@@ -264,58 +219,7 @@ const ShareLinksPage: React.FC = () => {
     setSelectedTarget(kind === "invite" ? { kind: "invite" } : null);
   }, []);
 
-  const groups = useMemo(() => {
-    type Group = {
-      key: string;
-      target: Target;
-      rows: ShareUrlAdminDto[];
-      duplicateCount: number;
-      mostRecent: number;
-    };
-    const byKey = new Map<string, Group>();
-    for (const row of rows) {
-      let target: Target | null = null;
-      if (row.action) {
-        target = { kind: "action", id: row.action.id, name: row.action.name };
-      } else if (row.externalTarget) {
-        target = {
-          kind: "external",
-          id: row.externalTarget.id,
-          name: row.externalTarget.name,
-        };
-      } else if (row.kind === "invite") {
-        target = { kind: "invite" };
-      }
-      if (!target) continue;
-      const key = targetKey(target);
-      const existing = byKey.get(key);
-      if (existing) {
-        existing.rows.push(row);
-      } else {
-        byKey.set(key, {
-          key,
-          target,
-          rows: [row],
-          duplicateCount: 0,
-          mostRecent: 0,
-        });
-      }
-    }
-    for (const group of byKey.values()) {
-      group.rows.sort((a, b) => {
-        if (a.duplicate !== b.duplicate) return a.duplicate ? 1 : -1;
-        return (
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
-      });
-      group.duplicateCount = group.rows.filter((r) => r.duplicate).length;
-      group.mostRecent = group.rows.reduce(
-        (acc, r) => Math.max(acc, new Date(r.createdAt).getTime()),
-        0,
-      );
-    }
-    return [...byKey.values()].sort((a, b) => b.mostRecent - a.mostRecent);
-  }, [rows]);
+  const groups = useMemo(() => groupShareLinks(rows), [rows]);
 
   // Auto-expand groups that have duplicates; collapse canonical-only ones —
   // but preserve any manual overrides the admin has made.
