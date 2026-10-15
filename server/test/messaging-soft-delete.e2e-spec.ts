@@ -2,6 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
 import { softDeleteCascade } from "src/datasources/soft-delete";
+import { CommunityConversationService } from "src/messaging/community-conversation.service";
 import { ConversationService } from "src/messaging/conversation.service";
 import {
   ConversationAdminSummaryDto,
@@ -70,7 +71,7 @@ describe("Messaging soft deletion (e2e)", () => {
       leaders: [leader],
     });
     const conversation = await ctx.app
-      .get(ConversationService)
+      .get(CommunityConversationService)
       .syncCommunityConversationMembers(community.id);
     return {
       communityId: community.id,
@@ -563,7 +564,7 @@ describe("Messaging soft deletion (e2e)", () => {
         id: community.id,
         write: () =>
           ctx.app
-            .get(ConversationService)
+            .get(CommunityConversationService)
             .syncCommunityConversationMembers(community.id),
       }),
     ).toBeInstanceOf(NotFoundException);
@@ -591,7 +592,7 @@ describe("Messaging soft deletion (e2e)", () => {
         id: joiner.id,
         write: () =>
           ctx.app
-            .get(ConversationService)
+            .get(CommunityConversationService)
             .syncCommunityConversationMembers(chat.communityId),
       }),
     ).toBeInstanceOf(Conversation);
@@ -623,7 +624,7 @@ describe("Messaging soft deletion (e2e)", () => {
     try {
       await expect(
         ctx.app
-          .get(ConversationService)
+          .get(CommunityConversationService)
           .syncCommunityConversationMembers(community!.id),
       ).rejects.toBeInstanceOf(NotFoundException);
     } finally {

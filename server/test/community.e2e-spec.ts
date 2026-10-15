@@ -14,7 +14,7 @@ import {
   loadedCommunityUsers,
 } from "../src/community/entities/community.entity";
 import { getImageSource } from "../src/images/images.service";
-import { ConversationService } from "../src/messaging/conversation.service";
+import { CommunityConversationService } from "../src/messaging/community-conversation.service";
 import { Conversation } from "../src/messaging/entities/conversation.entity";
 import { Participant } from "../src/messaging/entities/participant.entity";
 import { User } from "../src/user/entities/user.entity";
@@ -47,7 +47,7 @@ describe("Community (e2e)", () => {
   let communityRepo: Repository<Community>;
   let communityInviteRepo: Repository<CommunityInvite>;
   let communityService: CommunityService;
-  let conversationService: ConversationService;
+  let communityConversationService: CommunityConversationService;
   let conversationRepo: Repository<Conversation>;
   let participantRepo: Repository<Participant>;
   let testUser: User;
@@ -61,7 +61,7 @@ describe("Community (e2e)", () => {
     communityRepo = ctx.dataSource.getRepository(Community);
     communityInviteRepo = ctx.dataSource.getRepository(CommunityInvite);
     communityService = ctx.app.get(CommunityService);
-    conversationService = ctx.app.get(ConversationService);
+    communityConversationService = ctx.app.get(CommunityConversationService);
     conversationRepo = ctx.dataSource.getRepository(Conversation);
     participantRepo = ctx.dataSource.getRepository(Participant);
   }, 50000);
@@ -2701,8 +2701,12 @@ describe("Community (e2e)", () => {
     it("updates participant authorization even when post-commit sync fails", async () => {
       const { source, destination } = await setUpGroups();
       await Promise.all([
-        conversationService.syncCommunityConversationMembers(source.id),
-        conversationService.syncCommunityConversationMembers(destination.id),
+        communityConversationService.syncCommunityConversationMembers(
+          source.id,
+        ),
+        communityConversationService.syncCommunityConversationMembers(
+          destination.id,
+        ),
       ]);
       const [sourceConversation, destinationConversation] = await Promise.all([
         conversationRepo.findOneOrFail({
@@ -2713,7 +2717,7 @@ describe("Community (e2e)", () => {
         }),
       ]);
       const sync = jest
-        .spyOn(conversationService, "syncCommunityConversationMembers")
+        .spyOn(communityConversationService, "syncCommunityConversationMembers")
         .mockRejectedValue(new Error("sync failed"));
 
       try {

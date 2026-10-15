@@ -18,10 +18,8 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Community } from "src/community/entities/community.entity";
 import {
   assertLive,
-  lockLive,
   softDeleteCascade,
   softDeleteWhere,
   updateLive,
@@ -33,7 +31,8 @@ import { acceptedFriendship, friendshipBetween } from "src/user/friendship";
 import { UserEvents, type FriendsAcceptedPayload } from "src/user/user.events";
 import type { Relations } from "src/utils/Repository";
 import { isUniqueViolation } from "src/utils/db-errors";
-import { In, IsNull, type EntityManager, type Repository } from "typeorm";
+import { In, IsNull, type Repository } from "typeorm";
+import { CommunityConversationService } from "./community-conversation.service";
 import { ConversationUnreadService } from "./conversation-unread.service";
 import { createConversationWithMembers } from "./create-conversation-with-members";
 import {
@@ -55,6 +54,7 @@ import {
   Participant,
   ParticipantState,
 } from "./entities/participant.entity";
+import { loadConversation } from "./load-conversation";
 import { emitConversationUpdated } from "./messaging.events";
 import { notInConversation } from "./not-in-conversation";
 import { loadHiddenReadCursors } from "./read-cursor";
@@ -69,14 +69,6 @@ const PARTICIPANTS_MISSING = "One or more participants were not found.";
 @Injectable()
 export class ConversationService {
   private readonly logger = new Logger(ConversationService.name);
-
-  private readonly conversationRelations = {
-    participants: {
-      user: true,
-      lastReadMessage: { author: true },
-    },
-    community: true,
-  } as const satisfies Relations<Conversation>;
 
   private readonly participantRelations = {
     conversation: {
@@ -95,13 +87,12 @@ export class ConversationService {
     private readonly messageRepository: Repository<Message>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(Community)
-    private readonly communityRepository: Repository<Community>,
     @InjectRepository(Friend)
     private readonly friendRepository: Repository<Friend>,
     private readonly eventEmitter: EventEmitter2,
     private readonly imagesService: ImagesService,
     private readonly unreadService: ConversationUnreadService,
+    private readonly communityConversationService: CommunityConversationService,
   ) {
     this.eventEmitter.on(
       UserEvents.FriendsAccepted,
@@ -277,7 +268,8 @@ export class ConversationService {
       .getOne();
 
     if (existingConversation) {
-      const hydrated = await this.getConversationEntity(
+      const hydrated = await loadConversation(
+        this.conversationRepository,
         existingConversation.id,
       );
       const lastMessage = await this.findLastMessage(existingConversation.id);
@@ -325,7 +317,8 @@ export class ConversationService {
       },
     );
 
-    const hydratedConversation = await this.getConversationEntity(
+    const hydratedConversation = await loadConversation(
+      this.conversationRepository,
       conversation.id,
     );
     emitConversationUpdated(this.eventEmitter, hydratedConversation.id);
@@ -373,7 +366,8 @@ export class ConversationService {
       .getOne();
 
     if (existingConversation) {
-      const hydrated = await this.getConversationEntity(
+      const hydrated = await loadConversation(
+        this.conversationRepository,
         existingConversation.id,
       );
       const lastMessage = await this.findLastMessage(existingConversation.id);
@@ -425,7 +419,8 @@ export class ConversationService {
       },
     );
 
-    const hydratedConversation = await this.getConversationEntity(
+    const hydratedConversation = await loadConversation(
+      this.conversationRepository,
       conversation.id,
     );
     emitConversationUpdated(this.eventEmitter, hydratedConversation.id);
@@ -459,7 +454,10 @@ export class ConversationService {
     }
     await this.touchConversation(conversationId);
 
-    const conversation = await this.getConversationEntity(conversationId);
+    const conversation = await loadConversation(
+      this.conversationRepository,
+      conversationId,
+    );
     emitConversationUpdated(this.eventEmitter, conversation.id);
     return this.buildConversationDto(conversationId, userId);
   }
@@ -515,7 +513,10 @@ export class ConversationService {
     );
     await this.touchConversation(conversation.id);
 
-    const hydrated = await this.getConversationEntity(conversation.id);
+    const hydrated = await loadConversation(
+      this.conversationRepository,
+      conversation.id,
+    );
     emitConversationUpdated(this.eventEmitter, hydrated.id);
   }
 
@@ -532,7 +533,10 @@ export class ConversationService {
     }
     await this.softDeleteParticipants([participant]);
     await this.touchConversation(conversationId);
-    const conversation = await this.getConversationEntity(conversationId);
+    const conversation = await loadConversation(
+      this.conversationRepository,
+      conversationId,
+    );
     emitConversationUpdated(this.eventEmitter, conversation.id);
     if (conversation.type === ConversationType.Direct) {
       await softDeleteWhere(this.conversationRepository.manager, {
@@ -550,7 +554,10 @@ export class ConversationService {
     dto: UpdateConversationDto,
   ): Promise<ConversationDto> {
     await this.ensureConversationAdmin(conversationId, userId);
-    const conversation = await this.getConversationEntity(conversationId);
+    const conversation = await loadConversation(
+      this.conversationRepository,
+      conversationId,
+    );
 
     if (!conversationTypesWithEditableInfo[conversation.type]) {
       throw new ForbiddenException(
@@ -631,8 +638,10 @@ export class ConversationService {
       return this.buildConversationDto(conversationId, actingUserId);
     }
     await this.touchConversation(conversationId);
-    const updatedConversation =
-      await this.getConversationEntity(conversationId);
+    const updatedConversation = await loadConversation(
+      this.conversationRepository,
+      conversationId,
+    );
     emitConversationUpdated(this.eventEmitter, updatedConversation.id);
     return new ConversationDto({
       conversation: updatedConversation,
@@ -674,8 +683,10 @@ export class ConversationService {
 
     await this.softDeleteParticipants([targetParticipant]);
     await this.touchConversation(conversationId);
-    const updatedConversation =
-      await this.getConversationEntity(conversationId);
+    const updatedConversation = await loadConversation(
+      this.conversationRepository,
+      conversationId,
+    );
     emitConversationUpdated(this.eventEmitter, updatedConversation.id);
     return new ConversationDto({
       conversation: updatedConversation,
@@ -705,218 +716,15 @@ export class ConversationService {
       throw new ForbiddenException("This conversation can't be left.");
     }
     await this.softDeleteParticipants([participant]);
-    const updatedConversation =
-      await this.getConversationEntity(conversationId);
+    const updatedConversation = await loadConversation(
+      this.conversationRepository,
+      conversationId,
+    );
     emitConversationUpdated(this.eventEmitter, updatedConversation.id);
     return new ConversationDto({
       conversation: updatedConversation,
       contextUserId: userId,
     });
-  }
-
-  async syncCommunityConversationMembers(
-    communityId: number,
-  ): Promise<Conversation> {
-    const community = await this.communityRepository.findOne({
-      where: { id: communityId },
-      relations: { users: true, leaders: true },
-    });
-
-    if (!community) {
-      throw new NotFoundException("Community not found.");
-    }
-
-    let conversation = await this.conversationRepository.findOne({
-      where: { community: { id: community.id } },
-      relations: this.conversationRelations,
-    });
-
-    const photo = community.photo ?? null;
-
-    if (!conversation) {
-      conversation = await this.conversationRepository.manager.transaction(
-        async (manager) => {
-          // A group deleted since it was read would otherwise get a live chat.
-          await assertLive(manager, {
-            rows: [{ target: Community, id: community.id }],
-            gone: () => new NotFoundException("Community not found."),
-          });
-          return manager.save(
-            manager.create(Conversation, {
-              title: community.name,
-              photo,
-              type: ConversationType.Community,
-              community,
-            }),
-          );
-        },
-      );
-    } else {
-      const needsUpdate =
-        conversation.title !== community.name || conversation.photo !== photo;
-      if (needsUpdate) {
-        await updateLive(this.conversationRepository.manager, {
-          target: Conversation,
-          id: conversation.id,
-          changes: { title: community.name, photo },
-          notFound: "Community not found.",
-        });
-      }
-    }
-
-    conversation = await this.getConversationEntity(conversation.id);
-
-    const desiredUsers = new Map<number, User>();
-    (community.users ?? []).forEach((user) => desiredUsers.set(user.id, user));
-    (community.leaders ?? []).forEach((user) =>
-      desiredUsers.set(user.id, user),
-    );
-
-    const leaderIds = new Set(
-      (community.leaders ?? []).map((leader) => leader.id),
-    );
-
-    const participantMap = new Map<number, Participant>(
-      loadedConversationParticipants(conversation).map((participant) => [
-        loadedParticipantUser(participant).id,
-        participant,
-      ]),
-    );
-    const now = new Date();
-
-    for (const [userId, user] of desiredUsers) {
-      const existing = participantMap.get(userId);
-      const role = leaderIds.has(userId)
-        ? ParticipantRole.Admin
-        : ParticipantRole.Member;
-      if (existing) {
-        let shouldUpdate = false;
-        if (existing.role !== role) {
-          existing.role = role;
-          shouldUpdate = true;
-        }
-        if (existing.state !== ParticipantState.Joined) {
-          existing.state = ParticipantState.Joined;
-          shouldUpdate = true;
-        }
-        if (!shouldUpdate) continue;
-        existing.joinedAt = existing.joinedAt ?? now;
-        if (
-          await updateLive(this.participantRepository.manager, {
-            target: Participant,
-            id: existing.id,
-            changes: {
-              role: existing.role,
-              state: existing.state,
-              joinedAt: existing.joinedAt,
-            },
-          })
-        ) {
-          continue;
-        }
-      }
-      await this.participantRepository.manager.transaction(async (manager) => {
-        await assertLive(manager, {
-          rows: [{ target: Conversation, id: conversation.id }],
-          gone: () => new NotFoundException("Community not found."),
-        });
-        if (!(await lockLive(manager, [{ target: User, id: userId }]))) {
-          return;
-        }
-        await manager.save(
-          manager.create(Participant, {
-            conversation,
-            user,
-            role,
-            state: ParticipantState.Joined,
-            joinedAt: now,
-          }),
-        );
-      });
-    }
-
-    const removable = loadedConversationParticipants(conversation).filter(
-      (participant) => !desiredUsers.has(loadedParticipantUser(participant).id),
-    );
-    await this.softDeleteParticipants(removable);
-
-    const updatedConversation = await this.getConversationEntity(
-      conversation.id,
-    );
-    emitConversationUpdated(this.eventEmitter, updatedConversation.id);
-    return updatedConversation;
-  }
-
-  async placeCommunityConversationParticipant(params: {
-    manager: EntityManager;
-    user: User;
-    sourceCommunity: Community | null;
-    destinationCommunity: Community;
-  }): Promise<void> {
-    const { manager, user, sourceCommunity, destinationCommunity } = params;
-    const conversationRepository = manager.getRepository(Conversation);
-    const participantRepository = manager.getRepository(Participant);
-
-    if (sourceCommunity) {
-      const sourceConversation = await conversationRepository.findOne({
-        where: { community: { id: sourceCommunity.id } },
-      });
-      if (sourceConversation) {
-        await softDeleteWhere(manager, {
-          target: Participant,
-          where: {
-            conversation: { id: sourceConversation.id },
-            user: { id: user.id },
-          },
-        });
-      }
-    }
-
-    let destinationConversation = await conversationRepository.findOne({
-      where: { community: { id: destinationCommunity.id } },
-    });
-    if (!destinationConversation) {
-      destinationConversation = await conversationRepository.save(
-        conversationRepository.create({
-          title: destinationCommunity.name,
-          photo: destinationCommunity.photo ?? null,
-          type: ConversationType.Community,
-          community: destinationCommunity,
-        }),
-      );
-    }
-
-    const existingParticipant = await participantRepository.findOne({
-      where: {
-        conversation: { id: destinationConversation.id },
-        user: { id: user.id },
-      },
-    });
-    const role = destinationCommunity.leaders?.some(
-      (leader) => leader.id === user.id,
-    )
-      ? ParticipantRole.Admin
-      : ParticipantRole.Member;
-    if (
-      existingParticipant &&
-      (await updateLive(participantRepository.manager, {
-        target: Participant,
-        id: existingParticipant.id,
-        changes: { role, state: ParticipantState.Joined },
-      }))
-    ) {
-      return;
-    }
-
-    await participantRepository.save(
-      participantRepository.create({
-        conversation: destinationConversation,
-        user,
-        role,
-        state: ParticipantState.Joined,
-        joinedAt: new Date(),
-      }),
-    );
   }
 
   async markConversationRead(
@@ -941,7 +749,10 @@ export class ConversationService {
       throw notInConversation();
     }
 
-    const conversation = await this.getConversationEntity(conversationId);
+    const conversation = await loadConversation(
+      this.conversationRepository,
+      conversationId,
+    );
     const unreadCount = await this.unreadService.countUnreadForConversation(
       conversationId,
       userId,
@@ -997,21 +808,11 @@ export class ConversationService {
 
     await Promise.all(
       loadedUserCommunities(user).map((community) =>
-        this.syncCommunityConversationMembers(community.id),
+        this.communityConversationService.syncCommunityConversationMembers(
+          community.id,
+        ),
       ),
     );
-  }
-
-  private async getConversationEntity(id: number): Promise<Conversation> {
-    const conversation = await this.conversationRepository.findOneOrFail({
-      where: { id },
-      relations: this.conversationRelations,
-    });
-    await loadHiddenReadCursors(
-      this.messageRepository,
-      loadedConversationParticipants(conversation),
-    );
-    return conversation;
   }
 
   async getParticipantOrFail({
@@ -1050,7 +851,10 @@ export class ConversationService {
     conversationId: number,
     contextUserId?: number,
   ): Promise<ConversationDto> {
-    const conversation = await this.getConversationEntity(conversationId);
+    const conversation = await loadConversation(
+      this.conversationRepository,
+      conversationId,
+    );
     const lastMessage = await this.findLastMessage(conversationId);
     const unreadCount = contextUserId
       ? await this.unreadService.countUnreadForConversation(
