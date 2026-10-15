@@ -51,6 +51,7 @@ import {
   User,
 } from "../user/entities/user.entity";
 import { ActionEventRecipientService } from "./action-event-recipient.service";
+import { assertReminderGroupSendable } from "./assert-reminder-group-sendable";
 import { NotificationPlan } from "./dto/notification-plan.dto";
 import { ActionEventNotifDto } from "./entities/action-event-notif.dto";
 import {
@@ -70,6 +71,17 @@ export interface MissedDeadlineCandidate {
 }
 
 export const NOTIFICATION_LOOKBACK_WINDOW_MS = milliseconds({ hours: 3 });
+
+type ReminderGroupDtoFields = Omit<
+  ReminderGroup,
+  | "id"
+  | "memberActionEvent"
+  | "actionSuite"
+  | "notifications"
+  | "deadlineEvent"
+  | "allSent"
+  | "deletedAt"
+>;
 
 const REMINDER_GROUP_PARENT_GONE = "That event, suite, tag or member is gone";
 
@@ -555,16 +567,17 @@ export class ActionEventReminderService {
     });
   }
 
-  async createReminderGroup(
-    eventId: number,
+  /**
+   * The fields `dto` sets on a group of `memberActionEvent`. Preview, create
+   * and update all build through here and `attachSendableDeadlineEvent`, so a
+   * preview shows what saving does.
+   */
+  async reminderGroupFieldsFromDto(
     dto: CreateReminderGroupDto,
-  ): Promise<ReminderGroup> {
+    memberActionEvent: ActionEvent,
+  ): Promise<ReminderGroupDtoFields> {
     assertExcludePreviouslyNotifiedAllowed(dto);
-    const event = await this.eventRepository.findOneOrFail({
-      where: { id: eventId },
-      relations: { action: true },
-    });
-    if (event.newStatus !== ActionStatus.MemberAction) {
+    if (memberActionEvent.newStatus !== ActionStatus.MemberAction) {
       throw new BadRequestException("Event is not a member action event");
     }
 
@@ -578,6 +591,46 @@ export class ActionEventReminderService {
       users = await this.userService.findByIds(dto.userIds);
     }
 
+    const timingAnchorEvent = await this.resolveTimingAnchorEvent(
+      dto,
+      memberActionEvent,
+    );
+
+    const { timingAnchorEventId: _timingAnchorEventId, ...dtoRest } = dto;
+    return {
+      ...dtoRest,
+      sendAtAbsolute: dtoRest.sendAtAbsolute ?? null,
+      sendAtSecondsFromDeadline: dtoRest.sendAtSecondsFromDeadline ?? null,
+      send_range_start: dtoRest.send_range_start ?? null,
+      send_range_end: dtoRest.send_range_end ?? null,
+      relative_range_start_seconds_from_deadline:
+        dtoRest.relative_range_start_seconds_from_deadline ?? null,
+      relative_range_end_seconds_from_deadline:
+        dtoRest.relative_range_end_seconds_from_deadline ?? null,
+      userTag,
+      users,
+      timingAnchorEvent,
+    };
+  }
+
+  async attachSendableDeadlineEvent(
+    group: ReminderGroup,
+  ): Promise<ReminderGroup> {
+    const withDeadline = await this.attachDeadlineEvent(group);
+    assertReminderGroupSendable(withDeadline);
+    return withDeadline;
+  }
+
+  async createReminderGroup(
+    eventId: number,
+    dto: CreateReminderGroupDto,
+  ): Promise<ReminderGroup> {
+    const event = await this.eventRepository.findOneOrFail({
+      where: { id: eventId },
+      relations: { action: true },
+    });
+    const fields = await this.reminderGroupFieldsFromDto(dto, event);
+
     let actionSuite: ActionSuite | undefined = undefined;
     if (dto.suiteId) {
       actionSuite = await this.actionSuiteRepository.findOneOrFail({
@@ -585,26 +638,20 @@ export class ActionEventReminderService {
       });
     }
 
-    const timingAnchorEvent = await this.resolveTimingAnchorEvent(dto, event);
-
-    const { timingAnchorEventId: _timingAnchorEventId, ...dtoRest } = dto;
-    const group = await this.reminderGroupRepository.create({
-      ...dtoRest,
-      memberActionEvent: event,
-      actionSuite,
-      userTag,
-      users,
-      timingAnchorEvent,
-    });
-
-    return this.saveUnderLiveParents(group);
+    return this.saveUnderLiveParents(
+      this.reminderGroupRepository.create({
+        ...fields,
+        memberActionEvent: event,
+        actionSuite,
+      }),
+    );
   }
 
   private async saveUnderLiveParents(
     group: ReminderGroup,
     saved?: LiveRow & { notFound: string },
   ): Promise<ReminderGroup> {
-    const withDeadline = await this.attachDeadlineEvent(group);
+    const withDeadline = await this.attachSendableDeadlineEvent(group);
     return writeUnderLive(this.reminderGroupRepository.manager, {
       parents: reminderGroupParents(withDeadline),
       notFound: REMINDER_GROUP_PARENT_GONE,
@@ -617,34 +664,17 @@ export class ActionEventReminderService {
     groupId: number,
     dto: CreateReminderGroupDto,
   ): Promise<ReminderGroup> {
-    assertExcludePreviouslyNotifiedAllowed(dto);
     const group = await this.reminderGroupRepository.findOneOrFail({
       where: { id: groupId },
       relations: { memberActionEvent: { action: true }, actionSuite: true },
     });
-
-    let userTag: Tag | undefined = undefined;
-    if (dto.cohortType === ReminderCohortType.Tag && dto.userTagId) {
-      userTag = await this.userService.findTagOrFail(dto.userTagId);
-    }
-
-    let users: User[] | undefined = undefined;
-    if (dto.cohortType === ReminderCohortType.Custom && dto.userIds) {
-      users = await this.userService.findByIds(dto.userIds);
-    }
-
-    const timingAnchorEvent = await this.resolveTimingAnchorEvent(
-      dto,
-      loadedReminderGroupMemberActionEvent(group),
+    Object.assign(
+      group,
+      await this.reminderGroupFieldsFromDto(
+        dto,
+        loadedReminderGroupMemberActionEvent(group),
+      ),
     );
-
-    const { timingAnchorEventId: _timingAnchorEventId, ...dtoRest } = dto;
-    Object.assign(group, dtoRest);
-    group.userTag = userTag;
-    group.users = users;
-    // null (never undefined) when the dto omits the anchor, so the save
-    // clears a previously set anchor instead of silently keeping it.
-    group.timingAnchorEvent = timingAnchorEvent;
 
     return this.saveUnderLiveParents(group, {
       target: ReminderGroup,

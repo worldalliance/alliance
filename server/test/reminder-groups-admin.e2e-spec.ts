@@ -171,6 +171,89 @@ describe("Admin reminder groups (e2e)", () => {
       .expect(201);
   });
 
+  describe("rejects a group that could never send, from preview, create, and update alike", () => {
+    let noDeadlineEvent: ActionEvent;
+    let nonMemberEvent: ActionEvent;
+
+    beforeAll(async () => {
+      const action = await ctx.dataSource.getRepository(Action).save({
+        name: "reminder-groups-admin e2e no deadline",
+        body: "reminder-groups-admin e2e no deadline",
+        category: [],
+      });
+      noDeadlineEvent = await ctx.dataSource.getRepository(ActionEvent).save({
+        title: "Member action",
+        description: "Member action",
+        newStatus: ActionStatus.MemberAction,
+        date: new Date(Date.now() - milliseconds({ days: 1 })),
+        action,
+      });
+      nonMemberEvent = await ctx.dataSource.getRepository(ActionEvent).save({
+        title: "Launch",
+        description: "Launch",
+        newStatus: ActionStatus.Planned,
+        date: new Date(Date.now() - milliseconds({ days: 2 })),
+        action,
+      });
+    });
+
+    const admin = (req: request.Test) =>
+      req.set("Authorization", `Bearer ${ctx.adminAccessToken}`);
+    const validBody = {
+      ...groupBody,
+      cohortType: ReminderCohortType.AllUncompleted,
+    };
+    const create = (eventId: number, body: object) =>
+      admin(
+        request(ctx.app.getHttpServer())
+          .post(`/actions/events/${eventId}/createremindergroup`)
+          .send(body),
+      );
+    const preview = (eventId: number, body: object) =>
+      admin(
+        request(ctx.app.getHttpServer())
+          .post(`/actions/events/${eventId}/checkTentativePlans`)
+          .send(body),
+      );
+    const update = async (eventId: number, body: object) => {
+      const created = await create(eventId, validBody).expect(201);
+      return admin(
+        request(ctx.app.getHttpServer())
+          .patch(`/actions/remindergroups/${created.body.id}`)
+          .send(body),
+      );
+    };
+    const invalidBodies = {
+      "relative timing with no deadline or anchor": {
+        ...validBody,
+        timingMode: ReminderGroupTimingMode.FromDeadline,
+        sendAtAbsolute: undefined,
+        sendAtSecondsFromDeadline: 3600,
+      },
+      "a send range that starts after it ends": {
+        ...validBody,
+        timingMode: ReminderGroupTimingMode.WithinRange,
+        sendAtAbsolute: undefined,
+        send_range_start: new Date(Date.now() + milliseconds({ days: 2 })),
+        send_range_end: new Date(Date.now()),
+      },
+    };
+
+    for (const [name, submit] of Object.entries({ preview, create, update })) {
+      for (const [label, body] of Object.entries(invalidBodies)) {
+        it(`${name} rejects ${label}`, async () => {
+          expect((await submit(noDeadlineEvent.id, body)).status).toBe(400);
+        });
+      }
+    }
+
+    for (const [name, submit] of Object.entries({ preview, create })) {
+      it(`${name} rejects a group on an event that isn't a member action`, async () => {
+        expect((await submit(nonMemberEvent.id, validBody)).status).toBe(400);
+      });
+    }
+  });
+
   it.each([
     ["without a cohort type", {}],
     ["with an unknown cohort type", { cohortType: "everyone" }],
