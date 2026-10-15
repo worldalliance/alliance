@@ -827,6 +827,20 @@ describe("Forum (e2e)", () => {
       expect(response.body.author.id).toBe(ctx.testUserId);
     });
 
+    it("refuses a reply with only whitespace and no attachments", async () => {
+      const response = await request(ctx.app.getHttpServer())
+        .post("/forum/comments")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: " \n\t ", attachments: [] },
+          parentObjectId: testPostId,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(400);
+
+      expect(response.body.message).toBe("Reply cannot be empty");
+    });
+
     it("should update a reply", async () => {
       // Create a reply to update
       const createResponse = await request(ctx.app.getHttpServer())

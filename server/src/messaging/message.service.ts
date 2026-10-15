@@ -1,3 +1,4 @@
+import { hasContent } from "@alliance/common/editableContent";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -62,7 +63,7 @@ export class MessageService {
     const trimmedBody = dto.body?.trim?.() ?? "";
     const attachments = await this.saveAttachments(dto.attachments);
 
-    if (!trimmedBody.length && attachments.length === 0) {
+    if (!hasContent({ body: trimmedBody, attachments })) {
       throw new BadRequestException(
         "Message must include text or at least one attachment.",
       );
