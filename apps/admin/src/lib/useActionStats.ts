@@ -4,6 +4,7 @@ import {
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { invalidateActionCompletionCurvesAdmin } from "./useActionCompletionCurvesAdmin";
 
 export function useActionStats() {
   const queryClient = useQueryClient();
@@ -26,9 +27,7 @@ export function useActionStats() {
         queryKey: queryKeys.actionStatsAdmin(),
       });
       queryClient.setQueryData(queryKeys.actionStatsAdmin(), data);
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.actionCompletionCurvesAdminAll(),
-      });
+      invalidateActionCompletionCurvesAdmin(queryClient);
     },
   });
 
