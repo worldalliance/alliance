@@ -249,13 +249,32 @@ WHERE "phoneNumber" NOT LIKE '+1555%';
 -- `phoneNumber` is nullable; keep the NULLs so staging still exercises the
 -- "member has no phone number" branches.
 UPDATE "user"
+SET "phoneNumber" = CASE
+                      WHEN "phoneNumber" IS NULL THEN NULL
+                      ELSE '+1555' || lpad(id::text, 7, '0')
+                    END;
+
+-- App-store review accounts keep prod's email and password, so the credentials
+-- the stores hold sign in here after every sync. A snapshot from before prod
+-- gained the column has none.
+CREATE TEMP TABLE review_account (id INT PRIMARY KEY) ON COMMIT DROP;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = current_schema()
+      AND table_name = 'user'
+      AND column_name = 'isTestUser'
+  ) THEN
+    INSERT INTO review_account SELECT id FROM "user" WHERE "isTestUser";
+  END IF;
+END $$;
+
+UPDATE "user"
 SET
-  "email"       = 'user'||id||'@example.com',
-  "phoneNumber" = CASE
-                    WHEN "phoneNumber" IS NULL THEN NULL
-                    ELSE '+1555' || lpad(id::text, 7, '0')
-                  END;
-UPDATE "user" SET "password" = :'password_hash';
+  "email"    = 'user'||id||'@example.com',
+  "password" = :'password_hash'
+WHERE id NOT IN (SELECT id FROM review_account);
 
 -- Prod gains this column, and with it any phone entries, only once the
 -- migration adding it ships there; until then the guard skips the rewrite.
