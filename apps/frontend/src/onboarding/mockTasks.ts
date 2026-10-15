@@ -26,6 +26,7 @@ function mockTask(
     isForumParticipationAction: false,
     forumParticipationPostId: null,
     forumParticipationIncludeChildren: false,
+    computedAutocompleteAt: null,
     onboarding: false,
     optional: false,
     publicOnly: false,
