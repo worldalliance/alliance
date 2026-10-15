@@ -57,6 +57,7 @@ export class ActionEventNotifDeliveryService {
       sendingAnyNotif = true;
       const result = await this.mmsService.sendMms({
         to: user.phoneNumber!,
+        userId: user.id,
         body: await render(templates.textMessage),
         mediaUrls: [],
         tracking,

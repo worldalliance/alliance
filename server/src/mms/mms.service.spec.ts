@@ -12,6 +12,7 @@ import type { Mms } from "./mms.entity";
 import { MmsService } from "./mms.service";
 
 const TO = "+14155559001";
+const USER_ID = 42;
 const BODY = "you have tasks waiting";
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -40,6 +41,7 @@ describe("MmsService sendMms", () => {
   let eventLogService: jest.Mocked<EventLogService>;
   let service: MmsService;
   let messageTracking: MessageTrackingService;
+  let logSpies: jest.SpyInstance[];
 
   beforeEach(() => {
     saved = [];
@@ -63,9 +65,9 @@ describe("MmsService sendMms", () => {
     service = new MmsService(mmsRepository, eventLogService, messageTracking);
     service["twilioPhoneNumber"] = "+15555550100";
 
-    jest.spyOn(Logger.prototype, "log").mockImplementation(() => {});
-    jest.spyOn(Logger.prototype, "warn").mockImplementation(() => {});
-    jest.spyOn(Logger.prototype, "error").mockImplementation(() => {});
+    logSpies = (["log", "warn", "error"] as const).map((level) =>
+      jest.spyOn(Logger.prototype, level).mockImplementation(() => {}),
+    );
   });
 
   afterEach(() => {
@@ -80,6 +82,7 @@ describe("MmsService sendMms", () => {
     const result = await asProduction(() =>
       service.sendMms({
         to: TO,
+        userId: USER_ID,
         body: BODY,
         mediaUrls: ["https://example.com/task.png"],
         tracking: null,
@@ -108,6 +111,7 @@ describe("MmsService sendMms", () => {
     try {
       await service.sendMms({
         to: TO,
+        userId: USER_ID,
         body: "Tasks: https://app.example.org/tasks",
         mediaUrls: [],
         tracking: {
@@ -137,6 +141,7 @@ describe("MmsService sendMms", () => {
     const result = await asProduction(() =>
       service.sendMms({
         to: TO,
+        userId: USER_ID,
         body: BODY,
         mediaUrls: [],
         tracking: {
@@ -174,6 +179,7 @@ describe("MmsService sendMms", () => {
     await asProduction(() =>
       service.sendMms({
         to: TO,
+        userId: USER_ID,
         body: BODY,
         mediaUrls: [],
         tracking: {
@@ -197,6 +203,7 @@ describe("MmsService sendMms", () => {
     await asProduction(() =>
       service.sendMms({
         to: "+447700900123",
+        userId: USER_ID,
         body: BODY,
         mediaUrls: [],
         tracking: null,
@@ -218,6 +225,7 @@ describe("MmsService sendMms", () => {
     const result = await asProduction(() =>
       service.sendMms({
         to: TO,
+        userId: USER_ID,
         body: BODY,
         mediaUrls: ["https://example.com/task.png"],
         tracking: null,
@@ -241,6 +249,7 @@ describe("MmsService sendMms", () => {
     service["recordLateSend"]({
       sending: Promise.resolve(message),
       to: TO,
+      userId: USER_ID,
       body: BODY,
       cid: "cid-1",
     });
@@ -267,6 +276,7 @@ describe("MmsService sendMms", () => {
     service["recordLateSend"]({
       sending: Promise.reject(new Error("network down")),
       to: TO,
+      userId: USER_ID,
       body: BODY,
       cid: "cid-1",
     });
@@ -276,6 +286,45 @@ describe("MmsService sendMms", () => {
     expect(discard).toHaveBeenCalledWith("cid-1");
     // This test staying green also covers the rejection: bun fails a test that
     // leaves one unhandled, and sendMms has stopped listening by this point.
+  });
+
+  it("logs the recipient by user id, never by number", async () => {
+    const rejected = () =>
+      Promise.reject(
+        new Error(`The 'To' number ${TO} is not a valid phone number.`),
+      );
+    service["twilioClient"] = {
+      messages: { create: rejected },
+    } as unknown as Twilio.Twilio;
+    await asProduction(() =>
+      service.sendMms({
+        to: TO,
+        userId: USER_ID,
+        body: BODY,
+        mediaUrls: [],
+        tracking: null,
+      }),
+    );
+    for (const sending of [Promise.resolve(message), rejected()]) {
+      service["recordLateSend"]({
+        sending,
+        to: TO,
+        userId: USER_ID,
+        body: BODY,
+        cid: null,
+      });
+    }
+    await delay(0);
+
+    const calls = logSpies.flatMap((spy) => spy.mock.calls);
+    const logged = calls.map(([text]) => String(text));
+    expect(logged.filter((text) => text.includes(`user ${USER_ID}`))).toEqual([
+      expect.stringContaining("Attempting"),
+      expect.stringContaining("landed"),
+      expect.stringContaining("Failed"),
+      expect.stringContaining("failed after"),
+    ]);
+    expect(calls.flat().filter((arg) => String(arg).includes(TO))).toEqual([]);
   });
 });
 

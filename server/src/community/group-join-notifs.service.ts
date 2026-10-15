@@ -88,6 +88,7 @@ export class GroupJoinNotifsService {
       texts.map(({ recipient, notification }) =>
         this.mmsService.sendMms({
           to: recipient.phoneNumber!,
+          userId: recipient.id,
           body: `${notification.message} ${link}`,
           mediaUrls: [],
           tracking: {

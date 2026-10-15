@@ -997,6 +997,7 @@ export class TasksService {
         if (!user.optInMms) {
           const mms = await this.mmsService.sendMms({
             to: normalized,
+            userId: user.id,
             body: welcomeMessage,
             mediaUrls: [],
             tracking: null,

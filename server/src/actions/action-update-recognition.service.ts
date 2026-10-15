@@ -473,6 +473,7 @@ export class ActionUpdateRecognitionService {
       ) {
         const mms = await this.mmsService.sendMms({
           to: user.phoneNumber,
+          userId: user.id,
           body: copy.sms,
           mediaUrls: [],
           tracking,
