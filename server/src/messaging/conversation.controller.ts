@@ -15,6 +15,7 @@ import { AdminGuard } from "src/auth/guards/admin.guard";
 import { AuthGuard } from "src/auth/guards/auth.guard";
 import type { JwtRequest } from "src/auth/tokens";
 import { PosthogService } from "src/posthog/posthog.service";
+import { ConversationUnreadService } from "./conversation-unread.service";
 import { ConversationService } from "./conversation.service";
 import {
   ConversationAdminSummaryDto,
@@ -32,6 +33,7 @@ import {
 export class ConversationController {
   constructor(
     private readonly conversationService: ConversationService,
+    private readonly unreadService: ConversationUnreadService,
     private readonly posthog: PosthogService,
   ) {}
 
@@ -194,9 +196,7 @@ export class ConversationController {
   async getUnreadMessages(
     @Request() req: JwtRequest,
   ): Promise<UnreadMessagesDto> {
-    const count = await this.conversationService.getUnreadMessages(
-      req.user.sub,
-    );
+    const count = await this.unreadService.getUnreadMessages(req.user.sub);
     return new UnreadMessagesDto(count);
   }
 
@@ -207,7 +207,7 @@ export class ConversationController {
     @Request() req: JwtRequest,
   ): Promise<UnreadMessageSummaryDto> {
     return new UnreadMessageSummaryDto(
-      await this.conversationService.getUnreadSummary(req.user.sub),
+      await this.unreadService.getUnreadSummary(req.user.sub),
     );
   }
 

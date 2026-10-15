@@ -6,6 +6,7 @@ import { PushModule } from "src/push/push.module";
 import { Friend } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
+import { ConversationUnreadService } from "./conversation-unread.service";
 import { ConversationController } from "./conversation.controller";
 import { ConversationService } from "./conversation.service";
 import { Conversation } from "./entities/conversation.entity";
@@ -34,6 +35,7 @@ import { MessagingOverviewGateway } from "./messaging.overview.gateway";
   controllers: [ConversationController, MessageController],
   providers: [
     ConversationService,
+    ConversationUnreadService,
     MessageService,
     MessagingGateway,
     MessagingOverviewGateway,

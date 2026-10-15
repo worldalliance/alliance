@@ -34,6 +34,7 @@ import { UserEvents, type FriendsAcceptedPayload } from "src/user/user.events";
 import type { Relations } from "src/utils/Repository";
 import { isUniqueViolation } from "src/utils/db-errors";
 import { In, IsNull, type EntityManager, type Repository } from "typeorm";
+import { ConversationUnreadService } from "./conversation-unread.service";
 import { createConversationWithMembers } from "./create-conversation-with-members";
 import {
   ConversationAdminSummaryDto,
@@ -41,7 +42,6 @@ import {
   ConversationParticipantDto,
   CreateDirectConversationDto,
   CreateGroupConversationDto,
-  UnreadMessageSummary,
   UpdateConversationDto,
 } from "./dto/messaging.dto";
 import {
@@ -57,7 +57,7 @@ import {
 } from "./entities/participant.entity";
 import { MessagingEvents } from "./messaging.events";
 import { notInConversation } from "./not-in-conversation";
-import { loadHiddenReadCursors, UNREAD_SQL } from "./read-cursor";
+import { loadHiddenReadCursors } from "./read-cursor";
 
 type ParticipantLookup = {
   conversationId: number;
@@ -101,6 +101,7 @@ export class ConversationService {
     private readonly friendRepository: Repository<Friend>,
     private readonly eventEmitter: EventEmitter2,
     private readonly imagesService: ImagesService,
+    private readonly unreadService: ConversationUnreadService,
   ) {
     this.eventEmitter.on(
       UserEvents.FriendsAccepted,
@@ -197,7 +198,10 @@ export class ConversationService {
       (conversation) => conversation.id,
     );
     const lastMessages = await this.loadLastMessages(conversationIds);
-    const unreadCounts = await this.loadUnreadCounts(conversationIds, userId);
+    const unreadCounts = await this.unreadService.loadUnreadCounts(
+      conversationIds,
+      userId,
+    );
 
     return conversations.map(
       (conversation) =>
@@ -938,7 +942,7 @@ export class ConversationService {
     }
 
     const conversation = await this.getConversationEntity(conversationId);
-    const unreadCount = await this.countUnreadForConversation(
+    const unreadCount = await this.unreadService.countUnreadForConversation(
       conversationId,
       userId,
     );
@@ -1049,7 +1053,10 @@ export class ConversationService {
     const conversation = await this.getConversationEntity(conversationId);
     const lastMessage = await this.findLastMessage(conversationId);
     const unreadCount = contextUserId
-      ? await this.countUnreadForConversation(conversationId, contextUserId)
+      ? await this.unreadService.countUnreadForConversation(
+          conversationId,
+          contextUserId,
+        )
       : 0;
     return new ConversationDto({
       conversation,
@@ -1128,28 +1135,6 @@ export class ConversationService {
     return map;
   }
 
-  private async loadUnreadCounts(
-    conversationIds: number[],
-    userId: number,
-  ): Promise<Map<number, number>> {
-    const map = new Map<number, number>();
-    if (!conversationIds.length) {
-      return map;
-    }
-
-    await Promise.all(
-      conversationIds.map(async (conversationId) => {
-        const count = await this.countUnreadForConversation(
-          conversationId,
-          userId,
-        );
-        map.set(conversationId, count);
-      }),
-    );
-
-    return map;
-  }
-
   private async emitConversationUpdate(conversation: Conversation) {
     this.eventEmitter.emit(MessagingEvents.ConversationUpdated, {
       conversationId: conversation.id,
@@ -1162,120 +1147,7 @@ export class ConversationService {
     });
   }
 
-  async countUnreadForConversation(
-    conversationId: number,
-    userId: number,
-  ): Promise<number> {
-    const participant = await this.participantRepository.findOneOrFail({
-      where: {
-        conversation: { id: conversationId },
-        user: { id: userId },
-      },
-      relations: { lastReadMessage: true },
-    });
-    await loadHiddenReadCursors(this.messageRepository, [participant]);
-
-    const since =
-      participant.lastReadMessage?.createdAt ??
-      participant.joinedAt ??
-      new Date(0);
-
-    const qb = this.messageRepository
-      .createQueryBuilder("message")
-      .where("message.conversationId = :conversationId", { conversationId })
-      .andWhere("message.authorId != :userId", { userId })
-      .andWhere("message.createdAt > :since", { since });
-
-    if (participant.lastReadMessage?.id) {
-      qb.andWhere("message.id != :lastReadMessageId", {
-        lastReadMessageId: participant.lastReadMessage.id,
-      });
-    }
-
-    return qb.getCount();
-  }
-
   private isConversationAdmin(participant: Participant): boolean {
     return rolesWithAdminPowers[participant.role];
-  }
-
-  async getUnreadMessages(userId: number): Promise<number> {
-    const result = await this.participantRepository
-      .createQueryBuilder("participant")
-      .where("participant.userId = :userId", { userId })
-      .andWhere((qb) => {
-        const unreadSubQuery = qb
-          .subQuery()
-          .select("1")
-          .from(Message, "message")
-          .where("message.conversationId = participant.conversationId")
-          .andWhere("message.authorId != :userId", { userId })
-          .andWhere(UNREAD_SQL)
-          .limit(1)
-          .getQuery();
-
-        return `EXISTS ${unreadSubQuery}`;
-      })
-      .select("COUNT(DISTINCT participant.conversationId)", "unreadCount")
-      .getRawOne<{ unreadCount?: string }>();
-
-    return Number(result?.unreadCount ?? 0);
-  }
-
-  async getUnreadSummary(userId: number): Promise<UnreadMessageSummary> {
-    const [messageCount, messageRequestCount] = await Promise.all([
-      this.sumUnreadCountsByParticipantState(userId, ParticipantState.Joined),
-      this.countConversationsByParticipantState(
-        userId,
-        ParticipantState.Invited,
-      ),
-    ]);
-
-    return {
-      messageCount,
-      messageRequestCount,
-      totalCount: messageCount + messageRequestCount,
-    };
-  }
-
-  private async sumUnreadCountsByParticipantState(
-    userId: number,
-    state: ParticipantState,
-    options?: { minimumPerConversation?: number },
-  ): Promise<number> {
-    const minimumPerConversation = options?.minimumPerConversation ?? 0;
-    const unreadCountSubquery = this.messageRepository
-      .createQueryBuilder("message")
-      .select("COUNT(message.id)")
-      .where("message.conversationId = participant.conversationId")
-      .andWhere("message.authorId != :userId", { userId })
-      .andWhere(UNREAD_SQL)
-      .getQuery();
-    const unreadCountExpression =
-      minimumPerConversation > 0
-        ? `GREATEST((${unreadCountSubquery}), ${minimumPerConversation})`
-        : `(${unreadCountSubquery})`;
-    const result = await this.participantRepository
-      .createQueryBuilder("participant")
-      .select(`COALESCE(SUM(${unreadCountExpression}), 0)`, "total")
-      .where("participant.userId = :userId", { userId })
-      .andWhere("participant.state = :state", { state })
-      .getRawOne<{ total?: string }>();
-
-    return Number(result?.total ?? 0);
-  }
-
-  private async countConversationsByParticipantState(
-    userId: number,
-    state: ParticipantState,
-  ): Promise<number> {
-    const result = await this.participantRepository
-      .createQueryBuilder("participant")
-      .select("COUNT(DISTINCT participant.conversationId)", "total")
-      .where("participant.userId = :userId", { userId })
-      .andWhere("participant.state = :state", { state })
-      .getRawOne<{ total?: string }>();
-
-    return Number(result?.total ?? 0);
   }
 }
