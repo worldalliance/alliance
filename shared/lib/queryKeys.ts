@@ -214,6 +214,8 @@ export const queryKeys = {
     ["generalUpdatesFindOneGeneralUpdateAdmin", id] as const,
   generalUpdatesAdmin: () => ["generalUpdatesAllGeneralUpdatesAdmin"] as const,
   graphUsersAdmin: () => ["userListForGraphAdmin"] as const,
+  groupAssignmentMembersAdmin: () =>
+    ["userGroupAssignmentGetGroupAssignmentMembersAdmin"] as const,
   inviteFeedAdmin: (startAt: string | null) =>
     ["inviteFeedAdmin", startAt] as const,
   inviteFunnelAdmin: (range: { start: string; end: string }) =>

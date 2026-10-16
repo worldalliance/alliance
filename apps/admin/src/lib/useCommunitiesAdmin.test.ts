@@ -5,7 +5,6 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import {
   MembershipChange,
-  useAssignGroupsAdmin,
   useChangeCommunityMembershipAdmin,
   useCommunitiesAdmin,
   useCreateCommunityAdmin,
@@ -19,18 +18,11 @@ const north = makeCommunity({ id: 4, name: "North" });
 const south = makeCommunity({ id: 5, name: "South" });
 
 let createStatus = 200;
-let assignStatus = 200;
-let listCalls = 0;
 const changes: string[] = [];
 
 serveApi(
   routes({
-    "GET /community/list": () => {
-      listCalls += 1;
-      return Response.json([north]);
-    },
-    "POST /user/groupAssignment/assign": () =>
-      Response.json({}, { status: assignStatus }),
+    "GET /community/list": () => Response.json([north]),
     "PATCH /community/:communityId": async ({ request }) =>
       Response.json({ ...north, ...(await request.json()) }),
     "POST /community/:communityId/:change/admin": async ({
@@ -53,8 +45,6 @@ serveApi(
 
 afterEach(() => {
   createStatus = 200;
-  assignStatus = 200;
-  listCalls = 0;
   changes.length = 0;
 });
 
@@ -128,38 +118,6 @@ describe("useCreateCommunityAdmin", () => {
     view.result.current.mutate(body);
 
     await waitFor(() => expect(onError).toHaveBeenCalled());
-  });
-});
-
-describe("useAssignGroupsAdmin", () => {
-  const assign = async () => {
-    const view = renderHook(
-      () => ({
-        communities: useCommunitiesAdmin(),
-        assign: useAssignGroupsAdmin(),
-      }),
-      queryWrapper(),
-    );
-    await waitFor(() =>
-      expect(view.result.current.communities.data).toBeTruthy(),
-    );
-    return view.result.current.assign.mutateAsync({
-      assignments: [{ userId: 7, communityId: 4 }],
-    });
-  };
-
-  it("refetches the communities after an assignment", async () => {
-    await assign();
-
-    await waitFor(() => expect(listCalls).toBe(2));
-  });
-
-  it("refetches the communities after a refused assignment", async () => {
-    assignStatus = 400;
-
-    await expect(assign()).rejects.toBeTruthy();
-
-    await waitFor(() => expect(listCalls).toBe(2));
   });
 });
 

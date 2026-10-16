@@ -1,5 +1,4 @@
 import {
-  type AssignGroupsDto,
   communityAddLeaderAdmin,
   communityAddMemberAdmin,
   communityCreateCommunityAdmin,
@@ -12,7 +11,6 @@ import {
   communityUpdate,
   type CreateCommunityDto,
   type UpdateCommunityDto,
-  userGroupAssignmentAssignGroupsAdmin,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
@@ -64,19 +62,10 @@ export function useCreateCommunityAdmin(params: {
   });
 }
 
-function useInvalidateCommunities() {
+export function useInvalidateCommunities() {
   const queryClient = useQueryClient();
   return () =>
     queryClient.invalidateQueries({ queryKey: communitiesQuery.queryKey });
-}
-
-export function useAssignGroupsAdmin() {
-  const invalidate = useInvalidateCommunities();
-  return useMutation({
-    mutationFn: (body: AssignGroupsDto) =>
-      userGroupAssignmentAssignGroupsAdmin({ body, throwOnError: true }),
-    onSettled: invalidate,
-  });
 }
 
 export function useUpdateCommunityAdmin(params: {

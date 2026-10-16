@@ -1,4 +1,5 @@
 import type { UserDto } from "@alliance/shared/client/types.gen";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   makeCommunity,
   makeProfile,
@@ -39,25 +40,28 @@ serveApi(
   }),
 );
 
-const assignMembers = jest.fn();
-
 afterEach(() => {
   listStatus = 200;
   listCalls = 0;
   north = makeCommunity({ id: 4, name: "North" });
   assignStatus = 200;
   localStorage.clear();
-  assignMembers.mockClear();
 });
 
 const members = [makeUser({ id: 7, name: "Sam" })];
+
+let query = queryWrapper();
+
+beforeEach(() => {
+  query = queryWrapper();
+  query.client.setQueryData(queryKeys.groupAssignmentMembersAdmin(), members);
+});
 
 const Page = ({ members }: { members: UserDto[] }) => {
   const [, setCounts] = useState<Record<number, number>>({});
   return (
     <GroupAssignmentPanel
       members={members}
-      assignMembers={assignMembers}
       onSelectionCountsChange={setCounts}
     />
   );
@@ -68,7 +72,7 @@ const renderPanel = (panelMembers = members) =>
     <MemoryRouter>
       <Page members={panelMembers} />
     </MemoryRouter>,
-    queryWrapper(),
+    query,
   );
 
 const assignToNorth = async () => {
@@ -100,10 +104,14 @@ it("says when the groups failed to load", async () => {
   ).toBeTruthy();
 });
 
-it("hands back the assigned members and refreshes the groups", async () => {
+it("takes the assigned members off the queue and refreshes the groups", async () => {
   await assignToNorth();
 
-  await waitFor(() => expect(assignMembers).toHaveBeenCalledWith([7]));
+  await waitFor(() =>
+    expect(
+      query.client.getQueryData(queryKeys.groupAssignmentMembersAdmin()),
+    ).toEqual([]),
+  );
   await waitFor(() => expect(listCalls).toBe(2));
 });
 
@@ -113,7 +121,9 @@ it("says why an assignment was refused, keeping the members queued", async () =>
 
   expect(await screen.findByText("North is full")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Confirm" })).toBeNull();
-  expect(assignMembers).not.toHaveBeenCalled();
+  expect(
+    query.client.getQueryData(queryKeys.groupAssignmentMembersAdmin()),
+  ).toEqual(members);
 });
 
 it("says why loading the groups was refused", async () => {
