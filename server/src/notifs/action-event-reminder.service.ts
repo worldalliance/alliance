@@ -1,15 +1,8 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { DEFAULT_TIME_ZONE } from "@alliance/common/timezone";
 import { Temporal } from "@js-temporal/polyfill";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
-import {
-  PreviewEmailHtmlDto,
-  PreviewEmailHtmlResponse,
-  PreviewTextDto,
-  ReminderPreviewContextDto,
-} from "src/actions/dto/action.dto";
 import { NotificationScheduleEntryDto } from "src/actions/dto/notification-schedule.dto";
 import { loadedActionSuiteActions } from "src/actions/entities/action-suite.entity";
 import {
@@ -19,16 +12,10 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
-import { EmailType } from "src/mail/mail.entity";
-import { MailService, processKeywordReplacements } from "src/mail/mail.service";
 import { UserService } from "src/user/user.service";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { Brackets, type Repository } from "typeorm";
-import {
-  ActionEvent,
-  loadedActionEventAction,
-} from "../actions/entities/action-event.entity";
-import { memberActionPhase } from "../actions/utils/action-event";
+import { loadedActionEventAction } from "../actions/entities/action-event.entity";
 import { loadedUserCommunities, User } from "../user/entities/user.entity";
 import { ActionEventRecipientService } from "./action-event-recipient.service";
 import { NotificationPlan } from "./dto/notification-plan.dto";
@@ -37,7 +24,6 @@ import {
   ActionEventNotif,
   ActionEventNotifType,
 } from "./entities/action-event-notif.entity";
-import { testUser } from "./test-users";
 
 export interface MissedDeadlineCandidate {
   actionId: number;
@@ -53,15 +39,12 @@ export const NOTIFICATION_LOOKBACK_WINDOW_MS = milliseconds({ hours: 3 });
 @Injectable()
 export class ActionEventReminderService {
   constructor(
-    @InjectRepository(ActionEvent)
-    private readonly eventRepository: Repository<ActionEvent>,
     @InjectRepository(ReminderGroup)
     private readonly reminderGroupRepository: Repository<ReminderGroup>,
     @InjectRepository(ActionEventNotif)
     private readonly actionEventNotifRepository: TypedRepository<ActionEventNotif>,
     private readonly recipientService: ActionEventRecipientService,
     private readonly userService: UserService,
-    private readonly mailService: MailService,
   ) {}
 
   async findPlansForGroup(
@@ -397,91 +380,6 @@ export class ActionEventReminderService {
       ),
     );
     return inCommunities.filter((user) => user.id !== leader.id);
-  }
-
-  async loadEventsForPreview(
-    eventId: number,
-  ): Promise<{ deadlineEvent: ActionEvent | undefined; event: ActionEvent }> {
-    const event = await this.eventRepository.findOneOrFail({
-      where: { id: eventId },
-      relations: { action: true },
-    });
-    const events = await this.eventRepository.find({
-      where: { action: { id: loadedActionEventAction(event).id } },
-    });
-    return {
-      event,
-      deadlineEvent: memberActionPhase(events).deadlineEvent ?? undefined,
-    };
-  }
-
-  async getKeywordContextForPreview(
-    eventId: number,
-    dto: ReminderPreviewContextDto,
-    sendTime?: Date,
-  ) {
-    const { event, deadlineEvent } = await this.loadEventsForPreview(eventId);
-
-    return {
-      action: loadedActionEventAction(event),
-      deadlineEvent,
-      user: testUser,
-      uncompletedTasksCount: dto.taskCount,
-      uncompletedTasksTime: dto.taskCount * 5 + " minutes",
-      uncompletedTasksNames: ["Task 1", "Task 2", "Task 3"].slice(
-        0,
-        dto.taskCount,
-      ),
-      dateNow: sendTime,
-      uncompletedMembersInGroupCount: dto.uncompletedMembersInGroupCount,
-    };
-  }
-
-  async previewEmailHtml(
-    eventId: number,
-    dto: PreviewEmailHtmlDto,
-    sendTime?: Date,
-  ): Promise<PreviewEmailHtmlResponse> {
-    const context = await this.getKeywordContextForPreview(
-      eventId,
-      dto,
-      sendTime,
-    );
-
-    const replacedMessage = processKeywordReplacements(
-      dto.emailMessage,
-      context,
-    );
-    const replacedSubject = processKeywordReplacements(
-      dto.emailSubject,
-      context,
-    );
-
-    const html = await this.mailService.renderHtml(
-      EmailType.CustomActionReminder,
-      {
-        customMessage: replacedMessage.replace(/\n/g, "<br>"),
-      },
-    );
-
-    return {
-      subject: replacedSubject,
-      html,
-    };
-  }
-
-  async previewTextMessage(
-    eventId: number,
-    dto: PreviewTextDto,
-    sendTime?: Date,
-  ): Promise<string> {
-    const context = await this.getKeywordContextForPreview(
-      eventId,
-      dto,
-      sendTime,
-    );
-
-    return processKeywordReplacements(dto.textMessage, context);
   }
 }
 

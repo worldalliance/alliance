@@ -16,6 +16,7 @@ import { PreviewNotificationPlanDto } from "src/notifs/dto/notification-plan.dto
 import { ActionEventNotifDto } from "src/notifs/entities/action-event-notif.dto";
 import { MissedSuitePlanService } from "src/notifs/missed-suite-plans.service";
 import { ReminderGroupService } from "src/notifs/reminder-group.service";
+import { ReminderPreviewService } from "src/notifs/reminder-preview.service";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { ActionsService } from "./actions.service";
 import {
@@ -39,6 +40,7 @@ export class ActionRemindersController {
     private readonly actionEventReminderService: ActionEventReminderService,
     private readonly missedSuitePlanService: MissedSuitePlanService,
     private readonly reminderGroupService: ReminderGroupService,
+    private readonly reminderPreviewService: ReminderPreviewService,
   ) {}
 
   @Get("notification-schedule")
@@ -155,7 +157,7 @@ export class ActionRemindersController {
     @Body() body: PreviewEmailHtmlDto,
   ): Promise<PreviewEmailHtmlResponseDto> {
     return new PreviewEmailHtmlResponseDto(
-      await this.actionEventReminderService.previewEmailHtml(eventId, body),
+      await this.reminderPreviewService.previewEmailHtml(eventId, body),
     );
   }
 
@@ -167,7 +169,7 @@ export class ActionRemindersController {
     @Body() body: PreviewTextDto,
   ): Promise<PreviewTextMessageResponseDto> {
     return new PreviewTextMessageResponseDto(
-      await this.actionEventReminderService.previewTextMessage(eventId, body),
+      await this.reminderPreviewService.previewTextMessage(eventId, body),
     );
   }
 }
