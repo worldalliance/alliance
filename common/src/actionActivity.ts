@@ -64,9 +64,8 @@ export const actionActivityCommentable = {
 } as const satisfies Record<ActionActivityType, boolean>;
 
 /**
- * Display labels for withdrawal options — shown in the withdrawal UI and in
- * the opt-out event log. Key order determines the display order of the options
- * in the withdrawal UI.
+ * Display labels for withdrawal options. Key order determines the display
+ * order of the options in the withdrawal UI.
  */
 export const WITHDRAWAL_OPTION_LABELS = {
   out_of_time: "Took more than 15 minutes",
@@ -95,10 +94,13 @@ export function canSubmitWithdrawal(
   return !WITHDRAWAL_OPTION_REQUIRES_REASON[option] || reason.trim().length > 0;
 }
 
-/** Decodes the wire encoding of a withdrawal option. */
+/**
+ * Decodes the wire encoding of a withdrawal option. Stored withdrawals may
+ * carry null flags, which decode as unset.
+ */
 export function withdrawalOptionFromFlags(flags: {
-  outOfTime: boolean;
-  isMoral: boolean;
+  outOfTime?: boolean | null;
+  isMoral?: boolean | null;
 }): WithdrawalOption {
   if (flags.outOfTime) return "out_of_time";
   if (flags.isMoral) return "moral";

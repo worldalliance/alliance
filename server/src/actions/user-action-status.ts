@@ -266,10 +266,7 @@ export function resolveUserActionStatus(params: {
         relation = ViewerActionRelation.Withdrawn;
         activityStatus = UserActionRelationPillStatus.WontComplete;
         withdrawal = {
-          reason: withdrawalOptionFromFlags({
-            outOfTime: !!terminal.outOfTime,
-            isMoral: !!terminal.isMoral,
-          }),
+          reason: withdrawalOptionFromFlags(terminal),
           note: terminal.declineReason,
         };
         break;

@@ -28,11 +28,6 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@alliance/sharedweb/ui/HoverCard";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { PILL_STATUS_DATA } from "@alliance/sharedweb/ui/UserProgressPills";
 import { keyBy } from "es-toolkit";
@@ -53,6 +48,7 @@ import CreateActivityControls from "../components/CreateActivityControls";
 import DeleteAccountModal from "../components/DeleteAccountModal";
 import MemberGroupMoveSection from "../components/MemberGroupMoveSection";
 import UserAwayPeriodsSection from "../components/UserAwayPeriodsSection";
+import { WithdrawalInfo } from "../components/WithdrawalInfo";
 import { useAuth } from "../lib/AuthContext";
 import { getApiUrl } from "../lib/config";
 import { useUserAwayRangesAdmin } from "../lib/useUserAwayRangesAdmin";
@@ -538,43 +534,20 @@ const UserDetailView: React.FC = () => {
                             {humanize(action.status)}
                           </td>
                           <td className="px-3 py-2">
-                            {relation.status === "wont_complete" &&
-                            (relation.declineReason ||
-                              relation.isMoral ||
-                              relation.outOfTime) ? (
-                              <HoverCard>
-                                <HoverCardTrigger
-                                  render={
-                                    <span
-                                      className={cn(
-                                        "font-medium cursor-default",
-                                        pillTextStyle,
-                                      )}
-                                    >
-                                      {pillLabel}
-                                    </span>
-                                  }
-                                />
-                                <HoverCardContent>
-                                  <div className="flex flex-col items-center gap-0.5">
-                                    {relation.outOfTime && (
-                                      <span className="text-orange-600">
-                                        Out of time
-                                      </span>
+                            {relation.status === "wont_complete" ? (
+                              <WithdrawalInfo
+                                withdrawal={relation}
+                                trigger={
+                                  <span
+                                    className={cn(
+                                      "font-medium cursor-default",
+                                      pillTextStyle,
                                     )}
-                                    {relation.isMoral && (
-                                      <span className="text-amber-600">
-                                        Moral objection
-                                      </span>
-                                    )}
-                                    {relation.declineReason && (
-                                      <span className="text-zinc-500">
-                                        {relation.declineReason}
-                                      </span>
-                                    )}
-                                  </div>
-                                </HoverCardContent>
-                              </HoverCard>
+                                  >
+                                    {pillLabel}
+                                  </span>
+                                }
+                              />
                             ) : (
                               <span
                                 className={cn("font-medium", pillTextStyle)}
