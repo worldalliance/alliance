@@ -241,13 +241,9 @@ const MessagesPage = () => {
   }, [setSelectedConvoId]);
 
   const handleLeaveConversation = useCallback(() => {
-    setConversations((prev) => {
-      if (!prev) return null;
-      return prev.filter((convo) => convo.id !== selectedConvoId);
-    });
     setSelectedConvoId(null);
     setMessagesOpen(false);
-  }, [setSelectedConvoId, setConversations, selectedConvoId]);
+  }, [setSelectedConvoId]);
 
   const handleUpdateRecipientIds = useCallback(
     (ids: number[]) => {

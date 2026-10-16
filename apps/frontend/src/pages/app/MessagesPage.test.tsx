@@ -41,6 +41,10 @@ const conversationsHook = (conversations: ConversationDto[]) => ({
   loading: false,
   reloadFailed: false,
   refreshConversations: async () => {},
+  updateInfo: jest.fn(),
+  addParticipant: jest.fn(),
+  removeParticipant: jest.fn(),
+  leave: jest.fn(),
 });
 
 let listed: ConversationDto[] = [];
@@ -180,7 +184,7 @@ it("opens the direct chat a profile links to once a cached list that predates it
   listed = [chat];
   jest
     .spyOn(messagesModule, "useConversations")
-    .mockImplementation(useMyConversations);
+    .mockImplementation(() => useMyConversations());
   renderPage({}, `/?to=${GRACE.id}`, []);
 
   await screen.findAllByText("Chat with Grace");
@@ -200,7 +204,7 @@ it("waits for a cached list that predates a linked chat to reload, rather than s
   listed = [group];
   jest
     .spyOn(messagesModule, "useConversations")
-    .mockImplementation(useMyConversations);
+    .mockImplementation(() => useMyConversations());
   renderPage({}, `/?chat=${group.id}`, []);
 
   expect(screen.queryByText("No chat selected")).toBeNull();

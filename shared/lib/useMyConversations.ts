@@ -1,3 +1,4 @@
+import { type Result } from "@alliance/common/result";
 import {
   type QueryClient,
   useQuery,
@@ -5,11 +6,17 @@ import {
 } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
+  conversationAddParticipant,
   type ConversationDto,
   conversationGetMyConversations,
+  conversationLeave,
+  conversationRemoveParticipant,
+  conversationUpdateInfo,
+  type UpdateConversationDto,
 } from "../client";
-import { sortConversations } from "./conversations";
+import { mergeConversationUpdate, sortConversations } from "./conversations";
 import { queryKeys } from "./queryKeys";
+import { type Explanation, sendOrExplain } from "./sendOrExplain";
 
 type ConversationsUpdate = (
   prev: ConversationDto[] | null,
@@ -33,11 +40,13 @@ const reloadsOf = (queryClient: QueryClient) => {
 const lastLoadedAt = new WeakMap<QueryClient, number>();
 
 /** The viewer's conversations, shared by every screen that lists or opens
- * one, and every write to that list. */
-export function useMyConversations() {
+ * one, and every write to that list. A screen that only writes passes
+ * `load: false` so mounting it doesn't reload the list. */
+export function useMyConversations({ load = true }: { load?: boolean } = {}) {
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: queryKeys.myConversations(),
+    enabled: load,
     queryFn: async () => {
       const writes: ConversationsUpdate[] = [];
       const reloads = reloadsOf(queryClient);
@@ -79,6 +88,68 @@ export function useMyConversations() {
     await refetch();
   }, [refetch]);
 
+  const storeConversation = (
+    sent: Result<ConversationDto, Explanation>,
+  ): Result<ConversationDto, Explanation> => {
+    if (sent.ok) {
+      setConversations((prev) => mergeConversationUpdate(prev, sent.value));
+    }
+    return sent;
+  };
+
+  const updateInfo = async (
+    conversationId: number,
+    body: UpdateConversationDto,
+  ) =>
+    storeConversation(
+      await sendOrExplain({
+        send: conversationUpdateInfo,
+        options: { path: { conversationId }, body },
+        action: "save the group",
+      }),
+    );
+
+  const addParticipant = async (params: {
+    conversationId: number;
+    userId: number;
+  }) =>
+    storeConversation(
+      await sendOrExplain({
+        send: conversationAddParticipant,
+        options: {
+          path: { conversationId: params.conversationId },
+          body: { userId: params.userId },
+        },
+        action: "add that member",
+      }),
+    );
+
+  const removeParticipant = async (params: {
+    conversationId: number;
+    userId: number;
+  }) =>
+    storeConversation(
+      await sendOrExplain({
+        send: conversationRemoveParticipant,
+        options: { path: params },
+        action: "remove that member",
+      }),
+    );
+
+  const leave = async (conversationId: number) => {
+    const left = await sendOrExplain({
+      send: conversationLeave,
+      options: { path: { conversationId } },
+      action: "leave the group",
+    });
+    if (left.ok) {
+      setConversations(
+        (prev) => prev?.filter(({ id }) => id !== conversationId) ?? null,
+      );
+    }
+    return left;
+  };
+
   return {
     conversations: query.data ?? null,
     loading: query.isFetching,
@@ -87,5 +158,9 @@ export function useMyConversations() {
       query.errorUpdatedAt > (lastLoadedAt.get(queryClient) ?? 0),
     setConversations,
     refreshConversations,
+    updateInfo,
+    addParticipant,
+    removeParticipant,
+    leave,
   };
 }

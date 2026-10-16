@@ -13,3 +13,11 @@ Each mounted screen still opens its own overview socket, and each merges every u
 Any screen's mount, and on web a regained window focus, reloads the shared list, so a socket merge or write can land while another screen's reload is in flight. That reload may have read the list before the write. Every write through `setConversations` is also recorded against each reload in flight and replayed over its result, rather than restarting the reload, which a steady stream of socket updates would keep from ever landing.
 
 The web cache outlives MessagesPage and may predate the conversation a link names. MessagesPage acts on `?to=` only once the list's reload has landed, and while it reloads, a `?chat=` the list lacks shows a spinner in the chat pane rather than "No chat selected".
+
+## Writes
+
+The hook returns the conversation info writes as async functions that resolve to `Result<ConversationDto, Explanation>` through `sendOrExplain`, so the web panel and the mobile info screen keep their wording for refusals and failures, and keep `useOneAtATime` for one send per double click. A successful write merges the returned conversation into the list through `setConversations`; leaving removes the conversation from it.
+
+The web panel calls `useMyConversations({ load: false })` for the writes, which keeps them in the one hook without the panel's mount reloading the list. That matters on the community page, whose floating chat opens the panel but never shows the list.
+
+The page-level writes outside the assignment (creating a conversation, accepting or declining an invite, a new message's preview) keep calling the hook's `setConversations`.

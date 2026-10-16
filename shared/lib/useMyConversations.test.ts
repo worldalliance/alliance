@@ -46,6 +46,13 @@ serveApi(
       }
       return heldList ?? Response.json(listed);
     },
+    "POST /messaging/conversations/:conversationId/update": () =>
+      Response.json(
+        { message: "Only admins can rename the group.", statusCode: 403 },
+        { status: 403 },
+      ),
+    "POST /messaging/conversations/:conversationId/leave": () =>
+      Response.json(older),
   }),
 );
 
@@ -144,4 +151,42 @@ it("keeps reporting a failed reload through later writes, until a reload works",
   await act(() => result.current.refreshConversations());
 
   await waitFor(() => expect(result.current.reloadFailed).toBe(false));
+});
+
+it("keeps the list as it was and says why when the server refuses a write", async () => {
+  const { result } = renderHook(useMyConversations, queryWrapper());
+  await waitFor(() => expect(result.current.conversations).toHaveLength(2));
+
+  const saved = await act(() =>
+    result.current.updateInfo(older.id, { title: "Renamed" }),
+  );
+
+  expect(saved).toEqual({
+    ok: false,
+    error: {
+      title: "Couldn't save the group",
+      message: "Only admins can rename the group.",
+    },
+  });
+  expect(result.current.conversations).toEqual([newer, older]);
+});
+
+it("keeps a write over a reload that read the list before it", async () => {
+  const query = queryWrapper();
+  const page = renderHook(useMyConversations, query);
+  await waitFor(() =>
+    expect(page.result.current.conversations).toHaveLength(2),
+  );
+  const staleReload = Promise.withResolvers<Response>();
+  heldList = staleReload.promise;
+  const panel = renderHook(useMyConversations, query);
+  await waitFor(() => expect(fetches).toBe(2));
+  heldList = null;
+  listed = [newer];
+
+  await act(() => panel.result.current.leave(older.id));
+  staleReload.resolve(Response.json([older, newer]));
+
+  await waitFor(() => expect(query.client.isFetching()).toBe(0));
+  expect(page.result.current.conversations).toEqual([newer]);
 });
