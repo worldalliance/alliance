@@ -231,7 +231,6 @@ export const queryKeys = {
     ] as const,
   staffDirectoryAdmin: () => ["userStaffDirectoryAdmin"] as const,
   tagsAdmin: () => ["userGetTagsAdmin"] as const,
-  timeSpentPerUserAdmin: () => ["analyticsGetTimeSpentPerUserAdmin"] as const,
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
   userAwayRangesAdmin: (userId: number) =>

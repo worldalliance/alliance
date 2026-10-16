@@ -3,8 +3,6 @@ import { errorMessage } from "@alliance/common/errorMessage";
 import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
 import {
   actionsActionRelationsForUserAdmin,
-  analyticsGetTimeSpentPerUserAdmin,
-  analyticsGetTimeSpentPerUserTotalAdmin,
   contractSuspendContractAdmin,
   notifsNotifsForUserAdmin,
   tasksGetFormsForUserSidAdmin,
@@ -21,7 +19,6 @@ import {
   Push,
   TagDto,
   TagSummaryDto,
-  TimeSpentForUserDto,
   UserActionRelationDetailDto,
   UserActionRelationsResponseDto,
   UserActionSummaryDto,
@@ -74,8 +71,6 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
     userRes,
     tagsRes,
     actionRelationsRes,
-    timeSpentRes,
-    timeSpentTotalRes,
     notifRes,
     formResponsesRes,
     friendsRes,
@@ -83,8 +78,6 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
     userUserDetailAdmin({ path: { id: userId } }),
     userGetTagSummariesAdmin(),
     actionsActionRelationsForUserAdmin({ path: { userId } }),
-    analyticsGetTimeSpentPerUserAdmin(),
-    analyticsGetTimeSpentPerUserTotalAdmin(),
     notifsNotifsForUserAdmin({ path: { id: userId } }),
     tasksGetFormsForUserSidAdmin({ path: { userId } }).catch(() => ({
       data: [],
@@ -96,9 +89,6 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
   if (!user) {
     throw new Error("Not found");
   }
-
-  const timeSpent = findTimeForUser(timeSpentRes.data ?? [], userId);
-  const timeSpentTotal = findTimeForUser(timeSpentTotalRes.data ?? [], userId);
 
   const actionData: UserActionRelationsResponseDto | undefined =
     actionRelationsRes.data;
@@ -112,8 +102,6 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
     allTags: tagsRes.data ?? [],
     actionSummaries,
     actionRelations,
-    timeSpent,
-    timeSpentTotal,
     notifs: notifRes.data ?? [],
     formResponses: formResponsesRes.data ?? [],
     friends: friendsRes.data ?? [],
@@ -1144,10 +1132,6 @@ const UserDetailView: React.FC = () => {
     </div>
   );
 };
-
-function findTimeForUser(times: TimeSpentForUserDto[], userId: number) {
-  return times.find((entry) => entry.userId === userId)?.timeSpent ?? 0;
-}
 
 function humanize(value?: string) {
   if (!value) {
