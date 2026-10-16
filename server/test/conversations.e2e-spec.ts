@@ -904,6 +904,20 @@ describe("ConversationController (e2e)", () => {
       expect(reply.body.replyTo.id).toBe(original.body.id);
     });
 
+    it("refuses a message with only whitespace and no attachments", async () => {
+      const conversationId = await createDirectConversation();
+
+      const response = await request(ctx.app.getHttpServer())
+        .post("/messaging/messages")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ conversationId, body: " \n\t " })
+        .expect(400);
+
+      expect(response.body.message).toBe(
+        "Message must include text or at least one attachment.",
+      );
+    });
+
     it("refuses a reply to a message in another conversation", async () => {
       const conversationId = await createDirectConversation();
       const otherConversationId = await createDirectConversation();

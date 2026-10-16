@@ -1,3 +1,4 @@
+import { hasContent } from "@alliance/common/editableContent";
 import {
   BadRequestException,
   Injectable,
@@ -109,11 +110,7 @@ export class ForumCommentService {
       );
     }
 
-    if (
-      !createCommentDto.editableContent.body &&
-      (!createCommentDto.editableContent.attachments ||
-        createCommentDto.editableContent.attachments.length === 0)
-    ) {
+    if (!hasContent(createCommentDto.editableContent)) {
       throw new BadRequestException("Reply cannot be empty");
     }
 
