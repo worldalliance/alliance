@@ -90,6 +90,33 @@ export function useActionReporting(
             }).then((res) => res.data),
   });
 
+  // A failed refetch keeps the reports it already has on screen, so only a
+  // load with nothing to show is named, and only while its report shows.
+  const failedLoads = [
+    {
+      name: "invite stats",
+      failed: loadsShareUrlStats && shareUrlStats.isLoadingError,
+    },
+    {
+      name: action?.optional
+        ? "withdrawn and dismissed counts"
+        : "withdrawn count",
+      failed: memberActionStarted && actionStats.isLoadingError,
+    },
+    {
+      name: "form responses",
+      failed:
+        memberActionStarted &&
+        (taskForm.isLoadingError || formResponses.isLoadingError),
+    },
+    {
+      name: "users who failed to complete",
+      failed: listsIncompleteUsers && incompleteUsers.isLoadingError,
+    },
+  ]
+    .filter((load) => load.failed)
+    .map((load) => load.name);
+
   return {
     shareUrlStats:
       (loadsShareUrlStats && shareUrlStats.data) || NO_SHARE_URL_STATS,
@@ -99,5 +126,6 @@ export function useActionReporting(
     taskForm: (taskForm.data ?? null) as unknown as FormWithSchema | null,
     formResponses: formResponses.data ?? NO_RESPONSES,
     incompleteUsers: (listsIncompleteUsers && incompleteUsers.data) || NO_USERS,
+    failedLoads,
   };
 }

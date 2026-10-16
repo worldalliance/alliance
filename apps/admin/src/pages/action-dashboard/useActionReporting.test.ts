@@ -1,4 +1,5 @@
 import type { ActionStatus } from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   makeEvent,
   makeFormResponse,
@@ -17,7 +18,7 @@ let loads: string[];
 let statsServed: string[];
 let statsGates: Map<string, Promise<void>>;
 
-serveApi(
+const api = serveApi(
   routes({
     "GET /analytics/action-stats/:actionId": async ({ params, request }) => {
       loads.push(new URL(request.url).pathname);
@@ -145,6 +146,94 @@ describe("useActionReporting", () => {
       expect(view.result.current.taskForm).toMatchObject({ id: 7 });
       expect(view.result.current.formResponses).toEqual([makeFormResponse()]);
     });
+  });
+
+  it("keeps a failed refetch out of the banner while the stats stay on screen", async () => {
+    const query = queryWrapper();
+    const view = renderHook(() => useActionReporting(started, 3), query);
+    await waitFor(() => expect(view.result.current.actionStats).not.toBeNull());
+    api.alsoServing({
+      "GET /analytics/action-stats/:actionId": () =>
+        Response.json({}, { status: 500 }),
+    });
+
+    await query.client.refetchQueries();
+    await waitFor(() =>
+      expect(
+        query.client.getQueryState(queryKeys.actionStatsByIdAdmin(3))?.status,
+      ).toBe("error"),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(view.result.current.actionStats).toMatchObject({ actionId: 3 });
+    expect(view.result.current.failedLoads).toEqual([]);
+  });
+
+  it("drops a failed load from the banner once its section no longer shows", async () => {
+    api.alsoServing({
+      "GET /actions/shareUrlStats/:actionId": () =>
+        Response.json({}, { status: 500 }),
+    });
+    const view = renderHook(
+      ({ publicOnly }) => useActionReporting({ ...started, publicOnly }, 3),
+      { ...queryWrapper(), initialProps: { publicOnly: true } },
+    );
+    await waitFor(() =>
+      expect(view.result.current.failedLoads).toEqual(["invite stats"]),
+    );
+
+    view.rerender({ publicOnly: false });
+
+    expect(view.result.current.failedLoads).toEqual([]);
+  });
+
+  it("names every load that failed", async () => {
+    api.alsoServing({
+      "GET /analytics/action-stats/:actionId": () =>
+        Response.json({}, { status: 500 }),
+      "GET /tasks/responses/:id": () => Response.json({}, { status: 403 }),
+    });
+
+    const view = renderHook(
+      () => useActionReporting({ ...started, taskFormId: 7 }, 3),
+      queryWrapper(),
+    );
+
+    await waitFor(() =>
+      expect(view.result.current.failedLoads).toEqual([
+        "withdrawn count",
+        "form responses",
+      ]),
+    );
+  });
+
+  it.each([
+    {
+      route: "GET /analytics/action-stats/:actionId",
+      action: { ...started, optional: true },
+      named: "withdrawn and dismissed counts",
+    },
+    {
+      route: "GET /tasks/slug/:id",
+      action: { ...started, taskFormId: 7 },
+      named: "form responses",
+    },
+    {
+      route: "GET /actions/:id/incomplete-users",
+      action: { ...started, status: "completed" as const },
+      named: "users who failed to complete",
+    },
+  ])("names $named when $route fails", async ({ route, action, named }) => {
+    api.alsoServing({ [route]: () => Response.json({}, { status: 500 }) });
+
+    const view = renderHook(
+      () => useActionReporting(action, 3),
+      queryWrapper(),
+    );
+
+    await waitFor(() =>
+      expect(view.result.current.failedLoads).toEqual([named]),
+    );
   });
 
   it("loads neither stats nor responses before the member action starts", async () => {
