@@ -18,14 +18,13 @@ const FloatingChatPanel = ({
     useCommunityConversation(communityId);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const {
-    messages: convoMessages,
-    addOptimisticMessage,
-    removeOptimisticMessage,
-  } = useLiveConvoMessages(conversation?.id ?? null, {
-    onIncomingMessage: () => {},
-    onConversationUpdated: storeConversation,
-  });
+  const { messages: convoMessages, sendMessage } = useLiveConvoMessages(
+    conversation?.id ?? null,
+    {
+      onIncomingMessage: () => {},
+      onConversationUpdated: storeConversation,
+    },
+  );
 
   useEffect(() => {
     if (conversation?.id) {
@@ -57,10 +56,7 @@ const FloatingChatPanel = ({
           setSendingNewMessageToIds={null}
           handleCreateConversation={null}
           compact={true}
-          onOptimisticMessage={addOptimisticMessage}
-          onOptimisticMessageFailed={(tempId) =>
-            removeOptimisticMessage(tempId)
-          }
+          sendMessage={sendMessage}
         />
       ) : (
         <p>Could not load conversation</p>

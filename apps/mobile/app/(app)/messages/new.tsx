@@ -1,7 +1,7 @@
 import { R } from "@alliance/common/result";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { messageSendMessage, ProfileDto } from "@alliance/shared/client";
+import { ProfileDto } from "@alliance/shared/client";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
+import { useConversationMessages } from "@alliance/shared/lib/useConversationMessages";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -25,6 +25,7 @@ export default function NewMessageScreen() {
   const { to } = useLocalSearchParams<{ to?: string }>();
   const { conversations, createDirectConversation, createGroupConversation } =
     useConversations(null);
+  const { sendMessage } = useConversationMessages(null);
 
   const messageableUsersQuery = useMessageableUsersQuery();
   const { data: messageableUsers = [], isLoading: loadingUsers } =
@@ -102,31 +103,34 @@ export default function NewMessageScreen() {
     }
 
     setIsSending(true);
-    try {
-      const ensured = await ensureConversation();
-      if (!ensured.ok) {
-        Alert.alert(ensured.error.title, ensured.error.message);
-        return;
-      }
-      const conversation = ensured.value;
-      const response = await messageSendMessage({
-        body: {
-          conversationId: conversation.id,
-          body: trimmed || message,
-          attachments,
-        },
-      });
-      if (!response.data) {
-        throw new Error("Failed to send message");
-      }
-      router.replace(`/messages/${conversation.id}`);
-    } catch (error) {
-      console.error("Failed to send message", error);
-      Alert.alert("Error", "Failed to send message.");
-    } finally {
+    const ensured = await ensureConversation();
+    if (!ensured.ok) {
       setIsSending(false);
+      Alert.alert(ensured.error.title, ensured.error.message);
+      return;
     }
-  }, [attachments, ensureConversation, isSending, message, selectedUserIds]);
+    const conversation = ensured.value;
+    const sent = await sendMessage({
+      message: {
+        conversationId: conversation.id,
+        body: trimmed || message,
+        attachments,
+      },
+    });
+    setIsSending(false);
+    if (!sent.ok) {
+      Alert.alert(sent.error.title, sent.error.message);
+      return;
+    }
+    router.replace(`/messages/${conversation.id}`);
+  }, [
+    attachments,
+    ensureConversation,
+    isSending,
+    message,
+    selectedUserIds,
+    sendMessage,
+  ]);
 
   return (
     <View className="flex-1 bg-white">

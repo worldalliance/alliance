@@ -1,8 +1,10 @@
+import { R } from "@alliance/common/result";
 import type { ConversationDto, ProfileDto } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import {
   makeConversation,
+  makeMessage,
   makeParticipant,
 } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
@@ -102,8 +104,7 @@ beforeEach(() => {
     .mockReturnValue(conversationsHook([]));
   jest.spyOn(messagesModule, "default").mockReturnValue({
     messages: null,
-    addOptimisticMessage: () => {},
-    removeOptimisticMessage: () => {},
+    sendMessage: async () => R.failure({ title: "", message: "" }),
   });
 });
 
@@ -305,6 +306,38 @@ it("drops a declined group and closes it", async () => {
 
   await screen.findByText("No chat selected");
   expect(screen.queryByText("Invited group")).toBeNull();
+});
+
+const sendInvitedReply = async () => {
+  const draft = await screen.findByPlaceholderText("Message");
+  fireEvent.change(draft, { target: { value: "Hi" } });
+  fireEvent.keyDown(draft, { key: "Enter" });
+  return draft;
+};
+
+it("joins a group the viewer replies in", async () => {
+  jest.spyOn(messagesModule, "default").mockReturnValue({
+    messages: [],
+    sendMessage: async () => R.success(makeMessage()),
+  });
+  invitation();
+
+  await sendInvitedReply();
+
+  await waitFor(() =>
+    expect(
+      screen.queryByText("You have been invited to the group chat"),
+    ).toBeNull(),
+  );
+});
+
+it("keeps the draft, and the invitation, when a reply fails to send", async () => {
+  invitation();
+
+  const draft = await sendInvitedReply();
+
+  await waitFor(() => expect(draft).toHaveProperty("value", "Hi"));
+  screen.getByText("You have been invited to the group chat");
 });
 
 it("lists and opens a chat the viewer starts", async () => {

@@ -18,15 +18,29 @@ const message = (id: string, authorId = 2): MessageDto =>
   });
 
 let loaded: () => Response | Promise<Response>;
+let sent: () => Response | Promise<Response>;
+let sentBodies: unknown[];
 beforeEach(() => {
   loaded = () => Response.json([message("a")]);
+  sent = () => Response.json(message("b", 1));
+  sentBodies = [];
 });
 
 serveApi(
   routes({
     "GET /messaging/messages/:conversationId": () => loaded(),
+    "POST /messaging/messages": async ({ request }) => {
+      sentBodies.push(await request.json());
+      return sent();
+    },
   }),
 );
+
+const refused = () =>
+  Response.json(
+    { message: "Message must include text.", statusCode: 400 },
+    { status: 400 },
+  );
 
 const ids = (messages: MessageDto[] | null) => messages?.map(({ id }) => id);
 
@@ -116,14 +130,25 @@ it("puts the viewer's message in place of their oldest unconfirmed one", async (
   );
   await waitFor(() => expect(result.current.messages).toHaveLength(1));
 
+  const send = (body: string) =>
+    result.current.sendMessage({
+      message: { conversationId: 7, body },
+      author: makeProfile(1),
+    });
+  await act(async () => {
+    await send("first");
+    await send("second");
+  });
   act(() => {
-    result.current.addOptimisticMessage(message("temp-1", 1));
-    result.current.addOptimisticMessage(message("temp-2", 1));
     result.current.receiveMessage(message("b", 1));
   });
 
   await waitFor(() =>
-    expect(ids(result.current.messages)).toEqual(["a", "temp-2", "b"]),
+    expect(result.current.messages?.map(({ body }) => body)).toEqual([
+      "Message a",
+      "second",
+      "Message b",
+    ]),
   );
 });
 
@@ -158,23 +183,132 @@ it("shows a message heard on one screen on every screen showing the conversation
   );
 });
 
-it("shows an unconfirmed message added before the messages load", async () => {
+it("shows a sent message, replying to a shown one, while it sends", async () => {
+  const held = Promise.withResolvers<Response>();
+  sent = () => held.promise;
+  const { result } = renderHook(
+    () => useConversationMessages(7),
+    queryWrapper(),
+  );
+  await waitFor(() => expect(result.current.messages).toHaveLength(1));
+
+  let sending: ReturnType<typeof result.current.sendMessage>;
+  act(() => {
+    sending = result.current.sendMessage({
+      message: { conversationId: 7, body: "Hi", replyToId: "a" },
+      author: makeProfile(1),
+    });
+  });
+
+  await waitFor(() => expect(result.current.messages).toHaveLength(2));
+  const [, unconfirmed] = result.current.messages ?? [];
+  expect(unconfirmed.id).toStartWith("temp-");
+  expect(unconfirmed.body).toBe("Hi");
+  expect(unconfirmed.replyTo?.id).toBe("a");
+  held.resolve(Response.json(message("b", 1)));
+  expect(await sending!).toEqual({ ok: true, value: message("b", 1) });
+  expect(sentBodies).toEqual([
+    { conversationId: 7, body: "Hi", replyToId: "a" },
+  ]);
+});
+
+it("takes back a sent message the server refuses, and explains", async () => {
+  sent = refused;
+  const { result } = renderHook(
+    () => useConversationMessages(7),
+    queryWrapper(),
+  );
+  await waitFor(() => expect(result.current.messages).toHaveLength(1));
+
+  let outcome: Awaited<ReturnType<typeof result.current.sendMessage>>;
+  await act(async () => {
+    outcome = await result.current.sendMessage({
+      message: { conversationId: 7, body: "Hi" },
+      author: makeProfile(1),
+    });
+  });
+
+  expect(outcome!).toEqual({
+    ok: false,
+    error: {
+      title: "Couldn't send the message",
+      message: "Message must include text.",
+    },
+  });
+  await waitFor(() => expect(ids(result.current.messages)).toEqual(["a"]));
+});
+
+it("sends without showing anything when given no author", async () => {
+  const query = queryWrapper();
+  const shown = renderHook(() => useConversationMessages(7), query);
+  await waitFor(() => expect(shown.result.current.messages).toHaveLength(1));
+  const sender = renderHook(() => useConversationMessages(null), query);
+
+  await act(async () => {
+    await sender.result.current.sendMessage({
+      message: { conversationId: 7, body: "Hi" },
+    });
+  });
+
+  expect(sentBodies).toHaveLength(1);
+  expect(ids(shown.result.current.messages)).toEqual(["a"]);
+  expect(sender.result.current.messages).toBeNull();
+});
+
+it("shows a message sent while the messages load, before and after a load that predates it", async () => {
   const load = Promise.withResolvers<Response>();
   loaded = () => load.promise;
   const query = queryWrapper();
   const { result } = renderHook(() => useConversationMessages(7), query);
   await waitFor(() => expect(query.client.isFetching()).toBe(1));
 
+  let sending: ReturnType<typeof result.current.sendMessage>;
   act(() => {
-    result.current.addOptimisticMessage(message("temp-1", 1));
+    sending = result.current.sendMessage({
+      message: { conversationId: 7, body: "Hi" },
+      author: makeProfile(1),
+    });
   });
-
-  await waitFor(() => expect(ids(result.current.messages)).toEqual(["temp-1"]));
+  await sending!;
+  await waitFor(() =>
+    expect(result.current.messages?.map(({ body }) => body)).toEqual(["Hi"]),
+  );
   load.resolve(Response.json([message("a")]));
-  await waitFor(() => expect(ids(result.current.messages)).toEqual(["a"]));
+
+  await waitFor(() =>
+    expect(result.current.messages?.map(({ body }) => body)).toEqual([
+      "Message a",
+      "Hi",
+    ]),
+  );
 });
 
-it("takes back an unconfirmed message from its conversation after the screen moves on", async () => {
+it("shows a message sent while the messages load once, when the load already holds it", async () => {
+  const load = Promise.withResolvers<Response>();
+  loaded = () => load.promise;
+  const query = queryWrapper();
+  const { result } = renderHook(() => useConversationMessages(7), query);
+  await waitFor(() => expect(query.client.isFetching()).toBe(1));
+
+  let sending: ReturnType<typeof result.current.sendMessage>;
+  act(() => {
+    sending = result.current.sendMessage({
+      message: { conversationId: 7, body: "Hi" },
+      author: makeProfile(1),
+    });
+  });
+  await sending!;
+  act(() => {
+    result.current.receiveMessage(message("b", 1));
+  });
+  load.resolve(Response.json([message("a"), message("b", 1)]));
+
+  await waitFor(() => expect(ids(result.current.messages)).toEqual(["a", "b"]));
+});
+
+it("takes back a refused message from its conversation after the screen moves on", async () => {
+  const held = Promise.withResolvers<Response>();
+  sent = () => held.promise;
   const query = queryWrapper();
   const initialProps: { id: number | null } = { id: 7 };
   const shown = renderHook(
@@ -182,14 +316,17 @@ it("takes back an unconfirmed message from its conversation after the screen mov
     { ...query, initialProps },
   );
   await waitFor(() => expect(shown.result.current.messages).toHaveLength(1));
+  let sending: ReturnType<typeof shown.result.current.sendMessage>;
   act(() => {
-    shown.result.current.addOptimisticMessage(message("temp-1", 1));
+    sending = shown.result.current.sendMessage({
+      message: { conversationId: 7, body: "Hi" },
+      author: makeProfile(1),
+    });
   });
 
   shown.rerender({ id: null });
-  act(() => {
-    shown.result.current.removeOptimisticMessage("temp-1");
-  });
+  held.resolve(refused());
+  await sending!;
 
   expect(
     ids(

@@ -1,14 +1,20 @@
+import { type Result } from "@alliance/common/result";
 import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { messageGetMessages, type MessageDto } from "../client";
+import {
+  type CreateMessageDto,
+  type MessageDto,
+  messageGetMessages,
+  messageSendMessage,
+  type ProfileDto,
+} from "../client";
 import { queryKeys } from "./queryKeys";
+import { type Explanation, sendOrExplain } from "./sendOrExplain";
 import { writesDuringLoads } from "./writesDuringLoads";
 
 type MessagesUpdate = (prev: MessageDto[]) => MessageDto[];
 
 const loads = writesDuringLoads<MessageDto[]>();
-
-const conversationOfUnconfirmed = new Map<string, number>();
 
 /** The messages of one conversation, shared by every screen that shows it,
  * and every write to them. */
@@ -29,8 +35,8 @@ export function useConversationMessages(conversationId: number | null) {
                   throwOnError: true,
                 }).then(
                   ({ data }) => data,
-                  // Shown as an empty conversation, which messages heard
-                  // meanwhile still land on.
+                  // Shown as an empty conversation, which messages heard or
+                  // sent meanwhile still land on.
                   (error: unknown) => {
                     console.error("Failed to load messages", error);
                     return [];
@@ -43,13 +49,16 @@ export function useConversationMessages(conversationId: number | null) {
   });
 
   const updateMessages = useCallback(
-    (params: { conversationId: number; update: MessagesUpdate }) => {
+    (params: {
+      conversationId: number;
+      update: MessagesUpdate;
+      showBeforeLoad?: boolean;
+    }) => {
       const { update } = params;
       const queryKey = queryKeys.conversationMessages(params.conversationId);
       loads.record({ queryClient, queryKey, update });
-      queryClient.setQueryData<MessageDto[]>(
-        queryKey,
-        (prev) => prev && update(prev),
+      queryClient.setQueryData<MessageDto[]>(queryKey, (prev) =>
+        prev || params.showBeforeLoad ? update(prev ?? []) : undefined,
       );
     },
     [queryClient],
@@ -75,7 +84,6 @@ export function useConversationMessages(conversationId: number | null) {
               message.id.startsWith("temp-") &&
               message.author.id === incoming.author.id,
           );
-          if (unconfirmed) conversationOfUnconfirmed.delete(unconfirmed.id);
           return [
             ...prev.filter((message) => message !== unconfirmed),
             incoming,
@@ -87,36 +95,57 @@ export function useConversationMessages(conversationId: number | null) {
     [queryClient, updateMessages],
   );
 
-  const addOptimisticMessage = useCallback(
-    (message: MessageDto) => {
-      conversationOfUnconfirmed.set(message.id, message.conversationId);
-      // Not replayed over a load, which may already hold the sent copy that
-      // would replace this one.
-      queryClient.setQueryData<MessageDto[]>(
-        queryKeys.conversationMessages(message.conversationId),
-        (prev) => [...(prev ?? []), message],
-      );
+  /** Sends a message. Given the viewer's profile, shows it unconfirmed until
+   * its sent copy is shown, and removes it if the send fails. */
+  const sendMessage = useCallback(
+    async (params: {
+      message: CreateMessageDto;
+      author?: ProfileDto;
+    }): Promise<Result<MessageDto, Explanation>> => {
+      const { message, author } = params;
+      const { conversationId } = message;
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      if (author) {
+        updateMessages({
+          conversationId,
+          showBeforeLoad: true,
+          update: (prev) => [
+            ...prev,
+            {
+              id: tempId,
+              body: message.body,
+              attachments: message.attachments ?? [],
+              createdAt: new Date().toISOString(),
+              deletedAt: null,
+              author,
+              conversationId,
+              replyTo: prev.find(({ id }) => id === message.replyToId),
+            },
+          ],
+        });
+      }
+      const sent = await sendOrExplain({
+        send: messageSendMessage,
+        options: { body: message },
+        action: "send the message",
+      });
+      if (author) {
+        updateMessages({
+          conversationId,
+          update: (prev) =>
+            !sent.ok || prev.some(({ id }) => id === sent.value.id)
+              ? prev.filter(({ id }) => id !== tempId)
+              : prev,
+        });
+      }
+      return sent;
     },
-    [queryClient],
-  );
-
-  const removeOptimisticMessage = useCallback(
-    (tempId: string) => {
-      const conversationId = conversationOfUnconfirmed.get(tempId);
-      conversationOfUnconfirmed.delete(tempId);
-      if (conversationId === undefined) return;
-      queryClient.setQueryData<MessageDto[]>(
-        queryKeys.conversationMessages(conversationId),
-        (prev) => prev?.filter(({ id }) => id !== tempId),
-      );
-    },
-    [queryClient],
+    [updateMessages],
   );
 
   return {
     messages: query.data ?? null,
     receiveMessage,
-    addOptimisticMessage,
-    removeOptimisticMessage,
+    sendMessage,
   };
 }

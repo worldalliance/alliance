@@ -23,11 +23,10 @@ export interface UseLiveConvoMessagesOptions {
   onConversationUpdated?: (conversation: ConversationDto) => void;
 }
 
-export interface UseLiveConvoMessagesResult {
-  messages: MessageDto[] | null;
-  addOptimisticMessage: (message: MessageDto) => void;
-  removeOptimisticMessage: (tempId: string) => void;
-}
+export type UseLiveConvoMessagesResult = Pick<
+  ReturnType<typeof useConversationMessages>,
+  "messages" | "sendMessage"
+>;
 
 export const createMessagingHooks = (config: MessagingConnectionConfig) => {
   // Every mounted screen's socket merges into the one cached list, so each
@@ -94,12 +93,8 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
     conversationId: number | null,
     options?: UseLiveConvoMessagesOptions,
   ): UseLiveConvoMessagesResult => {
-    const {
-      messages,
-      receiveMessage,
-      addOptimisticMessage,
-      removeOptimisticMessage,
-    } = useConversationMessages(conversationId);
+    const { messages, receiveMessage, sendMessage } =
+      useConversationMessages(conversationId);
     const socketRef = useRef<Socket | null>(null);
     const joinedConversationRef = useRef<number | null>(null);
     const activeConversationRef = useRef<number | null>(conversationId);
@@ -202,11 +197,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
       };
     }, [conversationId]);
 
-    return {
-      messages,
-      addOptimisticMessage,
-      removeOptimisticMessage,
-    };
+    return { messages, sendMessage };
   };
 
   const useMessagingUnread = () => {

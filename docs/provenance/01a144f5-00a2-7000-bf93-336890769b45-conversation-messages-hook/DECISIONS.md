@@ -8,11 +8,17 @@ The hook carries no socket. Each platform's `useLiveConvoMessages`, built by `cr
 
 A message heard while the messages load is replayed over the load's result through `writesDuringLoads` (`shared/lib/writesDuringLoads.ts`), the rule `useMyConversations` uses for its list, extracted so both share it. A socket message for a conversation with nothing cached and no load running is dropped, which matches the screens before: they showed nothing for a conversation until its messages loaded.
 
-An unconfirmed message shows at once, even before the messages load, as before, and is not replayed over a load, since the load may already hold its sent copy. It is taken back from the conversation it was added to, which the hook remembers by its `temp-` id, since the screen may have moved to another conversation by the time the send fails.
+An unconfirmed message shows at once, even before the messages load, as before. It is also replayed over a load in flight, and `sendMessage` removes it once its sent copy is shown, in case the load already held that copy. It is taken back from the conversation it was sent to, since the screen may have moved to another by the time the send fails.
 
 ## Loading and failure
 
 `staleTime: 0` reloads on every mount, as the screens did, since the socket keeps the messages current only while a screen shows them. A failed load still shows an empty conversation, as before: the load logs the failure and resolves to an empty list, so writes recorded during it replay over that list and messages heard during or after it still show. Resolving rather than throwing also means a failed load is not retried, as before. Making the failure visible is a separate change.
+
+## Sending
+
+`sendMessage` sends through `sendOrExplain`, so a failure is logged and reported. Given the viewer's profile, it first shows the message as unconfirmed under a `temp-` id, its reply target taken from the cached messages, and removes it if the send fails. The socket's copy of the message still replaces it, as before. The send's own response is not written, since `useLiveConvoMessages` updates the conversation list only for a message the cache did not already hold; once the send succeeds, the unconfirmed copy is removed only if the sent copy is already shown, as when a load already held it.
+
+The author shown on the unconfirmed message is still built by each screen from the signed-in user; sharing that is a separate change.
 
 ## Out of scope
 
