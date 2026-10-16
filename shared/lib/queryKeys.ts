@@ -235,6 +235,8 @@ export const queryKeys = {
     ["userOnetimeInviteGetOnetimeInviteMemberStatsAdmin"] as const,
   onetimeInviteGraphEdgesAdmin: () =>
     ["userOnetimeInviteGetOnetimeInviteGraphEdgesAdmin"] as const,
+  platformTenureCohortAdmin: (weeksOnPlatform: number | null) =>
+    ["analyticsGetPlatformTenureCohortAdmin", weeksOnPlatform] as const,
   postsAdmin: () => ["forumGetPostsForAdmin"] as const,
   projectsAdminAll,
   projectsAdmin: () => [...projectsAdminAll(), "list"] as const,

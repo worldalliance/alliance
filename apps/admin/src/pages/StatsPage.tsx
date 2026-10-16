@@ -5,7 +5,6 @@ import {
   analyticsGetMemberCompletionRetentionAdmin,
   analyticsGetMemberReliabilityWindowAdmin,
   analyticsGetMissedActionsAdmin,
-  analyticsGetPlatformTenureCohortAdmin,
   analyticsGetTimeToChurnSamplesAdmin,
 } from "@alliance/shared/client";
 import {
@@ -16,7 +15,6 @@ import {
   MemberCompletionRetentionCohortDto,
   MemberReliabilityWindowDto,
   MissedActionsDto,
-  PlatformTenureCohortStatsDto,
   TimeToChurnSampleDto,
 } from "@alliance/shared/client/types.gen";
 import { dateToInputValue } from "@alliance/shared/lib/dateInput";
@@ -56,6 +54,7 @@ import { useActionStats } from "../lib/useActionStats";
 import { useContractStatusHistoryAdmin } from "../lib/useContractStatusHistoryAdmin";
 import { useDailyStatsAdmin } from "../lib/useDailyStatsAdmin";
 import { useInviteFunnelAdmin } from "../lib/useInviteFunnelAdmin";
+import { usePlatformTenureCohortAdmin } from "../lib/usePlatformTenureCohortAdmin";
 import { useReminderGroupClickRatesAdmin } from "../lib/useReminderGroupClickRatesAdmin";
 
 type ParsedDailyStats = DailyStatsDto & { parsedDate: Date };
@@ -258,20 +257,6 @@ const getWeekStartDate = (value: Date): Date => {
   return date;
 };
 
-const fetchPlatformTenureCohort = async (
-  weeksOnPlatform: number,
-): Promise<PlatformTenureCohortStatsDto> => {
-  const response = await analyticsGetPlatformTenureCohortAdmin({
-    query: { weeksOnPlatform },
-  });
-
-  if (!response.data) {
-    throw new Error("No platform tenure cohort data returned");
-  }
-
-  return response.data;
-};
-
 const fetchMemberReliabilityWindow = async (
   weeks: number,
 ): Promise<MemberReliabilityWindowDto> => {
@@ -310,11 +295,10 @@ const StatsPage: React.FC = () => {
   const [timeToChurnLoading, setTimeToChurnLoading] = useState<boolean>(false);
   const [platformTenureWeeksInput, setPlatformTenureWeeksInput] =
     useState<string>("4");
-  const [platformTenureCohort, setPlatformTenureCohort] =
-    useState<PlatformTenureCohortStatsDto | null>(null);
-  const [platformTenureCohortLoading, setPlatformTenureCohortLoading] =
-    useState<boolean>(false);
-  const [platformTenureCohortError, setPlatformTenureCohortError] = useState<
+  const [platformTenureWeeks, setPlatformTenureWeeks] = useState<number | null>(
+    null,
+  );
+  const [platformTenureWeeksError, setPlatformTenureWeeksError] = useState<
     string | null
   >(null);
   const [memberReliabilityWeeksInput, setMemberReliabilityWeeksInput] =
@@ -459,31 +443,38 @@ const StatsPage: React.FC = () => {
     }
   }, []);
 
-  const loadPlatformTenureCohort = useCallback(async (weeks: number) => {
-    setPlatformTenureCohortLoading(true);
-    setPlatformTenureCohortError(null);
-    try {
-      const cohort = await fetchPlatformTenureCohort(weeks);
-      setPlatformTenureCohort(cohort);
-    } catch (err) {
-      console.error("Failed to load platform tenure cohort", err);
-      setPlatformTenureCohort(null);
-      setPlatformTenureCohortError(
+  const {
+    data: platformTenureCohortData,
+    isFetching: platformTenureCohortLoading,
+    error: platformTenureCohortLoadError,
+    refetch: refetchPlatformTenureCohort,
+  } = usePlatformTenureCohortAdmin(platformTenureWeeks);
+  const platformTenureCohort = platformTenureCohortLoadError
+    ? undefined
+    : platformTenureCohortData;
+  const platformTenureCohortError =
+    platformTenureWeeksError ??
+    (platformTenureCohortLoadError &&
+      !platformTenureCohortLoading &&
+      adminRefusalMessage(
+        platformTenureCohortLoadError,
         "Unable to load this cohort right now. Please try again soon.",
-      );
-    } finally {
-      setPlatformTenureCohortLoading(false);
-    }
-  }, []);
+      ));
 
   const handleApplyPlatformTenureCohort = useCallback(() => {
     const weeks = Number(platformTenureWeeksInput);
     if (!Number.isInteger(weeks) || weeks < 0) {
-      setPlatformTenureCohortError("Weeks on platform must be a whole number.");
+      setPlatformTenureWeeksError("Weeks on platform must be a whole number.");
       return;
     }
-    void loadPlatformTenureCohort(weeks);
-  }, [loadPlatformTenureCohort, platformTenureWeeksInput]);
+    setPlatformTenureWeeksError(null);
+    if (weeks === platformTenureWeeks) void refetchPlatformTenureCohort();
+    else setPlatformTenureWeeks(weeks);
+  }, [
+    platformTenureWeeks,
+    platformTenureWeeksInput,
+    refetchPlatformTenureCohort,
+  ]);
 
   const loadMemberReliabilityWindow = useCallback(async (weeks: number) => {
     setMemberReliabilityLoading(true);
