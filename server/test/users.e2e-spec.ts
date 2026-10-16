@@ -20,6 +20,7 @@ import {
   ShareUrlKind,
 } from "src/share-urls/entities/share-url.entity";
 import { StoredInviteAssignmentKind } from "src/share-urls/invite-assignment";
+import { InviteShareUrlsService } from "src/share-urls/invite-share-urls.service";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import { AccountEmailService } from "src/user/account-email.service";
 import { AmbassadorInviteGoalService } from "src/user/ambassador-invite-goal.service";
@@ -65,6 +66,7 @@ describe("Users (e2e)", () => {
   let friendService: FriendService;
   let contractService: ContractService;
   let shareUrlsService: ShareUrlsService;
+  let inviteShareUrlsService: InviteShareUrlsService;
   let authService: AuthService;
 
   let userAId: number;
@@ -88,6 +90,7 @@ describe("Users (e2e)", () => {
     friendService = ctx.app.get(FriendService);
     contractService = ctx.app.get(ContractService);
     shareUrlsService = ctx.app.get(ShareUrlsService);
+    inviteShareUrlsService = ctx.app.get(InviteShareUrlsService);
     authService = ctx.app.get(AuthService);
     const userA = userRepo.create({
       name: "Friend A",
@@ -1698,7 +1701,7 @@ describe("Users (e2e)", () => {
         }),
       );
       const reusableInvite =
-        await shareUrlsService.createDuplicateInviteForUser(
+        await inviteShareUrlsService.createDuplicateInviteForUser(
           inviter.id,
           "Reusable community invite",
           inviteCommunity.id,
@@ -1749,7 +1752,7 @@ describe("Users (e2e)", () => {
         }),
       );
       const reusableInvite =
-        await shareUrlsService.createDuplicateInviteForUser(
+        await inviteShareUrlsService.createDuplicateInviteForUser(
           inviter.id,
           "Since-deleted community invite",
           inviteCommunity.id,
@@ -1760,7 +1763,10 @@ describe("Users (e2e)", () => {
         invite: reusableInvite,
       });
 
-      await shareUrlsService.deleteInviteForUser(reusableInvite.id, inviter.id);
+      await inviteShareUrlsService.deleteInviteForUser(
+        reusableInvite.id,
+        inviter.id,
+      );
 
       await contractService.signContract({
         userId: newUser.id,
@@ -1829,7 +1835,7 @@ describe("Users (e2e)", () => {
         name: "Deleted Group",
       });
       const reusableInvite =
-        await shareUrlsService.createDuplicateInviteForUser(
+        await inviteShareUrlsService.createDuplicateInviteForUser(
           inviter.id,
           "Doomed community invite",
           doomed.id,
@@ -1870,7 +1876,7 @@ describe("Users (e2e)", () => {
         name: "Later Deleted Group",
       });
       const reusableInvite =
-        await shareUrlsService.createDuplicateInviteForUser(
+        await inviteShareUrlsService.createDuplicateInviteForUser(
           inviter.id,
           "Later-deleted community invite",
           doomed.id,
@@ -1912,7 +1918,7 @@ describe("Users (e2e)", () => {
         name: "Raced Deleted Group",
       });
       const reusableInvite =
-        await shareUrlsService.createDuplicateInviteForUser(
+        await inviteShareUrlsService.createDuplicateInviteForUser(
           inviter.id,
           "Raced community invite",
           doomed.id,
@@ -1991,7 +1997,7 @@ describe("Users (e2e)", () => {
         }),
       );
       const reusableInvite =
-        await shareUrlsService.createDuplicateInviteForUser(
+        await inviteShareUrlsService.createDuplicateInviteForUser(
           inviter.id,
           "Full reusable community invite",
           fullCommunity.id,
@@ -2044,7 +2050,7 @@ describe("Users (e2e)", () => {
         }),
       );
       const reusableInvite =
-        await shareUrlsService.createDuplicateInviteForUser(
+        await inviteShareUrlsService.createDuplicateInviteForUser(
           inviter.id,
           "Uncapped community invite",
           uncappedCommunity.id,
@@ -2159,11 +2165,12 @@ describe("Users (e2e)", () => {
         slug: "open.invite.link",
         name: "Open Invite Link",
       });
-      const openInvite = await shareUrlsService.createDuplicateInviteForUser(
-        inviter.id,
-        "Any open group invite",
-        null,
-      );
+      const openInvite =
+        await inviteShareUrlsService.createDuplicateInviteForUser(
+          inviter.id,
+          "Any open group invite",
+          null,
+        );
       const newUser = await signUpThroughInvite({
         name: "Open Invite Link Invitee",
         email: "open.invite.link.invitee@example.com",

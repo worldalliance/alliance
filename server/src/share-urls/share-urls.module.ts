@@ -9,6 +9,7 @@ import { ExternalShareTargetsController } from "./external-share-targets.control
 import { ExternalShareTargetsService } from "./external-share-targets.service";
 import { InviteLinkAdminController } from "./invite-link-admin.controller";
 import { InviteLinkAdminService } from "./invite-link-admin.service";
+import { InviteShareUrlsService } from "./invite-share-urls.service";
 import { ShareUrlsController } from "./share-urls.controller";
 import { ShareUrlsService } from "./share-urls.service";
 
@@ -29,6 +30,7 @@ import { ShareUrlsService } from "./share-urls.service";
   ],
   providers: [
     ShareUrlsService,
+    InviteShareUrlsService,
     ExternalShareTargetsService,
     InviteLinkAdminService,
   ],
