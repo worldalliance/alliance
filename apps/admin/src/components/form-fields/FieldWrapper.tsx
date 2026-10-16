@@ -2,10 +2,7 @@ import type {
   AnyField,
   CheckboxExtractionTarget,
 } from "@alliance/common/forms/form-schema";
-import {
-  CustomValidatorType,
-  tasksFindOneCustomValidatorAdmin,
-} from "@alliance/shared/client";
+import { CustomValidatorType } from "@alliance/shared/client";
 import { useEffect, useState } from "react";
 import { SectionPanels } from "../form-canvas/sidebarSections";
 import {
@@ -25,6 +22,7 @@ import {
 } from "./fieldExtraction";
 import { FieldExtraOptions } from "./FieldExtraOptions";
 import type { FieldWrapperProps } from "./types";
+import { useValidatorConfig } from "./useValidatorConfig";
 
 function isFormField(field: unknown): field is AnyField {
   return Boolean(
@@ -40,74 +38,22 @@ export function FieldWrapper<T extends AnyField>({
   children,
 }: FieldWrapperProps<T>) {
   const isCurrentFormField = isFormField(field);
-  const { createDraftId, drafts, removeDraft, setDraft } =
-    useCustomValidatorDrafts();
+  const { createDraftId, removeDraft, setDraft } = useCustomValidatorDrafts();
   const [showCustomValidatorControl, setShowCustomValidatorControl] = useState(
     () => (isCurrentFormField ? Boolean(field.customValidatorId) : false),
   );
 
-  const [customValidatorType, setCustomValidatorType] = useState<
-    CustomValidatorType | undefined
-  >(undefined);
-  const [customValidatorIdArgument, setCustomValidatorIdArgument] = useState<
-    string | null
-  >(null);
-  const [customValidatorExpression, setCustomValidatorExpression] = useState<
-    string | null
-  >(null);
-  const [loadedValidatorId, setLoadedValidatorId] = useState<number | null>(
-    null,
+  const { config: validatorConfig } = useValidatorConfig(
+    isCurrentFormField ? field.customValidatorId : undefined,
   );
 
   useEffect(() => {
     if (!isCurrentFormField) {
       setShowCustomValidatorControl(false);
-      return;
-    }
-
-    const validatorId = field.customValidatorId;
-    if (validatorId) {
+    } else if (field.customValidatorId) {
       setShowCustomValidatorControl(true);
-      if (isDraftValidatorId(validatorId)) {
-        const draft = drafts[validatorId];
-        if (draft) {
-          setCustomValidatorType(draft.type);
-          setCustomValidatorIdArgument(draft.idArgument);
-          setCustomValidatorExpression(draft.expression);
-          setLoadedValidatorId(validatorId);
-        } else {
-          setCustomValidatorType(undefined);
-          setCustomValidatorIdArgument(null);
-          setCustomValidatorExpression(null);
-          setLoadedValidatorId(null);
-        }
-      } else if (loadedValidatorId !== validatorId) {
-        tasksFindOneCustomValidatorAdmin({
-          path: {
-            id: validatorId,
-          },
-        }).then((customValidator) => {
-          if (customValidator.data) {
-            setCustomValidatorType(customValidator.data.type);
-            setCustomValidatorIdArgument(customValidator.data.idArgument);
-            setCustomValidatorExpression(customValidator.data.expression);
-            setLoadedValidatorId(validatorId);
-          }
-        });
-      }
-    } else if (loadedValidatorId !== null) {
-      setCustomValidatorType(undefined);
-      setCustomValidatorIdArgument(null);
-      setCustomValidatorExpression(null);
-      setLoadedValidatorId(null);
     }
-  }, [
-    field,
-    isCurrentFormField,
-    drafts,
-    loadedValidatorId,
-    showCustomValidatorControl,
-  ]);
+  }, [field, isCurrentFormField]);
 
   const handleValidatorChange = async (params: {
     validatorType: CustomValidatorType | undefined;
@@ -123,15 +69,9 @@ export function FieldWrapper<T extends AnyField>({
         removeDraft(field.customValidatorId);
       }
       onUpdate({ customValidatorId: undefined } as Partial<T>);
-      setCustomValidatorType(undefined);
-      setCustomValidatorIdArgument(null);
-      setCustomValidatorExpression(null);
       return;
     }
 
-    setCustomValidatorType(validatorType);
-    setCustomValidatorIdArgument(idArgument);
-    setCustomValidatorExpression(expression);
     const existingValidatorId = field.customValidatorId;
     const draftId = isDraftValidatorId(existingValidatorId)
       ? existingValidatorId
@@ -236,9 +176,9 @@ export function FieldWrapper<T extends AnyField>({
   );
   const customValidatorSelect = (
     <CustomValidatorSelect
-      type={customValidatorType}
-      idArgument={customValidatorIdArgument}
-      expression={customValidatorExpression}
+      type={validatorConfig?.type}
+      idArgument={validatorConfig?.idArgument ?? null}
+      expression={validatorConfig?.expression ?? null}
       onChange={handleValidatorChange}
     />
   );

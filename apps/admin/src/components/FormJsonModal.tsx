@@ -1,5 +1,4 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import { tasksFindOneCustomValidatorAdmin } from "@alliance/shared/client";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Modal, {
@@ -19,6 +18,7 @@ import {
   type JsonScope,
   type PreparedJsonApply,
 } from "../lib/formJson";
+import { useCustomValidatorAdmin } from "../lib/useCustomValidatorAdmin";
 import { useCustomValidatorDrafts } from "./form-fields/customValidatorDrafts";
 
 const TITLES: Record<JsonScopeKind, string> = {
@@ -26,9 +26,6 @@ const TITLES: Record<JsonScopeKind, string> = {
   [JsonScopeKind.Page]: "Page JSON",
   [JsonScopeKind.Form]: "Form JSON",
 };
-
-const validatorExists = async (id: number) =>
-  (await tasksFindOneCustomValidatorAdmin({ path: { id } })).data !== undefined;
 
 export function FormJsonModal({
   scope,
@@ -44,6 +41,7 @@ export function FormJsonModal({
   onClose: () => void;
 }) {
   const { drafts } = useCustomValidatorDrafts();
+  const validatorExists = useCustomValidatorAdmin(null).exists;
   const { success, error: showError } = useToast();
   const [text, setText] = useState(() =>
     JSON.stringify(jsonScopeValue(schema, scope), null, 2),

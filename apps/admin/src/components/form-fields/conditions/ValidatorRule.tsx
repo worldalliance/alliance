@@ -1,12 +1,9 @@
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import { CustomValidatorSelect } from "../CommonControls";
-import {
-  isDraftValidatorId,
-  useCustomValidatorDrafts,
-} from "../customValidatorDrafts";
+import { useCustomValidatorDrafts } from "../customValidatorDrafts";
+import { useValidatorConfig } from "../useValidatorConfig";
 import { RetryButton } from "./RetryButton";
 import { INPUT_CLASS } from "./styles";
-import { useSavedValidator } from "./useSavedValidator";
 
 type ValidatorCondition = Extract<Condition, { kind: "validator" }>;
 
@@ -19,11 +16,9 @@ export function ValidatorRule({
   onChange: (condition: ValidatorCondition) => void;
   onRemove: () => void;
 }) {
-  const { drafts, setDraft, createDraftId } = useCustomValidatorDrafts();
+  const { setDraft, createDraftId } = useCustomValidatorDrafts();
   const { validatorId } = condition;
-  const isDraft = isDraftValidatorId(validatorId);
-  const saved = useSavedValidator(isDraft ? null : validatorId);
-  const config = isDraft ? drafts[validatorId] : saved.data;
+  const { config, isDraft, saved } = useValidatorConfig(validatorId);
 
   return (
     <div className="space-y-2">

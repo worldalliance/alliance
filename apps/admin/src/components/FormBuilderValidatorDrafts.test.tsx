@@ -37,8 +37,13 @@ const withList: FormSchema = {
 };
 
 describe("FormBuilder save with a draft validator", () => {
-  beforeEach(resetCustomValidatorsCache);
   const saved: FormSchema[] = [];
+  let validatorLoads = 0;
+  beforeEach(() => {
+    resetCustomValidatorsCache();
+    saved.length = 0;
+    validatorLoads = 0;
+  });
   serveApi(
     routes({
       "GET /tasks/listForms": () => Response.json([]),
@@ -52,13 +57,15 @@ describe("FormBuilder save with a draft validator", () => {
           },
         ]),
       "POST /tasks/createCustomValidator": () => Response.json({ id: 42 }),
-      "GET /tasks/findOneCustomValidator/:id": () =>
-        Response.json({
+      "GET /tasks/findOneCustomValidator/:id": () => {
+        validatorLoads += 1;
+        return Response.json({
           id: 42,
           type: "HasPhoneNumber",
           idArgument: null,
           expression: null,
-        }),
+        });
+      },
       "PUT /tasks/updateForm/:formId": async ({ request }) => {
         saved.push(
           z.object({ schema: formSchema }).parse(await request.json()).schema,
@@ -68,7 +75,7 @@ describe("FormBuilder save with a draft validator", () => {
     }),
   );
 
-  it("saves a list sub-field's draft validator under its created id", async () => {
+  const saveWithDraftValidator = async () => {
     renderFormBuilder(withList, 1);
 
     selectElement("Text Field: S");
@@ -83,9 +90,20 @@ describe("FormBuilder save with a draft validator", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Save Form" }));
     });
-
     await waitFor(() => expect(saved).toHaveLength(1));
+  };
+
+  it("saves a list sub-field's draft validator under its created id", async () => {
+    await saveWithDraftValidator();
+
     const list = saved[0].pages[0].fields[0];
     expect(list.kind === "list" && list.fields[0].customValidatorId).toBe(42);
+  });
+
+  it("keeps showing a validator Save created without loading it", async () => {
+    await saveWithDraftValidator();
+
+    expect(screen.getByDisplayValue("Has phone number")).toBeTruthy();
+    expect(validatorLoads).toBe(0);
   });
 });
