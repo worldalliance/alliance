@@ -27,7 +27,11 @@ let listed: ConversationDto[];
 let fetches: number;
 let heldList: Promise<Response> | null;
 let listFails: boolean;
+let started: () => Response;
+let accepted: () => Response;
 beforeEach(() => {
+  started = () => Response.json(conversation(3, "2026-09-03T00:00:00.000Z"));
+  accepted = () => Response.json(older);
   listed = [older, newer];
   fetches = 0;
   heldList = null;
@@ -53,6 +57,9 @@ serveApi(
       ),
     "POST /messaging/conversations/:conversationId/leave": () =>
       Response.json(older),
+    "POST /messaging/conversations/direct": () => started(),
+    "POST /messaging/conversations/group": () => started(),
+    "POST /messaging/conversations/:conversationId/accept": () => accepted(),
   }),
 );
 
@@ -189,4 +196,71 @@ it("keeps a write over a reload that read the list before it", async () => {
 
   await waitFor(() => expect(query.client.isFetching()).toBe(0));
   expect(page.result.current.conversations).toEqual([newer]);
+});
+
+it("lists a chat the viewer starts in order", async () => {
+  const { result } = renderHook(useMyConversations, queryWrapper());
+  await waitFor(() => expect(result.current.conversations).toHaveLength(2));
+
+  await act(() => result.current.createDirectConversation(5));
+
+  await waitFor(() =>
+    expect(result.current.conversations?.map(({ id }) => id)).toEqual([
+      3, 2, 1,
+    ]),
+  );
+});
+
+it("lists a started chat the list already holds once, as the server returns it", async () => {
+  const { result } = renderHook(useMyConversations, queryWrapper());
+  await waitFor(() => expect(result.current.conversations).toHaveLength(2));
+  const renamed = { ...older, title: "Renamed" };
+  started = () => Response.json(renamed);
+
+  await act(() =>
+    result.current.createGroupConversation({
+      participantIds: [5, 6],
+      title: "Renamed",
+    }),
+  );
+
+  await waitFor(() =>
+    expect(result.current.conversations).toEqual([newer, renamed]),
+  );
+});
+
+it("keeps the list as it was and says why when the server refuses to start a chat", async () => {
+  const { result } = renderHook(useMyConversations, queryWrapper());
+  await waitFor(() => expect(result.current.conversations).toHaveLength(2));
+  started = () =>
+    Response.json(
+      { message: "You can't message that user.", statusCode: 403 },
+      { status: 403 },
+    );
+
+  const created = await act(() => result.current.createDirectConversation(5));
+
+  expect(created).toEqual({
+    ok: false,
+    error: {
+      title: "Couldn't start the chat",
+      message: "You can't message that user.",
+    },
+  });
+  expect(result.current.conversations).toEqual([newer, older]);
+});
+
+it("lists an accepted request as the server returns it", async () => {
+  listed = [
+    {
+      ...older,
+      participants: [{ ...older.participants[0], state: "invited" }],
+    },
+  ];
+  const { result } = renderHook(useMyConversations, queryWrapper());
+  await waitFor(() => expect(result.current.conversations).toHaveLength(1));
+
+  await act(() => result.current.acceptInvite(older.id));
+
+  await waitFor(() => expect(result.current.conversations).toEqual([older]));
 });

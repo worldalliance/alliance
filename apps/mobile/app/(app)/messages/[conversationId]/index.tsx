@@ -1,9 +1,6 @@
 import { withCount } from "@alliance/common/plural";
 import {
-  conversationAcceptInvite,
-  conversationDeclineInvite,
   ConversationDto,
-  conversationMarkRead,
   MessageDto,
   messageSendMessage,
   ProfileDto,
@@ -50,8 +47,14 @@ export default function ConversationScreen() {
   }
 
   const { user } = useAuth();
-  const { conversations, setConversations, loading } =
-    useConversations(convoId);
+  const {
+    conversations,
+    setConversations,
+    loading,
+    acceptInvite,
+    declineInvite,
+    markRead,
+  } = useConversations(convoId);
 
   const selectedConvo = useMemo(
     () =>
@@ -96,8 +99,8 @@ export default function ConversationScreen() {
   const listRef = useRef<LegendListRef>(null);
 
   useEffect(() => {
-    conversationMarkRead({ path: { conversationId: convoId } });
-  }, [convoId]);
+    void markRead(convoId);
+  }, [convoId, markRead]);
 
   useEffect(() => {
     if (focusedMessageId) {
@@ -232,26 +235,15 @@ export default function ConversationScreen() {
 
   const handleAcceptInvite = useCallback(() => {
     if (!selectedConvo) return;
-    conversationAcceptInvite({
-      path: { conversationId: selectedConvo.id },
-    }).then((response) => {
-      if (response.data) {
-        handleConversationUpdated(response.data);
-      }
-    });
-  }, [selectedConvo, handleConversationUpdated]);
+    void acceptInvite(selectedConvo.id);
+  }, [selectedConvo, acceptInvite]);
 
   const handleDeclineInvite = useCallback(() => {
     if (!selectedConvo) return;
-    conversationDeclineInvite({
-      path: { conversationId: selectedConvo.id },
-    }).then((response) => {
-      if (response.data) {
-        handleConversationUpdated(response.data);
-        router.back();
-      }
+    void declineInvite(selectedConvo.id).then((declined) => {
+      if (declined.ok) router.back();
     });
-  }, [selectedConvo, handleConversationUpdated]);
+  }, [selectedConvo, declineInvite]);
 
   const inputRef = useRef<TextInput | null>(null);
 
