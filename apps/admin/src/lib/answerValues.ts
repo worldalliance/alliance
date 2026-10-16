@@ -14,3 +14,20 @@ export const normalizeBoolean = (value: unknown): boolean | null => {
   if (value === 0) return false;
   return null;
 };
+
+export const formatAnswerValue = (v: unknown): string => {
+  if (v == null || v === undefined) return "NULL";
+  if (Array.isArray(v)) return v.map((x) => formatAnswerValue(x)).join(", ");
+  if (typeof v === "object") {
+    const o = v as { name?: string; key: string };
+    if (o && typeof o === "object" && (o.name || o.key)) {
+      return o.name || o.key;
+    }
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return String(v);
+    }
+  }
+  return String(v);
+};

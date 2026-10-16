@@ -30,7 +30,7 @@ import React, {
   useState,
 } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
-import { isEmptyAnswer } from "../lib/answerValues";
+import { formatAnswerValue, isEmptyAnswer } from "../lib/answerValues";
 import { downloadBlob } from "../lib/downloadBlob";
 import {
   getDirectSnapshotTarget,
@@ -46,6 +46,7 @@ import {
   matchesResponseFilter,
   type FormResponseFilter,
 } from "../lib/responseFilter";
+import { buildResponsesCsv } from "../lib/responsesCsvExport";
 import { buildResponsesHtml } from "../lib/responsesHtmlExport";
 import FormResponseStatistics from "./FormResponseStatistics";
 import { IdentityChip } from "./IdentitySwatch";
@@ -408,23 +409,6 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     });
   }, [updateParams]);
 
-  const formatValue = useCallback((v: unknown): string => {
-    if (v == null || v === undefined) return "NULL";
-    if (Array.isArray(v)) return v.map((x) => formatValue(x)).join(", ");
-    if (typeof v === "object") {
-      const o = v as { name?: string; key: string };
-      if (o && typeof o === "object" && (o.name || o.key)) {
-        return o.name || o.key;
-      }
-      try {
-        return JSON.stringify(v);
-      } catch {
-        return String(v);
-      }
-    }
-    return String(v);
-  }, []);
-
   const questionResponses = useMemo(() => {
     if (!selectedQuestionFieldId) return [];
     return scopedResponses.filter(
@@ -436,53 +420,18 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     (value: unknown, response: FormResponseDto): string =>
       (selectedQuestionField &&
         choiceAnswerText({ field: selectedQuestionField, value, response })) ??
-      formatValue(value),
-    [selectedQuestionField, formatValue],
+      formatAnswerValue(value),
+    [selectedQuestionField],
   );
-
-  const csvEscape = (s: string): string => {
-    const needsQuotes = /[",\n\r]/.test(s);
-    let v = s.replace(/"/g, '""');
-    v = v.replace(/\r?\n/g, " ");
-    return needsQuotes ? `"${v}"` : v;
-  };
 
   const handleExportCsv = useCallback(() => {
     if (!form) return;
-    const metaHeaders = ["Response ID", "User ID", "User Name", "SID"];
-    if (variantOptions) metaHeaders.push("Variant");
-    const used = new Set<string>();
-    const questionHeaders = orderedFieldIds.map((id) => {
-      const base = fieldLabels.get(id) ?? id;
-      let name = base;
-      let i = 2;
-      while (used.has(name)) {
-        name = `${base} (${i++})`;
-      }
-      used.add(name);
-      return name;
+    const csv = buildResponsesCsv({
+      responses: scopedResponses,
+      orderedFieldIds,
+      fieldLabels,
+      variantName: variantOptions && getResponseVariantName,
     });
-    const headers = [...metaHeaders, ...questionHeaders];
-
-    const rows = scopedResponses.map((resp) => {
-      const user = resp?.user;
-      const userName = [user?.name ?? resp.id].filter(Boolean).join(" ");
-      const values = [
-        String(resp.id ?? ""),
-        String(user?.id ?? ""),
-        userName,
-        resp.sid ?? "",
-        ...(variantOptions ? [getResponseVariantName(resp) ?? ""] : []),
-        ...orderedFieldIds.map((id) => formatValue(resp.answers?.[id])),
-      ];
-      return values;
-    });
-
-    const csv = [
-      headers.map(csvEscape).join(","),
-      ...rows.map((r) => r.map((c) => csvEscape(String(c ?? ""))).join(",")),
-    ].join("\n");
-
     const blob = new Blob(["﻿" + csv], {
       type: "text/csv;charset=utf-8;",
     });
@@ -493,7 +442,6 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     scopedResponses,
     orderedFieldIds,
     fieldLabels,
-    formatValue,
     exportFileBase,
     variantOptions,
     getResponseVariantName,

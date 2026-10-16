@@ -1,4 +1,8 @@
-import { isEmptyAnswer, normalizeBoolean } from "./answerValues";
+import {
+  formatAnswerValue,
+  isEmptyAnswer,
+  normalizeBoolean,
+} from "./answerValues";
 
 describe("isEmptyAnswer", () => {
   it("treats missing, blank, and empty containers as empty", () => {
@@ -27,5 +31,15 @@ describe("normalizeBoolean", () => {
   it("returns null for anything else", () => {
     expect(normalizeBoolean("yes")).toBeNull();
     expect(normalizeBoolean(null)).toBeNull();
+  });
+});
+
+describe("formatAnswerValue", () => {
+  it("formats answers as text, naming objects by name or key", () => {
+    expect(formatAnswerValue(null)).toBe("NULL");
+    expect(formatAnswerValue(["a", 2])).toBe("a, 2");
+    expect(formatAnswerValue({ name: "Paris", key: "paris" })).toBe("Paris");
+    expect(formatAnswerValue({ key: "paris" })).toBe("paris");
+    expect(formatAnswerValue({ lat: 1 })).toBe('{"lat":1}');
   });
 });
