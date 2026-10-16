@@ -4,16 +4,11 @@ import { R } from "@alliance/common/result";
 import { ensureHttpProtocol } from "@alliance/common/url";
 import {
   ActionCategory,
-  ActionDto,
   actionsExportActionAdmin,
   CreateActionDto,
-  tasksCreateFormAdmin,
-  tasksGetForm,
 } from "@alliance/shared/client";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
-import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
-import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
 import { useMembers } from "@alliance/shared/lib/useMembers";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -63,23 +58,27 @@ import EventManagementTab from "../components/EventManagementTab";
 import { FormBuilder } from "../components/FormBuilder";
 import FormResponseStatistics from "../components/FormResponseStatistics";
 import { actionFormInputValue } from "../lib/actionFormInputValue";
-import {
-  changedActionImages,
-  duplicatedActionImages,
-} from "../lib/actionImages";
+import { changedActionImages } from "../lib/actionImages";
 import {
   ACTION_STATUS_COLORS,
   ACTION_STATUS_LABELS,
 } from "../lib/actionStatusDisplay";
 import { getSiteUrl } from "../lib/config";
 import type { FormResponseFilter } from "../lib/responseFilter";
-import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { makeTempId } from "../lib/tempId";
 import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useAllActions } from "../lib/useAllActions";
 import { useCoverImage } from "../lib/useCoverImage";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 import ActionReadinessChecklist from "./action-dashboard/ActionReadinessChecklist";
+import {
+  imageUploadingMessage,
+  logActionError,
+} from "./action-dashboard/actionSaveErrors";
+import {
+  useActionCommands,
+  useNavigateToCreatedAction,
+} from "./action-dashboard/useActionCommands";
 import { useActionReporting } from "./action-dashboard/useActionReporting";
 
 const tabs = [
@@ -95,30 +94,12 @@ const tabs = [
 ] as const;
 type Tab = (typeof tabs)[number];
 
-const imageUploadingMessage = "Wait for the cover image to finish uploading.";
-
-export const actionSaveErrorMessage = (
-  error: unknown,
-  fallback = "Failed to save action",
-): string =>
-  thrownRefusalMessage({
-    error,
-    fallback,
-    sessionExpired: sessionExpiredMessage,
-  });
-
-const logActionError =
-  (fallback?: string) =>
-  (error: unknown): string => {
-    console.error(error);
-    return actionSaveErrorMessage(error, fallback);
-  };
-
 const ActionDashboard: React.FC = () => {
   const { actionId: actionIdParam } = useParams<{ actionId: string }>();
   const navigate = useNavigate();
   const isNew = actionIdParam === "new";
   const actionId = isNew ? null : parseInt(actionIdParam!);
+  const admin = useActionAdmin(actionId);
   const {
     action,
     cohortExpressionError,
@@ -130,11 +111,8 @@ const ActionDashboard: React.FC = () => {
     isCreating,
     updateAction,
     isUpdating,
-    removeAction,
     isRemoving,
-    archiveAction,
-    unarchiveAction,
-  } = useActionAdmin(actionId);
+  } = admin;
   const cohortParseFailed = cohortExpressionError != null;
   // Which action id the draft state was last seeded from (see the seeding
   // effect below); null means the next loaded action should (re)seed. Kept as
@@ -177,7 +155,6 @@ const ActionDashboard: React.FC = () => {
     isLoading: tagsLoading,
     isLoadingError: tagsError,
   } = useTagsAdmin();
-  const invalidateFormsIndex = useInvalidateFormsIndex();
   const {
     suites: {
       data: availableSuites,
@@ -317,66 +294,15 @@ const ActionDashboard: React.FC = () => {
     resetCoverImage(parsedAction.image ?? null);
   }, [action, actionFetching, seededActionId, resetCoverImage]);
 
-  const handleActionCreated = useCallback(
-    (action: ActionDto) => {
-      navigate(`/actions/${action.id}`);
-    },
-    [navigate],
-  );
-
-  const handleDuplicate = useCallback(async () => {
-    if (imageUploading) {
-      setError(imageUploadingMessage);
-      return;
-    }
-
-    let taskFormId = form.taskFormId;
-    if (taskFormId) {
-      const taskForm = await tasksGetForm({
-        path: { id: taskFormId },
-      });
-      if (taskForm.data) {
-        const newTaskForm = await tasksCreateFormAdmin({
-          body: {
-            title: taskForm.data.title + " (Copy)",
-            schema: taskForm.data.schema,
-          },
-        });
-        taskFormId = newTaskForm.data?.id;
-        // The clone is a form row from here on, whether or not the action it
-        // was made for gets created.
-        if (taskFormId !== undefined) await invalidateFormsIndex();
-      }
-    }
-
-    const duplicateForm = {
-      ...form,
-      name: `${form.name} (Copy)`,
-      ...duplicatedActionImages({ form, action, imageKey }),
-      taskFormId,
-    };
-    const result = await R.fromPromise(
-      createAction(duplicateForm),
-      logActionError("Failed to duplicate action"),
-    );
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    handleActionCreated(result.value);
-  }, [
+  const handleActionCreated = useNavigateToCreatedAction();
+  const { handleDuplicate, handleArchive, handleDelete } = useActionCommands({
+    admin,
+    actionId,
     form,
-    action,
     imageKey,
     imageUploading,
-    createAction,
-    handleActionCreated,
-    invalidateFormsIndex,
-  ]);
-
-  const handleActionDeleted = useCallback(() => {
-    navigate("/actions");
-  }, [navigate]);
+    setError,
+  });
 
   const handleCancel = useCallback(() => {
     navigate("/actions");
@@ -404,26 +330,7 @@ const ActionDashboard: React.FC = () => {
     }));
   };
 
-  const { confirm, error: pushError } = useToast();
-
-  const handleArchive = useCallback(async () => {
-    const confirmed =
-      action?.archived ||
-      (await confirm({
-        title: "Confirm Archive",
-        message: "Are you sure you want to archive this action?",
-      }));
-    if (confirmed && actionId) {
-      const archived = action?.archived;
-      const result = await R.fromPromise(
-        archived ? unarchiveAction() : archiveAction(),
-      );
-      if (!result.ok) {
-        setError(`Failed to ${archived ? "unarchive" : "archive"} action`);
-        console.error(result.error);
-      }
-    }
-  }, [actionId, action?.archived, confirm, archiveAction, unarchiveAction]);
+  const { error: pushError } = useToast();
 
   const handleCohortExpressionChange = useCallback(
     (expr: CohortExpression | null) => {
@@ -558,24 +465,6 @@ const ActionDashboard: React.FC = () => {
         },
         milliseconds({ seconds: 2 }),
       );
-    }
-  };
-
-  const handleDelete = async () => {
-    if (isNew || !actionId) return;
-
-    if (
-      window.confirm(
-        "Are you sure you want to delete this action? This cannot be undone.",
-      )
-    ) {
-      const result = await R.fromPromise(removeAction());
-      if (!result.ok) {
-        setError("Failed to delete action");
-        console.error(result.error);
-        return;
-      }
-      handleActionDeleted();
     }
   };
 

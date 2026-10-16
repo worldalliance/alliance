@@ -1,5 +1,5 @@
-import { sessionExpiredMessage } from "../lib/sessionExpired";
-import { actionSaveErrorMessage } from "./ActionDashboard";
+import { sessionExpiredMessage } from "../../lib/sessionExpired";
+import { actionSaveErrorMessage } from "./actionSaveErrors";
 
 describe("action save errors", () => {
   it("explains how to recover from an expired session", () => {
