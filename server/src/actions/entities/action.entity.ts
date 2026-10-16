@@ -138,10 +138,9 @@ export class Action {
   @Allow()
   body: string;
 
-  @Column({ nullable: true })
+  @Column({ default: "" })
   @ApiProperty({ description: "Short description shown in cards" })
   @IsString()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   shortDescription: string;
 
   @Column({ type: "int", nullable: true })

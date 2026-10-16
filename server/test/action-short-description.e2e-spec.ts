@@ -39,6 +39,13 @@ describe("Action short description (e2e)", () => {
     ).toBe(0);
   });
 
+  it("stores a blank short description for an action saved without one", async () => {
+    const saved = await ctx.dataSource
+      .getRepository(Action)
+      .save({ name: NAME_PREFIX, body: "Body" });
+    expect(await storedShortDescription(saved.id)).toBe("");
+  });
+
   it.each([null, 5])(
     "rejects a short description of %p",
     async (shortDescription) => {
