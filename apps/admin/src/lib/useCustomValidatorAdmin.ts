@@ -1,6 +1,13 @@
 import { tasksFindOneCustomValidatorAdmin } from "@alliance/shared/client";
+import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { queryOptions, skipToken, useQuery } from "@tanstack/react-query";
+import {
+  queryOptions,
+  skipToken,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useCallback } from "react";
 import type { CustomValidatorDraft } from "../components/form-fields/customValidatorDrafts";
 
 const customValidatorQuery = (id: number) =>
@@ -22,13 +29,28 @@ const customValidatorQuery = (id: number) =>
     retry: false,
   });
 
-/** A saved validator's settings; a `null` id fetches nothing. */
+/** A saved validator's settings; a `null` id fetches nothing. `exists`
+ * resolves false when the server refuses the id, and rejects only when the
+ * server can't be reached. */
 export function useCustomValidatorAdmin(id: number | null) {
+  const queryClient = useQueryClient();
   const query = useQuery(
     id === null
       ? { queryKey: queryKeys.customValidatorAdmin(0), queryFn: skipToken }
       : customValidatorQuery(id),
   );
 
-  return { query };
+  const exists = useCallback(
+    (validatorId: number) =>
+      queryClient.fetchQuery(customValidatorQuery(validatorId)).then(
+        () => true,
+        (error: unknown) => {
+          if (thrownStatus(error) === undefined) throw error;
+          return false;
+        },
+      ),
+    [queryClient],
+  );
+
+  return { query, exists };
 }

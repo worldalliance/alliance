@@ -78,4 +78,36 @@ describe("useCustomValidatorAdmin", () => {
     await waitFor(() => expect(view.result.current.query.isError).toBe(true));
     expect(requests).toEqual([7]);
   });
+
+  it("answers exists from a validator already loaded", async () => {
+    const view = renderHook(() => useCustomValidatorAdmin(7), queryWrapper());
+    await waitFor(() => expect(view.result.current.query.isSuccess).toBe(true));
+
+    expect(await view.result.current.exists(7)).toBe(true);
+    expect(requests).toEqual([7]);
+  });
+
+  it("says a validator the server refuses does not exist", async () => {
+    respond = () => Response.json({ message: "Not found" }, { status: 404 });
+    const view = renderHook(
+      () => useCustomValidatorAdmin(null),
+      queryWrapper(),
+    );
+
+    expect(await view.result.current.exists(9)).toBe(false);
+  });
+
+  it("rejects exists when the server can't be reached", async () => {
+    respond = () => {
+      throw new TypeError("Failed to fetch");
+    };
+    const view = renderHook(
+      () => useCustomValidatorAdmin(null),
+      queryWrapper(),
+    );
+
+    await expect(view.result.current.exists(9)).rejects.toThrow(
+      "Failed to fetch",
+    );
+  });
 });
