@@ -1,4 +1,4 @@
-import { actionsUserFeed } from "@alliance/shared/client";
+import { actionFeedUserFeed } from "@alliance/shared/client";
 import { buildFeedPage, useFeedQuery } from "./feedHelpers";
 
 export type UseUserFeedProps = {
@@ -19,7 +19,7 @@ const useUserFeed = (props: UseUserFeedProps) => {
     limit,
     enabled: Boolean(props.userId),
     fetchPage: async (before) => {
-      const resp = await actionsUserFeed({
+      const resp = await actionFeedUserFeed({
         path: { id: props.userId },
         query: {
           limit: limit.toString(),

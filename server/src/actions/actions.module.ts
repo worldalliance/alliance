@@ -31,6 +31,7 @@ import { ContractEvent } from "../user/entities/contract-event.entity";
 import { Tag } from "../user/entities/tag.entity";
 import { User } from "../user/entities/user.entity";
 import { UserModule } from "../user/user.module";
+import { ActionFeedController } from "./action-feed.controller";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionParticipantsService } from "./action-participants.service";
 import { ActionRemindersController } from "./action-reminders.controller";
@@ -129,6 +130,7 @@ import { TaskBadgeService } from "./task-badge.service";
     ActionUpdatesController,
     ActionRemindersController,
     ActionSuitesController,
+    ActionFeedController,
     CohortDecisionsController,
     ProjectsController,
   ],

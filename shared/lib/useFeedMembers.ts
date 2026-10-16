@@ -1,7 +1,7 @@
 import {
-  actionsGetGlobalFeedActivityMembers,
-  actionsGetGlobalFeedCommentMembers,
-  actionsGetGlobalFeedNewMembers,
+  actionFeedGetGlobalFeedActivityMembers,
+  actionFeedGetGlobalFeedCommentMembers,
+  actionFeedGetGlobalFeedNewMembers,
   type GlobalFeedActivityTypes,
   type ProfileDto,
 } from "@alliance/shared/client";
@@ -25,7 +25,7 @@ const fetchMemberPage = (
 ): Promise<{ data?: ProfileDto[] }> => {
   switch (source.type) {
     case "activityGroup":
-      return actionsGetGlobalFeedActivityMembers({
+      return actionFeedGetGlobalFeedActivityMembers({
         query: {
           actionId: source.actionId,
           activityType: source.activityType,
@@ -33,9 +33,9 @@ const fetchMemberPage = (
         },
       });
     case "newMembers":
-      return actionsGetGlobalFeedNewMembers({ query });
+      return actionFeedGetGlobalFeedNewMembers({ query });
     case "forumComments":
-      return actionsGetGlobalFeedCommentMembers({
+      return actionFeedGetGlobalFeedCommentMembers({
         query: { postId: source.postId, ...query },
       });
     default:

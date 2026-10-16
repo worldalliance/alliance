@@ -1,14 +1,14 @@
 import {
   ActionActivityDto,
-  actionsCommunityActivity,
-  actionsFindCompletedForUser,
-  actionsFriendActivity,
-  actionsFriendActivityForAction,
-  actionsGetActionActivities,
-  actionsGetActivity,
-  actionsGetActivityFeed,
-  actionsLikeActivity,
-  actionsUnlikeActivity,
+  actionFeedCommunityActivity,
+  actionFeedFindCompletedForUser,
+  actionFeedFriendActivity,
+  actionFeedFriendActivityForAction,
+  actionFeedGetActionActivities,
+  actionFeedGetActivity,
+  actionFeedGetActivityFeed,
+  actionFeedLikeActivity,
+  actionFeedUnlikeActivity,
 } from "@alliance/shared/client";
 import {
   InfiniteData,
@@ -71,18 +71,18 @@ const callActivityApi = async (props: UseActivitiesProps, before?: string) => {
   let apiCall;
   switch (list) {
     case ActivityList.Friends:
-      apiCall = actionsFriendActivity({
+      apiCall = actionFeedFriendActivity({
         query: { comments, limit: limit.toString(), before: beforeStr },
       });
       break;
     case ActivityList.User:
-      apiCall = actionsFindCompletedForUser({
+      apiCall = actionFeedFindCompletedForUser({
         path: { id: objectId! },
         query: { comments },
       });
       break;
     case ActivityList.Action:
-      apiCall = actionsGetActionActivities({
+      apiCall = actionFeedGetActionActivities({
         path: { id: objectId! },
         query: { limit: limit, comments, before: beforeStr },
       });
@@ -91,13 +91,13 @@ const callActivityApi = async (props: UseActivitiesProps, before?: string) => {
       if (!objectId) {
         throw new Error("objectId is required for FriendsForAction");
       }
-      apiCall = actionsFriendActivityForAction({
+      apiCall = actionFeedFriendActivityForAction({
         path: { actionId: objectId },
         query: { comments, limit: limit.toString() },
       });
       break;
     case ActivityList.Community:
-      apiCall = actionsCommunityActivity({
+      apiCall = actionFeedCommunityActivity({
         query: {
           limit: limit.toString(),
           before: beforeStr,
@@ -107,7 +107,7 @@ const callActivityApi = async (props: UseActivitiesProps, before?: string) => {
       });
       break;
     case ActivityList.Global:
-      apiCall = actionsGetActivityFeed({
+      apiCall = actionFeedGetActivityFeed({
         query: {
           limit: limit.toString(),
           before: beforeStr,
@@ -178,7 +178,7 @@ export const useActivity = (activityId: number) =>
     queryKey: queryKeys.activity(activityId),
     queryFn: activityId
       ? () =>
-          actionsGetActivity({
+          actionFeedGetActivity({
             path: { id: activityId },
             throwOnError: true,
           }).then((res) => res.data)
@@ -198,8 +198,8 @@ export const useLikeActivity = () => {
       isLiked: boolean;
     }) => {
       const response = isLiked
-        ? await actionsUnlikeActivity({ path: { id: activityId } })
-        : await actionsLikeActivity({ path: { id: activityId } });
+        ? await actionFeedUnlikeActivity({ path: { id: activityId } })
+        : await actionFeedLikeActivity({ path: { id: activityId } });
       if (response.response.ok && response.data) return response.data;
       throw new Error("Like request failed");
     },

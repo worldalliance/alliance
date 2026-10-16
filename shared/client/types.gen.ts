@@ -2254,116 +2254,6 @@ export type ActionDto = {
     project?: ProjectDto | null;
 };
 
-export type EditableContentDto = {
-    /**
-     * Markdown or plain text body
-     */
-    body: string;
-    /**
-     * Image keys attached to the content
-     */
-    attachments: Array<string>;
-};
-
-export type CommentDto = {
-    id: number;
-    parentObjectType: CommentParentObject;
-    parentObjectId: number;
-    createdAt: string;
-    updatedAt: string;
-    parentId: number | null;
-    pinned: boolean;
-    tagId: number | null;
-    deleted: boolean;
-    author: ProfileDto;
-    children?: Array<CommentDto>;
-    likes: Array<ProfileDto>;
-    likesCount: number;
-    likedByMe?: boolean;
-    editableContent: EditableContentDto;
-};
-
-export type FormResponseOutputDto = {
-    id: number;
-    formId: number;
-    answers: {
-        [key: string]: unknown;
-    };
-    publicAnswers: {
-        [key: string]: unknown;
-    };
-    deviceType: string | null;
-    schemaSnapshot: {
-        [key: string]: unknown;
-    };
-    visibilityValidatorResults: {
-        [key: string]: unknown;
-    };
-};
-
-export type ActionActivityDto = {
-    id: number;
-    /**
-     * Type of action activity
-     */
-    type: ActionActivityType;
-    actionId: number;
-    createdAt: string;
-    likesCount: number;
-    user: ProfileDto;
-    actionName: string;
-    likes?: Array<ProfileDto>;
-    likedByMe?: boolean;
-    comments: Array<CommentDto>;
-    formResponseOutput?: FormResponseOutputDto;
-    editableContent: EditableContentDto;
-};
-
-export type GlobalFeedItemType = 'activity_group' | 'action_update' | 'new_members' | 'forum_comments';
-
-export type GlobalFeedActivityTypes = 'user_completed' | 'user_submitted_follow_up_form';
-
-export type GlobalFeedActivityGroupDto = {
-    users: Array<ProfileDto>;
-    actionId: number;
-    actionName: string;
-    activityType: GlobalFeedActivityTypes;
-    count: number;
-};
-
-export type GlobalFeedActionUpdateDto = {
-    id: number;
-    title: string;
-    schema: {
-        [key: string]: unknown;
-    };
-    date: string;
-    actionId: number;
-    actionName: string;
-};
-
-export type GlobalFeedNewMembersDto = {
-    users: Array<ProfileDto>;
-    count: number;
-};
-
-export type GlobalFeedForumCommentsDto = {
-    users: Array<ProfileDto>;
-    postId: number;
-    postTitle: string;
-    count: number;
-    commentId?: number;
-};
-
-export type GlobalFeedItemDto = {
-    type: GlobalFeedItemType;
-    date: string;
-    activityGroup?: GlobalFeedActivityGroupDto;
-    actionUpdate?: GlobalFeedActionUpdateDto;
-    newMembers?: GlobalFeedNewMembersDto;
-    forumComments?: GlobalFeedForumCommentsDto;
-};
-
 export type ActionWithdrawalDto = {
     userId: number;
     declineReason: string | null;
@@ -2552,23 +2442,6 @@ export type AdminActionListItemDto = {
      * Forms of the action's variants, besides its task form.
      */
     variantFormIds: Array<number>;
-};
-
-export type HomeFeedItemType = 'activity' | 'forum_comment';
-
-export type HomeFeedForumCommentDto = {
-    comment: CommentDto;
-    postId: number;
-    postTitle: string;
-    likedByMe: boolean;
-    likesCount: number;
-};
-
-export type HomeFeedItemDto = {
-    type: HomeFeedItemType;
-    date: string;
-    activity?: ActionActivityDto;
-    forumComment?: HomeFeedForumCommentDto;
 };
 
 export type CommunityCompletedActionsCountDto = {
@@ -3053,6 +2926,71 @@ export type CreateActionEventDto = {
     date: string;
 };
 
+export type EditableContentDto = {
+    /**
+     * Markdown or plain text body
+     */
+    body: string;
+    /**
+     * Image keys attached to the content
+     */
+    attachments: Array<string>;
+};
+
+export type CommentDto = {
+    id: number;
+    parentObjectType: CommentParentObject;
+    parentObjectId: number;
+    createdAt: string;
+    updatedAt: string;
+    parentId: number | null;
+    pinned: boolean;
+    tagId: number | null;
+    deleted: boolean;
+    author: ProfileDto;
+    children?: Array<CommentDto>;
+    likes: Array<ProfileDto>;
+    likesCount: number;
+    likedByMe?: boolean;
+    editableContent: EditableContentDto;
+};
+
+export type FormResponseOutputDto = {
+    id: number;
+    formId: number;
+    answers: {
+        [key: string]: unknown;
+    };
+    publicAnswers: {
+        [key: string]: unknown;
+    };
+    deviceType: string | null;
+    schemaSnapshot: {
+        [key: string]: unknown;
+    };
+    visibilityValidatorResults: {
+        [key: string]: unknown;
+    };
+};
+
+export type ActionActivityDto = {
+    id: number;
+    /**
+     * Type of action activity
+     */
+    type: ActionActivityType;
+    actionId: number;
+    createdAt: string;
+    likesCount: number;
+    user: ProfileDto;
+    actionName: string;
+    likes?: Array<ProfileDto>;
+    likedByMe?: boolean;
+    comments: Array<CommentDto>;
+    formResponseOutput?: FormResponseOutputDto;
+    editableContent: EditableContentDto;
+};
+
 export type CreateActionActivityDto = {
     /**
      * Type of action activity
@@ -3270,16 +3208,6 @@ export type CommunityUserInfoDto = {
     actions: Array<UserActionSummaryDto>;
     suites: Array<ActionSuiteSummaryDto>;
     users: Array<UserActionRelationsForUserDto>;
-};
-
-export type TimelineFeedItemType = 'action_update' | 'action_event';
-
-export type TimelineFeedItemDto = {
-    type: TimelineFeedItemType;
-    date: string;
-    action: ActionDto;
-    actionUpdate?: ActionUpdateDto;
-    actionEvent?: ActionEventDto;
 };
 
 export type GeneralUpdateDto = {
@@ -3568,6 +3496,78 @@ export type UpdateActionEventDto = {
      * time of the event (for display)
      */
     date?: string;
+};
+
+export type GlobalFeedItemType = 'activity_group' | 'action_update' | 'new_members' | 'forum_comments';
+
+export type GlobalFeedActivityTypes = 'user_completed' | 'user_submitted_follow_up_form';
+
+export type GlobalFeedActivityGroupDto = {
+    users: Array<ProfileDto>;
+    actionId: number;
+    actionName: string;
+    activityType: GlobalFeedActivityTypes;
+    count: number;
+};
+
+export type GlobalFeedActionUpdateDto = {
+    id: number;
+    title: string;
+    schema: {
+        [key: string]: unknown;
+    };
+    date: string;
+    actionId: number;
+    actionName: string;
+};
+
+export type GlobalFeedNewMembersDto = {
+    users: Array<ProfileDto>;
+    count: number;
+};
+
+export type GlobalFeedForumCommentsDto = {
+    users: Array<ProfileDto>;
+    postId: number;
+    postTitle: string;
+    count: number;
+    commentId?: number;
+};
+
+export type GlobalFeedItemDto = {
+    type: GlobalFeedItemType;
+    date: string;
+    activityGroup?: GlobalFeedActivityGroupDto;
+    actionUpdate?: GlobalFeedActionUpdateDto;
+    newMembers?: GlobalFeedNewMembersDto;
+    forumComments?: GlobalFeedForumCommentsDto;
+};
+
+export type HomeFeedItemType = 'activity' | 'forum_comment';
+
+export type HomeFeedForumCommentDto = {
+    comment: CommentDto;
+    postId: number;
+    postTitle: string;
+    likedByMe: boolean;
+    likesCount: number;
+};
+
+export type HomeFeedItemDto = {
+    type: HomeFeedItemType;
+    date: string;
+    activity?: ActionActivityDto;
+    forumComment?: HomeFeedForumCommentDto;
+};
+
+export type TimelineFeedItemType = 'action_update' | 'action_event';
+
+export type TimelineFeedItemDto = {
+    type: TimelineFeedItemType;
+    date: string;
+    action: ActionDto;
+    actionUpdate?: ActionUpdateDto;
+    actionEvent?: ActionEventDto;
 };
 
 export type CohortDecisionReason = 'launch' | 'signing' | 'resolved_after_deadline' | 'backfill' | 'staff_correction' | 'prerequisites_resolved';
@@ -9701,158 +9701,6 @@ export type ActionsFindAllLoggedInResponses = {
 
 export type ActionsFindAllLoggedInResponse = ActionsFindAllLoggedInResponses[keyof ActionsFindAllLoggedInResponses];
 
-export type ActionsGetActivityFeedData = {
-    body?: never;
-    path?: never;
-    query: {
-        limit: string;
-        before: string;
-        comments: boolean;
-    };
-    url: '/actions/activities/feed';
-};
-
-export type ActionsGetActivityFeedErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsGetActivityFeedError = ActionsGetActivityFeedErrors[keyof ActionsGetActivityFeedErrors];
-
-export type ActionsGetActivityFeedResponses = {
-    200: Array<ActionActivityDto>;
-};
-
-export type ActionsGetActivityFeedResponse = ActionsGetActivityFeedResponses[keyof ActionsGetActivityFeedResponses];
-
-export type ActionsGetGlobalFeedData = {
-    body?: never;
-    path?: never;
-    query: {
-        limit: number;
-    };
-    url: '/actions/globalFeed';
-};
-
-export type ActionsGetGlobalFeedErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsGetGlobalFeedError = ActionsGetGlobalFeedErrors[keyof ActionsGetGlobalFeedErrors];
-
-export type ActionsGetGlobalFeedResponses = {
-    200: Array<GlobalFeedItemDto>;
-};
-
-export type ActionsGetGlobalFeedResponse = ActionsGetGlobalFeedResponses[keyof ActionsGetGlobalFeedResponses];
-
-export type ActionsGetGlobalFeedActivityMembersData = {
-    body?: never;
-    path?: never;
-    query: {
-        actionId: number;
-        activityType: string;
-        limit?: number;
-        afterId?: number;
-    };
-    url: '/actions/globalFeed/activityGroupMembers';
-};
-
-export type ActionsGetGlobalFeedActivityMembersErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsGetGlobalFeedActivityMembersError = ActionsGetGlobalFeedActivityMembersErrors[keyof ActionsGetGlobalFeedActivityMembersErrors];
-
-export type ActionsGetGlobalFeedActivityMembersResponses = {
-    200: Array<ProfileDto>;
-};
-
-export type ActionsGetGlobalFeedActivityMembersResponse = ActionsGetGlobalFeedActivityMembersResponses[keyof ActionsGetGlobalFeedActivityMembersResponses];
-
-export type ActionsGetGlobalFeedNewMembersData = {
-    body?: never;
-    path?: never;
-    query?: {
-        limit?: number;
-        afterId?: number;
-    };
-    url: '/actions/globalFeed/newMembers';
-};
-
-export type ActionsGetGlobalFeedNewMembersErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsGetGlobalFeedNewMembersError = ActionsGetGlobalFeedNewMembersErrors[keyof ActionsGetGlobalFeedNewMembersErrors];
-
-export type ActionsGetGlobalFeedNewMembersResponses = {
-    200: Array<ProfileDto>;
-};
-
-export type ActionsGetGlobalFeedNewMembersResponse = ActionsGetGlobalFeedNewMembersResponses[keyof ActionsGetGlobalFeedNewMembersResponses];
-
-export type ActionsGetGlobalFeedCommentMembersData = {
-    body?: never;
-    path?: never;
-    query: {
-        postId: number;
-        limit?: number;
-        afterId?: number;
-    };
-    url: '/actions/globalFeed/forumCommentMembers';
-};
-
-export type ActionsGetGlobalFeedCommentMembersErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsGetGlobalFeedCommentMembersError = ActionsGetGlobalFeedCommentMembersErrors[keyof ActionsGetGlobalFeedCommentMembersErrors];
-
-export type ActionsGetGlobalFeedCommentMembersResponses = {
-    200: Array<ProfileDto>;
-};
-
-export type ActionsGetGlobalFeedCommentMembersResponse = ActionsGetGlobalFeedCommentMembersResponses[keyof ActionsGetGlobalFeedCommentMembersResponses];
-
-export type ActionsGetActivityData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/activities/{id}';
-};
-
-export type ActionsGetActivityErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsGetActivityError = ActionsGetActivityErrors[keyof ActionsGetActivityErrors];
-
-export type ActionsGetActivityResponses = {
-    200: ActionActivityDto;
-};
-
-export type ActionsGetActivityResponse = ActionsGetActivityResponses[keyof ActionsGetActivityResponses];
-
 export type ActionsGetWithdrawalsAdminData = {
     body?: never;
     path: {
@@ -9876,34 +9724,6 @@ export type ActionsGetWithdrawalsAdminResponses = {
 };
 
 export type ActionsGetWithdrawalsAdminResponse = ActionsGetWithdrawalsAdminResponses[keyof ActionsGetWithdrawalsAdminResponses];
-
-export type ActionsGetActionActivitiesData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query: {
-        limit: number;
-        comments: boolean;
-        before: string;
-    };
-    url: '/actions/{id}/activities';
-};
-
-export type ActionsGetActionActivitiesErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsGetActionActivitiesError = ActionsGetActionActivitiesErrors[keyof ActionsGetActionActivitiesErrors];
-
-export type ActionsGetActionActivitiesResponses = {
-    200: Array<ActionActivityDto>;
-};
-
-export type ActionsGetActionActivitiesResponse = ActionsGetActionActivitiesResponses[keyof ActionsGetActionActivitiesResponses];
 
 export type ActionsSetPriorityAdminData = {
     body: SetPriorityDto;
@@ -9950,112 +9770,6 @@ export type ActionsFindAllWithDraftsAdminResponses = {
 };
 
 export type ActionsFindAllWithDraftsAdminResponse = ActionsFindAllWithDraftsAdminResponses[keyof ActionsFindAllWithDraftsAdminResponses];
-
-export type ActionsFriendActivityForActionData = {
-    body?: never;
-    path: {
-        actionId: number;
-    };
-    query: {
-        comments: boolean;
-        limit: string;
-    };
-    url: '/actions/friendActivity/{actionId}';
-};
-
-export type ActionsFriendActivityForActionErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsFriendActivityForActionError = ActionsFriendActivityForActionErrors[keyof ActionsFriendActivityForActionErrors];
-
-export type ActionsFriendActivityForActionResponses = {
-    200: Array<ActionActivityDto>;
-};
-
-export type ActionsFriendActivityForActionResponse = ActionsFriendActivityForActionResponses[keyof ActionsFriendActivityForActionResponses];
-
-export type ActionsFriendActivityData = {
-    body?: never;
-    path?: never;
-    query: {
-        comments: boolean;
-        limit: string;
-        before: string;
-    };
-    url: '/actions/friendActivity';
-};
-
-export type ActionsFriendActivityErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsFriendActivityError = ActionsFriendActivityErrors[keyof ActionsFriendActivityErrors];
-
-export type ActionsFriendActivityResponses = {
-    200: Array<ActionActivityDto>;
-};
-
-export type ActionsFriendActivityResponse = ActionsFriendActivityResponses[keyof ActionsFriendActivityResponses];
-
-export type ActionsHomeFeedData = {
-    body?: never;
-    path?: never;
-    query: {
-        limit: string;
-        before: string;
-        comments: boolean;
-    };
-    url: '/actions/homeFeed';
-};
-
-export type ActionsHomeFeedErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsHomeFeedError = ActionsHomeFeedErrors[keyof ActionsHomeFeedErrors];
-
-export type ActionsHomeFeedResponses = {
-    200: Array<HomeFeedItemDto>;
-};
-
-export type ActionsHomeFeedResponse = ActionsHomeFeedResponses[keyof ActionsHomeFeedResponses];
-
-export type ActionsCommunityActivityData = {
-    body?: never;
-    path?: never;
-    query: {
-        communityId: number;
-        limit: string;
-        before: string;
-        comments: boolean;
-    };
-    url: '/actions/communityActivity';
-};
-
-export type ActionsCommunityActivityErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsCommunityActivityError = ActionsCommunityActivityErrors[keyof ActionsCommunityActivityErrors];
-
-export type ActionsCommunityActivityResponses = {
-    200: Array<ActionActivityDto>;
-};
-
-export type ActionsCommunityActivityResponse = ActionsCommunityActivityResponses[keyof ActionsCommunityActivityResponses];
 
 export type ActionsCommunityCompletedActionsCountData = {
     body?: never;
@@ -10490,60 +10204,6 @@ export type ActionsUpdateAdminResponses = {
 
 export type ActionsUpdateAdminResponse = ActionsUpdateAdminResponses[keyof ActionsUpdateAdminResponses];
 
-export type ActionsFindCompletedForUserData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query: {
-        comments: boolean;
-    };
-    url: '/actions/completed/{id}';
-};
-
-export type ActionsFindCompletedForUserErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsFindCompletedForUserError = ActionsFindCompletedForUserErrors[keyof ActionsFindCompletedForUserErrors];
-
-export type ActionsFindCompletedForUserResponses = {
-    200: Array<ActionActivityDto>;
-};
-
-export type ActionsFindCompletedForUserResponse = ActionsFindCompletedForUserResponses[keyof ActionsFindCompletedForUserResponses];
-
-export type ActionsUserFeedData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query: {
-        limit: string;
-        before: string;
-        comments: boolean;
-    };
-    url: '/actions/userFeed/{id}';
-};
-
-export type ActionsUserFeedErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsUserFeedError = ActionsUserFeedErrors[keyof ActionsUserFeedErrors];
-
-export type ActionsUserFeedResponses = {
-    200: Array<HomeFeedItemDto>;
-};
-
-export type ActionsUserFeedResponse = ActionsUserFeedResponses[keyof ActionsUserFeedResponses];
-
 export type ActionsUserCompletedCountData = {
     body?: never;
     path: {
@@ -10593,54 +10253,6 @@ export type ActionsAddEventAdminResponses = {
 };
 
 export type ActionsAddEventAdminResponse = ActionsAddEventAdminResponses[keyof ActionsAddEventAdminResponses];
-
-export type ActionsLikeActivityData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/likeActivity/{id}';
-};
-
-export type ActionsLikeActivityErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsLikeActivityError = ActionsLikeActivityErrors[keyof ActionsLikeActivityErrors];
-
-export type ActionsLikeActivityResponses = {
-    200: ActionActivityDto;
-};
-
-export type ActionsLikeActivityResponse = ActionsLikeActivityResponses[keyof ActionsLikeActivityResponses];
-
-export type ActionsUnlikeActivityData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/unlikeActivity/{id}';
-};
-
-export type ActionsUnlikeActivityErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsUnlikeActivityError = ActionsUnlikeActivityErrors[keyof ActionsUnlikeActivityErrors];
-
-export type ActionsUnlikeActivityResponses = {
-    200: ActionActivityDto;
-};
-
-export type ActionsUnlikeActivityResponse = ActionsUnlikeActivityResponses[keyof ActionsUnlikeActivityResponses];
 
 export type ActionsDismissActionData = {
     body?: never;
@@ -10955,30 +10567,6 @@ export type ActionsGetCommunityMemberInfoResponses = {
 };
 
 export type ActionsGetCommunityMemberInfoResponse = ActionsGetCommunityMemberInfoResponses[keyof ActionsGetCommunityMemberInfoResponses];
-
-export type ActionsGetTimelineFeedData = {
-    body?: never;
-    path?: never;
-    query: {
-        limit: number;
-    };
-    url: '/actions/timeline-feed';
-};
-
-export type ActionsGetTimelineFeedErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsGetTimelineFeedError = ActionsGetTimelineFeedErrors[keyof ActionsGetTimelineFeedErrors];
-
-export type ActionsGetTimelineFeedResponses = {
-    200: Array<TimelineFeedItemDto>;
-};
-
-export type ActionsGetTimelineFeedResponse = ActionsGetTimelineFeedResponses[keyof ActionsGetTimelineFeedResponses];
 
 export type GeneralUpdatesAllGeneralUpdatesData = {
     body?: never;
@@ -11800,6 +11388,418 @@ export type ActionSuitesDeleteSuiteEventAdminResponses = {
 };
 
 export type ActionSuitesDeleteSuiteEventAdminResponse = ActionSuitesDeleteSuiteEventAdminResponses[keyof ActionSuitesDeleteSuiteEventAdminResponses];
+
+export type ActionFeedGetActivityFeedData = {
+    body?: never;
+    path?: never;
+    query: {
+        limit: string;
+        before: string;
+        comments: boolean;
+    };
+    url: '/actions/activities/feed';
+};
+
+export type ActionFeedGetActivityFeedErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedGetActivityFeedError = ActionFeedGetActivityFeedErrors[keyof ActionFeedGetActivityFeedErrors];
+
+export type ActionFeedGetActivityFeedResponses = {
+    200: Array<ActionActivityDto>;
+};
+
+export type ActionFeedGetActivityFeedResponse = ActionFeedGetActivityFeedResponses[keyof ActionFeedGetActivityFeedResponses];
+
+export type ActionFeedGetGlobalFeedData = {
+    body?: never;
+    path?: never;
+    query: {
+        limit: number;
+    };
+    url: '/actions/globalFeed';
+};
+
+export type ActionFeedGetGlobalFeedErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedGetGlobalFeedError = ActionFeedGetGlobalFeedErrors[keyof ActionFeedGetGlobalFeedErrors];
+
+export type ActionFeedGetGlobalFeedResponses = {
+    200: Array<GlobalFeedItemDto>;
+};
+
+export type ActionFeedGetGlobalFeedResponse = ActionFeedGetGlobalFeedResponses[keyof ActionFeedGetGlobalFeedResponses];
+
+export type ActionFeedGetGlobalFeedActivityMembersData = {
+    body?: never;
+    path?: never;
+    query: {
+        actionId: number;
+        activityType: string;
+        limit?: number;
+        afterId?: number;
+    };
+    url: '/actions/globalFeed/activityGroupMembers';
+};
+
+export type ActionFeedGetGlobalFeedActivityMembersErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedGetGlobalFeedActivityMembersError = ActionFeedGetGlobalFeedActivityMembersErrors[keyof ActionFeedGetGlobalFeedActivityMembersErrors];
+
+export type ActionFeedGetGlobalFeedActivityMembersResponses = {
+    200: Array<ProfileDto>;
+};
+
+export type ActionFeedGetGlobalFeedActivityMembersResponse = ActionFeedGetGlobalFeedActivityMembersResponses[keyof ActionFeedGetGlobalFeedActivityMembersResponses];
+
+export type ActionFeedGetGlobalFeedNewMembersData = {
+    body?: never;
+    path?: never;
+    query?: {
+        limit?: number;
+        afterId?: number;
+    };
+    url: '/actions/globalFeed/newMembers';
+};
+
+export type ActionFeedGetGlobalFeedNewMembersErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedGetGlobalFeedNewMembersError = ActionFeedGetGlobalFeedNewMembersErrors[keyof ActionFeedGetGlobalFeedNewMembersErrors];
+
+export type ActionFeedGetGlobalFeedNewMembersResponses = {
+    200: Array<ProfileDto>;
+};
+
+export type ActionFeedGetGlobalFeedNewMembersResponse = ActionFeedGetGlobalFeedNewMembersResponses[keyof ActionFeedGetGlobalFeedNewMembersResponses];
+
+export type ActionFeedGetGlobalFeedCommentMembersData = {
+    body?: never;
+    path?: never;
+    query: {
+        postId: number;
+        limit?: number;
+        afterId?: number;
+    };
+    url: '/actions/globalFeed/forumCommentMembers';
+};
+
+export type ActionFeedGetGlobalFeedCommentMembersErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedGetGlobalFeedCommentMembersError = ActionFeedGetGlobalFeedCommentMembersErrors[keyof ActionFeedGetGlobalFeedCommentMembersErrors];
+
+export type ActionFeedGetGlobalFeedCommentMembersResponses = {
+    200: Array<ProfileDto>;
+};
+
+export type ActionFeedGetGlobalFeedCommentMembersResponse = ActionFeedGetGlobalFeedCommentMembersResponses[keyof ActionFeedGetGlobalFeedCommentMembersResponses];
+
+export type ActionFeedGetActivityData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/activities/{id}';
+};
+
+export type ActionFeedGetActivityErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedGetActivityError = ActionFeedGetActivityErrors[keyof ActionFeedGetActivityErrors];
+
+export type ActionFeedGetActivityResponses = {
+    200: ActionActivityDto;
+};
+
+export type ActionFeedGetActivityResponse = ActionFeedGetActivityResponses[keyof ActionFeedGetActivityResponses];
+
+export type ActionFeedGetActionActivitiesData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query: {
+        limit: number;
+        comments: boolean;
+        before: string;
+    };
+    url: '/actions/{id}/activities';
+};
+
+export type ActionFeedGetActionActivitiesErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedGetActionActivitiesError = ActionFeedGetActionActivitiesErrors[keyof ActionFeedGetActionActivitiesErrors];
+
+export type ActionFeedGetActionActivitiesResponses = {
+    200: Array<ActionActivityDto>;
+};
+
+export type ActionFeedGetActionActivitiesResponse = ActionFeedGetActionActivitiesResponses[keyof ActionFeedGetActionActivitiesResponses];
+
+export type ActionFeedFriendActivityForActionData = {
+    body?: never;
+    path: {
+        actionId: number;
+    };
+    query: {
+        comments: boolean;
+        limit: string;
+    };
+    url: '/actions/friendActivity/{actionId}';
+};
+
+export type ActionFeedFriendActivityForActionErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedFriendActivityForActionError = ActionFeedFriendActivityForActionErrors[keyof ActionFeedFriendActivityForActionErrors];
+
+export type ActionFeedFriendActivityForActionResponses = {
+    200: Array<ActionActivityDto>;
+};
+
+export type ActionFeedFriendActivityForActionResponse = ActionFeedFriendActivityForActionResponses[keyof ActionFeedFriendActivityForActionResponses];
+
+export type ActionFeedFriendActivityData = {
+    body?: never;
+    path?: never;
+    query: {
+        comments: boolean;
+        limit: string;
+        before: string;
+    };
+    url: '/actions/friendActivity';
+};
+
+export type ActionFeedFriendActivityErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedFriendActivityError = ActionFeedFriendActivityErrors[keyof ActionFeedFriendActivityErrors];
+
+export type ActionFeedFriendActivityResponses = {
+    200: Array<ActionActivityDto>;
+};
+
+export type ActionFeedFriendActivityResponse = ActionFeedFriendActivityResponses[keyof ActionFeedFriendActivityResponses];
+
+export type ActionFeedHomeFeedData = {
+    body?: never;
+    path?: never;
+    query: {
+        limit: string;
+        before: string;
+        comments: boolean;
+    };
+    url: '/actions/homeFeed';
+};
+
+export type ActionFeedHomeFeedErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedHomeFeedError = ActionFeedHomeFeedErrors[keyof ActionFeedHomeFeedErrors];
+
+export type ActionFeedHomeFeedResponses = {
+    200: Array<HomeFeedItemDto>;
+};
+
+export type ActionFeedHomeFeedResponse = ActionFeedHomeFeedResponses[keyof ActionFeedHomeFeedResponses];
+
+export type ActionFeedCommunityActivityData = {
+    body?: never;
+    path?: never;
+    query: {
+        communityId: number;
+        limit: string;
+        before: string;
+        comments: boolean;
+    };
+    url: '/actions/communityActivity';
+};
+
+export type ActionFeedCommunityActivityErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedCommunityActivityError = ActionFeedCommunityActivityErrors[keyof ActionFeedCommunityActivityErrors];
+
+export type ActionFeedCommunityActivityResponses = {
+    200: Array<ActionActivityDto>;
+};
+
+export type ActionFeedCommunityActivityResponse = ActionFeedCommunityActivityResponses[keyof ActionFeedCommunityActivityResponses];
+
+export type ActionFeedFindCompletedForUserData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query: {
+        comments: boolean;
+    };
+    url: '/actions/completed/{id}';
+};
+
+export type ActionFeedFindCompletedForUserErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedFindCompletedForUserError = ActionFeedFindCompletedForUserErrors[keyof ActionFeedFindCompletedForUserErrors];
+
+export type ActionFeedFindCompletedForUserResponses = {
+    200: Array<ActionActivityDto>;
+};
+
+export type ActionFeedFindCompletedForUserResponse = ActionFeedFindCompletedForUserResponses[keyof ActionFeedFindCompletedForUserResponses];
+
+export type ActionFeedUserFeedData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query: {
+        limit: string;
+        before: string;
+        comments: boolean;
+    };
+    url: '/actions/userFeed/{id}';
+};
+
+export type ActionFeedUserFeedErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedUserFeedError = ActionFeedUserFeedErrors[keyof ActionFeedUserFeedErrors];
+
+export type ActionFeedUserFeedResponses = {
+    200: Array<HomeFeedItemDto>;
+};
+
+export type ActionFeedUserFeedResponse = ActionFeedUserFeedResponses[keyof ActionFeedUserFeedResponses];
+
+export type ActionFeedLikeActivityData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/likeActivity/{id}';
+};
+
+export type ActionFeedLikeActivityErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedLikeActivityError = ActionFeedLikeActivityErrors[keyof ActionFeedLikeActivityErrors];
+
+export type ActionFeedLikeActivityResponses = {
+    200: ActionActivityDto;
+};
+
+export type ActionFeedLikeActivityResponse = ActionFeedLikeActivityResponses[keyof ActionFeedLikeActivityResponses];
+
+export type ActionFeedUnlikeActivityData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/unlikeActivity/{id}';
+};
+
+export type ActionFeedUnlikeActivityErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedUnlikeActivityError = ActionFeedUnlikeActivityErrors[keyof ActionFeedUnlikeActivityErrors];
+
+export type ActionFeedUnlikeActivityResponses = {
+    200: ActionActivityDto;
+};
+
+export type ActionFeedUnlikeActivityResponse = ActionFeedUnlikeActivityResponses[keyof ActionFeedUnlikeActivityResponses];
+
+export type ActionFeedGetTimelineFeedData = {
+    body?: never;
+    path?: never;
+    query: {
+        limit: number;
+    };
+    url: '/actions/timeline-feed';
+};
+
+export type ActionFeedGetTimelineFeedErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFeedGetTimelineFeedError = ActionFeedGetTimelineFeedErrors[keyof ActionFeedGetTimelineFeedErrors];
+
+export type ActionFeedGetTimelineFeedResponses = {
+    200: Array<TimelineFeedItemDto>;
+};
+
+export type ActionFeedGetTimelineFeedResponse = ActionFeedGetTimelineFeedResponses[keyof ActionFeedGetTimelineFeedResponses];
 
 export type CohortDecisionsListForActionAdminData = {
     body?: never;
