@@ -10,21 +10,10 @@ import {
   ActionCategory,
   ActionDto,
   actionsExportActionAdmin,
-  actionsGetIncompleteUsersAdmin,
-  actionsShareUrlStatsAdmin,
-  analyticsGetActionStatsByIdAdmin,
   CreateActionDto,
-  FormResponseDto,
   tasksCreateFormAdmin,
   tasksGetForm,
-  tasksGetFormResponsesAdmin,
 } from "@alliance/shared/client";
-import type {
-  ActionStatsWithOnboardingDto,
-  ActionStatus,
-  ProfileDto,
-  ShareUrlStatsDto,
-} from "@alliance/shared/client/types.gen";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
@@ -81,7 +70,6 @@ import ActionUpdatesTab from "../components/ActionUpdatesTab";
 import EventManagementTab from "../components/EventManagementTab";
 import { FormBuilder } from "../components/FormBuilder";
 import FormResponseStatistics from "../components/FormResponseStatistics";
-import type { FormWithSchema } from "../components/FormResponsesView";
 import { actionFormInputValue } from "../lib/actionFormInputValue";
 import {
   changedActionImages,
@@ -99,6 +87,7 @@ import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useAllActions } from "../lib/useAllActions";
 import { useCoverImage } from "../lib/useCoverImage";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
+import { useActionReporting } from "./action-dashboard/useActionReporting";
 
 const tabs = [
   "overview",
@@ -225,13 +214,14 @@ const ActionDashboard: React.FC = () => {
     [members],
   );
 
-  const [shareUrlStats, setShareUrlStats] = useState<ShareUrlStatsDto[]>([]);
-  const [shareUrlStatsLoading, setShareUrlStatsLoading] = useState(false);
-  const [actionStats, setActionStats] =
-    useState<ActionStatsWithOnboardingDto | null>(null);
-  const [taskForm, setTaskForm] = useState<FormWithSchema | null>(null);
-  const [formResponses, setFormResponses] = useState<FormResponseDto[]>([]);
-  const [incompleteUsers, setIncompleteUsers] = useState<ProfileDto[]>([]);
+  const {
+    shareUrlStats,
+    shareUrlStatsLoading,
+    actionStats,
+    taskForm,
+    formResponses,
+    incompleteUsers,
+  } = useActionReporting(action, actionId);
   const [incompleteUsersExpanded, setIncompleteUsersExpanded] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedTab, onTabChange] = useSearchParamTab(tabs, "overview");
@@ -339,110 +329,6 @@ const ActionDashboard: React.FC = () => {
 
     resetCoverImage(parsedAction.image ?? null);
   }, [action, actionFetching, seededActionId, resetCoverImage]);
-
-  // Load share URL stats for publicOnly actions
-  useEffect(() => {
-    if (!action || !action.publicOnly || !actionId) {
-      setShareUrlStats([]);
-      return;
-    }
-
-    const loadShareUrlStats = async () => {
-      setShareUrlStatsLoading(true);
-      try {
-        const response = await actionsShareUrlStatsAdmin({
-          path: { actionId },
-          query: { questionId: "field-1765411401186" },
-        });
-        if (response.data) {
-          setShareUrlStats(response.data);
-        }
-      } catch (err) {
-        console.error("Failed to load share URL stats:", err);
-      } finally {
-        setShareUrlStatsLoading(false);
-      }
-    };
-
-    loadShareUrlStats();
-  }, [action, actionId]);
-
-  // Load action stats for withdrawal count and completion rate
-  useEffect(() => {
-    if (!actionId) {
-      setActionStats(null);
-      return;
-    }
-
-    const loadActionStats = async () => {
-      try {
-        const response = await analyticsGetActionStatsByIdAdmin({
-          path: { actionId: actionId.toString() },
-        });
-        setActionStats(response.data ?? null);
-      } catch (err) {
-        console.error("Failed to load action stats:", err);
-      }
-    };
-
-    loadActionStats();
-  }, [actionId]);
-
-  // Load task form and responses for statistics
-  useEffect(() => {
-    if (!action?.taskFormId) {
-      setTaskForm(null);
-      setFormResponses([]);
-      return;
-    }
-
-    const loadFormData = async () => {
-      try {
-        const [formRes, respRes] = await Promise.all([
-          tasksGetForm({ path: { id: action.taskFormId! } }),
-          tasksGetFormResponsesAdmin({ path: { id: action.taskFormId! } }),
-        ]);
-        if (formRes.data) {
-          setTaskForm(formRes.data as unknown as FormWithSchema);
-        }
-        if (respRes.data) {
-          setFormResponses(respRes.data);
-        }
-      } catch (err) {
-        console.error("Failed to load form responses:", err);
-      }
-    };
-
-    loadFormData();
-  }, [action?.taskFormId]);
-
-  // Load incomplete users when action is done
-  useEffect(() => {
-    const doneStatuses: ActionStatus[] = [
-      "completed",
-      "failed",
-      "abandoned",
-      "resolution",
-      "office_action",
-    ];
-    if (!actionId || !action?.status || !doneStatuses.includes(action.status)) {
-      setIncompleteUsers([]);
-      return;
-    }
-
-    const loadIncompleteUsers = async () => {
-      try {
-        const response = await actionsGetIncompleteUsersAdmin({
-          path: { id: actionId },
-        });
-        setIncompleteUsers(response.data ?? []);
-      } catch (err) {
-        console.error("Failed to load incomplete users:", err);
-      }
-    };
-
-    loadIncompleteUsers();
-  }, [actionId, action?.status]);
 
   const handleActionCreated = useCallback(
     (action: ActionDto) => {
