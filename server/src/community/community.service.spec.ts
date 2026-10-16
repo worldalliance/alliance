@@ -296,7 +296,7 @@ describe("CommunityService", () => {
       ).toHaveBeenCalledWith(community.id);
     });
 
-    it("announces the join to the members and leaders it was loaded with", async () => {
+    it("announces the join to the members it was loaded with, not its leaders", async () => {
       const user = { id: 5, name: "New User" } as User;
       const existing = { id: 7, name: "Existing Member" } as User;
       const community = buildCommunity({ users: [existing, leader1] });
@@ -310,23 +310,24 @@ describe("CommunityService", () => {
       expect(groupJoinNotifsService.notify).toHaveBeenCalledWith({
         community,
         joiners: [user],
-        audience: [existing, leader1, leader2],
+        audience: [existing],
       });
     });
 
     it("announces the join to a supplied audience instead", async () => {
       const user = { id: 5, name: "New User" } as User;
+      const existing = { id: 7, name: "Existing Member" } as User;
       const community = buildCommunity();
 
       await service.addUsersToCommunityAndRefreshConversation({
         user,
         community,
         notifForLeader: () => null,
-        groupJoinAudience: [leader2],
+        groupJoinAudience: [existing],
       });
 
       expect(groupJoinNotifsService.notify).toHaveBeenCalledWith(
-        expect.objectContaining({ audience: [leader2] }),
+        expect.objectContaining({ audience: [existing] }),
       );
     });
 
@@ -749,15 +750,17 @@ describe("CommunityService", () => {
       expect(groupJoinNotifsService.notify).not.toHaveBeenCalled();
     });
 
-    it("announces the move to the destination's existing members", async () => {
+    it("announces the move to the destination's existing members, not its leaders", async () => {
       const communities = setUpMove();
+      const existing = { id: 7, name: "Existing Member" } as User;
+      communities.destinationCommunity.users!.push(existing);
 
       await move(communities);
 
       expect(groupJoinNotifsService.notify).toHaveBeenCalledWith({
         community: communities.destinationCommunity,
         joiners: [communities.user],
-        audience: [leader2],
+        audience: [existing],
       });
     });
 

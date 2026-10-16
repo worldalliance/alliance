@@ -11,7 +11,7 @@ import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "src/user/entities/onetime-invite.entity";
-import { ReferralSource } from "src/user/entities/user.entity";
+import { ReferralSource, User } from "src/user/entities/user.entity";
 import { GroupAssignmentService } from "src/user/group-assignment.service";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 import { GroupJoinFixtures } from "./group-join-fixtures";
@@ -40,13 +40,14 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
     await ctx.app.close();
   });
 
-  it("tells every existing member and leader once, with the copy and destination, and not the joiner", async () => {
-    const pausedLeader = await fx.createUser({}, { signed: false });
+  it("tells every existing member once, with the copy and destination, and neither the leaders nor the joiner", async () => {
+    const memberLeader = await fx.createUser();
     const outsideLeader = await fx.createUser();
+    const pausedMember = await fx.createUser({}, { signed: false });
     const existing = await fx.createUser();
     const group = await fx.createGroup({
-      leaders: [pausedLeader, outsideLeader],
-      members: [pausedLeader, existing],
+      leaders: [memberLeader, outsideLeader],
+      members: [memberLeader, pausedMember, existing],
     });
     const joiner = await fx.createUser({ name: "Jo Joiner" });
 
@@ -54,7 +55,7 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
 
     const notifs = await fx.joinNotifs();
     expect(notifs.map((notif) => notif.user!.id).sort()).toEqual(
-      [pausedLeader.id, outsideLeader.id, existing.id].sort(),
+      [pausedMember.id, existing.id].sort(),
     );
     for (const notif of notifs) {
       expect(notif.message).toBe(`Jo Joiner joined ${group.name}!`);
@@ -104,12 +105,7 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
     });
 
     const batch = [first.id, second.id].sort((a, b) => a - b);
-    expect(await fx.announcements()).toEqual(
-      new Map([
-        [leader.id, batch],
-        [existing.id, batch],
-      ]),
-    );
+    expect(await fx.announcements()).toEqual(new Map([[existing.id, batch]]));
 
     const later = await fx.createUser();
     await communityService.joinPublicCommunity(later.id, group.id);
@@ -119,17 +115,19 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
     expect(afterLater.get(second.id)).toEqual([later.id]);
   });
 
-  it("keeps a batch's leaders in their group's audience and drops members moving out", async () => {
+  it("drops a batch's members moving out of a group from its audience, and keeps its leaders out", async () => {
     const leaving = await fx.createUser({ undergoingGroupAssignment: true });
     const staying = await fx.createUser({ undergoingGroupAssignment: true });
+    const sourceMember = await fx.createUser();
     const source = await fx.createGroup({
       leaders: [staying],
-      members: [staying, leaving],
+      members: [staying, leaving, sourceMember],
     });
     const destinationLeader = await fx.createUser();
+    const destinationMember = await fx.createUser();
     const destination = await fx.createGroup({
       leaders: [destinationLeader],
-      members: [destinationLeader],
+      members: [destinationLeader, destinationMember],
     });
     const newcomer = await fx.createUser({ undergoingGroupAssignment: true });
 
@@ -143,25 +141,22 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
 
     expect(await fx.announcements()).toEqual(
       new Map([
-        [staying.id, [newcomer.id]],
-        [destinationLeader.id, [leaving.id, staying.id].sort((a, b) => a - b)],
+        [sourceMember.id, [newcomer.id]],
+        [destinationMember.id, [leaving.id, staying.id].sort((a, b) => a - b)],
       ]),
     );
   });
 
   it("announces a rejoin after leaving as a new join", async () => {
-    const leader = await fx.createUser();
-    const group = await fx.createGroup({
-      leaders: [leader],
-      members: [leader],
-    });
+    const existing = await fx.createUser();
+    const group = await fx.createGroup({ leaders: [], members: [existing] });
     const member = await fx.createUser();
 
     await communityService.joinPublicCommunity(member.id, group.id);
     await communityService.leaveCommunity(group.id, member.id);
     await communityService.joinPublicCommunity(member.id, group.id);
 
-    expect((await fx.announcements()).get(leader.id)).toEqual([
+    expect((await fx.announcements()).get(existing.id)).toEqual([
       member.id,
       member.id,
     ]);
@@ -169,9 +164,10 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
 
   it("announces staff placements and transfers, accepted invitations, and leader assignment of a non-member", async () => {
     const leader = await fx.createUser();
+    const existing = await fx.createUser();
     const group = await fx.createGroup({
       leaders: [leader],
-      members: [leader],
+      members: [leader, existing],
     });
     const otherGroup = await fx.createGroup({ leaders: [], members: [] });
     const placed = await fx.createUser();
@@ -202,17 +198,80 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
     await communityService.addLeaderAdmin(group.id, promoted.id);
     await communityService.addLeaderAdmin(group.id, placed.id);
 
-    expect((await fx.announcements()).get(leader.id)).toEqual(
+    expect((await fx.announcements()).get(existing.id)).toEqual(
       [placed.id, moved.id, invited.id, promoted.id].sort((a, b) => a - b),
     );
+    const leaderNotices = await fx.notifRepo.find({
+      where: {
+        category: NotificationCategory.MemberJoinedCommunity,
+        user: { id: leader.id },
+      },
+      relations: { associatedUsers: true },
+    });
+    expect(
+      leaderNotices
+        .flatMap((notif) => notif.associatedUsers!.map((user) => user.id))
+        .sort((a, b) => a - b),
+    ).toEqual([placed.id, moved.id, promoted.id].sort((a, b) => a - b));
+  });
+
+  it("tells the other leaders, not the promoted leader, when staff add a leader who wasn't a member", async () => {
+    const inside = await fx.createUser();
+    const outside = await fx.createUser();
+    const group = await fx.createGroup({
+      leaders: [inside, outside],
+      members: [inside],
+    });
+
+    await communityService.addLeaderAdmin(group.id, outside.id);
+
+    const leaderNotices = await fx.notifRepo.find({
+      where: { category: NotificationCategory.MemberJoinedCommunity },
+      relations: { user: true, associatedUsers: true },
+    });
+    expect(
+      leaderNotices.map((notif) => ({
+        to: notif.user!.id,
+        about: notif.associatedUsers!.map((user) => user.id),
+      })),
+    ).toEqual([{ to: inside.id, about: [outside.id] }]);
+  });
+
+  it("tells the inviting leader through the acceptance alone, and the other leaders that a member joined", async () => {
+    const inviter = await fx.createUser();
+    const otherLeader = await fx.createUser();
+    const group = await fx.createGroup({
+      leaders: [inviter, otherLeader],
+      members: [inviter, otherLeader],
+    });
+    const invited = await fx.createUser();
+    const invite = await ctx.dataSource.getRepository(CommunityInvite).save({
+      status: CommunityInviteStatus.InviteePending,
+      invitingUser: inviter,
+      invitedUser: invited,
+      community: group,
+    });
+
+    await communityService.acceptCommunityInvite(invite.id, invited.id);
+
+    const categoriesFor = async (user: User) =>
+      (await fx.notifRepo.find({ where: { user: { id: user.id } } }))
+        .map((notif) => notif.category)
+        .sort();
+    expect(await categoriesFor(inviter)).toEqual([
+      NotificationCategory.CommunityInviteAccepted,
+    ]);
+    expect(await categoriesFor(otherLeader)).toEqual([
+      NotificationCategory.MemberJoinedCommunity,
+    ]);
   });
 
   it("announces a return after contract reinstatement", async () => {
-    const leader = await fx.createUser();
+    const existing = await fx.createUser();
     const member = await fx.createUser();
     const group = await fx.createGroup({
-      leaders: [leader],
-      members: [leader, member],
+      leaders: [],
+      members: [existing, member],
     });
 
     await contractService.suspendContract({ userId: member.id });
@@ -230,7 +289,7 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
     expect(loadedCommunityUsers(returned).map((user) => user.id)).toContain(
       member.id,
     );
-    expect((await fx.announcements()).get(leader.id)).toEqual([member.id]);
+    expect((await fx.announcements()).get(existing.id)).toEqual([member.id]);
   });
 
   it("announces a first signing through a group invite link", async () => {
@@ -261,10 +320,8 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
       contractId: ctx.defaultContractId,
     });
 
-    const byRecipient = await fx.announcements();
-    expect([...byRecipient.keys()].sort()).toEqual(
-      [leader.id, existing.id].sort(),
+    expect(await fx.announcements()).toEqual(
+      new Map([[existing.id, [claimant.id]]]),
     );
-    expect(byRecipient.get(existing.id)).toEqual([claimant.id]);
   });
 });

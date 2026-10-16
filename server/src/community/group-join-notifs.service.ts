@@ -32,7 +32,7 @@ type Recipient = Pick<
 type GroupJoinNotice = {
   community: Pick<Community, "id" | "name">;
   joiners: Pick<User, "id" | "name" | "anonymous">[];
-  /** Members and leaders, each once, as of before the join; joiners are dropped from it. */
+  /** Members who don't lead the group, as of before the join; joiners are dropped from it. */
   audience: Recipient[];
 };
 

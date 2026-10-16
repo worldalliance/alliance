@@ -39,10 +39,7 @@ describe("Group join notifications: delivery (e2e)", () => {
       textsForNewGroupMembers: true,
       phoneNumber: "+14155550106",
     });
-    const group = await fx.createGroup({
-      leaders: [member],
-      members: [member],
-    });
+    const group = await fx.createGroup({ leaders: [], members: [member] });
     const joiner = await fx.createUser({
       name: "Secret Realname",
       anonymous: true,
@@ -86,7 +83,7 @@ describe("Group join notifications: delivery (e2e)", () => {
       defaulted,
       actionTexts,
     ];
-    const group = await fx.createGroup({ leaders: [texted], members });
+    const group = await fx.createGroup({ leaders: [], members });
     const joiner = await fx.createUser({ name: "Tex Joiner" });
 
     await communityService.joinPublicCommunity(joiner.id, group.id);
@@ -131,7 +128,7 @@ describe("Group join notifications: delivery (e2e)", () => {
       });
       await deviceRepo.update(device.id, { createdAt: past });
     }
-    const group = await fx.createGroup({ leaders: [pushed], members });
+    const group = await fx.createGroup({ leaders: [], members });
     const joiner = await fx.createUser();
 
     await communityService.joinPublicCommunity(joiner.id, group.id);
@@ -151,9 +148,10 @@ describe("Group join notifications: delivery (e2e)", () => {
 
   it("keeps the join and its existing notifications when saving the new ones fails", async () => {
     const leader = await fx.createUser();
+    const existing = await fx.createUser();
     const group = await fx.createGroup({
       leaders: [leader],
-      members: [leader],
+      members: [leader, existing],
     });
     const joiner = await fx.createUser();
     const notifsService = ctx.app.get(NotifsService);
@@ -185,15 +183,35 @@ describe("Group join notifications: delivery (e2e)", () => {
     ).toBe(1);
   });
 
-  it("keeps the join and its in-app entries when a text fails to send", async () => {
-    const leader = await fx.createUser({
-      textsForNewGroupMembers: true,
-      phoneNumber: "+14155550106",
-    });
+  it("keeps a staff leader promotion when telling the existing leaders fails", async () => {
+    const leader = await fx.createUser();
     const group = await fx.createGroup({
       leaders: [leader],
       members: [leader],
     });
+    const promoted = await fx.createUser();
+    jest
+      .spyOn(ctx.app.get(NotifsService), "sendNotifs")
+      .mockRejectedValue(new Error("notification write failed"));
+
+    await communityService.addLeaderAdmin(group.id, promoted.id);
+
+    const updated = await fx.communityRepo.findOneOrFail({
+      where: { id: group.id },
+      relations: { users: true, leaders: true },
+    });
+    expect(loadedCommunityUsers(updated).map((user) => user.id)).toContain(
+      promoted.id,
+    );
+    expect(updated.leaders!.map((user) => user.id)).toContain(promoted.id);
+  });
+
+  it("keeps the join and its in-app entries when a text fails to send", async () => {
+    const member = await fx.createUser({
+      textsForNewGroupMembers: true,
+      phoneNumber: "+14155550106",
+    });
+    const group = await fx.createGroup({ leaders: [], members: [member] });
     const joiner = await fx.createUser();
     jest
       .spyOn(ctx.app.get(MmsService), "sendMms")
@@ -201,6 +219,6 @@ describe("Group join notifications: delivery (e2e)", () => {
 
     await communityService.joinPublicCommunity(joiner.id, group.id);
 
-    expect((await fx.announcements()).get(leader.id)).toEqual([joiner.id]);
+    expect((await fx.announcements()).get(member.id)).toEqual([joiner.id]);
   });
 });

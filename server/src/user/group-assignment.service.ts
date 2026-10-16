@@ -6,10 +6,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CommunityService } from "src/community/community.service";
-import {
-  isCommunityLedBy,
-  membersAndLeaders,
-} from "src/community/community.utils";
+import { groupJoinAudience } from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
 import { updateLive } from "src/datasources/soft-delete";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
@@ -159,10 +156,8 @@ export class GroupAssignmentService {
     const groupJoinAudiences = new Map(
       assignments.map(({ community }) => [
         community.id,
-        membersAndLeaders(community).filter(
-          (member) =>
-            !batchUserIds.has(member.id) ||
-            isCommunityLedBy(community, member.id),
+        groupJoinAudience(community).filter(
+          (member) => !batchUserIds.has(member.id),
         ),
       ]),
     );
