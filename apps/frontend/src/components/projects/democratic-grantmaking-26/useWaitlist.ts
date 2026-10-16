@@ -6,13 +6,18 @@ import {
 import {
   waitlistBrowser,
   waitlistCount,
+  waitlistCreate,
   waitlistFindReferral,
+  waitlistForgetBrowser,
   waitlistMailConfig,
+  waitlistUpdateNominations,
+  type CreateWaitlistEntryDto,
+  type WaitlistBrowserDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 
 export const personalShareUrl = (code: string): string =>
@@ -27,14 +32,48 @@ export function useWaitlistCount() {
   });
 }
 
+/** This browser's remembered waitlist entry and every write to it. */
 export function useWaitlistBrowser() {
-  return useQuery({
+  const queryClient = useQueryClient();
+  const query = useQuery({
     queryKey: queryKeys.waitlistBrowser(),
     queryFn: () =>
       waitlistBrowser({ throwOnError: true }).then((res) => res.data),
     retry: retryUnlessRefused(1),
     staleTime: Infinity,
   });
+  const forget = useMutation({
+    mutationFn: () => waitlistForgetBrowser({ throwOnError: true }),
+    onSuccess: () => {
+      queryClient.setQueryData(queryKeys.waitlistBrowser(), {
+        entry: null,
+      } satisfies WaitlistBrowserDto);
+    },
+  });
+  const saveNominations = useMutation({
+    mutationFn: (nonprofitNominations: string) =>
+      waitlistUpdateNominations({
+        body: { nonprofitNominations },
+        throwOnError: true,
+      }),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.waitlistBrowser(),
+      }),
+  });
+  const join = useMutation({
+    mutationFn: (body: CreateWaitlistEntryDto) =>
+      waitlistCreate({ body, throwOnError: true }).then((res) => res.data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.waitlistBrowser(),
+      });
+      return queryClient.invalidateQueries({
+        queryKey: queryKeys.waitlistCount(),
+      });
+    },
+  });
+  return { query, forget, saveNominations, join };
 }
 
 /** True only once the server says public email is on. */

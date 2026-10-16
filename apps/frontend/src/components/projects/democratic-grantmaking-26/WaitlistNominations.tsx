@@ -1,11 +1,8 @@
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { waitlistUpdateNominations } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, LoaderCircle, Save } from "lucide-react";
 import { useId, useState } from "react";
+import { useWaitlistBrowser } from "./useWaitlist";
 import { WAITLIST_FIELD } from "./waitlistStyles";
 
 export function WaitlistNominations({
@@ -14,28 +11,16 @@ export function WaitlistNominations({
   initialValue: string | null;
 }) {
   const id = useId();
-  const queryClient = useQueryClient();
   const [value, setValue] = useState(initialValue ?? "");
   const [savedValue, setSavedValue] = useState(initialValue ?? "");
-  const save = useMutation({
-    mutationFn: (nonprofitNominations: string) =>
-      waitlistUpdateNominations({
-        body: { nonprofitNominations },
-        throwOnError: true,
-      }),
-    onSuccess: (_response, submitted) => {
-      setSavedValue(submitted);
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.waitlistBrowser(),
-      });
-    },
-  });
+  const { saveNominations: save } = useWaitlistBrowser();
   return (
     <form
       className="flex flex-col gap-1.5"
       onSubmit={(event) => {
         event.preventDefault();
-        save.mutate(value.trim());
+        const submitted = value.trim();
+        save.mutate(submitted, { onSuccess: () => setSavedValue(submitted) });
       }}
     >
       <label htmlFor={id} className="font-medium">

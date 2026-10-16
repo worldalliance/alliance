@@ -14,20 +14,16 @@ import { WaitlistSignupForm } from "./WaitlistSignupForm";
 
 let browser: WaitlistBrowserDto;
 let browserReply: () => Response | Promise<Response>;
-let forgetReply: () => Response;
+let forgetReply: () => Response | Promise<Response>;
 let forgotten: number;
+let referrerProfileReply: () => Response | Promise<Response>;
 
 serveApi(
   routes({
     "GET /waitlist/referral": () => new Response(null, { status: 500 }),
     "GET /waitlist/mail-config": () => Response.json({ enabled: true }),
     "GET /waitlist/browser": () => browserReply(),
-    "GET /user/referrerProfile/:code": () =>
-      Response.json({
-        kind: "user",
-        displayName: "Inviter",
-        profilePicture: null,
-      }),
+    "GET /user/referrerProfile/:code": () => referrerProfileReply(),
     "GET /user/onetimeInvite/:code": () => new Response(null, { status: 404 }),
     "DELETE /waitlist/browser": () => {
       forgotten += 1;
@@ -51,6 +47,12 @@ beforeEach(() => {
   browserReply = () => Response.json(browser);
   forgetReply = () => new Response(null, { status: 204 });
   forgotten = 0;
+  referrerProfileReply = () =>
+    Response.json({
+      kind: "user",
+      displayName: "Inviter",
+      profilePicture: null,
+    });
   sessionStorage.clear();
 });
 
@@ -60,7 +62,10 @@ const saveInvite = (code: string) =>
     JSON.stringify({ explicit: null, saved: code }),
   );
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  sessionStorage.clear();
+});
 
 const renderForm = () =>
   render(
@@ -136,6 +141,39 @@ test("forgets the browser and the tab's invitation, and shows the form again", a
   expect(sessionStorage.getItem("alliance:invite")).toBeNull();
 });
 
+test("forgets the tab's invitation even when the form leaves mid-request", async () => {
+  browser = {
+    entry: {
+      shareCode: "abc123",
+      mobilized: false,
+      nonprofitNominations: null,
+    },
+  };
+  saveInvite("invite1");
+  const reply = Promise.withResolvers<Response>();
+  forgetReply = () => reply.promise;
+  const client = new QueryClient();
+  const tree = (showForm: boolean) => (
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={["/projects/democratic-grantmaking-26"]}>
+        <InviteSessionProvider>
+          {showForm && <WaitlistSignupForm />}
+        </InviteSessionProvider>
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
+  const { rerender } = render(tree(true));
+
+  fireEvent.click(await forgetButton());
+  await waitFor(() => expect(forgotten).toBe(1));
+  rerender(tree(false));
+  reply.resolve(new Response(null, { status: 204 }));
+
+  await waitFor(() =>
+    expect(sessionStorage.getItem("alliance:invite")).toBeNull(),
+  );
+});
+
 test("keeps the tab's invitation when forgetting the browser fails", async () => {
   saveInvite("invite1");
   forgetReply = () => new Response(null, { status: 500 });
@@ -164,6 +202,29 @@ test("keeps the remembered state and says so when forgetting fails", async () =>
 
   await screen.findByText("We couldn’t forget this browser. Please try again.");
   expect(screen.getByLabelText("Your personal link")).toBeTruthy();
+});
+
+test("drops a failed forget's error once the visitor joins", async () => {
+  saveInvite("invite1");
+  forgetReply = () => new Response(null, { status: 500 });
+  renderForm();
+  fireEvent.click(await forgetButton());
+  await screen.findByText("We couldn’t forget this browser. Please try again.");
+
+  fireEvent.change(screen.getByLabelText("Full name"), {
+    target: { value: "Test Person" },
+  });
+  fireEvent.change(screen.getByLabelText("Email or mobile number"), {
+    target: { value: "person@example.com" },
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: /Join the Alliance waitlist/ }),
+  );
+
+  await screen.findByText("You’re on the waitlist.");
+  expect(
+    screen.queryByText("We couldn’t forget this browser. Please try again."),
+  ).toBeNull();
 });
 
 test("forgets a newly joined browser and hides its link", async () => {
@@ -229,4 +290,35 @@ test("keeps the form usable when the browser state fails", async () => {
       ).toBe(false),
     { timeout: 3000 },
   );
+});
+
+test("loads a refused browser state once when the tab's invitation arrives later", async () => {
+  let browserLoads = 0;
+  browserReply = () => {
+    browserLoads += 1;
+    return Response.json({ message: "Refused" }, { status: 403 });
+  };
+  const profile = Promise.withResolvers<Response>();
+  referrerProfileReply = () => profile.promise;
+  saveInvite("invite1");
+  renderForm();
+  await waitFor(() =>
+    expect(
+      screen.getByLabelText("Email or mobile number").hasAttribute("disabled"),
+    ).toBe(false),
+  );
+
+  profile.resolve(
+    Response.json({
+      kind: "user",
+      displayName: "Inviter",
+      profilePicture: null,
+    }),
+  );
+  await forgetButton();
+
+  expect(
+    screen.getByLabelText("Email or mobile number").hasAttribute("disabled"),
+  ).toBe(false);
+  expect(browserLoads).toBe(1);
 });

@@ -11,8 +11,13 @@ import { WaitlistNominations } from "./WaitlistNominations";
 
 let sent: unknown[];
 let fail: boolean;
+let browserLoads: number;
 serveApi(
   routes({
+    "GET /waitlist/browser": () => {
+      browserLoads += 1;
+      return Response.json({ entry: null });
+    },
     "PATCH /waitlist/browser/nominations": async ({ request }) => {
       sent.push(await request.json());
       return fail
@@ -24,6 +29,7 @@ serveApi(
 beforeEach(() => {
   sent = [];
   fail = false;
+  browserLoads = 0;
 });
 afterEach(cleanup);
 
@@ -66,4 +72,13 @@ test("keeps the draft and allows retry after a failure", async () => {
   fireEvent.click(save());
   await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
   await screen.findByText("Saved");
+});
+
+test("reloads the remembered entry after a save", async () => {
+  render(<WaitlistNominations initialValue={null} />, queryWrapper());
+  await waitFor(() => expect(browserLoads).toBe(1));
+  fireEvent.change(input(), { target: { value: "Example Foundation" } });
+  fireEvent.click(save());
+  await screen.findByText("Saved");
+  await waitFor(() => expect(browserLoads).toBe(2));
 });
