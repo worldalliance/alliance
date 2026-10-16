@@ -1,3 +1,4 @@
+import { hasTakenEffect } from "@alliance/common/actionEvent";
 import { findLeast } from "src/utils/filter";
 import { ActionEvent, ActionStatus } from "../entities/action-event.entity";
 
@@ -7,14 +8,6 @@ export type MemberActionPhase =
       deadlineEvent: ActionEvent | null;
     }
   | { event: null; deadlineEvent: null };
-
-/**
- * Each event is in effect over `[its date, the next event's date)`, so an event
- * has taken effect at the instant of its own date.
- */
-export function hasTakenEffect(date: Date, at: Date): boolean {
-  return date <= at;
-}
 
 /** The event in effect at `at`, and the next event, which ends it. */
 export function eventInEffectAt<E extends Pick<ActionEvent, "date">>(

@@ -1,7 +1,6 @@
 import { ActionEvent, ActionStatus } from "../entities/action-event.entity";
 import {
   eventInEffectAt,
-  hasTakenEffect,
   memberActionPhase,
   shortensMemberActionDeadline,
 } from "./action-event";
@@ -9,18 +8,6 @@ import {
 function event(id: number, date: string, newStatus: ActionStatus): ActionEvent {
   return { id, date: new Date(date), newStatus } as ActionEvent;
 }
-
-describe("hasTakenEffect", () => {
-  const date = new Date("2026-02-01");
-
-  it("is false before the event's date", () => {
-    expect(hasTakenEffect(date, new Date(date.getTime() - 1))).toBe(false);
-  });
-
-  it("is true at the event's date", () => {
-    expect(hasTakenEffect(date, date)).toBe(true);
-  });
-});
 
 describe("eventInEffectAt", () => {
   const planned = event(1, "2026-01-01", ActionStatus.Planned);
