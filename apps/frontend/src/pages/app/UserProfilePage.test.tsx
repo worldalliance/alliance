@@ -108,14 +108,14 @@ const failStatus = () =>
       Response.json({ message: "Internal server error" }, { status: 500 }),
   });
 
-const renderProfile = () => {
+const renderProfile = (profileId = GRACE.id) => {
   const { client, wrapper: QueryWrapper } = queryWrapper();
   render(
     <QueryWrapper>
       <ToastProvider>
         <AuthContext.Provider value={authValue({ user: testAuthUser })}>
           <SiteAppProvider>
-            <MemoryRouter initialEntries={[`/user/${GRACE.id}`]}>
+            <MemoryRouter initialEntries={[`/user/${profileId}`]}>
               <Routes>
                 <Route path="/user/:id" element={<UserProfilePage />} />
               </Routes>
@@ -134,6 +134,51 @@ it("tells the user when the server refuses a friend request", async () => {
 
   await screen.findByText("Couldn't send friend request");
   screen.getByText("Already friends");
+});
+
+it("requests the friend status while the profile is still loading", async () => {
+  const profiles: Pending<Response>[] = [];
+  let statusRequests = 0;
+  api.alsoServing({
+    "GET /user/slug/:id": () => pending(profiles),
+    "GET /user/myfriendrelationship/:id": () => {
+      statusRequests++;
+      return Response.json({
+        status: "none",
+        didReceiveRequest: false,
+      } satisfies FriendStatusDto);
+    },
+  });
+  renderProfile();
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+  expect(profiles).toHaveLength(1);
+  expect(statusRequests).toBe(1);
+});
+
+it("keeps an unsaved edit through a failed profile refetch", async () => {
+  const me = { ...GRACE, id: testAuthUser.id };
+  api.alsoServing({ "GET /user/slug/:id": () => Response.json(me) });
+  const { client } = renderProfile(me.id);
+  fireEvent.click(await screen.findByText("Edit"));
+  fireEvent.change(screen.getByDisplayValue(me.displayName), {
+    target: { value: "Draft" },
+  });
+
+  const refetchProfile = () =>
+    act(() =>
+      client.refetchQueries({ queryKey: userQueryKeys.profile(me.id) }),
+    );
+  api.alsoServing({
+    "GET /user/slug/:id": () =>
+      Response.json({ message: "Internal server error" }, { status: 500 }),
+  });
+  await refetchProfile();
+  await screen.findByText("Failed to load user profile");
+
+  api.alsoServing({ "GET /user/slug/:id": () => Response.json(me) });
+  await refetchProfile();
+  await screen.findByDisplayValue("Draft");
 });
 
 it("offers a retry when the friend status fails to load", async () => {
