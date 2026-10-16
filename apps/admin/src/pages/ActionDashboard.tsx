@@ -1,23 +1,10 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useMembers } from "@alliance/shared/lib/useMembers";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useSelectableUsers } from "@alliance/sharedweb/ui/UserSelect";
-import {
-  ChevronDown,
-  ChevronUp,
-  EyeOff,
-  TrendingUp,
-  UserCheck,
-  UserMinus,
-  Users,
-  UserX,
-} from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -28,7 +15,6 @@ import React, {
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { ActionCategoryIcons } from "../components/ActionCategoryIcons";
 import ActionCohortDecisionsTab from "../components/ActionCohortDecisionsTab";
-import ActionCompletionCurveChart from "../components/ActionCompletionCurveChart";
 import ActionFollowUpFormsTab from "../components/ActionFollowUpFormsTab";
 import ActionFormVariantsTab from "../components/ActionFormVariantsTab";
 import ActionMergedResponsesTab from "../components/ActionMergedResponsesTab";
@@ -36,19 +22,19 @@ import { ActionProjectSteps } from "../components/ActionProjectControls";
 import ActionUpdatesTab from "../components/ActionUpdatesTab";
 import EventManagementTab from "../components/EventManagementTab";
 import { FormBuilder } from "../components/FormBuilder";
-import FormResponseStatistics from "../components/FormResponseStatistics";
 import {
   ACTION_STATUS_COLORS,
   ACTION_STATUS_LABELS,
 } from "../lib/actionStatusDisplay";
 import { getSiteUrl } from "../lib/config";
-import type { FormResponseFilter } from "../lib/responseFilter";
 import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useAllActions } from "../lib/useAllActions";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 import ActionDashboardToolbar from "./action-dashboard/ActionDashboardToolbar";
 import ActionEditor from "./action-dashboard/ActionEditor";
+import ActionParticipationStats from "./action-dashboard/ActionParticipationStats";
 import ActionReadinessChecklist from "./action-dashboard/ActionReadinessChecklist";
+import ActionResponseReports from "./action-dashboard/ActionResponseReports";
 import { useActionCommands } from "./action-dashboard/useActionCommands";
 import { useActionEditor } from "./action-dashboard/useActionEditor";
 import { useActionExport } from "./action-dashboard/useActionExport";
@@ -142,14 +128,7 @@ const ActionDashboard: React.FC = () => {
     allActionsLoadFailed,
   };
 
-  const {
-    shareUrlStats,
-    shareUrlStatsLoading,
-    actionStats,
-    taskForm,
-    formResponses,
-    incompleteUsers,
-  } = useActionReporting(action, actionId);
+  const reporting = useActionReporting(action, actionId);
   const [incompleteUsersExpanded, setIncompleteUsersExpanded] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedTab, onTabChange] = useSearchParamTab(tabs, "overview");
@@ -380,154 +359,13 @@ const ActionDashboard: React.FC = () => {
                   )}
                 </Card>
 
-                {/* Stats Grid - only show after member_action has started */}
-                {hasMemberActionStarted && (
-                  <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    <Card style={CardStyle.White} className="!p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-100 rounded-lg">
-                          <TrendingUp className="h-5 w-5 text-purple-600" />
-                        </div>
-                        <div>
-                          <p className="text-2xl font-bold">
-                            {action.usersJoined > 0
-                              ? Math.round(
-                                  (action.usersCompleted / action.usersJoined) *
-                                    100,
-                                )
-                              : 0}
-                            %
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Completion Rate
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
-                    <Card style={CardStyle.White} className="!p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <Users className="h-5 w-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="text-2xl font-bold">
-                            {action.usersJoined}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {action.optional
-                              ? "Able to complete"
-                              : "Expected to complete"}
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
-                    <Card style={CardStyle.White} className="!p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-100 rounded-lg">
-                          <UserCheck className="h-5 w-5 text-green-600" />
-                        </div>
-                        <div>
-                          <p className="text-2xl font-bold">
-                            {action.usersCompleted}
-                          </p>
-                          <p className="text-xs text-gray-500">Completed</p>
-                        </div>
-                      </div>
-                    </Card>
-                    <Card style={CardStyle.White} className="!p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-orange-100 rounded-lg">
-                          <UserMinus className="h-5 w-5 text-orange-600" />
-                        </div>
-                        <div>
-                          <p className="text-2xl font-bold">
-                            {actionStats?.usersWithdrawn ?? 0}
-                          </p>
-                          <p className="text-xs text-gray-500">Withdrawn</p>
-                        </div>
-                      </div>
-                    </Card>
-                    {incompleteUsers.length > 0 && !action.optional && (
-                      <Card
-                        style={CardStyle.White}
-                        className="!p-4 cursor-pointer hover:bg-gray-50"
-                        onClick={() =>
-                          setIncompleteUsersExpanded(!incompleteUsersExpanded)
-                        }
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-red-100 rounded-lg">
-                            <UserX className="h-5 w-5 text-red-600" />
-                          </div>
-                          <div>
-                            <p className="text-2xl font-bold">
-                              {incompleteUsers.length}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Failed to Complete
-                            </p>
-                          </div>
-                          {incompleteUsersExpanded ? (
-                            <ChevronUp className="h-4 w-4 text-gray-400 ml-auto" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-gray-400 ml-auto" />
-                          )}
-                        </div>
-                      </Card>
-                    )}
-                    {action.optional && (
-                      <Card style={CardStyle.White} className="!p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-gray-100 rounded-lg">
-                            <EyeOff className="h-5 w-5 text-gray-600" />
-                          </div>
-                          <div>
-                            <p className="text-2xl font-bold">
-                              {actionStats?.usersDismissed ?? 0}
-                            </p>
-                            <p className="text-xs text-gray-500">Dismissed</p>
-                          </div>
-                        </div>
-                      </Card>
-                    )}
-                  </div>
-                )}
-
-                {/* Incomplete Users Expanded List */}
-                {incompleteUsersExpanded && incompleteUsers.length > 0 && (
-                  <Card style={CardStyle.White}>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                      Users Who Failed to Complete
-                    </h3>
-                    <ul className="divide-y divide-gray-200 max-h-64 overflow-y-auto">
-                      {incompleteUsers.map((user) => (
-                        <li key={user.id} className="py-2">
-                          <a
-                            href={`/users/${user.id}`}
-                            className="flex items-center gap-2 hover:bg-gray-50 px-2 py-1 rounded"
-                          >
-                            <AvatarProfile
-                              pfp={user.profilePicture}
-                              size="small"
-                            />
-                            <span className="text-sm font-medium text-gray-800 hover:text-blue-600">
-                              {user.displayName}
-                            </span>
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </Card>
-                )}
-                {hasMemberActionStarted &&
-                  !action.publicOnly &&
-                  !action.optional && (
-                    <ActionCompletionCurveChart
-                      title="Completion over time"
-                      actionId={action.id}
-                      showSelector={false}
-                    />
-                  )}
+                <ActionParticipationStats
+                  action={action}
+                  reporting={reporting}
+                  hasMemberActionStarted={hasMemberActionStarted}
+                  incompleteUsersExpanded={incompleteUsersExpanded}
+                  setIncompleteUsersExpanded={setIncompleteUsersExpanded}
+                />
                 <Card style={CardStyle.White}>
                   <h2 className="text-lg font-semibold mb-3">Timeline</h2>
                   <div className="space-y-2">
@@ -577,107 +415,13 @@ const ActionDashboard: React.FC = () => {
                   </div>
                 </Card>
 
-                {/* Share URL Stats - only for publicOnly actions */}
-                {action.publicOnly && (
-                  <Card style={CardStyle.White}>
-                    <h2 className="font-semibold mb-4">
-                      Invite Stats (
-                      {shareUrlStats.reduce((sum, s) => sum + s.inviteCount, 0)}{" "}
-                      total public submissions)
-                    </h2>
-                    {shareUrlStatsLoading ? (
-                      <div className="text-sm text-gray-500">Loading...</div>
-                    ) : shareUrlStats.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-gray-200">
-                              <th className="text-left py-2 px-3 font-medium text-gray-600">
-                                Member
-                              </th>
-                              <th className="text-right py-2 px-3 font-medium text-gray-600">
-                                Form submissions
-                              </th>
-                              <th className="text-right py-2 px-3 font-medium text-gray-600">
-                                Interested in joining
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {shareUrlStats.map((stat) => (
-                              <tr
-                                key={stat.sid}
-                                className="border-b border-gray-100 hover:bg-gray-50"
-                              >
-                                <td className="py-2 px-3">
-                                  <div className="flex items-center gap-2">
-                                    <AvatarProfile
-                                      pfp={stat.user.profilePicture}
-                                      size="small"
-                                    />
-                                    <span className="font-medium text-gray-800">
-                                      {stat.user.displayName}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="py-2 px-3 text-right font-medium">
-                                  {stat.inviteCount}
-                                </td>
-                                <td className="py-2 px-3 text-right font-medium">
-                                  {stat.yesCount}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className="text-sm text-gray-500">
-                        No invites yet.
-                      </div>
-                    )}
-                  </Card>
-                )}
-
-                {/* Form Response Statistics - only show after member_action has started */}
-                {hasMemberActionStarted &&
-                  action.taskFormId &&
-                  taskForm &&
-                  formResponses.length > 0 && (
-                    <Card style={CardStyle.White}>
-                      <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold">
-                          Response Statistics ({formResponses.length} responses)
-                        </h2>
-                        <Button
-                          onClick={() => onTabChange("responses")}
-                          color={ButtonColor.White}
-                          size="small"
-                        >
-                          View All Responses →
-                        </Button>
-                      </div>
-                      <FormResponseStatistics
-                        form={taskForm}
-                        responses={formResponses}
-                        onFilterSelect={(filter: FormResponseFilter) => {
-                          setSearchParams((prev) => {
-                            const next = new URLSearchParams(prev);
-                            next.set("tab", "responses");
-                            next.set("resp_tab", "replays");
-                            next.set("resp_filterField", filter.fieldId);
-                            next.set("resp_filterOp", filter.op);
-                            if (filter.value != null) {
-                              next.set("resp_filterValue", filter.value);
-                            } else {
-                              next.delete("resp_filterValue");
-                            }
-                            return next;
-                          });
-                        }}
-                      />
-                    </Card>
-                  )}
+                <ActionResponseReports
+                  action={action}
+                  reporting={reporting}
+                  hasMemberActionStarted={hasMemberActionStarted}
+                  onTabChange={onTabChange}
+                  setSearchParams={setSearchParams}
+                />
               </div>
             )}
 
@@ -694,7 +438,7 @@ const ActionDashboard: React.FC = () => {
                   checklist: (
                     <ActionReadinessChecklist
                       action={action}
-                      taskForm={taskForm}
+                      taskForm={reporting.taskForm}
                       collapsed={checklistCollapsed}
                       onCollapsedChange={setChecklistCollapsed}
                     />
