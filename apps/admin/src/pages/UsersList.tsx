@@ -1,19 +1,15 @@
 import { phoneSearchDigits, phoneSearchTerm } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
-import { communityGetAllMemberContactInfoAdmin } from "@alliance/shared/client";
 import {
-  CommunityMemberContactInfoDto,
   ProfileDto,
   UserActionRelationDetailDto,
 } from "@alliance/shared/client/types.gen";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
-import { useQuery } from "@tanstack/react-query";
 import { groupBy, mapValues } from "es-toolkit";
 import { LayoutGrid, List, Shuffle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -28,6 +24,7 @@ import {
 } from "../lib/memberRoleFilter";
 import { useActionRelationsAdmin } from "../lib/useActionRelationsAdmin";
 import { useCompletedAllActiveActions } from "../lib/useCompletedAllActiveActions";
+import { useMemberContactInfoAdmin } from "../lib/useMemberContactInfoAdmin";
 import { useTimeSpentPerUserTotalAdmin } from "../lib/useTimeSpentPerUserTotalAdmin";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
 
@@ -233,24 +230,7 @@ const UsersList: React.FC = () => {
     return list;
   }, [usersAsProfiles, shuffledIds]);
 
-  const { data: contactInfoList } = useQuery({
-    queryKey: queryKeys.memberContactInfoAdmin(),
-    queryFn: () =>
-      communityGetAllMemberContactInfoAdmin({ throwOnError: true }).then(
-        (response) => response.data,
-      ),
-  });
-  const memberContactInfo = useMemo(
-    () =>
-      (contactInfoList ?? []).reduce(
-        (acc, contactInfo) => {
-          acc[contactInfo.id] = contactInfo;
-          return acc;
-        },
-        {} as Record<number, CommunityMemberContactInfoDto>,
-      ),
-    [contactInfoList],
-  );
+  const { data: memberContactInfo } = useMemberContactInfoAdmin();
 
   const handleUserTagToggle = useCallback(
     async (userId: number, tagId: string, nextChecked: boolean) => {
