@@ -19,7 +19,6 @@ import { ActionEventNotifDeliveryService } from "./action-event-notif-delivery.s
 import { ActionEventNotifWorker } from "./action-event-notif.worker";
 import {
   ActionEventReminderService,
-  assertExcludePreviouslyNotifiedAllowed,
   comparePlansForDispatch,
   dropPlansPreemptedInSameCycle,
   tasksNotYetNotified,
@@ -726,40 +725,5 @@ describe("tasksNotYetNotified", () => {
 
   it("ignores covered actions that are no longer among the tasks", () => {
     expect(tasksNotYetNotified(tasks, [[99]])).toEqual(tasks);
-  });
-});
-
-describe("assertExcludePreviouslyNotifiedAllowed", () => {
-  it("rejects excludePreviouslyNotified on a group-leads cohort", () => {
-    expect(() =>
-      assertExcludePreviouslyNotifiedAllowed({
-        cohortType: ReminderCohortType.GroupLeadsWithUncompleted,
-        excludePreviouslyNotified: true,
-      }),
-    ).toThrow(
-      "excludePreviouslyNotified is not supported for group-leads cohorts",
-    );
-  });
-
-  it("allows a group-leads cohort without the flag", () => {
-    expect(() =>
-      assertExcludePreviouslyNotifiedAllowed({
-        cohortType: ReminderCohortType.GroupLeadsWithUncompleted,
-        excludePreviouslyNotified: false,
-      }),
-    ).not.toThrow();
-  });
-
-  it.each([
-    ReminderCohortType.AllUncompleted,
-    ReminderCohortType.Tag,
-    ReminderCohortType.Custom,
-  ])("allows the flag on the personally-notifying %s cohort", (cohortType) => {
-    expect(() =>
-      assertExcludePreviouslyNotifiedAllowed({
-        cohortType,
-        excludePreviouslyNotified: true,
-      }),
-    ).not.toThrow();
   });
 });

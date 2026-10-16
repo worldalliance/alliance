@@ -95,6 +95,7 @@ import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { NotificationPlan } from "src/notifs/dto/notification-plan.dto";
 import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { NotifsService } from "src/notifs/notifs.service";
+import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import { PosthogService } from "src/posthog/posthog.service";
 import { actionActivityUrl } from "src/search/approutes";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
@@ -212,7 +213,6 @@ import {
   HomeFeedItem,
   HomeFeedItemDto,
   HomeFeedItemType,
-  ReminderAnchorCandidate,
   SetPriorityDto,
   SuspensionPlan,
   TimelineFeedItemDto,
@@ -426,6 +426,7 @@ export class ActionsService {
     private readonly recognitionService: ActionUpdateRecognitionService,
     private readonly actionEventRecipientService: ActionEventRecipientService,
     private readonly actionEventReminderService: ActionEventReminderService,
+    private readonly reminderGroupService: ReminderGroupService,
     private readonly likeNotificationService: LikeNotificationService,
     private readonly forumService: ForumService,
     private readonly forumCommentQueryService: ForumCommentQueryService,
@@ -3727,11 +3728,10 @@ export class ActionsService {
         },
       },
     });
-    const fields =
-      await this.actionEventReminderService.reminderGroupFieldsFromDto(
-        body,
-        event,
-      );
+    const fields = await this.reminderGroupService.reminderGroupFieldsFromDto(
+      body,
+      event,
+    );
 
     let actionSuite: ActionSuite | undefined = undefined;
     if (body.suiteId) {
@@ -3742,7 +3742,7 @@ export class ActionsService {
     }
 
     const withDeadlineEvent =
-      await this.actionEventReminderService.attachSendableDeadlineEvent({
+      await this.reminderGroupService.attachSendableDeadlineEvent({
         ...fields,
         id: 0,
         name: "Tentative Reminder Group",
@@ -3757,14 +3757,6 @@ export class ActionsService {
       withDeadlineEvent,
       new Date(Date.now() - NOTIFICATION_LOOKBACK_WINDOW_MS),
       new Date(Date.now() + milliseconds({ days: 30 })),
-    );
-  }
-
-  async findReminderAnchorCandidates(
-    eventId: number,
-  ): Promise<ReminderAnchorCandidate[]> {
-    return this.actionEventReminderService.findReminderAnchorCandidates(
-      eventId,
     );
   }
 
@@ -3825,9 +3817,7 @@ export class ActionsService {
       : undefined;
 
     const reminderGroups = reminders
-      ? await this.actionEventReminderService.getReminderGroupsForEvent(
-          action.id,
-        )
+      ? await this.reminderGroupService.getReminderGroupsForEvent(action.id)
       : undefined;
 
     return new ExportActionDto(action, {

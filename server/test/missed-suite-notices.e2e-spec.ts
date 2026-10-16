@@ -36,6 +36,7 @@ import {
   Notification,
   NotificationCategory,
 } from "src/notifs/entities/notification.entity";
+import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import {
   ContractEvent,
   ContractEventType,
@@ -402,9 +403,7 @@ describe("missed-suite notices (e2e)", () => {
     const sending = jest
       .spyOn(mms, "sendMms")
       .mockImplementationOnce(async (...args) => {
-        await ctx.app
-          .get(ActionEventReminderService)
-          .deleteReminderGroup(group.id);
+        await ctx.app.get(ReminderGroupService).deleteReminderGroup(group.id);
         return send(...args);
       });
 

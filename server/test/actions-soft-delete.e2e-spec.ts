@@ -32,7 +32,7 @@ import {
 import { ProjectsService } from "src/actions/projects.service";
 import { AuthService } from "src/auth/auth.service";
 import { Guest } from "src/auth/entities/guest.entity";
-import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
+import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { FormResponseDraft } from "src/tasks/entities/formresponsedraft.entity";
@@ -245,7 +245,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
       date: new Date(),
       action,
     });
-    const reminders = ctx.app.get(ActionEventReminderService);
+    const reminders = ctx.app.get(ReminderGroupService);
     const load = reminders.resolveTimingAnchorEvent.bind(reminders);
     jest
       .spyOn(reminders, "resolveTimingAnchorEvent")
@@ -749,7 +749,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
   });
 
   describe("reminder group edits", () => {
-    let reminders: ActionEventReminderService;
+    let reminders: ReminderGroupService;
     let groups: Repository<ReminderGroup>;
 
     const liveGroup = async () => {
@@ -765,7 +765,7 @@ describe("Action writers under a deleted parent (e2e)", () => {
     };
 
     beforeAll(() => {
-      reminders = ctx.app.get(ActionEventReminderService);
+      reminders = ctx.app.get(ReminderGroupService);
       groups = ctx.dataSource.getRepository(ReminderGroup);
     });
 
