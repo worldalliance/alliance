@@ -15,13 +15,9 @@ import type {
   FormResponseDto,
   ProfileDto,
 } from "@alliance/shared/client";
-import { CardStyle } from "@alliance/shared/styles/card";
-import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
-import { AI_SCORE_FIELD_KINDS, formatAiScore } from "../lib/aiScore";
 import { downloadBlob } from "../lib/downloadBlob";
 import {
   getDirectSnapshotTarget,
@@ -39,6 +35,7 @@ import {
 import { buildResponsesCsv } from "../lib/responsesCsvExport";
 import { buildResponsesHtml } from "../lib/responsesHtmlExport";
 import QuestionResponses from "./form-responses/QuestionResponses";
+import ResponseReplay from "./form-responses/ResponseReplay";
 import ResponseReplayNavigator from "./form-responses/ResponseReplayNavigator";
 import { useRespondentSearch } from "./form-responses/useRespondentSearch";
 import FormResponseStatistics from "./FormResponseStatistics";
@@ -320,39 +317,6 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   const filteredTotal = filteredResponses.length;
   const currentResponse = filteredResponses[page - 1];
 
-  const currentResponseAiInlineLabels = useMemo<
-    Record<string, React.ReactNode>
-  >(() => {
-    const response = currentResponse as FormResponseDto | undefined;
-    const detections = response?.aiDetectionResults ?? [];
-    const inlineScores: Record<string, React.ReactNode> = {};
-
-    for (const detection of detections) {
-      if (!detection.fieldPath.startsWith("answers.")) {
-        continue;
-      }
-      const fieldId = detection.fieldPath.slice("answers.".length);
-      const field = fieldsById.get(fieldId);
-      if (!field || !AI_SCORE_FIELD_KINDS.has(field.kind)) {
-        continue;
-      }
-      if (
-        typeof detection.aiProbability !== "number" ||
-        Number.isNaN(detection.aiProbability) ||
-        detection.aiProbability <= 0
-      ) {
-        continue;
-      }
-      inlineScores[fieldId] = (
-        <span className="text-sm font-semibold text-red-600">
-          {formatAiScore(detection.aiProbability)}
-        </span>
-      );
-    }
-
-    return inlineScores;
-  }, [currentResponse, fieldsById]);
-
   const filterSummary = useMemo(() => {
     if (!activeFilter || !activeFilterField) return null;
     return filterDescription({
@@ -361,10 +325,6 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
       responses: scopedResponses,
     });
   }, [activeFilter, activeFilterField, scopedResponses]);
-
-  const emptyStateMessage = filterSummary
-    ? "No responses match this filter."
-    : "No responses yet for this form.";
 
   const handleStatFilter = useCallback(
     (filter: FormResponseFilter) => {
@@ -615,65 +575,16 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
       </div>
 
       {tab === "replays" && (
-        <div className="px-2">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-gray-500">Loading responses...</p>
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-red-500">{error}</p>
-            </div>
-          ) : filteredTotal === 0 ? (
-            <Card style={CardStyle.White} className="flex items-center gap-3">
-              <p className="text-gray-600">{emptyStateMessage}</p>
-              {filterSummary && (
-                <Button
-                  onClick={clearFilter}
-                  color={ButtonColor.White}
-                  size="small"
-                >
-                  Clear filter
-                </Button>
-              )}
-            </Card>
-          ) : (
-            <>
-              {/* Form Response */}
-              {form !== null && (
-                <div className="max-w-[600px] mx-auto">
-                  {(() => {
-                    const responseSchema =
-                      (currentResponse?.schemaSnapshot as unknown as FormSchema) ??
-                      form.schema;
-                    return (
-                      <div className="bg-white p-6 border border-gray-200 rounded-lg">
-                        <FormRenderer
-                          id={currentResponse?.formId ?? form.id}
-                          formSnapshotId={
-                            currentResponse?.formSnapshotId ??
-                            form.formSnapshotId
-                          }
-                          actionId={0}
-                          form={responseSchema}
-                          completedFormResponse={currentResponse}
-                          renderFormAsCompleted
-                          onSubmit={null}
-                          userId={currentResponse?.user?.id}
-                          user={currentResponse?.user ?? undefined}
-                          adminPreviewUserId={currentResponse?.user?.id}
-                          showVariableError
-                          disableOptionRandomization
-                          fieldLabelRightContent={currentResponseAiInlineLabels}
-                        />
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        <ResponseReplay
+          loading={loading}
+          error={error}
+          form={form}
+          filteredTotal={filteredTotal}
+          filterActive={filterSummary !== null}
+          onClearFilter={clearFilter}
+          currentResponse={currentResponse}
+          fieldsById={fieldsById}
+        />
       )}
       {tab === "responses" && (
         <div className="px-2 py-3">
