@@ -12,6 +12,7 @@ import {
 } from "@testing-library/react";
 import { useState } from "react";
 import { renderBlockEditor } from "../display-blocks/blockEditors";
+import { resetCustomValidatorsCache } from "../form-fields/CommonControls";
 import { LocalExpressionBuffers } from "../form-fields/conditions/expressionBuffers";
 import { CustomValidatorDraftsContext } from "../form-fields/customValidatorDrafts";
 import { renderFieldEditor } from "../form-fields/fieldEditors";
@@ -24,7 +25,7 @@ import {
 } from "./sidebarSections";
 
 afterEach(cleanup);
-serveApi(routes({}, () => Response.json([])));
+const api = serveApi(routes({}, () => Response.json([])));
 
 function Sidebar({ initial }: { initial: PageItem }) {
   const [element, setElement] = useState(initial);
@@ -241,5 +242,37 @@ describe("an editor in the settings sidebar", () => {
     openSection("Content");
     openSection("Conditions");
     expect(panel().getByRole("textbox", { name: "Expression" })).toBeTruthy();
+  });
+
+  it("shows a saved custom validator's settings", async () => {
+    resetCustomValidatorsCache();
+    api.alsoServing({
+      "GET /tasks/customValidators": () =>
+        Response.json([
+          {
+            name: "Has phone number",
+            id: "HasPhoneNumber",
+            withIdField: false,
+            usableForVisibility: true,
+          },
+        ]),
+      "GET /tasks/findOneCustomValidator/:id": ({ params }) =>
+        Response.json({
+          id: Number(params.id),
+          type: "HasPhoneNumber",
+          idArgument: null,
+          expression: null,
+        }),
+    });
+    renderSidebar({
+      id: "t",
+      type: "input",
+      kind: "text",
+      label: "Town",
+      customValidatorId: 42,
+    });
+
+    openSection("Advanced");
+    expect(await panel().findByDisplayValue("Has phone number")).toBeTruthy();
   });
 });
