@@ -152,6 +152,8 @@ export const queryKeys = {
     [...actionReminderGroupsAdminAll(), "group"] as const,
   actionReminderGroupDetailsAdmin: (groupId: number) =>
     [...actionReminderGroupsAdminAll(), "group", groupId] as const,
+  actionReminderAnchorCandidatesAdmin: (eventId: number | null) =>
+    ["actionsReminderAnchorCandidatesAdmin", eventId] as const,
   ambassadorProgramAdmin: () => ["userGetAmbassadorProgramAdmin"] as const,
   campaignsAdmin: () => ["campaignFindAllAdmin"] as const,
   clustersAdmin: () => ["clusterListAdmin"] as const,

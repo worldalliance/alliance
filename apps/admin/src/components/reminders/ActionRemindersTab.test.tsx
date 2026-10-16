@@ -23,6 +23,7 @@ let groups: ({ id: number; name: string } & Record<string, unknown>)[] = [];
 let groupsStatus = 200;
 let deleteStatus = 200;
 let createStatus = 200;
+let anchorCandidatesStatus = 200;
 const previewRequests: unknown[] = [];
 
 serveApi(
@@ -31,7 +32,8 @@ serveApi(
     "GET /user/tags": () => Response.json([]),
     "GET /actions/reminderGroupsForEvent/:id": () =>
       Response.json(groups, { status: groupsStatus }),
-    "GET /actions/reminderAnchorCandidates/:id": () => Response.json([]),
+    "GET /actions/reminderAnchorCandidates/:id": () =>
+      Response.json([], { status: anchorCandidatesStatus }),
     "GET /actions/plansForGroup/:groupId": () => Response.json([]),
     "GET /actions/sentNotifsForGroup/:groupId": () => Response.json([]),
     "POST /actions/events/:eventId/createremindergroup": async ({
@@ -85,6 +87,7 @@ afterEach(() => {
   groupsStatus = 200;
   deleteStatus = 200;
   createStatus = 200;
+  anchorCandidatesStatus = 200;
   previewRequests.length = 0;
 });
 
@@ -126,6 +129,17 @@ it("says the reminders failed to load", async () => {
   expect(
     screen.queryByRole("button", { name: "Populate default reminders" }),
   ).toBeNull();
+});
+
+it("says the dependency deadlines failed to load", async () => {
+  anchorCandidatesStatus = 500;
+  renderTab();
+
+  expect(
+    await screen.findByText(
+      "Failed to load dependency deadlines for timing anchors.",
+    ),
+  ).toBeTruthy();
 });
 
 const deleteGroup = async (name: string) => {
