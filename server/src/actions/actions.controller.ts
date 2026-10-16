@@ -58,14 +58,12 @@ import {
   ActionEventDto,
   ActionReferralCodeDto,
   ActionSharePreviewDto,
-  ActionSuiteDto,
   ActionWithdrawalDto,
   AdminActionDto,
   AdminActionListItemDto,
   CreateActionActivityDto,
   CreateActionDto,
   CreateActionEventDto,
-  CreateActionSuiteDto,
   EvaluateCohortExpressionDto,
   EvaluateCohortExpressionResponseDto,
   ExportActionDto,
@@ -76,7 +74,6 @@ import {
   SetPriorityDto,
   TimelineFeedItemDto,
   UpdateActionDto,
-  UpdateActionEventDto,
   WelcomeQueueDto,
 } from "./dto/action.dto";
 import { CommunityCompletedActionsCountDto } from "./dto/community-completed-actions-count.dto";
@@ -782,83 +779,6 @@ export class ActionsController {
     @Param("id", ParseIntPipe) id: number,
   ): Promise<AdminActionDto> {
     return new AdminActionDto(await this.actionsService.unarchive(id));
-  }
-
-  @Get("suites")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionSuiteDto, isArray: true })
-  async suitesAdmin(): Promise<ActionSuiteDto[]> {
-    const suites = await this.actionsService.findSuites();
-    return suites.map((suite) => new ActionSuiteDto(suite, []));
-  }
-
-  @Get("suite/:id")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionSuiteDto })
-  async suiteAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.findSuite(id);
-    return new ActionSuiteDto(suite, suite.actions);
-  }
-
-  @Post("createSuite")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionSuiteDto })
-  async createSuiteAdmin(
-    @Body() createActionSuiteDto: CreateActionSuiteDto,
-  ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.createSuite(createActionSuiteDto);
-    return new ActionSuiteDto(suite, []);
-  }
-
-  @Patch("suite/:suiteId/batchUpdateSuiteEvents/:eventId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionSuiteDto })
-  @ApiAcknowledgeDeadlineShortening()
-  async batchUpdateSuiteEventsAdmin(
-    @Param("suiteId", ParseIntPipe) suiteId: number,
-    @Param("eventId", ParseIntPipe) eventId: number,
-    @Body() body: UpdateActionEventDto,
-    @AcknowledgeDeadlineShortening()
-    acknowledgeDeadlineShortening: boolean,
-  ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.batchUpdateSuiteEvents({
-      suiteId,
-      eventId,
-      body,
-      acknowledgeDeadlineShortening,
-    });
-    return new ActionSuiteDto(suite, suite.actions);
-  }
-
-  @Post("suite/:suiteId/events")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionSuiteDto })
-  @ApiAcknowledgeDeadlineShortening()
-  async addSuiteEventAdmin(
-    @Param("suiteId", ParseIntPipe) suiteId: number,
-    @Body() actionEventDto: CreateActionEventDto,
-    @AcknowledgeDeadlineShortening()
-    acknowledgeDeadlineShortening: boolean,
-  ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.addSuiteEvent({
-      suiteId,
-      event: actionEventDto,
-      acknowledgeDeadlineShortening,
-    });
-    return new ActionSuiteDto(suite, suite.actions);
-  }
-
-  @Delete("suite/:suiteId/events/:eventId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionSuiteDto })
-  async deleteSuiteEventAdmin(
-    @Param("suiteId", ParseIntPipe) suiteId: number,
-    @Param("eventId", ParseIntPipe) eventId: number,
-  ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.deleteSuiteEvent(suiteId, eventId);
-    return new ActionSuiteDto(suite, suite.actions);
   }
 
   @Get("export/:id")

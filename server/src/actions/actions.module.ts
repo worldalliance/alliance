@@ -35,6 +35,7 @@ import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionParticipantsService } from "./action-participants.service";
 import { ActionRemindersController } from "./action-reminders.controller";
 import { ActionStatsService } from "./action-stats.service";
+import { ActionSuitesController } from "./action-suites.controller";
 import { ActionUpdateRecognitionPreviewService } from "./action-update-recognition-preview.service";
 import { ActionUpdateRecognitionService } from "./action-update-recognition.service";
 import { ActionUpdateRecognitionWorker } from "./action-update-recognition.worker";
@@ -127,6 +128,7 @@ import { TaskBadgeService } from "./task-badge.service";
     GeneralUpdatesController,
     ActionUpdatesController,
     ActionRemindersController,
+    ActionSuitesController,
     CohortDecisionsController,
     ProjectsController,
   ],

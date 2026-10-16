@@ -3062,80 +3062,6 @@ export type CreateActionActivityDto = {
     userId: number;
 };
 
-export type ReminderGroupDto = {
-    id: number;
-    name: string;
-    timingMode: ReminderGroupTimingMode;
-    actionSuite?: ActionSuite;
-    cohortType: ReminderCohortType;
-    userTag?: Tag;
-    users?: Array<User>;
-    emailMessage: string;
-    emailSubject: string;
-    textMessage: string;
-    pushMessage: string;
-    send_range_start: string | null;
-    send_range_end: string | null;
-    sendAtAbsolute: string | null;
-    sendAtSecondsFromDeadline: number | null;
-    relative_range_start_seconds_from_deadline: number | null;
-    relative_range_end_seconds_from_deadline: number | null;
-    deadlineEvent?: ActionEvent;
-    timingAnchorEvent?: ActionEvent;
-    useSuiteTaskCount: boolean;
-    allSent: boolean;
-    excludeOptionalActions: boolean;
-    excludePreviouslyNotified: boolean;
-    memberActionEvent: ActionEvent;
-    /**
-     * Whether the group's email uses a missed-suite keyword, so dispatch sends it as a missed-suite notice
-     */
-    isMissedSuite: boolean;
-};
-
-export type GeneralUpdateDto = {
-    id: number;
-    name: string;
-    startDate: string | null;
-    endDate: string | null;
-    priority: number;
-    schema: {
-        [key: string]: unknown;
-    };
-};
-
-export type ActionSuiteDto = {
-    id: number;
-    name: string;
-    actions: Array<ActionDto>;
-    events: Array<ActionEventDto>;
-    reminderGroups: Array<ReminderGroupDto>;
-    generalUpdates: Array<GeneralUpdateDto>;
-};
-
-export type CreateActionSuiteDto = {
-    name: string;
-};
-
-export type UpdateActionEventDto = {
-    /**
-     * Title of the event
-     */
-    title?: string;
-    /**
-     * secondary text
-     */
-    description?: string;
-    /**
-     * New status of the action after the event
-     */
-    newStatus?: ActionStatus;
-    /**
-     * time of the event (for display)
-     */
-    date?: string;
-};
-
 export type ExportActionDto = {
     /**
      * Unique identifier for the action
@@ -3356,6 +3282,17 @@ export type TimelineFeedItemDto = {
     actionEvent?: ActionEventDto;
 };
 
+export type GeneralUpdateDto = {
+    id: number;
+    name: string;
+    startDate: string | null;
+    endDate: string | null;
+    priority: number;
+    schema: {
+        [key: string]: unknown;
+    };
+};
+
 export type GeneralUpdateAdminDto = {
     id: number;
     name: string;
@@ -3527,6 +3464,37 @@ export type CreateReminderGroupDto = {
     timingAnchorEventId?: number;
 };
 
+export type ReminderGroupDto = {
+    id: number;
+    name: string;
+    timingMode: ReminderGroupTimingMode;
+    actionSuite?: ActionSuite;
+    cohortType: ReminderCohortType;
+    userTag?: Tag;
+    users?: Array<User>;
+    emailMessage: string;
+    emailSubject: string;
+    textMessage: string;
+    pushMessage: string;
+    send_range_start: string | null;
+    send_range_end: string | null;
+    sendAtAbsolute: string | null;
+    sendAtSecondsFromDeadline: number | null;
+    relative_range_start_seconds_from_deadline: number | null;
+    relative_range_end_seconds_from_deadline: number | null;
+    deadlineEvent?: ActionEvent;
+    timingAnchorEvent?: ActionEvent;
+    useSuiteTaskCount: boolean;
+    allSent: boolean;
+    excludeOptionalActions: boolean;
+    excludePreviouslyNotified: boolean;
+    memberActionEvent: ActionEvent;
+    /**
+     * Whether the group's email uses a missed-suite keyword, so dispatch sends it as a missed-suite notice
+     */
+    isMissedSuite: boolean;
+};
+
 export type NotificationChannel = 'text' | 'email' | 'push';
 
 export type PreviewNotificationPlanDto = {
@@ -3568,6 +3536,38 @@ export type PreviewTextDto = {
 
 export type PreviewTextMessageResponseDto = {
     text: string;
+};
+
+export type ActionSuiteDto = {
+    id: number;
+    name: string;
+    actions: Array<ActionDto>;
+    events: Array<ActionEventDto>;
+    reminderGroups: Array<ReminderGroupDto>;
+    generalUpdates: Array<GeneralUpdateDto>;
+};
+
+export type CreateActionSuiteDto = {
+    name: string;
+};
+
+export type UpdateActionEventDto = {
+    /**
+     * Title of the event
+     */
+    title?: string;
+    /**
+     * secondary text
+     */
+    description?: string;
+    /**
+     * New status of the action after the event
+     */
+    newStatus?: ActionStatus;
+    /**
+     * time of the event (for display)
+     */
+    date?: string;
 };
 
 export type CohortDecisionReason = 'launch' | 'signing' | 'resolved_after_deadline' | 'backfill' | 'staff_correction' | 'prerequisites_resolved';
@@ -10736,152 +10736,6 @@ export type ActionsUnarchiveAdminResponses = {
 
 export type ActionsUnarchiveAdminResponse = ActionsUnarchiveAdminResponses[keyof ActionsUnarchiveAdminResponses];
 
-export type ActionsSuitesAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions/suites';
-};
-
-export type ActionsSuitesAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsSuitesAdminError = ActionsSuitesAdminErrors[keyof ActionsSuitesAdminErrors];
-
-export type ActionsSuitesAdminResponses = {
-    200: Array<ActionSuiteDto>;
-};
-
-export type ActionsSuitesAdminResponse = ActionsSuitesAdminResponses[keyof ActionsSuitesAdminResponses];
-
-export type ActionsSuiteAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/suite/{id}';
-};
-
-export type ActionsSuiteAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsSuiteAdminError = ActionsSuiteAdminErrors[keyof ActionsSuiteAdminErrors];
-
-export type ActionsSuiteAdminResponses = {
-    200: ActionSuiteDto;
-};
-
-export type ActionsSuiteAdminResponse = ActionsSuiteAdminResponses[keyof ActionsSuiteAdminResponses];
-
-export type ActionsCreateSuiteAdminData = {
-    body: CreateActionSuiteDto;
-    path?: never;
-    query?: never;
-    url: '/actions/createSuite';
-};
-
-export type ActionsCreateSuiteAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsCreateSuiteAdminError = ActionsCreateSuiteAdminErrors[keyof ActionsCreateSuiteAdminErrors];
-
-export type ActionsCreateSuiteAdminResponses = {
-    200: ActionSuiteDto;
-};
-
-export type ActionsCreateSuiteAdminResponse = ActionsCreateSuiteAdminResponses[keyof ActionsCreateSuiteAdminResponses];
-
-export type ActionsBatchUpdateSuiteEventsAdminData = {
-    body: UpdateActionEventDto;
-    path: {
-        suiteId: number;
-        eventId: number;
-    };
-    query?: {
-        acknowledgeDeadlineShortening?: boolean;
-    };
-    url: '/actions/suite/{suiteId}/batchUpdateSuiteEvents/{eventId}';
-};
-
-export type ActionsBatchUpdateSuiteEventsAdminErrors = {
-    /**
-     * Moves the member-action deadline earlier for assigned members; resend with acknowledgeDeadlineShortening=true.
-     */
-    409: HeyApiError;
-};
-
-export type ActionsBatchUpdateSuiteEventsAdminError = ActionsBatchUpdateSuiteEventsAdminErrors[keyof ActionsBatchUpdateSuiteEventsAdminErrors];
-
-export type ActionsBatchUpdateSuiteEventsAdminResponses = {
-    200: ActionSuiteDto;
-};
-
-export type ActionsBatchUpdateSuiteEventsAdminResponse = ActionsBatchUpdateSuiteEventsAdminResponses[keyof ActionsBatchUpdateSuiteEventsAdminResponses];
-
-export type ActionsAddSuiteEventAdminData = {
-    body: CreateActionEventDto;
-    path: {
-        suiteId: number;
-    };
-    query?: {
-        acknowledgeDeadlineShortening?: boolean;
-    };
-    url: '/actions/suite/{suiteId}/events';
-};
-
-export type ActionsAddSuiteEventAdminErrors = {
-    /**
-     * Moves the member-action deadline earlier for assigned members; resend with acknowledgeDeadlineShortening=true.
-     */
-    409: HeyApiError;
-};
-
-export type ActionsAddSuiteEventAdminError = ActionsAddSuiteEventAdminErrors[keyof ActionsAddSuiteEventAdminErrors];
-
-export type ActionsAddSuiteEventAdminResponses = {
-    200: ActionSuiteDto;
-};
-
-export type ActionsAddSuiteEventAdminResponse = ActionsAddSuiteEventAdminResponses[keyof ActionsAddSuiteEventAdminResponses];
-
-export type ActionsDeleteSuiteEventAdminData = {
-    body?: never;
-    path: {
-        suiteId: number;
-        eventId: number;
-    };
-    query?: never;
-    url: '/actions/suite/{suiteId}/events/{eventId}';
-};
-
-export type ActionsDeleteSuiteEventAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsDeleteSuiteEventAdminError = ActionsDeleteSuiteEventAdminErrors[keyof ActionsDeleteSuiteEventAdminErrors];
-
-export type ActionsDeleteSuiteEventAdminResponses = {
-    200: ActionSuiteDto;
-};
-
-export type ActionsDeleteSuiteEventAdminResponse = ActionsDeleteSuiteEventAdminResponses[keyof ActionsDeleteSuiteEventAdminResponses];
-
 export type ActionsExportActionAdminData = {
     body?: never;
     path: {
@@ -11800,6 +11654,152 @@ export type ActionRemindersPreviewTextMessageAdminResponses = {
 };
 
 export type ActionRemindersPreviewTextMessageAdminResponse = ActionRemindersPreviewTextMessageAdminResponses[keyof ActionRemindersPreviewTextMessageAdminResponses];
+
+export type ActionSuitesSuitesAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/suites';
+};
+
+export type ActionSuitesSuitesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionSuitesSuitesAdminError = ActionSuitesSuitesAdminErrors[keyof ActionSuitesSuitesAdminErrors];
+
+export type ActionSuitesSuitesAdminResponses = {
+    200: Array<ActionSuiteDto>;
+};
+
+export type ActionSuitesSuitesAdminResponse = ActionSuitesSuitesAdminResponses[keyof ActionSuitesSuitesAdminResponses];
+
+export type ActionSuitesSuiteAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/suite/{id}';
+};
+
+export type ActionSuitesSuiteAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionSuitesSuiteAdminError = ActionSuitesSuiteAdminErrors[keyof ActionSuitesSuiteAdminErrors];
+
+export type ActionSuitesSuiteAdminResponses = {
+    200: ActionSuiteDto;
+};
+
+export type ActionSuitesSuiteAdminResponse = ActionSuitesSuiteAdminResponses[keyof ActionSuitesSuiteAdminResponses];
+
+export type ActionSuitesCreateSuiteAdminData = {
+    body: CreateActionSuiteDto;
+    path?: never;
+    query?: never;
+    url: '/actions/createSuite';
+};
+
+export type ActionSuitesCreateSuiteAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionSuitesCreateSuiteAdminError = ActionSuitesCreateSuiteAdminErrors[keyof ActionSuitesCreateSuiteAdminErrors];
+
+export type ActionSuitesCreateSuiteAdminResponses = {
+    200: ActionSuiteDto;
+};
+
+export type ActionSuitesCreateSuiteAdminResponse = ActionSuitesCreateSuiteAdminResponses[keyof ActionSuitesCreateSuiteAdminResponses];
+
+export type ActionSuitesBatchUpdateSuiteEventsAdminData = {
+    body: UpdateActionEventDto;
+    path: {
+        suiteId: number;
+        eventId: number;
+    };
+    query?: {
+        acknowledgeDeadlineShortening?: boolean;
+    };
+    url: '/actions/suite/{suiteId}/batchUpdateSuiteEvents/{eventId}';
+};
+
+export type ActionSuitesBatchUpdateSuiteEventsAdminErrors = {
+    /**
+     * Moves the member-action deadline earlier for assigned members; resend with acknowledgeDeadlineShortening=true.
+     */
+    409: HeyApiError;
+};
+
+export type ActionSuitesBatchUpdateSuiteEventsAdminError = ActionSuitesBatchUpdateSuiteEventsAdminErrors[keyof ActionSuitesBatchUpdateSuiteEventsAdminErrors];
+
+export type ActionSuitesBatchUpdateSuiteEventsAdminResponses = {
+    200: ActionSuiteDto;
+};
+
+export type ActionSuitesBatchUpdateSuiteEventsAdminResponse = ActionSuitesBatchUpdateSuiteEventsAdminResponses[keyof ActionSuitesBatchUpdateSuiteEventsAdminResponses];
+
+export type ActionSuitesAddSuiteEventAdminData = {
+    body: CreateActionEventDto;
+    path: {
+        suiteId: number;
+    };
+    query?: {
+        acknowledgeDeadlineShortening?: boolean;
+    };
+    url: '/actions/suite/{suiteId}/events';
+};
+
+export type ActionSuitesAddSuiteEventAdminErrors = {
+    /**
+     * Moves the member-action deadline earlier for assigned members; resend with acknowledgeDeadlineShortening=true.
+     */
+    409: HeyApiError;
+};
+
+export type ActionSuitesAddSuiteEventAdminError = ActionSuitesAddSuiteEventAdminErrors[keyof ActionSuitesAddSuiteEventAdminErrors];
+
+export type ActionSuitesAddSuiteEventAdminResponses = {
+    200: ActionSuiteDto;
+};
+
+export type ActionSuitesAddSuiteEventAdminResponse = ActionSuitesAddSuiteEventAdminResponses[keyof ActionSuitesAddSuiteEventAdminResponses];
+
+export type ActionSuitesDeleteSuiteEventAdminData = {
+    body?: never;
+    path: {
+        suiteId: number;
+        eventId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/events/{eventId}';
+};
+
+export type ActionSuitesDeleteSuiteEventAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionSuitesDeleteSuiteEventAdminError = ActionSuitesDeleteSuiteEventAdminErrors[keyof ActionSuitesDeleteSuiteEventAdminErrors];
+
+export type ActionSuitesDeleteSuiteEventAdminResponses = {
+    200: ActionSuiteDto;
+};
+
+export type ActionSuitesDeleteSuiteEventAdminResponse = ActionSuitesDeleteSuiteEventAdminResponses[keyof ActionSuitesDeleteSuiteEventAdminResponses];
 
 export type CohortDecisionsListForActionAdminData = {
     body?: never;

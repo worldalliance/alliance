@@ -1,8 +1,8 @@
 import {
-  actionsAddSuiteEventAdmin,
-  actionsBatchUpdateSuiteEventsAdmin,
-  actionsDeleteSuiteEventAdmin,
-  actionsSuiteAdmin,
+  actionSuitesAddSuiteEventAdmin,
+  actionSuitesBatchUpdateSuiteEventsAdmin,
+  actionSuitesDeleteSuiteEventAdmin,
+  actionSuitesSuiteAdmin,
   type CreateActionEventDto,
   type UpdateActionEventDto,
 } from "@alliance/shared/client";
@@ -21,9 +21,10 @@ const suiteQuery = (suiteId: number) =>
   queryOptions({
     queryKey: queryKeys.actionSuiteAdmin(suiteId),
     queryFn: () =>
-      actionsSuiteAdmin({ path: { id: suiteId }, throwOnError: true }).then(
-        (r) => r.data,
-      ),
+      actionSuitesSuiteAdmin({
+        path: { id: suiteId },
+        throwOnError: true,
+      }).then((r) => r.data),
   });
 
 /** Resolves `null` when staff decline, and rejects with the refusal. */
@@ -43,7 +44,7 @@ export function useActionSuiteAdmin(suiteId: number) {
     mutationFn: (body: CreateActionEventDto) =>
       sendConfirmingDeadlineShortening({
         send: (q) =>
-          actionsAddSuiteEventAdmin({ path: { suiteId }, body, query: q }),
+          actionSuitesAddSuiteEventAdmin({ path: { suiteId }, body, query: q }),
         confirm,
       }).then(dataOrThrow),
     onSuccess: (updated) => updated && patchSuite(() => updated),
@@ -59,7 +60,7 @@ export function useActionSuiteAdmin(suiteId: number) {
     }) =>
       sendConfirmingDeadlineShortening({
         send: (q) =>
-          actionsBatchUpdateSuiteEventsAdmin({
+          actionSuitesBatchUpdateSuiteEventsAdmin({
             path: { suiteId, eventId },
             body,
             query: q,
@@ -71,7 +72,7 @@ export function useActionSuiteAdmin(suiteId: number) {
 
   const deleteEvent = useMutation({
     mutationFn: (eventId: number) =>
-      actionsDeleteSuiteEventAdmin({
+      actionSuitesDeleteSuiteEventAdmin({
         path: { suiteId, eventId },
         throwOnError: true,
       }).then((r) => r.data),
