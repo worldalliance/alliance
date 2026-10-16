@@ -1,16 +1,18 @@
 import { errorMessage } from "@alliance/common/errorMessage";
-import { userUpdateUserRolesAdmin } from "@alliance/shared/client";
-import { UserAdminDetailDto } from "@alliance/shared/client/types.gen";
+import {
+  UpdateUserRolesAdminDto,
+  UserAdminDetailDto,
+} from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
 import { useCallback, useState } from "react";
 import { useAuth } from "../../lib/AuthContext";
 
 export default function UserRolesSection({
   user,
-  onUserUpdated,
+  updateRoles,
 }: {
   user: UserAdminDetailDto;
-  onUserUpdated: (user: UserAdminDetailDto) => void;
+  updateRoles: (body: UpdateUserRolesAdminDto) => Promise<unknown>;
 }) {
   const [isAmbassadorPending, setIsAmbassadorPending] = useState(false);
   const [isStaffPending, setIsStaffPending] = useState(false);
@@ -26,13 +28,7 @@ export default function UserRolesSection({
       setIsAmbassadorPending(true);
       setRoleMutationError(null);
       try {
-        const res = await userUpdateUserRolesAdmin({
-          path: { id: user.id },
-          body: { ambassador: nextChecked },
-        });
-        if (res.data) {
-          onUserUpdated(res.data);
-        }
+        await updateRoles({ ambassador: nextChecked });
       } catch (error) {
         console.error("Failed to update user role", error);
         setRoleMutationError("Failed to update role. Try again.");
@@ -40,7 +36,7 @@ export default function UserRolesSection({
         setIsAmbassadorPending(false);
       }
     },
-    [onUserUpdated, user.id],
+    [updateRoles],
   );
 
   const handleStaffToggle = useCallback(
@@ -48,13 +44,7 @@ export default function UserRolesSection({
       setIsStaffPending(true);
       setRoleMutationError(null);
       try {
-        const res = await userUpdateUserRolesAdmin({
-          path: { id: user.id },
-          body: { staff: nextChecked },
-        });
-        if (res.data) {
-          onUserUpdated(res.data);
-        }
+        await updateRoles({ staff: nextChecked });
       } catch (error) {
         console.error("Failed to update user role", error);
         setRoleMutationError("Failed to update role. Try again.");
@@ -62,7 +52,7 @@ export default function UserRolesSection({
         setIsStaffPending(false);
       }
     },
-    [onUserUpdated, user.id],
+    [updateRoles],
   );
 
   const handleAdminToggle = useCallback(
@@ -70,12 +60,7 @@ export default function UserRolesSection({
       setIsAdminPending(true);
       setRoleMutationError(null);
       try {
-        const res = await userUpdateUserRolesAdmin({
-          path: { id: user.id },
-          body: { admin: nextChecked },
-          throwOnError: true,
-        });
-        onUserUpdated(res.data);
+        await updateRoles({ admin: nextChecked });
       } catch (error) {
         setRoleMutationError(
           errorMessage({ error, fallback: "Could not update admin status." }),
@@ -84,7 +69,7 @@ export default function UserRolesSection({
         setIsAdminPending(false);
       }
     },
-    [onUserUpdated, user.id],
+    [updateRoles],
   );
 
   return (

@@ -1,12 +1,10 @@
 import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
 import {
   actionsActionRelationsForUserAdmin,
-  contractSuspendContractAdmin,
   notifsNotifsForUserAdmin,
   tasksGetFormsForUserSidAdmin,
   userGetTagSummariesAdmin,
   userListFriends,
-  userUserDetailAdmin,
 } from "@alliance/shared/client";
 import {
   ProfileDto,
@@ -15,12 +13,13 @@ import {
   UserActionSummaryDto,
   UserAdminDetailDto,
 } from "@alliance/shared/client/types.gen";
+import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Mail, Phone, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useLoaderData, useNavigate } from "react-router";
 import { Route } from "../../.react-router/types/src/pages/+types/UserDetailView";
 import DeleteAccountModal from "../components/DeleteAccountModal";
@@ -32,7 +31,9 @@ import UserNotificationsSection from "../components/user-detail/UserNotification
 import UserRolesSection from "../components/user-detail/UserRolesSection";
 import UserTagsSection from "../components/user-detail/UserTagsSection";
 import { getApiUrl } from "../lib/config";
+import { queryClient } from "../lib/queryClient";
 import { useUserAwayRangesAdmin } from "../lib/useUserAwayRangesAdmin";
+import { useUserDetailAdmin, userDetailQuery } from "../lib/useUserDetailAdmin";
 
 export async function clientLoader({ params }: Route.LoaderArgs) {
   const userIdParam = params.userId;
@@ -44,28 +45,17 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
     throw new Error("Not found");
   }
 
-  const [
-    userRes,
-    tagsRes,
-    actionRelationsRes,
-    notifRes,
-    formResponsesRes,
-    friendsRes,
-  ] = await Promise.all([
-    userUserDetailAdmin({ path: { id: userId } }),
-    userGetTagSummariesAdmin(),
-    actionsActionRelationsForUserAdmin({ path: { userId } }),
-    notifsNotifsForUserAdmin({ path: { id: userId } }),
-    tasksGetFormsForUserSidAdmin({ path: { userId } }).catch(() => ({
-      data: [],
-    })),
-    userListFriends({ path: { id: userId } }),
-  ]);
-
-  const user = userRes.data;
-  if (!user) {
-    throw new Error("Not found");
-  }
+  void queryClient.prefetchQuery({ ...userDetailQuery(userId), staleTime: 0 });
+  const [tagsRes, actionRelationsRes, notifRes, formResponsesRes, friendsRes] =
+    await Promise.all([
+      userGetTagSummariesAdmin(),
+      actionsActionRelationsForUserAdmin({ path: { userId } }),
+      notifsNotifsForUserAdmin({ path: { id: userId } }),
+      tasksGetFormsForUserSidAdmin({ path: { userId } }).catch(() => ({
+        data: [],
+      })),
+      userListFriends({ path: { id: userId } }),
+    ]);
 
   const actionData: UserActionRelationsResponseDto | undefined =
     actionRelationsRes.data;
@@ -75,7 +65,7 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
     [];
 
   return {
-    user,
+    userId,
     allTags: tagsRes.data ?? [],
     actionSummaries,
     actionRelations,
@@ -86,21 +76,51 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
 }
 
 const UserDetailView: React.FC = () => {
+  const userDetail = useUserDetailAdmin(
+    useLoaderData<typeof clientLoader>().userId,
+  );
+  const { data: user, isError, error } = userDetail.query;
+  // A member deleted since they were cached refetches as a 404 over the
+  // cached copy.
+  const notFound = thrownStatus(error) === 404;
+  if (user && !notFound) {
+    return <UserDetail user={user} userDetail={userDetail} />;
+  }
+  return (
+    <div className="p-4">
+      {isError ? (
+        <p className="text-red-500">
+          {notFound ? "Member not found" : "Failed to load member"}
+        </p>
+      ) : (
+        "Loading member..."
+      )}
+    </div>
+  );
+};
+
+const UserDetail = ({
+  user,
+  userDetail: {
+    query: { isRefetchError },
+    refresh,
+    updateRoles: { mutateAsync: updateRoles },
+    suspendContract: { mutateAsync: suspendContract },
+  },
+}: {
+  user: UserAdminDetailDto;
+  userDetail: ReturnType<typeof useUserDetailAdmin>;
+}) => {
   const loaderData = useLoaderData<typeof clientLoader>();
   const { actionSummaries, actionRelations, notifs, formResponses, friends } =
     loaderData;
 
-  const [user, setUser] = useState<UserAdminDetailDto>(loaderData.user);
   const [isSuspendPending, setIsSuspendPending] = useState(false);
   const [suspendMutationError, setSuspendMutationError] = useState<
     string | null
   >(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const { confirm, success } = useToast();
-
-  useEffect(() => {
-    setUser(loaderData.user);
-  }, [loaderData.user]);
 
   const navigate = useNavigate();
 
@@ -138,11 +158,7 @@ const UserDetailView: React.FC = () => {
     setIsSuspendPending(true);
     setSuspendMutationError(null);
     try {
-      await contractSuspendContractAdmin({ path: { userId: user.id } });
-      const refreshed = await userUserDetailAdmin({ path: { id: user.id } });
-      if (refreshed.data) {
-        setUser(refreshed.data);
-      }
+      await suspendContract();
       success("Contract suspended", user.name);
     } catch (error) {
       console.error("Failed to suspend contract", error);
@@ -150,10 +166,15 @@ const UserDetailView: React.FC = () => {
     } finally {
       setIsSuspendPending(false);
     }
-  }, [confirm, success, user.id, user.name]);
+  }, [confirm, success, suspendContract, user.name]);
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
+      {isRefetchError && (
+        <p className="text-xs text-red-500 mb-2">
+          Could not refresh this member. Reload to see their latest details.
+        </p>
+      )}
       {/* Header */}
       <div className="flex items-start gap-4 pb-4 border-b border-zinc-200 mb-4">
         <AvatarProfile pfp={user.profilePicture} size="huge" />
@@ -261,7 +282,7 @@ const UserDetailView: React.FC = () => {
           <UserMemberInfoSection user={user} />
 
           {/* Groups */}
-          <MemberGroupMoveSection user={user} onUserUpdated={setUser} />
+          <MemberGroupMoveSection user={user} refreshUser={refresh} />
 
           {/* Friends */}
           <section className="border border-zinc-200 rounded p-3">
@@ -279,7 +300,7 @@ const UserDetailView: React.FC = () => {
             )}
           </section>
 
-          <UserRolesSection user={user} onUserUpdated={setUser} />
+          <UserRolesSection user={user} updateRoles={updateRoles} />
 
           <UserTagsSection user={user} loadedTags={loaderData.allTags} />
 

@@ -263,6 +263,7 @@ export const queryKeys = {
   userAwayRangesAdmin: (userId: number) =>
     ["userGetAwayRangeForUserAdmin", userId] as const,
   userCityCountsAdmin: () => ["userCityCountsAdmin"] as const,
+  userDetailAdmin: (userId: number) => ["userUserDetailAdmin", userId] as const,
   usersAdmin: () => ["userListAdmin"] as const,
   waitlistCohortsAdmin: () => ["waitlistAdminFindCohortsAdmin"] as const,
   waitlistEmailAdmin: (id: number) =>

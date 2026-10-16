@@ -1,6 +1,5 @@
 import { client } from "@alliance/shared/client/client.gen";
 import { registerErrorStatus } from "@alliance/shared/lib/hey-api";
-import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import {
   ShareLinkViewer,
   ShareLinkViewerProvider,
@@ -9,8 +8,7 @@ import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInpu
 import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { milliseconds } from "date-fns";
+import { QueryClientProvider } from "@tanstack/react-query";
 import {
   isRouteErrorResponse,
   Links,
@@ -23,15 +21,7 @@ import { Route } from "../.react-router/types/src/+types/root";
 import { AuthProvider } from "./lib/AuthContext";
 import { getApiUrl, getSiteUrl } from "./lib/config";
 import { GroupAssignmentProvider } from "./lib/GroupAssignmentContext";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      gcTime: milliseconds({ days: 1 }),
-      retry: retryUnlessRefused(3),
-    },
-  },
-});
+import { queryClient } from "./lib/queryClient";
 
 client.setConfig({
   baseUrl: getApiUrl(),
