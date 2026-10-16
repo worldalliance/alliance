@@ -1,5 +1,4 @@
 import { forCount, withCount } from "@alliance/common/plural";
-import { communityLeave } from "@alliance/shared/client";
 import type { CommunityDto } from "@alliance/shared/client/types.gen";
 import {
   getMemberCount,
@@ -7,6 +6,7 @@ import {
 } from "@alliance/shared/lib/communityUtils";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
 import { useGroupAssignment } from "@alliance/shared/lib/useGroupAssignment";
+import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useCallback, useState } from "react";
 import { Alert, View } from "react-native";
 import { useAuth } from "../../lib/AuthContext";
@@ -27,18 +27,13 @@ export function MemberGroupsSection({
   const [leavingCommunityId, setLeavingCommunityId] = useState<number | null>(
     null,
   );
+  const { leaveCommunity } = useMyCommunities();
 
   const runLeaveGroup = useCallback(
     async (community: CommunityDto) => {
       setLeavingCommunityId(community.id);
       try {
-        const res = await communityLeave({
-          path: { communityId: community.id },
-        });
-        if (!res.response.ok) {
-          throw new Error("leave failed");
-        }
-        await refreshAll();
+        await leaveCommunity(community.id);
         await refreshUser();
       } catch (e) {
         console.error("Failed to leave community", e);
@@ -47,7 +42,7 @@ export function MemberGroupsSection({
         setLeavingCommunityId(null);
       }
     },
-    [refreshAll, refreshUser],
+    [leaveCommunity, refreshUser],
   );
 
   const promptLeaveGroup = useCallback(
