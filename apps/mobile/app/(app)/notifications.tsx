@@ -1,13 +1,11 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { NotificationDto, notifsSetRead } from "@alliance/shared/client";
+import { NotificationDto } from "@alliance/shared/client";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import {
   buildNotificationRenderItems,
   LikesBucket,
   NotificationRenderItem,
 } from "@alliance/shared/lib/notificationBucketing";
-import { getNotificationReadRequest } from "@alliance/shared/lib/notificationIdentity";
 import { LegendList } from "@legendapp/list";
 import { router } from "expo-router";
 import { Ellipsis } from "lucide-react-native";
@@ -46,9 +44,18 @@ export default function NotificationsScreen() {
   } = useNotificationsList();
   const {
     markAllRead,
-    markCachedRead: markNotificationsRead,
+    markRead,
     refresh: refreshNotifications,
   } = useNotificationsCache();
+
+  const markNotificationsRead = useCallback(
+    (notificationsToMark: NotificationDto[]) => {
+      void markRead(notificationsToMark).catch((error) => {
+        console.error("failed to mark notifications as read", error);
+      });
+    },
+    [markRead],
+  );
 
   const notifications = useMemo(() => response ?? [], [response]);
 
@@ -115,7 +122,6 @@ export default function NotificationsScreen() {
 
   const handleMarkAsRead = useCallback(
     (notification: NotificationDto) => {
-      notifsSetRead(getNotificationReadRequest(notification));
       markNotificationsRead([notification]);
       captureEvent(AnalyticsEvent.NotificationMarkedRead, {
         notificationId: notification.id,
@@ -134,9 +140,6 @@ export default function NotificationsScreen() {
         return;
       }
 
-      unreadLikes.forEach((notification) => {
-        notifsSetRead(getNotificationReadRequest(notification));
-      });
       markNotificationsRead(unreadLikes);
     },
     [markNotificationsRead],
@@ -145,7 +148,6 @@ export default function NotificationsScreen() {
   const handleNotificationPress = useCallback(
     (notification: NotificationDto) => {
       if (!notification.readAt) {
-        notifsSetRead(getNotificationReadRequest(notification));
         markNotificationsRead([notification]);
       }
 

@@ -3,11 +3,13 @@ import {
   NotificationDto,
   notifsFindAll,
   notifsGetUnreadCount,
+  notifsSetRead,
   notifsSetReadAll,
   UnreadContentType,
 } from "@alliance/shared/client";
 import {
   getNotificationIdentityKey,
+  getNotificationReadRequest,
   isClearedByContentRead,
 } from "@alliance/shared/lib/notificationIdentity";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -23,6 +25,40 @@ import { useMemo } from "react";
 const LIST_KEY = queryKeys.notifications();
 const LOADED_AT_KEY = queryKeys.notificationsLoadedAt();
 const UNREAD_COUNT_KEY = queryKeys.notificationsUnreadCount();
+
+function markCachedRead(
+  queryClient: QueryClient,
+  notificationsToMark: Pick<NotificationDto, "id" | "sourceType">[],
+) {
+  if (notificationsToMark.length === 0) return;
+
+  const keys = new Set(notificationsToMark.map(getNotificationIdentityKey));
+  const readAt = new Date().toISOString();
+  let found = 0;
+  let markedUnread = 0;
+  const nextData = queryClient
+    .getQueryData<NotificationDto[]>(LIST_KEY)
+    ?.map((notification) => {
+      if (!keys.has(getNotificationIdentityKey(notification))) {
+        return notification;
+      }
+      found += 1;
+      if (!notification.readAt) markedUnread += 1;
+      return { ...notification, readAt };
+    });
+
+  if (!nextData || found === 0) {
+    void queryClient.invalidateQueries({ queryKey: LIST_KEY });
+    return;
+  }
+
+  queryClient.setQueryData(LIST_KEY, nextData);
+  queryClient.setQueryData<number>(UNREAD_COUNT_KEY, (prev) =>
+    prev === undefined
+      ? nextData.filter((notification) => !notification.readAt).length
+      : Math.max(prev - markedUnread, 0),
+  );
+}
 
 export function notificationsCache(queryClient: QueryClient) {
   return {
@@ -48,37 +84,21 @@ export function notificationsCache(queryClient: QueryClient) {
 
     refresh: () => queryClient.invalidateQueries({ queryKey: LIST_KEY }),
 
-    markCachedRead: (
+    markRead: async (
       notificationsToMark: Pick<NotificationDto, "id" | "sourceType">[],
     ) => {
-      if (notificationsToMark.length === 0) return;
-
-      const keys = new Set(notificationsToMark.map(getNotificationIdentityKey));
-      const readAt = new Date().toISOString();
-      let found = 0;
-      let markedUnread = 0;
-      const nextData = queryClient
-        .getQueryData<NotificationDto[]>(LIST_KEY)
-        ?.map((notification) => {
-          if (!keys.has(getNotificationIdentityKey(notification))) {
-            return notification;
-          }
-          found += 1;
-          if (!notification.readAt) markedUnread += 1;
-          return { ...notification, readAt };
-        });
-
-      if (!nextData || found === 0) {
+      markCachedRead(queryClient, notificationsToMark);
+      const refused = (
+        await Promise.allSettled(
+          notificationsToMark.map((notification) =>
+            notifsSetRead(getNotificationReadRequest(notification)),
+          ),
+        )
+      ).find((result) => result.status === "rejected");
+      if (refused) {
         void queryClient.invalidateQueries({ queryKey: LIST_KEY });
-        return;
+        throw refused.reason;
       }
-
-      queryClient.setQueryData(LIST_KEY, nextData);
-      queryClient.setQueryData<number>(UNREAD_COUNT_KEY, (prev) =>
-        prev === undefined
-          ? nextData.filter((notification) => !notification.readAt).length
-          : Math.max(prev - markedUnread, 0),
-      );
     },
 
     markCachedReadByContent: (

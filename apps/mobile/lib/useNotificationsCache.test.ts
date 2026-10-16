@@ -1,7 +1,11 @@
 import { NOTIFS_LOADED_AT_HEADER } from "@alliance/common/notifs";
 import { NotificationDto } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import {
+  routes,
+  serveApi,
+  type RouteTable,
+} from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient } from "@tanstack/react-query";
 import { notificationsCache } from "./useNotificationsCache";
 
@@ -164,7 +168,90 @@ it("leaves an unloaded list unloaded when marking content read", () => {
   expect(queryClient.getQueryData(LIST_KEY)).toBeUndefined();
 });
 
-it("marks the given notifications read and counts down only those that were unread", () => {
+const reads: { id: string; sourceType: string | null }[] = [];
+
+const read = {
+  "POST /notifs/read/:id": ({ params, request }) => {
+    reads.push({
+      id: params.id,
+      sourceType: new URL(request.url).searchParams.get("sourceType"),
+    });
+    return new Response(null, { status: 201 });
+  },
+} satisfies RouteTable;
+
+afterEach(() => {
+  reads.length = 0;
+});
+
+it("sends a read for each notification with its source type", async () => {
+  api.throwingOnRefusal(read);
+  await notificationsCache(new QueryClient()).markRead([
+    { id: 1, sourceType: "unread_content" },
+    { id: 2, sourceType: "notification" },
+  ]);
+  expect(reads).toEqual([
+    { id: "1", sourceType: "unread_content" },
+    { id: "2", sourceType: "notification" },
+  ]);
+});
+
+it("refetches the list and unread count and rejects when a read is refused", async () => {
+  api.throwingOnRefusal({
+    "POST /notifs/read/:id": () => new Response(null, { status: 500 }),
+  });
+  const queryClient = new QueryClient();
+  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
+    notification({ id: 1 }),
+  ]);
+  queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 1);
+
+  await expect(
+    notificationsCache(queryClient).markRead([
+      { id: 1, sourceType: "unread_content" },
+    ]),
+  ).rejects.toThrow();
+
+  expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(true);
+  expect(queryClient.getQueryState(UNREAD_COUNT_KEY)?.isInvalidated).toBe(true);
+});
+
+it("refetches after every read has finished when one is refused", async () => {
+  const { promise: slowReadHeld, resolve: releaseSlowRead } =
+    Promise.withResolvers<void>();
+  const { promise: refusedReadAnswered, resolve: answerRefusedRead } =
+    Promise.withResolvers<void>();
+  api.throwingOnRefusal({
+    "POST /notifs/read/:id": async ({ params }) => {
+      if (params.id === "1") {
+        answerRefusedRead();
+        return new Response(null, { status: 500 });
+      }
+      await slowReadHeld;
+      return new Response(null, { status: 201 });
+    },
+  });
+  const queryClient = new QueryClient();
+  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
+    notification({ id: 1 }),
+    notification({ id: 2 }),
+  ]);
+
+  const marked = notificationsCache(queryClient).markRead([
+    { id: 1, sourceType: "unread_content" },
+    { id: 2, sourceType: "unread_content" },
+  ]);
+  await refusedReadAnswered;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(false);
+
+  releaseSlowRead();
+  await expect(marked).rejects.toThrow();
+  expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(true);
+});
+
+it("marks the given notifications read and counts down only those that were unread", async () => {
+  api.throwingOnRefusal(read);
   const queryClient = new QueryClient();
   queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
     notification({ id: 1 }),
@@ -174,7 +261,7 @@ it("marks the given notifications read and counts down only those that were unre
   ]);
   queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 5);
 
-  notificationsCache(queryClient).markCachedRead([
+  await notificationsCache(queryClient).markRead([
     { id: 1, sourceType: "unread_content" },
     { id: 2, sourceType: "unread_content" },
   ]);
@@ -189,25 +276,27 @@ it("marks the given notifications read and counts down only those that were unre
   expect(queryClient.getQueryData(UNREAD_COUNT_KEY)).toBe(4);
 });
 
-it("counts the unread left in the list when no count is cached", () => {
+it("counts the unread left in the list when no count is cached", async () => {
+  api.throwingOnRefusal(read);
   const queryClient = new QueryClient();
   queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
     notification({ id: 1 }),
     notification({ id: 2 }),
   ]);
 
-  notificationsCache(queryClient).markCachedRead([
+  await notificationsCache(queryClient).markRead([
     { id: 1, sourceType: "unread_content" },
   ]);
 
   expect(queryClient.getQueryData(UNREAD_COUNT_KEY)).toBe(1);
 });
 
-it("refetches the list and unread count when the list is not cached", () => {
+it("refetches the list and unread count when the list is not cached", async () => {
+  api.throwingOnRefusal(read);
   const queryClient = new QueryClient();
   queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 3);
 
-  notificationsCache(queryClient).markCachedRead([
+  await notificationsCache(queryClient).markRead([
     { id: 1, sourceType: "unread_content" },
   ]);
 
@@ -215,14 +304,15 @@ it("refetches the list and unread count when the list is not cached", () => {
   expect(queryClient.getQueryState(UNREAD_COUNT_KEY)?.isInvalidated).toBe(true);
 });
 
-it("refetches the list and unread count when the notification is not in the list", () => {
+it("refetches the list and unread count when the notification is not in the list", async () => {
+  api.throwingOnRefusal(read);
   const queryClient = new QueryClient();
   queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
     notification({ id: 1 }),
   ]);
   queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 1);
 
-  notificationsCache(queryClient).markCachedRead([
+  await notificationsCache(queryClient).markRead([
     { id: 9, sourceType: "unread_content" },
   ]);
 
@@ -231,11 +321,12 @@ it("refetches the list and unread count when the notification is not in the list
   expect(queryClient.getQueryState(UNREAD_COUNT_KEY)?.isInvalidated).toBe(true);
 });
 
-it("leaves the cache alone when marking nothing", () => {
+it("leaves the cache alone when marking nothing", async () => {
+  api.throwingOnRefusal(read);
   const queryClient = new QueryClient();
   queryClient.setQueryData<NotificationDto[]>(LIST_KEY, []);
 
-  notificationsCache(queryClient).markCachedRead([]);
+  await notificationsCache(queryClient).markRead([]);
 
   expect(queryClient.getQueryState(LIST_KEY)?.isInvalidated).toBe(false);
 });
