@@ -106,6 +106,17 @@ describe("Group join notifications: audience and triggers (e2e)", () => {
 
     const batch = [first.id, second.id].sort((a, b) => a - b);
     expect(await fx.announcements()).toEqual(new Map([[existing.id, batch]]));
+    const leaderNotices = await fx.notifRepo.find({
+      where: { user: { id: leader.id } },
+      relations: { associatedUsers: true },
+    });
+    expect(
+      leaderNotices
+        .sort((a, b) => a.associatedUsers![0].id - b.associatedUsers![0].id)
+        .map((notif) => [notif.category, notif.associatedUsers![0].id]),
+    ).toEqual(
+      batch.map((id) => [NotificationCategory.MemberJoinedCommunity, id]),
+    );
 
     const later = await fx.createUser();
     await communityService.joinPublicCommunity(later.id, group.id);

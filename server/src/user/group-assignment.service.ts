@@ -6,7 +6,10 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CommunityService } from "src/community/community.service";
-import { groupJoinAudience } from "src/community/community.utils";
+import {
+  groupJoinAudience,
+  memberJoinedCommunityNotif,
+} from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
 import { updateLive } from "src/datasources/soft-delete";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
@@ -177,17 +180,13 @@ export class GroupAssignmentService {
         user,
         community: freshCommunity,
         groupJoinAudience: groupJoinAudiences.get(community.id),
-        notifForLeader: ({ leader }) => ({
-          user: leader,
-          category: NotificationCategory.CommunityAssigned,
-          message: notifMessage`Alliance staff assigned ${member(user)} to your group (${group(freshCommunity)})`,
-          destination: communityDestination(freshCommunity.id),
-          webAppLocation: groupUrl({
-            tab: "members",
-            communityId: freshCommunity.id,
+        notifForLeader: ({ leader }) =>
+          memberJoinedCommunityNotif({
+            leader,
+            joiner: user,
+            community: freshCommunity,
+            message: notifMessage`Alliance staff assigned ${member(user)} to your group (${group(freshCommunity)})`,
           }),
-          associatedUsers: [user],
-        }),
       });
 
       userNotifs.push({
