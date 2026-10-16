@@ -954,31 +954,6 @@ export type ProfileDto = {
     cluster?: ClusterSummaryDto;
 };
 
-export type UserAwayRangeReason = 'vacation' | 'emergency' | 'other';
-
-export type CreateAwayRangeDto = {
-    reason: UserAwayRangeReason;
-    note?: string | null;
-    startDay: string;
-    endDay: string;
-};
-
-export type UserAwayRangeDto = {
-    id: number;
-    startDate: string;
-    endDate: string;
-    createdAt: string;
-    reason: UserAwayRangeReason;
-    note: string | null;
-};
-
-export type UpdateAwayRangeDto = {
-    reason: UserAwayRangeReason;
-    note?: string | null;
-    startDay?: string;
-    endDay?: string;
-};
-
 export type UpdateProfileDto = {
     emailNotifsForActions?: boolean;
     textNotifsForActions?: boolean;
@@ -1470,6 +1445,31 @@ export type TagSummaryDto = {
 
 export type AddUserToTagDto = {
     userId: number;
+};
+
+export type UserAwayRangeReason = 'vacation' | 'emergency' | 'other';
+
+export type CreateAwayRangeDto = {
+    reason: UserAwayRangeReason;
+    note?: string | null;
+    startDay: string;
+    endDay: string;
+};
+
+export type UserAwayRangeDto = {
+    id: number;
+    startDate: string;
+    endDate: string;
+    createdAt: string;
+    reason: UserAwayRangeReason;
+    note: string | null;
+};
+
+export type UpdateAwayRangeDto = {
+    reason: UserAwayRangeReason;
+    note?: string | null;
+    startDay?: string;
+    endDay?: string;
 };
 
 export type StreamableFile = {
@@ -5638,176 +5638,6 @@ export type UserFindMeResponses = {
 
 export type UserFindMeResponse = UserFindMeResponses[keyof UserFindMeResponses];
 
-export type UserGetAwayRangesData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/awayranges';
-};
-
-export type UserGetAwayRangesErrors = {
-    401: HeyApiError;
-};
-
-export type UserGetAwayRangesError = UserGetAwayRangesErrors[keyof UserGetAwayRangesErrors];
-
-export type UserGetAwayRangesResponses = {
-    200: Array<UserAwayRangeDto>;
-};
-
-export type UserGetAwayRangesResponse = UserGetAwayRangesResponses[keyof UserGetAwayRangesResponses];
-
-export type UserCreateAwayRangeData = {
-    body: CreateAwayRangeDto;
-    path?: never;
-    query?: never;
-    url: '/user/awayranges';
-};
-
-export type UserCreateAwayRangeErrors = {
-    401: HeyApiError;
-};
-
-export type UserCreateAwayRangeError = UserCreateAwayRangeErrors[keyof UserCreateAwayRangeErrors];
-
-export type UserCreateAwayRangeResponses = {
-    200: UserAwayRangeDto;
-};
-
-export type UserCreateAwayRangeResponse = UserCreateAwayRangeResponses[keyof UserCreateAwayRangeResponses];
-
-export type UserDeleteAwayRangeData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/user/awayranges/{id}';
-};
-
-export type UserDeleteAwayRangeErrors = {
-    401: HeyApiError;
-};
-
-export type UserDeleteAwayRangeError = UserDeleteAwayRangeErrors[keyof UserDeleteAwayRangeErrors];
-
-export type UserDeleteAwayRangeResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserDeleteAwayRangeResponse = UserDeleteAwayRangeResponses[keyof UserDeleteAwayRangeResponses];
-
-export type UserGetAwayRangeForUserAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/user/awayranges/{id}';
-};
-
-export type UserGetAwayRangeForUserAdminErrors = {
-    401: HeyApiError;
-};
-
-export type UserGetAwayRangeForUserAdminError = UserGetAwayRangeForUserAdminErrors[keyof UserGetAwayRangeForUserAdminErrors];
-
-export type UserGetAwayRangeForUserAdminResponses = {
-    200: Array<UserAwayRangeDto>;
-};
-
-export type UserGetAwayRangeForUserAdminResponse = UserGetAwayRangeForUserAdminResponses[keyof UserGetAwayRangeForUserAdminResponses];
-
-export type UserUpdateAwayRangeData = {
-    body: UpdateAwayRangeDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/user/awayranges/{id}';
-};
-
-export type UserUpdateAwayRangeErrors = {
-    401: HeyApiError;
-};
-
-export type UserUpdateAwayRangeError = UserUpdateAwayRangeErrors[keyof UserUpdateAwayRangeErrors];
-
-export type UserUpdateAwayRangeResponses = {
-    200: UserAwayRangeDto;
-};
-
-export type UserUpdateAwayRangeResponse = UserUpdateAwayRangeResponses[keyof UserUpdateAwayRangeResponses];
-
-export type UserCreateAwayRangeAdminData = {
-    body: CreateAwayRangeDto;
-    path: {
-        userId: number;
-    };
-    query?: never;
-    url: '/user/admin/{userId}/awayranges';
-};
-
-export type UserCreateAwayRangeAdminErrors = {
-    401: HeyApiError;
-};
-
-export type UserCreateAwayRangeAdminError = UserCreateAwayRangeAdminErrors[keyof UserCreateAwayRangeAdminErrors];
-
-export type UserCreateAwayRangeAdminResponses = {
-    200: UserAwayRangeDto;
-};
-
-export type UserCreateAwayRangeAdminResponse = UserCreateAwayRangeAdminResponses[keyof UserCreateAwayRangeAdminResponses];
-
-export type UserDeleteAwayRangeAdminData = {
-    body?: never;
-    path: {
-        userId: number;
-        id: number;
-    };
-    query?: never;
-    url: '/user/admin/{userId}/awayranges/{id}';
-};
-
-export type UserDeleteAwayRangeAdminErrors = {
-    401: HeyApiError;
-};
-
-export type UserDeleteAwayRangeAdminError = UserDeleteAwayRangeAdminErrors[keyof UserDeleteAwayRangeAdminErrors];
-
-export type UserDeleteAwayRangeAdminResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserDeleteAwayRangeAdminResponse = UserDeleteAwayRangeAdminResponses[keyof UserDeleteAwayRangeAdminResponses];
-
-export type UserUpdateAwayRangeAdminData = {
-    body: UpdateAwayRangeDto;
-    path: {
-        userId: number;
-        id: number;
-    };
-    query?: never;
-    url: '/user/admin/{userId}/awayranges/{id}';
-};
-
-export type UserUpdateAwayRangeAdminErrors = {
-    401: HeyApiError;
-};
-
-export type UserUpdateAwayRangeAdminError = UserUpdateAwayRangeAdminErrors[keyof UserUpdateAwayRangeAdminErrors];
-
-export type UserUpdateAwayRangeAdminResponses = {
-    200: UserAwayRangeDto;
-};
-
-export type UserUpdateAwayRangeAdminResponse = UserUpdateAwayRangeAdminResponses[keyof UserUpdateAwayRangeAdminResponses];
-
 export type UserUpdateData = {
     body: UpdateProfileDto;
     path?: never;
@@ -7425,6 +7255,176 @@ export type UserTagDeleteTagAdminResponses = {
 };
 
 export type UserTagDeleteTagAdminResponse = UserTagDeleteTagAdminResponses[keyof UserTagDeleteTagAdminResponses];
+
+export type UserAwayRangeGetAwayRangesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/awayranges';
+};
+
+export type UserAwayRangeGetAwayRangesErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeGetAwayRangesError = UserAwayRangeGetAwayRangesErrors[keyof UserAwayRangeGetAwayRangesErrors];
+
+export type UserAwayRangeGetAwayRangesResponses = {
+    200: Array<UserAwayRangeDto>;
+};
+
+export type UserAwayRangeGetAwayRangesResponse = UserAwayRangeGetAwayRangesResponses[keyof UserAwayRangeGetAwayRangesResponses];
+
+export type UserAwayRangeCreateAwayRangeData = {
+    body: CreateAwayRangeDto;
+    path?: never;
+    query?: never;
+    url: '/user/awayranges';
+};
+
+export type UserAwayRangeCreateAwayRangeErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeCreateAwayRangeError = UserAwayRangeCreateAwayRangeErrors[keyof UserAwayRangeCreateAwayRangeErrors];
+
+export type UserAwayRangeCreateAwayRangeResponses = {
+    200: UserAwayRangeDto;
+};
+
+export type UserAwayRangeCreateAwayRangeResponse = UserAwayRangeCreateAwayRangeResponses[keyof UserAwayRangeCreateAwayRangeResponses];
+
+export type UserAwayRangeDeleteAwayRangeData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/awayranges/{id}';
+};
+
+export type UserAwayRangeDeleteAwayRangeErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeDeleteAwayRangeError = UserAwayRangeDeleteAwayRangeErrors[keyof UserAwayRangeDeleteAwayRangeErrors];
+
+export type UserAwayRangeDeleteAwayRangeResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserAwayRangeDeleteAwayRangeResponse = UserAwayRangeDeleteAwayRangeResponses[keyof UserAwayRangeDeleteAwayRangeResponses];
+
+export type UserAwayRangeGetAwayRangeForUserAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/awayranges/{id}';
+};
+
+export type UserAwayRangeGetAwayRangeForUserAdminErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeGetAwayRangeForUserAdminError = UserAwayRangeGetAwayRangeForUserAdminErrors[keyof UserAwayRangeGetAwayRangeForUserAdminErrors];
+
+export type UserAwayRangeGetAwayRangeForUserAdminResponses = {
+    200: Array<UserAwayRangeDto>;
+};
+
+export type UserAwayRangeGetAwayRangeForUserAdminResponse = UserAwayRangeGetAwayRangeForUserAdminResponses[keyof UserAwayRangeGetAwayRangeForUserAdminResponses];
+
+export type UserAwayRangeUpdateAwayRangeData = {
+    body: UpdateAwayRangeDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/awayranges/{id}';
+};
+
+export type UserAwayRangeUpdateAwayRangeErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeUpdateAwayRangeError = UserAwayRangeUpdateAwayRangeErrors[keyof UserAwayRangeUpdateAwayRangeErrors];
+
+export type UserAwayRangeUpdateAwayRangeResponses = {
+    200: UserAwayRangeDto;
+};
+
+export type UserAwayRangeUpdateAwayRangeResponse = UserAwayRangeUpdateAwayRangeResponses[keyof UserAwayRangeUpdateAwayRangeResponses];
+
+export type UserAwayRangeCreateAwayRangeAdminData = {
+    body: CreateAwayRangeDto;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/user/admin/{userId}/awayranges';
+};
+
+export type UserAwayRangeCreateAwayRangeAdminErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeCreateAwayRangeAdminError = UserAwayRangeCreateAwayRangeAdminErrors[keyof UserAwayRangeCreateAwayRangeAdminErrors];
+
+export type UserAwayRangeCreateAwayRangeAdminResponses = {
+    200: UserAwayRangeDto;
+};
+
+export type UserAwayRangeCreateAwayRangeAdminResponse = UserAwayRangeCreateAwayRangeAdminResponses[keyof UserAwayRangeCreateAwayRangeAdminResponses];
+
+export type UserAwayRangeDeleteAwayRangeAdminData = {
+    body?: never;
+    path: {
+        userId: number;
+        id: number;
+    };
+    query?: never;
+    url: '/user/admin/{userId}/awayranges/{id}';
+};
+
+export type UserAwayRangeDeleteAwayRangeAdminErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeDeleteAwayRangeAdminError = UserAwayRangeDeleteAwayRangeAdminErrors[keyof UserAwayRangeDeleteAwayRangeAdminErrors];
+
+export type UserAwayRangeDeleteAwayRangeAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserAwayRangeDeleteAwayRangeAdminResponse = UserAwayRangeDeleteAwayRangeAdminResponses[keyof UserAwayRangeDeleteAwayRangeAdminResponses];
+
+export type UserAwayRangeUpdateAwayRangeAdminData = {
+    body: UpdateAwayRangeDto;
+    path: {
+        userId: number;
+        id: number;
+    };
+    query?: never;
+    url: '/user/admin/{userId}/awayranges/{id}';
+};
+
+export type UserAwayRangeUpdateAwayRangeAdminErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeUpdateAwayRangeAdminError = UserAwayRangeUpdateAwayRangeAdminErrors[keyof UserAwayRangeUpdateAwayRangeAdminErrors];
+
+export type UserAwayRangeUpdateAwayRangeAdminResponses = {
+    200: UserAwayRangeDto;
+};
+
+export type UserAwayRangeUpdateAwayRangeAdminResponse = UserAwayRangeUpdateAwayRangeAdminResponses[keyof UserAwayRangeUpdateAwayRangeAdminResponses];
 
 export type ImagesGetImageData = {
     body?: never;

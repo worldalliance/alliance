@@ -1,10 +1,10 @@
 import {
   type CreateAwayRangeDto,
   type UpdateAwayRangeDto,
-  userCreateAwayRangeAdmin,
-  userDeleteAwayRangeAdmin,
-  userGetAwayRangeForUserAdmin,
-  userUpdateAwayRangeAdmin,
+  userAwayRangeCreateAwayRangeAdmin,
+  userAwayRangeDeleteAwayRangeAdmin,
+  userAwayRangeGetAwayRangeForUserAdmin,
+  userAwayRangeUpdateAwayRangeAdmin,
 } from "@alliance/shared/client";
 import { rethrowUnlessNotFound } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -18,7 +18,7 @@ export function useUserAwayRangesAdmin(userId: number) {
   const query = useQuery({
     queryKey,
     queryFn: () =>
-      userGetAwayRangeForUserAdmin({
+      userAwayRangeGetAwayRangeForUserAdmin({
         path: { id: userId },
         throwOnError: true,
       }).then((r) => r.data),
@@ -28,7 +28,7 @@ export function useUserAwayRangesAdmin(userId: number) {
 
   const createAwayRange = useMutation({
     mutationFn: (body: CreateAwayRangeDto) =>
-      userCreateAwayRangeAdmin({
+      userAwayRangeCreateAwayRangeAdmin({
         path: { userId },
         body,
         throwOnError: true,
@@ -38,7 +38,7 @@ export function useUserAwayRangesAdmin(userId: number) {
 
   const updateAwayRange = useMutation({
     mutationFn: ({ id, body }: { id: number; body: UpdateAwayRangeDto }) =>
-      userUpdateAwayRangeAdmin({
+      userAwayRangeUpdateAwayRangeAdmin({
         path: { userId, id },
         body,
         throwOnError: true,
@@ -48,7 +48,7 @@ export function useUserAwayRangesAdmin(userId: number) {
 
   const deleteAwayRange = useMutation({
     mutationFn: (id: number) =>
-      userDeleteAwayRangeAdmin({
+      userAwayRangeDeleteAwayRangeAdmin({
         path: { userId, id },
         throwOnError: true,
       }).then(() => undefined, rethrowUnlessNotFound),

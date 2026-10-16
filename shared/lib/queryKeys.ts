@@ -100,7 +100,7 @@ export const queryKeys = {
   linkPreview: (url: string) => ["linkPreviewGetPreview", url] as const,
   members: () => ["userMembers"] as const,
   membersWithFriends: () => ["userMembersWithFriends"] as const,
-  myAwayRanges: () => ["userGetAwayRanges"] as const,
+  myAwayRanges: () => ["userAwayRangeGetAwayRanges"] as const,
   myCommunities: () => ["communityGetMyCommunities"] as const,
   myConversations: () => ["conversationGetMyConversations"] as const,
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,
@@ -261,7 +261,7 @@ export const queryKeys = {
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
   userAwayRangesAdmin: (userId: number) =>
-    ["userGetAwayRangeForUserAdmin", userId] as const,
+    ["userAwayRangeGetAwayRangeForUserAdmin", userId] as const,
   userCityCountsAdmin: () => ["userCityCountsAdmin"] as const,
   userDetailAdmin: (userId: number) => ["userUserDetailAdmin", userId] as const,
   usersAdmin: () => ["userListAdmin"] as const,
