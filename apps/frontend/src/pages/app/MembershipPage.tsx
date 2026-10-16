@@ -4,7 +4,9 @@ import {
   WEEKLY_COMMITMENT_CONFIRMATION,
 } from "@alliance/shared/lib/contract";
 import {
+  membershipAgreement,
   membershipAgreementLoadFailed,
+  membershipFaq,
   suspendContractConfirmation,
 } from "@alliance/shared/lib/copy";
 import { useMembershipAgreement } from "@alliance/shared/lib/useMembershipAgreement";
@@ -110,7 +112,7 @@ function SignedContractActions({
         color={ButtonColor.Red}
         disabled={isSubmitting}
       >
-        Suspend agreement
+        {membershipAgreement.suspend}
       </Button>
     </div>
   );
@@ -193,7 +195,9 @@ const MembershipPage: React.FC = () => {
             className="p-6"
             data-walkthrough={WalkthroughAnchor.Contract}
           >
-            <h2 className="font-semibold! text-2xl! mb-4">Agreement</h2>
+            <h2 className="font-semibold! text-2xl! mb-4">
+              {membershipAgreement.heading}
+            </h2>
             <div className="flex flex-col gap-y-4">
               {previousSignedContract && (
                 <ContractDescriptionList
@@ -212,7 +216,7 @@ const MembershipPage: React.FC = () => {
                 <>
                   {updateAvailable && (
                     <p className="font-semibold">
-                      An updated contract is available.
+                      {membershipAgreement.updateAvailable}
                     </p>
                   )}
                   <ContractDescriptionList
@@ -290,64 +294,26 @@ const MembershipPage: React.FC = () => {
 
         <Card style={CardStyle.White} className="p-6">
           <h2 className="font-semibold! text-2xl! mb-4">
-            Questions about membership
+            {membershipFaq.heading}
           </h2>
           <div className="flex flex-col gap-y-5">
-            <div className="flex flex-col gap-y-1">
-              <h3 className="flex items-center gap-x-2 font-semibold text-black">
-                Why is there an agreement?
-              </h3>
-              <p className="text-base">
-                The membership agreement sets clear expectations for all members
-                of the Alliance. It ensures that we can count on your
-                participation, which allows us to plan actions precisely. By
-                signing, you are also making a commitment to your peers to work
-                together consistently.
-              </p>
-            </div>
-            <div className="flex flex-col gap-y-1">
-              <h3 className="flex items-center gap-x-2 font-semibold text-black">
-                What happens if I don&apos;t abide by the agreement?
-              </h3>
-              <p className="text-base">
-                If you miss any assigned non-optional task for 3 weeks in a row,
-                your agreement will be suspended automatically. You can re-sign
-                the agreement to re-join the Alliance.
-              </p>
-            </div>
-            <div className="flex flex-col gap-y-1">
-              <h3 className="flex items-center gap-x-2 font-semibold text-black">
-                Are there valid reasons to miss an action?
-              </h3>
-              <p className="text-base">
-                Yes. For our planning purposes, we ask that you inform us if you
-                will be unable to complete an action with one of the following
-                methods:
-              </p>
-              <ol className="list-decimal list-outside pl-4 space-y-1">
-                <li className="text-base">
-                  You can withdraw from an action by tapping the three dots at
-                  the bottom right of an action, next to the Complete button.
-                  You can withdraw if the action is taking you longer than 15
-                  minutes to complete, or if you have a moral objection to the
-                  action.
-                </li>
-                <li className="text-base">
-                  You can schedule an away period on this page if you won&apos;t
-                  be able to complete actions for a prolonged period, such as
-                  during a vacation.
-                </li>
-              </ol>
-            </div>
-            <div className="flex flex-col gap-y-1">
-              <h3 className="flex items-center gap-x-2 font-semibold text-black">
-                How do I end my membership?
-              </h3>
-              <p className="text-base">
-                You can end your membership at any time by suspending your
-                agreement on this page.
-              </p>
-            </div>
+            {membershipFaq.entries.map(({ question, answer, steps }) => (
+              <div key={question} className="flex flex-col gap-y-1">
+                <h3 className="flex items-center gap-x-2 font-semibold text-black">
+                  {question}
+                </h3>
+                <p className="text-base">{answer}</p>
+                {steps && (
+                  <ol className="list-decimal list-outside pl-4 space-y-1">
+                    {steps.map((step) => (
+                      <li key={step} className="text-base">
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            ))}
           </div>
         </Card>
       </div>

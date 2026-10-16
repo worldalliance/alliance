@@ -11,6 +11,7 @@ import {
   suspendedContractEvent,
   type ContractEventState,
 } from "./contract";
+import { membershipAgreement } from "./copy";
 import { failedToLoad } from "./failedToLoad";
 import { thrownRefusalMessage } from "./hey-api";
 import { useContractById } from "./useContractById";
@@ -72,10 +73,8 @@ export function useMembershipAgreement(params: {
       showError(
         thrownRefusalMessage({
           error,
-          fallback:
-            "There was an error signing the contract. Please try again.",
-          sessionExpired:
-            "Your session has expired. Sign in again to sign the agreement.",
+          fallback: membershipAgreement.signFailed,
+          sessionExpired: membershipAgreement.signSessionExpired,
         }),
       );
     } finally {
@@ -95,10 +94,8 @@ export function useMembershipAgreement(params: {
       showError(
         thrownRefusalMessage({
           error,
-          fallback:
-            "There was an error suspending the contract. Please try again.",
-          sessionExpired:
-            "Your session has expired. Sign in again to suspend your agreement.",
+          fallback: membershipAgreement.suspendFailed,
+          sessionExpired: membershipAgreement.suspendSessionExpired,
         }),
       );
     } finally {

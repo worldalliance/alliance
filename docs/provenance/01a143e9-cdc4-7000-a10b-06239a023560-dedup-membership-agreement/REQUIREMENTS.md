@@ -17,3 +17,11 @@ The item is the membership agreement section of the web page `apps/frontend/src/
 - When the sign button is enabled.
 
 Where web and mobile disagree, pick the correct behaviour and explain the choice in the PR.
+
+Origin: user
+
+Use "agreement" in the membership page's user-facing copy.
+
+Origin: orchestrating agent (not the user), approved by the user
+
+The web page already says "Agreement" (heading, "Suspend agreement", the questions about membership); the mobile screen still says "Contract". Make mobile's user-visible labels match web's agreement wording, ideally from shared strings so they cannot drift again. Leave identifiers, API names and the legal contract text alone.

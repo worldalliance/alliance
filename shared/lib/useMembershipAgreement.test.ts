@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ContractDto, ContractEventDto } from "../client";
 import { WEEKLY_COMMITMENT_CONFIRMATION } from "./contract";
+import { membershipAgreement } from "./copy";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { useMembershipAgreement } from "./useMembershipAgreement";
@@ -304,8 +305,8 @@ describe("useMembershipAgreement signing", () => {
   });
 
   it.each([
-    [401, "Your session has expired. Sign in again to sign the agreement."],
-    [500, "There was an error signing the contract. Please try again."],
+    [401, membershipAgreement.signSessionExpired],
+    [500, membershipAgreement.signFailed],
   ])("reports a signature refused with %i as %j", async (status, message) => {
     refusal = status;
     const { result, showError } = setup();
@@ -318,8 +319,8 @@ describe("useMembershipAgreement signing", () => {
   });
 
   it.each([
-    [401, "Your session has expired. Sign in again to suspend your agreement."],
-    [500, "There was an error suspending the contract. Please try again."],
+    [401, membershipAgreement.suspendSessionExpired],
+    [500, membershipAgreement.suspendFailed],
   ])("reports a suspension refused with %i as %j", async (status, message) => {
     refusal = status;
     const { result, showError } = setup(signed(2));

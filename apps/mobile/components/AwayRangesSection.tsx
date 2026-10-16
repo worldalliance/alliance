@@ -17,7 +17,10 @@ import {
   awayRangeStatus,
   formatAwayReason,
 } from "@alliance/shared/lib/awayRangesFormatters";
-import { awayRangesDescription } from "@alliance/shared/lib/copy";
+import {
+  awayRangesDescription,
+  membershipAgreement,
+} from "@alliance/shared/lib/copy";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useMyAwayRanges } from "@alliance/shared/lib/useMyAwayRanges";
 import { cn } from "@alliance/shared/styles/util";
@@ -317,8 +320,7 @@ export default function AwayRangesSection() {
             />
             {selectedReason === "other" && (
               <Text className="text-sm text-zinc-500 mt-1">
-                See your contract above for guidelines on extenuating
-                circumstances.
+                {membershipAgreement.awayOtherReasonHint}
               </Text>
             )}
           </View>

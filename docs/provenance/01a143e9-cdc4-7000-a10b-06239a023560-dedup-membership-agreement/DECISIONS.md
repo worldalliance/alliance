@@ -9,3 +9,7 @@
 - Only a signed event points at a previously signed contract. Suspended events carry no contract id (server `ContractService.suspendContract`), so this matches both apps' existing behaviour and lets the previous contract's section always show the signed actions without re-checking the event type.
 - The Sign and Suspend buttons are disabled while a request is submitting on both platforms, as mobile did. Web had no such guard, so a double click could send two requests.
 - Left per platform: error display (`alert` vs `Alert.alert`), suspend confirmation UI, and layout.
+- The membership page's agreement copy lives in `shared/lib/copy.ts` as `membershipAgreement` (heading, suspend button and alert title, updated notice, sign and suspend error messages, and the away-period form's hint for the "Other" reason, which points at the agreement above it) and `membershipFaq` (the questions about membership and their heading). Both platforms render from them, so the mobile screen takes web's wording, including web's longer answer to "Why is there an agreement?".
+- "Use agreement" applies to the page's remaining "contract" wording on web too: "An updated agreement is available.", the sign and suspend error messages, and `suspendContractConfirmation` ("Are you sure you want to suspend your agreement? ..."), which both platforms show.
+- `suspendContractConfirmation` keeps its name; only its text changes.
+- Console log messages ("Error signing contract:") are developer-facing and stay as they are.
