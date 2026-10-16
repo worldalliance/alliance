@@ -1,5 +1,4 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { type DisplayKind } from "@alliance/common/forms/display-blocks";
 import {
   PlaceKind,
@@ -13,7 +12,6 @@ import {
   type Page,
   type PageItem,
 } from "@alliance/common/forms/form-schema";
-import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
 import {
   collectUnresolvedVariableReferences,
   type UnresolvedVariableReference,
@@ -21,22 +19,12 @@ import {
 import { syncSchemaListInputs } from "@alliance/common/forms/variable-scope";
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { withCount } from "@alliance/common/plural";
-import { R, type Result } from "@alliance/common/result";
-import {
-  tasksCreateFormAdmin,
-  tasksGetForm,
-  tasksUpdateFormAdmin,
-} from "@alliance/shared/client";
-import { useInvalidateFormsAdmin } from "@alliance/shared/lib/useFormsAdmin";
 import { FormFieldsStatus } from "@alliance/shared/lib/useFormSchema";
 import { cn } from "@alliance/shared/styles/util";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
-import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useBeforeUnload, useBlocker, useSearchParams } from "react-router";
-import { adminRefusalMessage } from "../lib/adminRefusal";
+import { useSearchParams } from "react-router";
 import { conditionSourceFields } from "../lib/conditionSourceFields";
 import {
   collectSchemaIds,
@@ -44,13 +32,8 @@ import {
   copyPageWithUniqueIds,
   createUniqueFormBuilderId,
 } from "../lib/copyWithUniqueIds";
-import {
-  customValidatorIds,
-  mapCustomValidatorIds,
-} from "../lib/customValidatorIds";
 import { addressedWrite } from "../lib/displayBlockById";
-import { findQuestion } from "../lib/formDependencies";
-import { useSelectOnLoad } from "../lib/formEditorLink";
+import { ensurePages, ensureSchemaViews } from "../lib/ensureFormSchema";
 import {
   collectFormIssues,
   indexIssues,
@@ -58,17 +41,17 @@ import {
   type FormIssue,
 } from "../lib/formIssues";
 import { JsonScopeKind, type JsonScope } from "../lib/formJson";
-import { mergeFormSchemas } from "../lib/formSchemaMerge";
 import { reorderPages } from "../lib/reorderPages";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { updatePageElement } from "../lib/updatePageElement";
 import { useConditionFieldLookup } from "../lib/useConditionFieldLookup";
-import { useCustomValidatorAdmin } from "../lib/useCustomValidatorAdmin";
 import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
 import { DropPosition, moveItem } from "../lib/useDragReorder";
-import { useFormDraft, type CreatedValidator } from "../lib/useFormDraft";
+import { useFormDraft } from "../lib/useFormDraft";
+import { useFormSave, type DisplayOnlySave } from "../lib/useFormSave";
 import { useFormulaSourceForms } from "../lib/useFormulaSourceForms";
 import { useInputSources } from "../lib/useInputSources";
+import { useSavedForm } from "../lib/useSavedForm";
 import { useSelectedPage } from "../lib/useSelectedPage";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
 import {
@@ -146,7 +129,6 @@ import {
   expressionKeys,
 } from "./form-fields/conditions/expressionBuffers";
 import { createField } from "./form-fields/createField";
-import { isDraftValidatorId } from "./form-fields/customValidatorDrafts";
 import { renderFieldEditor } from "./form-fields/fieldEditors";
 import { FormConflictModal } from "./FormConflictModal";
 import { FormDraftContexts } from "./FormDraftContexts";
@@ -187,21 +169,6 @@ function describeUnresolvedReferences(
   ].join("\n");
 }
 
-export type DisplayOnlySaveConflict = {
-  theirs: FormSchema;
-  theirsSnapshotId: number;
-};
-
-export type DisplayOnlySaveResult = Result<
-  { snapshotId: number },
-  DisplayOnlySaveConflict
->;
-
-export type DisplayOnlySave = (params: {
-  schema: FormSchema;
-  expectedSnapshotId: number | null;
-}) => Promise<DisplayOnlySaveResult>;
-
 // The two editors save through entirely different paths, so the props each one
 // needs are spelled as a union rather than as independent optionals: a
 // display-only builder with no `onSave` would otherwise typecheck and then save
@@ -227,27 +194,6 @@ type FormBuilderProps = {
       actionName?: string;
     }
 );
-
-const ensureSchemaViews = (schema: FormSchema): FormSchema => ({
-  ...schema,
-  outputViews: schema.outputViews ?? [],
-  aggregateViews: schema.aggregateViews ?? [],
-});
-
-const ensurePages = (schema: FormSchema): FormSchema => {
-  const withOutputViews = ensureSchemaViews(schema);
-  if (
-    !withOutputViews.pages ||
-    !Array.isArray(withOutputViews.pages) ||
-    withOutputViews.pages.length === 0
-  ) {
-    return {
-      ...withOutputViews,
-      pages: [{ id: "page-1", title: "Page 1", fields: [] }],
-    };
-  }
-  return withOutputViews;
-};
 
 const NO_VISIBILITY_GROUPS: VisibilityGroups = new Map();
 
@@ -306,36 +252,44 @@ export function FormBuilder(props: FormBuilderProps) {
     schema,
     groups: visibilityGroups,
     setSchema,
-    amendSchema,
-    endStep,
     regroupSchema,
     loadSchema,
     setGroups,
     validatorDrafts,
     setValidatorDraft,
     removeValidatorDraft,
-    resolveValidatorDrafts,
     expressions,
     setExpression,
   } = formDraft;
-  const [lastSavedSchemaJSON, setLastSavedSchemaJSON] = useState<string>(() =>
-    JSON.stringify(buildInitialSchema()),
-  );
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-
-  const [baseFormSnapshotId, setBaseFormSnapshotId] = useState<number | null>(
-    initialSnapshotId,
-  );
-  const [conflict, setConflict] = useState<{
-    base: FormSchema;
-    mine: FormSchema;
-    theirs: FormSchema;
-    theirsSnapshotId: number;
-  } | null>(null);
   // Editors that keep their own copy of a formula or its text only follow it
   // through their own edits, so a schema loaded from the server, a conflict,
   // or pasted JSON, or restored by undo or redo, remounts them.
   const [schemaLoads, setSchemaLoads] = useState(0);
+  const [selection, setSelection] = useState<CanvasSelection>(() => ({
+    pageId: schema.pages[0]?.id ?? "",
+    target: { kind: CanvasTargetKind.Page },
+  }));
+  const reloadEditors = useCallback(() => {
+    setSchemaLoads((count) => count + 1);
+    setSelection((current) => {
+      const target = forgetPositions(current.target);
+      return target === current.target ? current : { ...current, target };
+    });
+  }, []);
+  const [placeOnLoad, setPlaceOnLoad] = useState<FormPlace | null>(null);
+  const saved = useSavedForm({
+    displayOnly,
+    formId,
+    initialSchema,
+    initialSnapshotId,
+    buildInitialSchema,
+    schema,
+    loadSchema,
+    reloadEditors,
+    selectPlace: setPlaceOnLoad,
+  });
+  const { hasUnsavedChanges, conflict, isLoading, loadError, retryLoad } =
+    saved;
   const [confirmUnresolvedVariables, setConfirmUnresolvedVariables] =
     useState(false);
 
@@ -385,32 +339,37 @@ export function FormBuilder(props: FormBuilderProps) {
   const { selectedPageIndex, setSelectedPageIndex, keepPage } = useSelectedPage(
     schema.pages,
   );
-  const [selection, setSelection] = useState<CanvasSelection>(() => ({
-    pageId: schema.pages[0]?.id ?? "",
-    target: { kind: CanvasTargetKind.Page },
-  }));
   const [section, setSection] = useState(SidebarSection.Content);
-  const reloadEditors = useCallback(() => {
-    setSchemaLoads((count) => count + 1);
-    setSelection((current) => {
-      const target = forgetPositions(current.target);
-      return target === current.target ? current : { ...current, target };
-    });
-  }, []);
   const wideCanvas = useWideCanvasLayout();
   const [drawer, setDrawer] = useState<DrawerKind | null>(null);
   const [focusPending, setFocusPending] = useState(false);
   const focused = useCallback(() => setFocusPending(false), []);
   const [revealPending, setRevealPending] = useState(false);
   const revealed = useCallback(() => setRevealPending(false), []);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [loadAttempt, setLoadAttempt] = useState(0);
   const [issueList, setIssueList] = useState<{ gate: IssueGate | null } | null>(
     null,
   );
+  const {
+    saveForm,
+    isSaving,
+    saveError,
+    closeConflict,
+    handleKeepMine,
+    handleTakeTheirs,
+    handleMerge,
+    handleCopyMine,
+  } = useFormSave({
+    displayOnlySave,
+    formId,
+    newFormTitle,
+    setFormId,
+    formDraft,
+    saved,
+    sourceFormsLoading,
+    validation,
+    reloadEditors,
+    onInvalid: useCallback(() => setIssueList({ gate: IssueGate.Save }), []),
+  });
   const [outputViewId, setOutputViewId] = useState<string | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewUserId, setPreviewUserId] = useState<string>("preview");
@@ -503,9 +462,6 @@ export function FormBuilder(props: FormBuilderProps) {
       ? "preview"
       : (resolvedPreviewUser?.id ?? "preview");
 
-  const { success: showSuccessToast, error: showErrorToast } = useToast();
-  const invalidateForms = useInvalidateFormsAdmin();
-
   const select = (target: CanvasTarget, nextSection: SidebarSection) => {
     setSelection({ pageId: currentPage.id, target });
     setSection(nextSection);
@@ -538,7 +494,6 @@ export function FormBuilder(props: FormBuilderProps) {
     if (!keepOutline) setDrawer(wideCanvas ? null : DrawerKind.Settings);
   };
 
-  const [placeOnLoad, setPlaceOnLoad] = useState<FormPlace | null>(null);
   if (placeOnLoad) {
     setPlaceOnLoad(null);
     selectFromOutline({
@@ -586,70 +541,6 @@ export function FormBuilder(props: FormBuilderProps) {
     setInsertion(null);
   }, [selectedPageIndex]);
 
-  // A new form's first save already holds the saved schema; refetching it
-  // would regroup and drop the admin's manual group boundaries.
-  const createdFormIdRef = useRef<number | null>(null);
-  const selectOnLoadRef = useSelectOnLoad();
-
-  // Load form data when formId changes
-  useEffect(() => {
-    if (displayOnly || !formId || initialSchema) return;
-    if (createdFormIdRef.current === formId) {
-      createdFormIdRef.current = null;
-      return;
-    }
-    setIsLoading(true);
-    setLoadError(null);
-
-    tasksGetForm({ path: { id: formId }, throwOnError: true })
-      .then((response) => {
-        if (response.data) {
-          // Convert the form entity back to FormSchema
-          const form = response.data as any;
-          if (form.schema) {
-            const nextSchema = ensurePages(
-              form.schema as unknown as FormSchema,
-            );
-            loadSchema(nextSchema);
-            reloadEditors();
-            const selectOnLoad = selectOnLoadRef.current;
-            selectOnLoadRef.current = null;
-            if (selectOnLoad !== null) {
-              const place = findQuestion(nextSchema.pages, selectOnLoad);
-              if (place) {
-                setPlaceOnLoad(place);
-              } else {
-                showErrorToast(`This form has no question "${selectOnLoad}"`);
-              }
-            }
-            setLastSavedSchemaJSON(JSON.stringify(nextSchema));
-            setBaseFormSnapshotId(
-              typeof form.formSnapshotId === "number"
-                ? form.formSnapshotId
-                : null,
-            );
-            setHasUnsavedChanges(false);
-          }
-        }
-      })
-      .catch((error) => {
-        console.error("Failed to load form:", error);
-        setLoadError(adminRefusalMessage(error, "Failed to load form"));
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [
-    displayOnly,
-    formId,
-    initialSchema,
-    loadAttempt,
-    loadSchema,
-    reloadEditors,
-    selectOnLoadRef,
-    showErrorToast,
-  ]);
-
   const addField = (kind: FieldKind, loc: InsertLoc) => {
     insertAndSelect(createField(kind, `field-${Date.now()}`), loc);
   };
@@ -663,77 +554,6 @@ export function FormBuilder(props: FormBuilderProps) {
   };
 
   const updateBlockById = useDisplayBlockWrite(schema, updateSchema);
-
-  const { create: createValidator } = useCustomValidatorAdmin(null);
-  const resolveCustomValidatorDrafts = useCallback(
-    async (schemaToSave: FormSchema) => {
-      const draftIds = [...customValidatorIds(schemaToSave)].filter(
-        isDraftValidatorId,
-      );
-
-      const created = new Map<number, CreatedValidator>();
-      if (draftIds.length === 0) {
-        return { schema: schemaToSave, created };
-      }
-
-      await Promise.all(
-        draftIds.map(async (draftId) => {
-          const draft = validatorDrafts[draftId];
-          if (!draft) {
-            throw new Error("Missing custom validator draft configuration.");
-          }
-          created.set(draftId, { id: await createValidator(draft), draft });
-        }),
-      );
-
-      const nextSchema = mapCustomValidatorIds(
-        schemaToSave,
-        (id) => created.get(id)?.id ?? id,
-      );
-
-      return { schema: nextSchema, created };
-    },
-    [validatorDrafts, createValidator],
-  );
-
-  useEffect(() => {
-    const currentSchemaJSON = JSON.stringify(schema);
-    setHasUnsavedChanges(currentSchemaJSON !== lastSavedSchemaJSON);
-  }, [schema, lastSavedSchemaJSON]);
-
-  useBeforeUnload(
-    useCallback(
-      (event) => {
-        if (!hasUnsavedChanges) return;
-        event.preventDefault();
-        event.returnValue = "";
-      },
-      [hasUnsavedChanges],
-    ),
-  );
-
-  /** Bypass blocker while save-driven `setFormId` navigation sees stale dirty state. */
-  const skipNavigationBlockRef = useRef(false);
-  const navigationBlocker = useBlocker(
-    useCallback(
-      () => hasUnsavedChanges && !skipNavigationBlockRef.current,
-      [hasUnsavedChanges],
-    ),
-  );
-
-  useEffect(() => {
-    if (navigationBlocker.state === "blocked") {
-      const confirmExit = window.confirm(
-        "You have unsaved changes. Are you sure you want to leave this page?",
-      );
-
-      if (confirmExit) {
-        navigationBlocker.proceed?.();
-      } else {
-        navigationBlocker.reset?.();
-      }
-    }
-  }, [navigationBlocker]);
 
   useEffect(() => {
     if (activeEditor !== "form" && isPreviewMode) {
@@ -838,146 +658,6 @@ export function FormBuilder(props: FormBuilderProps) {
     });
   };
 
-  const saveForm = useCallback(async () => {
-    setIsSaving(true);
-    setSaveError(null);
-
-    try {
-      if (sourceFormsLoading) {
-        showErrorToast(
-          "Still loading the questions of forms your formulas read. Try again in a moment.",
-        );
-        return;
-      }
-
-      // List inputs name sub-fields added since they were last saved, from
-      // labels that are final by now.
-      const syncedSchema = syncSchemaListInputs(schema, sourceForms);
-      amendSchema(syncedSchema);
-      endStep();
-
-      if (validateFormSchema(syncedSchema, validation).length > 0) {
-        setIssueList({ gate: IssueGate.Save });
-        return;
-      }
-
-      const { schema: schemaForSave, created } =
-        await resolveCustomValidatorDrafts(syncedSchema);
-      if (created.size > 0) {
-        resolveValidatorDrafts(created);
-      }
-
-      if (displayOnlySave) {
-        const result = await displayOnlySave({
-          schema: schemaForSave,
-          expectedSnapshotId: baseFormSnapshotId,
-        });
-        if (R.isFailure(result)) {
-          setConflict({
-            base: JSON.parse(lastSavedSchemaJSON) as FormSchema,
-            mine: schemaForSave,
-            theirs: result.error.theirs,
-            theirsSnapshotId: result.error.theirsSnapshotId,
-          });
-          showErrorToast("This update was changed by someone else");
-          return;
-        }
-        setLastSavedSchemaJSON(JSON.stringify(schemaForSave));
-        setBaseFormSnapshotId(result.value.snapshotId);
-        setHasUnsavedChanges(false);
-        showSuccessToast("Saved successfully");
-        return;
-      }
-
-      let response;
-
-      if (formId) {
-        response = await tasksUpdateFormAdmin({
-          path: { formId },
-          body: {
-            schema: schemaForSave as unknown as Record<string, unknown>,
-            expectedFormSnapshotId: baseFormSnapshotId ?? undefined,
-          },
-        });
-      } else {
-        response = await tasksCreateFormAdmin({
-          body: {
-            title: newFormTitle,
-            schema: schemaForSave as unknown as Record<string, unknown>,
-          },
-        });
-      }
-
-      if (formId && response.response.status === 409) {
-        const latest = await tasksGetForm({ path: { id: formId } });
-        const latestData = latest.data as
-          | { schema?: unknown; formSnapshotId?: number }
-          | undefined;
-        if (
-          latestData?.schema &&
-          typeof latestData.formSnapshotId === "number"
-        ) {
-          setConflict({
-            base: JSON.parse(lastSavedSchemaJSON) as FormSchema,
-            mine: schemaForSave,
-            theirs: ensurePages(latestData.schema as FormSchema),
-            theirsSnapshotId: latestData.formSnapshotId,
-          });
-        } else {
-          setSaveError(
-            "This form was changed by someone else. Reload to continue.",
-          );
-        }
-        showErrorToast("This form was changed by someone else");
-        return;
-      }
-
-      if (response.response.ok && response.data) {
-        void invalidateForms();
-        setLastSavedSchemaJSON(JSON.stringify(schemaForSave));
-        setBaseFormSnapshotId(response.data.formSnapshotId);
-        setHasUnsavedChanges(false);
-        skipNavigationBlockRef.current = true;
-        if (response.data.id !== formId) {
-          createdFormIdRef.current = response.data.id;
-        }
-        setFormId(response.data.id);
-        skipNavigationBlockRef.current = false;
-        showSuccessToast("Form saved successfully");
-      } else {
-        const fallbackMessage = "Could not save form";
-        setSaveError(fallbackMessage);
-        showErrorToast(fallbackMessage);
-      }
-    } catch (error) {
-      console.error("Failed to save form:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to save form";
-      setSaveError(errorMessage);
-      showErrorToast(errorMessage);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [
-    displayOnlySave,
-    formId,
-    baseFormSnapshotId,
-    invalidateForms,
-    lastSavedSchemaJSON,
-    newFormTitle,
-    amendSchema,
-    endStep,
-    resolveCustomValidatorDrafts,
-    resolveValidatorDrafts,
-    schema,
-    setFormId,
-    showErrorToast,
-    showSuccessToast,
-    sourceForms,
-    sourceFormsLoading,
-    validation,
-  ]);
-
   // A dangling `#{name}` renders as written rather than breaking the form, so
   // it is worth a confirmation but not a refusal — an admin renaming a variable
   // would otherwise be unable to save until every reference was updated.
@@ -999,7 +679,6 @@ export function FormBuilder(props: FormBuilderProps) {
   );
   const issueIndex = useMemo(() => indexIssues(issues), [issues]);
   const blockingIssues = issues.length + (loadError ? 1 : 0);
-  const retryLoad = () => setLoadAttempt((count) => count + 1);
   const retryLoadLabel = hasUnsavedChanges
     ? "Discard edits and retry"
     : "Retry";
@@ -1021,158 +700,6 @@ export function FormBuilder(props: FormBuilderProps) {
     sourceFormsLoading,
     unresolvedVariableReferences,
   ]);
-
-  const closeConflict = useCallback(() => setConflict(null), []);
-
-  // Overwrite only if their snapshot is still current.
-  const handleKeepMine = useCallback(async () => {
-    if (!conflict) return;
-    if (displayOnlySave) {
-      setIsSaving(true);
-      setSaveError(null);
-      try {
-        const result = await displayOnlySave({
-          schema: conflict.mine,
-          expectedSnapshotId: conflict.theirsSnapshotId,
-        });
-        if (R.isFailure(result)) {
-          setConflict({
-            base: conflict.base,
-            mine: conflict.mine,
-            theirs: result.error.theirs,
-            theirsSnapshotId: result.error.theirsSnapshotId,
-          });
-          showErrorToast("Someone saved again — review the latest changes");
-          return;
-        }
-        amendSchema(conflict.mine);
-        setLastSavedSchemaJSON(JSON.stringify(conflict.mine));
-        setBaseFormSnapshotId(result.value.snapshotId);
-        setHasUnsavedChanges(false);
-        setConflict(null);
-        showSuccessToast("Saved your version");
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Could not save";
-        setSaveError(message);
-        showErrorToast(message);
-      } finally {
-        setIsSaving(false);
-      }
-      return;
-    }
-    if (!formId) return;
-    setIsSaving(true);
-    setSaveError(null);
-    try {
-      const response = await tasksUpdateFormAdmin({
-        path: { formId },
-        body: {
-          schema: conflict.mine as unknown as Record<string, unknown>,
-          expectedFormSnapshotId: conflict.theirsSnapshotId,
-        },
-      });
-      if (response.response.status === 409) {
-        const latest = await tasksGetForm({ path: { id: formId } });
-        const latestData = latest.data as
-          | { schema?: unknown; formSnapshotId?: number }
-          | undefined;
-        if (
-          latestData?.schema &&
-          typeof latestData.formSnapshotId === "number"
-        ) {
-          setConflict({
-            base: conflict.base,
-            mine: conflict.mine,
-            theirs: ensurePages(latestData.schema as FormSchema),
-            theirsSnapshotId: latestData.formSnapshotId,
-          });
-        }
-        showErrorToast("Someone saved again — review the latest changes");
-        return;
-      }
-      if (response.response.ok && response.data) {
-        void invalidateForms();
-        amendSchema(conflict.mine);
-        setLastSavedSchemaJSON(JSON.stringify(conflict.mine));
-        setBaseFormSnapshotId(response.data.formSnapshotId);
-        setHasUnsavedChanges(false);
-        setConflict(null);
-        showSuccessToast("Saved your version");
-      } else {
-        setSaveError("Could not save form");
-        showErrorToast("Could not save form");
-      }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to save form";
-      setSaveError(message);
-      showErrorToast(message);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [
-    conflict,
-    displayOnlySave,
-    formId,
-    invalidateForms,
-    amendSchema,
-    showErrorToast,
-    showSuccessToast,
-  ]);
-
-  const handleTakeTheirs = useCallback(() => {
-    if (!conflict) return;
-    if (
-      !window.confirm(
-        "Discard your changes and load their current version? Copy your version first if you want to keep it.",
-      )
-    ) {
-      return;
-    }
-    loadSchema(conflict.theirs);
-    reloadEditors();
-    setLastSavedSchemaJSON(JSON.stringify(conflict.theirs));
-    setBaseFormSnapshotId(conflict.theirsSnapshotId);
-    setHasUnsavedChanges(false);
-    setConflict(null);
-  }, [conflict, loadSchema, reloadEditors]);
-
-  const handleMerge = useCallback(() => {
-    if (!conflict) return;
-    const result = mergeFormSchemas({
-      base: conflict.base,
-      mine: conflict.mine,
-      theirs: conflict.theirs,
-      validation,
-    });
-    if (!result.ok) {
-      showErrorToast("Can't auto-merge — there are conflicting edits");
-      return;
-    }
-    loadSchema(result.value);
-    reloadEditors();
-    setLastSavedSchemaJSON(JSON.stringify(conflict.theirs));
-    setBaseFormSnapshotId(conflict.theirsSnapshotId);
-    setConflict(null);
-    showSuccessToast("Merged their changes with yours — review and save");
-  }, [
-    conflict,
-    loadSchema,
-    reloadEditors,
-    showErrorToast,
-    showSuccessToast,
-    validation,
-  ]);
-
-  const handleCopyMine = useCallback(async () => {
-    if (!conflict) return;
-    if (await copyToClipboard(JSON.stringify(conflict.mine, null, 2))) {
-      showSuccessToast("Copied your version to the clipboard");
-    } else {
-      showErrorToast("Could not copy your version to the clipboard");
-    }
-  }, [conflict, showErrorToast, showSuccessToast]);
 
   const historyLocked =
     isSaving || isLoading || isPreviewMode || conflict !== null;
