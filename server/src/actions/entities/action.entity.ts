@@ -1,4 +1,8 @@
-import { eventInEffectAt } from "@alliance/common/actionEvent";
+import {
+  eventInEffectAt,
+  memberActionPhase,
+  type MemberActionPhase,
+} from "@alliance/common/actionEvent";
 import {
   cohortExpressionSchema,
   type CohortExpression,
@@ -40,10 +44,6 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { ActionCategory } from "../action-category";
-import {
-  memberActionPhase,
-  type MemberActionPhase,
-} from "../utils/action-event";
 import { ActionActivity } from "./action-activity.entity";
 import { ActionEvent, ActionStatus } from "./action-event.entity";
 import { ActionFormVariant } from "./action-form-variant.entity";
@@ -444,8 +444,8 @@ export class Action {
   }
 
   @IsOptional()
-  private _memberActionPhase: MemberActionPhase | null = null;
-  get memberActionPhase(): MemberActionPhase {
+  private _memberActionPhase: MemberActionPhase<ActionEvent> | null = null;
+  get memberActionPhase(): MemberActionPhase<ActionEvent> {
     if (!this._memberActionPhase) {
       this._memberActionPhase = memberActionPhase(loadedActionEvents(this));
     }

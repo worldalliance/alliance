@@ -23,6 +23,27 @@ export function eventInEffectAt<E extends { date: Date | string }>(
   };
 }
 
+export type MemberActionPhase<E> =
+  | { event: E; deadlineEvent: E | null }
+  | { event: null; deadlineEvent: null };
+
+/**
+ * The member-action phase of an action: the event that opens it and the event
+ * that closes it.
+ */
+export function memberActionPhase<
+  E extends { date: Date | string; newStatus: string },
+>(events: E[]): MemberActionPhase<E> {
+  const event = events.find((event) => event.newStatus === "member_action");
+  if (!event) {
+    return { event: null, deadlineEvent: null };
+  }
+  return {
+    event,
+    deadlineEvent: eventInEffectAt(events, new Date(event.date)).nextEvent,
+  };
+}
+
 /** The member-action event, once it has taken effect. */
 export function findStartedMemberActionEvent<
   E extends { date: Date | string; newStatus: string },

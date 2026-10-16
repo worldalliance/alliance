@@ -142,6 +142,36 @@ it("says the dependency deadlines failed to load", async () => {
   ).toBeTruthy();
 });
 
+it("schedules a from-deadline group from the event after the member-action event", async () => {
+  const memberAction = makeEvent({ id: 1, newStatus: "member_action" });
+  groups = [
+    {
+      id: 1,
+      name: "Last call",
+      timingMode: "from_deadline",
+      sendAtSecondsFromDeadline: 0,
+      memberActionEvent: memberAction,
+    },
+  ];
+  renderTab([
+    memberAction,
+    makeEvent({
+      id: 2,
+      newStatus: "office_action",
+      title: "Same instant",
+      date: memberAction.date,
+    }),
+    makeEvent({
+      id: 3,
+      newStatus: "resolution",
+      title: "Close",
+      date: new Date(Date.now() + 1000).toISOString(),
+    }),
+  ]);
+
+  expect(await screen.findByText("Sends when Close begins")).toBeTruthy();
+});
+
 const deleteGroup = async (name: string) => {
   const card = (await screen.findByText(name)).closest(".bg-white");
   if (!(card instanceof HTMLElement)) throw new Error(`no card for ${name}`);

@@ -1,4 +1,5 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { memberActionPhase } from "@alliance/common/actionEvent";
 import { milliseconds } from "date-fns";
 import { millisecondsInDay } from "date-fns/constants";
 import {
@@ -20,7 +21,6 @@ import {
   ViewerActionRelation,
   ViewerOptionalReason,
 } from "./user-action-status";
-import { memberActionPhase } from "./utils/action-event";
 
 /** Fixed "now": 7 days into a 14-day member-action window by default. */
 const NOW = new Date("2026-01-08T00:00:00Z");

@@ -1,3 +1,4 @@
+import { memberActionPhase } from "@alliance/common/actionEvent";
 import { millisecondsInDay, millisecondsInMinute } from "date-fns/constants";
 import {
   ContractEvent,
@@ -15,7 +16,6 @@ import {
   readsSavedDecisions,
 } from "./cohort-decision";
 import { ActionEvent, ActionStatus } from "./entities/action-event.entity";
-import { memberActionPhase } from "./utils/action-event";
 
 const NOW = new Date("2026-01-08T00:00:00Z");
 const daysFromNow = (days: number) =>
