@@ -1,8 +1,4 @@
 import {
-  userAddUserToTagAdmin,
-  userRemoveUserFromTagAdmin,
-} from "@alliance/shared/client";
-import {
   TagDto,
   TagSummaryDto,
   UserAdminDetailDto,
@@ -13,9 +9,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 export default function UserTagsSection({
   user,
   loadedTags,
+  setTagMembership,
 }: {
   user: UserAdminDetailDto;
   loadedTags: TagSummaryDto[];
+  setTagMembership: (input: {
+    tagId: string;
+    member: boolean;
+  }) => Promise<TagDto>;
 }) {
   const [allTags, setAllTags] = useState<TagSummaryDto[]>(loadedTags);
   const [pendingTagOps, setPendingTagOps] = useState<Set<string>>(
@@ -27,13 +28,10 @@ export default function UserTagsSection({
     return [...allTags].sort((a, b) => a.name.localeCompare(b.name));
   }, [allTags]);
 
-  const [userTagIds, setUserTagIds] = useState<Set<string>>(
+  const userTagIds = useMemo(
     () => new Set((user.tags ?? []).map((tag) => tag.id)),
+    [user.tags],
   );
-
-  useEffect(() => {
-    setUserTagIds(new Set((user.tags ?? []).map((tag) => tag.id)));
-  }, [user.tags]);
 
   useEffect(() => {
     setAllTags(loadedTags);
@@ -76,29 +74,9 @@ export default function UserTagsSection({
       });
       setTagMutationError(null);
       try {
-        if (nextChecked) {
-          const res = await userAddUserToTagAdmin({
-            path: { tagId },
-            body: { userId: user.id },
-          });
-          if (res.data) {
-            updateTagInState(res.data);
-            setUserTagIds((prev) => new Set([...prev, tagId]));
-          }
-        } else {
-          const res = await userRemoveUserFromTagAdmin({
-            path: { tagId },
-            body: { userId: user.id },
-          });
-          if (res.data) {
-            updateTagInState(res.data);
-            setUserTagIds((prev) => {
-              const next = new Set(prev);
-              next.delete(tagId);
-              return next;
-            });
-          }
-        }
+        updateTagInState(
+          await setTagMembership({ tagId, member: nextChecked }),
+        );
       } catch (error) {
         console.error("Failed to update tag membership", error);
         setTagMutationError("Failed to update tag membership. Try again.");
@@ -110,7 +88,7 @@ export default function UserTagsSection({
         });
       }
     },
-    [tagKey, updateTagInState, user.id],
+    [setTagMembership, tagKey, updateTagInState],
   );
 
   return (

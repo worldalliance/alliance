@@ -1,10 +1,17 @@
 import type { UserAdminDetailDto } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { makeUser } from "@alliance/shared/lib/testFixtures";
+import { makeTag, makeUser } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { omit } from "es-toolkit";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { AuthProvider } from "../lib/AuthContext";
 import { queryClient } from "../lib/queryClient";
@@ -18,7 +25,12 @@ const sam: UserAdminDetailDto = {
   invitedBy: null,
 };
 
+const tagDto = makeTag();
+const volunteers = omit(tagDto, ["users"]);
+
+let stored: UserAdminDetailDto;
 let detailStatus: number;
+let addTagStatus: number;
 let memberRequested: () => void;
 let memberRequest: Promise<void>;
 
@@ -28,7 +40,7 @@ serveApi(
       "GET /user/userdetail/:id": () => {
         memberRequested();
         return detailStatus === 200
-          ? Response.json(sam)
+          ? Response.json(stored)
           : Response.json(
               { message: "User not found" },
               { status: detailStatus },
@@ -45,7 +57,14 @@ serveApi(
       // waits for the loader never starts.
       "GET /user/tag-summaries": async () => {
         await memberRequest;
-        return Response.json([]);
+        return Response.json([volunteers]);
+      },
+      "POST /user/tags/:tagId/addUser": () => {
+        if (addTagStatus !== 200) {
+          return Response.json({}, { status: addTagStatus });
+        }
+        stored = { ...stored, tags: [volunteers] };
+        return Response.json(tagDto);
       },
       "GET /actions/action-relations/:userId": () =>
         Response.json({ actions: [], users: [] }),
@@ -61,7 +80,9 @@ serveApi(
 beforeAll(() => queryClient.setDefaultOptions({ queries: { retry: false } }));
 
 beforeEach(() => {
+  stored = sam;
   detailStatus = 404;
+  addTagStatus = 200;
   memberRequest = new Promise((resolve) => {
     memberRequested = resolve;
   });
@@ -179,4 +200,49 @@ it("says when a suspension is refused instead of confirming it", async () => {
     await screen.findByText("Failed to suspend contract. Try again."),
   ).toBeTruthy();
   expect(screen.queryByText("Contract suspended")).toBeNull();
+});
+
+const toggleVolunteers = async () => {
+  fireEvent.click(await screen.findByRole("checkbox", { name: "Volunteers" }));
+};
+
+const volunteersBox = () =>
+  screen.getByRole<HTMLInputElement>("checkbox", { name: "Volunteers" });
+
+it("checks a tag once the member has it", async () => {
+  detailStatus = 200;
+  renderPage();
+
+  await toggleVolunteers();
+
+  await waitFor(() => expect(volunteersBox().checked).toBe(true));
+  expect(screen.getByText("Tags (1)")).toBeTruthy();
+});
+
+it("says when a tag change is refused", async () => {
+  detailStatus = 200;
+  addTagStatus = 500;
+  renderPage();
+
+  await toggleVolunteers();
+
+  expect(
+    await screen.findByText("Failed to update tag membership. Try again."),
+  ).toBeTruthy();
+  expect(volunteersBox().checked).toBe(false);
+});
+
+it("says it could not refresh the member after a tag change", async () => {
+  detailStatus = 200;
+  renderPage();
+  await screen.findByRole("checkbox", { name: "Volunteers" });
+  detailStatus = 500;
+
+  await toggleVolunteers();
+
+  expect(
+    await screen.findByText(
+      "Could not refresh this member. Reload to see their latest details.",
+    ),
+  ).toBeTruthy();
 });

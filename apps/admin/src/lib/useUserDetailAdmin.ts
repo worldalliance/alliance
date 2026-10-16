@@ -5,6 +5,7 @@ import {
   userUserDetailAdmin,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
 import { useStoreQueryData } from "./usePatchQueryData";
@@ -30,6 +31,7 @@ export function useUserDetailAdmin(userId: number) {
   const options = userDetailQuery(userId);
   const { queryKey } = options;
   const query = useQuery(options);
+  const { addUserToTag, removeUserFromTag } = useTagsAdmin({ enabled: false });
 
   const refresh = () => query.refetch({ throwOnError: true });
 
@@ -50,5 +52,16 @@ export function useUserDetailAdmin(userId: number) {
     onSuccess: () => query.refetch(),
   });
 
-  return { query, refresh, updateRoles, suspendContract };
+  const setTagMembership = useMutation({
+    mutationFn: ({ tagId, member }: { tagId: string; member: boolean }) =>
+      (member ? addUserToTag : removeUserFromTag).mutateAsync({
+        tagId,
+        body: { userId },
+      }),
+    // A patch would cancel a refetch already in flight, such as a
+    // suspension's, and drop what it was loading; a refetch replaces it.
+    onSuccess: () => query.refetch(),
+  });
+
+  return { query, refresh, updateRoles, suspendContract, setTagMembership };
 }

@@ -3,13 +3,17 @@ import type {
   UserAdminDetailDto,
 } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { makeUser } from "@alliance/shared/lib/testFixtures";
+import { makeTag, makeUser } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { omit } from "es-toolkit";
 import { useUserDetailAdmin } from "./useUserDetailAdmin";
 
 afterEach(cleanup);
+
+const tagDto = makeTag();
+const volunteers = omit(tagDto, ["users"]);
 
 const member: UserAdminDetailDto = {
   ...makeUser({ id: 7, name: "Sam", hasActiveContract: true }),
@@ -26,6 +30,8 @@ let suspendStatus: number;
 let detailLoads: number;
 let detailDelay: number;
 let suspended: string[];
+let tagStatus: number;
+let tagWrites: unknown[];
 
 serveApi(
   routes({
@@ -51,6 +57,17 @@ serveApi(
       stored = { ...stored, staff: body.staff ?? stored.staff };
       return Response.json(stored);
     },
+    "POST /user/tags/:tagId/addUser": async ({ request, params }) => {
+      tagWrites.push({ add: params.tagId, body: await request.json() });
+      if (tagStatus !== 200) return Response.json({}, { status: tagStatus });
+      stored = { ...stored, tags: [...stored.tags, volunteers] };
+      return Response.json(tagDto);
+    },
+    "POST /user/tags/:tagId/removeUser": async ({ request, params }) => {
+      tagWrites.push({ remove: params.tagId, body: await request.json() });
+      stored = { ...stored, tags: [] };
+      return Response.json(tagDto);
+    },
     "POST /contract/admin/suspend/:userId": ({ params }) => {
       if (suspendStatus !== 200) {
         return Response.json({}, { status: suspendStatus });
@@ -70,6 +87,8 @@ beforeEach(() => {
   detailLoads = 0;
   detailDelay = 0;
   suspended = [];
+  tagStatus = 200;
+  tagWrites = [];
 });
 
 const renderLoaded = async () => {
@@ -162,6 +181,98 @@ describe("useUserDetailAdmin", () => {
       view.result.current.suspendContract.mutateAsync(),
     ).rejects.toBeDefined();
     expect(detailLoads).toBe(1);
+  });
+
+  it("adds the tag, refetches the member and invalidates the tag list", async () => {
+    const { client, view } = await renderLoaded();
+    client.setQueryData(queryKeys.tagsAdmin(), []);
+
+    await expect(
+      view.result.current.setTagMembership.mutateAsync({
+        tagId: "tag-1",
+        member: true,
+      }),
+    ).resolves.toEqual(tagDto);
+
+    expect(tagWrites).toEqual([{ add: "tag-1", body: { userId: 7 } }]);
+    expect(
+      client.getQueryData<UserAdminDetailDto>(queryKeys.userDetailAdmin(7))
+        ?.tags,
+    ).toEqual([volunteers]);
+    expect(client.getQueryState(queryKeys.tagsAdmin())?.isInvalidated).toBe(
+      true,
+    );
+  });
+
+  it("removes the tag from the cached member", async () => {
+    stored = { ...member, tags: [volunteers] };
+    const { client, wrapper } = queryWrapper();
+    const view = renderHook(() => useUserDetailAdmin(7), { wrapper });
+    await waitFor(() => expect(view.result.current.query.data).toBeDefined());
+
+    await view.result.current.setTagMembership.mutateAsync({
+      tagId: "tag-1",
+      member: false,
+    });
+
+    expect(tagWrites).toEqual([{ remove: "tag-1", body: { userId: 7 } }]);
+    expect(
+      client.getQueryData<UserAdminDetailDto>(queryKeys.userDetailAdmin(7))
+        ?.tags,
+    ).toEqual([]);
+  });
+
+  it("rejects a refused tag change and keeps the cached member", async () => {
+    tagStatus = 500;
+    const { client, view } = await renderLoaded();
+
+    await expect(
+      view.result.current.setTagMembership.mutateAsync({
+        tagId: "tag-1",
+        member: true,
+      }),
+    ).rejects.toBeDefined();
+    expect(client.getQueryData(queryKeys.userDetailAdmin(7))).toEqual(member);
+  });
+
+  it("keeps a suspension whose refetch a tag change interrupts", async () => {
+    const { client, view } = await renderLoaded();
+    detailDelay = 100;
+
+    const suspending = view.result.current.suspendContract.mutateAsync();
+    await waitFor(() => expect(detailLoads).toBe(2));
+    await view.result.current.setTagMembership.mutateAsync({
+      tagId: "tag-1",
+      member: true,
+    });
+    await suspending;
+
+    expect(client.getQueryData(queryKeys.userDetailAdmin(7))).toEqual({
+      ...member,
+      hasActiveContract: false,
+      tags: [volunteers],
+    });
+  });
+
+  it("settles a tag change only once the refetch that replaced its own lands", async () => {
+    const { client, view } = await renderLoaded();
+    detailDelay = 100;
+
+    const adding = view.result.current.setTagMembership.mutateAsync({
+      tagId: "tag-1",
+      member: true,
+    });
+    await waitFor(() => expect(detailLoads).toBe(2));
+    void view.result.current.setTagMembership.mutateAsync({
+      tagId: "tag-1",
+      member: false,
+    });
+    await adding;
+
+    expect(detailLoads).toBe(3);
+    expect(
+      client.getQueryState(queryKeys.userDetailAdmin(7))?.fetchStatus,
+    ).toBe("idle");
   });
 
   it("rejects a refresh whose refetch fails", async () => {

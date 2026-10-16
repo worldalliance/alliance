@@ -106,6 +106,7 @@ const UserDetail = ({
     refresh,
     updateRoles: { mutateAsync: updateRoles },
     suspendContract: { mutateAsync: suspendContract },
+    setTagMembership: { mutateAsync: setTagMembership },
   },
 }: {
   user: UserAdminDetailDto;
@@ -302,7 +303,11 @@ const UserDetail = ({
 
           <UserRolesSection user={user} updateRoles={updateRoles} />
 
-          <UserTagsSection user={user} loadedTags={loaderData.allTags} />
+          <UserTagsSection
+            user={user}
+            loadedTags={loaderData.allTags}
+            setTagMembership={setTagMembership}
+          />
 
           {/* Away Periods */}
           <UserAwayPeriodsSection user={user} />
