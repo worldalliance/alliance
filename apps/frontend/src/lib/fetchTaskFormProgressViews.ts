@@ -61,7 +61,7 @@ export function sidebarProgressActionCandidates(
   }));
 }
 
-type SidebarProgressBarEntry = {
+export type SidebarProgressBarEntry = {
   action: ActionDto;
   progressBars: AggregateViewSchema[];
 };

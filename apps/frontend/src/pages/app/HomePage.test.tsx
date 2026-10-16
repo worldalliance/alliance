@@ -13,16 +13,19 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { addDays } from "date-fns";
 import { MemoryRouter } from "react-router";
+import * as followUpFormPanelModule from "../../components/FollowUpFormPanel";
 import * as homeFeedModule from "../../components/HomeFeed";
 import * as homeUpdatesRowModule from "../../components/HomeUpdatesRow";
 import { type LoadFailure } from "../../components/LoadFailed";
 import { AuthContext } from "../../lib/AuthContext";
+import * as progressViewsModule from "../../lib/fetchTaskFormProgressViews";
 import * as taskActionsDataModule from "../../lib/useTaskActionsData";
 import * as utilsModule from "../../lib/utils";
 import { testAuthUser } from "../../stories/testData";
 import { authValue } from "../../testing/authValue";
 import HomePage from "./HomePage";
 import * as largeActionCardModule from "./LargeActionCard";
+import * as taskNavigatorRowModule from "./TaskNavigatorRow";
 
 let actions: ActionWithAwayStatus[] | null = [];
 let generalUpdatesFailure: LoadFailure | null = null;
@@ -49,6 +52,9 @@ beforeEach(() => {
   jest
     .spyOn(largeActionCardModule, "default")
     .mockImplementation(() => <div />);
+  jest
+    .spyOn(progressViewsModule, "fetchTaskFormProgressViewsByFormId")
+    .mockResolvedValue({});
 });
 
 afterEach(() => {
@@ -210,5 +216,93 @@ describe("HomePage dismissal refusal", () => {
     fireEvent.click(screen.getByText("Dismiss"));
 
     await screen.findByText(dismissActionErrorMessage(undefined));
+  });
+});
+
+describe("HomePage task progress", () => {
+  it("shows the progress of an open task form, linked to its task", async () => {
+    actions = [makeAction({ id: 8, name: "Petition", taskFormId: 70 })];
+    jest
+      .spyOn(progressViewsModule, "fetchTaskFormProgressViewsByFormId")
+      .mockResolvedValue({
+        70: [
+          {
+            kind: "progressbar",
+            id: "signatures",
+            title: "Signatures gathered",
+            caption: "",
+            numerator: { type: "number", value: 1 },
+            denominator: { type: "number", value: 2 },
+            displayType: "number",
+          },
+        ],
+      });
+
+    renderHomePage();
+
+    const title = await screen.findByText("Signatures gathered");
+    expect(title.closest("a")?.getAttribute("href")).toBe("/actions/8");
+  });
+});
+
+describe("HomePage task selection", () => {
+  it("opens the task the member picks from the list", () => {
+    actions = [
+      makeAction({ id: 9, name: "First task", events: deadlineInDays(3) }),
+      makeAction({ id: 10, name: "Second task", events: deadlineInDays(4) }),
+    ];
+    jest
+      .spyOn(largeActionCardModule, "default")
+      .mockImplementation(({ action }) => <p>Open: {action.name}</p>);
+
+    renderHomePage();
+    screen.getByText("Open: First task");
+    fireEvent.click(screen.getByText("Second task"));
+
+    screen.getByText("Open: Second task");
+  });
+
+  it("opens the follow-up form the member picks under a completed task", () => {
+    const followUpForm = (id: number, startDate: string) => ({
+      id,
+      name: `Follow-up ${id}`,
+      startDate,
+      endDate: null,
+      instructions: null,
+      actionId: 11,
+      formId: 100 + id,
+    });
+    actions = [
+      makeAction({
+        id: 11,
+        viewer: makeViewer({ relation: "completed" }),
+        followUpForms: [
+          followUpForm(31, "2020-01-02T00:00:00.000Z"),
+          followUpForm(32, "2020-01-01T00:00:00.000Z"),
+        ],
+      }),
+    ];
+    jest
+      .spyOn(taskNavigatorRowModule, "TaskNavigatorCompletedRow")
+      .mockImplementation(({ followUpForms, onSelectFollowUp }) => (
+        <>
+          {followUpForms.map((form) => (
+            <button key={form.id} onClick={() => onSelectFollowUp(form.id)}>
+              {form.name}
+            </button>
+          ))}
+        </>
+      ));
+    jest
+      .spyOn(followUpFormPanelModule, "default")
+      .mockImplementation(({ followUpForm }) => (
+        <p>Open: {followUpForm.name}</p>
+      ));
+
+    renderHomePage();
+    screen.getByText("Open: Follow-up 31");
+    fireEvent.click(screen.getByText("Follow-up 32"));
+
+    screen.getByText("Open: Follow-up 32");
   });
 });
