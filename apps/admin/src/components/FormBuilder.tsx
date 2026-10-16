@@ -7,7 +7,6 @@ import {
   type FormPlace,
 } from "@alliance/common/forms/form-conditions";
 import {
-  fieldHasOptions,
   isQuestionField,
   type AnyField,
   type FieldKind,
@@ -62,12 +61,9 @@ import {
 } from "../lib/formIssues";
 import { JsonScopeKind, type JsonScope } from "../lib/formJson";
 import { mergeFormSchemas } from "../lib/formSchemaMerge";
-import {
-  findSingleOptionValueChange,
-  getUpdatedVisibilityFormula,
-} from "../lib/optionValueRename";
 import { reorderPages } from "../lib/reorderPages";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
+import { updatePageElement } from "../lib/updatePageElement";
 import { useConditionFieldLookup } from "../lib/useConditionFieldLookup";
 import { useCustomValidatorAdmin } from "../lib/useCustomValidatorAdmin";
 import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
@@ -252,38 +248,6 @@ const ensurePages = (schema: FormSchema): FormSchema => {
     };
   }
   return withOutputViews;
-};
-
-const applyOptionValueToConditionalVisibility = (
-  fields: PageItem[],
-  controllerId: string,
-  previousValue: string,
-  nextValue: string,
-): PageItem[] => {
-  let hasChanges = false;
-
-  const nextFields = fields.map((candidate) => {
-    const formulaResult = getUpdatedVisibilityFormula(
-      candidate.visibleIfFormula,
-      controllerId,
-      previousValue,
-      nextValue,
-    );
-
-    if (!formulaResult.changed) {
-      return candidate;
-    }
-
-    hasChanges = true;
-    return {
-      ...candidate,
-      ...(formulaResult.visibleIfFormula != null
-        ? { visibleIfFormula: formulaResult.visibleIfFormula }
-        : {}),
-    };
-  });
-
-  return hasChanges ? nextFields : fields;
 };
 
 const NO_VISIBILITY_GROUPS: VisibilityGroups = new Map();
@@ -1519,77 +1483,16 @@ export function FormBuilder(props: FormBuilderProps) {
   const applyGrouped = ({ pages, groups }: GroupedPages) =>
     updateSchema({ ...schema, pages }, groups);
 
-  const updateElementAt = (index: number) => {
-    const field = currentPage.fields[index];
-    return (updates: Partial<PageItem>) => {
-      if (!field) return;
-      const optionValueChange =
-        isQuestionField(field) &&
-        fieldHasOptions(field) &&
-        "options" in updates &&
-        updates.options
-          ? findSingleOptionValueChange(field.options, updates.options)
-          : null;
-
-      const nextPages = schema.pages.map((page, pageIndex) => {
-        if (pageIndex === selectedPageIndex) {
-          const updatedFields = page.fields.map((f, i) =>
-            i === index ? ({ ...f, ...updates } as PageItem) : f,
-          );
-
-          if (!optionValueChange) {
-            return { ...page, fields: updatedFields };
-          }
-
-          const fieldsWithUpdatedConditions =
-            applyOptionValueToConditionalVisibility(
-              updatedFields,
-              (field as AnyField).id,
-              optionValueChange.previousValue,
-              optionValueChange.nextValue,
-            );
-
-          return { ...page, fields: fieldsWithUpdatedConditions };
-        }
-
-        if (optionValueChange && pageIndex > selectedPageIndex) {
-          const fieldsWithUpdatedConditions =
-            applyOptionValueToConditionalVisibility(
-              page.fields,
-              (field as AnyField).id,
-              optionValueChange.previousValue,
-              optionValueChange.nextValue,
-            );
-          const pageFormulaResult = getUpdatedVisibilityFormula(
-            page.visibleIfFormula,
-            (field as AnyField).id,
-            optionValueChange.previousValue,
-            optionValueChange.nextValue,
-          );
-
-          if (
-            fieldsWithUpdatedConditions !== page.fields ||
-            pageFormulaResult.changed
-          ) {
-            return {
-              ...page,
-              ...(pageFormulaResult.changed
-                ? { visibleIfFormula: pageFormulaResult.visibleIfFormula }
-                : {}),
-              fields: fieldsWithUpdatedConditions,
-            };
-          }
-        }
-
-        return page;
-      });
-
-      updateSchema({
-        ...schema,
-        pages: nextPages,
-      });
-    };
-  };
+  const updateElementAt = (index: number) => (updates: Partial<PageItem>) =>
+    updateSchema({
+      ...schema,
+      pages: updatePageElement({
+        pages: schema.pages,
+        pageIndex: selectedPageIndex,
+        index,
+        updates,
+      }),
+    });
 
   const selectChildOf =
     (index: number) => (child: ChildTarget, options?: { focus: true }) => {
