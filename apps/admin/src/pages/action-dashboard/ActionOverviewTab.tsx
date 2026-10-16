@@ -2,7 +2,7 @@ import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
-import React, { useMemo } from "react";
+import React from "react";
 import type { SetURLSearchParams } from "react-router";
 import { ActionProjectSteps } from "../../components/ActionProjectControls";
 import {
@@ -10,6 +10,10 @@ import {
   ACTION_STATUS_LABELS,
 } from "../../lib/actionStatusDisplay";
 import ActionDashboardToolbar from "./ActionDashboardToolbar";
+import {
+  currentEventIdAt,
+  hasMemberActionStartedAt,
+} from "./actionEventTiming";
 import ActionParticipationStats from "./ActionParticipationStats";
 import ActionResponseReports from "./ActionResponseReports";
 import type { ActionExport } from "./useActionExport";
@@ -40,19 +44,9 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
   incompleteUsersExpanded,
   setIncompleteUsersExpanded,
 }) => {
-  const currentEventId = action.events
-    .filter((event) => new Date(event.date).getTime() < new Date().getTime())
-    .sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-    )[0]?.id;
-
-  const hasMemberActionStarted = useMemo(() => {
-    return action.events.some(
-      (event) =>
-        event.newStatus === "member_action" &&
-        new Date(event.date).getTime() < new Date().getTime(),
-    );
-  }, [action.events]);
+  const now = new Date();
+  const currentEventId = currentEventIdAt(action.events, now);
+  const hasMemberActionStarted = hasMemberActionStartedAt(action.events, now);
 
   return (
     <div className="space-y-4 pb-4">
