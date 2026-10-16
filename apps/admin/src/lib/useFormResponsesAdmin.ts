@@ -5,6 +5,7 @@ import {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
 import {
+  queryOptions,
   skipToken,
   useMutation,
   useQuery,
@@ -17,11 +18,8 @@ import { useFormShareLinksAdmin } from "./useFormShareLinksAdmin";
 
 const NO_RESPONSES: FormResponseDto[] = [];
 
-export function useFormResponsesAdmin(formId: number | undefined) {
-  const queryClient = useQueryClient();
-  const form = useTaskForm(formId);
-
-  const responses = useQuery({
+export const formResponsesAdminQuery = (formId: number | undefined) =>
+  queryOptions({
     queryKey: queryKeys.formResponsesAdmin(formId ?? null),
     queryFn:
       formId === undefined
@@ -33,6 +31,12 @@ export function useFormResponsesAdmin(formId: number | undefined) {
             }).then((res) => res.data),
     select: sortResponsesByCreatedAtAsc,
   });
+
+export function useFormResponsesAdmin(formId: number | undefined) {
+  const queryClient = useQueryClient();
+  const form = useTaskForm(formId);
+
+  const responses = useQuery(formResponsesAdminQuery(formId));
 
   const shareLinks = useFormShareLinksAdmin(formId);
 
