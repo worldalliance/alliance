@@ -1,4 +1,5 @@
-import type { ConversationDto } from "@alliance/shared/client";
+import type { CommunityDto, ConversationDto } from "@alliance/shared/client";
+import { groupSettings } from "@alliance/shared/lib/copy";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   makeCommunity,
@@ -26,7 +27,7 @@ import * as messagesModule from "./messages";
 let myGroups: () => Promise<Response>;
 let groupChat: ConversationDto;
 
-serveApi(
+const api = serveApi(
   routes({
     "GET /community/list/my": () => myGroups(),
     "GET /community/list/public": () => Response.json([]),
@@ -132,6 +133,207 @@ it("shows how many actions the community's members completed", async () => {
 
   const count = await screen.findByText("12");
   expect(count.parentElement?.textContent).toContain("actions completed");
+});
+
+describe("a leader editing their group", () => {
+  const led = (overrides: Partial<CommunityDto> = {}) =>
+    makeCommunity({
+      leaders: [makeProfile(testAuthUser.id)],
+      users: [makeProfile(testAuthUser.id)],
+      ...overrides,
+    });
+  const nameInput = () =>
+    screen.getByPlaceholderText<HTMLInputElement>("Enter group name");
+  const descriptionInput = () =>
+    screen.getByPlaceholderText<HTMLTextAreaElement>(
+      "Enter group description...",
+    );
+  const checkbox = (setting: keyof typeof groupSettings) =>
+    screen.getByLabelText<HTMLInputElement>(
+      new RegExp(groupSettings[setting].name),
+    );
+
+  beforeEach(() => {
+    myGroups = async () => Response.json([led()]);
+  });
+
+  it("saves the edited settings", async () => {
+    let sent: unknown;
+    api.alsoServing({
+      "PATCH /community/:communityId": async ({ request }) => {
+        sent = await request.json();
+        return Response.json({ ...led(), name: "Renamed" });
+      },
+    });
+    renderPage("/?tab=members&communityId=1");
+
+    fireEvent.click(await screen.findByText("Edit"));
+    fireEvent.change(nameInput(), { target: { value: "Renamed" } });
+    fireEvent.change(descriptionInput(), { target: { value: "New rules" } });
+    fireEvent.click(screen.getByText("Save"));
+
+    await screen.findByRole("heading", { name: "Renamed" });
+    expect(sent).toMatchObject({
+      name: "Renamed",
+      description: "New rules",
+      maxCapacity: 10,
+    });
+  });
+
+  it("discards the draft on cancel", async () => {
+    renderPage("/?tab=members&communityId=1");
+
+    fireEvent.click(await screen.findByText("Edit"));
+    fireEvent.change(nameInput(), { target: { value: "Renamed" } });
+    fireEvent.change(descriptionInput(), { target: { value: "New rules" } });
+    fireEvent.click(screen.getByText("Cancel"));
+
+    await screen.findByRole("heading", { name: "Ada's group" });
+    fireEvent.click(screen.getByText("Edit"));
+    expect(nameInput().value).toBe("Ada's group");
+    expect(descriptionInput().value).toBe("A group");
+  });
+
+  it("starts the capacity at no less than the member count", async () => {
+    myGroups = async () =>
+      Response.json([
+        led({
+          maxCapacity: 1,
+          users: [makeProfile(testAuthUser.id), makeProfile(2), makeProfile(3)],
+        }),
+      ]);
+    renderPage("/?tab=members&communityId=1");
+
+    fireEvent.click(await screen.findByText("Edit"));
+    expect(screen.getByRole<HTMLInputElement>("spinbutton").value).toBe("2");
+  });
+
+  it("saves each access setting on its own, with no capacity once none needs one", async () => {
+    let sent: unknown;
+    api.alsoServing({
+      "PATCH /community/:communityId": async ({ request }) => {
+        sent = await request.json();
+        return Response.json(led());
+      },
+    });
+    renderPage("/?tab=members&communityId=1");
+
+    fireEvent.click(await screen.findByText("Edit"));
+    fireEvent.click(checkbox("allowMemberInvites"));
+    expect(checkbox("allowMemberInvites").checked).toBe(false);
+    expect(checkbox("allowStaffAssignments").checked).toBe(true);
+    fireEvent.click(checkbox("allowStaffAssignments"));
+    expect(checkbox("allowStaffAssignments").checked).toBe(false);
+    expect(screen.queryByRole("spinbutton")).toBeNull();
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() =>
+      expect(sent).toMatchObject({
+        public: false,
+        allowMemberInvites: false,
+        allowStaffAssignments: false,
+        maxCapacity: null,
+      }),
+    );
+  });
+
+  it("makes a public group allow invites and staff assignments", async () => {
+    myGroups = async () =>
+      Response.json([
+        led({
+          allowMemberInvites: false,
+          allowStaffAssignments: false,
+          maxCapacity: null,
+        }),
+      ]);
+    let sent: unknown;
+    api.alsoServing({
+      "PATCH /community/:communityId": async ({ request }) => {
+        sent = await request.json();
+        return Response.json(led({ public: true }));
+      },
+    });
+    renderPage("/?tab=members&communityId=1");
+
+    fireEvent.click(await screen.findByText("Edit"));
+    expect(screen.queryByRole("spinbutton")).toBeNull();
+    fireEvent.click(checkbox("public"));
+    for (const setting of [
+      "allowMemberInvites",
+      "allowStaffAssignments",
+    ] as const) {
+      expect(checkbox(setting).checked).toBe(true);
+      expect(checkbox(setting).disabled).toBe(true);
+    }
+    fireEvent.change(screen.getByRole("spinbutton"), {
+      target: { value: "5" },
+    });
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() =>
+      expect(sent).toMatchObject({
+        public: true,
+        allowMemberInvites: true,
+        allowStaffAssignments: true,
+        maxCapacity: 5,
+      }),
+    );
+  });
+
+  it("refuses to save a group open to new members without a capacity", async () => {
+    renderPage("/?tab=members&communityId=1");
+
+    fireEvent.click(await screen.findByText("Edit"));
+    fireEvent.change(screen.getByRole("spinbutton"), {
+      target: { value: "" },
+    });
+    fireEvent.click(screen.getByText("Save"));
+
+    await screen.findByText(/^Capacity is required/);
+  });
+
+  it("stays in edit mode with the server's message when a save fails", async () => {
+    api.alsoServing({
+      "PATCH /community/:communityId": () =>
+        Response.json({ message: "Name is taken" }, { status: 400 }),
+    });
+    renderPage("/?tab=members&communityId=1");
+
+    fireEvent.click(await screen.findByText("Edit"));
+    fireEvent.click(screen.getByText("Save"));
+
+    await screen.findByText("Name is taken");
+    expect(nameInput()).toBeTruthy();
+  });
+
+  it("keeps the group with the server's message when a delete fails", async () => {
+    api.alsoServing({
+      "DELETE /community/:communityId": () =>
+        Response.json({ message: "Group has members" }, { status: 400 }),
+    });
+    renderPage("/?tab=members&communityId=1");
+
+    fireEvent.click(await screen.findByText("Edit"));
+    fireEvent.click(screen.getByText("Delete"));
+
+    await screen.findByText("Group has members");
+    expect(nameInput().value).toBe("Ada's group");
+  });
+
+  it("returns to group management after deleting the group", async () => {
+    api.alsoServing({
+      "DELETE /community/:communityId": () => {
+        myGroups = async () => Response.json([]);
+        return Response.json({});
+      },
+    });
+    renderPage("/?tab=members&communityId=1");
+
+    fireEvent.click(await screen.findByText("Edit"));
+    fireEvent.click(screen.getByText("Delete"));
+
+    await screen.findByRole("heading", { name: "Manage groups" });
+  });
 });
 
 describe("the group chat on a large screen", () => {
