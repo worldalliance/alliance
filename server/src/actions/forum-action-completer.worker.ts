@@ -1,3 +1,4 @@
+import { hasTakenEffect } from "@alliance/common/actionEvent";
 import { forEachCondition } from "@alliance/common/forms/form-conditions";
 import {
   isQuestionField,
@@ -41,7 +42,6 @@ import {
   parseAction,
   type ParsedAction,
 } from "./entities/action.entity";
-import { hasTakenEffect } from "./utils/action-event";
 
 const [PROCESS_ONE_LOCK_KEY1, PROCESS_ONE_LOCK_KEY2] =
   LOCK_KEYS.forumActionCompleter;

@@ -1,4 +1,5 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
+import { hasTakenEffect } from "@alliance/common/actionEvent";
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -14,7 +15,6 @@ import {
   loadedActionEvents,
   parseAction,
 } from "src/actions/entities/action.entity";
-import { hasTakenEffect } from "src/actions/utils/action-event";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { In, type Repository } from "typeorm";
 import { ActionCompletionCurve } from "./action-completion-curve.dto";

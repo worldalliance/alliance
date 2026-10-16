@@ -1,3 +1,4 @@
+import { hasTakenEffect } from "@alliance/common/actionEvent";
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { millisecondsInDay, millisecondsInMinute } from "date-fns/constants";
 import { ContractEventType } from "src/user/entities/contract-event.entity";
@@ -8,7 +9,6 @@ import {
 } from "src/utils/action-user";
 import type { Action, ParsedAction } from "./entities/action.entity";
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
-import { hasTakenEffect } from "./utils/action-event";
 
 /**
  * Longer than any signing request. A member who signs through a task form has

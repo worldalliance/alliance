@@ -1,4 +1,5 @@
 /** @fileoverview Utils for relationships between actions and users */
+import { hasTakenEffect } from "@alliance/common/actionEvent";
 import { isAwayRangeActiveAt } from "@alliance/common/awayRange";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
@@ -6,10 +7,7 @@ import {
   type ActionEvent,
 } from "src/actions/entities/action-event.entity";
 import { Action, loadedActionEvents } from "src/actions/entities/action.entity";
-import {
-  eventInEffectAt,
-  hasTakenEffect,
-} from "src/actions/utils/action-event";
+import { eventInEffectAt } from "src/actions/utils/action-event";
 import type { Community } from "src/community/entities/community.entity";
 import type { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { loadedUserTags, User } from "src/user/entities/user.entity";
