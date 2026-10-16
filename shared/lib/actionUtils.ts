@@ -1,4 +1,7 @@
-import { hasMemberActionStarted } from "@alliance/common/actionEvent";
+import {
+  hasMemberActionStarted,
+  memberActionPhase,
+} from "@alliance/common/actionEvent";
 import {
   ActionDto,
   CommunityUserInfoDto,
@@ -45,16 +48,14 @@ function generalUpdatePriority(
 }
 
 function actionPriority(action: ActionPriorityFields): TaskPriority {
-  const startDateString = action.events.find(
-    (event) => event.newStatus === "member_action",
-  )?.date;
+  const { event, deadlineEvent } = memberActionPhase(action.events);
   return {
     id: action.id,
     priority: action.priority,
-    deadlineTimestamp: getDeadlineTimestamp(action),
-    startTimestamp: startDateString
-      ? new Date(startDateString).getTime()
-      : -Infinity,
+    deadlineTimestamp: deadlineEvent
+      ? new Date(deadlineEvent.date).getTime()
+      : Infinity,
+    startTimestamp: event ? new Date(event.date).getTime() : -Infinity,
     typePriority: 0,
   };
 }
@@ -107,28 +108,6 @@ export enum FilterMode {
 }
 
 export type ActionWithAwayStatus = ActionDto & { awayStatus: TaskAwayStatus };
-
-export function getDeadlineTimestamp(
-  action: Pick<ActionDto, "events">,
-): number {
-  let i = 0;
-  // Find first 'member_action' event
-  while (action.events[i] && action.events[i].newStatus !== "member_action") {
-    i++;
-  }
-
-  // Find next non-'member_action' event
-  while (action.events[i] && action.events[i].newStatus === "member_action") {
-    i++;
-  }
-
-  const nextEvent = action.events[i];
-  if (!nextEvent) {
-    return Infinity;
-  }
-
-  return new Date(nextEvent.date).getTime();
-}
 
 // Each predicate below reads the server-computed `action.viewer` status when
 // present and falls back to the legacy flat fields + events date math when

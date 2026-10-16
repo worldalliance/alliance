@@ -3,6 +3,7 @@ import {
   findStartedMemberActionEvent,
   hasMemberActionStarted,
   hasTakenEffect,
+  memberActionPhase,
 } from "./actionEvent";
 
 describe("hasTakenEffect", () => {
@@ -97,5 +98,45 @@ describe("hasMemberActionStarted", () => {
     expect(
       findStartedMemberActionEvent(events, new Date(memberAction.date)),
     ).toBe(memberAction);
+  });
+});
+
+describe("memberActionPhase", () => {
+  const event = (id: number, date: string, newStatus: string) => ({
+    id,
+    date,
+    newStatus,
+  });
+  const planned = event(1, "2026-01-01T00:00:00.000Z", "planned");
+  const memberAction = event(2, "2026-02-01T00:00:00.000Z", "member_action");
+  const resolution = event(3, "2026-03-01T00:00:00.000Z", "resolution");
+  const completed = event(4, "2026-04-01T00:00:00.000Z", "completed");
+
+  it("is empty without a member-action event", () => {
+    expect(memberActionPhase([planned, resolution])).toEqual({
+      event: null,
+      deadlineEvent: null,
+    });
+  });
+
+  it("closes at the earliest event after the member-action event, whatever the array order", () => {
+    expect(
+      memberActionPhase([completed, resolution, memberAction, planned]),
+    ).toEqual({ event: memberAction, deadlineEvent: resolution });
+  });
+
+  it("skips an event at the member-action event's own instant", () => {
+    const sameInstant = event(5, memberAction.date, "office_action");
+    expect(memberActionPhase([memberAction, sameInstant, resolution])).toEqual({
+      event: memberAction,
+      deadlineEvent: resolution,
+    });
+  });
+
+  it("has no deadline when the member-action event is the last event", () => {
+    expect(memberActionPhase([planned, memberAction])).toEqual({
+      event: memberAction,
+      deadlineEvent: null,
+    });
   });
 });

@@ -12,6 +12,7 @@ import {
   canCompleteAction,
   deadlineHasPassed,
   hasViewerCompletedAction,
+  homePagePriorityComparator,
   isActionAssignedAndNotDismissed,
   isActionOptional,
   isCurrentlyCompletedAction,
@@ -20,7 +21,12 @@ import {
   withOptimisticDismissal,
   withOptimisticRelation,
 } from "./actionUtils";
-import { makeAction, makeLegacyAction, makeViewer } from "./testFixtures";
+import {
+  makeAction,
+  makeEvent,
+  makeLegacyAction,
+  makeViewer,
+} from "./testFixtures";
 
 function rel(
   actionId: number,
@@ -389,5 +395,34 @@ describe("calculateAllCompletionData", () => {
     expect(result.previous).toBeUndefined();
     expect(result.current).toBeDefined();
     expect(result.current?.nTotal).toBe(0);
+  });
+});
+
+describe("homePagePriorityComparator", () => {
+  const withDeadline = (id: number, deadline: string) =>
+    makeAction({
+      id,
+      events: [
+        makeEvent({
+          id: id * 10 + 1,
+          newStatus: "completed",
+          date: "2026-12-01T00:00:00.000Z",
+        }),
+        makeEvent({ id: id * 10 + 2, newStatus: "resolution", date: deadline }),
+        makeEvent({
+          id: id * 10 + 3,
+          newStatus: "member_action",
+          date: "2026-01-01T00:00:00.000Z",
+        }),
+      ],
+    });
+
+  it("orders by the earliest event after the member-action event, whatever the array order", () => {
+    const later = withDeadline(1, "2026-03-01T00:00:00.000Z");
+    const sooner = withDeadline(2, "2026-02-01T00:00:00.000Z");
+    expect([later, sooner].sort(homePagePriorityComparator)).toEqual([
+      sooner,
+      later,
+    ]);
   });
 });

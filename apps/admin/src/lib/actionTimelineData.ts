@@ -1,3 +1,4 @@
+import { memberActionPhase } from "@alliance/common/actionEvent";
 import {
   ActionDto,
   ActionEventDto,
@@ -96,25 +97,15 @@ const eventsByDate = (events: ActionEventDto[]) =>
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
 
-const nextEventsById = (actions: TimelineAction[]) => {
-  const nextEventMap = new Map<number, ActionEventDto>();
-
+const deadlineEventsByMemberEventId = (actions: TimelineAction[]) => {
+  const deadlineEvents = new Map<number, ActionEventDto>();
   for (const action of actions) {
-    if (!action.events || action.events.length === 0) {
-      continue;
+    const { event, deadlineEvent } = memberActionPhase(action.events);
+    if (event && deadlineEvent) {
+      deadlineEvents.set(event.id, deadlineEvent);
     }
-
-    const sortedEvents = eventsByDate(action.events);
-
-    sortedEvents.forEach((event, index) => {
-      const next = sortedEvents[index + 1];
-      if (next) {
-        nextEventMap.set(event.id, next);
-      }
-    });
   }
-
-  return nextEventMap;
+  return deadlineEvents;
 };
 
 export const normalizeReminders = (
@@ -125,7 +116,7 @@ export const normalizeReminders = (
     return [];
   }
 
-  const nextEventById = nextEventsById(actions);
+  const deadlineEventById = deadlineEventsByMemberEventId(actions);
 
   return reminderList
     .map<NormalizedReminder | null>((reminder) => {
@@ -148,9 +139,9 @@ export const normalizeReminders = (
           const memberEventId = reminder.memberActionEvent?.id;
 
           if (!deadlineDate && memberEventId != null) {
-            const next = nextEventById.get(memberEventId);
-            if (next) {
-              deadlineDate = parseReminderDate(next.date);
+            const deadlineEvent = deadlineEventById.get(memberEventId);
+            if (deadlineEvent) {
+              deadlineDate = parseReminderDate(deadlineEvent.date);
             }
           }
 

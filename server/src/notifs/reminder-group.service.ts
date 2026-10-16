@@ -1,3 +1,4 @@
+import { memberActionPhase } from "@alliance/common/actionEvent";
 import { collectCohortDependencies } from "@alliance/common/cohort-expression";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -32,7 +33,6 @@ import {
   ActionStatus,
   loadedActionEventAction,
 } from "../actions/entities/action-event.entity";
-import { memberActionPhase } from "../actions/utils/action-event";
 import { User } from "../user/entities/user.entity";
 import { assertReminderGroupSendable } from "./assert-reminder-group-sendable";
 import { reminderGroupParents } from "./reminder-group-parents";

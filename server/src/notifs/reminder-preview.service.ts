@@ -1,3 +1,4 @@
+import { memberActionPhase } from "@alliance/common/actionEvent";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import {
@@ -13,7 +14,6 @@ import {
   ActionEvent,
   loadedActionEventAction,
 } from "../actions/entities/action-event.entity";
-import { memberActionPhase } from "../actions/utils/action-event";
 import { testUser } from "./test-users";
 
 @Injectable()

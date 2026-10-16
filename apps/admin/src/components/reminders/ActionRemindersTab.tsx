@@ -1,4 +1,5 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
+import { memberActionPhase } from "@alliance/common/actionEvent";
 import { ActionSuiteDto, ReminderGroupDto } from "@alliance/shared/client";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -74,21 +75,17 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       ),
     [action.events],
   );
-  const sortedActionEvents = useMemo(() => {
-    return (action.events || [])
-      .slice()
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [action.events]);
-  const nextEventById = useMemo(() => {
-    const map = new Map<number, (typeof sortedActionEvents)[number]>();
-    sortedActionEvents.forEach((event, index) => {
-      const next = sortedActionEvents[index + 1];
-      if (next) {
-        map.set(event.id, next);
-      }
-    });
-    return map;
-  }, [sortedActionEvents]);
+  const phase = useMemo(
+    () => memberActionPhase(action.events || []),
+    [action.events],
+  );
+  const deadlineEventOf = useCallback(
+    (memberEventId: number | null) =>
+      memberEventId !== null && memberEventId === phase.event?.id
+        ? phase.deadlineEvent
+        : null,
+    [phase],
+  );
 
   const [selectedEventId, setSelectedEventId] = useState<number | null>(
     memberEvents.length > 0 ? memberEvents[0].id : null, //TODO: collate or move between events
@@ -176,15 +173,8 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     group.memberActionEvent?.id ?? null;
 
   const findGroupDeadlineEvent = useCallback(
-    (group: ReminderGroupDto) => {
-      const memberEventId = getGroupMemberEventId(group);
-
-      if (!memberEventId) {
-        return undefined;
-      }
-      return nextEventById.get(memberEventId);
-    },
-    [nextEventById],
+    (group: ReminderGroupDto) => deadlineEventOf(getGroupMemberEventId(group)),
+    [deadlineEventOf],
   );
 
   const getGroupRange = (group: ReminderGroupDto) => {
@@ -399,7 +389,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
 
     setCreateError(null);
     setCreateSuccess(null);
-    const hasDeadline = nextEventById.has(selectedEventId);
+    const hasDeadline = deadlineEventOf(selectedEventId) !== null;
     const presets: ReminderPresetName[] = [
       "Announcement",
       ...(hasDeadline ? defaultDeadlinePresets : []),
