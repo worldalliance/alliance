@@ -195,6 +195,7 @@ export const queryKeys = {
     [...formsAdminAll(), "questionFields", formId] as const,
   formResponseCountsAdmin: (formIds: readonly number[]) =>
     [...formsAdminAll(), "responseCounts", formIds] as const,
+  friendGraphEdgesAdmin: () => ["userGetFriendGraphEdgesAdmin"] as const,
   generalUpdateAdmin: (id: number | null) =>
     ["generalUpdatesFindOneGeneralUpdateAdmin", id] as const,
   generalUpdatesAdmin: () => ["generalUpdatesAllGeneralUpdatesAdmin"] as const,

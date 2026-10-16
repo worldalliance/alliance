@@ -1,10 +1,6 @@
 import { publicDisplayName } from "@alliance/common/displayName";
-import {
-  FriendGraphEdgeDto,
-  userGetFriendGraphEdgesAdmin,
-} from "@alliance/shared/client";
 import { AlertTriangle } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   type DrawnGraph,
   ForceGraph,
@@ -17,6 +13,7 @@ import {
   UserGraphFilterControls,
   useUserGraphFilters,
 } from "../components/force-graph/UserGraphFilters";
+import { useFriendGraphEdgesAdmin } from "../lib/useFriendGraphEdgesAdmin";
 import { useGraphUsersAdmin } from "../lib/useGraphUsersAdmin";
 
 interface GraphNode extends ForceGraphNode {
@@ -39,47 +36,30 @@ const NODE_STYLE: NodeStyle = {
   label: { color: "#374151", weight: "normal" },
 };
 const nodeStyle = () => NODE_STYLE;
+// A changed user or friendship list rebuilds the layout and drops the
+// selection, so the graph skips the refetches that land while an admin is
+// exploring it.
+const KEEP_LAYOUT = { refetchOnWindowFocus: false, refetchOnReconnect: false };
 
 const FriendGraphPage = () => {
-  // A changed user list rebuilds the layout and drops the selection, so the
-  // graph skips the refetches that land while an admin is exploring it.
-  const usersQuery = useGraphUsersAdmin({
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  });
+  const usersQuery = useGraphUsersAdmin(KEEP_LAYOUT);
   const users = useMemo(() => usersQuery.data ?? [], [usersQuery.data]);
-  const [friendEdges, setFriendEdges] = useState<FriendGraphEdgeDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [edgesFailed, setEdgesFailed] = useState(false);
-  const [unreachable, setUnreachable] = useState(false);
+  const edgesQuery = useFriendGraphEdgesAdmin(KEEP_LAYOUT);
+  const friendEdges = useMemo(
+    () => (edgesQuery.isError ? [] : (edgesQuery.data ?? [])),
+    [edgesQuery.isError, edgesQuery.data],
+  );
 
   const [spread, setSpread] = useState(DEFAULT_SPREAD);
 
-  useEffect(() => {
-    userGetFriendGraphEdgesAdmin()
-      .then((edgesRes) => {
-        setFriendEdges(edgesRes.data ?? []);
-        if (edgesRes.error !== undefined) {
-          console.error(
-            "Friend graph: could not load friendships",
-            edgesRes.error,
-          );
-          setEdgesFailed(true);
-        }
-      })
-      .catch(() => setUnreachable(true))
-      .finally(() => setLoading(false));
-  }, []);
-
   const failed = [
     { name: "users", failed: usersQuery.isError },
-    { name: "friendships", failed: edgesFailed },
+    { name: "friendships", failed: edgesQuery.isError },
   ]
     .filter((load) => load.failed)
     .map((load) => load.name);
-  const loadError = unreachable
-    ? "Could not load the graph data. Try reloading the page."
-    : failed.length > 0
+  const loadError =
+    failed.length > 0
       ? `Could not load ${failed.join(", ")}. The graph below is incomplete.`
       : null;
 
@@ -194,7 +174,7 @@ const FriendGraphPage = () => {
     return activeUsers.filter((u) => filteredUserIds.has(u.id)).length;
   }, [activeUsers, filteredUserIds, hasActiveFilters]);
 
-  if (loading || !usersQuery.isFetchedAfterMount) {
+  if (!usersQuery.isFetchedAfterMount || !edgesQuery.isFetchedAfterMount) {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-gray-500">Loading graph...</p>
