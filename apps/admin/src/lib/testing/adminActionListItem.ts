@@ -10,6 +10,7 @@ export const adminActionListItem = (
   category: [],
   body: "",
   shortDescription: "",
+  timeEstimate: null,
   createdAt: "2026-01-02T00:00:00.000Z",
   updatedAt: "2026-01-02T00:00:00.000Z",
   isContractSigningAction: false,

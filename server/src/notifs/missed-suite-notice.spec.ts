@@ -103,7 +103,7 @@ describe("resolveMissedSuitePlan", () => {
   const outcome = (suiteId: number): SuiteOutcome => ({
     suiteId,
     closedAt: new Date(0),
-    actions: [{ id: 1, name: "Task" }],
+    actions: [{ id: 1, name: "Task", timeEstimate: null }],
     missedActionIdsByUser: new Map([[5, [1]]]),
   });
   const resolve = (

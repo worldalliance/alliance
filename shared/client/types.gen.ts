@@ -412,7 +412,7 @@ export type Action = {
     /**
      * Time estimate in minutes
      */
-    timeEstimate?: number;
+    timeEstimate: number | null;
     /**
      * Form associated with the action
      */
@@ -2173,7 +2173,7 @@ export type ActionDto = {
     /**
      * Time estimate in minutes
      */
-    timeEstimate?: number;
+    timeEstimate: number | null;
     /**
      * Form associated with the action
      */
@@ -2526,7 +2526,7 @@ export type AdminActionListItemDto = {
     /**
      * Time estimate in minutes
      */
-    timeEstimate?: number;
+    timeEstimate: number | null;
     /**
      * Form associated with the action
      */
@@ -2705,7 +2705,7 @@ export type AdminActionDto = {
     /**
      * Time estimate in minutes
      */
-    timeEstimate?: number;
+    timeEstimate: number | null;
     /**
      * Form associated with the action
      */
@@ -2957,10 +2957,6 @@ export type CreateActionDto = {
      */
     shortDescription: string;
     /**
-     * Time estimate in minutes
-     */
-    timeEstimate?: number;
-    /**
      * Form associated with the action
      */
     taskFormId?: number;
@@ -2994,6 +2990,10 @@ export type CreateActionDto = {
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
+    /**
+     * Time estimate in minutes
+     */
+    timeEstimate?: number | null;
     /**
      * Manual override: forum post id whose repliers should be autocompleted. When set, takes precedence over any forum validator on the task form.
      */
@@ -3052,10 +3052,6 @@ export type UpdateActionDto = {
      */
     shortDescription?: string;
     /**
-     * Time estimate in minutes
-     */
-    timeEstimate?: number;
-    /**
      * Form associated with the action
      */
     taskFormId?: number;
@@ -3089,6 +3085,10 @@ export type UpdateActionDto = {
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
+    /**
+     * Time estimate in minutes
+     */
+    timeEstimate?: number | null;
     /**
      * Manual override: forum post id whose repliers should be autocompleted. When set, takes precedence over any forum validator on the task form.
      */
@@ -3386,7 +3386,7 @@ export type ExportActionDto = {
     /**
      * Time estimate in minutes
      */
-    timeEstimate?: number;
+    timeEstimate: number | null;
     /**
      * Form associated with the action
      */
