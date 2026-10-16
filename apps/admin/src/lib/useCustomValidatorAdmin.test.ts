@@ -6,10 +6,15 @@ import { useCustomValidatorAdmin } from "./useCustomValidatorAdmin";
 afterEach(cleanup);
 
 let requests: number[];
+let posted: unknown[];
 let respond: (id: number) => Response;
 
 serveApi(
   routes({
+    "POST /tasks/createCustomValidator": async ({ request }) => {
+      posted.push(await request.json());
+      return Response.json({ id: 42 });
+    },
     "GET /tasks/findOneCustomValidator/:id": ({ params }) => {
       const id = Number(params.id);
       requests.push(id);
@@ -28,6 +33,7 @@ const saved = (id: number) =>
 
 beforeEach(() => {
   requests = [];
+  posted = [];
   respond = saved;
 });
 
@@ -77,6 +83,25 @@ describe("useCustomValidatorAdmin", () => {
 
     await waitFor(() => expect(view.result.current.query.isError).toBe(true));
     expect(requests).toEqual([7]);
+  });
+
+  it("caches a created validator under its new id", async () => {
+    const { wrapper } = queryWrapper();
+    const creator = renderHook(() => useCustomValidatorAdmin(null), {
+      wrapper,
+    });
+    const draft = {
+      type: "MemberTag" as const,
+      idArgument: "3",
+      expression: null,
+    };
+
+    expect(await creator.result.current.create(draft)).toBe(42);
+    expect(posted).toEqual([draft]);
+    const reader = renderHook(() => useCustomValidatorAdmin(42), { wrapper });
+
+    expect(reader.result.current.query.data).toEqual(draft);
+    expect(requests).toEqual([]);
   });
 
   it("answers exists from a validator already loaded", async () => {

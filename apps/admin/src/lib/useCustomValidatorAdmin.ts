@@ -1,4 +1,7 @@
-import { tasksFindOneCustomValidatorAdmin } from "@alliance/shared/client";
+import {
+  tasksCreateCustomValidatorAdmin,
+  tasksFindOneCustomValidatorAdmin,
+} from "@alliance/shared/client";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
@@ -29,15 +32,35 @@ const customValidatorQuery = (id: number) =>
     retry: false,
   });
 
-/** A saved validator's settings; a `null` id fetches nothing. `exists`
- * resolves false when the server refuses the id, and rejects only when the
- * server can't be reached. */
+/** A saved validator's settings; a `null` id fetches nothing. `create`
+ * saves a draft and resolves its id, already cached. `exists` resolves false
+ * when the server refuses an id, and rejects only when the server can't be
+ * reached. */
 export function useCustomValidatorAdmin(id: number | null) {
   const queryClient = useQueryClient();
   const query = useQuery(
     id === null
       ? { queryKey: queryKeys.customValidatorAdmin(0), queryFn: skipToken }
       : customValidatorQuery(id),
+  );
+
+  const create = useCallback(
+    async (draft: CustomValidatorDraft) => {
+      const response = await tasksCreateCustomValidatorAdmin({
+        body: {
+          type: draft.type,
+          idArgument: draft.idArgument,
+          expression: draft.expression,
+        },
+      });
+      if (!response.data) {
+        throw new Error("createCustomValidator returned no data");
+      }
+      const { id: createdId } = response.data;
+      queryClient.setQueryData(customValidatorQuery(createdId).queryKey, draft);
+      return createdId;
+    },
+    [queryClient],
   );
 
   const exists = useCallback(
@@ -52,5 +75,5 @@ export function useCustomValidatorAdmin(id: number | null) {
     [queryClient],
   );
 
-  return { query, exists };
+  return { query, create, exists };
 }

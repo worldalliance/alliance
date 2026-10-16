@@ -33,7 +33,6 @@ import {
 import { withCount } from "@alliance/common/plural";
 import { R, type Result } from "@alliance/common/result";
 import {
-  tasksCreateCustomValidatorAdmin,
   tasksCreateFormAdmin,
   tasksGetForm,
   tasksUpdateFormAdmin,
@@ -72,6 +71,7 @@ import {
 import { reorderPages } from "../lib/reorderPages";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { useConditionFieldLookup } from "../lib/useConditionFieldLookup";
+import { useCustomValidatorAdmin } from "../lib/useCustomValidatorAdmin";
 import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
 import { DropPosition, moveItem } from "../lib/useDragReorder";
 import { useFormDraft, type CreatedValidator } from "../lib/useFormDraft";
@@ -1139,6 +1139,7 @@ export function FormBuilder(props: FormBuilderProps) {
 
   const updateBlockById = useDisplayBlockWrite(schema, updateSchema);
 
+  const { create: createValidator } = useCustomValidatorAdmin(null);
   const resolveCustomValidatorDrafts = useCallback(
     async (schemaToSave: FormSchema) => {
       const draftIds = [...customValidatorIds(schemaToSave)].filter(
@@ -1156,17 +1157,7 @@ export function FormBuilder(props: FormBuilderProps) {
           if (!draft) {
             throw new Error("Missing custom validator draft configuration.");
           }
-          const response = await tasksCreateCustomValidatorAdmin({
-            body: {
-              type: draft.type,
-              idArgument: draft.idArgument,
-              expression: draft.expression,
-            },
-          });
-          if (!response.data) {
-            throw new Error("createCustomValidator returned no data");
-          }
-          created.set(draftId, { id: response.data.id, draft });
+          created.set(draftId, { id: await createValidator(draft), draft });
         }),
       );
 
@@ -1177,7 +1168,7 @@ export function FormBuilder(props: FormBuilderProps) {
 
       return { schema: nextSchema, created };
     },
-    [validatorDrafts],
+    [validatorDrafts, createValidator],
   );
 
   useEffect(() => {
