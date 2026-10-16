@@ -1,24 +1,16 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { actionsExportActionAdmin } from "@alliance/shared/client";
-import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useMembers } from "@alliance/shared/lib/useMembers";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
-import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import Dropdown from "@alliance/sharedweb/ui/Dropdown";
-import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useSelectableUsers } from "@alliance/sharedweb/ui/UserSelect";
-import { milliseconds } from "date-fns";
 import {
   ChevronDown,
   ChevronUp,
-  Copy,
   EyeOff,
   TrendingUp,
   UserCheck,
@@ -40,10 +32,7 @@ import ActionCompletionCurveChart from "../components/ActionCompletionCurveChart
 import ActionFollowUpFormsTab from "../components/ActionFollowUpFormsTab";
 import ActionFormVariantsTab from "../components/ActionFormVariantsTab";
 import ActionMergedResponsesTab from "../components/ActionMergedResponsesTab";
-import {
-  ActionProjectControls,
-  ActionProjectSteps,
-} from "../components/ActionProjectControls";
+import { ActionProjectSteps } from "../components/ActionProjectControls";
 import ActionUpdatesTab from "../components/ActionUpdatesTab";
 import EventManagementTab from "../components/EventManagementTab";
 import { FormBuilder } from "../components/FormBuilder";
@@ -57,11 +46,12 @@ import type { FormResponseFilter } from "../lib/responseFilter";
 import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useAllActions } from "../lib/useAllActions";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
+import ActionDashboardToolbar from "./action-dashboard/ActionDashboardToolbar";
 import ActionEditor from "./action-dashboard/ActionEditor";
 import ActionReadinessChecklist from "./action-dashboard/ActionReadinessChecklist";
-import { imageUploadingMessage } from "./action-dashboard/actionSaveErrors";
 import { useActionCommands } from "./action-dashboard/useActionCommands";
 import { useActionEditor } from "./action-dashboard/useActionEditor";
+import { useActionExport } from "./action-dashboard/useActionExport";
 import { useActionReporting } from "./action-dashboard/useActionReporting";
 
 const tabs = [
@@ -189,51 +179,8 @@ const ActionDashboard: React.FC = () => {
     navigate("/actions");
   }, [navigate]);
 
-  const { error: pushError } = useToast();
-
-  const [exportActionOpen, setExportActionOpen] = useState(false);
-  const [exportActionEvents, setExportActionEvents] = useState(false);
-  const [exportActionTaskForm, setExportActionTaskForm] = useState(true);
-  const [exportActionSuite, setExportActionSuite] = useState(false);
-  const [jsonCopied, setJsonCopied] = useState(false);
   const [checklistCollapsed, setChecklistCollapsed] = useState(true);
-
-  const handleExportActionOpen = async () => {
-    setExportActionOpen((prev) => !prev);
-  };
-
-  const handleExportAction = async () => {
-    if (actionId) {
-      // Handed over unresolved: Safari only allows the write inside the click.
-      const copied = await copyToClipboard(
-        actionsExportActionAdmin({
-          path: { id: actionId },
-          query: {
-            events: exportActionEvents,
-            reminders: false,
-            taskForm: exportActionTaskForm,
-            suite: exportActionSuite,
-          },
-        }).then((response) =>
-          response.data
-            ? JSON.stringify(response.data)
-            : Promise.reject(new Error("action export failed")),
-        ),
-      );
-      if (!copied) {
-        pushError("Could not export the action JSON to the clipboard");
-        return;
-      }
-      setJsonCopied(true);
-      setTimeout(
-        () => {
-          setJsonCopied(false);
-          setExportActionOpen(false);
-        },
-        milliseconds({ seconds: 2 }),
-      );
-    }
-  };
+  const actionExport = useActionExport(actionId);
 
   const tabData: { key: Tab; label: string }[] = [
     { key: "overview", label: "Status Overview" },
@@ -371,92 +318,13 @@ const ActionDashboard: React.FC = () => {
           <div className="flex-1 overflow-y-auto">
             {activeTab === "overview" && action && (
               <div className="space-y-4 pb-4">
-                {/* Current Status */}
-                <div className="flex flex-row gap-2 flex-wrap">
-                  <ActionProjectControls
-                    actionId={action.id}
-                    project={action.project ?? null}
-                  />
-                  {action.suite !== undefined && (
-                    <Button
-                      onClick={() => {
-                        navigate(`/suites/${action.suite!.id}`);
-                      }}
-                      color={ButtonColor.White}
-                      className="!px-3 !text-sm gap-x-1"
-                    >
-                      Open Suite
-                    </Button>
-                  )}
-                  <Button
-                    onClick={() => handleDuplicate()}
-                    disabled={editor.imageUploading}
-                    title={
-                      editor.imageUploading ? imageUploadingMessage : undefined
-                    }
-                    color={ButtonColor.White}
-                    className="!px-3 !text-sm gap-x-1"
-                  >
-                    <Copy className="h-5 w-5" />
-                    Duplicate Action
-                  </Button>
-                  <div className="relative">
-                    <Button
-                      onClick={handleExportActionOpen}
-                      color={ButtonColor.White}
-                      className="!px-3 !text-sm gap-x-1 disabled"
-                    >
-                      Export JSON
-                    </Button>
-                    {exportActionOpen && (
-                      <Dropdown
-                        isOpen={exportActionOpen}
-                        className="absolute top-[100%] right-0 gap-y-2 min-w-[150px]"
-                      >
-                        <div className="flex flex-col gap-y-2">
-                          <LargeCheckbox
-                            label="Events"
-                            checked={exportActionEvents}
-                            onChange={(checked) =>
-                              setExportActionEvents(checked)
-                            }
-                          />
-                          <LargeCheckbox
-                            label="Task Form"
-                            checked={exportActionTaskForm}
-                            onChange={(checked) =>
-                              setExportActionTaskForm(checked)
-                            }
-                          />
-                          <LargeCheckbox
-                            label="Suite"
-                            checked={exportActionSuite}
-                            onChange={(checked) =>
-                              setExportActionSuite(checked)
-                            }
-                          />
-                        </div>
-                        <Button
-                          color={ButtonColor.Black}
-                          onClick={handleExportAction}
-                          disabled={jsonCopied}
-                          className="text-nowrap"
-                        >
-                          {jsonCopied
-                            ? clipboardCopy.inClipboard
-                            : clipboardCopy.exportJson}
-                        </Button>
-                      </Dropdown>
-                    )}
-                  </div>
-                  <Button
-                    onClick={() => handleArchive()}
-                    color={ButtonColor.RedOutline}
-                    className="!px-3 !text-sm gap-x-1 bg-white hover:bg-red-50"
-                  >
-                    {action.archived ? "Unarchive Action" : "Archive Action"}
-                  </Button>
-                </div>
+                <ActionDashboardToolbar
+                  action={action}
+                  actionExport={actionExport}
+                  imageUploading={editor.imageUploading}
+                  onDuplicate={handleDuplicate}
+                  onArchive={handleArchive}
+                />
                 {action.project && (
                   <ActionProjectSteps
                     actionId={action.id}
