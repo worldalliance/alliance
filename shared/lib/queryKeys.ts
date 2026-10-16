@@ -87,7 +87,7 @@ export const queryKeys = {
   currentContract: () => ["contractGetCurrent"] as const,
   forumPost: (postId: string | undefined) =>
     ["forumFindOnePost", postId] as const,
-  generalUpdatesAll: () => ["actionsAllGeneralUpdates"] as const,
+  generalUpdatesAll: () => ["generalUpdatesAllGeneralUpdates"] as const,
   generalUpdatesUnread: () => ["actions", "generalUpdates", "unread"] as const,
   incomingCommunityInvites: () =>
     ["communityGetIncomingCommunityInvitesForUser"] as const,
@@ -193,8 +193,8 @@ export const queryKeys = {
   formResponseCountsAdmin: (formIds: readonly number[]) =>
     [...formsAdminAll(), "responseCounts", formIds] as const,
   generalUpdateAdmin: (id: number | null) =>
-    ["actionsFindOneGeneralUpdateAdmin", id] as const,
-  generalUpdatesAdmin: () => ["actionsAllGeneralUpdatesAdmin"] as const,
+    ["generalUpdatesFindOneGeneralUpdateAdmin", id] as const,
+  generalUpdatesAdmin: () => ["generalUpdatesAllGeneralUpdatesAdmin"] as const,
   graphUsersAdmin: () => ["userListForGraphAdmin"] as const,
   inviteFeedAdmin: (startAt: string | null) =>
     ["inviteFeedAdmin", startAt] as const,

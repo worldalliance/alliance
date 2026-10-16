@@ -2254,68 +2254,6 @@ export type ActionDto = {
     project?: ProjectDto | null;
 };
 
-export type GeneralUpdateDto = {
-    id: number;
-    name: string;
-    startDate: string | null;
-    endDate: string | null;
-    priority: number;
-    schema: {
-        [key: string]: unknown;
-    };
-};
-
-export type GeneralUpdateAdminDto = {
-    id: number;
-    name: string;
-    schemaSnapshotId: number;
-    createdAt: string;
-    updatedAt: string;
-    startDate: string | null;
-    endDate: string | null;
-    useManualCohort: boolean;
-    /**
-     * User IDs in the manual cohort
-     */
-    manualCohortUserIds: Array<number> | null;
-    priority: number;
-    schema: {
-        [key: string]: unknown;
-    };
-    tags: Array<Tag>;
-    suites?: Array<ActionSuite>;
-};
-
-export type CreateGeneralUpdateDto = {
-    name: string;
-    useManualCohort: boolean;
-    startDate?: string | null;
-    endDate?: string | null;
-    /**
-     * User IDs in the manual cohort
-     */
-    manualCohortUserIds?: Array<number> | null;
-    tagIds?: Array<string>;
-    suiteIds?: Array<number>;
-};
-
-export type UpdateGeneralUpdateDto = {
-    name?: string;
-    startDate?: string | null;
-    endDate?: string | null;
-    useManualCohort?: boolean;
-    /**
-     * User IDs in the manual cohort
-     */
-    manualCohortUserIds?: Array<number> | null;
-    schema?: {
-        [key: string]: unknown;
-    };
-    expectedSchemaSnapshotId?: number;
-    tagIds?: Array<string>;
-    suiteIds?: Array<number>;
-};
-
 export type EditableContentDto = {
     /**
      * Markdown or plain text body
@@ -3294,6 +3232,17 @@ export type RecognitionPreviewCountsDto = {
     uninvolved: number;
 };
 
+export type GeneralUpdateDto = {
+    id: number;
+    name: string;
+    startDate: string | null;
+    endDate: string | null;
+    priority: number;
+    schema: {
+        [key: string]: unknown;
+    };
+};
+
 export type ActionSuiteDto = {
     id: number;
     name: string;
@@ -3568,6 +3517,57 @@ export type TimelineFeedItemDto = {
     action: ActionDto;
     actionUpdate?: ActionUpdateDto;
     actionEvent?: ActionEventDto;
+};
+
+export type GeneralUpdateAdminDto = {
+    id: number;
+    name: string;
+    schemaSnapshotId: number;
+    createdAt: string;
+    updatedAt: string;
+    startDate: string | null;
+    endDate: string | null;
+    useManualCohort: boolean;
+    /**
+     * User IDs in the manual cohort
+     */
+    manualCohortUserIds: Array<number> | null;
+    priority: number;
+    schema: {
+        [key: string]: unknown;
+    };
+    tags: Array<Tag>;
+    suites?: Array<ActionSuite>;
+};
+
+export type CreateGeneralUpdateDto = {
+    name: string;
+    useManualCohort: boolean;
+    startDate?: string | null;
+    endDate?: string | null;
+    /**
+     * User IDs in the manual cohort
+     */
+    manualCohortUserIds?: Array<number> | null;
+    tagIds?: Array<string>;
+    suiteIds?: Array<number>;
+};
+
+export type UpdateGeneralUpdateDto = {
+    name?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    useManualCohort?: boolean;
+    /**
+     * User IDs in the manual cohort
+     */
+    manualCohortUserIds?: Array<number> | null;
+    schema?: {
+        [key: string]: unknown;
+    };
+    expectedSchemaSnapshotId?: number;
+    tagIds?: Array<string>;
+    suiteIds?: Array<number>;
 };
 
 export type CohortDecisionReason = 'launch' | 'signing' | 'resolved_after_deadline' | 'backfill' | 'staff_correction' | 'prerequisites_resolved';
@@ -9701,168 +9701,6 @@ export type ActionsFindAllLoggedInResponses = {
 
 export type ActionsFindAllLoggedInResponse = ActionsFindAllLoggedInResponses[keyof ActionsFindAllLoggedInResponses];
 
-export type ActionsAllGeneralUpdatesData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions/generalUpdates';
-};
-
-export type ActionsAllGeneralUpdatesErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsAllGeneralUpdatesError = ActionsAllGeneralUpdatesErrors[keyof ActionsAllGeneralUpdatesErrors];
-
-export type ActionsAllGeneralUpdatesResponses = {
-    200: Array<GeneralUpdateDto>;
-};
-
-export type ActionsAllGeneralUpdatesResponse = ActionsAllGeneralUpdatesResponses[keyof ActionsAllGeneralUpdatesResponses];
-
-export type ActionsUnreadGeneralUpdatesData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions/generalUpdates/unread';
-};
-
-export type ActionsUnreadGeneralUpdatesErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsUnreadGeneralUpdatesError = ActionsUnreadGeneralUpdatesErrors[keyof ActionsUnreadGeneralUpdatesErrors];
-
-export type ActionsUnreadGeneralUpdatesResponses = {
-    200: Array<GeneralUpdateDto>;
-};
-
-export type ActionsUnreadGeneralUpdatesResponse = ActionsUnreadGeneralUpdatesResponses[keyof ActionsUnreadGeneralUpdatesResponses];
-
-export type ActionsDismissGeneralUpdateData = {
-    body?: never;
-    path: {
-        generalUpdateId: number;
-    };
-    query?: never;
-    url: '/actions/generalUpdates/{generalUpdateId}/dismiss';
-};
-
-export type ActionsDismissGeneralUpdateErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsDismissGeneralUpdateError = ActionsDismissGeneralUpdateErrors[keyof ActionsDismissGeneralUpdateErrors];
-
-export type ActionsDismissGeneralUpdateResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type ActionsDismissGeneralUpdateResponse = ActionsDismissGeneralUpdateResponses[keyof ActionsDismissGeneralUpdateResponses];
-
-export type ActionsAllGeneralUpdatesAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions/generalUpdates/admin';
-};
-
-export type ActionsAllGeneralUpdatesAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsAllGeneralUpdatesAdminError = ActionsAllGeneralUpdatesAdminErrors[keyof ActionsAllGeneralUpdatesAdminErrors];
-
-export type ActionsAllGeneralUpdatesAdminResponses = {
-    200: Array<GeneralUpdateAdminDto>;
-};
-
-export type ActionsAllGeneralUpdatesAdminResponse = ActionsAllGeneralUpdatesAdminResponses[keyof ActionsAllGeneralUpdatesAdminResponses];
-
-export type ActionsFindOneGeneralUpdateAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/generalUpdates/admin/{id}';
-};
-
-export type ActionsFindOneGeneralUpdateAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsFindOneGeneralUpdateAdminError = ActionsFindOneGeneralUpdateAdminErrors[keyof ActionsFindOneGeneralUpdateAdminErrors];
-
-export type ActionsFindOneGeneralUpdateAdminResponses = {
-    200: GeneralUpdateAdminDto;
-};
-
-export type ActionsFindOneGeneralUpdateAdminResponse = ActionsFindOneGeneralUpdateAdminResponses[keyof ActionsFindOneGeneralUpdateAdminResponses];
-
-export type ActionsCreateGeneralUpdateAdminData = {
-    body: CreateGeneralUpdateDto;
-    path?: never;
-    query?: never;
-    url: '/actions/generalUpdates/create';
-};
-
-export type ActionsCreateGeneralUpdateAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsCreateGeneralUpdateAdminError = ActionsCreateGeneralUpdateAdminErrors[keyof ActionsCreateGeneralUpdateAdminErrors];
-
-export type ActionsCreateGeneralUpdateAdminResponses = {
-    200: GeneralUpdateAdminDto;
-};
-
-export type ActionsCreateGeneralUpdateAdminResponse = ActionsCreateGeneralUpdateAdminResponses[keyof ActionsCreateGeneralUpdateAdminResponses];
-
-export type ActionsUpdateGeneralUpdateAdminData = {
-    body: UpdateGeneralUpdateDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/generalUpdates/{id}';
-};
-
-export type ActionsUpdateGeneralUpdateAdminErrors = {
-    /**
-     * The general update was changed by someone else since it was opened (optimistic-concurrency conflict).
-     */
-    409: HeyApiError;
-};
-
-export type ActionsUpdateGeneralUpdateAdminError = ActionsUpdateGeneralUpdateAdminErrors[keyof ActionsUpdateGeneralUpdateAdminErrors];
-
-export type ActionsUpdateGeneralUpdateAdminResponses = {
-    200: GeneralUpdateAdminDto;
-};
-
-export type ActionsUpdateGeneralUpdateAdminResponse = ActionsUpdateGeneralUpdateAdminResponses[keyof ActionsUpdateGeneralUpdateAdminResponses];
-
 export type ActionsGetActivityFeedData = {
     body?: never;
     path?: never;
@@ -11800,6 +11638,168 @@ export type ActionsGetTimelineFeedResponses = {
 };
 
 export type ActionsGetTimelineFeedResponse = ActionsGetTimelineFeedResponses[keyof ActionsGetTimelineFeedResponses];
+
+export type GeneralUpdatesAllGeneralUpdatesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/generalUpdates';
+};
+
+export type GeneralUpdatesAllGeneralUpdatesErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type GeneralUpdatesAllGeneralUpdatesError = GeneralUpdatesAllGeneralUpdatesErrors[keyof GeneralUpdatesAllGeneralUpdatesErrors];
+
+export type GeneralUpdatesAllGeneralUpdatesResponses = {
+    200: Array<GeneralUpdateDto>;
+};
+
+export type GeneralUpdatesAllGeneralUpdatesResponse = GeneralUpdatesAllGeneralUpdatesResponses[keyof GeneralUpdatesAllGeneralUpdatesResponses];
+
+export type GeneralUpdatesUnreadGeneralUpdatesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/generalUpdates/unread';
+};
+
+export type GeneralUpdatesUnreadGeneralUpdatesErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type GeneralUpdatesUnreadGeneralUpdatesError = GeneralUpdatesUnreadGeneralUpdatesErrors[keyof GeneralUpdatesUnreadGeneralUpdatesErrors];
+
+export type GeneralUpdatesUnreadGeneralUpdatesResponses = {
+    200: Array<GeneralUpdateDto>;
+};
+
+export type GeneralUpdatesUnreadGeneralUpdatesResponse = GeneralUpdatesUnreadGeneralUpdatesResponses[keyof GeneralUpdatesUnreadGeneralUpdatesResponses];
+
+export type GeneralUpdatesDismissGeneralUpdateData = {
+    body?: never;
+    path: {
+        generalUpdateId: number;
+    };
+    query?: never;
+    url: '/actions/generalUpdates/{generalUpdateId}/dismiss';
+};
+
+export type GeneralUpdatesDismissGeneralUpdateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type GeneralUpdatesDismissGeneralUpdateError = GeneralUpdatesDismissGeneralUpdateErrors[keyof GeneralUpdatesDismissGeneralUpdateErrors];
+
+export type GeneralUpdatesDismissGeneralUpdateResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type GeneralUpdatesDismissGeneralUpdateResponse = GeneralUpdatesDismissGeneralUpdateResponses[keyof GeneralUpdatesDismissGeneralUpdateResponses];
+
+export type GeneralUpdatesAllGeneralUpdatesAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/generalUpdates/admin';
+};
+
+export type GeneralUpdatesAllGeneralUpdatesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type GeneralUpdatesAllGeneralUpdatesAdminError = GeneralUpdatesAllGeneralUpdatesAdminErrors[keyof GeneralUpdatesAllGeneralUpdatesAdminErrors];
+
+export type GeneralUpdatesAllGeneralUpdatesAdminResponses = {
+    200: Array<GeneralUpdateAdminDto>;
+};
+
+export type GeneralUpdatesAllGeneralUpdatesAdminResponse = GeneralUpdatesAllGeneralUpdatesAdminResponses[keyof GeneralUpdatesAllGeneralUpdatesAdminResponses];
+
+export type GeneralUpdatesFindOneGeneralUpdateAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/generalUpdates/admin/{id}';
+};
+
+export type GeneralUpdatesFindOneGeneralUpdateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type GeneralUpdatesFindOneGeneralUpdateAdminError = GeneralUpdatesFindOneGeneralUpdateAdminErrors[keyof GeneralUpdatesFindOneGeneralUpdateAdminErrors];
+
+export type GeneralUpdatesFindOneGeneralUpdateAdminResponses = {
+    200: GeneralUpdateAdminDto;
+};
+
+export type GeneralUpdatesFindOneGeneralUpdateAdminResponse = GeneralUpdatesFindOneGeneralUpdateAdminResponses[keyof GeneralUpdatesFindOneGeneralUpdateAdminResponses];
+
+export type GeneralUpdatesCreateGeneralUpdateAdminData = {
+    body: CreateGeneralUpdateDto;
+    path?: never;
+    query?: never;
+    url: '/actions/generalUpdates/create';
+};
+
+export type GeneralUpdatesCreateGeneralUpdateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type GeneralUpdatesCreateGeneralUpdateAdminError = GeneralUpdatesCreateGeneralUpdateAdminErrors[keyof GeneralUpdatesCreateGeneralUpdateAdminErrors];
+
+export type GeneralUpdatesCreateGeneralUpdateAdminResponses = {
+    200: GeneralUpdateAdminDto;
+};
+
+export type GeneralUpdatesCreateGeneralUpdateAdminResponse = GeneralUpdatesCreateGeneralUpdateAdminResponses[keyof GeneralUpdatesCreateGeneralUpdateAdminResponses];
+
+export type GeneralUpdatesUpdateGeneralUpdateAdminData = {
+    body: UpdateGeneralUpdateDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/generalUpdates/{id}';
+};
+
+export type GeneralUpdatesUpdateGeneralUpdateAdminErrors = {
+    /**
+     * The general update was changed by someone else since it was opened (optimistic-concurrency conflict).
+     */
+    409: HeyApiError;
+};
+
+export type GeneralUpdatesUpdateGeneralUpdateAdminError = GeneralUpdatesUpdateGeneralUpdateAdminErrors[keyof GeneralUpdatesUpdateGeneralUpdateAdminErrors];
+
+export type GeneralUpdatesUpdateGeneralUpdateAdminResponses = {
+    200: GeneralUpdateAdminDto;
+};
+
+export type GeneralUpdatesUpdateGeneralUpdateAdminResponse = GeneralUpdatesUpdateGeneralUpdateAdminResponses[keyof GeneralUpdatesUpdateGeneralUpdateAdminResponses];
 
 export type CohortDecisionsListForActionAdminData = {
     body?: never;

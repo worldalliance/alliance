@@ -66,6 +66,7 @@ import { GeneralUpdate } from "./entities/general-update.entity";
 import { Project } from "./entities/project.entity";
 import { ReminderGroup } from "./entities/reminder-group.entity";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
+import { GeneralUpdatesController } from "./general-updates.controller";
 import { ProjectsController } from "./projects.controller";
 import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
@@ -121,6 +122,7 @@ import { TaskBadgeService } from "./task-badge.service";
   ],
   controllers: [
     ActionsController,
+    GeneralUpdatesController,
     CohortDecisionsController,
     ProjectsController,
   ],
