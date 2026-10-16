@@ -2,12 +2,7 @@
 import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
-  isMaxCapacityRequired,
-  validateCommunitySettings,
 } from "@alliance/common/community";
-import { errorMessage } from "@alliance/common/errorMessage";
-import { changedPhoto } from "@alliance/common/image-src";
-import { communityDelete, communityUpdate } from "@alliance/shared/client";
 import {
   calculateAllCompletionData,
   CompletionData,
@@ -46,6 +41,7 @@ import PillTab from "../../components/PillTab";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import { useAuth } from "../../lib/AuthContext";
 import { isFeatureEnabled } from "../../lib/config";
+import { useCommunityEditor } from "../../lib/useCommunityEditor";
 import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
 import MyGroupsPage from "./MyGroupsPage";
 import PageSpinner from "./PageSpinner";
@@ -91,28 +87,6 @@ const CommunityPage = () => {
   const { pendingCommunityInvites } = useIncomingCommunityInvites();
   const memberCount = community ? getMemberCount(community) : 0;
 
-  // Edit mode state
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState<string>("");
-  const [editDescription, setEditDescription] = useState<string>("");
-  const [editPublic, setEditPublic] = useState<boolean>(false);
-  const [editAllowMemberInvites, setEditAllowMemberInvites] =
-    useState<boolean>(true);
-  const [editAllowStaffAssignments, setEditAllowStaffAssignments] =
-    useState<boolean>(true);
-  const [editMaxCapacity, setEditMaxCapacity] = useState<number | null>(null);
-  const [editPhotoUrl, setEditPhotoUrl] = useState<string | null>(null);
-  const [photoEditorKey, setPhotoEditorKey] = useState(0);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const currentPhoto = community?.photo ?? null;
-  const isPhotoUploadPending = isSaving && editPhotoUrl !== currentPhoto;
-  const useMaxCapacity = isMaxCapacityRequired({
-    public: editPublic,
-    allowMemberInvites: editAllowMemberInvites,
-    allowStaffAssignments: editAllowStaffAssignments,
-  });
-
   const { conversation: communityConversation } = useCommunityConversation(
     community?.id ?? null,
   );
@@ -133,25 +107,6 @@ const CommunityPage = () => {
   }, [community, communityConversation]);
 
   const { user, refreshUser } = useAuth();
-
-  // Initialize edit values when community changes and reset editing state
-  useEffect(() => {
-    if (community) {
-      setEditName(community.name);
-      setEditDescription(community.description);
-      setEditPublic(community.public);
-      setEditAllowMemberInvites(community.allowMemberInvites ?? true);
-      setEditAllowStaffAssignments(community.allowStaffAssignments ?? true);
-      setEditMaxCapacity(
-        community.maxCapacity === null
-          ? null
-          : Math.max(community.maxCapacity, memberCount),
-      );
-      setEditPhotoUrl(community.photo ?? null);
-      setIsEditing(false);
-      setError(null);
-    }
-  }, [community, memberCount]);
 
   const messagingEnabled = useMemo(() => {
     return isFeatureEnabled(Features.Messaging);
@@ -238,122 +193,45 @@ const CommunityPage = () => {
     [setSearchParams, communityIds, refreshCommunities],
   );
 
-  const handleSave = useCallback(async () => {
-    setError(null);
-    if (!community || isSaving) return;
+  const handleDeleted = useCallback(
+    (deletedId: number) => {
+      removeCommunity(deletedId);
+      setParams({ communityId: null, tab: null });
+    },
+    [removeCommunity, setParams],
+  );
 
-    const validated = validateCommunitySettings({
-      settings: {
-        name: editName,
-        public: editPublic,
-        allowMemberInvites: editAllowMemberInvites,
-        allowStaffAssignments: editAllowStaffAssignments,
-        maxCapacity: editMaxCapacity,
-      },
-      memberCount,
-    });
-    if (!validated.ok) {
-      setError(validated.error);
-      return;
-    }
-
-    setIsSaving(true);
-    setError(null);
-    try {
-      const response = await communityUpdate({
-        path: { communityId: community.id },
-        body: {
-          name: editName,
-          description: editDescription,
-          photo: changedPhoto({ current: currentPhoto, next: editPhotoUrl }),
-          public: editPublic,
-          maxCapacity: validated.value.maxCapacity,
-          allowMemberInvites: editAllowMemberInvites,
-          allowStaffAssignments: editAllowStaffAssignments,
-        },
-      });
-
-      if (response.data) {
-        updateCommunity(response.data);
-        setIsEditing(false);
-      } else {
-        setError(
-          errorMessage({
-            error: response.error,
-            fallback: "Failed to update group",
-          }),
-        );
-      }
-    } catch (err) {
-      console.error("Failed to update group:", err);
-      setError("Failed to update group");
-    } finally {
-      setIsSaving(false);
-    }
-  }, [
-    community,
+  const {
+    isEditing,
+    setIsEditing,
     editName,
+    setEditName,
     editDescription,
+    setEditDescription,
     editPublic,
+    setEditPublic,
     editAllowMemberInvites,
+    setEditAllowMemberInvites,
     editAllowStaffAssignments,
+    setEditAllowStaffAssignments,
     editMaxCapacity,
+    setEditMaxCapacity,
     editPhotoUrl,
-    currentPhoto,
+    setEditPhotoUrl,
+    photoEditorKey,
     isSaving,
+    error,
+    isPhotoUploadPending,
+    useMaxCapacity,
+    handleSave,
+    handleCancel,
+    handleDelete,
+  } = useCommunityEditor({
+    community,
     memberCount,
-    updateCommunity,
-  ]);
-
-  const handleCancel = useCallback(() => {
-    if (community) {
-      setEditName(community.name);
-      setEditDescription(community.description);
-      setEditPublic(community.public);
-      setEditAllowStaffAssignments(community.allowStaffAssignments ?? true);
-      setEditAllowMemberInvites(community.allowMemberInvites ?? true);
-      setEditMaxCapacity(
-        community.maxCapacity === null
-          ? null
-          : Math.max(
-              community.maxCapacity,
-              community.users.length - community.leaders.length,
-            ),
-      );
-      setEditPhotoUrl(community.photo ?? null);
-    }
-    setPhotoEditorKey((prev) => prev + 1);
-    setError(null);
-    setIsEditing(false);
-  }, [community]);
-
-  const handleDelete = useCallback(async () => {
-    if (!community || isSaving) return;
-
-    setIsSaving(true);
-    setError(null);
-    try {
-      const response = await communityDelete({
-        path: { communityId: community.id },
-      });
-      if (response.error) {
-        setError(
-          errorMessage({
-            error: response.error,
-            fallback: "Failed to delete community",
-          }),
-        );
-      } else {
-        removeCommunity(community.id);
-        setParams({ communityId: null, tab: null });
-      }
-    } catch (err) {
-      console.error("Failed to delete community:", err);
-      setError("Failed to delete community");
-    } finally {
-      setIsSaving(false);
-    }
-  }, [community, isSaving, removeCommunity, setParams]);
+    onUpdated: updateCommunity,
+    onDeleted: handleDeleted,
+  });
 
   const tabs = SHOWN_TABS[amLeader ? "leader" : "member"];
 
