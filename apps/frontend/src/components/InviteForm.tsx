@@ -78,7 +78,7 @@ const InviteForm = ({
   const [multipleUseInvite, setMultipleUseInvite] = useState(false);
   const [inviteeName, setInviteeName] = useState("");
   const [creatingCommunity, setCreatingCommunity] = useState(false);
-  const { communities, refreshCommunities } = useMyCommunities({});
+  const { communities } = useMyCommunities({});
   const { placement, setPlacement, leaderCommunities, selectedCommunity } =
     useInvitePlacement(communities, user?.id);
   const { createInvite: createReusableInvite, isCreating: creatingReusable } =
@@ -197,14 +197,9 @@ const InviteForm = ({
   const onCreateCommunity = useCallback(
     async (community: CommunityDto) => {
       await handleCreateForPlacement(community.id);
-      try {
-        await refreshCommunities();
-        setPlacement({ kind: "community", id: community.id });
-      } catch {
-        errorToast("Failed to refresh groups");
-      }
+      setPlacement({ kind: "community", id: community.id });
     },
-    [errorToast, refreshCommunities, handleCreateForPlacement, setPlacement],
+    [handleCreateForPlacement, setPlacement],
   );
 
   const inviteIsCreating = multipleUseInvite

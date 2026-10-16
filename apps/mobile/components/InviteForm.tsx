@@ -3,13 +3,15 @@ import {
   COMMUNITY_NAME_MAX_LENGTH,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { communityCreateCommunity } from "@alliance/shared/client";
 import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { useInvitePlacement } from "@alliance/shared/lib/useInvitePlacement";
-import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
+import {
+  CREATE_GROUP_SESSION_EXPIRED,
+  useMyCommunities,
+} from "@alliance/shared/lib/useMyCommunities";
 import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
 import { ChevronRight } from "lucide-react-native";
 import { useCallback, useState } from "react";
@@ -34,7 +36,7 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
   const { user } = useAuth();
   const [inviteeName, setInviteeName] = useState("");
   const { createInvite, isCreatingInvite } = useOnetimeInvitesOverview();
-  const { communities, refreshCommunities } = useMyCommunities({});
+  const { communities, createCommunity } = useMyCommunities({});
   const { placement, setPlacement, leaderCommunities, selectedCommunity } =
     useInvitePlacement(communities, user?.id);
   const [newGroupName, setNewGroupName] = useState("");
@@ -87,33 +89,26 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
     }
     setCreatingGroup(true);
     try {
-      const response = await communityCreateCommunity({
-        body: {
-          name,
-          description: newGroupDescription.trim() || "",
-          ...NEW_COMMUNITY_SETTINGS,
-        },
+      const community = await createCommunity({
+        name,
+        description: newGroupDescription.trim(),
+        ...NEW_COMMUNITY_SETTINGS,
       });
-      if (response.data) {
-        const community = response.data;
-        setNewGroupName("");
-        setNewGroupDescription("");
-        await refreshCommunities();
-        setPlacement({ kind: "community", id: community.id });
-        if (inviteeName.trim()) {
-          await handleCreateInvite(community.id);
-        }
-      } else {
-        Alert.alert(
-          "Error",
-          errorMessage({
-            error: response.error,
-            fallback: "Failed to create group.",
-          }),
-        );
+      setNewGroupName("");
+      setNewGroupDescription("");
+      setPlacement({ kind: "community", id: community.id });
+      if (inviteeName.trim()) {
+        await handleCreateInvite(community.id);
       }
-    } catch {
-      Alert.alert("Error", "Failed to create group.");
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        thrownRefusalMessage({
+          error,
+          fallback: "Failed to create group.",
+          sessionExpired: CREATE_GROUP_SESSION_EXPIRED,
+        }),
+      );
     } finally {
       setCreatingGroup(false);
     }
@@ -121,7 +116,7 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
     newGroupName,
     newGroupDescription,
     inviteeName,
-    refreshCommunities,
+    createCommunity,
     handleCreateInvite,
     setPlacement,
   ]);

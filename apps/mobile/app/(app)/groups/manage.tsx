@@ -2,9 +2,6 @@ import {
   isMaxCapacityRequired,
   validateCommunitySettings,
 } from "@alliance/common/community";
-import { errorMessage } from "@alliance/common/errorMessage";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { communityCreateCommunity } from "@alliance/shared/client";
 import type {
   CommunityDto,
   CommunityInviteDto,
@@ -15,8 +12,12 @@ import {
   isLedBy,
 } from "@alliance/shared/lib/communityUtils";
 import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useIncomingCommunityInvites } from "@alliance/shared/lib/useIncomingCommunityInvites";
-import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
+import {
+  CREATE_GROUP_SESSION_EXPIRED,
+  useMyCommunities,
+} from "@alliance/shared/lib/useMyCommunities";
 import { usePublicCommunities } from "@alliance/shared/lib/usePublicCommunities";
 import { router } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
@@ -62,6 +63,7 @@ export default function GroupManageScreen() {
     didFail: didGroupsFail,
     isFetching: myCommunitiesFetching,
     refreshCommunities,
+    createCommunity,
   } = useMyCommunities({});
   const {
     publicCommunities,
@@ -141,36 +143,30 @@ export default function GroupManageScreen() {
     setCreating(true);
     setError(null);
     try {
-      const response = await communityCreateCommunity({
-        body: {
-          name,
-          description: newCommunity.description.trim(),
-          public: newCommunity.public,
-          allowMemberInvites: newCommunity.allowMemberInvites,
-          allowStaffAssignments: newCommunity.allowStaffAssignments,
-          maxCapacity,
-        },
+      await createCommunity({
+        name,
+        description: newCommunity.description.trim(),
+        public: newCommunity.public,
+        allowMemberInvites: newCommunity.allowMemberInvites,
+        allowStaffAssignments: newCommunity.allowStaffAssignments,
+        maxCapacity,
       });
-      if (response.error || !response.data) {
-        setError(
-          errorMessage({
-            error: response.error,
-            fallback: "Unable to create community.",
-          }),
-        );
-        return;
-      }
       setNewCommunity(INITIAL_COMMUNITY);
       setShowCreateForm(false);
-      void refreshAll();
       await refreshUser();
     } catch (err) {
       console.error("Failed to create community", err);
-      setError("Unable to create community. Please try again.");
+      setError(
+        thrownRefusalMessage({
+          error: err,
+          fallback: "Unable to create community. Please try again.",
+          sessionExpired: CREATE_GROUP_SESSION_EXPIRED,
+        }),
+      );
     } finally {
       setCreating(false);
     }
-  }, [newCommunity, refreshAll, refreshUser]);
+  }, [createCommunity, newCommunity, refreshUser]);
 
   const handleAcceptInvite = useCallback(
     (invite: CommunityInviteDto) => {

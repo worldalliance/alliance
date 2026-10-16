@@ -1,4 +1,6 @@
+import { onlineManager } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { NEW_COMMUNITY_SETTINGS } from "./constants";
 import { queryKeys } from "./queryKeys";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
@@ -14,6 +16,7 @@ serveApi(
     "GET /community/list/my": () => myGroups(),
     "POST /community/1/leave": () => membershipWrite(),
     "POST /community/1/join": () => membershipWrite(),
+    "POST /community/create": () => membershipWrite(),
   }),
 );
 
@@ -21,6 +24,8 @@ beforeEach(() => {
   myGroups = failed;
   membershipWrite = failed;
 });
+
+afterEach(() => onlineManager.setOnline(true));
 
 const cached = [{ id: 1, name: "Group", users: [] }];
 
@@ -126,17 +131,71 @@ it("joining a public group resolves once the user's groups are refetched", async
   expect(client.getQueryData(queryKeys.myCommunities())).toEqual([joined]);
 });
 
-it.each(["leaveCommunity", "joinPublicCommunity"] as const)(
-  "%s throws and refreshes nothing when refused",
-  async (write) => {
-    membershipWrite = () =>
-      Response.json({ message: "Refused", statusCode: 400 }, { status: 400 });
-    const { hook, invalidated } = await renderLoaded();
+const newGroup = {
+  name: "New group",
+  description: "",
+  ...NEW_COMMUNITY_SETTINGS,
+};
 
-    const failure = hook.result.current[write](1).catch((e: unknown) => e);
+it("creating a group adds it at once and refreshes the user's groups and the public groups", async () => {
+  const created = { id: 2, name: "New group", users: [] };
+  membershipWrite = () => Response.json(created);
+  const { hook, invalidated } = await renderLoaded();
+  const refetch = Promise.withResolvers<Response>();
+  myGroups = () => refetch.promise;
 
-    expect(await failure).toMatchObject({ statusCode: 400 });
-    expect(invalidated(queryKeys.myCommunities())).toBe(false);
-    expect(invalidated(queryKeys.publicCommunities())).toBe(false);
+  await act(async () => {
+    expect(await hook.result.current.createCommunity(newGroup)).toEqual(
+      created,
+    );
+  });
+
+  await waitFor(() =>
+    expect(hook.result.current.communities).toEqual([...cached, created]),
+  );
+  expect(invalidated(queryKeys.myCommunities())).toBe(true);
+  expect(invalidated(queryKeys.publicCommunities())).toBe(true);
+  await act(async () => refetch.resolve(Response.json([created])));
+  await waitFor(() =>
+    expect(hook.result.current.communities).toEqual([created]),
+  );
+});
+
+it("creating a group offline fails at once rather than waiting to reconnect", async () => {
+  const { hook } = await renderLoaded();
+  onlineManager.setOnline(false);
+  membershipWrite = () => {
+    throw new TypeError("Network request failed");
+  };
+
+  const failure = hook.result.current
+    .createCommunity(newGroup)
+    .catch((e: unknown) => e);
+
+  expect(await failure).toBeInstanceOf(TypeError);
+});
+
+type Hook = ReturnType<typeof useMyCommunities>;
+
+it.each([
+  {
+    write: "createCommunity",
+    send: (hook: Hook) => hook.createCommunity(newGroup),
   },
-);
+  { write: "leaveCommunity", send: (hook: Hook) => hook.leaveCommunity(1) },
+  {
+    write: "joinPublicCommunity",
+    send: (hook: Hook) => hook.joinPublicCommunity(1),
+  },
+])("$write throws and changes nothing when refused", async ({ send }) => {
+  membershipWrite = () =>
+    Response.json({ message: "Refused", statusCode: 400 }, { status: 400 });
+  const { hook, invalidated } = await renderLoaded();
+
+  const failure = send(hook.result.current).catch((e: unknown) => e);
+
+  expect(await failure).toMatchObject({ statusCode: 400 });
+  expect(hook.result.current.communities).toEqual(cached);
+  expect(invalidated(queryKeys.myCommunities())).toBe(false);
+  expect(invalidated(queryKeys.publicCommunities())).toBe(false);
+});

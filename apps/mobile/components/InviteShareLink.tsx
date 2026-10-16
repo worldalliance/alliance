@@ -2,20 +2,21 @@ import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
 } from "@alliance/common/community";
-import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
 import type { ShareUrlMineDto } from "@alliance/shared/client";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { communityCreateCommunity } from "@alliance/shared/client";
 import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import {
   reusableInviteSettings,
   type InviteSettingsTarget,
 } from "@alliance/shared/lib/inviteSettings";
 import { inviteDestinationLabel } from "@alliance/shared/lib/inviteUtils";
 import { useInvitePlacement } from "@alliance/shared/lib/useInvitePlacement";
-import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
+import {
+  CREATE_GROUP_SESSION_EXPIRED,
+  useMyCommunities,
+} from "@alliance/shared/lib/useMyCommunities";
 import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
 import { cn } from "@alliance/shared/styles/util";
 import { ChevronRight } from "lucide-react-native";
@@ -46,7 +47,7 @@ export default function InviteShareLink() {
     updateInvite,
     deleteInvite,
   } = useReusableInvites();
-  const { communities, refreshCommunities } = useMyCommunities({});
+  const { communities, createCommunity } = useMyCommunities({});
   const { placement, setPlacement, leaderCommunities, selectedCommunity } =
     useInvitePlacement(communities, user?.id);
   const [labelDraft, setLabelDraft] = useState("");
@@ -88,38 +89,32 @@ export default function InviteShareLink() {
     }
     setCreatingGroup(true);
     try {
-      const response = await communityCreateCommunity({
-        body: {
-          name,
-          description: newGroupDescription.trim(),
-          ...NEW_COMMUNITY_SETTINGS,
-        },
+      const community = await createCommunity({
+        name,
+        description: newGroupDescription.trim(),
+        ...NEW_COMMUNITY_SETTINGS,
       });
-      if (!response.data) {
-        Alert.alert(
-          "Error",
-          errorMessage({
-            error: response.error,
-            fallback: "Failed to create group.",
-          }),
-        );
-        return;
-      }
       setNewGroupName("");
       setNewGroupDescription("");
-      await refreshCommunities();
-      setPlacement({ kind: "community", id: response.data.id });
-      await handleCreate(response.data.id);
-    } catch {
-      Alert.alert("Error", "Failed to create group.");
+      setPlacement({ kind: "community", id: community.id });
+      await handleCreate(community.id);
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        thrownRefusalMessage({
+          error,
+          fallback: "Failed to create group.",
+          sessionExpired: CREATE_GROUP_SESSION_EXPIRED,
+        }),
+      );
     } finally {
       setCreatingGroup(false);
     }
   }, [
+    createCommunity,
     handleCreate,
     newGroupDescription,
     newGroupName,
-    refreshCommunities,
     setPlacement,
   ]);
 
