@@ -22,7 +22,6 @@ import { withCount } from "@alliance/common/plural";
 import { FormFieldsStatus } from "@alliance/shared/lib/useFormSchema";
 import { cn } from "@alliance/shared/styles/util";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { conditionSourceFields } from "../lib/conditionSourceFields";
@@ -37,7 +36,6 @@ import { ensurePages, ensureSchemaViews } from "../lib/ensureFormSchema";
 import {
   collectFormIssues,
   indexIssues,
-  IssueTargetKind,
   type FormIssue,
 } from "../lib/formIssues";
 import { JsonScopeKind, type JsonScope } from "../lib/formJson";
@@ -109,8 +107,6 @@ import {
 } from "./form-canvas/InsertPoint";
 import {
   IssueGate,
-  IssueList,
-  issueLocation,
   openIssue,
   selectionIssues,
   SidebarIssues,
@@ -130,14 +126,18 @@ import {
 } from "./form-fields/conditions/expressionBuffers";
 import { createField } from "./form-fields/createField";
 import { renderFieldEditor } from "./form-fields/fieldEditors";
+import {
+  FormBuilderBanners,
+  FormBuilderHeader,
+  type FormEditorTab,
+  type IssueListState,
+} from "./FormBuilderHeader";
 import { FormConflictModal } from "./FormConflictModal";
 import { FormDraftContexts } from "./FormDraftContexts";
-import { FormJsonButton } from "./FormJsonButton";
 import { FormJsonModal } from "./FormJsonModal";
 import { formFieldsErrorReason } from "./FormPickerError";
 import { FormulaSourcesProvider } from "./FormulaSourcesContext";
 import { FormVariablesProvider } from "./FormVariablesContext";
-import { HistoryControls } from "./HistoryControls";
 import { OutputBuilder } from "./OutputBuilder";
 import { PreviewAsUserBar } from "./PreviewAsUserBar";
 import { ShareableTextBuilder } from "./ShareableTextBuilder";
@@ -146,13 +146,6 @@ import {
   VisibilityGroupContext,
   visibilityGroupMember,
 } from "./VisibilityGroupContext";
-
-type FormEditorTab =
-  | "form"
-  | "shareable"
-  | "outputs"
-  | "aggregates"
-  | "variables";
 
 function describeUnresolvedReferences(
   references: UnresolvedVariableReference[],
@@ -346,9 +339,7 @@ export function FormBuilder(props: FormBuilderProps) {
   const focused = useCallback(() => setFocusPending(false), []);
   const [revealPending, setRevealPending] = useState(false);
   const revealed = useCallback(() => setRevealPending(false), []);
-  const [issueList, setIssueList] = useState<{ gate: IssueGate | null } | null>(
-    null,
-  );
+  const [issueList, setIssueList] = useState<IssueListState>(null);
   const {
     saveForm,
     isSaving,
@@ -678,10 +669,14 @@ export function FormBuilder(props: FormBuilderProps) {
     [canvasGroups, expressions, schema, sourceForms, validation],
   );
   const issueIndex = useMemo(() => indexIssues(issues), [issues]);
-  const blockingIssues = issues.length + (loadError ? 1 : 0);
-  const retryLoadLabel = hasUnsavedChanges
-    ? "Discard edits and retry"
-    : "Retry";
+  const loadFailure =
+    loadError === null
+      ? null
+      : {
+          message: loadError,
+          retryLabel: hasUnsavedChanges ? "Discard edits and retry" : "Retry",
+          onRetry: retryLoad,
+        };
 
   const handleSaveForm = useCallback(() => {
     if (loadError !== null || (issues.length > 0 && !sourceFormsLoading)) {
@@ -716,25 +711,6 @@ export function FormBuilder(props: FormBuilderProps) {
   );
   const undo = useCallback(() => travel(undoDraft), [travel, undoDraft]);
   const redo = useCallback(() => travel(redoDraft), [travel, redoDraft]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
-        event.preventDefault();
-
-        if (!hasUnsavedChanges || isSaving || isLoading) {
-          return;
-        }
-        void handleSaveForm();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [handleSaveForm, hasUnsavedChanges, isLoading, isSaving]);
 
   const replaceFields = (fields: PageItem[], pageIndex = selectedPageIndex) => {
     const before = schema.pages[pageIndex];
@@ -1222,186 +1198,42 @@ export function FormBuilder(props: FormBuilderProps) {
             className="flex h-[calc(100vh-40px)] bg-zinc-50"
           >
             <div className="flex-1 flex flex-col min-w-0">
-              <div className="bg-white border-b border-gray-200 p-4">
-                <div className="flex items-center justify-end gap-4 flex-wrap xl:flex-nowrap">
-                  <div className="flex items-center space-x-2">
-                    <IssueList
-                      rows={issues.map((issue) => ({
-                        location: issueLocation(schema, issue.target),
-                        message: issue.message,
-                        onGo:
-                          issue.target.kind === IssueTargetKind.Form
-                            ? null
-                            : () => goToIssue(issue),
-                      }))}
-                      sources={{
-                        pending: pendingSourceForms.size,
-                        failed: failedSourceForms,
-                        onRetry: retrySourceForms,
-                      }}
-                      loadFailure={
-                        loadError === null
-                          ? null
-                          : {
-                              message: loadError,
-                              retryLabel: retryLoadLabel,
-                              onRetry: retryLoad,
-                            }
-                      }
-                      open={issueList !== null}
-                      gate={issueList?.gate ?? null}
-                      onOpenChange={(open) =>
-                        setIssueList(open ? { gate: null } : null)
-                      }
-                    />
-                    {!isPreviewMode && (
-                      <HistoryControls
-                        scope={builderRef}
-                        canUndo={canUndo}
-                        canRedo={canRedo}
-                        onUndo={undo}
-                        onRedo={redo}
-                      />
-                    )}
-                    {!isPreviewMode && (
-                      <FormJsonButton
-                        label="Edit form JSON"
-                        onClick={() =>
-                          setJsonScope({ kind: JsonScopeKind.Form })
-                        }
-                        className="h-8 w-8 rounded-md hover:bg-gray-100"
-                      />
-                    )}
-                    {activeEditor === "form" && (
-                      <Button
-                        onClick={() => {
-                          if (isPreviewMode) {
-                            setIsPreviewMode(false);
-                          } else if (blockingIssues > 0) {
-                            setIssueList({ gate: IssueGate.Preview });
-                          } else {
-                            setIsPreviewMode(true);
-                          }
-                        }}
-                        color={ButtonColor.Stone}
-                        size="small"
-                      >
-                        {isPreviewMode ? "Edit" : "Preview"}
-                      </Button>
-                    )}
-                    <Button
-                      onClick={handleSaveForm}
-                      disabled={isSaving || isLoading || !hasUnsavedChanges}
-                      color={ButtonColor.Blue}
-                      size="small"
-                    >
-                      {isSaving
-                        ? "Saving..."
-                        : hasUnsavedChanges
-                          ? "Save Form"
-                          : "No changes"}
-                    </Button>
-                  </div>
-                  {!displayOnly && (
-                    <div className="inline-flex rounded-md bg-gray-200 p-0.5 text-sm font-medium text-gray-600">
-                      <button
-                        type="button"
-                        className={cn(
-                          "px-3 py-2 rounded-md text-nowrap",
-                          activeEditor === "form"
-                            ? "bg-white shadow text-gray-900"
-                            : "text-gray-600",
-                        )}
-                        onClick={() => setActiveEditor("form")}
-                      >
-                        Form Builder
-                      </button>
-                      <button
-                        type="button"
-                        className={cn(
-                          "px-3 py-2 rounded-md text-nowrap",
-                          activeEditor === "shareable"
-                            ? "bg-white shadow text-gray-900"
-                            : "text-gray-600",
-                        )}
-                        onClick={() => setActiveEditor("shareable")}
-                      >
-                        Shareable Text
-                      </button>
-                      <button
-                        type="button"
-                        className={cn(
-                          "px-3 py-2 rounded-md text-nowrap",
-                          activeEditor === "outputs"
-                            ? "bg-white shadow text-gray-900"
-                            : "text-gray-600",
-                        )}
-                        onClick={() => setActiveEditor("outputs")}
-                      >
-                        Output View
-                      </button>
-                      <button
-                        type="button"
-                        className={cn(
-                          "px-3 py-2 rounded-md text-nowrap",
-                          activeEditor === "aggregates"
-                            ? "bg-white shadow text-gray-900"
-                            : "text-gray-600",
-                        )}
-                        onClick={() => setActiveEditor("aggregates")}
-                      >
-                        Aggregate Views
-                      </button>
-                      <button
-                        type="button"
-                        className={cn(
-                          "px-3 py-2 rounded-md text-nowrap",
-                          activeEditor === "variables"
-                            ? "bg-white shadow text-gray-900"
-                            : "text-gray-600",
-                        )}
-                        onClick={() => setActiveEditor("variables")}
-                      >
-                        Variables
-                        {(schema.variables?.length ?? 0) > 0 && (
-                          <span className="ml-1.5 rounded-full bg-gray-300 px-1.5 py-0.5 text-xs text-gray-700">
-                            {schema.variables?.length}
-                          </span>
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex-shrink-0 mx-4 min-h-0 relative">
-                {isLoading && (
-                  <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 mb-2">
-                    <span className="block sm:inline">Loading form...</span>
-                  </div>
-                )}
-                {loadError && (
-                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-2">
-                    <span className="block sm:inline">
-                      Error loading form: {loadError}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={retryLoad}
-                      className="ml-2 rounded border border-red-300 px-1.5 py-0.5 text-xs font-medium hover:bg-red-50"
-                    >
-                      {retryLoadLabel}
-                    </button>
-                  </div>
-                )}
-                {saveError && (
-                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-2">
-                    <span className="block sm:inline">
-                      Error saving form: {saveError}
-                    </span>
-                  </div>
-                )}
-              </div>
+              <FormBuilderHeader
+                schema={schema}
+                issues={issues}
+                onGoToIssue={goToIssue}
+                sources={{
+                  pending: pendingSourceForms.size,
+                  failed: failedSourceForms,
+                  onRetry: retrySourceForms,
+                }}
+                loadFailure={loadFailure}
+                issueList={issueList}
+                onIssueListChange={setIssueList}
+                history={{
+                  scope: builderRef,
+                  canUndo,
+                  canRedo,
+                  onUndo: undo,
+                  onRedo: redo,
+                }}
+                onEditJson={() => setJsonScope({ kind: JsonScopeKind.Form })}
+                isPreviewMode={isPreviewMode}
+                onPreviewModeChange={setIsPreviewMode}
+                activeEditor={activeEditor}
+                onActiveEditorChange={displayOnly ? null : setActiveEditor}
+                save={{
+                  onSave: handleSaveForm,
+                  isSaving,
+                  isLoading,
+                  hasUnsavedChanges,
+                }}
+              />
+              <FormBuilderBanners
+                isLoading={isLoading}
+                loadFailure={loadFailure}
+                saveError={saveError}
+              />
 
               <div
                 className={cn(
