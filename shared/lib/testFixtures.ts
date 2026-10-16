@@ -6,6 +6,7 @@ import type {
   ConversationDto,
   ConversationType,
   FormResponseDto,
+  MessageDto,
   OnetimeInviteDto,
   ParticipantDto,
   ParticipantRole,
@@ -210,6 +211,19 @@ export function makeConversation(
     hasUnread: false,
     isMessageRequest: false,
     unreadCount: 0,
+  };
+}
+
+export function makeMessage(overrides: Partial<MessageDto> = {}): MessageDto {
+  return {
+    id: "m1",
+    body: "Hello",
+    attachments: [],
+    createdAt: "2026-10-01T00:00:00.000Z",
+    deletedAt: null,
+    author: makeProfile(2),
+    conversationId: 1,
+    ...overrides,
   };
 }
 

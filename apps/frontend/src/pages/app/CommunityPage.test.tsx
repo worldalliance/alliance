@@ -1,3 +1,4 @@
+import { R } from "@alliance/common/result";
 import type { CommunityDto, ConversationDto } from "@alliance/shared/client";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -360,8 +361,7 @@ describe("the group chat on a large screen", () => {
     );
     jest.spyOn(messagesModule, "default").mockReturnValue({
       messages: [],
-      addOptimisticMessage: () => {},
-      removeOptimisticMessage: () => {},
+      sendMessage: async () => R.failure({ title: "", message: "" }),
     });
     myGroups = async () =>
       Response.json([makeCommunity({ users: [makeProfile(testAuthUser.id)] })]);

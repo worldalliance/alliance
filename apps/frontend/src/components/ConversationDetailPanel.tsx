@@ -1,12 +1,10 @@
-import type { MessageDto } from "@alliance/shared/client";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
+import type {
   ConversationDto,
-  CreateMessageDto,
-  messageSendMessage,
+  MessageDto,
   ProfileDto,
 } from "@alliance/shared/client";
 import { getParticipantState } from "@alliance/shared/lib/conversations";
+import type { UseLiveConvoMessagesResult } from "@alliance/shared/lib/messages";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -31,15 +29,7 @@ type ConversationDetailPanelProps = {
   friends: ProfileDto[] | null;
   friendsFailure: { onRetry: () => void; retrying: boolean } | null;
   handleConversationUpdated: (conversation: ConversationDto) => void;
-  onOptimisticMessage?: (message: MessageDto) => void;
-  onOptimisticMessageFailed?: (
-    tempId: string,
-    draft: {
-      message: string;
-      attachments: string[];
-      replyingTo: string | null;
-    },
-  ) => void;
+  sendMessage: UseLiveConvoMessagesResult["sendMessage"];
 } & (
   | {
       mode: "existing";
@@ -80,8 +70,7 @@ const ConversationDetailPanel = ({
   setSendingNewMessageToIds,
   handleCreateConversation,
   friendsFailure,
-  onOptimisticMessage,
-  onOptimisticMessageFailed,
+  sendMessage,
 }: ConversationDetailPanelProps) => {
   const { user } = useAuth();
 
@@ -166,81 +155,42 @@ const ConversationDetailPanel = ({
     const draftAttachments = [...attachments];
     const draftReplyingTo = replyingTo;
 
-    const tempId = `temp-${Date.now()}-${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
-
-    if (onOptimisticMessage && user) {
-      const optimisticMessage: MessageDto = {
-        id: tempId,
-        body: draftMessage,
-        attachments: draftAttachments,
-        createdAt: new Date().toISOString(),
-        deletedAt: null,
-        author: {
-          ...user,
-          displayName: user.name,
-          profileDescription: "",
-          isCommunityLeader: false,
-        },
-        conversationId: activeConvo.id,
-        replyTo: replyingToMessage,
-      };
-      onOptimisticMessage(optimisticMessage);
-    }
-
     setMessage("");
     setAttachments([]);
     setReplyingTo(null);
 
     setIsSendingMessage(true);
-    try {
-      const payload: CreateMessageDto & { attachments?: string[] } = {
+    const sent = await sendMessage({
+      message: {
         conversationId: activeConvo.id,
         body: draftMessage,
         attachments: draftAttachments,
         replyToId: draftReplyingTo ?? undefined,
-      };
-      const response = await messageSendMessage({
-        body: payload,
-      });
-      if (!response.data) {
-        if (onOptimisticMessageFailed) {
-          onOptimisticMessageFailed(tempId, {
-            message: draftMessage,
-            attachments: draftAttachments,
-            replyingTo: draftReplyingTo,
-          });
-        }
-        setMessage(draftMessage);
-        setAttachments(draftAttachments);
-        setReplyingTo(draftReplyingTo);
-      }
-      if (amInvited) {
-        handleConversationUpdated({
-          ...activeConvo,
-          participants: activeConvo.participants.map((participant) => {
-            if (participant.user.id === user?.id) {
-              return { ...participant, state: "joined" };
-            }
-            return participant;
-          }),
-        });
-      }
-    } catch (err) {
-      console.error("Failed to send message", err);
-      if (onOptimisticMessageFailed) {
-        onOptimisticMessageFailed(tempId, {
-          message: draftMessage,
-          attachments: draftAttachments,
-          replyingTo: draftReplyingTo,
-        });
-      }
+      },
+      author: user && {
+        ...user,
+        displayName: user.name,
+        profileDescription: "",
+        isCommunityLeader: false,
+      },
+    });
+    setIsSendingMessage(false);
+    if (!sent.ok) {
       setMessage(draftMessage);
       setAttachments(draftAttachments);
       setReplyingTo(draftReplyingTo);
-    } finally {
-      setIsSendingMessage(false);
+      return;
+    }
+    if (amInvited) {
+      handleConversationUpdated({
+        ...activeConvo,
+        participants: activeConvo.participants.map((participant) => {
+          if (participant.user.id === user?.id) {
+            return { ...participant, state: "joined" };
+          }
+          return participant;
+        }),
+      });
     }
   }, [
     amInvited,
@@ -248,14 +198,12 @@ const ConversationDetailPanel = ({
     handleConversationUpdated,
     isSendingMessage,
     replyingTo,
-    replyingToMessage,
     message,
     mode,
     handleCreateConversation,
     selectedConvo,
     user,
-    onOptimisticMessage,
-    onOptimisticMessageFailed,
+    sendMessage,
   ]);
 
   useEffect(() => {

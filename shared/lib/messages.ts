@@ -4,7 +4,6 @@ import {
   conversationGetUnreadSummary,
   conversationMarkRead,
   MessageDto,
-  messageGetMessages,
 } from "@alliance/shared/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Socket } from "socket.io-client";
@@ -16,6 +15,7 @@ import {
   connectMessagingSocket,
   type MessagingConnectionConfig,
 } from "./messagingSocket";
+import { useConversationMessages } from "./useConversationMessages";
 import { useMyConversations } from "./useMyConversations";
 
 export interface UseLiveConvoMessagesOptions {
@@ -23,11 +23,10 @@ export interface UseLiveConvoMessagesOptions {
   onConversationUpdated?: (conversation: ConversationDto) => void;
 }
 
-export interface UseLiveConvoMessagesResult {
-  messages: MessageDto[] | null;
-  addOptimisticMessage: (message: MessageDto) => void;
-  removeOptimisticMessage: (tempId: string) => void;
-}
+export type UseLiveConvoMessagesResult = Pick<
+  ReturnType<typeof useConversationMessages>,
+  "messages" | "sendMessage"
+>;
 
 export const createMessagingHooks = (config: MessagingConnectionConfig) => {
   // Every mounted screen's socket merges into the one cached list, so each
@@ -94,15 +93,11 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
     conversationId: number | null,
     options?: UseLiveConvoMessagesOptions,
   ): UseLiveConvoMessagesResult => {
-    const [convoMessages, setConvoMessages] = useState<MessageDto[] | null>(
-      null,
-    );
+    const { messages, receiveMessage, sendMessage } =
+      useConversationMessages(conversationId);
     const socketRef = useRef<Socket | null>(null);
     const joinedConversationRef = useRef<number | null>(null);
     const activeConversationRef = useRef<number | null>(conversationId);
-    const pendingMessagesRef = useRef<MessageDto[]>([]);
-    const messageIdsRef = useRef<Set<string>>(new Set());
-    const optimisticIdsRef = useRef<Set<string>>(new Set());
     const handlersRef = useRef<UseLiveConvoMessagesOptions | undefined>(
       options,
     );
@@ -127,32 +122,12 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
             return;
           }
 
-          if (messageIdsRef.current.has(incoming.id)) {
+          if (!receiveMessage(incoming)) {
             return;
           }
 
-          messageIdsRef.current.add(incoming.id);
-
           handlersRef.current?.onIncomingMessage?.(incoming);
 
-          setConvoMessages((prev) => {
-            if (!prev) {
-              pendingMessagesRef.current.push(incoming);
-              return prev;
-            }
-            const optimisticToRemove = prev.find(
-              (msg) =>
-                msg.id.startsWith("temp-") &&
-                msg.author.id === incoming.author.id,
-            );
-            if (optimisticToRemove) {
-              optimisticIdsRef.current.delete(optimisticToRemove.id);
-              return prev
-                .filter((msg) => msg.id !== optimisticToRemove.id)
-                .concat(incoming);
-            }
-            return [...prev, incoming];
-          });
           conversationMarkRead({
             path: { conversationId: incoming.conversationId },
           });
@@ -182,13 +157,12 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
         socketRef.current = null;
         joinedConversationRef.current = null;
       };
-    }, [config]);
+    }, [config, receiveMessage]);
 
     useEffect(() => {
       activeConversationRef.current = conversationId;
 
       if (!conversationId) {
-        setConvoMessages(null);
         if (socketRef.current && joinedConversationRef.current) {
           socketRef.current.emit("leave-conversation", {
             conversationId: joinedConversationRef.current,
@@ -197,10 +171,6 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
         joinedConversationRef.current = null;
         return;
       }
-
-      pendingMessagesRef.current = [];
-      messageIdsRef.current = new Set();
-      setConvoMessages(null);
 
       const socket = socketRef.current;
       if (socket) {
@@ -216,34 +186,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
         joinedConversationRef.current = conversationId;
       }
 
-      let cancelled = false;
-      messageGetMessages({
-        path: {
-          conversationId,
-        },
-      })
-        .then((response) => {
-          if (cancelled) return;
-          let initialMessages = response.data;
-          if (!initialMessages) {
-            console.error("Failed to load messages", response.error);
-            initialMessages = [];
-          }
-          const ids = new Set(initialMessages.map((msg) => msg.id));
-          messageIdsRef.current = ids;
-          const pending = pendingMessagesRef.current.filter(
-            (msg) => msg.conversationId === conversationId && !ids.has(msg.id),
-          );
-          pendingMessagesRef.current = [];
-          setConvoMessages([...initialMessages, ...pending]);
-        })
-        .catch((error) => {
-          console.error("Failed to load messages", error);
-          setConvoMessages([]);
-        });
-
       return () => {
-        cancelled = true;
         if (
           socketRef.current &&
           joinedConversationRef.current === conversationId
@@ -254,29 +197,7 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
       };
     }, [conversationId]);
 
-    const addOptimisticMessage = useCallback((message: MessageDto) => {
-      optimisticIdsRef.current.add(message.id);
-      setConvoMessages((prev) => {
-        if (!prev) {
-          return [message];
-        }
-        return [...prev, message];
-      });
-    }, []);
-
-    const removeOptimisticMessage = useCallback((tempId: string) => {
-      optimisticIdsRef.current.delete(tempId);
-      setConvoMessages((prev) => {
-        if (!prev) return prev;
-        return prev.filter((msg) => msg.id !== tempId);
-      });
-    }, []);
-
-    return {
-      messages: convoMessages,
-      addOptimisticMessage,
-      removeOptimisticMessage,
-    };
+    return { messages, sendMessage };
   };
 
   const useMessagingUnread = () => {

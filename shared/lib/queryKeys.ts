@@ -88,6 +88,8 @@ export const queryKeys = {
     ["userOnetimeInviteGetOnetimeInvitesByCommunity", communityId] as const,
   contractById: (contractId: number | null) =>
     ["contractGetById", contractId] as const,
+  conversationMessages: (conversationId: number | null) =>
+    ["messageGetMessages", conversationId] as const,
   currentContract: () => ["contractGetCurrent"] as const,
   forumPost: (postId: string | undefined) =>
     ["forumFindOnePost", postId] as const,

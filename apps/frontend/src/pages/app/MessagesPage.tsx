@@ -79,14 +79,13 @@ const MessagesPage = () => {
     [setConversations],
   );
 
-  const {
-    messages: convoMessages,
-    addOptimisticMessage,
-    removeOptimisticMessage,
-  } = useLiveConvoMessages(selectedConvoId, {
-    onIncomingMessage: setConvoLastMessage,
-    onConversationUpdated: handleConversationUpdated,
-  });
+  const { messages: convoMessages, sendMessage } = useLiveConvoMessages(
+    selectedConvoId,
+    {
+      onIncomingMessage: setConvoLastMessage,
+      onConversationUpdated: handleConversationUpdated,
+    },
+  );
 
   const messageableUsersQuery = useMessageableUsersQuery({
     enabled: !!user,
@@ -334,10 +333,7 @@ const MessagesPage = () => {
               handleCreateConversation={null}
               friends={messageableUsers}
               friendsFailure={messageableUsersFailure}
-              onOptimisticMessage={addOptimisticMessage}
-              onOptimisticMessageFailed={(tempId) =>
-                removeOptimisticMessage(tempId)
-              }
+              sendMessage={sendMessage}
             />
           </div>
         )}
@@ -362,10 +358,7 @@ const MessagesPage = () => {
               sendingNewMessageToIds={sendingNewMessageToIds}
               setSendingNewMessageToIds={handleUpdateRecipientIds}
               handleCreateConversation={handleCreateConversation}
-              onOptimisticMessage={addOptimisticMessage}
-              onOptimisticMessageFailed={(tempId) =>
-                removeOptimisticMessage(tempId)
-              }
+              sendMessage={sendMessage}
             />
           </div>
         )}
