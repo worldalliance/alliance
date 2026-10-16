@@ -10,6 +10,7 @@ import Card from "@alliance/sharedweb/ui/Card";
 import React from "react";
 import type { SetURLSearchParams } from "react-router";
 import { ActionProjectSteps } from "../../components/ActionProjectControls";
+import { FailedLoadsBanner } from "../../components/FailedLoadsBanner";
 import {
   ACTION_STATUS_COLORS,
   ACTION_STATUS_LABELS,
@@ -57,6 +58,11 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
         imageUploading={imageUploading}
         onDuplicate={onDuplicate}
         onArchive={onArchive}
+      />
+      <FailedLoadsBanner
+        failed={reporting.failedLoads}
+        consequence="The reports below are incomplete."
+        className="rounded-md border"
       />
       {action.project && (
         <ActionProjectSteps

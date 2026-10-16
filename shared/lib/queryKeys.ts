@@ -135,7 +135,13 @@ export const queryKeys = {
   actionCompletionCurvesAdminAll,
   actionCompletionCurvesAdmin: (granularity: string) =>
     [...actionCompletionCurvesAdminAll(), granularity] as const,
+  actionIncompleteUsersAdmin: (actionId: number | null) =>
+    ["actionsGetIncompleteUsersAdmin", actionId] as const,
+  actionShareUrlStatsAdmin: (actionId: number | null) =>
+    ["actionsShareUrlStatsAdmin", actionId] as const,
   actionStatsAdmin: () => ["analyticsGetActionStatsAdmin"] as const,
+  actionStatsByIdAdmin: (actionId: number | null) =>
+    ["analyticsGetActionStatsByIdAdmin", actionId] as const,
   actionUpdateAdmin: (id: number | null) =>
     ["actionUpdatesFindOneUpdateAdmin", id] as const,
   actionUpdateRecognitionPreviewCountsAdmin: (
