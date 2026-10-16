@@ -1,17 +1,10 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { forCount } from "@alliance/common/plural";
-import { roleBadges } from "@alliance/shared/lib/copy";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
-import { Features } from "@alliance/shared/lib/features";
 import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
 import { useProfileDraft } from "@alliance/shared/lib/useProfileDraft";
 import {
-  friendMutationErrorMessage,
-  useAcceptFriendRequestMutation,
-  useRemoveFriendMutation,
-  useSendFriendRequestMutation,
   useUserCompletedActionCountQuery,
   useUserForumActivity,
   useUserFriendsQuery,
@@ -19,36 +12,21 @@ import {
   useUserProfileQuery,
 } from "@alliance/shared/lib/user";
 import useUserFeed from "@alliance/shared/lib/useUserFeed";
-import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
-import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import InfoTooltip from "@alliance/sharedweb/ui/InfoTooltip";
 import List from "@alliance/sharedweb/ui/List";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { ToastPlacement, useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alliance/sharedweb/ui/Tooltip";
-import { MessageSquare, RefreshCw } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
-import { href, useLocation, useNavigate, useParams } from "react-router";
+import React, { useEffect, useState } from "react";
+import { useLocation, useParams } from "react-router";
 import { Route } from "../../../.react-router/types/src/pages/app/+types/UserProfilePage";
 import FeedItems from "../../components/FeedItems";
 import ForumActivityCommentCard from "../../components/ForumActivityCommentCard";
 import ForumListPost from "../../components/ForumListPost";
-import FriendRequestButton from "../../components/FriendRequestButton";
 import FriendsTab from "../../components/FriendsTab";
-import ImageEditor from "../../components/ImageEditor";
 import LoadFailed from "../../components/LoadFailed";
 import PillTab from "../../components/PillTab";
 import UserActivityCard from "../../components/UserActivityCard";
+import UserProfileCard from "../../components/UserProfileCard";
 import { useInfiniteScrollSentinel } from "../../hooks/useInfiniteScrollSentinel";
 import { useAuth } from "../../lib/AuthContext";
-import { isFeatureEnabled } from "../../lib/config";
 import { MissingRecordPage } from "../../site/NotFoundPage";
 
 enum ProfileTabs {
@@ -72,13 +50,12 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
 const UserProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { user, isAuthenticated, refreshUser } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const isMe = id === user?.id.toString();
 
   const { state } = useLocation();
   const { openFriendRequest } = state || false;
   const { openFriends } = state || false;
-  const { confirm, error: errorToast } = useToast();
 
   const userId = id ? parseInt(id, 10) : undefined;
   if (!userId) {
@@ -90,16 +67,10 @@ const UserProfilePage: React.FC = () => {
     isPending: profilePending,
     isError: profileError,
   } = useUserProfileQuery(userId);
-
   const friendStatusQuery = useUserFriendStatusQuery(userId, {
     enabled: isAuthenticated && !isMe,
   });
-  const {
-    data: friendStatus,
-    isFetching: isFetchingFriendStatus,
-    refetch: refetchFriendStatus,
-  } = friendStatusQuery;
-  const didFriendStatusFail = failedToLoad(friendStatusQuery);
+  const draft = useProfileDraft({ userId, profile, isMe });
 
   const {
     items: forumActivityItems,
@@ -112,28 +83,6 @@ const UserProfilePage: React.FC = () => {
   const didFriendsFail = failedToLoad(friendsQuery);
 
   const [selectedTab, setSelectedTab] = useState(ProfileTabs.Activity);
-  const {
-    isEditing,
-    setIsEditing,
-    name: editName,
-    setName: setEditName,
-    bio: editBio,
-    setBio: setEditBio,
-    avatarUrl: editAvatarUrl,
-    setAvatarUrl: setEditAvatarUrl,
-    isSaving: isSavingProfile,
-    save: saveProfile,
-    cancel: cancelProfileEdit,
-  } = useProfileDraft({ userId, profile, isMe });
-  const [avatarEditorKey, setAvatarEditorKey] = useState(0);
-
-  const sendFriendRequest = useSendFriendRequestMutation();
-  const acceptFriendRequest = useAcceptFriendRequestMutation();
-  const removeFriend = useRemoveFriendMutation();
-
-  const currentProfilePicture = profile?.profilePicture ?? null;
-  const isProfileImageUploadPending =
-    isSavingProfile && editAvatarUrl !== currentProfilePicture;
 
   const forumActivityCount = forumActivityItems.length;
 
@@ -169,7 +118,6 @@ const UserProfilePage: React.FC = () => {
 
   useEffect(() => {
     setSelectedTab(ProfileTabs.Activity);
-    setAvatarEditorKey((prev) => prev + 1);
   }, [id]);
 
   useEffect(() => {
@@ -177,76 +125,6 @@ const UserProfilePage: React.FC = () => {
       setSelectedTab(ProfileTabs.Friends);
     }
   }, [openFriendRequest, openFriends]);
-
-  const handleSendFriendRequest = useCallback(async () => {
-    if (!userId || !user) return;
-    try {
-      await sendFriendRequest.mutateAsync(userId);
-    } catch (error) {
-      console.error("Error sending friend request:", error);
-      errorToast(
-        friendMutationErrorMessage(error),
-        "Couldn't send friend request",
-      );
-    }
-  }, [userId, user, sendFriendRequest, errorToast]);
-
-  const handleAcceptFriendRequest = useCallback(async () => {
-    if (!userId || !user) return;
-    try {
-      await acceptFriendRequest.mutateAsync(userId);
-    } catch (error) {
-      console.error("Error accepting friend request:", error);
-      errorToast(
-        friendMutationErrorMessage(error),
-        "Couldn't accept friend request",
-      );
-    }
-  }, [userId, user, acceptFriendRequest, errorToast]);
-
-  const navigate = useNavigate();
-
-  const handleRemoveFriend = useCallback(
-    async (e: React.MouseEvent<HTMLElement>) => {
-      if (!userId || !user) return;
-      const ok = await confirm({
-        message: "Are you sure you want to remove this friend?",
-        confirmLabel: "Yes",
-        cancelLabel: "No",
-        anchorEl: e.currentTarget,
-        placement: ToastPlacement.BottomLeft,
-      });
-
-      if (!ok) return;
-      try {
-        await removeFriend.mutateAsync(userId);
-      } catch (error) {
-        console.error("Error removing friend:", error);
-        errorToast(friendMutationErrorMessage(error), "Couldn't remove friend");
-      }
-    },
-    [userId, user, confirm, removeFriend, errorToast],
-  );
-
-  const handleSave = async () => {
-    if (!user || isSavingProfile) return;
-
-    const saved = await saveProfile();
-    if (!saved.ok) {
-      console.error(saved.error);
-      return;
-    }
-    if (isMe) {
-      await refreshUser();
-    }
-  };
-
-  const handleCancel = () => {
-    cancelProfileEdit();
-    setAvatarEditorKey((prev) => prev + 1);
-  };
-
-  const messagingEnabled = isFeatureEnabled(Features.Messaging);
 
   if (profilePending) {
     return (
@@ -275,127 +153,12 @@ const UserProfilePage: React.FC = () => {
   return (
     <div className="max-w-[800px] mx-auto mt-[var(--navbar-top-bar-height)]">
       <div className="mx-2 space-y-2 mt-8">
-        <Card className="px-4 md:px-8 pb-6 relative gap-y-2">
-          {/* {isProfileImageUploadPending && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-[1px] rounded-[inherit]">
-              <Spinner />
-            </div>
-          )} */}
-          {isEditing ? (
-            <ImageEditor
-              key={avatarEditorKey}
-              className="mt-[-55px]"
-              initialImageUrl={editAvatarUrl}
-              onChange={setEditAvatarUrl}
-              allowedMimeTypes={sharp_allowed_mime_types}
-              isUploading={isProfileImageUploadPending}
-            />
-          ) : (
-            <AvatarProfile
-              pfp={profile.profilePicture}
-              size="huge"
-              className="mt-[-55px]"
-            />
-          )}
-          <div className="flex gap-2 mt-3">
-            {isEditing ? (
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="text-title-small w-full border-none !bg-zinc-100 px-2 -mx-2 rounded focus:outline-none"
-              />
-            ) : (
-              <div className="flex flex-row gap-3 items-center">
-                <h1 className="text-title-small">{profile.displayName}</h1>
-                {profile.anonymous && (
-                  <div className="mt-px">
-                    <InfoTooltip content="Names are hidden for members who have set their account to be anonymous." />
-                  </div>
-                )}
-                {(profile.staff ||
-                  profile.ambassador ||
-                  profile.isCommunityLeader) && (
-                  <div className="flex items-center gap-[3px]">
-                    {profile.staff && (
-                      <Tooltip>
-                        <TooltipTrigger
-                          render={
-                            <div className="text-xs bg-staff text-white px-2 py-0.5 rounded-sm self-center cursor-default">
-                              {roleBadges.staff.label}
-                            </div>
-                          }
-                        />
-                        <TooltipContent sideOffset={4}>
-                          {roleBadges.staff.tooltip}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                    {!profile.staff && profile.ambassador && (
-                      <Tooltip>
-                        <TooltipTrigger
-                          render={
-                            <div className="text-xs bg-ambassador text-white px-2 py-0.5 rounded-sm self-center cursor-default">
-                              {roleBadges.ambassador.label}
-                            </div>
-                          }
-                        />
-                        <TooltipContent sideOffset={4}>
-                          {roleBadges.ambassador.tooltip}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                    {!profile.staff && profile.isCommunityLeader && (
-                      <Tooltip>
-                        <TooltipTrigger
-                          render={
-                            <div className="text-xs bg-grouplead text-white px-2 py-0.5 rounded-sm self-center cursor-default">
-                              {roleBadges.grouplead.label}
-                            </div>
-                          }
-                        />
-                        <TooltipContent sideOffset={4}>
-                          {roleBadges.grouplead.tooltip}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                )}
-                {!profile.hasActiveContract && !profilePending && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <div className="text-xs bg-zinc-100 text-zinc-600 px-2 py-1 rounded-sm self-center cursor-default">
-                          Observer
-                        </div>
-                      }
-                    />
-                    <TooltipContent sideOffset={4}>
-                      No signed contract
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            )}
-          </div>
-
-          {isEditing ? (
-            <textarea
-              value={editBio}
-              onChange={(e) => setEditBio(e.target.value)}
-              rows={6}
-              className="w-full border-none !bg-zinc-100 px-2 -ml-2 rounded focus:outline-none p-2 mb-2"
-              placeholder="Write something about yourself..."
-            />
-          ) : (
-            profile.profileDescription && (
-              <AppMarkdownWrapper
-                markdownContent={profile.profileDescription}
-                className="mb-2"
-              />
-            )
-          )}
-          {/* stats row */}
+        <UserProfileCard
+          profile={profile}
+          isMe={isMe}
+          friendStatusQuery={friendStatusQuery}
+          draft={draft}
+        >
           <div className="mt-2 flex flex-row gap-x-2 transition-none">
             <PillTab
               label="Activity"
@@ -424,78 +187,7 @@ const UserProfilePage: React.FC = () => {
               onClick={() => setSelectedTab(ProfileTabs.Friends)}
             />
           </div>
-          {/* button row */}
-          <div className="absolute right-0 top-0 space-x-3 flex flex-row p-5">
-            {isAuthenticated && !isMe && didFriendStatusFail && (
-              <Button
-                color={ButtonColor.White}
-                onClick={() => void refetchFriendStatus()}
-                disabled={isFetchingFriendStatus}
-                title="Retry loading friend status"
-                className="!h-9 flex flex-row items-center !px-3"
-              >
-                <RefreshCw size={16} className="text-zinc-600" />
-              </Button>
-            )}
-            {isAuthenticated && !isMe && friendStatus != null && (
-              <FriendRequestButton
-                friendStatus={friendStatus}
-                handleSendFriendRequest={handleSendFriendRequest}
-                handleRemoveFriend={handleRemoveFriend}
-                handleAcceptFriendRequest={handleAcceptFriendRequest}
-                accepting={acceptFriendRequest.isPending}
-              />
-            )}
-            {messagingEnabled &&
-              isAuthenticated &&
-              !isMe &&
-              friendStatus &&
-              friendStatus.status === "accepted" && (
-                <Button
-                  color={ButtonColor.White}
-                  onClick={() =>
-                    navigate(href("/messages") + `?to=${profile.id}`)
-                  }
-                  className="!h-9 flex flex-row items-center !px-3"
-                >
-                  <MessageSquare size={16} className="text-zinc-600" />
-                </Button>
-              )}
-            {isMe && (
-              <div className="space-x-3 flex">
-                {isEditing ? (
-                  <>
-                    <Button
-                      color={ButtonColor.Light}
-                      onClick={handleCancel}
-                      className="!h-9"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      color={ButtonColor.Blue}
-                      onClick={handleSave}
-                      disabled={isSavingProfile}
-                      className="!h-9"
-                    >
-                      {isSavingProfile ? "Saving..." : "Save"}
-                    </Button>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-end">
-                    <Button
-                      color={ButtonColor.White}
-                      onClick={() => setIsEditing(true)}
-                      className="!h-9"
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </Card>
+        </UserProfileCard>
         <div className="pb-24 mt-2">
           {selectedTab === ProfileTabs.Activity && (
             <div className="mb-10 *:p-4 flex flex-col gap-y-2">
