@@ -64,13 +64,15 @@ import {
   findUnknownConditionKind,
   findUnknownFormElementKind,
   getFallbackVisiblePageIndex,
-  getListSubFieldErrors,
   getNextVisiblePageIndex,
   getPreviousVisiblePageIndex,
   getVisiblePageIndices,
   resolveFieldDefaultValue,
-  validateFieldValue as validateFieldValueShared,
 } from "./formrenderer";
+import {
+  getListSubFieldErrors,
+  validateFieldValue as validateFieldValueShared,
+} from "./forms/fieldValidation";
 import {
   completedFormSchema,
   useDropUnofferedChoices,
