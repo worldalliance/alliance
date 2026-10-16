@@ -42,6 +42,7 @@ import { UserGroupAssignmentController } from "./user-group-assignment.controlle
 import { UserOnetimeInviteController } from "./user-onetime-invite.controller";
 import { UserReferralController } from "./user-referral.controller";
 import { UserTagController } from "./user-tag.controller";
+import { UserVisibilityContextService } from "./user-visibility-context.service";
 import { UserController } from "./user.controller";
 import { UserService } from "./user.service";
 import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
@@ -98,6 +99,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     AmbassadorInviteStatsService,
     AmbassadorInviteGoalService,
     AmbassadorProgramService,
+    UserVisibilityContextService,
     IsUserAlreadyExist,
   ],
   exports: [
@@ -106,6 +108,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     UserAwayRangeService,
     ReferralService,
     FriendService,
+    UserVisibilityContextService,
   ],
 })
 export class UserModule {}

@@ -52,6 +52,7 @@ import {
   UserDto,
 } from "./dto/user.dto";
 import { FriendService } from "./friend.service";
+import { UserVisibilityContextService } from "./user-visibility-context.service";
 import { UserService } from "./user.service";
 
 class VerifyEmailBody {
@@ -64,6 +65,7 @@ class VerifyEmailBody {
 export class UserController {
   constructor(
     private readonly userService: UserService,
+    private readonly userVisibilityContextService: UserVisibilityContextService,
     private readonly ambassadorProgramService: AmbassadorProgramService,
     private readonly ambassadorInviteGoalService: AmbassadorInviteGoalService,
     private readonly friendService: FriendService,
@@ -116,7 +118,9 @@ export class UserController {
     @Request() req: JwtRequest,
   ): Promise<MyVisibilityContextDto> {
     return new MyVisibilityContextDto(
-      await this.userService.getVisibilityContext(req.user.sub),
+      await this.userVisibilityContextService.getVisibilityContext(
+        req.user.sub,
+      ),
     );
   }
 

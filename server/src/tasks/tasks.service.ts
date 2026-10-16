@@ -119,6 +119,7 @@ import {
   loadedUserTags,
   User,
 } from "src/user/entities/user.entity";
+import { UserVisibilityContextService } from "src/user/user-visibility-context.service";
 import { UserService } from "src/user/user.service";
 import { toPlainTime } from "src/utils/plain-time";
 import type { Repository as TypedRepository } from "src/utils/Repository";
@@ -293,6 +294,7 @@ export class TasksService {
     @InjectRepository(FollowUpForm)
     private followUpFormRepository: TypedRepository<FollowUpForm>,
     private userService: UserService,
+    private readonly userVisibilityContextService: UserVisibilityContextService,
     private forumCommentQueryService: ForumCommentQueryService,
     private actionsService: ActionsService,
     private mmsService: MmsService,
@@ -598,10 +600,11 @@ export class TasksService {
     }
     // Fetches only the values this schema's conditions actually read; an empty
     // set costs no queries and yields the same defaults as before.
-    const visibilityContext = await this.userService.getVisibilityContext(
-      userId,
-      accountConditionKinds,
-    );
+    const visibilityContext =
+      await this.userVisibilityContextService.getVisibilityContext(
+        userId,
+        accountConditionKinds,
+      );
 
     const fieldLookup = collectFieldLookup(schema.pages);
 

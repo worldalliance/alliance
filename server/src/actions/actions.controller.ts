@@ -27,7 +27,7 @@ import {
   UserActionRelationsResponseDto,
 } from "src/user/dto/user-action-relations.dto";
 import { ProfileDto } from "src/user/dto/user.dto";
-import { UserService } from "src/user/user.service";
+import { UserVisibilityContextService } from "src/user/user-visibility-context.service";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { Public } from "../auth/public.decorator";
@@ -69,7 +69,7 @@ export class ActionsController {
     private readonly eventEmitter: EventEmitter2,
     private readonly forumActionCompleterWorker: ForumActionCompleterWorker,
     private readonly shareUrlsService: ShareUrlsService,
-    private readonly userService: UserService,
+    private readonly userVisibilityContextService: UserVisibilityContextService,
   ) {}
 
   @Get("loggedIn")
@@ -265,7 +265,7 @@ export class ActionsController {
     @Param("id", ParseIntPipe) id: number,
   ): Promise<UserCompletedActionsCountDto> {
     return new UserCompletedActionsCountDto(
-      await this.userService.getCompletedActionCount(id),
+      await this.userVisibilityContextService.getCompletedActionCount(id),
     );
   }
 
