@@ -17,6 +17,7 @@ import { keyBy } from "es-toolkit";
 import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
+import { WithdrawalDetails } from "./WithdrawalInfo";
 
 export interface UserCardProps {
   user: UserDto;
@@ -224,19 +225,7 @@ const UserCard = ({
                         {humanize(action.status) ?? action.status}
                       </span>
                       {isWontComplete && (
-                        <>
-                          {relation.declineReason && (
-                            <span>Reason: {relation.declineReason}</span>
-                          )}
-                          {relation.isMoral && (
-                            <span className="text-amber-600">
-                              Moral objection
-                            </span>
-                          )}
-                          {relation.outOfTime && (
-                            <span className="text-orange-600">Out of time</span>
-                          )}
-                        </>
+                        <WithdrawalDetails withdrawal={relation} />
                       )}
                     </div>
                   </div>

@@ -1,3 +1,7 @@
+import {
+  WITHDRAWAL_OPTION_LABELS,
+  withdrawalOptionFromFlags,
+} from "@alliance/common/actionActivity";
 import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
 import {
   fieldHasOptions,
@@ -156,8 +160,7 @@ const renderOrphanAnswer = (fieldId: string, value: unknown): string =>
 
 const withdrawalReason = (withdrawal: ActionWithdrawalDto): string =>
   [
-    withdrawal.outOfTime ? "out of time" : null,
-    withdrawal.isMoral ? "moral objection" : null,
+    WITHDRAWAL_OPTION_LABELS[withdrawalOptionFromFlags(withdrawal)],
     withdrawal.declineReason,
   ]
     .filter((part): part is string => Boolean(part))

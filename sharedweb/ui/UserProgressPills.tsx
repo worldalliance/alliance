@@ -1,4 +1,8 @@
 import {
+  WITHDRAWAL_OPTION_LABELS,
+  withdrawalOptionFromFlags,
+} from "@alliance/common/actionActivity";
+import {
   UserActionRelationDetailDto,
   UserActionRelationPillStatus,
   UserActionSummaryDto,
@@ -223,11 +227,7 @@ const UserProgressPills = ({
             action={action}
             additionalSubtitleText={
               relation.status === "wont_complete"
-                ? relation.outOfTime
-                  ? ": Out of time"
-                  : relation.isMoral
-                    ? ": Moral objection"
-                    : ": Other reason"
+                ? `: ${WITHDRAWAL_OPTION_LABELS[withdrawalOptionFromFlags(relation)]}`
                 : null
             }
             pillStatusData={pillStatusData}

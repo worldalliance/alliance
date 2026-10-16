@@ -1817,8 +1817,8 @@ export class ActionsService {
 
     if (type === ActionActivityType.USER_WONT_COMPLETE) {
       const option = withdrawalOptionFromFlags({
-        outOfTime: isOutOfTime ?? false,
-        isMoral: isMoral ?? false,
+        outOfTime: isOutOfTime,
+        isMoral,
       });
       const trimmedReason = declineReason?.trim();
       // Spread to code points so truncation can't split a surrogate pair

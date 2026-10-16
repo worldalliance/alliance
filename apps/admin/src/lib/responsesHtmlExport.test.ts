@@ -1,8 +1,12 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import type { FormResponseDto } from "@alliance/shared/client";
-import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
+import type {
+  ActionWithdrawalDto,
+  FormResponseDto,
+} from "@alliance/shared/client";
+import { makeFormResponse, makeUser } from "@alliance/shared/lib/testFixtures";
 import { describe, expect, test } from "bun:test";
 import { buildResponsesHtml } from "./responsesHtmlExport";
+import { renderResponse } from "./responsesHtmlExport/responses";
 
 const schema: FormSchema = {
   outputViews: [],
@@ -172,4 +176,31 @@ describe("buildResponsesHtml", () => {
     expect(html).not.toContain("<link href");
     expect(html).not.toContain("fetch(");
   });
+
+  test.each([
+    [
+      { outOfTime: true, isMoral: false },
+      "busy",
+      "Took more than 15 minutes; busy",
+    ],
+    [{ outOfTime: false, isMoral: true }, null, "Moral objection"],
+    [{ outOfTime: null, isMoral: null }, null, "Other reason"],
+  ])(
+    "labels a withdrawal %o with reason %p as %p",
+    (flags, declineReason, expected) => {
+      const withdrawal: ActionWithdrawalDto = {
+        userId: 3,
+        declineReason,
+        ...flags,
+      };
+      const xml = renderResponse({
+        response: response({ id: 1, user: makeUser({ id: 3 }) }),
+        fields: [],
+        withdrawnUserMap: new Map([[3, withdrawal]]),
+        sidsToUserMap: {},
+      });
+
+      expect(xml).toContain(`withdrawal-reason="${expected}"`);
+    },
+  );
 });
