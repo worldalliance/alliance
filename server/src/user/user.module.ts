@@ -28,6 +28,7 @@ import { User } from "./entities/user.entity";
 import { TagService } from "./tag.service";
 import { UserAwayRangeController } from "./user-away-range.controller";
 import { UserAwayRangeService } from "./user-away-range.service";
+import { UserDeviceController } from "./user-device.controller";
 import { UserTagController } from "./user-tag.controller";
 import { UserController } from "./user.controller";
 import { UserService } from "./user.service";
@@ -63,7 +64,12 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     forwardRef(() => NotifsModule),
     forwardRef(() => CommunityModule),
   ],
-  controllers: [UserController, UserTagController, UserAwayRangeController],
+  controllers: [
+    UserController,
+    UserTagController,
+    UserAwayRangeController,
+    UserDeviceController,
+  ],
   providers: [
     UserService,
     TagService,

@@ -1377,47 +1377,6 @@ export type AssignGroupsDto = {
     assignments: Array<SingleGroupAssignmentDto>;
 };
 
-export type RegisterDeviceDto = {
-    deviceType: string;
-    expoPushToken: string;
-    deviceId?: string;
-    /**
-     * The build handles badge-only pushes quietly
-     */
-    taskBadgePushes?: boolean;
-};
-
-export type UserDeviceDto = {
-    id: string;
-};
-
-export type UnregisterDeviceDto = {
-    deviceId: string;
-    expoPushToken: string;
-};
-
-export type TestPushNotificationDto = {
-    userId: number;
-    message: string;
-};
-
-export type PushDto = {
-    id: number;
-    expoPushToken: string;
-    createdAt: string;
-    body: string;
-    screen: string | null;
-    updatedAt: string;
-    receiptId: string | null;
-    ticketStatus: string | null;
-    receiptStatus: string | null;
-    errorCode: string | null;
-    errorMessage: string | null;
-    lastCheckedStatusAt: string | null;
-    idempotencyKey: string;
-    openedAt: string | null;
-};
-
 export type CreateTagDto = {
     name: string;
     description: string;
@@ -1470,6 +1429,47 @@ export type UpdateAwayRangeDto = {
     note?: string | null;
     startDay?: string;
     endDay?: string;
+};
+
+export type RegisterDeviceDto = {
+    deviceType: string;
+    expoPushToken: string;
+    deviceId?: string;
+    /**
+     * The build handles badge-only pushes quietly
+     */
+    taskBadgePushes?: boolean;
+};
+
+export type UserDeviceDto = {
+    id: string;
+};
+
+export type UnregisterDeviceDto = {
+    deviceId: string;
+    expoPushToken: string;
+};
+
+export type TestPushNotificationDto = {
+    userId: number;
+    message: string;
+};
+
+export type PushDto = {
+    id: number;
+    expoPushToken: string;
+    createdAt: string;
+    body: string;
+    screen: string | null;
+    updatedAt: string;
+    receiptId: string | null;
+    ticketStatus: string | null;
+    receiptStatus: string | null;
+    errorCode: string | null;
+    errorMessage: string | null;
+    lastCheckedStatusAt: string | null;
+    idempotencyKey: string;
+    openedAt: string | null;
 };
 
 export type StreamableFile = {
@@ -7000,74 +7000,6 @@ export type UserAssignGroupsAdminResponses = {
 
 export type UserAssignGroupsAdminResponse = UserAssignGroupsAdminResponses[keyof UserAssignGroupsAdminResponses];
 
-export type UserRegisterDeviceData = {
-    body: RegisterDeviceDto;
-    path?: never;
-    query?: never;
-    url: '/user/registerDevice';
-};
-
-export type UserRegisterDeviceErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserRegisterDeviceError = UserRegisterDeviceErrors[keyof UserRegisterDeviceErrors];
-
-export type UserRegisterDeviceResponses = {
-    200: UserDeviceDto;
-};
-
-export type UserRegisterDeviceResponse = UserRegisterDeviceResponses[keyof UserRegisterDeviceResponses];
-
-export type UserUnregisterDeviceData = {
-    body: UnregisterDeviceDto;
-    path?: never;
-    query?: never;
-    url: '/user/unregisterDevice';
-};
-
-export type UserUnregisterDeviceErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserUnregisterDeviceError = UserUnregisterDeviceErrors[keyof UserUnregisterDeviceErrors];
-
-export type UserUnregisterDeviceResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserUnregisterDeviceResponse = UserUnregisterDeviceResponses[keyof UserUnregisterDeviceResponses];
-
-export type UserSendPushNotificationAdminData = {
-    body: TestPushNotificationDto;
-    path?: never;
-    query?: never;
-    url: '/user/sendPushNotification';
-};
-
-export type UserSendPushNotificationAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserSendPushNotificationAdminError = UserSendPushNotificationAdminErrors[keyof UserSendPushNotificationAdminErrors];
-
-export type UserSendPushNotificationAdminResponses = {
-    200: PushDto;
-};
-
-export type UserSendPushNotificationAdminResponse = UserSendPushNotificationAdminResponses[keyof UserSendPushNotificationAdminResponses];
-
 export type UserRequestAccountDeletionData = {
     body?: never;
     path?: never;
@@ -7425,6 +7357,74 @@ export type UserAwayRangeUpdateAwayRangeAdminResponses = {
 };
 
 export type UserAwayRangeUpdateAwayRangeAdminResponse = UserAwayRangeUpdateAwayRangeAdminResponses[keyof UserAwayRangeUpdateAwayRangeAdminResponses];
+
+export type UserDeviceRegisterDeviceData = {
+    body: RegisterDeviceDto;
+    path?: never;
+    query?: never;
+    url: '/user/registerDevice';
+};
+
+export type UserDeviceRegisterDeviceErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserDeviceRegisterDeviceError = UserDeviceRegisterDeviceErrors[keyof UserDeviceRegisterDeviceErrors];
+
+export type UserDeviceRegisterDeviceResponses = {
+    200: UserDeviceDto;
+};
+
+export type UserDeviceRegisterDeviceResponse = UserDeviceRegisterDeviceResponses[keyof UserDeviceRegisterDeviceResponses];
+
+export type UserDeviceUnregisterDeviceData = {
+    body: UnregisterDeviceDto;
+    path?: never;
+    query?: never;
+    url: '/user/unregisterDevice';
+};
+
+export type UserDeviceUnregisterDeviceErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserDeviceUnregisterDeviceError = UserDeviceUnregisterDeviceErrors[keyof UserDeviceUnregisterDeviceErrors];
+
+export type UserDeviceUnregisterDeviceResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserDeviceUnregisterDeviceResponse = UserDeviceUnregisterDeviceResponses[keyof UserDeviceUnregisterDeviceResponses];
+
+export type UserDeviceSendPushNotificationAdminData = {
+    body: TestPushNotificationDto;
+    path?: never;
+    query?: never;
+    url: '/user/sendPushNotification';
+};
+
+export type UserDeviceSendPushNotificationAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserDeviceSendPushNotificationAdminError = UserDeviceSendPushNotificationAdminErrors[keyof UserDeviceSendPushNotificationAdminErrors];
+
+export type UserDeviceSendPushNotificationAdminResponses = {
+    200: PushDto;
+};
+
+export type UserDeviceSendPushNotificationAdminResponse = UserDeviceSendPushNotificationAdminResponses[keyof UserDeviceSendPushNotificationAdminResponses];
 
 export type ImagesGetImageData = {
     body?: never;

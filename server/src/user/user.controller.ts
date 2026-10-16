@@ -26,25 +26,15 @@ import {
   ApiQuery,
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
-import { ThrottlerGuard } from "@nestjs/throttler";
 import { IsNotEmpty, IsString } from "class-validator";
 import { AdminGuard } from "src/auth/guards/admin.guard";
 import { CommunityLeaderGuard } from "src/auth/guards/communityleader.guard";
 import type { JwtRequest } from "src/auth/tokens";
 import { MaybeUserLocationDto } from "src/geo/city.dto";
 import { PosthogService } from "src/posthog/posthog.service";
-import { PushDto } from "src/push/dto/push.dto";
 import { PaginationQueryDto } from "src/utils/pagination.dto";
-import { OnlyThrottle } from "src/utils/throttle";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { Public } from "../auth/public.decorator";
-import { DEVICE_UNLINK_THROTTLE } from "./device-unlink-throttle.config";
-import {
-  RegisterDeviceDto,
-  TestPushNotificationDto,
-  UnregisterDeviceDto,
-  UserDeviceDto,
-} from "./dto/device.dto";
 import { FriendGraphEdgeDto } from "./dto/friend-graph.dto";
 import {
   AmbassadorInviteDashboardDto,
@@ -852,39 +842,6 @@ export class UserController {
   @ApiOkResponse()
   async assignGroupsAdmin(@Body() body: AssignGroupsDto): Promise<void> {
     await this.userService.assignGroupsAdmin(body);
-  }
-
-  @Post("registerDevice")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: UserDeviceDto })
-  async registerDevice(
-    @Request() req: JwtRequest,
-    @Body() body: RegisterDeviceDto,
-  ): Promise<UserDeviceDto> {
-    const id = await this.userService.registerDevice(req.user.sub, body);
-    return new UserDeviceDto(id);
-  }
-
-  // Public so a device whose session already lapsed can still unlink;
-  // holding both the device id and its push token proves it's that device.
-  @Post("unregisterDevice")
-  @Public()
-  @UseGuards(ThrottlerGuard)
-  @OnlyThrottle(DEVICE_UNLINK_THROTTLE)
-  @ApiOkResponse()
-  async unregisterDevice(@Body() body: UnregisterDeviceDto): Promise<void> {
-    await this.userService.unregisterDevice(body);
-  }
-
-  @Post("sendPushNotification")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: PushDto })
-  async sendPushNotificationAdmin(
-    @Body() body: TestPushNotificationDto,
-  ): Promise<PushDto> {
-    return new PushDto(
-      await this.userService.testPushNotification(body.userId, body.message),
-    );
   }
 
   @Post("requestAccountDeletion")
