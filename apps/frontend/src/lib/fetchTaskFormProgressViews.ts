@@ -1,5 +1,6 @@
 import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
 import type { ActionDto } from "@alliance/shared/client";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import { tasksGetFormAggregateViews } from "@alliance/shared/client";
 import { parseAggregateViewsPayload } from "@alliance/shared/lib/actionAggregates";
 import { isActionAssignedAndNotDismissed } from "@alliance/shared/lib/actionUtils";

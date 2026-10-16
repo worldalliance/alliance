@@ -1,4 +1,5 @@
 // AuthProvider.tsx
+// eslint-disable-next-line api-client/named-hooks-only -- auth and session flow, which no query cache holds
 import {
   authAdminLogin,
   authLogout,

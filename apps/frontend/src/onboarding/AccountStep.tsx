@@ -5,6 +5,7 @@ import {
   REVIEW_SIGN_IN_UNAVAILABLE_MESSAGE,
 } from "@alliance/common/review-account";
 import { ACCOUNT_MOVED_MESSAGE, ALLIANCE_DOMAIN } from "@alliance/common/url";
+// eslint-disable-next-line api-client/named-hooks-only -- auth and session flow, which no query cache holds
 import { authForgotPassword, authLogin } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
 import { Features } from "@alliance/shared/lib/features";

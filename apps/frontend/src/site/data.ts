@@ -2,6 +2,7 @@ import type {
   ProfileDto,
   StaffDirectoryEntryDto,
 } from "@alliance/shared/client";
+// eslint-disable-next-line api-client/named-hooks-only -- the TanStack hooks in this file own these calls
 import {
   userFindOne,
   userMembersPublic,

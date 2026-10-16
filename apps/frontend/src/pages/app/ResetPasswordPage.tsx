@@ -1,3 +1,4 @@
+// eslint-disable-next-line api-client/named-hooks-only -- auth and session flow, which no query cache holds
 import { authResetPassword } from "@alliance/shared/client";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";

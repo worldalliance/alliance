@@ -1,4 +1,5 @@
 import { R } from "@alliance/common/result";
+// eslint-disable-next-line api-client/named-hooks-only -- auth and session flow, which no query cache holds
 import { userVerifyEmail } from "@alliance/shared/client";
 import { useEffect, useState } from "react";
 import { Link, href, useSearchParams } from "react-router";

@@ -3,6 +3,7 @@ import {
   COMMUNITY_NAME_MAX_LENGTH,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import { communityCreateCommunity } from "@alliance/shared/client";
 import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";

@@ -1,4 +1,5 @@
 import { errorMessage } from "@alliance/common/errorMessage";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   imagesUploadImage,
   userDeleteUserAdmin,

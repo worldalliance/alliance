@@ -1,4 +1,5 @@
 import { errorMessage } from "@alliance/common/errorMessage";
+// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
 import { forumExportPostAdmin } from "@alliance/shared/client";
 import type { PostDto } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";

@@ -5,6 +5,7 @@ import {
 import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
 import type { ShareUrlMineDto } from "@alliance/shared/client";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import { communityCreateCommunity } from "@alliance/shared/client";
 import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";

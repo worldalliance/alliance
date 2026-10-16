@@ -3,6 +3,7 @@ import {
   MEMBER_ACTION_DEADLINE_PASSED,
 } from "@alliance/common/actionActivity";
 import { useCallback, useState } from "react";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   ActionDto,
   FormResponseDto,

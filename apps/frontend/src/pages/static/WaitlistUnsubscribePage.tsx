@@ -1,4 +1,5 @@
 import { WAITLIST_UNSUBSCRIBE_PARAM } from "@alliance/common/waitlist";
+// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
 import { waitlistUnsubscribe } from "@alliance/shared/client";
 import {
   thrownRefusalMessage,

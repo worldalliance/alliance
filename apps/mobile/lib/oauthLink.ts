@@ -7,6 +7,7 @@ import {
   type OAuthProvider,
 } from "@alliance/common/oauth";
 import { type Result } from "@alliance/common/result";
+// eslint-disable-next-line api-client/named-hooks-only -- auth and session flow, which no query cache holds
 import {
   oAuthLinkRedeemHandoff,
   oAuthLinkStartBrowserSession,

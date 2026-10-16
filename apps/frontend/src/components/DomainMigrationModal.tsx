@@ -1,3 +1,4 @@
+// eslint-disable-next-line api-client/named-hooks-only -- auth and session flow, which no query cache holds
 import { authLogout, userSwitchDomain } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
 import {

@@ -1,4 +1,5 @@
 import type { CitySearchDto } from "@alliance/shared/client";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import { geoSearchCity } from "@alliance/shared/client";
 import {
   Dispatch,
