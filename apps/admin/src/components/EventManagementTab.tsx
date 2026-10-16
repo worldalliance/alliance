@@ -1,4 +1,5 @@
 import { AdminActionDto } from "@alliance/shared/client";
+import { sortByDateDescending } from "@alliance/shared/lib/actionEventsPanel";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -53,50 +54,46 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
       <h2 className="text-lg font-semibold mb-4">All Events</h2>
       <div className="space-y-3 mb-3">
         {action.events && action.events.length > 0 ? (
-          action.events
-            .sort(
-              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-            )
-            .map((event) => (
-              <div
-                key={event.id}
-                className="border border-gray-200 rounded-lg p-3 bg-white"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-medium text-gray-900 text-sm">
-                    {event.title}
-                  </h3>
-                  <span
-                    className={cn(
-                      "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
-                      ACTION_STATUS_COLORS[event.newStatus],
-                    )}
-                  >
-                    {ACTION_STATUS_LABELS[event.newStatus]}
-                  </span>
-                </div>
+          sortByDateDescending(action.events).map((event) => (
+            <div
+              key={event.id}
+              className="border border-gray-200 rounded-lg p-3 bg-white"
+            >
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-medium text-gray-900 text-sm">
+                  {event.title}
+                </h3>
+                <span
+                  className={cn(
+                    "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
+                    ACTION_STATUS_COLORS[event.newStatus],
+                  )}
+                >
+                  {ACTION_STATUS_LABELS[event.newStatus]}
+                </span>
+              </div>
 
-                {event.description && (
-                  <p className="text-sm text-gray-600 mb-2">
-                    {event.description}
-                  </p>
-                )}
+              {event.description && (
+                <p className="text-sm text-gray-600 mb-2">
+                  {event.description}
+                </p>
+              )}
 
-                <div className="text-xs text-gray-500 space-y-1">
-                  <div>
-                    Date:{" "}
-                    {new Date(event.date).toLocaleString(undefined, {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      timeZoneName: "short",
-                    })}
-                  </div>
+              <div className="text-xs text-gray-500 space-y-1">
+                <div>
+                  Date:{" "}
+                  {new Date(event.date).toLocaleString(undefined, {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZoneName: "short",
+                  })}
                 </div>
               </div>
-            ))
+            </div>
+          ))
         ) : (
           <div className="text-sm text-gray-500 text-center py-4">
             No events created yet. Add an event to change the action status.
