@@ -1,4 +1,3 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import {
@@ -8,14 +7,12 @@ import {
   type FormSchema,
   type Page,
 } from "@alliance/common/forms/form-schema";
-import { withCount } from "@alliance/common/plural";
 import type {
   ActionWithdrawalDto,
   FormDto,
   FormResponseDto,
   ProfileDto,
 } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { downloadBlob } from "../lib/downloadBlob";
@@ -34,6 +31,9 @@ import {
 } from "../lib/responseFilter";
 import { buildResponsesCsv } from "../lib/responsesCsvExport";
 import { buildResponsesHtml } from "../lib/responsesHtmlExport";
+import FormResponsesHeader, {
+  isTab,
+} from "./form-responses/FormResponsesHeader";
 import QuestionResponses from "./form-responses/QuestionResponses";
 import ResponseReplay from "./form-responses/ResponseReplay";
 import ResponseReplayNavigator from "./form-responses/ResponseReplayNavigator";
@@ -81,16 +81,8 @@ const ANSWER_FIELD_KINDS = new Set<FieldKind>([
   "file",
 ]);
 
-type Tab = "responses" | "stats" | "questions" | "replays";
-
 const isAnswerField = (node: AnyField | DisplayBlock): node is AnyField =>
   isQuestionField(node) && ANSWER_FIELD_KINDS.has(node.kind);
-
-const isTab = (value: string | null): value is Tab =>
-  value === "responses" ||
-  value === "stats" ||
-  value === "questions" ||
-  value === "replays";
 
 export const REFERRALS_LOAD_ERROR =
   "Failed to load share links, so invited respondents show as anonymous";
@@ -408,155 +400,40 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     onSelect: useCallback((index: number) => setPage(index + 1), []),
   });
 
-  // Every response, so the date does not move with the search or a filter.
-  const releaseDate = useMemo(() => {
-    const earliest = responses.reduce<string | null>(
-      (oldest, response) =>
-        oldest === null || response.createdAt < oldest
-          ? response.createdAt
-          : oldest,
-      null,
-    );
-    return earliest
-      ? new Date(earliest).toLocaleDateString(undefined, {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })
-      : null;
-  }, [responses]);
-
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div>
-                <div className="flex items-baseline gap-2">
-                  <h1 className="text-xl font-semibold text-gray-900">
-                    {title}
-                  </h1>
-                  {releaseDate && (
-                    <span className="text-sm text-gray-500">
-                      Released {releaseDate}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-500">
-                  {withCount(total, "response")}
-                </p>
-                {referralsError && (
-                  <p className="text-sm text-red-500">{referralsError}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-2 ml-3">
-                <Button
-                  onClick={() => updateParams({ tab: "responses" })}
-                  color={
-                    tab === "responses" ? ButtonColor.Black : ButtonColor.White
+        <FormResponsesHeader
+          title={title}
+          responses={responses}
+          total={total}
+          referralsError={referralsError}
+          tab={tab}
+          onTabChange={(next) =>
+            updateParams(
+              next === "questions"
+                ? { tab: next, questionField: selectedQuestionFieldId || null }
+                : { tab: next },
+            )
+          }
+          variantOptions={variantOptions}
+          selectedVariantKey={variantParam}
+          onVariantChange={(key) => updateParams({ variant: key })}
+          onRefresh={onRefresh}
+          onReassignSnapshots={
+            snapshotTargets && snapshotTargets.length > 0
+              ? () => {
+                  if (directSnapshotTarget) {
+                    goToSnapshots(directSnapshotTarget.formId);
+                  } else {
+                    setPickingSnapshotTarget(true);
                   }
-                  size="small"
-                >
-                  Responses
-                </Button>
-                <Button
-                  onClick={() => updateParams({ tab: "stats" })}
-                  color={
-                    tab === "stats" ? ButtonColor.Black : ButtonColor.White
-                  }
-                  size="small"
-                >
-                  Stats
-                </Button>
-                <Button
-                  onClick={() =>
-                    updateParams({
-                      tab: "questions",
-                      questionField: selectedQuestionFieldId || null,
-                    })
-                  }
-                  color={
-                    tab === "questions" ? ButtonColor.Black : ButtonColor.White
-                  }
-                  size="small"
-                >
-                  Questions
-                </Button>
-                <Button
-                  onClick={() => updateParams({ tab: "replays" })}
-                  color={
-                    tab === "replays" ? ButtonColor.Black : ButtonColor.White
-                  }
-                  size="small"
-                >
-                  Replays
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {variantOptions && variantOptions.length > 0 && (
-                <select
-                  value={variantParam || "all"}
-                  onChange={(e) =>
-                    updateParams({
-                      variant: e.target.value === "all" ? null : e.target.value,
-                    })
-                  }
-                  className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-black focus:outline-none"
-                  title="Filter by variant"
-                >
-                  <option value="all">All variants</option>
-                  {variantOptions.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <Button
-                onClick={onRefresh}
-                color={ButtonColor.White}
-                size="small"
-              >
-                Refresh
-              </Button>
-              {snapshotTargets && snapshotTargets.length > 0 && (
-                <Button
-                  onClick={() => {
-                    if (directSnapshotTarget) {
-                      goToSnapshots(directSnapshotTarget.formId);
-                    } else {
-                      setPickingSnapshotTarget(true);
-                    }
-                  }}
-                  color={ButtonColor.White}
-                  size="small"
-                >
-                  Reassign snapshots
-                </Button>
-              )}
-              <Button
-                onClick={handleExportCsv}
-                disabled={scopedResponses.length === 0}
-                color={ButtonColor.Black}
-                size="small"
-              >
-                Export CSV
-              </Button>
-              <Button
-                onClick={handleExportHtml}
-                disabled={responses.length === 0}
-                color={ButtonColor.White}
-                size="small"
-              >
-                Export HTML
-              </Button>
-            </div>
-          </div>
-        </div>
+                }
+              : undefined
+          }
+          onExportCsv={handleExportCsv}
+          onExportHtml={handleExportHtml}
+        />
         {tab === "replays" && !loading && !error && filteredTotal > 0 && (
           <ResponseReplayNavigator
             filterSummary={filterSummary}

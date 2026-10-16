@@ -60,6 +60,7 @@ const renderView = (params: {
     { initialEntries: [params.path] },
   );
   render(<RouterProvider router={router} />);
+  return router;
 };
 
 it("lists no response to a question whose stored answer is an empty object", () => {
@@ -100,4 +101,13 @@ it("replays the respondent picked from the name search", () => {
 
   expect(screen.getByText("Bea")).toBeTruthy();
   expect(screen.queryByText("Ana")).toBeNull();
+});
+
+it("opens the questions tab on the question it would show", () => {
+  const router = renderView({ path: "/?tab=stats" });
+  fireEvent.click(screen.getByText("Questions"));
+
+  const params = new URLSearchParams(router.state.location.search);
+  expect(params.get("tab")).toBe("questions");
+  expect(params.get("questionField")).toBe("home");
 });
