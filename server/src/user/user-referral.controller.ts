@@ -9,11 +9,11 @@ import {
 import { ApiOkResponse, ApiOperation, ApiQuery } from "@nestjs/swagger";
 import { Public } from "../auth/public.decorator";
 import { ReferrerProfileDto, SignupSocialProofDto } from "./dto/user.dto";
-import { UserService } from "./user.service";
+import { ReferralService } from "./referral.service";
 
 @Controller("user")
 export class UserReferralController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly referralService: ReferralService) {}
 
   @Get("signupSocialProof")
   @Public()
@@ -37,7 +37,7 @@ export class UserReferralController {
     @Query("count", new ParseIntPipe({ optional: true })) count?: number,
   ): Promise<SignupSocialProofDto> {
     return new SignupSocialProofDto(
-      await this.userService.getSignupSocialProof(code, count),
+      await this.referralService.getSignupSocialProof(code, count),
     );
   }
 
@@ -47,7 +47,7 @@ export class UserReferralController {
   async referrerProfile(
     @Param("code") code: string,
   ): Promise<ReferrerProfileDto> {
-    const referrer = await this.userService.resolveReferrer(code);
+    const referrer = await this.referralService.resolveReferrer(code);
     if (!referrer) {
       throw new NotFoundException("Referrer not found");
     }

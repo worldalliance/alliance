@@ -47,7 +47,7 @@ import {
   ReferralSource,
   User,
 } from "../entities/user.entity";
-import type { ReferrerResolution } from "../user.service";
+import type { ReferrerResolution } from "../referral.service";
 
 export type FriendStatusDtoArgs = {
   status: FriendStatus;

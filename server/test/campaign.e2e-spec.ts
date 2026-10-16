@@ -9,7 +9,7 @@ import { Community } from "../src/community/entities/community.entity";
 import { ExternalShareTarget } from "../src/share-urls/entities/external-share-target.entity";
 import { ShareUrl } from "../src/share-urls/entities/share-url.entity";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
-import { UserService } from "../src/user/user.service";
+import { ReferralService } from "../src/user/referral.service";
 import { WaitlistEntry } from "../src/waitlist/entities/waitlist-entry.entity";
 import { WaitlistLink } from "../src/waitlist/entities/waitlist-link.entity";
 import { createTestApp, TestContext, waitForLockWait } from "./e2e-test-utils";
@@ -134,10 +134,10 @@ describe("Campaigns (e2e)", () => {
 
     it("leaves a campaign deleted while the signup resolves its code out of the attribution", async () => {
       const campaign = await createCampaign("Deleted mid-signup");
-      const users = ctx.app.get(UserService);
-      const resolveReferral = users.resolveReferral.bind(users);
+      const referrals = ctx.app.get(ReferralService);
+      const resolveReferral = referrals.resolveReferral.bind(referrals);
       const resolve = jest
-        .spyOn(users, "resolveReferral")
+        .spyOn(referrals, "resolveReferral")
         .mockImplementation(async (...args) => {
           const resolution = await resolveReferral(...args);
           await campaignRepo.softDelete(campaign.id);

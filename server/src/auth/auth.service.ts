@@ -29,6 +29,7 @@ import {
   ReferralSource,
   User,
 } from "../user/entities/user.entity";
+import { ReferralService } from "../user/referral.service";
 import { UserService } from "../user/user.service";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { Guest } from "./entities/guest.entity";
@@ -73,6 +74,7 @@ type PasswordSession = {
 export class AuthService {
   constructor(
     private usersService: UserService,
+    private readonly referralService: ReferralService,
     private jwtService: JwtService,
     private mailService: MailService,
     private sessionService: SessionService,
@@ -224,12 +226,15 @@ export class AuthService {
     inviteAssignment: StoredInviteAssignment | null;
     referralSource: ReferralSource;
   }> {
-    const resolution = await this.usersService.resolveReferral(referralCode, {
-      inviteRelations: {
-        invitingUser: { communities: true },
-        community: true,
+    const resolution = await this.referralService.resolveReferral(
+      referralCode,
+      {
+        inviteRelations: {
+          invitingUser: { communities: true },
+          community: true,
+        },
       },
-    });
+    );
 
     if (!resolution) {
       if (process.env.NODE_ENV !== "test") {

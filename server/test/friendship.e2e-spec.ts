@@ -6,6 +6,7 @@ import {
 import { MessagingModule } from "src/messaging/messaging.module";
 import { FriendStatus } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
+import { ReferralService } from "src/user/referral.service";
 import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
@@ -156,9 +157,9 @@ describe("Accepted friendship in either direction (e2e)", () => {
   it("shows the inviter's friends from both sides as signup social proof", async () => {
     // Asks the friend lookup directly: getSignupSocialProof tops up with random
     // members drawn from the same pool, which can hide a missing friend.
-    const friends = await userService["findFriendUsersWithProfilePictures"](
-      hub.id,
-    );
+    const friends = await ctx.app
+      .get(ReferralService)
+      ["findFriendUsersWithProfilePictures"](hub.id);
     expect(ids(friends)).toEqual([requesterFriend.id, addresseeFriend.id]);
   });
 
