@@ -171,17 +171,28 @@ it("does nothing without a signed-in user", async () => {
   expect(hook.result.current.post).toEqual(post);
 });
 
-it("creates a post without caching it", async () => {
+it("creates a post without caching it, and reloads the list", async () => {
   const { wrapper, client } = queryWrapper();
-  const hook = renderHook(() => useForumPost(undefined), { wrapper });
+  const created = { ...post, id: 8, title: "New" };
+  const hook = renderHook(
+    () => ({ list: useForumPosts(), one: useForumPost(undefined) }),
+    { wrapper },
+  );
+  await waitFor(() => expect(hook.result.current.list.posts).toEqual([post]));
+  listResponse = () => Response.json([post, created]);
 
-  const created = hook.result.current.create({
-    title: "New",
-    editableContent: { body: "Hi", attachments: [] },
-  });
+  const saved = await act(() =>
+    hook.result.current.one.create({
+      title: "New",
+      editableContent: { body: "Hi", attachments: [] },
+    }),
+  );
 
-  await waitFor(() => expect(requests).toEqual(["create"]));
-  expect(await created).toMatchObject({ id: 8, title: "New" });
+  expect(saved).toMatchObject({ id: 8, title: "New" });
+  await waitFor(() =>
+    expect(hook.result.current.list.posts).toEqual([post, created]),
+  );
+  expect(requests).toEqual(["create"]);
   expect(client.getQueryData(["forumFindOnePost", "8"])).toBeUndefined();
 });
 

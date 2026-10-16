@@ -17,7 +17,7 @@ import {
   type UpdatePostDto,
 } from "../client";
 import { queryKeys } from "./queryKeys";
-import { dropForumPost } from "./useForumPosts";
+import { dropForumPost, invalidateForumPosts } from "./useForumPosts";
 
 /** One forum post and its writes. An undefined `postId` fetches nothing, for
  * the create form; `update` and `remove` throw then. `refetchOnMount:
@@ -79,11 +79,14 @@ export function useForumPost(
     await toggleLike(post);
   }, [post, userId, toggleLike]);
 
-  // A created post is left uncached: the create response lacks the action and
-  // tags the post page shows, so that page loads it instead.
+  // A created post stays out of the single-post cache: the create response
+  // lacks the action and tags the post page shows, so that page loads it.
   const { mutateAsync: create } = useMutation({
     mutationFn: (body: CreatePostDto) =>
       forumCreatePost({ body, throwOnError: true }).then((r) => r.data),
+    onSuccess: () => {
+      void invalidateForumPosts(queryClient);
+    },
   });
 
   const { mutateAsync: update } = useMutation({

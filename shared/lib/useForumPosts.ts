@@ -12,6 +12,10 @@ export async function dropForumPost(queryClient: QueryClient, postId: number) {
   );
 }
 
+export function invalidateForumPosts(queryClient: QueryClient) {
+  return queryClient.invalidateQueries({ queryKey: queryKeys.forumPosts() });
+}
+
 export function useForumPosts() {
   const query = useQuery({
     queryKey: queryKeys.forumPosts(),
