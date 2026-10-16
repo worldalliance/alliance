@@ -6,6 +6,7 @@ import {
   ForceGraph,
   type ForceGraphLink,
   type ForceGraphNode,
+  KEEP_LAYOUT,
   linkEnd,
   type NodeStyle,
 } from "../components/force-graph/ForceGraph";
@@ -36,10 +37,6 @@ const NODE_STYLE: NodeStyle = {
   label: { color: "#374151", weight: "normal" },
 };
 const nodeStyle = () => NODE_STYLE;
-// A changed user or friendship list rebuilds the layout and drops the
-// selection, so the graph skips the refetches that land while an admin is
-// exploring it.
-const KEEP_LAYOUT = { refetchOnWindowFocus: false, refetchOnReconnect: false };
 
 const FriendGraphPage = () => {
   const usersQuery = useGraphUsersAdmin(KEEP_LAYOUT);

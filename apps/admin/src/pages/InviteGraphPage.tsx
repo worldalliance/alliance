@@ -8,6 +8,7 @@ import { EnumFilterSelect } from "../components/force-graph/EnumFilterSelect";
 import {
   type DrawnGraph,
   ForceGraph,
+  KEEP_LAYOUT,
   linkEnd,
   type NodeStyle,
 } from "../components/force-graph/ForceGraph";
@@ -110,18 +111,9 @@ const LINK_TONE: Record<LinkTone, { color: string; markerId: string }> = {
 
 const InviteGraphPage = () => {
   const [inviteEdges, setInviteEdges] = useState<OnetimeInviteEdgeDto[]>([]);
-  // A changed user or campaign list rebuilds the layout and drops the
-  // selection, so the graph skips the refetches that land while an admin is
-  // exploring it.
-  const usersQuery = useGraphUsersAdmin({
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  });
+  const usersQuery = useGraphUsersAdmin(KEEP_LAYOUT);
   const users = useMemo(() => usersQuery.data ?? [], [usersQuery.data]);
-  const campaignsQuery = useCampaignsAdmin({
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  });
+  const campaignsQuery = useCampaignsAdmin(KEEP_LAYOUT);
   const campaigns = useMemo(
     () => campaignsQuery.data ?? [],
     [campaignsQuery.data],
