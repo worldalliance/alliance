@@ -1,11 +1,9 @@
-import {
-  CommunityDto,
-  communityJoinPublicCommunity,
-} from "@alliance/shared/client";
+import { CommunityDto } from "@alliance/shared/client";
 import {
   getMemberCount,
   publicGroupJoinState,
 } from "@alliance/shared/lib/communityUtils";
+import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { usePublicCommunities } from "@alliance/shared/lib/usePublicCommunities";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -20,7 +18,6 @@ export type PublicGroupsSectionProps = {
   didGroupsFail: boolean;
   getRemovalMessage: (targetName?: string) => string | null;
   onSelectCommunity: (communityId: number) => void;
-  refreshCommunities: () => Promise<void>;
 };
 
 const PublicGroupsSection = ({
@@ -28,7 +25,6 @@ const PublicGroupsSection = ({
   didGroupsFail,
   getRemovalMessage,
   onSelectCommunity,
-  refreshCommunities,
 }: PublicGroupsSectionProps) => {
   const { user, refreshUser } = useAuth();
   const { confirm, error: showError, success } = useToast();
@@ -37,8 +33,8 @@ const PublicGroupsSection = ({
     publicCommunities,
     isLoading: publicCommunitiesLoading,
     isError: publicCommunitiesError,
-    refetch: refetchPublicCommunities,
   } = usePublicCommunities();
+  const { joinPublicCommunity } = useMyCommunities();
   const [joiningCommunityId, setJoiningCommunityId] = useState<number | null>(
     null,
   );
@@ -61,19 +57,10 @@ const PublicGroupsSection = ({
       }
       setJoiningCommunityId(community.id);
       try {
-        const response = await communityJoinPublicCommunity({
-          path: { communityId: community.id },
-        });
-        if (!response.data) {
-          throw new Error("No group returned");
-        }
+        const joined = await joinPublicCommunity(community.id);
         success(`You joined ${community.name}.`);
-        await Promise.all([
-          refreshUser(),
-          refreshCommunities(),
-          refetchPublicCommunities(),
-        ]);
-        onSelectCommunity(response.data.id);
+        await refreshUser();
+        onSelectCommunity(joined.id);
       } catch (err) {
         console.error("Failed to join public group", err);
         showError("Unable to join that group right now.");
@@ -84,10 +71,9 @@ const PublicGroupsSection = ({
     [
       confirm,
       getRemovalMessage,
+      joinPublicCommunity,
       onSelectCommunity,
       refreshUser,
-      refreshCommunities,
-      refetchPublicCommunities,
       showError,
       success,
     ],

@@ -27,7 +27,6 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
     communityIds,
     didFail: didGroupsFail,
     isFetching,
-    removeCommunity,
     refreshCommunities,
   } = useMyCommunities({
     selectedCommunityId: null,
@@ -132,7 +131,6 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
         communities={nonLeaderCommunities}
         didGroupsFail={didGroupsFail}
         onSelectCommunity={onSelectCommunity}
-        removeCommunity={removeCommunity}
       />
 
       {/* Pending group invites */}
@@ -163,7 +161,6 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
         didGroupsFail={didGroupsFail}
         getRemovalMessage={getRemovalMessage}
         onSelectCommunity={onSelectCommunity}
-        refreshCommunities={refreshCommunities}
       />
     </div>
   );
