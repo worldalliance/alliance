@@ -31,6 +31,7 @@ import {
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
 import { TagService } from "src/user/tag.service";
+import { UserAwayRangeService } from "src/user/user-away-range.service";
 import { UserService } from "src/user/user.service";
 import type { Repository } from "typeorm";
 import {
@@ -130,7 +131,7 @@ describe("Writers beside a deletion (e2e)", () => {
     deleteAfterUserLoad({ ctx, deleted: user });
 
     await expect(
-      userService.createAwayRange({
+      ctx.app.get(UserAwayRangeService).createAwayRange({
         userId: user.id,
         data: {
           reason: UserAwayRangeReason.VACATION,

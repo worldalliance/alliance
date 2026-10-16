@@ -23,6 +23,7 @@ import {
 } from "src/user/entities/user-away-range.entity";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
+import { UserAwayRangeService } from "src/user/user-away-range.service";
 import { UserService } from "src/user/user.service";
 import type { EntityManager, Repository } from "typeorm";
 import {
@@ -105,7 +106,7 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
       );
 
       await expect(
-        userService.updateAwayRange({
+        ctx.app.get(UserAwayRangeService).updateAwayRange({
           userId: user.id,
           awayRangeId: range.id,
           data: { reason: UserAwayRangeReason.OTHER, note: "Edited" },
@@ -126,7 +127,7 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
       );
 
       await expect(
-        userService.deleteAwayRange({
+        ctx.app.get(UserAwayRangeService).deleteAwayRange({
           userId: user.id,
           awayRangeId: range.id,
           editor: AwayRangeEditor.Member,

@@ -20,11 +20,11 @@ import {
   UpdateAwayRangeDto,
   UserAwayRangeDto,
 } from "./dto/away-range.dto";
-import { UserService } from "./user.service";
+import { UserAwayRangeService } from "./user-away-range.service";
 
 @Controller("user")
 export class UserAwayRangeController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userAwayRangeService: UserAwayRangeService) {}
 
   @Post("awayranges")
   @UseGuards(AuthGuard)
@@ -35,7 +35,7 @@ export class UserAwayRangeController {
     @Body() body: CreateAwayRangeDto,
   ): Promise<UserAwayRangeDto> {
     return new UserAwayRangeDto(
-      await this.userService.createAwayRange({
+      await this.userAwayRangeService.createAwayRange({
         userId: req.user.sub,
         data: body,
         editor: AwayRangeEditor.Member,
@@ -48,7 +48,7 @@ export class UserAwayRangeController {
   @ApiOkResponse({ type: [UserAwayRangeDto] })
   @ApiUnauthorizedResponse()
   async getAwayRanges(@Request() req: JwtRequest): Promise<UserAwayRangeDto[]> {
-    return (await this.userService.getAwayRanges(req.user.sub)).map(
+    return (await this.userAwayRangeService.getAwayRanges(req.user.sub)).map(
       (range) => new UserAwayRangeDto(range),
     );
   }
@@ -61,7 +61,7 @@ export class UserAwayRangeController {
     @Request() req: JwtRequest,
     @Param("id", ParseIntPipe) id: number,
   ): Promise<void> {
-    await this.userService.deleteAwayRange({
+    await this.userAwayRangeService.deleteAwayRange({
       userId: req.user.sub,
       awayRangeId: id,
       editor: AwayRangeEditor.Member,
@@ -78,7 +78,7 @@ export class UserAwayRangeController {
     @Body() body: UpdateAwayRangeDto,
   ): Promise<UserAwayRangeDto> {
     return new UserAwayRangeDto(
-      await this.userService.updateAwayRange({
+      await this.userAwayRangeService.updateAwayRange({
         userId: req.user.sub,
         awayRangeId: id,
         data: body,
@@ -94,7 +94,7 @@ export class UserAwayRangeController {
   async getAwayRangeForUserAdmin(
     @Param("id", ParseIntPipe) id: number,
   ): Promise<UserAwayRangeDto[]> {
-    return (await this.userService.getAwayRanges(id)).map(
+    return (await this.userAwayRangeService.getAwayRanges(id)).map(
       (range) => new UserAwayRangeDto(range),
     );
   }
@@ -108,7 +108,7 @@ export class UserAwayRangeController {
     @Body() body: CreateAwayRangeDto,
   ): Promise<UserAwayRangeDto> {
     return new UserAwayRangeDto(
-      await this.userService.createAwayRange({
+      await this.userAwayRangeService.createAwayRange({
         userId,
         data: body,
         editor: AwayRangeEditor.Admin,
@@ -126,7 +126,7 @@ export class UserAwayRangeController {
     @Body() body: UpdateAwayRangeDto,
   ): Promise<UserAwayRangeDto> {
     return new UserAwayRangeDto(
-      await this.userService.updateAwayRange({
+      await this.userAwayRangeService.updateAwayRange({
         userId,
         awayRangeId: id,
         data: body,
@@ -143,7 +143,7 @@ export class UserAwayRangeController {
     @Param("userId", ParseIntPipe) userId: number,
     @Param("id", ParseIntPipe) id: number,
   ): Promise<void> {
-    await this.userService.deleteAwayRange({
+    await this.userAwayRangeService.deleteAwayRange({
       userId,
       awayRangeId: id,
       editor: AwayRangeEditor.Admin,

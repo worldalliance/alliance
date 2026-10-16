@@ -12,6 +12,7 @@ import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from "src/actions/entities/reminder-group.entity";
+import { UserAwayRangeService } from "src/user/user-away-range.service";
 import { UserService } from "src/user/user.service";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { Brackets, type Repository } from "typeorm";
@@ -45,6 +46,7 @@ export class ActionEventReminderService {
     private readonly actionEventNotifRepository: TypedRepository<ActionEventNotif>,
     private readonly recipientService: ActionEventRecipientService,
     private readonly userService: UserService,
+    private readonly userAwayRangeService: UserAwayRangeService,
   ) {}
 
   async findPlansForGroup(
@@ -65,7 +67,9 @@ export class ActionEventReminderService {
 
       if (alreadyNotifiedUserIds.has(user.id)) continue;
 
-      if (await this.userService.isUserIdAway(user.id, reminderSendTime))
+      if (
+        await this.userAwayRangeService.isUserIdAway(user.id, reminderSendTime)
+      )
         continue;
 
       if (reminderSendTime >= windowStart && reminderSendTime <= windowEnd) {
