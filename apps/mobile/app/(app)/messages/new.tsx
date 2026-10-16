@@ -1,10 +1,5 @@
-import {
-  conversationCreateDirectConversation,
-  conversationCreateGroupConversation,
-  ConversationDto,
-  messageSendMessage,
-  ProfileDto,
-} from "@alliance/shared/client";
+import { R } from "@alliance/common/result";
+import { messageSendMessage, ProfileDto } from "@alliance/shared/client";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
 import { router, useLocalSearchParams } from "expo-router";
@@ -20,7 +15,6 @@ import { useAuth } from "../../../lib/AuthContext";
 import {
   buildGroupConversationTitle,
   findMatchingConversation,
-  sortConversations,
   useConversations,
 } from "../../../lib/messages";
 import { colors } from "../../../lib/style/colors";
@@ -28,7 +22,8 @@ import { colors } from "../../../lib/style/colors";
 export default function NewMessageScreen() {
   const { user } = useAuth();
   const { to } = useLocalSearchParams<{ to?: string }>();
-  const { conversations, setConversations } = useConversations(null);
+  const { conversations, createDirectConversation, createGroupConversation } =
+    useConversations(null);
 
   const messageableUsersQuery = useMessageableUsersQuery();
   const { data: messageableUsers = [], isLoading: loadingUsers } =
@@ -64,52 +59,30 @@ export default function NewMessageScreen() {
   );
 
   const ensureConversation = useCallback(async () => {
-    if (selectedUserIds.length === 0) return null;
     const existing = findMatchingConversation(
       conversations,
       user?.id,
       selectedUserIds,
     );
-    if (existing) return existing;
+    if (existing) return R.success(existing);
 
     if (selectedUserIds.length === 1) {
-      const response = await conversationCreateDirectConversation({
-        body: { targetUserId: selectedUserIds[0] },
-      });
-      if (response.data) {
-        setConversations((prev) => {
-          const ids = new Map<number, ConversationDto>();
-          for (const convo of prev ?? []) {
-            ids.set(convo.id, convo);
-          }
-          ids.set(response.data!.id, response.data!);
-          return Array.from(ids.values()).sort(sortConversations);
-        });
-        return response.data;
-      }
-    } else {
-      const names = recipients.map((recipient) => recipient.displayName);
-      if (user && !user.anonymous) {
-        names.push(user.name);
-      }
-      const title = buildGroupConversationTitle(names);
-      const response = await conversationCreateGroupConversation({
-        body: { participantIds: selectedUserIds, title },
-      });
-      if (response.data) {
-        setConversations((prev) => {
-          const ids = new Map<number, ConversationDto>();
-          for (const convo of prev ?? []) {
-            ids.set(convo.id, convo);
-          }
-          ids.set(response.data!.id, response.data!);
-          return Array.from(ids.values()).sort(sortConversations);
-        });
-        return response.data;
-      }
+      return createDirectConversation(selectedUserIds[0]);
     }
-    return null;
-  }, [conversations, recipients, selectedUserIds, setConversations, user]);
+    const names = recipients.map((recipient) => recipient.displayName);
+    if (user && !user.anonymous) {
+      names.push(user.name);
+    }
+    const title = buildGroupConversationTitle(names);
+    return createGroupConversation({ participantIds: selectedUserIds, title });
+  }, [
+    conversations,
+    createDirectConversation,
+    createGroupConversation,
+    recipients,
+    selectedUserIds,
+    user,
+  ]);
 
   const handleSend = useCallback(async () => {
     if (isSending) return;
@@ -129,11 +102,12 @@ export default function NewMessageScreen() {
 
     setIsSending(true);
     try {
-      const conversation = await ensureConversation();
-      if (!conversation) {
-        Alert.alert("Error", "Could not create conversation.");
+      const ensured = await ensureConversation();
+      if (!ensured.ok) {
+        Alert.alert(ensured.error.title, ensured.error.message);
         return;
       }
+      const conversation = ensured.value;
       const response = await messageSendMessage({
         body: {
           conversationId: conversation.id,
