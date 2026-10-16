@@ -29,6 +29,7 @@ import { TagService } from "./tag.service";
 import { UserAwayRangeController } from "./user-away-range.controller";
 import { UserAwayRangeService } from "./user-away-range.service";
 import { UserDeviceController } from "./user-device.controller";
+import { UserDeviceService } from "./user-device.service";
 import { UserTagController } from "./user-tag.controller";
 import { UserController } from "./user.controller";
 import { UserService } from "./user.service";
@@ -74,6 +75,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     UserService,
     TagService,
     UserAwayRangeService,
+    UserDeviceService,
     IsUserAlreadyExist,
   ],
   exports: [UserService, TagService, UserAwayRangeService],

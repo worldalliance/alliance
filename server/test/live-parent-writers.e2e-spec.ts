@@ -32,6 +32,7 @@ import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
 import { TagService } from "src/user/tag.service";
 import { UserAwayRangeService } from "src/user/user-away-range.service";
+import { UserDeviceService } from "src/user/user-device.service";
 import { UserService } from "src/user/user.service";
 import type { Repository } from "typeorm";
 import {
@@ -200,7 +201,7 @@ describe("Writers beside a deletion (e2e)", () => {
     deleteAfterUserLoad({ ctx, deleted: user });
 
     await expect(
-      userService.registerDevice(user.id, {
+      ctx.app.get(UserDeviceService).registerDevice(user.id, {
         deviceType: "ios",
         expoPushToken: `ExponentPushToken[writer-${user.id}]`,
       }),

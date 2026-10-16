@@ -44,7 +44,6 @@ import {
   liveOrNull,
   lockLive,
   softDeleteCascade,
-  softDeleteWhere,
   updateLive,
   writeUnderLive,
 } from "src/datasources/soft-delete";
@@ -71,8 +70,6 @@ import {
   type CreateNotifParams,
   NotifsService,
 } from "src/notifs/notifs.service";
-import { Push } from "src/push/push.entity";
-import { PushService } from "src/push/push.service";
 import { groupUrl, profileUrl } from "src/search/approutes";
 import {
   ShareUrl,
@@ -112,7 +109,6 @@ import {
   getAmbassadorGoalHalfwayNotificationMessage,
   getAmbassadorGoalHalfwayNotificationTime,
 } from "./ambassador-invite-goal-notification.utils";
-import { RegisterDeviceDto } from "./dto/device.dto";
 import { type FriendGraphEdge } from "./dto/friend-graph.dto";
 import {
   AmbassadorInviteDashboard,
@@ -155,7 +151,6 @@ import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "./entities/onetime-invite.entity";
-import { UserDevice } from "./entities/user-device.entity";
 import {
   assertCanManageCommunity,
   loadedUserCommunities,
@@ -285,14 +280,11 @@ export class UserService {
     private readonly ambassadorProgramInteractionRepository: Repository<AmbassadorProgramInteraction>,
     @InjectRepository(ContractEvent)
     private readonly contractEventRepository: Repository<ContractEvent>,
-    @InjectRepository(UserDevice)
-    private readonly userDeviceRepository: Repository<UserDevice>,
     private readonly shareUrlsService: ShareUrlsService,
     private readonly campaignService: CampaignService,
     private readonly jwtService: JwtService,
     private readonly imagesService: ImagesService,
     private readonly mailService: MailService,
-    private readonly pushService: PushService,
     private readonly eventLogService: EventLogService,
     private readonly notifsService: NotifsService,
     private readonly communityService: CommunityService,
@@ -2933,109 +2925,6 @@ export class UserService {
     return this.userRepository
       .find({ select: ["id"] })
       .then((users) => users.map((user) => user.id));
-  }
-
-  async registerDevice(
-    userId: number,
-    body: RegisterDeviceDto,
-  ): Promise<string> {
-    const user = await this.findOneOrFail(userId, { devices: true });
-    const taskBadgePushes = body.taskBadgePushes ?? false;
-    if (body.deviceId) {
-      const existingDevice = await this.userDeviceRepository.findOne({
-        where: { id: body.deviceId, user: { id: userId } },
-      });
-      if (
-        existingDevice &&
-        (await updateLive(this.dataSource.manager, {
-          target: UserDevice,
-          id: existingDevice.id,
-          changes: {
-            expoPushToken: body.expoPushToken,
-            taskBadgePushes,
-            ...(existingDevice.expoPushToken !== body.expoPushToken && {
-              badgeCount: null,
-              badgeCountComputedAt: null,
-            }),
-          },
-        }))
-      ) {
-        return existingDevice.id;
-      }
-    }
-
-    if (body.expoPushToken) {
-      const existingByToken = await this.userDeviceRepository.findOne({
-        where: { expoPushToken: body.expoPushToken },
-        relations: { user: true },
-      });
-      if (
-        existingByToken?.user?.id === userId &&
-        (await updateLive(this.dataSource.manager, {
-          target: UserDevice,
-          id: existingByToken.id,
-          changes: { taskBadgePushes },
-        }))
-      ) {
-        return existingByToken.id;
-      }
-      if (existingByToken) {
-        console.log("Reassigning device by expo push token to user", userId);
-        const reassigned = await writeUnderLive(this.dataSource.manager, {
-          parents: [{ target: User, id: userId }],
-          write: (manager) =>
-            updateLive(manager, {
-              target: UserDevice,
-              id: existingByToken.id,
-              changes: {
-                user: { id: userId },
-                deviceType: body.deviceType ?? existingByToken.deviceType,
-                taskBadgePushes,
-                badgeCount: null,
-                badgeCountComputedAt: null,
-              },
-            }),
-        });
-        if (reassigned) {
-          return existingByToken.id;
-        }
-      }
-    }
-
-    const device = this.userDeviceRepository.create({
-      deviceType: body.deviceType,
-      expoPushToken: body.expoPushToken,
-      taskBadgePushes,
-      user,
-    });
-    const savedDevice = await writeUnderLive(this.dataSource.manager, {
-      parents: [{ target: User, id: userId }],
-      write: (manager) => manager.save(device),
-    });
-    return savedDevice.id;
-  }
-
-  async unregisterDevice(params: {
-    deviceId: string;
-    expoPushToken: string;
-  }): Promise<void> {
-    await softDeleteWhere(this.userDeviceRepository.manager, {
-      target: UserDevice,
-      where: { id: params.deviceId, expoPushToken: params.expoPushToken },
-    });
-  }
-
-  async testPushNotification(userId: number, message: string): Promise<Push> {
-    const user = await this.findOneOrFail(userId, { devices: true });
-    const device = user.devices?.[0];
-    if (!device || !device.expoPushToken) {
-      throw new BadRequestException("User has no expo push token");
-    }
-    return this.pushService.sendPushNotification(
-      userId,
-      device.expoPushToken,
-      message,
-    );
   }
 
   async signedMembersCount(): Promise<number> {

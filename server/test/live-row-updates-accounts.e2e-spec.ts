@@ -24,6 +24,7 @@ import {
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
 import { UserAwayRangeService } from "src/user/user-away-range.service";
+import { UserDeviceService } from "src/user/user-device.service";
 import { UserService } from "src/user/user.service";
 import type { EntityManager, Repository } from "typeorm";
 import {
@@ -158,10 +159,12 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
       return loaded;
     });
 
-    const registered = await userService.registerDevice(next.id, {
-      deviceType: "ios",
-      expoPushToken,
-    });
+    const registered = await ctx.app
+      .get(UserDeviceService)
+      .registerDevice(next.id, {
+        deviceType: "ios",
+        expoPushToken,
+      });
 
     expect(registered).not.toBe(device.id);
     expect(

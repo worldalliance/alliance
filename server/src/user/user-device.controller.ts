@@ -14,11 +14,11 @@ import {
   UnregisterDeviceDto,
   UserDeviceDto,
 } from "./dto/device.dto";
-import { UserService } from "./user.service";
+import { UserDeviceService } from "./user-device.service";
 
 @Controller("user")
 export class UserDeviceController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userDeviceService: UserDeviceService) {}
 
   @Post("registerDevice")
   @UseGuards(AuthGuard)
@@ -27,7 +27,7 @@ export class UserDeviceController {
     @Request() req: JwtRequest,
     @Body() body: RegisterDeviceDto,
   ): Promise<UserDeviceDto> {
-    const id = await this.userService.registerDevice(req.user.sub, body);
+    const id = await this.userDeviceService.registerDevice(req.user.sub, body);
     return new UserDeviceDto(id);
   }
 
@@ -39,7 +39,7 @@ export class UserDeviceController {
   @OnlyThrottle(DEVICE_UNLINK_THROTTLE)
   @ApiOkResponse()
   async unregisterDevice(@Body() body: UnregisterDeviceDto): Promise<void> {
-    await this.userService.unregisterDevice(body);
+    await this.userDeviceService.unregisterDevice(body);
   }
 
   @Post("sendPushNotification")
@@ -49,7 +49,10 @@ export class UserDeviceController {
     @Body() body: TestPushNotificationDto,
   ): Promise<PushDto> {
     return new PushDto(
-      await this.userService.testPushNotification(body.userId, body.message),
+      await this.userDeviceService.testPushNotification(
+        body.userId,
+        body.message,
+      ),
     );
   }
 }
