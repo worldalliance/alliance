@@ -2,10 +2,8 @@ import { makeTag } from "@alliance/shared/lib/testFixtures";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import CohortExpressionBuilder, {
-  ActionSelectEditor,
-  TagEditor,
-} from "./CohortExpressionBuilder";
+import CohortExpressionBuilder from "./CohortExpressionBuilder";
+import { ActionSelectEditor, TagEditor } from "./CohortLeafEditors";
 
 afterEach(cleanup);
 
@@ -176,5 +174,45 @@ describe("CohortExpressionBuilder", () => {
     );
 
     expect(screen.getByText("Failed to load users.")).toBeTruthy();
+  });
+
+  it("highlights a clicked child of a compound expression until clicked again", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ToastProvider>
+          <CohortExpressionBuilder
+            value={{
+              type: "OR",
+              children: [
+                { type: "Tag", tagId: "tag-1" },
+                { type: "Tag", tagId: "" },
+              ],
+            }}
+            onChange={jest.fn()}
+            availableTags={availableTags}
+            tagsLoading={false}
+            tagsError={false}
+            availableActions={[]}
+            actionsLoading={false}
+            actionsError={false}
+            availableUsers={[]}
+            usersLoading={false}
+            usersError={false}
+          />
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+    const [, firstChildType, , secondChildType] =
+      screen.getAllByRole("combobox");
+    const firstHeader = firstChildType.parentElement!;
+    const isSelected = (header: HTMLElement) =>
+      header.parentElement!.className.includes("border-blue-400");
+
+    fireEvent.click(firstHeader);
+    expect(isSelected(firstHeader)).toBe(true);
+    expect(isSelected(secondChildType.parentElement!)).toBe(false);
+
+    fireEvent.click(firstHeader);
+    expect(isSelected(firstHeader)).toBe(false);
   });
 });
