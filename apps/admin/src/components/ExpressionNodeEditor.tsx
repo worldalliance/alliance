@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import {
   isLeafCondition,
   type BooleanOperator,
@@ -75,8 +74,8 @@ const ExpressionNodeEditor: React.FC<{
   onSelect?: (expr: CohortExpression) => void;
   isSelected?: boolean;
   depth: number;
-  props: ExpressionEditorContext;
-}> = ({ expr, onChange, onRemove, onSelect, isSelected, depth, props }) => {
+  context: ExpressionEditorContext;
+}> = ({ expr, onChange, onRemove, onSelect, isSelected, depth, context }) => {
   const handleTypeChange = (newType: string) => {
     const leafTypes = LEAF_TYPES.map((t) => t.value as string);
     if (leafTypes.includes(newType)) {
@@ -159,7 +158,7 @@ const ExpressionNodeEditor: React.FC<{
           <LeafConditionEditor
             expr={expr}
             onChange={onChange as (v: LeafCondition) => void}
-            props={props}
+            sources={context}
           />
         )}
         {onRemove && (
@@ -181,7 +180,7 @@ const ExpressionNodeEditor: React.FC<{
           <LeafConditionEditor
             expr={expr}
             onChange={onChange as (v: LeafCondition) => void}
-            props={props}
+            sources={context}
           />
         </div>
       )}
@@ -191,9 +190,9 @@ const ExpressionNodeEditor: React.FC<{
             expr={expr}
             onChange={onChange as (v: BooleanOperator) => void}
             onSelect={onSelect}
-            selectedExpr={props.selectedExpr}
+            selectedExpr={context.selectedExpr}
             depth={depth}
-            props={props}
+            context={context}
           />
         </div>
       )}
@@ -207,8 +206,8 @@ const BooleanOperatorEditor: React.FC<{
   onSelect?: (expr: CohortExpression) => void;
   selectedExpr?: CohortExpression | null;
   depth: number;
-  props: ExpressionEditorContext;
-}> = ({ expr, onChange, onSelect, selectedExpr, depth, props }) => {
+  context: ExpressionEditorContext;
+}> = ({ expr, onChange, onSelect, selectedExpr, depth, context }) => {
   switch (expr.type) {
     case "NOT":
       return (
@@ -220,7 +219,7 @@ const BooleanOperatorEditor: React.FC<{
             onSelect={onSelect}
             isSelected={selectedExpr === expr.child}
             depth={depth + 1}
-            props={props}
+            context={context}
           />
         </div>
       );
@@ -276,7 +275,7 @@ const BooleanOperatorEditor: React.FC<{
             onSelect={onSelect}
             isSelected={selectedExpr === child}
             depth={depth + 1}
-            props={props}
+            context={context}
           />
         </div>
       ))}

@@ -234,7 +234,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
             onSelect={isCompound ? handleSelectNode : undefined}
             isSelected={false}
             depth={0}
-            props={propsWithSelection}
+            context={propsWithSelection}
           />
           <div className="flex gap-2">
             <button

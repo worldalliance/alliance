@@ -19,3 +19,7 @@ Moved code is unchanged apart from imports and exports.
 The leaf editors read only the tag, action, and user lists with their loading and error flags, so those fields become `CohortLeafEditorSources` in `CohortLeafEditors.tsx`, and the builder's props extend it. The tree editors take `ExpressionEditorContext`, which adds the selected sub-expression. That replaces the builder's `@internal` `_selectedExpr` prop: no caller passed it, and keeping it on the public props would have the new files import the builder's props type, which imports them.
 
 The tests import `TagEditor` and `ActionSelectEditor` from their new file; the builder does not re-export them.
+
+## react/prop-types waiver
+
+The builder's file-wide `react/prop-types` waiver existed only because the tree and leaf editors took a prop literally named `props`, whose field reads the rule mistakes for unvalidated component props. Copying the waiver into both new files would widen it, so a separate commit renames that prop (`context` on the tree editors, `sources` on `LeafConditionEditor`) and drops the waiver from both.

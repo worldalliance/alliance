@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import type {
   CompletedActionCondition,
   FormFieldValueCondition,
@@ -266,17 +265,17 @@ const FormFieldEditor: React.FC<{
 export const LeafConditionEditor: React.FC<{
   expr: LeafCondition;
   onChange: (expr: LeafCondition) => void;
-  props: CohortLeafEditorSources;
-}> = ({ expr, onChange, props }) => {
+  sources: CohortLeafEditorSources;
+}> = ({ expr, onChange, sources }) => {
   switch (expr.type) {
     case "Tag":
       return (
         <TagEditor
           value={expr}
           onChange={onChange}
-          availableTags={props.availableTags}
-          tagsLoading={props.tagsLoading}
-          tagsError={props.tagsError}
+          availableTags={sources.availableTags}
+          tagsLoading={sources.tagsLoading}
+          tagsError={sources.tagsError}
         />
       );
     case "Manual":
@@ -284,9 +283,9 @@ export const LeafConditionEditor: React.FC<{
         <ManualEditor
           value={expr}
           onChange={onChange}
-          availableUsers={props.availableUsers}
-          usersLoading={props.usersLoading}
-          usersError={props.usersError}
+          availableUsers={sources.availableUsers}
+          usersLoading={sources.usersLoading}
+          usersError={sources.usersError}
         />
       );
     case "CompletedAction":
@@ -295,9 +294,9 @@ export const LeafConditionEditor: React.FC<{
         <ActionSelectEditor
           value={expr}
           onChange={onChange}
-          availableActions={props.availableActions}
-          actionsLoading={props.actionsLoading}
-          actionsError={props.actionsError}
+          availableActions={sources.availableActions}
+          actionsLoading={sources.actionsLoading}
+          actionsError={sources.actionsError}
         />
       );
     case "FormFieldValue":
