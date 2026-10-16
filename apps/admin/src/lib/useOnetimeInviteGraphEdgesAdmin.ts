@@ -1,4 +1,4 @@
-import { userGetOnetimeInviteGraphEdgesAdmin } from "@alliance/shared/client";
+import { userOnetimeInviteGetOnetimeInviteGraphEdgesAdmin } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useQuery } from "@tanstack/react-query";
 
@@ -9,9 +9,9 @@ export function useOnetimeInviteGraphEdgesAdmin(params?: {
   return useQuery({
     queryKey: queryKeys.onetimeInviteGraphEdgesAdmin(),
     queryFn: () =>
-      userGetOnetimeInviteGraphEdgesAdmin({ throwOnError: true }).then(
-        (response) => response.data,
-      ),
+      userOnetimeInviteGetOnetimeInviteGraphEdgesAdmin({
+        throwOnError: true,
+      }).then((response) => response.data),
     ...params,
   });
 }

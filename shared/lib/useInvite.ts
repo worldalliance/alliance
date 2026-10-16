@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import {
-  userOnetimeInvite,
+  userOnetimeInviteOnetimeInvite,
   userReferralReferrerProfile,
   type OnetimeInviteStatus,
   type ReferrerProfileDto,
@@ -61,7 +61,7 @@ export function useInvite(referralCode: string | null) {
     queryKey: queryKeys.onetimeInvite(referralCode),
     queryFn: () =>
       nullIfRefused(
-        userOnetimeInvite({
+        userOnetimeInviteOnetimeInvite({
           path: { code: referralCode! },
           throwOnError: true,
         }),

@@ -1,6 +1,6 @@
 import {
   shareUrlsFindInviteFeedAdmin,
-  userGetOnetimeInvitesAdmin,
+  userOnetimeInviteGetOnetimeInvitesAdmin,
 } from "@alliance/shared/client";
 import type {
   OnetimeInviteDto,
@@ -37,7 +37,7 @@ async function getOnetimeInvitesSince(
   let totalPages = 1;
 
   do {
-    const response = await userGetOnetimeInvitesAdmin({
+    const response = await userOnetimeInviteGetOnetimeInvitesAdmin({
       query: { page, limit: INVITES_PER_PAGE },
       throwOnError: true,
     });

@@ -1248,48 +1248,6 @@ export type CreateAmbassadorProgramInteractionDto = {
     interactionDate: string;
 };
 
-export type CommunityDto = {
-    id: number;
-    name: string;
-    description: string;
-    photo: string | null;
-    public: boolean;
-    allowMemberInvites: boolean;
-    allowStaffAssignments: boolean;
-    maxCapacity: number | null;
-    users: Array<ProfileDto>;
-    leaders: Array<ProfileDto>;
-};
-
-export type OnetimeInviteDto = {
-    id: number;
-    invitee: string;
-    inviteeDescription: string | null;
-    info: string | null;
-    code: string;
-    createdAt: string;
-    status: OnetimeInviteStatus;
-    invitedUserId: number | null;
-    community?: CommunityDto;
-    invitingUser?: ProfileDto;
-    invitedUser?: ProfileDto;
-    accepted: boolean;
-};
-
-export type RequestOnetimeInviteDto = {
-    invitee: string;
-    inviteeDescription?: string;
-    invitingUserId?: number;
-    communityId: number;
-};
-
-export type CreateOnetimeInviteDto = {
-    invitee: string;
-    info?: string;
-    invitingUserId?: number;
-    communityId?: number;
-};
-
 export type AmbassadorInviteDashboardDto = {
     goals: Array<AmbassadorInviteGoalWithStatsDto>;
     stats: AmbassadorInviteStatsDto;
@@ -1306,42 +1264,6 @@ export type UpdateAmbassadorInviteGoalDto = {
     targetSuccessfulRecruits?: number;
     startAt?: string;
     dueAt?: string;
-};
-
-export type UpdateOnetimeInviteDto = {
-    /**
-     * Omit to leave the invitee name as it is.
-     */
-    invitee?: string;
-    /**
-     * Group the invitee joins: a group you lead, or null for any open group. Omit to leave it as it is.
-     */
-    communityId?: number | null;
-};
-
-export type OnetimeInviteListDto = {
-    items: Array<OnetimeInviteDto>;
-    totalCount: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-};
-
-export type OnetimeInviteMemberUserDto = {
-    id: number;
-    displayName: string;
-    profilePicture: string | null;
-};
-
-export type OnetimeInviteMemberStatsDto = {
-    invitingUser: OnetimeInviteMemberUserDto;
-    sent: number;
-    accepted: number;
-};
-
-export type OnetimeInviteEdgeDto = {
-    invitingUserId: number;
-    invitedUserId: number;
 };
 
 export type CreateTagDto = {
@@ -1470,6 +1392,84 @@ export type FriendStatusDto = {
 export type FriendGraphEdgeDto = {
     userAId: number;
     userBId: number;
+};
+
+export type CommunityDto = {
+    id: number;
+    name: string;
+    description: string;
+    photo: string | null;
+    public: boolean;
+    allowMemberInvites: boolean;
+    allowStaffAssignments: boolean;
+    maxCapacity: number | null;
+    users: Array<ProfileDto>;
+    leaders: Array<ProfileDto>;
+};
+
+export type OnetimeInviteDto = {
+    id: number;
+    invitee: string;
+    inviteeDescription: string | null;
+    info: string | null;
+    code: string;
+    createdAt: string;
+    status: OnetimeInviteStatus;
+    invitedUserId: number | null;
+    community?: CommunityDto;
+    invitingUser?: ProfileDto;
+    invitedUser?: ProfileDto;
+    accepted: boolean;
+};
+
+export type RequestOnetimeInviteDto = {
+    invitee: string;
+    inviteeDescription?: string;
+    invitingUserId?: number;
+    communityId: number;
+};
+
+export type CreateOnetimeInviteDto = {
+    invitee: string;
+    info?: string;
+    invitingUserId?: number;
+    communityId?: number;
+};
+
+export type UpdateOnetimeInviteDto = {
+    /**
+     * Omit to leave the invitee name as it is.
+     */
+    invitee?: string;
+    /**
+     * Group the invitee joins: a group you lead, or null for any open group. Omit to leave it as it is.
+     */
+    communityId?: number | null;
+};
+
+export type OnetimeInviteListDto = {
+    items: Array<OnetimeInviteDto>;
+    totalCount: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+};
+
+export type OnetimeInviteMemberUserDto = {
+    id: number;
+    displayName: string;
+    profilePicture: string | null;
+};
+
+export type OnetimeInviteMemberStatsDto = {
+    invitingUser: OnetimeInviteMemberUserDto;
+    sent: number;
+    accepted: number;
+};
+
+export type OnetimeInviteEdgeDto = {
+    invitingUserId: number;
+    invitedUserId: number;
 };
 
 export type StreamableFile = {
@@ -6225,124 +6225,6 @@ export type UserCreateAmbassadorProgramInteractionAdminResponses = {
 
 export type UserCreateAmbassadorProgramInteractionAdminResponse = UserCreateAmbassadorProgramInteractionAdminResponses[keyof UserCreateAmbassadorProgramInteractionAdminResponses];
 
-export type UserOnetimeInviteData = {
-    body?: never;
-    path: {
-        code: string;
-    };
-    query?: never;
-    url: '/user/onetimeInvite/{code}';
-};
-
-export type UserOnetimeInviteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserOnetimeInviteError = UserOnetimeInviteErrors[keyof UserOnetimeInviteErrors];
-
-export type UserOnetimeInviteResponses = {
-    200: OnetimeInviteDto;
-};
-
-export type UserOnetimeInviteResponse = UserOnetimeInviteResponses[keyof UserOnetimeInviteResponses];
-
-export type UserRequestOnetimeInviteData = {
-    body: RequestOnetimeInviteDto;
-    path?: never;
-    query?: never;
-    url: '/user/onetimeInvite/request';
-};
-
-export type UserRequestOnetimeInviteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserRequestOnetimeInviteError = UserRequestOnetimeInviteErrors[keyof UserRequestOnetimeInviteErrors];
-
-export type UserRequestOnetimeInviteResponses = {
-    200: OnetimeInviteDto;
-};
-
-export type UserRequestOnetimeInviteResponse = UserRequestOnetimeInviteResponses[keyof UserRequestOnetimeInviteResponses];
-
-export type UserApproveOnetimeInviteData = {
-    body?: never;
-    path: {
-        inviteId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInvite/{inviteId}/approve';
-};
-
-export type UserApproveOnetimeInviteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserApproveOnetimeInviteError = UserApproveOnetimeInviteErrors[keyof UserApproveOnetimeInviteErrors];
-
-export type UserApproveOnetimeInviteResponses = {
-    200: OnetimeInviteDto;
-};
-
-export type UserApproveOnetimeInviteResponse = UserApproveOnetimeInviteResponses[keyof UserApproveOnetimeInviteResponses];
-
-export type UserRejectOnetimeInviteData = {
-    body?: never;
-    path: {
-        inviteId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInvite/{inviteId}/reject';
-};
-
-export type UserRejectOnetimeInviteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserRejectOnetimeInviteError = UserRejectOnetimeInviteErrors[keyof UserRejectOnetimeInviteErrors];
-
-export type UserRejectOnetimeInviteResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserRejectOnetimeInviteResponse = UserRejectOnetimeInviteResponses[keyof UserRejectOnetimeInviteResponses];
-
-export type UserCreateOnetimeInviteData = {
-    body: CreateOnetimeInviteDto;
-    path?: never;
-    query?: never;
-    url: '/user/onetimeInvite/create';
-};
-
-export type UserCreateOnetimeInviteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserCreateOnetimeInviteError = UserCreateOnetimeInviteErrors[keyof UserCreateOnetimeInviteErrors];
-
-export type UserCreateOnetimeInviteResponses = {
-    200: OnetimeInviteDto;
-};
-
-export type UserCreateOnetimeInviteResponse = UserCreateOnetimeInviteResponses[keyof UserCreateOnetimeInviteResponses];
-
 export type UserGetAmbassadorInviteDashboardData = {
     body?: never;
     path?: never;
@@ -6436,195 +6318,6 @@ export type UserUpdateAmbassadorInviteGoalResponses = {
 };
 
 export type UserUpdateAmbassadorInviteGoalResponse = UserUpdateAmbassadorInviteGoalResponses[keyof UserUpdateAmbassadorInviteGoalResponses];
-
-export type UserDeleteOnetimeInviteData = {
-    body?: never;
-    path: {
-        inviteId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInvites/{inviteId}';
-};
-
-export type UserDeleteOnetimeInviteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserDeleteOnetimeInviteError = UserDeleteOnetimeInviteErrors[keyof UserDeleteOnetimeInviteErrors];
-
-export type UserDeleteOnetimeInviteResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserDeleteOnetimeInviteResponse = UserDeleteOnetimeInviteResponses[keyof UserDeleteOnetimeInviteResponses];
-
-export type UserUpdateOnetimeInviteData = {
-    body: UpdateOnetimeInviteDto;
-    path: {
-        inviteId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInvites/{inviteId}';
-};
-
-export type UserUpdateOnetimeInviteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserUpdateOnetimeInviteError = UserUpdateOnetimeInviteErrors[keyof UserUpdateOnetimeInviteErrors];
-
-export type UserUpdateOnetimeInviteResponses = {
-    200: OnetimeInviteDto;
-};
-
-export type UserUpdateOnetimeInviteResponse = UserUpdateOnetimeInviteResponses[keyof UserUpdateOnetimeInviteResponses];
-
-export type UserGetOnetimeInvitesAdminData = {
-    body?: never;
-    path?: never;
-    query?: {
-        page?: number;
-        limit?: number;
-    };
-    url: '/user/onetimeInvites';
-};
-
-export type UserGetOnetimeInvitesAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetOnetimeInvitesAdminError = UserGetOnetimeInvitesAdminErrors[keyof UserGetOnetimeInvitesAdminErrors];
-
-export type UserGetOnetimeInvitesAdminResponses = {
-    200: OnetimeInviteListDto;
-};
-
-export type UserGetOnetimeInvitesAdminResponse = UserGetOnetimeInvitesAdminResponses[keyof UserGetOnetimeInvitesAdminResponses];
-
-export type UserGetOnetimeInviteMemberStatsAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/onetimeInvites/memberStats';
-};
-
-export type UserGetOnetimeInviteMemberStatsAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetOnetimeInviteMemberStatsAdminError = UserGetOnetimeInviteMemberStatsAdminErrors[keyof UserGetOnetimeInviteMemberStatsAdminErrors];
-
-export type UserGetOnetimeInviteMemberStatsAdminResponses = {
-    200: Array<OnetimeInviteMemberStatsDto>;
-};
-
-export type UserGetOnetimeInviteMemberStatsAdminResponse = UserGetOnetimeInviteMemberStatsAdminResponses[keyof UserGetOnetimeInviteMemberStatsAdminResponses];
-
-export type UserGetOnetimeInviteGraphEdgesAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/onetimeInvites/graphEdges';
-};
-
-export type UserGetOnetimeInviteGraphEdgesAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetOnetimeInviteGraphEdgesAdminError = UserGetOnetimeInviteGraphEdgesAdminErrors[keyof UserGetOnetimeInviteGraphEdgesAdminErrors];
-
-export type UserGetOnetimeInviteGraphEdgesAdminResponses = {
-    200: Array<OnetimeInviteEdgeDto>;
-};
-
-export type UserGetOnetimeInviteGraphEdgesAdminResponse = UserGetOnetimeInviteGraphEdgesAdminResponses[keyof UserGetOnetimeInviteGraphEdgesAdminResponses];
-
-export type UserGetOnetimeInvitesOverviewData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/onetimeInvites/overview';
-};
-
-export type UserGetOnetimeInvitesOverviewErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetOnetimeInvitesOverviewError = UserGetOnetimeInvitesOverviewErrors[keyof UserGetOnetimeInvitesOverviewErrors];
-
-export type UserGetOnetimeInvitesOverviewResponses = {
-    200: Array<OnetimeInviteDto>;
-};
-
-export type UserGetOnetimeInvitesOverviewResponse = UserGetOnetimeInvitesOverviewResponses[keyof UserGetOnetimeInvitesOverviewResponses];
-
-export type UserGetOnetimeInvitesByCommunityData = {
-    body?: never;
-    path: {
-        communityId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInvites/{communityId}';
-};
-
-export type UserGetOnetimeInvitesByCommunityErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetOnetimeInvitesByCommunityError = UserGetOnetimeInvitesByCommunityErrors[keyof UserGetOnetimeInvitesByCommunityErrors];
-
-export type UserGetOnetimeInvitesByCommunityResponses = {
-    200: Array<OnetimeInviteDto>;
-};
-
-export type UserGetOnetimeInvitesByCommunityResponse = UserGetOnetimeInvitesByCommunityResponses[keyof UserGetOnetimeInvitesByCommunityResponses];
-
-export type UserGetOnetimeInvitesByRequesterData = {
-    body?: never;
-    path: {
-        communityId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInvites/{communityId}/my';
-};
-
-export type UserGetOnetimeInvitesByRequesterErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetOnetimeInvitesByRequesterError = UserGetOnetimeInvitesByRequesterErrors[keyof UserGetOnetimeInvitesByRequesterErrors];
-
-export type UserGetOnetimeInvitesByRequesterResponses = {
-    200: Array<OnetimeInviteDto>;
-};
-
-export type UserGetOnetimeInvitesByRequesterResponse = UserGetOnetimeInvitesByRequesterResponses[keyof UserGetOnetimeInvitesByRequesterResponses];
 
 export type UserRequestAccountDeletionData = {
     body?: never;
@@ -7425,6 +7118,313 @@ export type UserFriendGetFriendGraphEdgesAdminResponses = {
 };
 
 export type UserFriendGetFriendGraphEdgesAdminResponse = UserFriendGetFriendGraphEdgesAdminResponses[keyof UserFriendGetFriendGraphEdgesAdminResponses];
+
+export type UserOnetimeInviteOnetimeInviteData = {
+    body?: never;
+    path: {
+        code: string;
+    };
+    query?: never;
+    url: '/user/onetimeInvite/{code}';
+};
+
+export type UserOnetimeInviteOnetimeInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteOnetimeInviteError = UserOnetimeInviteOnetimeInviteErrors[keyof UserOnetimeInviteOnetimeInviteErrors];
+
+export type UserOnetimeInviteOnetimeInviteResponses = {
+    200: OnetimeInviteDto;
+};
+
+export type UserOnetimeInviteOnetimeInviteResponse = UserOnetimeInviteOnetimeInviteResponses[keyof UserOnetimeInviteOnetimeInviteResponses];
+
+export type UserOnetimeInviteRequestOnetimeInviteData = {
+    body: RequestOnetimeInviteDto;
+    path?: never;
+    query?: never;
+    url: '/user/onetimeInvite/request';
+};
+
+export type UserOnetimeInviteRequestOnetimeInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteRequestOnetimeInviteError = UserOnetimeInviteRequestOnetimeInviteErrors[keyof UserOnetimeInviteRequestOnetimeInviteErrors];
+
+export type UserOnetimeInviteRequestOnetimeInviteResponses = {
+    200: OnetimeInviteDto;
+};
+
+export type UserOnetimeInviteRequestOnetimeInviteResponse = UserOnetimeInviteRequestOnetimeInviteResponses[keyof UserOnetimeInviteRequestOnetimeInviteResponses];
+
+export type UserOnetimeInviteApproveOnetimeInviteData = {
+    body?: never;
+    path: {
+        inviteId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvite/{inviteId}/approve';
+};
+
+export type UserOnetimeInviteApproveOnetimeInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteApproveOnetimeInviteError = UserOnetimeInviteApproveOnetimeInviteErrors[keyof UserOnetimeInviteApproveOnetimeInviteErrors];
+
+export type UserOnetimeInviteApproveOnetimeInviteResponses = {
+    200: OnetimeInviteDto;
+};
+
+export type UserOnetimeInviteApproveOnetimeInviteResponse = UserOnetimeInviteApproveOnetimeInviteResponses[keyof UserOnetimeInviteApproveOnetimeInviteResponses];
+
+export type UserOnetimeInviteRejectOnetimeInviteData = {
+    body?: never;
+    path: {
+        inviteId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvite/{inviteId}/reject';
+};
+
+export type UserOnetimeInviteRejectOnetimeInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteRejectOnetimeInviteError = UserOnetimeInviteRejectOnetimeInviteErrors[keyof UserOnetimeInviteRejectOnetimeInviteErrors];
+
+export type UserOnetimeInviteRejectOnetimeInviteResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserOnetimeInviteRejectOnetimeInviteResponse = UserOnetimeInviteRejectOnetimeInviteResponses[keyof UserOnetimeInviteRejectOnetimeInviteResponses];
+
+export type UserOnetimeInviteCreateOnetimeInviteData = {
+    body: CreateOnetimeInviteDto;
+    path?: never;
+    query?: never;
+    url: '/user/onetimeInvite/create';
+};
+
+export type UserOnetimeInviteCreateOnetimeInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteCreateOnetimeInviteError = UserOnetimeInviteCreateOnetimeInviteErrors[keyof UserOnetimeInviteCreateOnetimeInviteErrors];
+
+export type UserOnetimeInviteCreateOnetimeInviteResponses = {
+    200: OnetimeInviteDto;
+};
+
+export type UserOnetimeInviteCreateOnetimeInviteResponse = UserOnetimeInviteCreateOnetimeInviteResponses[keyof UserOnetimeInviteCreateOnetimeInviteResponses];
+
+export type UserOnetimeInviteDeleteOnetimeInviteData = {
+    body?: never;
+    path: {
+        inviteId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvites/{inviteId}';
+};
+
+export type UserOnetimeInviteDeleteOnetimeInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteDeleteOnetimeInviteError = UserOnetimeInviteDeleteOnetimeInviteErrors[keyof UserOnetimeInviteDeleteOnetimeInviteErrors];
+
+export type UserOnetimeInviteDeleteOnetimeInviteResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserOnetimeInviteDeleteOnetimeInviteResponse = UserOnetimeInviteDeleteOnetimeInviteResponses[keyof UserOnetimeInviteDeleteOnetimeInviteResponses];
+
+export type UserOnetimeInviteUpdateOnetimeInviteData = {
+    body: UpdateOnetimeInviteDto;
+    path: {
+        inviteId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvites/{inviteId}';
+};
+
+export type UserOnetimeInviteUpdateOnetimeInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteUpdateOnetimeInviteError = UserOnetimeInviteUpdateOnetimeInviteErrors[keyof UserOnetimeInviteUpdateOnetimeInviteErrors];
+
+export type UserOnetimeInviteUpdateOnetimeInviteResponses = {
+    200: OnetimeInviteDto;
+};
+
+export type UserOnetimeInviteUpdateOnetimeInviteResponse = UserOnetimeInviteUpdateOnetimeInviteResponses[keyof UserOnetimeInviteUpdateOnetimeInviteResponses];
+
+export type UserOnetimeInviteGetOnetimeInvitesAdminData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        limit?: number;
+    };
+    url: '/user/onetimeInvites';
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesAdminError = UserOnetimeInviteGetOnetimeInvitesAdminErrors[keyof UserOnetimeInviteGetOnetimeInvitesAdminErrors];
+
+export type UserOnetimeInviteGetOnetimeInvitesAdminResponses = {
+    200: OnetimeInviteListDto;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesAdminResponse = UserOnetimeInviteGetOnetimeInvitesAdminResponses[keyof UserOnetimeInviteGetOnetimeInvitesAdminResponses];
+
+export type UserOnetimeInviteGetOnetimeInviteMemberStatsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/onetimeInvites/memberStats';
+};
+
+export type UserOnetimeInviteGetOnetimeInviteMemberStatsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteGetOnetimeInviteMemberStatsAdminError = UserOnetimeInviteGetOnetimeInviteMemberStatsAdminErrors[keyof UserOnetimeInviteGetOnetimeInviteMemberStatsAdminErrors];
+
+export type UserOnetimeInviteGetOnetimeInviteMemberStatsAdminResponses = {
+    200: Array<OnetimeInviteMemberStatsDto>;
+};
+
+export type UserOnetimeInviteGetOnetimeInviteMemberStatsAdminResponse = UserOnetimeInviteGetOnetimeInviteMemberStatsAdminResponses[keyof UserOnetimeInviteGetOnetimeInviteMemberStatsAdminResponses];
+
+export type UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/onetimeInvites/graphEdges';
+};
+
+export type UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminError = UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminErrors[keyof UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminErrors];
+
+export type UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminResponses = {
+    200: Array<OnetimeInviteEdgeDto>;
+};
+
+export type UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminResponse = UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminResponses[keyof UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminResponses];
+
+export type UserOnetimeInviteGetOnetimeInvitesOverviewData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/onetimeInvites/overview';
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesOverviewErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesOverviewError = UserOnetimeInviteGetOnetimeInvitesOverviewErrors[keyof UserOnetimeInviteGetOnetimeInvitesOverviewErrors];
+
+export type UserOnetimeInviteGetOnetimeInvitesOverviewResponses = {
+    200: Array<OnetimeInviteDto>;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesOverviewResponse = UserOnetimeInviteGetOnetimeInvitesOverviewResponses[keyof UserOnetimeInviteGetOnetimeInvitesOverviewResponses];
+
+export type UserOnetimeInviteGetOnetimeInvitesByCommunityData = {
+    body?: never;
+    path: {
+        communityId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvites/{communityId}';
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesByCommunityErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesByCommunityError = UserOnetimeInviteGetOnetimeInvitesByCommunityErrors[keyof UserOnetimeInviteGetOnetimeInvitesByCommunityErrors];
+
+export type UserOnetimeInviteGetOnetimeInvitesByCommunityResponses = {
+    200: Array<OnetimeInviteDto>;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesByCommunityResponse = UserOnetimeInviteGetOnetimeInvitesByCommunityResponses[keyof UserOnetimeInviteGetOnetimeInvitesByCommunityResponses];
+
+export type UserOnetimeInviteGetOnetimeInvitesByRequesterData = {
+    body?: never;
+    path: {
+        communityId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvites/{communityId}/my';
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesByRequesterErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesByRequesterError = UserOnetimeInviteGetOnetimeInvitesByRequesterErrors[keyof UserOnetimeInviteGetOnetimeInvitesByRequesterErrors];
+
+export type UserOnetimeInviteGetOnetimeInvitesByRequesterResponses = {
+    200: Array<OnetimeInviteDto>;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesByRequesterResponse = UserOnetimeInviteGetOnetimeInvitesByRequesterResponses[keyof UserOnetimeInviteGetOnetimeInvitesByRequesterResponses];
 
 export type ImagesGetImageData = {
     body?: never;

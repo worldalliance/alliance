@@ -35,6 +35,7 @@ import { UserDeviceController } from "./user-device.controller";
 import { UserDeviceService } from "./user-device.service";
 import { UserFriendController } from "./user-friend.controller";
 import { UserGroupAssignmentController } from "./user-group-assignment.controller";
+import { UserOnetimeInviteController } from "./user-onetime-invite.controller";
 import { UserReferralController } from "./user-referral.controller";
 import { UserTagController } from "./user-tag.controller";
 import { UserController } from "./user.controller";
@@ -79,6 +80,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     UserGroupAssignmentController,
     UserReferralController,
     UserFriendController,
+    UserOnetimeInviteController,
   ],
   providers: [
     UserService,

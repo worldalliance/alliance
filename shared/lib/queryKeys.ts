@@ -13,7 +13,8 @@ import type { UseActivitiesProps } from "./useActivities";
 
 const activitiesAll = () => ["useActivities"] as const;
 
-const onetimeInvitesAdminAll = () => ["userGetOnetimeInvitesAdmin"] as const;
+const onetimeInvitesAdminAll = () =>
+  ["userOnetimeInviteGetOnetimeInvitesAdmin"] as const;
 
 /** Prefix over everything derived from a form definition, so one form write
  * invalidates the index and the per-form field lists together. */
@@ -84,7 +85,7 @@ export const queryKeys = {
   communityMemberContactInfo: (communityId: number | null) =>
     ["communityGetMemberContactInfo", communityId] as const,
   communityOnetimeInvites: (communityId: number) =>
-    ["userGetOnetimeInvitesByCommunity", communityId] as const,
+    ["userOnetimeInviteGetOnetimeInvitesByCommunity", communityId] as const,
   contractById: (contractId: number | null) =>
     ["contractGetById", contractId] as const,
   currentContract: () => ["contractGetCurrent"] as const,
@@ -111,8 +112,10 @@ export const queryKeys = {
   notifications: () => ["notifications"] as const,
   notificationsLoadedAt: () => ["notifications", "loadedAt"] as const,
   notificationsUnreadCount: () => ["notifications", "unreadCount"] as const,
-  onetimeInvite: (code: string | null) => ["userOnetimeInvite", code] as const,
-  onetimeInvitesOverview: () => ["userGetOnetimeInvitesOverview"] as const,
+  onetimeInvite: (code: string | null) =>
+    ["userOnetimeInviteOnetimeInvite", code] as const,
+  onetimeInvitesOverview: () =>
+    ["userOnetimeInviteGetOnetimeInvitesOverview"] as const,
   publicCommunities: () => ["communityGetPublicCommunities"] as const,
   publicMembers: () => ["userMembersPublic"] as const,
   publicProfile: (userId: number) => ["userFindOne", userId] as const,
@@ -227,9 +230,9 @@ export const queryKeys = {
   onetimeInvitesAdmin: (page: number, limit: number) =>
     [...onetimeInvitesAdminAll(), page, limit] as const,
   onetimeInviteMemberStatsAdmin: () =>
-    ["userGetOnetimeInviteMemberStatsAdmin"] as const,
+    ["userOnetimeInviteGetOnetimeInviteMemberStatsAdmin"] as const,
   onetimeInviteGraphEdgesAdmin: () =>
-    ["userGetOnetimeInviteGraphEdgesAdmin"] as const,
+    ["userOnetimeInviteGetOnetimeInviteGraphEdgesAdmin"] as const,
   postsAdmin: () => ["forumGetPostsForAdmin"] as const,
   projectsAdminAll,
   projectsAdmin: () => [...projectsAdminAll(), "list"] as const,

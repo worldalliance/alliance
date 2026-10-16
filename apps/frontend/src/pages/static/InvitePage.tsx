@@ -2,7 +2,7 @@ import { AnalyticsEvent } from "@alliance/common/analytics";
 // eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   ReferrerProfileDto,
-  userOnetimeInvite,
+  userOnetimeInviteOnetimeInvite,
   userReferralReferrerProfile,
 } from "@alliance/shared/client";
 import { captureEvent } from "@alliance/shared/lib/analytics";
@@ -54,12 +54,14 @@ const InvitePage: React.FC = () => {
       },
     );
 
-    userOnetimeInvite({ path: { code: referralCode } }).then((response) => {
-      if (response.data) {
-        setInviteeName(response.data.invitee);
-        setCommunityId(response.data.community?.id ?? null);
-      }
-    });
+    userOnetimeInviteOnetimeInvite({ path: { code: referralCode } }).then(
+      (response) => {
+        if (response.data) {
+          setInviteeName(response.data.invitee);
+          setCommunityId(response.data.community?.id ?? null);
+        }
+      },
+    );
 
     posthog.register_once({
       referral_code: referralCode,

@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
-  userGetOnetimeInvitesOverview,
-  userUpdateOnetimeInvite,
+  userOnetimeInviteGetOnetimeInvitesOverview,
+  userOnetimeInviteUpdateOnetimeInvite,
 } from "../client";
 import { queryKeys } from "./queryKeys";
 import { useOnetimeInviteCache } from "./useOnetimeInviteCache";
@@ -26,7 +26,9 @@ export function useOnetimeInvitesOverview(params?: { enabled?: boolean }) {
   } = useQuery({
     queryKey: QUERY_KEY,
     queryFn: () =>
-      userGetOnetimeInvitesOverview({ throwOnError: true }).then((r) => r.data),
+      userOnetimeInviteGetOnetimeInvitesOverview({ throwOnError: true }).then(
+        (r) => r.data,
+      ),
     enabled,
   });
 
@@ -44,7 +46,7 @@ export function useOnetimeInvitesOverview(params?: { enabled?: boolean }) {
       communityId?: number | null;
     }) => {
       const { inviteId, ...body } = vars;
-      return userUpdateOnetimeInvite({
+      return userOnetimeInviteUpdateOnetimeInvite({
         path: { inviteId },
         body,
         throwOnError: true,
