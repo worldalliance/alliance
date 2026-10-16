@@ -3,7 +3,7 @@ import { formatTime } from "@alliance/shared/lib/utils";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
-import { Link, href, useNavigate } from "react-router";
+import { Link, href } from "react-router";
 
 export interface ForumActivityCommentCardProps {
   comment: UserCommentDto;
@@ -22,8 +22,6 @@ const ForumActivityCommentCard = ({
             id: comment.parentObjectId.toString(),
           })}?replyId=${comment.id}`
         : null;
-
-  const navigate = useNavigate();
 
   if (!url) {
     return null;
@@ -48,18 +46,7 @@ const ForumActivityCommentCard = ({
           {`commented ${formatTime(new Date(comment.createdAt), {
             addSuffix: true,
           })} in `}
-          <span
-            className="!text-green font-medium"
-            onClick={() => {
-              navigate(
-                href("/forum/post/:id", {
-                  id: comment.parentObjectId.toString(),
-                }),
-              );
-            }}
-          >
-            {comment.parentTitle}
-          </span>
+          <span className="!text-green font-medium">{comment.parentTitle}</span>
         </span>
       </div>
     </Link>
