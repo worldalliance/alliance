@@ -1,4 +1,5 @@
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
+import { useCustomValidatorAdmin } from "../../../lib/useCustomValidatorAdmin";
 import { CustomValidatorSelect } from "../CommonControls";
 import {
   isDraftValidatorId,
@@ -6,7 +7,6 @@ import {
 } from "../customValidatorDrafts";
 import { RetryButton } from "./RetryButton";
 import { INPUT_CLASS } from "./styles";
-import { useSavedValidator } from "./useSavedValidator";
 
 type ValidatorCondition = Extract<Condition, { kind: "validator" }>;
 
@@ -22,7 +22,7 @@ export function ValidatorRule({
   const { drafts, setDraft, createDraftId } = useCustomValidatorDrafts();
   const { validatorId } = condition;
   const isDraft = isDraftValidatorId(validatorId);
-  const saved = useSavedValidator(isDraft ? null : validatorId);
+  const saved = useCustomValidatorAdmin(isDraft ? null : validatorId).query;
   const config = isDraft ? drafts[validatorId] : saved.data;
 
   return (
