@@ -196,6 +196,8 @@ export const queryKeys = {
   graphUsersAdmin: () => ["userListForGraphAdmin"] as const,
   inviteFeedAdmin: (startAt: string | null) =>
     ["inviteFeedAdmin", startAt] as const,
+  inviteFunnelAdmin: (range: { start: string; end: string }) =>
+    ["analyticsGetInviteFunnelAdmin", range] as const,
   memberContactInfoAdmin: () =>
     ["communityGetAllMemberContactInfoAdmin"] as const,
   onetimeInvitesAdminAll,
