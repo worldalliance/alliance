@@ -1,6 +1,8 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import type {
   EventType,
+  InviteLinkKind,
+  InviteLinkSort,
   PreviewEmailHtmlDto,
   PreviewTextDto,
   PreviewWaitlistEmailDto,
@@ -206,6 +208,12 @@ export const queryKeys = {
     ["inviteFeedAdmin", startAt] as const,
   inviteFunnelAdmin: (range: { start: string; end: string }) =>
     ["analyticsGetInviteFunnelAdmin", range] as const,
+  inviteLinksAdmin: (query: {
+    kind: InviteLinkKind | undefined;
+    sort: InviteLinkSort;
+    page: number;
+    limit: number;
+  }) => ["inviteLinkAdminSearch", query] as const,
   memberContactInfoAdmin: () =>
     ["communityGetAllMemberContactInfoAdmin"] as const,
   onetimeInvitesAdminAll,
