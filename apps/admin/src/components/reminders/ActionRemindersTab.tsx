@@ -1,10 +1,5 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import {
-  actionsReminderAnchorCandidatesAdmin,
-  ActionSuiteDto,
-  ReminderAnchorCandidateDto,
-  ReminderGroupDto,
-} from "@alliance/shared/client";
+import { ActionSuiteDto, ReminderGroupDto } from "@alliance/shared/client";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -31,6 +26,7 @@ import React, {
 } from "react";
 import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useActionReminderGroupsAdmin } from "../../lib/useActionReminderGroupsAdmin";
+import { useReminderAnchorCandidatesAdmin } from "../../lib/useReminderAnchorCandidatesAdmin";
 import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import ActionReminderCard from "./ActionReminderCard";
 import ActionReminderGroupForm, {
@@ -117,49 +113,8 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState<string | null>(null);
 
-  const [anchorCandidates, setAnchorCandidates] = useState<
-    ReminderAnchorCandidateDto[]
-  >([]);
-  const [anchorCandidatesError, setAnchorCandidatesError] = useState<
-    string | null
-  >(null);
-
-  useEffect(() => {
-    if (!selectedEventId) {
-      setAnchorCandidates([]);
-      setAnchorCandidatesError(null);
-      return;
-    }
-    let cancelled = false;
-    actionsReminderAnchorCandidatesAdmin({
-      path: { eventId: selectedEventId },
-    })
-      .then((response) => {
-        if (cancelled) return;
-        // an empty candidate list changes what the form offers (and shows a
-        // set anchor as stale), so a failed fetch must be surfaced instead of
-        // being treated as "no dependency deadlines"
-        if (response.error) {
-          setAnchorCandidates([]);
-          setAnchorCandidatesError(
-            "Failed to load dependency deadlines for timing anchors.",
-          );
-          return;
-        }
-        setAnchorCandidates(response.data ?? []);
-        setAnchorCandidatesError(null);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setAnchorCandidates([]);
-        setAnchorCandidatesError(
-          "Failed to load dependency deadlines for timing anchors.",
-        );
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedEventId]);
+  const { data: anchorCandidates = [], isError: anchorCandidatesLoadFailed } =
+    useReminderAnchorCandidatesAdmin(selectedEventId);
 
   useEffect(() => {
     if (memberEvents.length && selectedEventId == null) {
@@ -667,8 +622,10 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
           )}
         </p>
       )}
-      {anchorCandidatesError && (
-        <p className="text-sm text-red-600 mb-2">{anchorCandidatesError}</p>
+      {anchorCandidatesLoadFailed && (
+        <p className="text-sm text-red-600 mb-2">
+          Failed to load dependency deadlines for timing anchors.
+        </p>
       )}
       <Card style={CardStyle.White}>
         <div className="flex flex-col gap-3">
