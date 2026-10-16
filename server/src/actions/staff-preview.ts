@@ -1,6 +1,6 @@
+import { hasMemberActionStarted } from "@alliance/common/actionEvent";
 import { ForbiddenException } from "@nestjs/common";
 import type { User } from "src/user/entities/user.entity";
-import { hasMemberActionStarted } from "src/utils/action-user";
 import { loadedActionEvents, type Action } from "./entities/action.entity";
 
 export function isStaffPreviewActive(

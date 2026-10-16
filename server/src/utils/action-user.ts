@@ -1,13 +1,12 @@
 /** @fileoverview Utils for relationships between actions and users */
-import { hasTakenEffect } from "@alliance/common/actionEvent";
+import {
+  eventInEffectAt,
+  findStartedMemberActionEvent,
+  hasTakenEffect,
+} from "@alliance/common/actionEvent";
 import { isAwayRangeActiveAt } from "@alliance/common/awayRange";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
-import {
-  ActionStatus,
-  type ActionEvent,
-} from "src/actions/entities/action-event.entity";
 import { Action, loadedActionEvents } from "src/actions/entities/action.entity";
-import { eventInEffectAt } from "src/actions/utils/action-event";
 import type { Community } from "src/community/entities/community.entity";
 import type { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { loadedUserTags, User } from "src/user/entities/user.entity";
@@ -245,25 +244,6 @@ export enum TaskAwayStatus {
   AwayCurrently = "away_currently",
   AwayLater = "away_later",
   NotAway = "not_away",
-}
-
-/** The member-action event, once it has taken effect. */
-export function findStartedMemberActionEvent<
-  E extends Pick<ActionEvent, "date" | "newStatus">,
->(events: E[], now: Date): E | undefined {
-  return events.find(
-    (event) =>
-      hasTakenEffect(event.date, now) &&
-      event.newStatus === ActionStatus.MemberAction,
-  );
-}
-
-/** Has a member-action phase opened? See {@link findStartedMemberActionEvent}. */
-export function hasMemberActionStarted(
-  events: Pick<ActionEvent, "date" | "newStatus">[],
-  now: Date,
-): boolean {
-  return findStartedMemberActionEvent(events, now) !== undefined;
 }
 
 export function hasMemberActionDeadlinePassed(

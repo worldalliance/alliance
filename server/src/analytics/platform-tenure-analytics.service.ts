@@ -1,3 +1,4 @@
+import { findStartedMemberActionEvent } from "@alliance/common/actionEvent";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { millisecondsInWeek } from "date-fns/constants";
@@ -13,7 +14,6 @@ import {
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { ContractEventType } from "src/user/entities/contract-event.entity";
-import { findStartedMemberActionEvent } from "src/utils/action-user";
 import { yieldToEventLoop } from "src/utils/event-loop";
 import { type Repository } from "typeorm";
 import { PlatformTenureCohortStats } from "./platform-tenure-cohort.dto";

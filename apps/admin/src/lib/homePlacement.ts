@@ -1,3 +1,8 @@
+import {
+  eventInEffectAt,
+  hasMemberActionStarted,
+  hasTakenEffect,
+} from "@alliance/common/actionEvent";
 import { isFollowUpFormActiveAt } from "@alliance/common/followUpForm";
 import type {
   ActionEventDto,
@@ -125,9 +130,10 @@ export function actionHomePlacement(params: {
   if (action.archived) return inactive(InactiveReason.Archived);
   if (action.publicOnly) return inactive(InactiveReason.PublicOnly);
 
-  const opens = memberActionDates(action.events);
-  const started = opens.some((date) => date <= now);
-  const scheduled = opens.some((date) => date > now);
+  const started = hasMemberActionStarted(action.events, now);
+  const scheduled = memberActionDates(action.events).some(
+    (date) => !hasTakenEffect(date, now),
+  );
   const staffPreview = action.staffPreview && !started;
   if (action.preventCompletion && !staffPreview) {
     return inactive(InactiveReason.CompletionBlocked);
@@ -176,11 +182,7 @@ function statusAt(params: {
   now: Date;
 }): ActionStatus {
   const { events, now } = params;
-  const past = events.filter((event) => new Date(event.date) <= now);
-  if (past.length === 0) return "draft";
-  return past.reduce((latest, event) =>
-    new Date(event.date) > new Date(latest.date) ? event : latest,
-  ).newStatus;
+  return eventInEffectAt(events, now).event?.newStatus ?? "draft";
 }
 
 export function generalUpdateHomePlacement(params: {
@@ -239,7 +241,7 @@ export function followUpHomePlacement(params: {
   // Members receive it while the form is active and the parent has opened and
   // isn't in draft. Those only change at the form's start or a parent event.
   const reachesMembersAt = (time: number) =>
-    firstOpen <= time &&
+    hasMemberActionStarted(parent.events, new Date(time)) &&
     isFollowUpFormActiveAt(followUpForm, new Date(time)) &&
     statusAt({ events: parent.events, now: new Date(time) }) !== "draft";
   const firstReach = [

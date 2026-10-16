@@ -1,3 +1,7 @@
+import {
+  eventInEffectAt,
+  hasMemberActionStarted,
+} from "@alliance/common/actionEvent";
 import { sortByDateDescending } from "@alliance/shared/lib/actionEventsPanel";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -11,10 +15,6 @@ import {
   ACTION_STATUS_LABELS,
 } from "../../lib/actionStatusDisplay";
 import ActionDashboardToolbar from "./ActionDashboardToolbar";
-import {
-  currentEventIdAt,
-  hasMemberActionStartedAt,
-} from "./actionEventTiming";
 import ActionParticipationStats from "./ActionParticipationStats";
 import ActionResponseReports from "./ActionResponseReports";
 import type { ActionExport } from "./useActionExport";
@@ -46,8 +46,8 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
   setIncompleteUsersExpanded,
 }) => {
   const now = new Date();
-  const currentEventId = currentEventIdAt(action.events, now);
-  const hasMemberActionStarted = hasMemberActionStartedAt(action.events, now);
+  const currentEventId = eventInEffectAt(action.events, now).event?.id;
+  const memberActionStarted = hasMemberActionStarted(action.events, now);
 
   return (
     <div className="space-y-4 pb-4">
@@ -110,7 +110,7 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
       <ActionParticipationStats
         action={action}
         reporting={reporting}
-        hasMemberActionStarted={hasMemberActionStarted}
+        hasMemberActionStarted={memberActionStarted}
         incompleteUsersExpanded={incompleteUsersExpanded}
         setIncompleteUsersExpanded={setIncompleteUsersExpanded}
       />
@@ -154,7 +154,7 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
       <ActionResponseReports
         action={action}
         reporting={reporting}
-        hasMemberActionStarted={hasMemberActionStarted}
+        hasMemberActionStarted={memberActionStarted}
         onTabChange={onTabChange}
         setSearchParams={setSearchParams}
       />

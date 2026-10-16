@@ -1,3 +1,4 @@
+import { eventInEffectAt } from "@alliance/common/actionEvent";
 import { ActionDto, AdminActionListItemDto } from "@alliance/shared/client";
 import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
@@ -18,27 +19,8 @@ import { describeCohortExpression } from "../lib/describeCohortExpression";
 export const getLastPastEventDate = (
   action: Pick<ActionDto, "events">,
 ): Date | null => {
-  const now = Date.now();
-  let latest: Date | null = null;
-
-  for (const event of action.events) {
-    if (!event?.date) {
-      continue;
-    }
-
-    const eventDate = new Date(event.date);
-    const eventTime = eventDate.getTime();
-
-    if (Number.isNaN(eventTime) || eventTime > now) {
-      continue;
-    }
-
-    if (!latest || eventDate > latest) {
-      latest = eventDate;
-    }
-  }
-
-  return latest;
+  const { event } = eventInEffectAt(action.events, new Date());
+  return event ? new Date(event.date) : null;
 };
 
 type ActionSuiteGroup = {
