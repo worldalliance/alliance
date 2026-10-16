@@ -7,6 +7,7 @@ import {
   membershipAgreement,
   membershipAgreementLoadFailed,
   membershipFaq,
+  signedAgreementLoadFailed,
   suspendContractConfirmation,
 } from "@alliance/shared/lib/copy";
 import { useMembershipAgreement } from "@alliance/shared/lib/useMembershipAgreement";
@@ -136,6 +137,9 @@ export default function MembershipScreen() {
     sign,
     suspend,
     previousSignedContract,
+    previousContractLoadFailed,
+    retryPreviousContractLoad,
+    retryingPreviousContractLoad,
     latestSigned,
     updateAvailable,
   } = useMembershipAgreement({
@@ -200,13 +204,22 @@ export default function MembershipScreen() {
             </Card>
           )}
 
-          {(previousSignedContract || latestContract) && (
+          {(previousSignedContract ||
+            previousContractLoadFailed ||
+            latestContract) && (
             <Anchor name={WalkthroughAnchor.Contract}>
               <Card cardStyle={CardStyle.White}>
                 <Text className="text-2xl mb-4" weight={FontWeight.Semibold}>
                   {membershipAgreement.heading}
                 </Text>
                 <View className="gap-y-4">
+                  {previousContractLoadFailed && (
+                    <LoadFailed
+                      message={signedAgreementLoadFailed}
+                      onRetry={retryPreviousContractLoad}
+                      retrying={retryingPreviousContractLoad}
+                    />
+                  )}
                   {previousSignedContract && (
                     <ContractDescriptionList
                       items={previousSignedContract.description}

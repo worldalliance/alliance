@@ -32,14 +32,14 @@ it("loads the contract with the given id", async () => {
   expect(hook.result.current.data).toEqual(contract);
 });
 
-it("resolves a failed load to null", async () => {
+it("fails a load the server answers with an error", async () => {
   status = 500;
   const { wrapper } = queryWrapper();
 
   const hook = renderHook(() => useContractById(3), { wrapper });
 
-  await waitFor(() => expect(hook.result.current.isSuccess).toBe(true));
-  expect(hook.result.current.data).toBeNull();
+  await waitFor(() => expect(hook.result.current.isError).toBe(true));
+  expect(hook.result.current.data).toBeUndefined();
 });
 
 it("does not fetch without an id", async () => {

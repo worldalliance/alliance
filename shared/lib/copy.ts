@@ -253,6 +253,9 @@ export const guestReferral = {
 export const membershipAgreementLoadFailed =
   "The membership agreement couldn't be loaded.";
 
+export const signedAgreementLoadFailed =
+  "The agreement you signed couldn't be loaded.";
+
 export const suspendContractConfirmation =
   "Are you sure you want to suspend your agreement? You will be removed from your groups.";
 

@@ -41,7 +41,7 @@ export function useMembershipAgreement(params: {
   // `undefined` only while loading: a failed load still shows what was signed.
   const settledContract = contractLoadFailed ? null : latestContract;
   const signedId = signedContractId(lastContractEvent);
-  const { data: previousSignedContract } = useContractById(
+  const previousContract = useContractById(
     settledContract !== undefined && signedId !== settledContract?.id
       ? signedId
       : null,
@@ -117,9 +117,14 @@ export function useMembershipAgreement(params: {
     canSign,
     sign,
     suspend,
-    previousSignedContract: previousSignedContract ?? null,
+    previousSignedContract: previousContract.data ?? null,
+    previousContractLoadFailed: failedToLoad(previousContract),
+    retryPreviousContractLoad: () => void previousContract.refetch(),
+    retryingPreviousContractLoad: previousContract.isFetching,
     latestSigned: latestContract != null && signedId === latestContract.id,
-    // The notice contrasts the two contracts, so it waits until the previous one is on screen.
-    updateAvailable: previousSignedContract != null && latestContract != null,
+    updateAvailable:
+      latestContract != null &&
+      signedId !== null &&
+      signedId !== latestContract.id,
   };
 }

@@ -36,6 +36,7 @@ const gate = () => {
 
 let currentReachable = true;
 let currentStatus = 200;
+let detailStatus = 200;
 let actionsReachable = true;
 let refusal: number | null = null;
 let currentGate = gate();
@@ -55,7 +56,9 @@ serveApi(
     "GET /contract/detail/:id": async ({ params }) => {
       detailRequests.push(params.id);
       await detailGate.opened;
-      return Response.json(contract(Number(params.id)));
+      return detailStatus === 200
+        ? Response.json(contract(Number(params.id)))
+        : Response.json({}, { status: detailStatus });
     },
     "POST /contract/sign/:id": async ({ request }) => {
       if (!actionsReachable) throw new TypeError("Failed to fetch");
@@ -111,6 +114,7 @@ const status = (result: Agreement) => ({
 beforeEach(() => {
   currentReachable = true;
   currentStatus = 200;
+  detailStatus = 200;
   actionsReachable = true;
   refusal = null;
   currentGate = gate();
@@ -130,14 +134,17 @@ describe("useMembershipAgreement status", () => {
     });
   });
 
-  it("announces an update only once the previous contract has loaded", async () => {
+  it("announces an update once the latest contract has loaded", async () => {
     const { result } = setup(signed(1));
     await loaded(result);
     await waitFor(() => expect(detailRequests).toEqual(["1"]));
-    expect(result.current.updateAvailable).toBe(false);
+    expect(result.current.updateAvailable).toBe(true);
+    expect(result.current.previousSignedContract).toBeNull();
 
     detailGate.open();
-    await waitFor(() => expect(result.current.updateAvailable).toBe(true));
+    await waitFor(() =>
+      expect(result.current.previousSignedContract?.id).toBe(1),
+    );
     expect(status(result)).toEqual({
       previousSignedContract: 1,
       latestSigned: false,
@@ -189,6 +196,39 @@ describe("useMembershipAgreement status", () => {
       expect(result.current.updateAvailable).toBe(false);
     },
   );
+});
+
+describe("useMembershipAgreement previous contract", () => {
+  it("reports a previous contract that failed to load", async () => {
+    detailStatus = 500;
+    detailGate.open();
+    const { result } = setup(signed(1));
+    await loaded(result);
+
+    await waitFor(() =>
+      expect(result.current.previousContractLoadFailed).toBe(true),
+    );
+    expect(result.current.updateAvailable).toBe(true);
+    expect(result.current.contractLoadFailed).toBe(false);
+  });
+
+  it("loads the previous contract on retry after a failed load", async () => {
+    detailStatus = 500;
+    detailGate.open();
+    const { result } = setup(signed(1));
+    await loaded(result);
+    await waitFor(() =>
+      expect(result.current.previousContractLoadFailed).toBe(true),
+    );
+
+    detailStatus = 200;
+    act(() => result.current.retryPreviousContractLoad());
+
+    await waitFor(() =>
+      expect(result.current.previousSignedContract?.id).toBe(1),
+    );
+    expect(result.current.previousContractLoadFailed).toBe(false);
+  });
 });
 
 describe("useMembershipAgreement retry", () => {
