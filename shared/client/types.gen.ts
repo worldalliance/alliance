@@ -400,7 +400,7 @@ export type Action = {
     /**
      * Square thumbnail image alt for the action
      */
-    squareThumbnailImageAlt?: string;
+    squareThumbnailImageAlt: string | null;
     /**
      * markdown page body
      */
@@ -2161,7 +2161,7 @@ export type ActionDto = {
     /**
      * Square thumbnail image alt for the action
      */
-    squareThumbnailImageAlt?: string;
+    squareThumbnailImageAlt: string | null;
     /**
      * markdown page body
      */
@@ -2323,7 +2323,7 @@ export type AdminActionListItemDto = {
     /**
      * Square thumbnail image alt for the action
      */
-    squareThumbnailImageAlt?: string;
+    squareThumbnailImageAlt: string | null;
     /**
      * markdown page body
      */
@@ -2485,7 +2485,7 @@ export type AdminActionDto = {
     /**
      * Square thumbnail image alt for the action
      */
-    squareThumbnailImageAlt?: string;
+    squareThumbnailImageAlt: string | null;
     /**
      * markdown page body
      */
@@ -2667,10 +2667,6 @@ export type CreateActionDto = {
      */
     squareThumbnailImage?: string;
     /**
-     * Square thumbnail image alt for the action
-     */
-    squareThumbnailImageAlt?: string;
-    /**
      * markdown page body
      */
     body: string;
@@ -2712,6 +2708,10 @@ export type CreateActionDto = {
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
+    /**
+     * Square thumbnail image alt for the action
+     */
+    squareThumbnailImageAlt?: string | null;
     /**
      * Time estimate in minutes
      */
@@ -2762,10 +2762,6 @@ export type UpdateActionDto = {
      */
     squareThumbnailImage?: string;
     /**
-     * Square thumbnail image alt for the action
-     */
-    squareThumbnailImageAlt?: string;
-    /**
      * markdown page body
      */
     body?: string;
@@ -2807,6 +2803,10 @@ export type UpdateActionDto = {
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
+    /**
+     * Square thumbnail image alt for the action
+     */
+    squareThumbnailImageAlt?: string | null;
     /**
      * Time estimate in minutes
      */
@@ -2954,7 +2954,7 @@ export type ExportActionDto = {
     /**
      * Square thumbnail image alt for the action
      */
-    squareThumbnailImageAlt?: string;
+    squareThumbnailImageAlt: string | null;
     /**
      * markdown page body
      */

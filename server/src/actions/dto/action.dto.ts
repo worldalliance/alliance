@@ -500,7 +500,7 @@ export class ActionDto extends PickType(Action, [
     this.squareThumbnailImage = action.squareThumbnailImage
       ? getImageSource(action.squareThumbnailImage)
       : undefined;
-    this.squareThumbnailImageAlt = action.squareThumbnailImageAlt || undefined;
+    this.squareThumbnailImageAlt = action.squareThumbnailImageAlt;
     this.body = action.body;
     this.shortDescription = action.shortDescription;
     this.timeEstimate = action.timeEstimate;
@@ -658,7 +658,6 @@ export class CreateActionDto extends IntersectionType(
     "category",
     "image",
     "squareThumbnailImage",
-    "squareThumbnailImageAlt",
     "body",
     "shortDescription",
     "taskFormId",
@@ -677,6 +676,7 @@ export class CreateActionDto extends IntersectionType(
   ]),
   PartialType(
     PickType(ActionDto, [
+      "squareThumbnailImageAlt",
       "timeEstimate",
       "forumParticipationPostId",
       "forumParticipationIncludeChildren",

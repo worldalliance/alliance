@@ -19,6 +19,7 @@ export const exampleMemberTaskAction: ActionWithAwayStatus = {
   forumParticipationIncludeChildren: false,
   computedAutocompleteAt: null,
   timeEstimate: 5,
+  squareThumbnailImageAlt: null,
   visibilityMode: "public",
   optional: false,
   usersJoined: 120,
