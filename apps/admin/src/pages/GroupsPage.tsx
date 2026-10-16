@@ -10,6 +10,7 @@ import { withCount } from "@alliance/common/plural";
 import type {
   CommunityDto,
   CreateCommunityDto,
+  UserDto,
 } from "@alliance/shared/client/types.gen";
 import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { groupSettings } from "@alliance/shared/lib/copy";
@@ -23,11 +24,11 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link } from "react-router";
 import GroupAssignmentPanel from "../components/GroupAssignmentPanel";
 import { adminRefusalMessage } from "../lib/adminRefusal";
-import { useGroupAssignment } from "../lib/GroupAssignmentContext";
 import {
   useCommunitiesAdmin,
   useCreateCommunityAdmin,
 } from "../lib/useCommunitiesAdmin";
+import { useGroupAssignmentMembersAdmin } from "../lib/useGroupAssignmentAdmin";
 
 const INITIAL_COMMUNITY: CreateCommunityDto = {
   name: "",
@@ -35,9 +36,14 @@ const INITIAL_COMMUNITY: CreateCommunityDto = {
   ...NEW_COMMUNITY_SETTINGS,
 };
 
+const NO_MEMBERS: UserDto[] = [];
+
 const GroupsPage: React.FC = () => {
-  const { membersUndergoingGroupAssignment, assignMembers } =
-    useGroupAssignment();
+  const {
+    data: membersUndergoingGroupAssignment = NO_MEMBERS,
+    isLoadingError: queueLoadFailed,
+    error: queueError,
+  } = useGroupAssignmentMembersAdmin();
   const [pendingAssignmentsByCommunityId, setPendingAssignmentsByCommunityId] =
     useState<Record<number, number>>({});
   const {
@@ -121,10 +127,17 @@ const GroupsPage: React.FC = () => {
 
   return (
     <div className="h-full p-5 pt-20 flex flex-col items-center gap-y-4">
+      {queueLoadFailed && (
+        <p className="w-full max-w-5xl text-sm text-red-500">
+          {adminRefusalMessage(
+            queueError,
+            "Unable to load members awaiting group assignment. Please try again.",
+          )}
+        </p>
+      )}
       {membersUndergoingGroupAssignment.length > 0 && (
         <GroupAssignmentPanel
           members={membersUndergoingGroupAssignment}
-          assignMembers={assignMembers}
           onSelectionCountsChange={setPendingAssignmentsByCommunityId}
         />
       )}

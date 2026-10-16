@@ -5,7 +5,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Outlet } from "react-router";
 import SidebarNav from "./components/SidebarNav";
 import { useAuth } from "./lib/AuthContext";
-import { useGroupAssignment } from "./lib/GroupAssignmentContext";
+import { useGroupAssignmentMembersAdmin } from "./lib/useGroupAssignmentAdmin";
 import { useOutreachPartnershipResponsesAdmin } from "./lib/useOutreachPartnershipResponsesAdmin";
 
 const Sidebar: React.FC = () => {
@@ -20,7 +20,8 @@ const Sidebar: React.FC = () => {
   );
 
   const { logout, user, loading: authLoading } = useAuth();
-  const { membersUndergoingGroupAssignment } = useGroupAssignment();
+  const { data: membersUndergoingGroupAssignment = [] } =
+    useGroupAssignmentMembersAdmin();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
 

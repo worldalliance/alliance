@@ -14,10 +14,8 @@ import List from "@alliance/sharedweb/ui/List";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { adminRefusalMessage } from "../lib/adminRefusal";
-import {
-  useAssignGroupsAdmin,
-  useCommunitiesAdmin,
-} from "../lib/useCommunitiesAdmin";
+import { useCommunitiesAdmin } from "../lib/useCommunitiesAdmin";
+import { useAssignGroupsAdmin } from "../lib/useGroupAssignmentAdmin";
 import ConfirmDialog from "./ConfirmDialog";
 
 const storageKey = "admin.groupAssignmentSelections";
@@ -26,13 +24,11 @@ const NO_COMMUNITIES: CommunityDto[] = [];
 
 type GroupAssignmentPanelProps = {
   members: UserDto[];
-  assignMembers: (memberIds: number[]) => void;
   onSelectionCountsChange?: (counts: Record<number, number>) => void;
 };
 
 const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
   members,
-  assignMembers,
   onSelectionCountsChange,
 }) => {
   const navigate = useNavigate();
@@ -313,7 +309,6 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
         })),
       };
       await assignGroups(body);
-      assignMembers(body.assignments.map(({ userId }) => userId));
       setAssignmentSelections((prev) => {
         const next = { ...prev };
         body.assignments.forEach((assignment) => {
@@ -347,7 +342,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
       setIsConfirmOpen(false);
       setIsSubmitting(false);
     }
-  }, [assignmentPreview, assignGroups, assignMembers]);
+  }, [assignmentPreview, assignGroups]);
 
   return (
     <Card className="w-full max-w-5xl" style={CardStyle.White}>

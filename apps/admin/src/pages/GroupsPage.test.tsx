@@ -1,10 +1,16 @@
-import { makeCommunity } from "@alliance/shared/lib/testFixtures";
+import type { UserDto } from "@alliance/shared/client/types.gen";
+import { makeCommunity, makeUser } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { onlineManager } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { GroupAssignmentProvider } from "../lib/GroupAssignmentContext";
 import GroupsPage from "./GroupsPage";
 
 afterEach(cleanup);
@@ -13,6 +19,8 @@ const north = makeCommunity({ id: 4, name: "North" });
 
 let listStatus = 200;
 let createStatus = 200;
+let queue: UserDto[] = [];
+let queueStatus = 200;
 
 serveApi(
   routes({
@@ -20,7 +28,14 @@ serveApi(
       listStatus === 200
         ? Response.json([north])
         : Response.json({}, { status: listStatus }),
-    "POST /user/groupAssignment/members": () => Response.json([]),
+    "POST /user/groupAssignment/members": () =>
+      queueStatus === 200
+        ? Response.json(queue)
+        : Response.json({}, { status: queueStatus }),
+    "POST /user/groupAssignment/assign": () => {
+      queue = [];
+      return Response.json({});
+    },
     "POST /community/create/admin": async ({ request }) => {
       if (createStatus !== 200)
         return Response.json(
@@ -37,14 +52,14 @@ afterEach(() => {
   onlineManager.setOnline(true);
   listStatus = 200;
   createStatus = 200;
+  queue = [];
+  queueStatus = 200;
 });
 
 const renderPage = () =>
   render(
     <MemoryRouter>
-      <GroupAssignmentProvider>
-        <GroupsPage />
-      </GroupAssignmentProvider>
+      <GroupsPage />
     </MemoryRouter>,
     queryWrapper(),
   );
@@ -115,4 +130,31 @@ it("creates a group without a description", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Create group" }));
 
   expect(await screen.findByText("South")).toBeTruthy();
+});
+
+it("says when the members awaiting assignment failed to load", async () => {
+  queueStatus = 500;
+  renderPage();
+
+  expect(
+    await screen.findByText(
+      "Unable to load members awaiting group assignment. Please try again.",
+    ),
+  ).toBeTruthy();
+});
+
+it("closes the assignment panel once its last member is assigned", async () => {
+  queue = [makeUser({ id: 7, name: "Sam" })];
+  renderPage();
+  await screen.findByRole("option", { name: "North" });
+
+  fireEvent.change(screen.getByLabelText("New group"), {
+    target: { value: "4" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Confirm assignments" }));
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+  await waitFor(() =>
+    expect(screen.queryByText("Group assignment")).toBeNull(),
+  );
 });

@@ -20,7 +20,6 @@ import {
 import { Route } from "../.react-router/types/src/+types/root";
 import { AuthProvider } from "./lib/AuthContext";
 import { getApiUrl, getSiteUrl } from "./lib/config";
-import { GroupAssignmentProvider } from "./lib/GroupAssignmentContext";
 import { queryClient } from "./lib/queryClient";
 
 client.setConfig({
@@ -91,11 +90,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <SiteOriginLinkProvider origin={getSiteUrl()}>
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
-              <GroupAssignmentProvider>
-                <ShareLinkViewerProvider value={ShareLinkViewer.Anonymous}>
-                  <ToastProvider>{children}</ToastProvider>
-                </ShareLinkViewerProvider>
-              </GroupAssignmentProvider>
+              <ShareLinkViewerProvider value={ShareLinkViewer.Anonymous}>
+                <ToastProvider>{children}</ToastProvider>
+              </ShareLinkViewerProvider>
             </AuthProvider>
           </QueryClientProvider>
         </SiteOriginLinkProvider>
