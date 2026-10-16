@@ -4,6 +4,8 @@ import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
 import { ImagesService } from "src/images/images.service";
+import { CommunityConversationService } from "src/messaging/community-conversation.service";
+import { ConversationMembershipService } from "src/messaging/conversation-membership.service";
 import { ConversationService } from "src/messaging/conversation.service";
 import { Conversation } from "src/messaging/entities/conversation.entity";
 import { Message } from "src/messaging/entities/message.entity";
@@ -135,10 +137,11 @@ describe("Chat updates to a row deleted after its load (e2e)", () => {
         leaders: [leader],
         users: [leader, invitee],
       });
-      const conversations = ctx.app.get(ConversationService);
-      const conversation = await conversations.syncCommunityConversationMembers(
-        community.id,
-      );
+      const communityConversations = ctx.app.get(CommunityConversationService);
+      const conversation =
+        await communityConversations.syncCommunityConversationMembers(
+          community.id,
+        );
       await ctx.dataSource
         .getRepository(Message)
         .save({ body: "Hello", author: leader, conversation });
@@ -156,7 +159,8 @@ describe("Chat updates to a row deleted after its load (e2e)", () => {
           withDeleted: true,
         });
       return {
-        conversations,
+        conversations: ctx.app.get(ConversationService),
+        communityConversations,
         community,
         conversationId: conversation.id,
         invitee,
@@ -172,8 +176,20 @@ describe("Chat updates to a row deleted after its load (e2e)", () => {
     };
 
     it.each([
-      ["accepting its invite", "acceptInvite"],
-      ["marking the chat read", "markConversationRead"],
+      [
+        "accepting its invite",
+        (conversationId: number, userId: number) =>
+          ctx.app
+            .get(ConversationMembershipService)
+            .acceptInvite(conversationId, userId),
+      ],
+      [
+        "marking the chat read",
+        (conversationId: number, userId: number) =>
+          ctx.app
+            .get(ConversationService)
+            .markConversationRead(conversationId, userId),
+      ],
     ] as const)("stays deleted through %s", async (_, write) => {
       const {
         conversations,
@@ -191,15 +207,15 @@ describe("Chat updates to a row deleted after its load (e2e)", () => {
           return loaded;
         });
 
-      await expect(
-        conversations[write](conversationId, invitee.id),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(write(conversationId, invitee.id)).rejects.toThrow(
+        ForbiddenException,
+      );
       expect(await stored()).toMatchObject(unchanged);
     });
 
     it("stays deleted through a membership sync that rejoins the member", async () => {
       const {
-        conversations,
+        communityConversations,
         community,
         conversationId,
         invitee,
@@ -218,7 +234,9 @@ describe("Chat updates to a row deleted after its load (e2e)", () => {
           return loaded;
         });
 
-      await conversations.syncCommunityConversationMembers(community.id);
+      await communityConversations.syncCommunityConversationMembers(
+        community.id,
+      );
 
       expect(await stored()).toMatchObject(unchanged);
       expect(
@@ -231,7 +249,7 @@ describe("Chat updates to a row deleted after its load (e2e)", () => {
 
     it("stays deleted through a move that rejoins the member", async () => {
       const {
-        conversations,
+        communityConversations,
         community,
         conversationId,
         invitee,
@@ -247,7 +265,7 @@ describe("Chat updates to a row deleted after its load (e2e)", () => {
         return loaded;
       });
 
-      await conversations.placeCommunityConversationParticipant({
+      await communityConversations.placeCommunityConversationParticipant({
         manager,
         user: invitee,
         sourceCommunity: null,

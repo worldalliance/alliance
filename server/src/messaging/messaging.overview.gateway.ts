@@ -12,7 +12,7 @@ import {
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { SessionService } from "src/auth/session.service";
-import { type AccountDeletedPayload, UserEvents } from "src/user/user.events";
+import { UserEvents, type AccountDeletedPayload } from "src/user/user.events";
 import { DetachedWorkTracker } from "src/utils/detached-work";
 import type { Repository } from "typeorm";
 import { ConversationService } from "./conversation.service";
@@ -21,7 +21,10 @@ import {
   Participant,
 } from "./entities/participant.entity";
 import { disconnectUserSockets, socketAuthMiddleware } from "./gateway.utils";
-import { MessagingEvents } from "./messaging.events";
+import {
+  MessagingEvents,
+  type ConversationUpdatedPayload,
+} from "./messaging.events";
 
 @WebSocketGateway({
   cors: {
@@ -46,9 +49,7 @@ export class MessagingOverviewGateway
 
   private readonly onConversationChanged = ({
     conversationId,
-  }: {
-    conversationId: number;
-  }) => {
+  }: ConversationUpdatedPayload) => {
     this.detachedWork.track(
       this.emitUnread(conversationId).catch((error: Error) =>
         this.logger.warn(

@@ -2,7 +2,9 @@ import { NotFoundException } from "@nestjs/common";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
 import { softDeleteCascade } from "src/datasources/soft-delete";
-import { ConversationService } from "src/messaging/conversation.service";
+import { CommunityConversationService } from "src/messaging/community-conversation.service";
+import { ConversationCreationService } from "src/messaging/conversation-creation.service";
+import { ConversationMembershipService } from "src/messaging/conversation-membership.service";
 import {
   ConversationAdminSummaryDto,
   ConversationDto,
@@ -70,7 +72,7 @@ describe("Messaging soft deletion (e2e)", () => {
       leaders: [leader],
     });
     const conversation = await ctx.app
-      .get(ConversationService)
+      .get(CommunityConversationService)
       .syncCommunityConversationMembers(community.id);
     return {
       communityId: community.id,
@@ -369,7 +371,7 @@ describe("Messaging soft deletion (e2e)", () => {
         ids: [target.id],
       });
       const started = ctx.app
-        .get(ConversationService)
+        .get(ConversationCreationService)
         .createDirectConversation(initiator.id, { targetUserId: target.id });
       const outcome = started.then(
         () => "started",
@@ -426,7 +428,7 @@ describe("Messaging soft deletion (e2e)", () => {
       ),
     );
     const { id: conversationId } = await ctx.app
-      .get(ConversationService)
+      .get(ConversationCreationService)
       .createDirectConversation(initiator.id, { targetUserId: invitee.id });
     const deletion = ctx.dataSource.createQueryRunner();
     await deletion.startTransaction();
@@ -502,7 +504,7 @@ describe("Messaging soft deletion (e2e)", () => {
         id: invitee.id,
         write: () =>
           ctx.app
-            .get(ConversationService)
+            .get(ConversationCreationService)
             .createOrGetGroupConversation(owner.id, {
               title: "Raced group",
               participantIds: [invitee.id],
@@ -513,16 +515,17 @@ describe("Messaging soft deletion (e2e)", () => {
   });
 
   it("adds no one to a group chat when the account or the chat is deleted meanwhile", async () => {
-    const conversations = ctx.app.get(ConversationService);
+    const membership = ctx.app.get(ConversationMembershipService);
+    const creation = ctx.app.get(ConversationCreationService);
     const [owner, member, newcomer, latecomer] = await Promise.all(
       [0, 1, 2, 3].map(() => account()),
     );
-    const group = await conversations.createOrGetGroupConversation(owner.id, {
+    const group = await creation.createOrGetGroupConversation(owner.id, {
       title: "Joined group",
       participantIds: [member.id],
     });
     const add = (userId: number) => () =>
-      conversations.addParticipantToConversation(group.id, owner.id, {
+      membership.addParticipantToConversation(group.id, owner.id, {
         userId,
       });
 
@@ -563,7 +566,7 @@ describe("Messaging soft deletion (e2e)", () => {
         id: community.id,
         write: () =>
           ctx.app
-            .get(ConversationService)
+            .get(CommunityConversationService)
             .syncCommunityConversationMembers(community.id),
       }),
     ).toBeInstanceOf(NotFoundException);
@@ -591,7 +594,7 @@ describe("Messaging soft deletion (e2e)", () => {
         id: joiner.id,
         write: () =>
           ctx.app
-            .get(ConversationService)
+            .get(CommunityConversationService)
             .syncCommunityConversationMembers(chat.communityId),
       }),
     ).toBeInstanceOf(Conversation);
@@ -623,7 +626,7 @@ describe("Messaging soft deletion (e2e)", () => {
     try {
       await expect(
         ctx.app
-          .get(ConversationService)
+          .get(CommunityConversationService)
           .syncCommunityConversationMembers(community!.id),
       ).rejects.toBeInstanceOf(NotFoundException);
     } finally {

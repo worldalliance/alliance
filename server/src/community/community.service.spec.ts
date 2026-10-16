@@ -1,7 +1,7 @@
 import { BadRequestException, Logger } from "@nestjs/common";
 import * as softDelete from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
-import { ConversationService } from "src/messaging/conversation.service";
+import { CommunityConversationService } from "src/messaging/community-conversation.service";
 import { MmsService } from "src/mms/mms.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import { notifMessage, SegmentType } from "src/notifs/notification-content";
@@ -27,7 +27,7 @@ describe("CommunityService", () => {
   let communityInviteRepository: jest.Mocked<Repository<CommunityInvite>>;
   let communityRepository: jest.Mocked<Repository<Community>>;
   let userRepository: jest.Mocked<Repository<User>>;
-  let conversationService: jest.Mocked<ConversationService>;
+  let communityConversationService: jest.Mocked<CommunityConversationService>;
   let notifsService: jest.Mocked<NotifsService>;
   let groupJoinNotifsService: GroupJoinNotifsService;
   let transaction: jest.Mock;
@@ -133,12 +133,12 @@ describe("CommunityService", () => {
       findOneOrFail: jest.fn(),
       createQueryBuilder: jest.fn(() => contractCheck),
     } as unknown as jest.Mocked<Repository<User>>;
-    conversationService = {
+    communityConversationService = {
       placeCommunityConversationParticipant: jest
         .fn()
         .mockResolvedValue(undefined),
       syncCommunityConversationMembers: jest.fn().mockResolvedValue(undefined),
-    } as unknown as jest.Mocked<ConversationService>;
+    } as unknown as jest.Mocked<CommunityConversationService>;
 
     notifsService = {
       sendNotif: jest.fn().mockResolvedValue(undefined),
@@ -155,7 +155,7 @@ describe("CommunityService", () => {
       communityInviteRepository,
       communityRepository,
       userRepository,
-      conversationService,
+      communityConversationService,
       {} as ImagesService,
       notifsService,
       groupJoinNotifsService,
@@ -292,7 +292,7 @@ describe("CommunityService", () => {
 
       // syncs conversation members
       expect(
-        conversationService.syncCommunityConversationMembers,
+        communityConversationService.syncCommunityConversationMembers,
       ).toHaveBeenCalledWith(community.id);
     });
 
@@ -577,7 +577,7 @@ describe("CommunityService", () => {
 
       // syncs conversation
       expect(
-        conversationService.syncCommunityConversationMembers,
+        communityConversationService.syncCommunityConversationMembers,
       ).toHaveBeenCalledWith(community.id);
     });
 
@@ -707,7 +707,7 @@ describe("CommunityService", () => {
         { undergoingGroupAssignment: false, pendingCommunity: null },
       );
       expect(
-        conversationService.placeCommunityConversationParticipant,
+        communityConversationService.placeCommunityConversationParticipant,
       ).toHaveBeenCalledWith({
         manager: transactionManager,
         user,
@@ -715,7 +715,7 @@ describe("CommunityService", () => {
         destinationCommunity,
       });
       expect(
-        conversationService.syncCommunityConversationMembers,
+        communityConversationService.syncCommunityConversationMembers,
       ).toHaveBeenCalledTimes(2);
       expect(notifsService.sendNotifs).toHaveBeenCalledWith(
         expect.arrayContaining([
@@ -743,7 +743,7 @@ describe("CommunityService", () => {
       await expect(move(communities)).rejects.toThrow("db is down");
 
       expect(
-        conversationService.syncCommunityConversationMembers,
+        communityConversationService.syncCommunityConversationMembers,
       ).not.toHaveBeenCalled();
       expect(notifsService.sendNotifs).not.toHaveBeenCalled();
       expect(groupJoinNotifsService.notify).not.toHaveBeenCalled();
@@ -763,7 +763,7 @@ describe("CommunityService", () => {
 
     it("does not commit the placement when participant authorization cannot be updated", async () => {
       const communities = setUpMove();
-      conversationService.placeCommunityConversationParticipant.mockRejectedValueOnce(
+      communityConversationService.placeCommunityConversationParticipant.mockRejectedValueOnce(
         new Error("participant write failed"),
       );
 
@@ -772,7 +772,7 @@ describe("CommunityService", () => {
       );
 
       expect(
-        conversationService.syncCommunityConversationMembers,
+        communityConversationService.syncCommunityConversationMembers,
       ).not.toHaveBeenCalled();
       expect(notifsService.sendNotifs).not.toHaveBeenCalled();
     });
@@ -780,7 +780,7 @@ describe("CommunityService", () => {
     it("keeps the committed move successful when a follow-up effect fails", async () => {
       const communities = setUpMove();
       const syncError = new Error("conversation sync failed");
-      conversationService.syncCommunityConversationMembers.mockRejectedValueOnce(
+      communityConversationService.syncCommunityConversationMembers.mockRejectedValueOnce(
         syncError,
       );
       const loggerError = jest
@@ -826,7 +826,7 @@ describe("CommunityService", () => {
         }),
       );
       expect(
-        conversationService.syncCommunityConversationMembers,
+        communityConversationService.syncCommunityConversationMembers,
       ).toHaveBeenCalledWith(destinationCommunity.id);
       expect(notifsService.sendNotifs).toHaveBeenCalledWith(
         expect.arrayContaining([

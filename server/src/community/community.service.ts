@@ -17,7 +17,7 @@ import {
   writeUnderLive,
 } from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
-import { ConversationService } from "src/messaging/conversation.service";
+import { CommunityConversationService } from "src/messaging/community-conversation.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
   communityDestination,
@@ -117,7 +117,7 @@ export class CommunityService {
     private readonly communityRepository: Repository<Community>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private readonly conversationService: ConversationService,
+    private readonly communityConversationService: CommunityConversationService,
     private readonly imagesService: ImagesService,
     private readonly notifsService: NotifsService,
     private readonly groupJoinNotifsService: GroupJoinNotifsService,
@@ -148,7 +148,7 @@ export class CommunityService {
     const community = this.communityRepository.create({ ...body, photo });
     assertCommunityAccessRules(community);
     const savedCommunity = await this.communityRepository.save(community);
-    await this.conversationService.syncCommunityConversationMembers(
+    await this.communityConversationService.syncCommunityConversationMembers(
       savedCommunity.id,
     );
     return savedCommunity;
@@ -178,7 +178,7 @@ export class CommunityService {
         write: (manager) => manager.save(community),
       },
     );
-    await this.conversationService.syncCommunityConversationMembers(
+    await this.communityConversationService.syncCommunityConversationMembers(
       savedCommunity.id,
     );
     return savedCommunity;
@@ -284,7 +284,7 @@ export class CommunityService {
     const membershipP = run(async () => {
       await savedP;
 
-      await this.conversationService.syncCommunityConversationMembers(
+      await this.communityConversationService.syncCommunityConversationMembers(
         community.id,
       );
     });
@@ -420,7 +420,7 @@ export class CommunityService {
           },
         });
       });
-      await this.conversationService.syncCommunityConversationMembers(
+      await this.communityConversationService.syncCommunityConversationMembers(
         community.id,
       );
 
@@ -553,7 +553,7 @@ export class CommunityService {
       } satisfies Record<keyof UpdateCommunityDto, unknown>,
       notFound: "Community not found",
     });
-    await this.conversationService.syncCommunityConversationMembers(
+    await this.communityConversationService.syncCommunityConversationMembers(
       communityId,
     );
     return community;
@@ -861,12 +861,14 @@ export class CommunityService {
           { id: user.id, deletedAt: IsNull() },
           { undergoingGroupAssignment: false, pendingCommunity: null },
         );
-        await this.conversationService.placeCommunityConversationParticipant({
-          manager,
-          user,
-          sourceCommunity,
-          destinationCommunity,
-        });
+        await this.communityConversationService.placeCommunityConversationParticipant(
+          {
+            manager,
+            user,
+            sourceCommunity,
+            destinationCommunity,
+          },
+        );
 
         return {
           sourceCommunity,
@@ -917,7 +919,7 @@ export class CommunityService {
       ...affectedCommunityIds.map((communityId) => ({
         description: `sync community conversation ${communityId}`,
         run: () =>
-          this.conversationService.syncCommunityConversationMembers(
+          this.communityConversationService.syncCommunityConversationMembers(
             communityId,
           ),
       })),
@@ -1012,7 +1014,9 @@ export class CommunityService {
           joiners: [user],
           audience,
         }),
-      this.conversationService.syncCommunityConversationMembers(communityId),
+      this.communityConversationService.syncCommunityConversationMembers(
+        communityId,
+      ),
     ]);
     return community;
   }
@@ -1037,7 +1041,7 @@ export class CommunityService {
       (leader) => leader.id !== userId,
     );
 
-    await this.conversationService.syncCommunityConversationMembers(
+    await this.communityConversationService.syncCommunityConversationMembers(
       communityId,
     );
     return community;

@@ -13,12 +13,15 @@ import {
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { SessionService } from "src/auth/session.service";
-import { type AccountDeletedPayload, UserEvents } from "src/user/user.events";
+import { UserEvents, type AccountDeletedPayload } from "src/user/user.events";
 import { DetachedWorkTracker } from "src/utils/detached-work";
 import { ConversationService } from "./conversation.service";
 import { MessageDto } from "./dto/messaging.dto";
 import { disconnectUserSockets, socketAuthMiddleware } from "./gateway.utils";
-import { MessagingEvents } from "./messaging.events";
+import {
+  MessagingEvents,
+  type ConversationUpdatedPayload,
+} from "./messaging.events";
 
 @WebSocketGateway({
   cors: {
@@ -43,9 +46,9 @@ export class MessagingGateway
   private readonly detachedWork = new DetachedWorkTracker();
 
   private readonly onMessageCreated = this.handleMessageCreated.bind(this);
-  private readonly onConversationUpdated = (payload: {
-    conversationId: number;
-  }) => {
+  private readonly onConversationUpdated = (
+    payload: ConversationUpdatedPayload,
+  ) => {
     this.detachedWork.track(
       this.handleConversationUpdated(payload).catch((error: Error) =>
         this.logger.warn(
@@ -170,7 +173,7 @@ export class MessagingGateway
       .emit("message:new", payload.message);
   }
 
-  private async handleConversationUpdated(payload: { conversationId: number }) {
+  private async handleConversationUpdated(payload: ConversationUpdatedPayload) {
     const room = this.roomName(payload.conversationId);
     const sockets = await this.server.in(room).fetchSockets();
     for (const socket of sockets) {

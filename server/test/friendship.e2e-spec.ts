@@ -1,4 +1,8 @@
-import { ParticipantState } from "src/messaging/entities/participant.entity";
+import { ConversationCreationService } from "src/messaging/conversation-creation.service";
+import {
+  Participant,
+  ParticipantState,
+} from "src/messaging/entities/participant.entity";
 import { MessagingModule } from "src/messaging/messaging.module";
 import { FriendStatus } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
@@ -7,6 +11,7 @@ import request from "supertest";
 import type { Repository } from "typeorm";
 import {
   createTestApp,
+  eventually,
   giveActiveContract,
   signAccessToken,
   TestContext,
@@ -181,6 +186,30 @@ describe("Accepted friendship in either direction (e2e)", () => {
     );
     expect(await targetStateOf(pendingAddressee.id)).toBe(
       ParticipantState.Invited,
+    );
+  });
+
+  it("joins a pending direct-message invitee once the two become friends", async () => {
+    const sender = await saveUser("DirectSender");
+    const invitee = await saveUser("DirectInvitee");
+    const conversation = await ctx.app
+      .get(ConversationCreationService)
+      .createDirectConversation(sender.id, { targetUserId: invitee.id });
+    const inviteeState = async () =>
+      (
+        await ctx.dataSource.getRepository(Participant).findOneByOrFail({
+          conversation: { id: conversation.id },
+          user: { id: invitee.id },
+        })
+      ).state;
+    expect(await inviteeState()).toBe(ParticipantState.Invited);
+
+    await userService.makeFriendsAutomated(sender.id, invitee.id);
+
+    await eventually(
+      inviteeState,
+      (state) => state === ParticipantState.Joined,
+      "the invitee to join",
     );
   });
 });

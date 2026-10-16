@@ -2,7 +2,7 @@ import { ConversationType } from "@alliance/common/conversationType";
 import { ParticipantRole } from "@alliance/common/participantRole";
 import { io } from "socket.io-client";
 import { Community } from "src/community/entities/community.entity";
-import { ConversationService } from "src/messaging/conversation.service";
+import { CommunityConversationService } from "src/messaging/community-conversation.service";
 import { Conversation } from "src/messaging/entities/conversation.entity";
 import {
   loadedParticipantUser,
@@ -56,7 +56,7 @@ describe("ConversationController (e2e)", () => {
     );
 
     const conversation = await ctx.app
-      .get(ConversationService)
+      .get(CommunityConversationService)
       .syncCommunityConversationMembers(community.id);
 
     return { community, conversation, leaderToken, member, memberToken };
