@@ -19,7 +19,10 @@ import {
   changedAwayRangeDays,
   formatAwayReason,
 } from "@alliance/shared/lib/awayRangesFormatters";
-import { awayRangesDescription } from "@alliance/shared/lib/copy";
+import {
+  awayRangesDescription,
+  membershipAgreement,
+} from "@alliance/shared/lib/copy";
 import { formatLongDate } from "@alliance/shared/lib/dateFormatters";
 import {
   dateToInputValue,
@@ -436,8 +439,7 @@ const AwayRangesSection: React.FC = () => {
             />
             {selectedReasonIsOther && (
               <p className="text-sm text-zinc-500 mb-2 mt-1">
-                See your contract above for guidelines on extenuating
-                circumstances.
+                {membershipAgreement.awayOtherReasonHint}
               </p>
             )}
           </div>

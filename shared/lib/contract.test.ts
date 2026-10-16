@@ -1,5 +1,12 @@
 import type { ContractEventDto } from "../client";
-import { formatCurrentSigningDate } from "./contract";
+import {
+  canSignAgreement,
+  formatCurrentSigningDate,
+  signedContractEvent,
+  signedContractId,
+  suspendedContractEvent,
+  WEEKLY_COMMITMENT_CONFIRMATION,
+} from "./contract";
 import { formatShortDate } from "./dateFormatters";
 
 const event = (type: ContractEventDto["type"]): ContractEventDto => ({
@@ -19,4 +26,41 @@ it.each([
   ["no event", undefined, null],
 ])("formatCurrentSigningDate: %s", (_, lastContractEvent, expected) => {
   expect(formatCurrentSigningDate(lastContractEvent)).toBe(expected);
+});
+
+describe("canSignAgreement", () => {
+  const ready = {
+    signedName: "Jane Smith",
+    confirmation: WEEKLY_COMMITMENT_CONFIRMATION,
+    isSubmitting: false,
+  };
+
+  it("allows a named, confirmed signature", () => {
+    expect(canSignAgreement(ready)).toBe(true);
+  });
+
+  it("accepts a confirmation with a typo", () => {
+    expect(
+      canSignAgreement({
+        ...ready,
+        confirmation: "I comit to complete each task to the best of my abilty.",
+      }),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["no name", { signedName: "" }],
+    ["a short confirmation", { confirmation: "I commit." }],
+    ["a submission in flight", { isSubmitting: true }],
+  ])("refuses %s", (_, change) => {
+    expect(canSignAgreement({ ...ready, ...change })).toBe(false);
+  });
+});
+
+it.each([
+  ["a signature", signedContractEvent({ contractId: 3, date: "d" }), 3],
+  ["a suspension", suspendedContractEvent("d"), null],
+  ["no event", null, null],
+])("signedContractId: %s", (_, lastContractEvent, expected) => {
+  expect(signedContractId(lastContractEvent)).toBe(expected);
 });

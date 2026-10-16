@@ -1,17 +1,15 @@
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
-  contractSignContract,
-  contractSuspendContract,
-} from "@alliance/shared/client";
-import {
-  ContractEventState,
   getSignedMessage,
   getSuspensionMessage,
-  isConfirmationCloseEnough,
+  WEEKLY_COMMITMENT_CONFIRMATION,
 } from "@alliance/shared/lib/contract";
-import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
-import { useContractById } from "@alliance/shared/lib/useContractById";
-import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
+import {
+  membershipAgreement,
+  membershipAgreementLoadFailed,
+  membershipFaq,
+  suspendContractConfirmation,
+} from "@alliance/shared/lib/copy";
+import { useMembershipAgreement } from "@alliance/shared/lib/useMembershipAgreement";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
@@ -23,12 +21,9 @@ import { ChevronDown } from "lucide-react";
 import React, { useEffect, useId, useMemo, useState } from "react";
 import { useLocation } from "react-router";
 import AwayRangesSection from "../../components/AwayRangesSection";
+import LoadFailed from "../../components/LoadFailed";
 import { useAuth } from "../../lib/AuthContext";
-import { useContract } from "../../lib/useContract";
 import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
-
-const WEEKLY_COMMITMENT_CONFIRMATION =
-  "I commit to complete each task to the best of my ability.";
 
 function FormalTextDropdown({ markdown }: { markdown: string }) {
   const [open, setOpen] = useState(false);
@@ -103,15 +98,21 @@ function ContractDescriptionList({
 function SignedContractActions({
   message,
   onSuspend,
+  isSubmitting,
 }: {
   message: React.ReactNode;
   onSuspend: () => void;
+  isSubmitting: boolean;
 }) {
   return (
     <div className="flex flex-col gap-y-3 sm:flex-row sm:items-center sm:justify-between border-t border-zinc-200 pt-5">
       {message}
-      <Button onClick={onSuspend} color={ButtonColor.Red}>
-        Suspend agreement
+      <Button
+        onClick={onSuspend}
+        color={ButtonColor.Red}
+        disabled={isSubmitting}
+      >
+        {membershipAgreement.suspend}
       </Button>
     </div>
   );
@@ -119,37 +120,33 @@ function SignedContractActions({
 
 const MembershipPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
-  const { latestContract } = useContract();
-  const invalidateVisibilityContext = useInvalidateVisibilityContext();
   const { hash } = useLocation();
-  const [editName, setEditName] = useState("");
-  const [weeklyCommitmentConfirmation, setWeeklyCommitmentConfirmation] =
-    useState("");
-  const [lastContractEvent, setLastContractEvent] =
-    useState<ContractEventState>(null);
-  const weeklyCommitmentConfirmed = isConfirmationCloseEnough(
-    weeklyCommitmentConfirmation,
-    WEEKLY_COMMITMENT_CONFIRMATION,
-  );
-
-  const previousSignedContractId =
-    typeof lastContractEvent?.contractId === "number" &&
-    lastContractEvent.contractId !== latestContract?.id
-      ? lastContractEvent.contractId
-      : null;
-  const { data: previousSignedContract } = useContractById(
-    previousSignedContractId,
-  );
+  const {
+    latestContract,
+    contractLoadFailed,
+    retryContractLoad,
+    retryingContractLoad,
+    lastContractEvent,
+    signedName,
+    setSignedName,
+    confirmation,
+    setConfirmation,
+    isSubmitting,
+    canSign,
+    sign,
+    suspend,
+    previousSignedContract,
+    latestSigned,
+    updateAvailable,
+  } = useMembershipAgreement({
+    user,
+    refreshUser,
+    showError: (message) => alert(message),
+  });
 
   useEffect(() => {
     refreshUser();
   }, [refreshUser]);
-
-  useEffect(() => {
-    if (user) {
-      setLastContractEvent(user.lastContractEvent ?? null);
-    }
-  }, [user]);
 
   useEffect(() => {
     if (!hash) {
@@ -161,53 +158,9 @@ const MembershipPage: React.FC = () => {
     }
   }, [hash]);
 
-  const handleContractSign = async () => {
-    if (!latestContract || !weeklyCommitmentConfirmed) {
-      return;
-    }
-    try {
-      const res = await contractSignContract({
-        path: {
-          id: latestContract.id,
-        },
-        body: { signedName: editName },
-      });
-      if (res.data) {
-        setLastContractEvent({
-          type: "signed",
-          date: res.data.date,
-          automatic: false,
-          contractId: latestContract.id,
-        });
-        setWeeklyCommitmentConfirmation("");
-        invalidateVisibilityContext();
-        await refreshUser();
-      }
-    } catch (error) {
-      console.error("Error signing contract:", error);
-      alert("There was an error signing the contract. Please try again.");
-    }
-  };
-
-  const handleContractSuspend = async () => {
-    try {
-      if (!window.confirm(suspendContractConfirmation)) {
-        return;
-      }
-
-      const res = await contractSuspendContract();
-      if (res.data) {
-        setLastContractEvent({
-          type: "suspended",
-          date: res.data.date,
-          automatic: false,
-          contractId: null,
-        });
-        await refreshUser();
-      }
-    } catch (error) {
-      console.error("Error suspending contract:", error);
-      alert("There was an error suspending the contract. Please try again.");
+  const handleContractSuspend = () => {
+    if (window.confirm(suspendContractConfirmation)) {
+      void suspend();
     }
   };
 
@@ -226,44 +179,55 @@ const MembershipPage: React.FC = () => {
       <div className="mb-6 relative flex flex-col gap-y-6">
         <h1 className="text-title">Membership</h1>
 
+        {contractLoadFailed && (
+          <Card style={CardStyle.White} className="p-6">
+            <LoadFailed
+              message={membershipAgreementLoadFailed}
+              onRetry={retryContractLoad}
+              retrying={retryingContractLoad}
+            />
+          </Card>
+        )}
+
         {(previousSignedContract || latestContract) && (
           <Card
             style={CardStyle.White}
             className="p-6"
             data-walkthrough={WalkthroughAnchor.Contract}
           >
-            <h2 className="font-semibold! text-2xl! mb-4">Agreement</h2>
+            <h2 className="font-semibold! text-2xl! mb-4">
+              {membershipAgreement.heading}
+            </h2>
             <div className="flex flex-col gap-y-4">
               {previousSignedContract && (
                 <ContractDescriptionList
                   items={previousSignedContract.description}
                   markdown={previousSignedContract.markdown}
                 >
-                  {lastContractEvent?.type === "signed" && (
-                    <SignedContractActions
-                      message={signedDateMessage}
-                      onSuspend={handleContractSuspend}
-                    />
-                  )}
+                  <SignedContractActions
+                    message={signedDateMessage}
+                    onSuspend={handleContractSuspend}
+                    isSubmitting={isSubmitting}
+                  />
                 </ContractDescriptionList>
               )}
 
               {latestContract && (
                 <>
-                  {previousSignedContract && (
+                  {updateAvailable && (
                     <p className="font-semibold">
-                      An updated contract is available.
+                      {membershipAgreement.updateAvailable}
                     </p>
                   )}
                   <ContractDescriptionList
                     items={latestContract.description}
                     markdown={latestContract.markdown}
                   >
-                    {lastContractEvent?.type === "signed" &&
-                    lastContractEvent.contractId === latestContract.id ? (
+                    {latestSigned ? (
                       <SignedContractActions
                         message={signedDateMessage}
                         onSuspend={handleContractSuspend}
+                        isSubmitting={isSubmitting}
                       />
                     ) : (
                       <div className="flex flex-col gap-y-4 border-zinc-200 border-t pt-5">
@@ -275,10 +239,8 @@ const MembershipPage: React.FC = () => {
                           <textarea
                             name="weeklyCommitmentConfirmation"
                             aria-label="Weekly commitment confirmation"
-                            value={weeklyCommitmentConfirmation}
-                            onChange={(e) =>
-                              setWeeklyCommitmentConfirmation(e.target.value)
-                            }
+                            value={confirmation}
+                            onChange={(e) => setConfirmation(e.target.value)}
                             placeholder="Type the above statement here"
                             rows={2}
                             className="resize-y rounded border border-zinc-200 bg-white px-3 py-3 text-[11pt] transition-all duration-200 hover:border-zinc-300 focus:border-green focus:outline-none"
@@ -288,13 +250,13 @@ const MembershipPage: React.FC = () => {
                               name="name"
                               type="text"
                               placeholder="Type your full name"
-                              value={editName}
-                              onChange={(e) => setEditName(e.target.value)}
+                              value={signedName}
+                              onChange={(e) => setSignedName(e.target.value)}
                               className="flex-1"
                             />
                             <Button
-                              disabled={!editName || !weeklyCommitmentConfirmed}
-                              onClick={handleContractSign}
+                              disabled={!canSign}
+                              onClick={sign}
                               color={ButtonColor.Black}
                               className="h-auto! px-6 sm:ml-2"
                             >
@@ -332,64 +294,26 @@ const MembershipPage: React.FC = () => {
 
         <Card style={CardStyle.White} className="p-6">
           <h2 className="font-semibold! text-2xl! mb-4">
-            Questions about membership
+            {membershipFaq.heading}
           </h2>
           <div className="flex flex-col gap-y-5">
-            <div className="flex flex-col gap-y-1">
-              <h3 className="flex items-center gap-x-2 font-semibold text-black">
-                Why is there an agreement?
-              </h3>
-              <p className="text-base">
-                The membership agreement sets clear expectations for all members
-                of the Alliance. It ensures that we can count on your
-                participation, which allows us to plan actions precisely. By
-                signing, you are also making a commitment to your peers to work
-                together consistently.
-              </p>
-            </div>
-            <div className="flex flex-col gap-y-1">
-              <h3 className="flex items-center gap-x-2 font-semibold text-black">
-                What happens if I don&apos;t abide by the agreement?
-              </h3>
-              <p className="text-base">
-                If you miss any assigned non-optional task for 3 weeks in a row,
-                your agreement will be suspended automatically. You can re-sign
-                the agreement to re-join the Alliance.
-              </p>
-            </div>
-            <div className="flex flex-col gap-y-1">
-              <h3 className="flex items-center gap-x-2 font-semibold text-black">
-                Are there valid reasons to miss an action?
-              </h3>
-              <p className="text-base">
-                Yes. For our planning purposes, we ask that you inform us if you
-                will be unable to complete an action with one of the following
-                methods:
-              </p>
-              <ol className="list-decimal list-outside pl-4 space-y-1">
-                <li className="text-base">
-                  You can withdraw from an action by tapping the three dots at
-                  the bottom right of an action, next to the Complete button.
-                  You can withdraw if the action is taking you longer than 15
-                  minutes to complete, or if you have a moral objection to the
-                  action.
-                </li>
-                <li className="text-base">
-                  You can schedule an away period on this page if you won&apos;t
-                  be able to complete actions for a prolonged period, such as
-                  during a vacation.
-                </li>
-              </ol>
-            </div>
-            <div className="flex flex-col gap-y-1">
-              <h3 className="flex items-center gap-x-2 font-semibold text-black">
-                How do I end my membership?
-              </h3>
-              <p className="text-base">
-                You can end your membership at any time by suspending your
-                agreement on this page.
-              </p>
-            </div>
+            {membershipFaq.entries.map(({ question, answer, steps }) => (
+              <div key={question} className="flex flex-col gap-y-1">
+                <h3 className="flex items-center gap-x-2 font-semibold text-black">
+                  {question}
+                </h3>
+                <p className="text-base">{answer}</p>
+                {steps && (
+                  <ol className="list-decimal list-outside pl-4 space-y-1">
+                    {steps.map((step) => (
+                      <li key={step} className="text-base">
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            ))}
           </div>
         </Card>
       </div>

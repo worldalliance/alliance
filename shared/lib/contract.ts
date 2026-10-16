@@ -69,15 +69,45 @@ export function formatCurrentSigningDate(
     : null;
 }
 
+/** The statement a member types to sign the agreement. */
+export const WEEKLY_COMMITMENT_CONFIRMATION =
+  "I commit to complete each task to the best of my ability.";
+
 const CONFIRMATION_LENGTH_TOLERANCE = 10;
 
-/** Length-only, so a typo in the typed statement still counts. */
-export function isConfirmationCloseEnough(
-  typed: string,
-  expected: string,
-): boolean {
+// Length-only, so a typo in the typed statement still counts.
+function isConfirmationCloseEnough(typed: string): boolean {
   return (
-    Math.abs(typed.trim().length - expected.length) <=
+    Math.abs(typed.trim().length - WEEKLY_COMMITMENT_CONFIRMATION.length) <=
     CONFIRMATION_LENGTH_TOLERANCE
   );
+}
+
+export function canSignAgreement(params: {
+  signedName: string;
+  confirmation: string;
+  isSubmitting: boolean;
+}): boolean {
+  return (
+    !params.isSubmitting &&
+    params.signedName !== "" &&
+    isConfirmationCloseEnough(params.confirmation)
+  );
+}
+
+export function signedContractId(event: ContractEventState): number | null {
+  return event && IS_SIGNING[event.type] ? event.contractId : null;
+}
+
+export function signedContractEvent(params: {
+  contractId: number;
+  date: string;
+}): NonNullable<ContractEventState> {
+  return { type: "signed", automatic: false, ...params };
+}
+
+export function suspendedContractEvent(
+  date: string,
+): NonNullable<ContractEventState> {
+  return { type: "suspended", date, automatic: false, contractId: null };
 }

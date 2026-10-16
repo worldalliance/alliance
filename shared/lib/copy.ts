@@ -250,8 +250,65 @@ export const guestReferral = {
   createAccountToSubmit: "Create an account to submit",
 } as const;
 
+export const membershipAgreementLoadFailed =
+  "The membership agreement couldn't be loaded.";
+
 export const suspendContractConfirmation =
-  "Are you sure you want to suspend your contract? You will be removed from your groups.";
+  "Are you sure you want to suspend your agreement? You will be removed from your groups.";
+
+export const membershipAgreement = {
+  heading: "Agreement",
+  suspend: "Suspend agreement",
+  updateAvailable: "An updated agreement is available.",
+  signFailed: "There was an error signing the agreement. Please try again.",
+  signSessionExpired:
+    "Your session has expired. Sign in again to sign the agreement.",
+  suspendFailed:
+    "There was an error suspending the agreement. Please try again.",
+  suspendSessionExpired:
+    "Your session has expired. Sign in again to suspend your agreement.",
+  awayOtherReasonHint:
+    "See your agreement above for guidelines on extenuating circumstances.",
+} as const;
+
+interface FaqEntry {
+  question: string;
+  answer: string;
+  steps?: readonly string[];
+}
+
+export const membershipFaq: {
+  heading: string;
+  entries: readonly FaqEntry[];
+} = {
+  heading: "Questions about membership",
+  entries: [
+    {
+      question: "Why is there an agreement?",
+      answer:
+        "The membership agreement sets clear expectations for all members of the Alliance. It ensures that we can count on your participation, which allows us to plan actions precisely. By signing, you are also making a commitment to your peers to work together consistently.",
+    },
+    {
+      question: "What happens if I don't abide by the agreement?",
+      answer:
+        "If you miss any assigned non-optional task for 3 weeks in a row, your agreement will be suspended automatically. You can re-sign the agreement to re-join the Alliance.",
+    },
+    {
+      question: "Are there valid reasons to miss an action?",
+      answer:
+        "Yes. For our planning purposes, we ask that you inform us if you will be unable to complete an action with one of the following methods:",
+      steps: [
+        "You can withdraw from an action by tapping the three dots at the bottom right of an action, next to the Complete button. You can withdraw if the action is taking you longer than 15 minutes to complete, or if you have a moral objection to the action.",
+        "You can schedule an away period on this page if you won't be able to complete actions for a prolonged period, such as during a vacation.",
+      ],
+    },
+    {
+      question: "How do I end my membership?",
+      answer:
+        "You can end your membership at any time by suspending your agreement on this page.",
+    },
+  ],
+};
 
 export const waitingForImageUpload =
   "Waiting for your photo to finish uploading.";
