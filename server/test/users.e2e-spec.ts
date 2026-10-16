@@ -3737,7 +3737,7 @@ describe("Users (e2e)", () => {
     });
 
     it("resets the password with a reset token, minted before or after the type landed", async () => {
-      const token = await userService.generatePasswordResetToken(userBId);
+      const token = await authService.generatePasswordResetToken(userBId);
       await request(ctx.app.getHttpServer())
         .post("/auth/reset-password")
         .send({ token, password: "FreshPassword123!" })

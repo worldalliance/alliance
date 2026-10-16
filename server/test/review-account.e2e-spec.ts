@@ -11,6 +11,7 @@ import {
   REVIEW_SIGN_IN_FAILED_PARAM,
 } from "@alliance/common/review-account";
 import { io } from "socket.io-client";
+import { AuthService } from "src/auth/auth.service";
 import { TokenMode } from "src/auth/dto/signin.dto";
 import { mintProof, OAuthAuthService } from "src/auth/oauth/oauth-auth.service";
 import { ACCESS_COOKIE, REFRESH_COOKIE } from "src/auth/tokens";
@@ -139,7 +140,7 @@ describe("Review accounts (e2e)", () => {
     it("refuses a password reset for a review account", async () => {
       const reviewer = await createMember({ isTestUser: true });
       const token = await ctx.app
-        .get(UserService)
+        .get(AuthService)
         .generatePasswordResetToken(reviewer.id);
 
       await request(server())

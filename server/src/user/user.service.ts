@@ -602,17 +602,6 @@ export class UserService {
     ];
   }
 
-  async generatePasswordResetToken(userId: number) {
-    const payload: MailedJwtPayload = {
-      sub: userId,
-      tokenType: JWTTokenType.passwordReset,
-    };
-    return this.jwtService.sign(payload, {
-      secret: process.env.JWT_SECRET,
-      expiresIn: `1d`,
-    });
-  }
-
   async setOptInMms(userId: number, mmsId: number) {
     await updateLive(this.dataSource.manager, {
       target: User,

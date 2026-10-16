@@ -1,7 +1,6 @@
 import { AuthService } from "src/auth/auth.service";
 import { SignUpDto } from "src/auth/dto/sign-up.dto";
 import { ACCESS_COOKIE, JWTTokenType, REFRESH_COOKIE } from "src/auth/tokens";
-import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
@@ -926,7 +925,7 @@ describe("Auth (e2e)", () => {
         }),
       );
       const resetToken = await ctx.app
-        .get(UserService)
+        .get(AuthService)
         .generatePasswordResetToken(admin.id);
       const accessToken = signAccessToken(ctx.jwtService, admin);
 
@@ -976,7 +975,7 @@ describe("Auth (e2e)", () => {
         }),
       );
       const resetToken = await ctx.app
-        .get(UserService)
+        .get(AuthService)
         .generatePasswordResetToken(admin.id);
       const accessToken = signAccessToken(ctx.jwtService, admin);
 

@@ -51,6 +51,7 @@ import {
   verifyMailedToken,
   type GuestJwtPayload,
   type JwtPayload,
+  type MailedJwtPayload,
 } from "./tokens";
 
 export type ReferredUser = {
@@ -483,7 +484,7 @@ export class AuthService {
       return; // fail silently to avoid leaking emails
     }
 
-    const token = await this.usersService.generatePasswordResetToken(user.id);
+    const token = await this.generatePasswordResetToken(user.id);
     await this.mailService.sendPasswordResetEmail({
       email: user.email,
       name: user.name,
@@ -491,6 +492,17 @@ export class AuthService {
       hasPassword: hasPassword(user),
     });
     return user;
+  }
+
+  async generatePasswordResetToken(userId: number) {
+    const payload: MailedJwtPayload = {
+      sub: userId,
+      tokenType: JWTTokenType.passwordReset,
+    };
+    return this.jwtService.sign(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: `1d`,
+    });
   }
 
   async resetPassword(token: string, password: string) {

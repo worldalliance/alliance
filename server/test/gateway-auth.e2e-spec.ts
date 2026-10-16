@@ -1,7 +1,7 @@
 import { io } from "socket.io-client";
+import { AuthService } from "src/auth/auth.service";
 import { EventLogModule } from "src/eventlog/eventlog.module";
 import { MessagingModule } from "src/messaging/messaging.module";
-import { UserService } from "src/user/user.service";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
 const NAMESPACES = ["/messaging", "/messaging/overview", "/event-log"];
@@ -57,7 +57,7 @@ describe("Socket gateway auth (e2e)", () => {
     "refuses a mailed password-reset token on %s",
     async (namespace) => {
       const resetToken = await ctx.app
-        .get(UserService)
+        .get(AuthService)
         .generatePasswordResetToken(ctx.adminUserId);
       expect(await connects(namespace, resetToken)).toBe(false);
     },
