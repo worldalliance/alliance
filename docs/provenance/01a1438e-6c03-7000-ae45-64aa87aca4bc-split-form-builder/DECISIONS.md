@@ -16,6 +16,6 @@
   - `FormBuilderHeader.tsx`, `FormBuilderPreview.tsx`, `FormBuilderSettings.tsx`, `FormBuilderCanvas.tsx`: the header and banners, the preview as a user, the settings sidebar, and the canvas workspace.
   - `form-canvas/useCanvasSelection.ts` and `form-canvas/useCanvasEdits.ts`: the canvas selection, and the edits that change the schema and move the selection with it.
   - `FormDraftContexts` builds its context values from the form draft; `useFormulaSourceValidation` derives source-form status; `useSaveGate` holds Save's checks and confirmation.
-- Each extraction keeps behavior as it was and lands as its own commit that typechecks and passes the admin tests alone. The last commit removes the waiver.
+- Each extraction keeps behavior as it was and lands as its own commit that typechecks and passes the admin tests alone. The commit that brings the file under 500 lines removes the waiver.
 - Behavior changes made along the way, each named in its commit: an unknown field kind throws instead of adding nothing, and the preview's user list loads only for the preview that shows it.
 - The preview's chosen user and the per-user content override stay in `FormBuilder`, so switching tabs or leaving preview keeps them as before.

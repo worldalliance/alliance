@@ -1,4 +1,3 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { type FormSchema } from "@alliance/common/forms/form-schema";
 import {
   collectUnresolvedVariableReferences,
@@ -137,11 +136,7 @@ export function FormBuilder(props: FormBuilderProps) {
     regroupSchema,
     loadSchema,
     setGroups,
-    validatorDrafts,
-    setValidatorDraft,
-    removeValidatorDraft,
     expressions,
-    setExpression,
   } = formDraft;
   const canvasGroups = displayOnly ? NO_VISIBILITY_GROUPS : visibilityGroups;
   const canvas = useCanvasSelection({
@@ -243,25 +238,6 @@ export function FormBuilder(props: FormBuilderProps) {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewUserId, setPreviewUserId] = useState<string>("preview");
   const [jsonScope, setJsonScope] = useState<JsonScope | null>(null);
-  const draftValidatorIdRef = useRef(-1);
-  const createDraftId = useCallback(() => {
-    const nextId = draftValidatorIdRef.current;
-    draftValidatorIdRef.current -= 1;
-    return nextId;
-  }, []);
-  const customValidatorDraftContext = useMemo(
-    () => ({
-      drafts: validatorDrafts,
-      setDraft: setValidatorDraft,
-      removeDraft: removeValidatorDraft,
-      createDraftId,
-    }),
-    [createDraftId, removeValidatorDraft, setValidatorDraft, validatorDrafts],
-  );
-  const expressionBuffers = useMemo(
-    () => ({ buffers: expressions, setBuffer: setExpression }),
-    [expressions, setExpression],
-  );
   const builderRef = useRef<HTMLDivElement | null>(null);
 
   const { target: overrideTarget, override } = useOverrideTarget(selectionKey);
@@ -390,11 +366,7 @@ export function FormBuilder(props: FormBuilderProps) {
     });
 
   return (
-    <FormDraftContexts
-      validatorDrafts={customValidatorDraftContext}
-      expressionBuffers={expressionBuffers}
-      derivedWrite={formDraft.withoutStep}
-    >
+    <FormDraftContexts formDraft={formDraft}>
       {conflict && (
         <FormConflictModal
           base={conflict.base}
