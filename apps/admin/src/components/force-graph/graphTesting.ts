@@ -42,7 +42,6 @@ export const user = (
   shareEmailWithCommunityLead: false,
   sharePhoneNumberWithCommunityLead: false,
   turnedOffAllNotifs: false,
-  forumDigestPreference: "off",
   switchedDomainAt: null,
   admin: false,
   staff: false,

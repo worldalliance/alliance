@@ -49,8 +49,6 @@ export type RefreshTokensResponseDto = {
     refresh_token?: string;
 };
 
-export type ForumDigestPreference = 'off' | 'daily' | 'weekly';
-
 export type PublicFormResponseDefault = 'public' | 'private';
 
 export type ReferralSource = 'referral_link' | 'onetime_invite' | 'action_share_link' | 'external_share_link' | 'invite_share_link' | 'campaign' | 'none';
@@ -724,7 +722,6 @@ export type User = {
     sharePhoneNumberWithCommunityLead: boolean;
     socialNotifsPreference: NotificationPreference;
     turnedOffAllNotifs: boolean;
-    forumDigestPreference: ForumDigestPreference;
     switchedDomainAt: string | null;
     admin: boolean;
     staff: boolean;
@@ -809,7 +806,6 @@ export type UserDto = {
     shareEmailWithCommunityLead: boolean;
     sharePhoneNumberWithCommunityLead: boolean;
     turnedOffAllNotifs: boolean;
-    forumDigestPreference: ForumDigestPreference;
     switchedDomainAt: string | null;
     admin: boolean;
     staff: boolean;
@@ -960,7 +956,6 @@ export type UpdateProfileDto = {
     pushNotifsForActions?: boolean;
     shareEmailWithCommunityLead?: boolean;
     sharePhoneNumberWithCommunityLead?: boolean;
-    forumDigestPreference?: ForumDigestPreference;
     anonymous?: boolean;
     shareInfoPublicly?: boolean;
     formDataPreference?: PublicFormResponseDefault;
@@ -1068,7 +1063,6 @@ export type UserAdminDetailDto = {
     shareEmailWithCommunityLead: boolean;
     sharePhoneNumberWithCommunityLead: boolean;
     turnedOffAllNotifs: boolean;
-    forumDigestPreference: ForumDigestPreference;
     switchedDomainAt: string | null;
     admin: boolean;
     staff: boolean;

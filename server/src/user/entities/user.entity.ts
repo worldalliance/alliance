@@ -70,12 +70,6 @@ export enum NotificationPreference {
   None = "none",
 }
 
-export enum ForumDigestPreference {
-  Off = "off",
-  Daily = "daily",
-  Weekly = "weekly",
-}
-
 export enum PublicFormResponseDefault {
   Public = "public",
   Private = "private",
@@ -216,16 +210,16 @@ export class User {
   @ApiProperty()
   turnedOffAllNotifs: boolean;
 
+  // TODO: drop the column and this field in a deploy after this one. Until
+  // then the previous release, which selects it, is what a rollback restores.
   @Column({
+    name: "forumDigestPreference",
     type: "enum",
-    enum: ForumDigestPreference,
-    default: ForumDigestPreference.Off,
+    enum: ["off", "daily", "weekly"],
+    default: "off",
+    select: false,
   })
-  @ApiProperty({
-    enum: ForumDigestPreference,
-    enumName: "ForumDigestPreference",
-  })
-  forumDigestPreference: ForumDigestPreference;
+  legacyForumDigestPreference: string;
 
   @Column({ type: "timestamptz", nullable: true })
   @ApiProperty({ type: Date, nullable: true })
