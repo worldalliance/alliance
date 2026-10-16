@@ -1,6 +1,6 @@
+import { isAtCapacity } from "@alliance/common/community";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { isAtCapacity } from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
 import { InviteFeedEvents } from "src/invite-feed.events";
 import {

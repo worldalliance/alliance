@@ -1,6 +1,6 @@
+import { getMemberCount } from "@alliance/common/community";
 import type { CommunityDto } from "@alliance/shared/client/types.gen";
 import {
-  getMemberCount,
   groupRemovalMessage,
   publicGroupJoinState,
 } from "@alliance/shared/lib/communityUtils";

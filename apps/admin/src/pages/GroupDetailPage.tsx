@@ -2,6 +2,7 @@
 import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
+  getMemberCount,
   isMaxCapacityRequired,
   validateCommunitySettings,
 } from "@alliance/common/community";
@@ -12,7 +13,6 @@ import type {
   UpdateCommunityDto,
   UserActionSummaryDto,
 } from "@alliance/shared/client/types.gen";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import { CardStyle } from "@alliance/shared/styles/card";

@@ -1,9 +1,9 @@
+import { acceptsStaffAssignment } from "@alliance/common/community";
 import { userUserDetailAdmin } from "@alliance/shared/client";
 import type {
   CommunityDto,
   UserAdminDetailDto,
 } from "@alliance/shared/client/types.gen";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -71,9 +71,7 @@ export default function MemberGroupMoveSection({
         .filter(
           (community) =>
             !currentCommunityIdSet.has(community.id) &&
-            community.allowStaffAssignments &&
-            community.maxCapacity !== null &&
-            getMemberCount(community) < community.maxCapacity,
+            acceptsStaffAssignment(community),
         )
         .sort((a, b) => a.name.localeCompare(b.name)),
     [communities, currentCommunityIdSet],

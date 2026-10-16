@@ -1,6 +1,6 @@
+import { getMemberCount } from "@alliance/common/community";
 import { withCount } from "@alliance/common/plural";
 import { CommunityDto } from "@alliance/shared/client";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 
 const MyGroupSummary = ({ community }: { community: CommunityDto }) => (

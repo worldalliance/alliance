@@ -1,6 +1,7 @@
+import { freeSlots } from "@alliance/common/community";
 import { withCount } from "@alliance/common/plural";
 import { CommunityDto } from "@alliance/shared/client";
-import { getMemberCount, isLedBy } from "@alliance/shared/lib/communityUtils";
+import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
 import type { InvitePlacement } from "@alliance/shared/lib/useInvitePlacement";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
@@ -87,9 +88,7 @@ const InviteFormGroupStep = ({
         }
       : {
           memberCommunityAllowsMemberInvites: true,
-          memberCommunityRemainingCapacity:
-            memberCommunities[0].maxCapacity -
-            getMemberCount(memberCommunities[0]),
+          memberCommunityRemainingCapacity: freeSlots(memberCommunities[0]),
         };
 
   return (

@@ -1,5 +1,6 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
+  getMemberCount,
   isMaxCapacityRequired,
   validateCommunitySettings,
 } from "@alliance/common/community";
@@ -19,7 +20,7 @@ import {
   hasActionsToComplete,
   sortMembersByNextTaskDue,
 } from "@alliance/shared/lib/communityMemberActions";
-import { getMemberCount, isLedBy } from "@alliance/shared/lib/communityUtils";
+import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import useActivities, {
   ActivityList,
