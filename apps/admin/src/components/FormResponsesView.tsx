@@ -30,18 +30,20 @@ import React, {
   useState,
 } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
-import { isEmptyAnswer, normalizeBoolean } from "../lib/answerValues";
+import { isEmptyAnswer } from "../lib/answerValues";
 import {
   getDirectSnapshotTarget,
   type ReturnToState,
   type SnapshotMigrationTarget,
 } from "../lib/navigation";
-import { choiceAnswerText, getSelections } from "../lib/questionAnswer";
+import { choiceAnswerText } from "../lib/questionAnswer";
 import { respondentName as buildRespondentName } from "../lib/respondent";
 import {
+  FILTERABLE_FIELD_KINDS,
   filterDescription,
+  isResponseFilterOp,
+  matchesResponseFilter,
   type FormResponseFilter,
-  type ResponseFilterOp,
 } from "../lib/responseFilter";
 import { buildResponsesHtml } from "../lib/responsesHtmlExport";
 import FormResponseStatistics from "./FormResponseStatistics";
@@ -89,23 +91,12 @@ const ANSWER_FIELD_KINDS = new Set<FieldKind>([
   "file",
 ]);
 
-const FILTERABLE_FIELD_KINDS = new Set<FieldKind>([
-  "checkbox",
-  "radio",
-  "select",
-  "multiselect",
-  "range",
-]);
-
 const AI_SCORE_FIELD_KINDS = new Set<FieldKind>(["text", "textarea"]);
 
 type Tab = "responses" | "stats" | "questions" | "replays";
 
 const isAnswerField = (node: AnyField | DisplayBlock): node is AnyField =>
   isQuestionField(node) && ANSWER_FIELD_KINDS.has(node.kind);
-
-const isResponseFilterOp = (value: string | null): value is ResponseFilterOp =>
-  value === "equals" || value === "includes" || value === "no-response";
 
 const isTab = (value: string | null): value is Tab =>
   value === "responses" ||
@@ -116,43 +107,6 @@ const isTab = (value: string | null): value is Tab =>
 const formatAiScore = (value: number | null): string => {
   if (typeof value !== "number" || Number.isNaN(value)) return "--";
   return `${Math.round(value * 100)}%`;
-};
-
-const matchesResponseFilter = (
-  response: FormResponseDto,
-  filter: FormResponseFilter,
-  field: AnyField,
-): boolean => {
-  const rawValue = response.answers?.[filter.fieldId];
-  if (filter.op === "no-response") {
-    return isEmptyAnswer(rawValue);
-  }
-
-  switch (field.kind) {
-    case "checkbox": {
-      if (filter.op !== "equals") return false;
-      const desired = normalizeBoolean(filter.value);
-      const actual = normalizeBoolean(rawValue);
-      if (desired === null || actual === null) return false;
-      return actual === desired;
-    }
-    case "multiselect": {
-      if (filter.op !== "includes") return false;
-      const selections = getSelections(rawValue);
-      return selections.includes(filter.value ?? "");
-    }
-    case "radio":
-    case "select":
-    case "range": {
-      if (filter.op !== "equals") return false;
-      if (rawValue === null || rawValue === undefined || rawValue === "") {
-        return false;
-      }
-      return String(rawValue) === (filter.value ?? "");
-    }
-    default:
-      return false;
-  }
 };
 
 export const REFERRALS_LOAD_ERROR =
