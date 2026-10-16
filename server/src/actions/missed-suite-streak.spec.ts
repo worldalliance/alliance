@@ -1,6 +1,7 @@
 import {
   findMissedSuiteStanding,
   type SuiteOutcome,
+  type SuiteOutcomeAction,
   suspensionReasonKey,
   trailingMissedSuiteIds,
 } from "./missed-suite-streak";
@@ -10,7 +11,9 @@ const MEMBER = 1;
 function suite(
   suiteId: number,
   outcome: number[] | "unassigned",
-  actions = [{ id: suiteId * 10, name: `Task ${suiteId}` }],
+  actions: SuiteOutcomeAction[] = [
+    { id: suiteId * 10, name: `Task ${suiteId}`, timeEstimate: null },
+  ],
 ): SuiteOutcome {
   return {
     suiteId,
@@ -66,7 +69,7 @@ describe("findMissedSuiteStanding", () => {
       findMissedSuiteStanding({ suites, userId: MEMBER, suiteId: 3 }),
     ).toEqual({
       missNumber: 2,
-      missedActions: [{ id: 30, name: "Task 3" }],
+      missedActions: [{ id: 30, name: "Task 3", timeEstimate: null }],
       isFirstAssignedSuite: false,
     });
   });
@@ -84,15 +87,15 @@ describe("findMissedSuiteStanding", () => {
         1,
         [11],
         [
-          { id: 10, name: "Done" },
-          { id: 11, name: "Missed" },
+          { id: 10, name: "Done", timeEstimate: null },
+          { id: 11, name: "Missed", timeEstimate: null },
         ],
       ),
     ];
     expect(
       findMissedSuiteStanding({ suites, userId: MEMBER, suiteId: 1 })
         ?.missedActions,
-    ).toEqual([{ id: 11, name: "Missed" }]);
+    ).toEqual([{ id: 11, name: "Missed", timeEstimate: null }]);
   });
 
   it("is null for a satisfied, unassigned, or unclosed suite", () => {

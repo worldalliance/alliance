@@ -140,11 +140,14 @@ export class Action {
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   shortDescription: string;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({ description: "Time estimate in minutes" })
+  @Column({ type: "int", nullable: true })
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: "Time estimate in minutes",
+  })
   @IsOptional()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  timeEstimate?: number;
+  timeEstimate: number | null;
 
   @Column({ nullable: true })
   @ApiPropertyOptional({ description: "Form associated with the action" })

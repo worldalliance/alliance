@@ -63,7 +63,7 @@ import { saveForLiveRecipient } from "./save-for-live-recipient";
 export type UncompletedTaskSummary = {
   id: number;
   name: string;
-  timeEstimate?: number;
+  timeEstimate: number | null;
 };
 
 const reminderTracking = (

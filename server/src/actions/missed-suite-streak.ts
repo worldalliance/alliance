@@ -4,7 +4,7 @@ export const SUSPENSION_MISSED_SUITE_COUNT = 3;
 export type SuiteOutcomeAction = {
   id: number;
   name: string;
-  timeEstimate?: number;
+  timeEstimate: number | null;
 };
 
 /**

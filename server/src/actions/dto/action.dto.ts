@@ -661,7 +661,6 @@ export class CreateActionDto extends IntersectionType(
     "squareThumbnailImageAlt",
     "body",
     "shortDescription",
-    "timeEstimate",
     "taskFormId",
     "isContractSigningAction",
     "visibilityMode",
@@ -678,6 +677,7 @@ export class CreateActionDto extends IntersectionType(
   ]),
   PartialType(
     PickType(ActionDto, [
+      "timeEstimate",
       "forumParticipationPostId",
       "forumParticipationIncludeChildren",
       "computedAutocompleteAt",
