@@ -728,7 +728,9 @@ export class CreateActionDto extends IntersectionType(
   prerequisiteActionIds?: number[];
 }
 
-export class UpdateActionDto extends PartialType(CreateActionDto) {}
+export class UpdateActionDto extends PartialType(CreateActionDto, {
+  skipNullProperties: false,
+}) {}
 
 export class SetActionPriorityDto extends PickType(Action, [
   "id",
