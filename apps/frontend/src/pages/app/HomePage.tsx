@@ -28,7 +28,6 @@ import { runAsync } from "@alliance/shared/lib/utils";
 import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
 import AggregateProgressBarBlock from "@alliance/sharedweb/ui/AggregateProgressBarBlock";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
-import LargeGeneralUpdateCard from "@alliance/sharedweb/ui/LargeGeneralUpdateCard";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,7 +36,7 @@ import { href, Link } from "react-router";
 import FollowUpFormPanel from "../../components/FollowUpFormPanel";
 import GlobalFeed from "../../components/GlobalFeed";
 import HomeFeed from "../../components/HomeFeed";
-import HomeUpdatesRow from "../../components/HomeUpdatesRow";
+import HomeGeneralUpdates from "../../components/HomeGeneralUpdates";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
 import LoadFailed from "../../components/LoadFailed";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
@@ -212,11 +211,6 @@ const HomePage = () => {
   );
   const { index: taskNavigatorIndex, setIndex: setTaskNavigatorIndex } =
     useBoundedIndex(taskNavigatorKeys);
-
-  const sortedGeneralUpdates = useMemo(
-    () => [...(generalUpdates ?? [])].sort(homePagePriorityComparator),
-    [generalUpdates],
-  );
 
   const selectedTaskNavigatorItem =
     taskNavigatorItems.length === 0
@@ -403,29 +397,11 @@ const HomePage = () => {
       >
         <div className="flex flex-col gap-4">
           {isLargeScreen && (
-            <>
-              <HomeUpdatesRow />
-              {generalUpdatesFailure && (
-                <LoadFailed
-                  message="Couldn't load general updates."
-                  {...generalUpdatesFailure}
-                />
-              )}
-              {sortedGeneralUpdates.length > 0 && (
-                <div className="flex flex-col gap-3">
-                  {sortedGeneralUpdates.map((generalUpdate) => (
-                    <LargeGeneralUpdateCard
-                      key={generalUpdate.id}
-                      title={generalUpdate.name}
-                      schema={generalUpdate.schema}
-                      onDismiss={() =>
-                        handleDismissGeneralUpdate(generalUpdate.id)
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-            </>
+            <HomeGeneralUpdates
+              generalUpdates={generalUpdates}
+              failure={generalUpdatesFailure}
+              onDismiss={handleDismissGeneralUpdate}
+            />
           )}
 
           {!isLargeScreen && <div>{sidebarProgressActionProgressBars}</div>}
@@ -538,27 +514,11 @@ const HomePage = () => {
 
         {!isLargeScreen && (
           <div className="flex flex-col gap-4">
-            <HomeUpdatesRow />
-            {generalUpdatesFailure && (
-              <LoadFailed
-                message="Couldn't load general updates."
-                {...generalUpdatesFailure}
-              />
-            )}
-            {sortedGeneralUpdates.length > 0 && (
-              <div className="flex flex-col gap-3">
-                {sortedGeneralUpdates.map((generalUpdate) => (
-                  <LargeGeneralUpdateCard
-                    key={generalUpdate.id}
-                    title={generalUpdate.name}
-                    schema={generalUpdate.schema}
-                    onDismiss={() =>
-                      handleDismissGeneralUpdate(generalUpdate.id)
-                    }
-                  />
-                ))}
-              </div>
-            )}
+            <HomeGeneralUpdates
+              generalUpdates={generalUpdates}
+              failure={generalUpdatesFailure}
+              onDismiss={handleDismissGeneralUpdate}
+            />
           </div>
         )}
 
@@ -571,7 +531,7 @@ const HomePage = () => {
     user,
     handleDismissAction,
     handleDismissGeneralUpdate,
-    sortedGeneralUpdates,
+    generalUpdates,
     generalUpdatesFailure,
     actionsFailure,
     taskNavigatorListContent,
