@@ -1,0 +1,82 @@
+# Notification settings overhaul
+
+Current agent decisions and implementation rationale for [REQUIREMENTS.md](./REQUIREMENTS.md).
+
+## Kinds and policy
+
+A `NotificationKind` enum, separate from `NotificationCategory`, names every kind. `NotificationCategory` can't serve: messages, suspension notices, and action reminders don't travel through it, and friend requests and accepted friend requests share a column today. Exhaustive `Record` mappings tie each category, `ActionEventNotifType`, and other producer to its kind, so a new producer fails the build until it is classified. `Reminder` sends map through their reminder group: the `GroupLeadsWithUncompleted` cohort is "Group members with uncompleted tasks", every other cohort is "Action reminders".
+
+One `Record<NotificationKind, KindPolicy>` declares each kind's offered channels, whether it is required, whether it is leader-only, its section, its label, and its sample-render input. Offered channels follow from the sending code, so the settings screens, the resolver, and the API validation all read this one table.
+
+## Resolving a send
+
+One server function decides whether a member wants a kind on a channel:
+
+```text
+channel offered by the kind
+  AND (required ? channelDefault : override ?? channelDefault)
+```
+
+Reachability stays outside it: each sender keeps its current checks (active agreement, phone and SMS STOP, devices, `post.notifyForReplies`) and calls the resolver for the preference alone. Group join SMS has no active-agreement check today and gains none. The `userActionNotifsEnabled_*` and `notificationPushesEnabled` helpers in `server/src/user/user.utils.ts` are replaced by the resolver plus the reachability checks they mix in today.
+
+Contract suspension notices drop the active-agreement check. Today they pass it only because the worker checks a member loaded before the suspension committed; reloading the member would silently stop every suspension notice.
+
+Batch senders load overrides for all recipient IDs in one query and resolve in memory. Senders that filter recipients in SQL left-join `notification_preference` on the kind and channel and use `COALESCE(enabled, <channel default column>)`.
+
+## Storage
+
+- `user` gains `inAppByDefault`, and `emailNotifsForActions`, `textNotifsForActions`, and `pushNotifsForActions` become `emailByDefault`, `textByDefault`, and `pushByDefault`. All four are `NOT NULL DEFAULT true`, which gives new accounts the all-On start.
+- `notification_preference (userId, kind, channel, enabled, source)`, primary key `(userId, kind, channel)`, `ON DELETE CASCADE` from `user`. `kind` and `channel` are Postgres enums. `source` is `member` or `migrated` and feeds the admin page's labels.
+- A table over a JSONB document: each cell is upserted or deleted on its own row, so two screens saving at once never overwrite each other's cells, and SQL recipient filters join it directly.
+
+## Migration
+
+Defaults copy from the three general toggles; in-app starts On for everyone. For every kind × offered channel, the migration computes the member's current effective delivery from today's gating and writes an override wherever it differs from the new default. The old per-kind settings feed that computation:
+
+| Old setting                          | Kind and channels                                            |
+| ------------------------------------ | ------------------------------------------------------------ |
+| `pushesForActionUpdates`             | Action updates · push                                        |
+| `pushesForLikes`                     | Likes · push                                                 |
+| `pushesForComments`                  | Comments and replies · push                                  |
+| `receiveReplyNotifications`          | Comments and replies · SMS, email                            |
+| `pushesForFriendRequests`            | Friend requests · push; accepted friend requests · push      |
+| `pushesForMessages`                  | Messages · push                                              |
+| `pushesForNewGroupMembers`           | Someone joined your group · push                             |
+| `textsForNewGroupMembers`            | Someone joined your group · SMS                              |
+| `remindAboutUncompletedGroupMembers` | Group members with uncompleted tasks · every offered channel |
+
+Kinds whose current gating ignores a general toggle get an On override wherever the member's default for that channel is Off. Overrides on leader-only kinds are written for every member, leader or not, so an opt-out survives becoming a leader. The migration then drops every column it read, plus `forumDigestPreference`, `socialNotifsPreference`, `turnedOffAllNotifs`, and `forum_digest_log`. The admin user detail page stops showing `turnedOffAllNotifs`. Overrides it writes have `source = migrated`.
+
+## In-app visibility
+
+The `Notification` or `UnreadContent` row is still written whenever any channel will deliver, because push dispatch, link tracking, and action update delivery read it. A visibility flag on the row, set at creation from the in-app preference, keeps hidden rows out of the inbox list and the unread count. Action update delivery keeps requiring a renderable entry for access, and checks visibility separately.
+
+## API
+
+Dedicated endpoints replace the notification fields on `UpdateProfileDto`:
+
+- `GET /me/notification-settings` returns the four defaults and, per offered kind and channel, the override (or `null`), the effective value, and whether the cell is editable. Channel reachability is reported separately: phone present, SMS STOP, email present.
+- `PATCH /me/notification-settings` takes defaults and cells. A boolean upserts an override, `null` deletes it, an omitted field is unchanged. Overrides on required kinds or unoffered channels are rejected with a 400.
+
+Push permission on the device is client-side state, so each app reads it locally for the blocked-channel notice.
+
+## Example text
+
+Each kind renders its example through the producer's own copy function with fixed sample input (`Maya Rowan`, `Climate Hawks`, …) declared in the kind policy. The server returns the rendered examples with the settings, so web and mobile show identical text that changes whenever the real copy does.
+
+## Contract reminder
+
+`user.contractReminderSentAt timestamptz NULL`, set when the reminder sends. The hourly worker selects accounts at least 24 hours old with no contract events and a null `contractReminderSentAt`. The backfill sets it on every account whose current email matches a past `contract_reminder` mail, using that mail's send time. `mail` records only the recipient address, so the current email is the only link to an account; members can't change their email in the app.
+
+## Group join audience
+
+`GroupJoinNotifsService` drops the group's leaders from the `group_member_joined` audience. This replaces the "every existing member and leader" audience in `docs/provenance/01a11f9d-b3d3-7000-998a-59cea0d92543-group-join-notification/`.
+
+## Settings screens
+
+- A per-kind "Reset to defaults" deletes that kind's overrides. There is no global reset.
+- The web screen lives in `apps/frontend/src/components/settings/`, the mobile one in `apps/mobile/app/(app)/settings.tsx` plus a section screen. Shared types and save logic go in `shared/`.
+
+## Delivery
+
+Stacked PRs. The independent ones land first in any order: the contract reminder, the group join audience, and the forum digest removal. Then the server core: kinds, policy, `notification_preference`, the override-writing migration, the resolver, sender rewiring, in-app visibility, and the new endpoints. Then the web and mobile screens, then the admin view. The core and screens PRs deploy together: the migration reads the old columns once, so a change saved through the old screens after it would be lost.
