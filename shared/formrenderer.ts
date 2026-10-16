@@ -1,4 +1,3 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
@@ -6,46 +5,20 @@ import {
   forEachOutputViewCondition,
 } from "@alliance/common/forms/form-conditions";
 import {
-  type AnyField,
-  asCards,
   type CityFieldValue,
   type FormSchema,
   type FormValue,
-  type ListField,
-  type ListSubField,
-  type NumberField,
   type Page,
   type PageItem,
 } from "@alliance/common/forms/form-schema";
-import { getMaxSelections } from "@alliance/common/forms/multiselect";
-import {
-  isEmptyRangeAnswer,
-  isValidRangeSelection,
-} from "@alliance/common/forms/range";
-import {
-  getRankingSlotCount,
-  isValidRankingSelection,
-} from "@alliance/common/forms/ranking";
 import {
   type ConditionExtras,
-  isFieldConditionallyRequired,
   isPageCurrentlyVisible,
-  listRowData,
-  visibleListSubFields,
 } from "@alliance/common/forms/visibility";
 import {
   CONDITION_KIND_IS_ACCOUNT_DERIVED,
   isKnownConditionKind,
 } from "@alliance/common/forms/visible-if-formula";
-import { withCount } from "@alliance/common/plural";
-import { parseTimeToMinutes } from "@alliance/shared/forms/timeUtils";
-import { dropUnuploadedFileAnswers } from "./forms/fileAnswers";
-import {
-  defaultCardCount,
-  listCardLimits,
-  resolveCards,
-} from "./forms/listCards";
-import { dropUnknownOptionAnswers } from "./forms/optionAnswers";
 
 /** Indices into `pages` of the currently visible pages. */
 export function getVisiblePageIndices(
@@ -101,22 +74,6 @@ export function getFallbackVisiblePageIndex(
     getNextVisiblePageIndex(visibleIndices, currentIndex) ??
     visibleIndices[visibleIndices.length - 1]
   );
-}
-
-/**
- * Compute a stable storage key for a form draft.
- * Format: `form:<slug>:v<version>[:<instanceId>]`
- */
-export function computeFormStorageKey(args: {
-  formId: number;
-  instanceId?: string | number | null;
-}): string {
-  const base = `form:${args.formId}`;
-  const hasInstance =
-    args.instanceId !== undefined &&
-    args.instanceId !== null &&
-    args.instanceId !== "";
-  return hasInstance ? `${base}:${String(args.instanceId)}` : base;
 }
 
 type FormElementKind = FormSchema["pages"][number]["fields"][number]["kind"];
@@ -216,9 +173,6 @@ export function findUnknownConditionKind(schema: FormSchema): string | null {
   return unknown;
 }
 
-const isNonEmptyString = (value: unknown): value is string =>
-  typeof value === "string" && value.trim().length > 0;
-
 export type UserLocationDisplayValue =
   | CityFieldValue
   | string
@@ -246,114 +200,6 @@ export function schemaNeedsVisibilityContext(schema: FormSchema): boolean {
     schema,
     (condition) => CONDITION_KIND_IS_ACCOUNT_DERIVED[condition.kind],
   );
-}
-
-export function resolveFieldDefaultValue(
-  field: AnyField,
-  timeZone: string | undefined,
-): FormValue | undefined {
-  if (field.kind === "timezone") {
-    return timeZone;
-  }
-
-  const rawDefault = field.defaultValue;
-
-  if (rawDefault === null) {
-    return undefined;
-  }
-
-  if (rawDefault !== undefined) {
-    switch (field.kind) {
-      case "radio":
-      case "select": {
-        if (typeof rawDefault !== "string" || !isNonEmptyString(rawDefault)) {
-          return undefined;
-        }
-        const values = field.options?.map((option) => option.value) ?? [];
-        return values.includes(rawDefault) ? rawDefault : undefined;
-      }
-      case "multiselect": {
-        if (!Array.isArray(rawDefault) || rawDefault.length === 0) {
-          return undefined;
-        }
-        const validValues = field.options?.map((option) => option.value) ?? [];
-        const filtered = rawDefault.filter(
-          (value): value is string =>
-            typeof value === "string" && validValues.includes(value),
-        );
-        return filtered.length ? filtered : undefined;
-      }
-      case "checkbox":
-        return typeof rawDefault === "boolean" ? rawDefault : undefined;
-      case "number":
-        return typeof rawDefault === "number" ? rawDefault : undefined;
-      case "range":
-        return field.kind === "range" &&
-          isValidRangeSelection(field, rawDefault)
-          ? rawDefault
-          : undefined;
-      case "ranking":
-        return isValidRankingSelection(field, rawDefault)
-          ? rawDefault
-          : undefined;
-      case "time":
-      case "date":
-      case "text":
-      case "textarea":
-      case "email":
-      case "phone":
-      case "file":
-      case "custom":
-        return isNonEmptyString(rawDefault) ? rawDefault : undefined;
-      case "city":
-        return (
-          parseCityValue(rawDefault) ??
-          (isNonEmptyString(rawDefault) ? rawDefault : undefined)
-        );
-      default:
-        return isNonEmptyString(rawDefault) ? rawDefault : undefined;
-    }
-  }
-
-  if (field.kind === "list") {
-    const listField = field as ListField;
-    const defaultNumber = Math.max(
-      0,
-      Math.floor(Number(listField.defaultNumber) || 0),
-    );
-    return Array.from({ length: defaultNumber }, () => ({})) as FormValue;
-  }
-
-  return undefined;
-}
-
-export function applyDefaultValues(
-  base: Record<string, FormValue> | undefined,
-  defaults: Map<string, FormValue>,
-): Record<string, FormValue> {
-  if (!defaults.size) {
-    return base ? base : {};
-  }
-
-  let result = base ?? {};
-  let mutated = false;
-
-  for (const [fieldId, defaultValue] of defaults.entries()) {
-    const current = result[fieldId];
-    if (current === undefined || current === null) {
-      if (!mutated) {
-        result = base ? { ...base } : { ...result };
-        mutated = true;
-      }
-      result[fieldId] = defaultValue;
-    }
-  }
-
-  if (mutated) {
-    return result;
-  }
-
-  return base ? base : {};
 }
 
 /**
@@ -413,269 +259,4 @@ export function resolveDisplayBlockForUser<T extends DisplayBlock>(
     manualPerUser: candidate.manualPerUser,
     manualUserContent: candidate.manualUserContent,
   };
-}
-
-export function filterAnswersByFieldIds(
-  answers: Record<string, FormValue> | null,
-  allowedFields: Map<string, AnyField>,
-): Record<string, FormValue> {
-  if (!answers) {
-    return {};
-  }
-
-  const filtered: Record<string, FormValue> = {};
-  for (const [fieldId, value] of Object.entries(answers)) {
-    if (allowedFields.has(fieldId)) {
-      filtered[fieldId] = value;
-    }
-  }
-  return filtered;
-}
-
-/**
- * The answers a renderer should start a draft from: only fields the schema
- * still has, only multiselect selections of fixed options the field still has,
- * only range answers the field still offers, and only file answers naming an
- * image that reached the server. Callers apply
- * defaults afterwards, since an empty result is what decides which of several
- * stored drafts wins.
- */
-export function restorableAnswers(
-  answers: Record<string, FormValue> | null,
-  allowedFields: Map<string, AnyField>,
-): Record<string, FormValue> {
-  return dropUnuploadedFileAnswers(
-    dropUnknownOptionAnswers(
-      filterAnswersByFieldIds(answers, allowedFields),
-      allowedFields,
-    ),
-    allowedFields,
-  );
-}
-
-/**
- * The public/private choices a renderer should restore: only fields the schema
- * still publishes, and only genuine booleans.
- */
-export function restorablePublicAnswers(
-  publicAnswers: Record<string, unknown> | null | undefined,
-  outputFieldIds: Set<string>,
-): Record<string, boolean> {
-  const restorable: Record<string, boolean> = {};
-  if (!publicAnswers) {
-    return restorable;
-  }
-  for (const [fieldId, value] of Object.entries(publicAnswers)) {
-    if (outputFieldIds.has(fieldId) && typeof value === "boolean") {
-      restorable[fieldId] = value;
-    }
-  }
-  return restorable;
-}
-
-export function validateFieldValue(
-  field: AnyField,
-  fieldValue: FormValue | undefined,
-  data: Record<string, FormValue>,
-  extras: ConditionExtras,
-): string | null {
-  const required = isFieldConditionallyRequired(field, data, extras);
-
-  const valueToCheck = fieldValue;
-  const isEmptyString =
-    typeof valueToCheck === "string" && valueToCheck.trim() === "";
-
-  if (field.kind === "multiselect") {
-    const selections = Array.isArray(valueToCheck) ? valueToCheck : [];
-    if (required && selections.length === 0) {
-      return "Select at least one option.";
-    }
-    const maxSelections = getMaxSelections(field);
-    if (maxSelections !== undefined && selections.length > maxSelections) {
-      return `Select no more than ${withCount(maxSelections, "option")}.`;
-    }
-    return null;
-  }
-
-  switch (field.kind) {
-    case "text":
-    case "textarea":
-    case "email":
-    case "phone":
-    case "date":
-    case "timezone":
-    case "select": {
-      if (!required) return null;
-      if (valueToCheck === undefined || valueToCheck === null) {
-        return "This field is required.";
-      }
-      if (isEmptyString) {
-        return "This field is required.";
-      }
-      return null;
-    }
-    case "time": {
-      if (typeof valueToCheck === "string") {
-        const minutes = parseTimeToMinutes(valueToCheck);
-        if (minutes === null) {
-          return "Enter a valid time.";
-        }
-      }
-      if (!required) return null;
-      if (valueToCheck === undefined || valueToCheck === null) {
-        return "This field is required.";
-      }
-      if (isEmptyString) {
-        return "This field is required.";
-      }
-      return null;
-    }
-    case "number": {
-      const numValue =
-        typeof valueToCheck === "number"
-          ? valueToCheck
-          : typeof valueToCheck === "string"
-            ? parseFloat(valueToCheck)
-            : NaN;
-      const numberField = field as NumberField;
-
-      if (Number.isNaN(numValue) && !!valueToCheck) {
-        return "Please enter a valid number.";
-      }
-      if (typeof numberField.min === "number" && numValue < numberField.min) {
-        return `Value must be at least ${numberField.min}.`;
-      }
-      if (typeof numberField.max === "number" && numValue > numberField.max) {
-        return `Value must be at most ${numberField.max}.`;
-      }
-      if (
-        Number.isFinite(numValue) &&
-        !numberField.allowDecimals &&
-        !Number.isInteger(numValue)
-      ) {
-        return "Decimals are not allowed for this field.";
-      }
-      if (
-        Number.isFinite(numValue) &&
-        numberField.allowDecimals &&
-        typeof numberField.decimalPlaces === "number"
-      ) {
-        const parts = String(numValue).split(".");
-        if (parts.length === 2 && parts[1].length > numberField.decimalPlaces) {
-          return `Value must have at most ${withCount(numberField.decimalPlaces, "decimal place")}.`;
-        }
-      }
-      if (!required) return null;
-      if (
-        valueToCheck === undefined ||
-        valueToCheck === null ||
-        valueToCheck === ""
-      ) {
-        return required ? "Please enter a number." : null;
-      }
-
-      if (!Number.isFinite(numValue)) {
-        return "Please enter a valid number.";
-      }
-      return null;
-    }
-    case "range": {
-      if (isEmptyRangeAnswer(valueToCheck)) {
-        return required ? "Please select a value." : null;
-      }
-      if (field.kind !== "range") {
-        return "Please select a value.";
-      }
-      if (!isValidRangeSelection(field, valueToCheck)) {
-        return "Please select a value.";
-      }
-      return null;
-    }
-    case "ranking": {
-      if (
-        valueToCheck !== undefined &&
-        valueToCheck !== null &&
-        !isValidRankingSelection(field, valueToCheck)
-      ) {
-        return "Please redo your ranking.";
-      }
-      if (!required) return null;
-      const slotCount = getRankingSlotCount(field);
-      const rankedCount = Array.isArray(valueToCheck) ? valueToCheck.length : 0;
-      if (rankedCount < slotCount) {
-        return `Rank ${withCount(slotCount, "item")}.`;
-      }
-      return null;
-    }
-    case "checkbox":
-      if (!required) return null;
-      return valueToCheck === true ? null : "This field is required.";
-    case "radio":
-      if (!required) return null;
-      return valueToCheck ? null : "Please select an option.";
-    case "file":
-      if (!required) return null;
-      return valueToCheck ? null : "Please upload a file.";
-    case "list": {
-      const listField = field as ListField;
-      const listValTyped = asCards(valueToCheck) ?? [];
-      const { minCards, maxCards } = listCardLimits(listField);
-      if (required && listValTyped.length === 0) {
-        return "Add at least one item.";
-      }
-      if (listValTyped.length < minCards) {
-        return `Add at least ${withCount(minCards, "item")}.`;
-      }
-      if (listValTyped.length > maxCards) {
-        return `Add no more than ${withCount(maxCards, "item")}.`;
-      }
-      return null;
-    }
-    default: {
-      if (!required) return null;
-      if (valueToCheck === undefined || valueToCheck === null) {
-        return "This field is required.";
-      }
-      if (isEmptyString) {
-        return "This field is required.";
-      }
-      return null;
-    }
-  }
-}
-
-export function getListSubFieldErrors(
-  listField: ListField,
-  listValue: FormValue | undefined,
-  data: Record<string, FormValue>,
-  extras: ConditionExtras,
-): Record<string, string | null> {
-  const result: Record<string, string | null> = {};
-  const cards = resolveCards({
-    value: listValue,
-    defaultCardCount: defaultCardCount(listField),
-  });
-  const subFields = listField.fields ?? [];
-  for (let cardIndex = 0; cardIndex < cards.length; cardIndex++) {
-    const card = cards[cardIndex] ?? {};
-    const mergedData = listRowData({ data, row: card });
-    const key = (sub: ListSubField) => `${listField.id}:${cardIndex}:${sub.id}`;
-    for (const sub of subFields) {
-      result[key(sub)] = null;
-    }
-    for (const sub of visibleListSubFields({
-      subFields,
-      data,
-      row: card,
-      extras,
-    })) {
-      result[key(sub)] = validateFieldValue(
-        sub,
-        card[sub.id],
-        mergedData,
-        extras,
-      );
-    }
-  }
-  return result;
 }
