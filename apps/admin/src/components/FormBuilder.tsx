@@ -21,7 +21,6 @@ import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula
 import { withCount } from "@alliance/common/plural";
 import { FormFieldsStatus } from "@alliance/shared/lib/useFormSchema";
 import { cn } from "@alliance/shared/styles/util";
-import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { conditionSourceFields } from "../lib/conditionSourceFields";
@@ -40,7 +39,6 @@ import {
 } from "../lib/formIssues";
 import { JsonScopeKind, type JsonScope } from "../lib/formJson";
 import { reorderPages } from "../lib/reorderPages";
-import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { updatePageElement } from "../lib/updatePageElement";
 import { useConditionFieldLookup } from "../lib/useConditionFieldLookup";
 import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
@@ -51,7 +49,6 @@ import { useFormulaSourceForms } from "../lib/useFormulaSourceForms";
 import { useInputSources } from "../lib/useInputSources";
 import { useSavedForm } from "../lib/useSavedForm";
 import { useSelectedPage } from "../lib/useSelectedPage";
-import { useUsersAdmin } from "../lib/useUsersAdmin";
 import {
   deriveVisibilityGroups,
   NeighborDirection,
@@ -132,6 +129,7 @@ import {
   type FormEditorTab,
   type IssueListState,
 } from "./FormBuilderHeader";
+import { FormBuilderPreview } from "./FormBuilderPreview";
 import { FormConflictModal } from "./FormConflictModal";
 import { FormDraftContexts } from "./FormDraftContexts";
 import { FormJsonModal } from "./FormJsonModal";
@@ -139,7 +137,6 @@ import { formFieldsErrorReason } from "./FormPickerError";
 import { FormulaSourcesProvider } from "./FormulaSourcesContext";
 import { FormVariablesProvider } from "./FormVariablesContext";
 import { OutputBuilder } from "./OutputBuilder";
-import { PreviewAsUserBar } from "./PreviewAsUserBar";
 import { ShareableTextBuilder } from "./ShareableTextBuilder";
 import { VariableBuilder } from "./VariableBuilder";
 import {
@@ -364,15 +361,6 @@ export function FormBuilder(props: FormBuilderProps) {
   const [outputViewId, setOutputViewId] = useState<string | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewUserId, setPreviewUserId] = useState<string>("preview");
-  const previewUsersQuery = useUsersAdmin({ enabled: isPreviewMode });
-  const previewUsers = useMemo(
-    () => previewUsersQuery.data ?? [],
-    [previewUsersQuery.data],
-  );
-  const isLoadingPreviewUsers = previewUsersQuery.isLoading;
-  const previewUserError = previewUsersQuery.isLoadingError
-    ? "Could not load users"
-    : null;
   const [insertion, setInsertion] = useState<{
     loc: InsertLoc;
     mode: InsertMode;
@@ -439,20 +427,6 @@ export function FormBuilder(props: FormBuilderProps) {
         : undefined,
     );
   };
-  const resolvedPreviewUser = useMemo(() => {
-    if (previewUserId === "preview") {
-      return FORM_BUILDER_PREVIEW_USER;
-    }
-    const match = previewUsers.find(
-      (candidate) => String(candidate.id) === previewUserId,
-    );
-    return match ?? FORM_BUILDER_PREVIEW_USER;
-  }, [previewUserId, previewUsers]);
-  const resolvedPreviewUserId =
-    previewUserId === "preview"
-      ? "preview"
-      : (resolvedPreviewUser?.id ?? "preview");
-
   const select = (target: CanvasTarget, nextSection: SidebarSection) => {
     setSelection({ pageId: currentPage.id, target });
     setSection(nextSection);
@@ -1278,33 +1252,12 @@ export function FormBuilder(props: FormBuilderProps) {
                     </PreviewBoundary>
                   </div>
                 ) : isPreviewMode ? (
-                  <div className="max-w-3xl mx-auto bg-white p-6">
-                    <PreviewAsUserBar
-                      previewUserId={previewUserId}
-                      setPreviewUserId={setPreviewUserId}
-                      previewUsers={previewUsers}
-                      isLoadingPreviewUsers={isLoadingPreviewUsers}
-                      previewUserError={previewUserError}
-                    />
-                    <PreviewBoundary
-                      resetKeys={[schema, resolvedPreviewUserId]}
-                    >
-                      <FormRenderer
-                        key={resolvedPreviewUserId}
-                        id={0}
-                        formSnapshotId={null}
-                        actionId={0}
-                        form={schema}
-                        onSubmit={null}
-                        renderFormAsCompleted={false}
-                        userId={resolvedPreviewUserId}
-                        user={resolvedPreviewUser}
-                        adminPreviewUserId={resolvedPreviewUserId}
-                        showVariableError
-                        initialPageIndex={selectedPageIndex}
-                      />
-                    </PreviewBoundary>
-                  </div>
+                  <FormBuilderPreview
+                    schema={schema}
+                    pageIndex={selectedPageIndex}
+                    previewUserId={previewUserId}
+                    setPreviewUserId={setPreviewUserId}
+                  />
                 ) : (
                   <CanvasWorkspace
                     wide={wideCanvas}
