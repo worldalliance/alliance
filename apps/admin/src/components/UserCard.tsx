@@ -20,8 +20,6 @@ import { Link } from "react-router";
 
 export interface UserCardProps {
   user: UserDto;
-  timeSpent: number;
-  timeSpentTotal: number;
   tags: TagDto[];
   allTags: TagDto[];
   onToggleTag: (tagId: string, nextChecked: boolean) => void | Promise<void>;

@@ -52,7 +52,6 @@ const tagCalls: { path: string; body: unknown }[] = [];
 serveApi(
   routes({
     "GET /user/list": () => Response.json(users),
-    "GET /analytics/time-spent-per-user": () => Response.json([]),
     "GET /analytics/time-spent-per-user-total": () => Response.json([]),
     "GET /user/tags": () => Response.json(tags),
     "GET /actions/action-relations": () =>

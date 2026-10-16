@@ -1,7 +1,6 @@
 import { phoneSearchDigits, phoneSearchTerm } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
 import {
-  analyticsGetTimeSpentPerUserAdmin,
   analyticsGetTimeSpentPerUserTotalAdmin,
   communityGetAllMemberContactInfoAdmin,
 } from "@alliance/shared/client";
@@ -39,13 +38,6 @@ const MEMBERS_PER_PAGE = 50;
 
 const UsersList: React.FC = () => {
   const { data: users = [] } = useUsersAdmin();
-  const { data: timeSpentPerUserLast7 = [] } = useQuery({
-    queryKey: queryKeys.timeSpentPerUserAdmin(),
-    queryFn: () =>
-      analyticsGetTimeSpentPerUserAdmin({ throwOnError: true }).then(
-        (response) => response.data,
-      ),
-  });
   const { data: timeSpentPerUserTotal = [] } = useQuery({
     queryKey: queryKeys.timeSpentPerUserTotalAdmin(),
     queryFn: () =>
@@ -83,14 +75,6 @@ const UsersList: React.FC = () => {
   const viewMode = (params.get("viewMode") as ViewMode | undefined) ?? "rows";
 
   const [shuffledIds, setShuffledIds] = useState<number[] | null>(null);
-
-  const userToTimeSpent = useMemo(
-    () =>
-      Object.fromEntries(
-        timeSpentPerUserLast7.map((time) => [time.userId, time.timeSpent]),
-      ),
-    [timeSpentPerUserLast7],
-  );
 
   const userToTimeSpentTotal = useMemo(
     () =>
@@ -406,8 +390,6 @@ const UsersList: React.FC = () => {
               <UserCard
                 key={user.id}
                 user={user}
-                timeSpent={userToTimeSpent[user.id]}
-                timeSpentTotal={userToTimeSpentTotal[user.id]}
                 tags={userTagsMap[user.id] || []}
                 allTags={tags}
                 onToggleTag={(tagId, nextChecked) =>
