@@ -36,6 +36,7 @@ const gate = () => {
 let currentReachable = true;
 let currentStatus = 200;
 let actionsReachable = true;
+let refusal: number | null = null;
 let currentGate = gate();
 let detailGate = gate();
 const detailRequests: string[] = [];
@@ -58,14 +59,23 @@ serveApi(
     "POST /contract/sign/:id": async ({ request }) => {
       if (!actionsReachable) throw new TypeError("Failed to fetch");
       signBodies.push(await request.json());
-      return Response.json({ date: DATE });
+      return refused() ?? Response.json({ date: DATE });
     },
     "POST /contract/suspend": () => {
       if (!actionsReachable) throw new TypeError("Failed to fetch");
-      return Response.json({ date: DATE });
+      return refused() ?? Response.json({ date: DATE });
     },
   }),
 );
+
+const REFUSAL = "Member does not have an active contract.";
+const refused = () =>
+  refusal === null
+    ? undefined
+    : Response.json(
+        { statusCode: refusal, message: REFUSAL },
+        { status: refusal },
+      );
 
 const setup = (lastContractEvent?: ContractEventDto) => {
   const refreshUser = jest.fn(() => Promise.resolve());
@@ -101,6 +111,7 @@ beforeEach(() => {
   currentReachable = true;
   currentStatus = 200;
   actionsReachable = true;
+  refusal = null;
   currentGate = gate();
   detailGate = gate();
   detailRequests.length = 0;
@@ -264,5 +275,58 @@ describe("useMembershipAgreement signing", () => {
     expect(refreshUser).not.toHaveBeenCalled();
     expect(result.current.latestSigned).toBe(true);
     expect(result.current.isSubmitting).toBe(false);
+  });
+
+  it("reports a refused signature with the server's reason", async () => {
+    refusal = 400;
+    const { result, refreshUser, showError } = setup();
+    await loaded(result);
+    fillIn(result);
+
+    await act(() => result.current.sign());
+
+    expect(showError.mock.calls).toEqual([[REFUSAL]]);
+    expect(refreshUser).not.toHaveBeenCalled();
+    expect(result.current.lastContractEvent).toBeNull();
+    expect(result.current.confirmation).toBe(WEEKLY_COMMITMENT_CONFIRMATION);
+  });
+
+  it("reports a refused suspension with the server's reason", async () => {
+    refusal = 400;
+    const { result, refreshUser, showError } = setup(signed(2));
+    await loaded(result);
+
+    await act(() => result.current.suspend());
+
+    expect(showError.mock.calls).toEqual([[REFUSAL]]);
+    expect(refreshUser).not.toHaveBeenCalled();
+    expect(result.current.latestSigned).toBe(true);
+  });
+
+  it.each([
+    [401, "Your session has expired. Sign in again to sign the agreement."],
+    [500, "There was an error signing the contract. Please try again."],
+  ])("reports a signature refused with %i as %j", async (status, message) => {
+    refusal = status;
+    const { result, showError } = setup();
+    await loaded(result);
+    fillIn(result);
+
+    await act(() => result.current.sign());
+
+    expect(showError.mock.calls).toEqual([[message]]);
+  });
+
+  it.each([
+    [401, "Your session has expired. Sign in again to suspend your agreement."],
+    [500, "There was an error suspending the contract. Please try again."],
+  ])("reports a suspension refused with %i as %j", async (status, message) => {
+    refusal = status;
+    const { result, showError } = setup(signed(2));
+    await loaded(result);
+
+    await act(() => result.current.suspend());
+
+    expect(showError.mock.calls).toEqual([[message]]);
   });
 });

@@ -12,6 +12,7 @@ import {
   type ContractEventState,
 } from "./contract";
 import { failedToLoad } from "./failedToLoad";
+import { thrownRefusalMessage } from "./hey-api";
 import { useContractById } from "./useContractById";
 import { useCurrentContract } from "./useCurrentContract";
 import { useInvalidateVisibilityContext } from "./useVisibilityContext";
@@ -55,24 +56,28 @@ export function useMembershipAgreement(params: {
     if (!latestContract || !canSign) return;
     setIsSubmitting(true);
     try {
-      const res = await contractSignContract({
+      const { data } = await contractSignContract({
         path: { id: latestContract.id },
         body: { signedName },
+        throwOnError: true,
       });
-      if (res.data) {
-        setLastContractEvent(
-          signedContractEvent({
-            contractId: latestContract.id,
-            date: res.data.date,
-          }),
-        );
-        setConfirmation("");
-        invalidateVisibilityContext();
-        await refreshUser();
-      }
+      setLastContractEvent(
+        signedContractEvent({ contractId: latestContract.id, date: data.date }),
+      );
+      setConfirmation("");
+      invalidateVisibilityContext();
+      await refreshUser();
     } catch (error) {
       console.error("Error signing contract:", error);
-      showError("There was an error signing the contract. Please try again.");
+      showError(
+        thrownRefusalMessage({
+          error,
+          fallback:
+            "There was an error signing the contract. Please try again.",
+          sessionExpired:
+            "Your session has expired. Sign in again to sign the agreement.",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -82,15 +87,19 @@ export function useMembershipAgreement(params: {
   const suspend = async () => {
     setIsSubmitting(true);
     try {
-      const res = await contractSuspendContract();
-      if (res.data) {
-        setLastContractEvent(suspendedContractEvent(res.data.date));
-        await refreshUser();
-      }
+      const { data } = await contractSuspendContract({ throwOnError: true });
+      setLastContractEvent(suspendedContractEvent(data.date));
+      await refreshUser();
     } catch (error) {
       console.error("Error suspending contract:", error);
       showError(
-        "There was an error suspending the contract. Please try again.",
+        thrownRefusalMessage({
+          error,
+          fallback:
+            "There was an error suspending the contract. Please try again.",
+          sessionExpired:
+            "Your session has expired. Sign in again to suspend your agreement.",
+        }),
       );
     } finally {
       setIsSubmitting(false);
