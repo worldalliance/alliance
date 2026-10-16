@@ -9,8 +9,9 @@ export function useContractById(contractId: number | null) {
       contractId === null
         ? skipToken
         : () =>
-            contractGetById({ path: { id: contractId } }).then(
-              (res) => res.data ?? null,
-            ),
+            contractGetById({
+              path: { id: contractId },
+              throwOnError: true,
+            }).then((res) => res.data),
   });
 }

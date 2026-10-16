@@ -7,6 +7,7 @@ import {
   membershipAgreement,
   membershipAgreementLoadFailed,
   membershipFaq,
+  signedAgreementLoadFailed,
   suspendContractConfirmation,
 } from "@alliance/shared/lib/copy";
 import { useMembershipAgreement } from "@alliance/shared/lib/useMembershipAgreement";
@@ -136,6 +137,9 @@ const MembershipPage: React.FC = () => {
     sign,
     suspend,
     previousSignedContract,
+    previousContractLoadFailed,
+    retryPreviousContractLoad,
+    retryingPreviousContractLoad,
     latestSigned,
     updateAvailable,
   } = useMembershipAgreement({
@@ -189,7 +193,9 @@ const MembershipPage: React.FC = () => {
           </Card>
         )}
 
-        {(previousSignedContract || latestContract) && (
+        {(previousSignedContract ||
+          previousContractLoadFailed ||
+          latestContract) && (
           <Card
             style={CardStyle.White}
             className="p-6"
@@ -199,6 +205,13 @@ const MembershipPage: React.FC = () => {
               {membershipAgreement.heading}
             </h2>
             <div className="flex flex-col gap-y-4">
+              {previousContractLoadFailed && (
+                <LoadFailed
+                  message={signedAgreementLoadFailed}
+                  onRetry={retryPreviousContractLoad}
+                  retrying={retryingPreviousContractLoad}
+                />
+              )}
               {previousSignedContract && (
                 <ContractDescriptionList
                   items={previousSignedContract.description}
