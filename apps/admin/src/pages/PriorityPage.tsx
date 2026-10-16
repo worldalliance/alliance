@@ -1,19 +1,14 @@
 import {
-  actionsSetPriorityAdmin,
   SetPriorityDto,
   type AdminActionListItemDto,
   type GeneralUpdateAdminDto,
 } from "@alliance/shared/client";
 import { homePagePriorityComparator } from "@alliance/shared/lib/actionUtils";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import {
-  useActionsAdmin,
-  useInvalidateActionsAdmin,
-} from "@alliance/shared/lib/useActionsAdmin";
+import { useActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { useMutation } from "@tanstack/react-query";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -32,10 +27,8 @@ import {
 } from "../lib/homePlacement";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { DropPosition, useDragReorder } from "../lib/useDragReorder";
-import {
-  useGeneralUpdatesAdmin,
-  useInvalidateGeneralUpdatesAdmin,
-} from "../lib/useGeneralUpdatesAdmin";
+import { useGeneralUpdatesAdmin } from "../lib/useGeneralUpdatesAdmin";
+import { useSetPrioritiesAdmin } from "../lib/useSetPrioritiesAdmin";
 
 type PriorityItem =
   | {
@@ -116,8 +109,6 @@ const NO_ITEMS: PriorityItem[] = [];
 const PriorityPage: React.FC = () => {
   const actions = useActionsAdmin();
   const generalUpdates = useGeneralUpdatesAdmin();
-  const invalidateActions = useInvalidateActionsAdmin();
-  const invalidateGeneralUpdates = useInvalidateGeneralUpdatesAdmin();
   const [showAll, setShowAll] = useState(false);
   const startingItems = useMemo(
     () =>
@@ -234,16 +225,12 @@ const PriorityPage: React.FC = () => {
     };
   }, [items, originalActionIndices, originalGeneralUpdateIndices]);
 
-  const { mutate: savePriorities, isPending: saving } = useMutation({
-    mutationFn: (body: SetPriorityDto) =>
-      actionsSetPriorityAdmin({ body, throwOnError: true }),
+  const { mutate: savePriorities, isPending: saving } = useSetPrioritiesAdmin({
     onSuccess: () => {
       const savedAt = Date.now();
       setReorder(
         (prev) => prev && { from: prev.items, items: prev.items, savedAt },
       );
-      void invalidateActions();
-      void invalidateGeneralUpdates();
     },
     onError: (err) => {
       console.error(err);
