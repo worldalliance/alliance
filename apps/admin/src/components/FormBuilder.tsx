@@ -3,7 +3,6 @@ import { type DisplayKind } from "@alliance/common/forms/display-blocks";
 import {
   PlaceKind,
   type ConditionHolder,
-  type FormPlace,
 } from "@alliance/common/forms/form-conditions";
 import {
   isQuestionField,
@@ -48,7 +47,6 @@ import { useFormSave, type DisplayOnlySave } from "../lib/useFormSave";
 import { useFormulaSourceForms } from "../lib/useFormulaSourceForms";
 import { useInputSources } from "../lib/useInputSources";
 import { useSavedForm } from "../lib/useSavedForm";
-import { useSelectedPage } from "../lib/useSelectedPage";
 import {
   deriveVisibilityGroups,
   NeighborDirection,
@@ -69,19 +67,9 @@ import {
   childPlace,
   elementTarget,
   followElement,
-  forgetPositions,
-  placeTarget,
-  resolveTarget,
-  targetKey,
-  type CanvasSelection,
-  type CanvasTarget,
   type ChildTarget,
 } from "./form-canvas/canvasSelection";
-import {
-  CanvasWorkspace,
-  DrawerKind,
-  useWideCanvasLayout,
-} from "./form-canvas/CanvasWorkspace";
+import { CanvasWorkspace } from "./form-canvas/CanvasWorkspace";
 import { SelectChildProvider } from "./form-canvas/ChildRows";
 import { ChildSettings } from "./form-canvas/ChildSettings";
 import { DependencyLinks } from "./form-canvas/DependencyLinks";
@@ -109,10 +97,13 @@ import {
   SidebarIssues,
 } from "./form-canvas/IssueList";
 import { PageSettings, PageSettingsSidebar } from "./form-canvas/PageSettings";
-import { extendSelection, type Span } from "./form-canvas/rangeSelection";
 import { RangeSettings } from "./form-canvas/RangeSettings";
 import { SettingsSidebar } from "./form-canvas/SettingsSidebar";
 import { SidebarSection } from "./form-canvas/sidebarSections";
+import {
+  SECTION_ON_SELECT,
+  useCanvasSelection,
+} from "./form-canvas/useCanvasSelection";
 import { useGuardedDeletion } from "./form-canvas/useGuardedDeletion";
 import type { ListMove } from "./form-canvas/useListDrag";
 import { useOverrideTarget } from "./form-canvas/useOverrideTarget";
@@ -196,13 +187,6 @@ const REGROUPS_ON_JSON_APPLY: Record<JsonScopeKind, boolean> = {
 const GROUP_SECTIONS = [SidebarSection.Content, SidebarSection.Conditions];
 const RANGE_SECTIONS = [SidebarSection.Content, SidebarSection.Conditions];
 
-const SECTION_ON_SELECT: Record<CanvasTargetKind, SidebarSection> = {
-  [CanvasTargetKind.Page]: SidebarSection.Content,
-  [CanvasTargetKind.Element]: SidebarSection.Content,
-  [CanvasTargetKind.Group]: SidebarSection.Conditions,
-  [CanvasTargetKind.Range]: SidebarSection.Conditions,
-};
-
 export function FormBuilder(props: FormBuilderProps) {
   const { initialSchema, setFormId } = props;
   // Destructuring the union would drop the correlation between these, so they
@@ -251,22 +235,33 @@ export function FormBuilder(props: FormBuilderProps) {
     expressions,
     setExpression,
   } = formDraft;
-  // Editors that keep their own copy of a formula or its text only follow it
-  // through their own edits, so a schema loaded from the server, a conflict,
-  // or pasted JSON, or restored by undo or redo, remounts them.
-  const [schemaLoads, setSchemaLoads] = useState(0);
-  const [selection, setSelection] = useState<CanvasSelection>(() => ({
-    pageId: schema.pages[0]?.id ?? "",
-    target: { kind: CanvasTargetKind.Page },
-  }));
-  const reloadEditors = useCallback(() => {
-    setSchemaLoads((count) => count + 1);
-    setSelection((current) => {
-      const target = forgetPositions(current.target);
-      return target === current.target ? current : { ...current, target };
-    });
-  }, []);
-  const [placeOnLoad, setPlaceOnLoad] = useState<FormPlace | null>(null);
+  const canvasGroups = displayOnly ? NO_VISIBILITY_GROUPS : visibilityGroups;
+  const {
+    schemaLoads,
+    reloadEditors,
+    selectPlace,
+    selectedPageIndex,
+    setSelectedPageIndex,
+    keepPage,
+    currentPage,
+    setSelection,
+    resolvedTarget,
+    selectionKey,
+    section,
+    setSection,
+    wideCanvas,
+    drawer,
+    setDrawer,
+    focusPending,
+    setFocusPending,
+    focused,
+    revealPending,
+    revealed,
+    select,
+    showPage,
+    selectFromOutline,
+    extendTo,
+  } = useCanvasSelection({ pages: schema.pages, groups: canvasGroups });
   const saved = useSavedForm({
     displayOnly,
     formId,
@@ -276,7 +271,7 @@ export function FormBuilder(props: FormBuilderProps) {
     schema,
     loadSchema,
     reloadEditors,
-    selectPlace: setPlaceOnLoad,
+    selectPlace,
   });
   const { hasUnsavedChanges, conflict, isLoading, loadError, retryLoad } =
     saved;
@@ -326,16 +321,6 @@ export function FormBuilder(props: FormBuilderProps) {
     [setSearchParams],
   );
 
-  const { selectedPageIndex, setSelectedPageIndex, keepPage } = useSelectedPage(
-    schema.pages,
-  );
-  const [section, setSection] = useState(SidebarSection.Content);
-  const wideCanvas = useWideCanvasLayout();
-  const [drawer, setDrawer] = useState<DrawerKind | null>(null);
-  const [focusPending, setFocusPending] = useState(false);
-  const focused = useCallback(() => setFocusPending(false), []);
-  const [revealPending, setRevealPending] = useState(false);
-  const revealed = useCallback(() => setRevealPending(false), []);
   const [issueList, setIssueList] = useState<IssueListState>(null);
   const {
     saveForm,
@@ -388,19 +373,10 @@ export function FormBuilder(props: FormBuilderProps) {
   );
   const builderRef = useRef<HTMLDivElement | null>(null);
 
-  const currentPage = schema.pages[selectedPageIndex] ??
-    schema.pages?.[0] ?? { id: "page-1", title: "Page 1", fields: [] };
-  const canvasGroups = displayOnly ? NO_VISIBILITY_GROUPS : visibilityGroups;
   const { guard: guardDeletion, dialog: deletionDialog } = useGuardedDeletion({
     pages: schema.pages,
     groups: canvasGroups,
   });
-  const resolvedTarget = resolveTarget({
-    page: currentPage,
-    groups: canvasGroups,
-    selection,
-  });
-  const selectionKey = targetKey(currentPage, resolvedTarget);
   const { target: overrideTarget, override } = useOverrideTarget(selectionKey);
 
   const applyInsert = (item: PageItem, loc: InsertLoc) => {
@@ -427,54 +403,6 @@ export function FormBuilder(props: FormBuilderProps) {
         : undefined,
     );
   };
-  const select = (target: CanvasTarget, nextSection: SidebarSection) => {
-    setSelection({ pageId: currentPage.id, target });
-    setSection(nextSection);
-    if (!wideCanvas) setDrawer(DrawerKind.Settings);
-  };
-
-  const showPage = (page: Page, pageIndex: number) => {
-    setSelectedPageIndex(pageIndex);
-    setSelection({ pageId: page.id, target: { kind: CanvasTargetKind.Page } });
-  };
-
-  const selectFromOutline = ({
-    page,
-    pageIndex,
-    target,
-    section: nextSection = SECTION_ON_SELECT[target.kind],
-    keepOutline = false,
-  }: {
-    page: Page;
-    pageIndex: number;
-    target: CanvasTarget;
-    section?: SidebarSection;
-    /** For adding to a selection, which takes more than one entry. */
-    keepOutline?: boolean;
-  }) => {
-    setSelectedPageIndex(pageIndex);
-    setSelection({ pageId: page.id, target });
-    setSection(nextSection);
-    setRevealPending(true);
-    if (!keepOutline) setDrawer(wideCanvas ? null : DrawerKind.Settings);
-  };
-
-  if (placeOnLoad) {
-    setPlaceOnLoad(null);
-    selectFromOutline({
-      page: schema.pages[placeOnLoad.pageIndex]!,
-      pageIndex: placeOnLoad.pageIndex,
-      target: placeTarget(schema.pages, placeOnLoad),
-    });
-  }
-
-  const extendTo = (clicked: Span, alone: CanvasTarget) =>
-    extendSelection({
-      fields: currentPage.fields,
-      selected: resolvedTarget,
-      clicked,
-    }) ?? alone;
-
   const insertAndSelect = (item: PageItem, loc: InsertLoc) => {
     applyInsert(item, loc);
     setInsertion(null);
