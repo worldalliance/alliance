@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { userSignupSocialProof, type ProfileDto } from "../client";
+import { userReferralSignupSocialProof, type ProfileDto } from "../client";
 import { queryKeys } from "./queryKeys";
 
 /**
@@ -17,7 +17,7 @@ export function useSignupFaces(
     enabled: params?.enabled ?? true,
     queryKey: queryKeys.signupSocialProof(referralCode, count),
     queryFn: () =>
-      userSignupSocialProof({
+      userReferralSignupSocialProof({
         query: {
           ...(referralCode ? { code: referralCode } : {}),
           ...(count === undefined ? {} : { count }),

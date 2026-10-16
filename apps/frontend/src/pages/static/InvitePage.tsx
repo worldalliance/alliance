@@ -3,7 +3,7 @@ import { AnalyticsEvent } from "@alliance/common/analytics";
 import {
   ReferrerProfileDto,
   userOnetimeInvite,
-  userReferrerProfile,
+  userReferralReferrerProfile,
 } from "@alliance/shared/client";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import { cn } from "@alliance/shared/styles/util";
@@ -48,9 +48,11 @@ const InvitePage: React.FC = () => {
 
   useEffect(() => {
     if (!referralCode) return;
-    userReferrerProfile({ path: { code: referralCode } }).then((response) => {
-      setInviterProfile(response.data ?? null);
-    });
+    userReferralReferrerProfile({ path: { code: referralCode } }).then(
+      (response) => {
+        setInviterProfile(response.data ?? null);
+      },
+    );
 
     userOnetimeInvite({ path: { code: referralCode } }).then((response) => {
       if (response.data) {

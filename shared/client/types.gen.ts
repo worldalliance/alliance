@@ -1260,18 +1260,6 @@ export type CreateAmbassadorProgramInteractionDto = {
     interactionDate: string;
 };
 
-export type SignupSocialProofDto = {
-    profiles: Array<ProfileDto>;
-};
-
-export type ReferrerKind = 'user' | 'campaign';
-
-export type ReferrerProfileDto = {
-    kind: ReferrerKind;
-    displayName: string;
-    profilePicture: string | null;
-};
-
 export type CommunityDto = {
     id: number;
     name: string;
@@ -1470,6 +1458,18 @@ export type SingleGroupAssignmentDto = {
 
 export type AssignGroupsDto = {
     assignments: Array<SingleGroupAssignmentDto>;
+};
+
+export type SignupSocialProofDto = {
+    profiles: Array<ProfileDto>;
+};
+
+export type ReferrerKind = 'user' | 'campaign';
+
+export type ReferrerProfileDto = {
+    kind: ReferrerKind;
+    displayName: string;
+    profilePicture: string | null;
 };
 
 export type StreamableFile = {
@@ -6450,61 +6450,6 @@ export type UserCreateAmbassadorProgramInteractionAdminResponses = {
 
 export type UserCreateAmbassadorProgramInteractionAdminResponse = UserCreateAmbassadorProgramInteractionAdminResponses[keyof UserCreateAmbassadorProgramInteractionAdminResponses];
 
-export type UserSignupSocialProofData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Referral or invite code to prefer inviter friends
-         */
-        code?: string;
-        /**
-         * How many avatars to return. Defaults to 5, capped at 24.
-         */
-        count?: number;
-    };
-    url: '/user/signupSocialProof';
-};
-
-export type UserSignupSocialProofErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserSignupSocialProofError = UserSignupSocialProofErrors[keyof UserSignupSocialProofErrors];
-
-export type UserSignupSocialProofResponses = {
-    200: SignupSocialProofDto;
-};
-
-export type UserSignupSocialProofResponse = UserSignupSocialProofResponses[keyof UserSignupSocialProofResponses];
-
-export type UserReferrerProfileData = {
-    body?: never;
-    path: {
-        code: string;
-    };
-    query?: never;
-    url: '/user/referrerProfile/{code}';
-};
-
-export type UserReferrerProfileErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserReferrerProfileError = UserReferrerProfileErrors[keyof UserReferrerProfileErrors];
-
-export type UserReferrerProfileResponses = {
-    200: ReferrerProfileDto;
-};
-
-export type UserReferrerProfileResponse = UserReferrerProfileResponses[keyof UserReferrerProfileResponses];
-
 export type UserOnetimeInviteData = {
     body?: never;
     path: {
@@ -7425,6 +7370,61 @@ export type UserGroupAssignmentAssignGroupsAdminResponses = {
 };
 
 export type UserGroupAssignmentAssignGroupsAdminResponse = UserGroupAssignmentAssignGroupsAdminResponses[keyof UserGroupAssignmentAssignGroupsAdminResponses];
+
+export type UserReferralSignupSocialProofData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Referral or invite code to prefer inviter friends
+         */
+        code?: string;
+        /**
+         * How many avatars to return. Defaults to 5, capped at 24.
+         */
+        count?: number;
+    };
+    url: '/user/signupSocialProof';
+};
+
+export type UserReferralSignupSocialProofErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserReferralSignupSocialProofError = UserReferralSignupSocialProofErrors[keyof UserReferralSignupSocialProofErrors];
+
+export type UserReferralSignupSocialProofResponses = {
+    200: SignupSocialProofDto;
+};
+
+export type UserReferralSignupSocialProofResponse = UserReferralSignupSocialProofResponses[keyof UserReferralSignupSocialProofResponses];
+
+export type UserReferralReferrerProfileData = {
+    body?: never;
+    path: {
+        code: string;
+    };
+    query?: never;
+    url: '/user/referrerProfile/{code}';
+};
+
+export type UserReferralReferrerProfileErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserReferralReferrerProfileError = UserReferralReferrerProfileErrors[keyof UserReferralReferrerProfileErrors];
+
+export type UserReferralReferrerProfileResponses = {
+    200: ReferrerProfileDto;
+};
+
+export type UserReferralReferrerProfileResponse = UserReferralReferrerProfileResponses[keyof UserReferralReferrerProfileResponses];
 
 export type ImagesGetImageData = {
     body?: never;

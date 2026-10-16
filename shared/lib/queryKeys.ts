@@ -117,9 +117,9 @@ export const queryKeys = {
   publicMembers: () => ["userMembersPublic"] as const,
   publicProfile: (userId: number) => ["userFindOne", userId] as const,
   referrerProfile: (code: string | null) =>
-    ["userReferrerProfile", code] as const,
+    ["userReferralReferrerProfile", code] as const,
   signupSocialProof: (referralCode: string | null, count?: number) =>
-    ["userSignupSocialProof", referralCode, count] as const,
+    ["userReferralSignupSocialProof", referralCode, count] as const,
   staffDirectory: () => ["userStaffDirectory"] as const,
   taskFormsAll,
   taskForm: (formId: number | null) => [...taskFormsAll(), formId] as const,
