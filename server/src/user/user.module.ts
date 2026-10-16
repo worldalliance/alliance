@@ -15,6 +15,7 @@ import { ShareUrlsModule } from "src/share-urls/share-urls.module";
 import { Action } from "../actions/entities/action.entity";
 import { City } from "../geo/city.entity";
 import { Notification } from "../notifs/entities/notification.entity";
+import { AmbassadorInviteStatsService } from "./ambassador-invite-stats.service";
 import { AmbassadorInviteGoal } from "./entities/ambassador-invite-goal.entity";
 import { AmbassadorProgramInteraction } from "./entities/ambassador-program-interaction.entity";
 import { AmbassadorProgramMember } from "./entities/ambassador-program-member.entity";
@@ -92,6 +93,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     ReferralService,
     FriendService,
     OnetimeInviteService,
+    AmbassadorInviteStatsService,
     IsUserAlreadyExist,
   ],
   exports: [
