@@ -257,7 +257,7 @@ export const queryKeys = {
       owner?.id ?? null,
     ] as const,
   staffDirectoryAdmin: () => ["userStaffDirectoryAdmin"] as const,
-  tagsAdmin: () => ["userGetTagsAdmin"] as const,
+  tagsAdmin: () => ["userTagGetTagsAdmin"] as const,
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
   userAwayRangesAdmin: (userId: number) =>

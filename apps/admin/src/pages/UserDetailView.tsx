@@ -4,8 +4,8 @@ import {
   actionsActionRelationsForUserAdmin,
   notifsNotifsForUserAdmin,
   tasksGetFormsForUserSidAdmin,
-  userGetTagSummariesAdmin,
   userListFriends,
+  userTagGetTagSummariesAdmin,
 } from "@alliance/shared/client";
 import {
   ProfileDto,
@@ -49,7 +49,7 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
   void queryClient.prefetchQuery({ ...userDetailQuery(userId), staleTime: 0 });
   const [tagsRes, actionRelationsRes, notifRes, formResponsesRes, friendsRes] =
     await Promise.all([
-      userGetTagSummariesAdmin(),
+      userTagGetTagSummariesAdmin(),
       actionsActionRelationsForUserAdmin({ path: { userId } }),
       notifsNotifsForUserAdmin({ path: { id: userId } }),
       tasksGetFormsForUserSidAdmin({ path: { userId } }).catch(() => ({

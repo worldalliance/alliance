@@ -1206,35 +1206,6 @@ export type NMembersResponseDto = {
     count: number;
 };
 
-export type CreateTagDto = {
-    name: string;
-    description: string;
-    publicDisplayName: string | null;
-};
-
-export type TagDto = {
-    id: string;
-    name: string;
-    description: string;
-    publicDisplayName: string | null;
-    createdAt: string;
-    updatedAt: string;
-    users: Array<ProfileDto>;
-};
-
-export type TagSummaryDto = {
-    id: string;
-    name: string;
-    description: string;
-    publicDisplayName: string | null;
-    createdAt: string;
-    updatedAt: string;
-};
-
-export type AddUserToTagDto = {
-    userId: number;
-};
-
 export type AmbassadorProgramInteractionDto = {
     id: number;
     text: string;
@@ -1470,6 +1441,35 @@ export type PushDto = {
     lastCheckedStatusAt: string | null;
     idempotencyKey: string;
     openedAt: string | null;
+};
+
+export type CreateTagDto = {
+    name: string;
+    description: string;
+    publicDisplayName: string | null;
+};
+
+export type TagDto = {
+    id: string;
+    name: string;
+    description: string;
+    publicDisplayName: string | null;
+    createdAt: string;
+    updatedAt: string;
+    users: Array<ProfileDto>;
+};
+
+export type TagSummaryDto = {
+    id: string;
+    name: string;
+    description: string;
+    publicDisplayName: string | null;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type AddUserToTagDto = {
+    userId: number;
 };
 
 export type StreamableFile = {
@@ -6530,170 +6530,6 @@ export type UserNmembersResponses = {
 
 export type UserNmembersResponse = UserNmembersResponses[keyof UserNmembersResponses];
 
-export type UserCreateTagAdminData = {
-    body: CreateTagDto;
-    path?: never;
-    query?: never;
-    url: '/user/createTag';
-};
-
-export type UserCreateTagAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserCreateTagAdminError = UserCreateTagAdminErrors[keyof UserCreateTagAdminErrors];
-
-export type UserCreateTagAdminResponses = {
-    200: TagDto;
-};
-
-export type UserCreateTagAdminResponse = UserCreateTagAdminResponses[keyof UserCreateTagAdminResponses];
-
-export type UserGetTagsAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/tags';
-};
-
-export type UserGetTagsAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetTagsAdminError = UserGetTagsAdminErrors[keyof UserGetTagsAdminErrors];
-
-export type UserGetTagsAdminResponses = {
-    200: Array<TagDto>;
-};
-
-export type UserGetTagsAdminResponse = UserGetTagsAdminResponses[keyof UserGetTagsAdminResponses];
-
-export type UserGetTagSummariesAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/tag-summaries';
-};
-
-export type UserGetTagSummariesAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetTagSummariesAdminError = UserGetTagSummariesAdminErrors[keyof UserGetTagSummariesAdminErrors];
-
-export type UserGetTagSummariesAdminResponses = {
-    200: Array<TagSummaryDto>;
-};
-
-export type UserGetTagSummariesAdminResponse = UserGetTagSummariesAdminResponses[keyof UserGetTagSummariesAdminResponses];
-
-export type UserAddUserToTagAdminData = {
-    body: AddUserToTagDto;
-    path: {
-        tagId: string;
-    };
-    query?: never;
-    url: '/user/tags/{tagId}/addUser';
-};
-
-export type UserAddUserToTagAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserAddUserToTagAdminError = UserAddUserToTagAdminErrors[keyof UserAddUserToTagAdminErrors];
-
-export type UserAddUserToTagAdminResponses = {
-    200: TagDto;
-};
-
-export type UserAddUserToTagAdminResponse = UserAddUserToTagAdminResponses[keyof UserAddUserToTagAdminResponses];
-
-export type UserRemoveUserFromTagAdminData = {
-    body: AddUserToTagDto;
-    path: {
-        tagId: string;
-    };
-    query?: never;
-    url: '/user/tags/{tagId}/removeUser';
-};
-
-export type UserRemoveUserFromTagAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserRemoveUserFromTagAdminError = UserRemoveUserFromTagAdminErrors[keyof UserRemoveUserFromTagAdminErrors];
-
-export type UserRemoveUserFromTagAdminResponses = {
-    200: TagDto;
-};
-
-export type UserRemoveUserFromTagAdminResponse = UserRemoveUserFromTagAdminResponses[keyof UserRemoveUserFromTagAdminResponses];
-
-export type UserUpdateTagAdminData = {
-    body: CreateTagDto;
-    path: {
-        tagId: string;
-    };
-    query?: never;
-    url: '/user/tags/{tagId}/update';
-};
-
-export type UserUpdateTagAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserUpdateTagAdminError = UserUpdateTagAdminErrors[keyof UserUpdateTagAdminErrors];
-
-export type UserUpdateTagAdminResponses = {
-    200: TagDto;
-};
-
-export type UserUpdateTagAdminResponse = UserUpdateTagAdminResponses[keyof UserUpdateTagAdminResponses];
-
-export type UserDeleteTagAdminData = {
-    body?: never;
-    path: {
-        tagId: string;
-    };
-    query?: never;
-    url: '/user/tags/{tagId}';
-};
-
-export type UserDeleteTagAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserDeleteTagAdminError = UserDeleteTagAdminErrors[keyof UserDeleteTagAdminErrors];
-
-export type UserDeleteTagAdminResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserDeleteTagAdminResponse = UserDeleteTagAdminResponses[keyof UserDeleteTagAdminResponses];
-
 export type UserGetAmbassadorProgramAdminData = {
     body?: never;
     path?: never;
@@ -7425,6 +7261,170 @@ export type UserRequestAccountDeletionResponses = {
 };
 
 export type UserRequestAccountDeletionResponse = UserRequestAccountDeletionResponses[keyof UserRequestAccountDeletionResponses];
+
+export type UserTagCreateTagAdminData = {
+    body: CreateTagDto;
+    path?: never;
+    query?: never;
+    url: '/user/createTag';
+};
+
+export type UserTagCreateTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserTagCreateTagAdminError = UserTagCreateTagAdminErrors[keyof UserTagCreateTagAdminErrors];
+
+export type UserTagCreateTagAdminResponses = {
+    200: TagDto;
+};
+
+export type UserTagCreateTagAdminResponse = UserTagCreateTagAdminResponses[keyof UserTagCreateTagAdminResponses];
+
+export type UserTagGetTagsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/tags';
+};
+
+export type UserTagGetTagsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserTagGetTagsAdminError = UserTagGetTagsAdminErrors[keyof UserTagGetTagsAdminErrors];
+
+export type UserTagGetTagsAdminResponses = {
+    200: Array<TagDto>;
+};
+
+export type UserTagGetTagsAdminResponse = UserTagGetTagsAdminResponses[keyof UserTagGetTagsAdminResponses];
+
+export type UserTagGetTagSummariesAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/tag-summaries';
+};
+
+export type UserTagGetTagSummariesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserTagGetTagSummariesAdminError = UserTagGetTagSummariesAdminErrors[keyof UserTagGetTagSummariesAdminErrors];
+
+export type UserTagGetTagSummariesAdminResponses = {
+    200: Array<TagSummaryDto>;
+};
+
+export type UserTagGetTagSummariesAdminResponse = UserTagGetTagSummariesAdminResponses[keyof UserTagGetTagSummariesAdminResponses];
+
+export type UserTagAddUserToTagAdminData = {
+    body: AddUserToTagDto;
+    path: {
+        tagId: string;
+    };
+    query?: never;
+    url: '/user/tags/{tagId}/addUser';
+};
+
+export type UserTagAddUserToTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserTagAddUserToTagAdminError = UserTagAddUserToTagAdminErrors[keyof UserTagAddUserToTagAdminErrors];
+
+export type UserTagAddUserToTagAdminResponses = {
+    200: TagDto;
+};
+
+export type UserTagAddUserToTagAdminResponse = UserTagAddUserToTagAdminResponses[keyof UserTagAddUserToTagAdminResponses];
+
+export type UserTagRemoveUserFromTagAdminData = {
+    body: AddUserToTagDto;
+    path: {
+        tagId: string;
+    };
+    query?: never;
+    url: '/user/tags/{tagId}/removeUser';
+};
+
+export type UserTagRemoveUserFromTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserTagRemoveUserFromTagAdminError = UserTagRemoveUserFromTagAdminErrors[keyof UserTagRemoveUserFromTagAdminErrors];
+
+export type UserTagRemoveUserFromTagAdminResponses = {
+    200: TagDto;
+};
+
+export type UserTagRemoveUserFromTagAdminResponse = UserTagRemoveUserFromTagAdminResponses[keyof UserTagRemoveUserFromTagAdminResponses];
+
+export type UserTagUpdateTagAdminData = {
+    body: CreateTagDto;
+    path: {
+        tagId: string;
+    };
+    query?: never;
+    url: '/user/tags/{tagId}/update';
+};
+
+export type UserTagUpdateTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserTagUpdateTagAdminError = UserTagUpdateTagAdminErrors[keyof UserTagUpdateTagAdminErrors];
+
+export type UserTagUpdateTagAdminResponses = {
+    200: TagDto;
+};
+
+export type UserTagUpdateTagAdminResponse = UserTagUpdateTagAdminResponses[keyof UserTagUpdateTagAdminResponses];
+
+export type UserTagDeleteTagAdminData = {
+    body?: never;
+    path: {
+        tagId: string;
+    };
+    query?: never;
+    url: '/user/tags/{tagId}';
+};
+
+export type UserTagDeleteTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserTagDeleteTagAdminError = UserTagDeleteTagAdminErrors[keyof UserTagDeleteTagAdminErrors];
+
+export type UserTagDeleteTagAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserTagDeleteTagAdminResponse = UserTagDeleteTagAdminResponses[keyof UserTagDeleteTagAdminResponses];
 
 export type ImagesGetImageData = {
     body?: never;
