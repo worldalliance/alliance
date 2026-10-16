@@ -25,6 +25,7 @@ import { MaybeUserLocationDto } from "src/geo/city.dto";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { Public } from "../auth/public.decorator";
 import { AmbassadorInviteGoalService } from "./ambassador-invite-goal.service";
+import { AmbassadorProgramService } from "./ambassador-program.service";
 import {
   AmbassadorInviteDashboardDto,
   AmbassadorInviteGoalDto,
@@ -63,6 +64,7 @@ class VerifyEmailBody {
 export class UserController {
   constructor(
     private readonly userService: UserService,
+    private readonly ambassadorProgramService: AmbassadorProgramService,
     private readonly ambassadorInviteGoalService: AmbassadorInviteGoalService,
     private readonly friendService: FriendService,
   ) {}
@@ -332,7 +334,7 @@ export class UserController {
   @ApiOkResponse({ type: AmbassadorProgramDashboardDto })
   async getAmbassadorProgramAdmin(): Promise<AmbassadorProgramDashboardDto> {
     return new AmbassadorProgramDashboardDto(
-      await this.userService.getAmbassadorProgramDashboard(),
+      await this.ambassadorProgramService.getAmbassadorProgramDashboard(),
     );
   }
 
@@ -343,7 +345,7 @@ export class UserController {
     @Body() body: UpsertAmbassadorProgramMemberDto,
   ): Promise<AmbassadorProgramMemberDto> {
     return new AmbassadorProgramMemberDto(
-      await this.userService.upsertAmbassadorProgramMember(body),
+      await this.ambassadorProgramService.upsertAmbassadorProgramMember(body),
     );
   }
 
@@ -355,7 +357,10 @@ export class UserController {
     @Body() body: UpdateAmbassadorProgramMemberDto,
   ): Promise<AmbassadorProgramMemberDto> {
     return new AmbassadorProgramMemberDto(
-      await this.userService.updateAmbassadorProgramMember(userId, body),
+      await this.ambassadorProgramService.updateAmbassadorProgramMember(
+        userId,
+        body,
+      ),
     );
   }
 
@@ -367,7 +372,7 @@ export class UserController {
     @Request() req: JwtRequest,
   ): Promise<AmbassadorProgramMemberDto> {
     return new AmbassadorProgramMemberDto(
-      await this.userService.createAmbassadorProgramInteraction(
+      await this.ambassadorProgramService.createAmbassadorProgramInteraction(
         body,
         req.user.sub,
       ),

@@ -22,6 +22,7 @@ import {
 import { StoredInviteAssignmentKind } from "src/share-urls/invite-assignment";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import { AmbassadorInviteGoalService } from "src/user/ambassador-invite-goal.service";
+import { AmbassadorProgramService } from "src/user/ambassador-program.service";
 import { AmbassadorInviteGoal } from "src/user/entities/ambassador-invite-goal.entity";
 import {
   ContractEvent,
@@ -59,6 +60,7 @@ describe("Users (e2e)", () => {
   let communityRepo: Repository<Community>;
   let onetimeInviteRepo: Repository<OnetimeInvite>;
   let userService: UserService;
+  let ambassadorProgramService: AmbassadorProgramService;
   let ambassadorInviteGoalService: AmbassadorInviteGoalService;
   let friendService: FriendService;
   let contractService: ContractService;
@@ -81,6 +83,7 @@ describe("Users (e2e)", () => {
     communityRepo = ctx.dataSource.getRepository(Community);
     onetimeInviteRepo = ctx.dataSource.getRepository(OnetimeInvite);
     userService = ctx.app.get(UserService);
+    ambassadorProgramService = ctx.app.get(AmbassadorProgramService);
     ambassadorInviteGoalService = ctx.app.get(AmbassadorInviteGoalService);
     friendService = ctx.app.get(FriendService);
     contractService = ctx.app.get(ContractService);
@@ -1166,12 +1169,12 @@ describe("Users (e2e)", () => {
       )?.stats.goalSuccessfulRecruits,
     ).toBe(3);
 
-    await userService.upsertAmbassadorProgramMember({
+    await ambassadorProgramService.upsertAmbassadorProgramMember({
       userId: ambassador.id,
       activeParticipant: true,
     });
     const programMember = (
-      await userService.getAmbassadorProgramDashboard()
+      await ambassadorProgramService.getAmbassadorProgramDashboard()
     ).members.find((member) => member.userId === ambassador.id);
     expect(programMember?.inviteStats?.totals.totalSuccessfulRecruits).toBe(3);
     expect(
@@ -1377,12 +1380,13 @@ describe("Users (e2e)", () => {
       }),
     );
     for (const { id } of [ambassador, otherAmbassador]) {
-      await userService.upsertAmbassadorProgramMember({
+      await ambassadorProgramService.upsertAmbassadorProgramMember({
         userId: id,
         activeParticipant: true,
       });
     }
-    const { members } = await userService.getAmbassadorProgramDashboard();
+    const { members } =
+      await ambassadorProgramService.getAmbassadorProgramDashboard();
     const totalsOf = (userId: number) =>
       members.find((member) => member.userId === userId)?.inviteStats?.totals;
     expect(totalsOf(ambassador.id)).toEqual(allTime);

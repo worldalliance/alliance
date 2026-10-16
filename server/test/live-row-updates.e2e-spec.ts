@@ -16,6 +16,7 @@ import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import { AmbassadorInviteGoalService } from "src/user/ambassador-invite-goal.service";
+import { AmbassadorProgramService } from "src/user/ambassador-program.service";
 import { AmbassadorInviteGoal } from "src/user/entities/ambassador-invite-goal.entity";
 import { AmbassadorProgramMember } from "src/user/entities/ambassador-program-member.entity";
 import { Friend, FriendStatus } from "src/user/entities/friend.entity";
@@ -168,7 +169,9 @@ describe("Updates to a row deleted after its load (e2e)", () => {
     });
 
     await expect(
-      userService.updateAmbassadorProgramMember(user.id, { invited: true }),
+      ctx.app
+        .get(AmbassadorProgramService)
+        .updateAmbassadorProgramMember(user.id, { invited: true }),
     ).rejects.toThrow(
       new NotFoundException("Ambassador program member not found"),
     );

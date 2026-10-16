@@ -16,6 +16,7 @@ import { Push } from "src/push/push.entity";
 import { PushService } from "src/push/push.service";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { AmbassadorProgramService } from "src/user/ambassador-program.service";
 import { AwayRangeEditor } from "src/user/away-range-history";
 import { AmbassadorProgramMember } from "src/user/entities/ambassador-program-member.entity";
 import {
@@ -222,7 +223,7 @@ describe("Writers beside a deletion (e2e)", () => {
     deleteAfterUserLoad({ ctx, deleted: user });
 
     await expect(
-      userService.upsertAmbassadorProgramMember({
+      ctx.app.get(AmbassadorProgramService).upsertAmbassadorProgramMember({
         userId: user.id,
         invited: true,
       }),

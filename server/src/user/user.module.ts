@@ -17,6 +17,7 @@ import { City } from "../geo/city.entity";
 import { Notification } from "../notifs/entities/notification.entity";
 import { AmbassadorInviteGoalService } from "./ambassador-invite-goal.service";
 import { AmbassadorInviteStatsService } from "./ambassador-invite-stats.service";
+import { AmbassadorProgramService } from "./ambassador-program.service";
 import { AmbassadorInviteGoal } from "./entities/ambassador-invite-goal.entity";
 import { AmbassadorProgramInteraction } from "./entities/ambassador-program-interaction.entity";
 import { AmbassadorProgramMember } from "./entities/ambassador-program-member.entity";
@@ -96,6 +97,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     OnetimeInviteService,
     AmbassadorInviteStatsService,
     AmbassadorInviteGoalService,
+    AmbassadorProgramService,
     IsUserAlreadyExist,
   ],
   exports: [
