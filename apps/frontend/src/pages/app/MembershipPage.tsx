@@ -1,16 +1,13 @@
 import {
-  contractSignContract,
-  contractSuspendContract,
-} from "@alliance/shared/client";
-import {
-  ContractEventState,
   getSignedMessage,
   getSuspensionMessage,
-  isConfirmationCloseEnough,
+  WEEKLY_COMMITMENT_CONFIRMATION,
 } from "@alliance/shared/lib/contract";
-import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
-import { useContractById } from "@alliance/shared/lib/useContractById";
-import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
+import {
+  membershipAgreementLoadFailed,
+  suspendContractConfirmation,
+} from "@alliance/shared/lib/copy";
+import { useMembershipAgreement } from "@alliance/shared/lib/useMembershipAgreement";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
@@ -22,12 +19,9 @@ import { ChevronDown } from "lucide-react";
 import React, { useEffect, useId, useMemo, useState } from "react";
 import { useLocation } from "react-router";
 import AwayRangesSection from "../../components/AwayRangesSection";
+import LoadFailed from "../../components/LoadFailed";
 import { useAuth } from "../../lib/AuthContext";
-import { useContract } from "../../lib/useContract";
 import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
-
-const WEEKLY_COMMITMENT_CONFIRMATION =
-  "I commit to complete each task to the best of my ability.";
 
 function FormalTextDropdown({ markdown }: { markdown: string }) {
   const [open, setOpen] = useState(false);
@@ -102,14 +96,20 @@ function ContractDescriptionList({
 function SignedContractActions({
   message,
   onSuspend,
+  isSubmitting,
 }: {
   message: React.ReactNode;
   onSuspend: () => void;
+  isSubmitting: boolean;
 }) {
   return (
     <div className="flex flex-col gap-y-3 sm:flex-row sm:items-center sm:justify-between border-t border-zinc-200 pt-5">
       {message}
-      <Button onClick={onSuspend} color={ButtonColor.Red}>
+      <Button
+        onClick={onSuspend}
+        color={ButtonColor.Red}
+        disabled={isSubmitting}
+      >
         Suspend agreement
       </Button>
     </div>
@@ -118,37 +118,33 @@ function SignedContractActions({
 
 const MembershipPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
-  const { latestContract } = useContract();
-  const invalidateVisibilityContext = useInvalidateVisibilityContext();
   const { hash } = useLocation();
-  const [editName, setEditName] = useState("");
-  const [weeklyCommitmentConfirmation, setWeeklyCommitmentConfirmation] =
-    useState("");
-  const [lastContractEvent, setLastContractEvent] =
-    useState<ContractEventState>(null);
-  const weeklyCommitmentConfirmed = isConfirmationCloseEnough(
-    weeklyCommitmentConfirmation,
-    WEEKLY_COMMITMENT_CONFIRMATION,
-  );
-
-  const previousSignedContractId =
-    typeof lastContractEvent?.contractId === "number" &&
-    lastContractEvent.contractId !== latestContract?.id
-      ? lastContractEvent.contractId
-      : null;
-  const { data: previousSignedContract } = useContractById(
-    previousSignedContractId,
-  );
+  const {
+    latestContract,
+    contractLoadFailed,
+    retryContractLoad,
+    retryingContractLoad,
+    lastContractEvent,
+    signedName,
+    setSignedName,
+    confirmation,
+    setConfirmation,
+    isSubmitting,
+    canSign,
+    sign,
+    suspend,
+    previousSignedContract,
+    latestSigned,
+    updateAvailable,
+  } = useMembershipAgreement({
+    user,
+    refreshUser,
+    showError: (message) => alert(message),
+  });
 
   useEffect(() => {
     refreshUser();
   }, [refreshUser]);
-
-  useEffect(() => {
-    if (user) {
-      setLastContractEvent(user.lastContractEvent ?? null);
-    }
-  }, [user]);
 
   useEffect(() => {
     if (!hash) {
@@ -160,53 +156,9 @@ const MembershipPage: React.FC = () => {
     }
   }, [hash]);
 
-  const handleContractSign = async () => {
-    if (!latestContract || !weeklyCommitmentConfirmed) {
-      return;
-    }
-    try {
-      const res = await contractSignContract({
-        path: {
-          id: latestContract.id,
-        },
-        body: { signedName: editName },
-      });
-      if (res.data) {
-        setLastContractEvent({
-          type: "signed",
-          date: res.data.date,
-          automatic: false,
-          contractId: latestContract.id,
-        });
-        setWeeklyCommitmentConfirmation("");
-        invalidateVisibilityContext();
-        await refreshUser();
-      }
-    } catch (error) {
-      console.error("Error signing contract:", error);
-      alert("There was an error signing the contract. Please try again.");
-    }
-  };
-
-  const handleContractSuspend = async () => {
-    try {
-      if (!window.confirm(suspendContractConfirmation)) {
-        return;
-      }
-
-      const res = await contractSuspendContract();
-      if (res.data) {
-        setLastContractEvent({
-          type: "suspended",
-          date: res.data.date,
-          automatic: false,
-          contractId: null,
-        });
-        await refreshUser();
-      }
-    } catch (error) {
-      console.error("Error suspending contract:", error);
-      alert("There was an error suspending the contract. Please try again.");
+  const handleContractSuspend = () => {
+    if (window.confirm(suspendContractConfirmation)) {
+      void suspend();
     }
   };
 
@@ -225,6 +177,16 @@ const MembershipPage: React.FC = () => {
       <div className="mb-6 relative flex flex-col gap-y-6">
         <h1 className="text-title">Membership</h1>
 
+        {contractLoadFailed && (
+          <Card style={CardStyle.White} className="p-6">
+            <LoadFailed
+              message={membershipAgreementLoadFailed}
+              onRetry={retryContractLoad}
+              retrying={retryingContractLoad}
+            />
+          </Card>
+        )}
+
         {(previousSignedContract || latestContract) && (
           <Card
             style={CardStyle.White}
@@ -238,18 +200,17 @@ const MembershipPage: React.FC = () => {
                   items={previousSignedContract.description}
                   markdown={previousSignedContract.markdown}
                 >
-                  {lastContractEvent?.type === "signed" && (
-                    <SignedContractActions
-                      message={signedDateMessage}
-                      onSuspend={handleContractSuspend}
-                    />
-                  )}
+                  <SignedContractActions
+                    message={signedDateMessage}
+                    onSuspend={handleContractSuspend}
+                    isSubmitting={isSubmitting}
+                  />
                 </ContractDescriptionList>
               )}
 
               {latestContract && (
                 <>
-                  {previousSignedContract && (
+                  {updateAvailable && (
                     <p className="font-semibold">
                       An updated contract is available.
                     </p>
@@ -258,11 +219,11 @@ const MembershipPage: React.FC = () => {
                     items={latestContract.description}
                     markdown={latestContract.markdown}
                   >
-                    {lastContractEvent?.type === "signed" &&
-                    lastContractEvent.contractId === latestContract.id ? (
+                    {latestSigned ? (
                       <SignedContractActions
                         message={signedDateMessage}
                         onSuspend={handleContractSuspend}
+                        isSubmitting={isSubmitting}
                       />
                     ) : (
                       <div className="flex flex-col gap-y-4 border-zinc-200 border-t pt-5">
@@ -274,10 +235,8 @@ const MembershipPage: React.FC = () => {
                           <textarea
                             name="weeklyCommitmentConfirmation"
                             aria-label="Weekly commitment confirmation"
-                            value={weeklyCommitmentConfirmation}
-                            onChange={(e) =>
-                              setWeeklyCommitmentConfirmation(e.target.value)
-                            }
+                            value={confirmation}
+                            onChange={(e) => setConfirmation(e.target.value)}
                             placeholder="Type the above statement here"
                             rows={2}
                             className="resize-y rounded border border-zinc-200 bg-white px-3 py-3 text-[11pt] transition-all duration-200 hover:border-zinc-300 focus:border-green focus:outline-none"
@@ -287,13 +246,13 @@ const MembershipPage: React.FC = () => {
                               name="name"
                               type="text"
                               placeholder="Type your full name"
-                              value={editName}
-                              onChange={(e) => setEditName(e.target.value)}
+                              value={signedName}
+                              onChange={(e) => setSignedName(e.target.value)}
                               className="flex-1"
                             />
                             <Button
-                              disabled={!editName || !weeklyCommitmentConfirmed}
-                              onClick={handleContractSign}
+                              disabled={!canSign}
+                              onClick={sign}
                               color={ButtonColor.Black}
                               className="h-auto! px-6 sm:ml-2"
                             >

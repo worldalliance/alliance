@@ -1,0 +1,119 @@
+import { useEffect, useState } from "react";
+import {
+  contractSignContract,
+  contractSuspendContract,
+  type ContractEventDto,
+} from "../client";
+import {
+  canSignAgreement,
+  signedContractEvent,
+  signedContractId,
+  suspendedContractEvent,
+  type ContractEventState,
+} from "./contract";
+import { failedToLoad } from "./failedToLoad";
+import { useContractById } from "./useContractById";
+import { useCurrentContract } from "./useCurrentContract";
+import { useInvalidateVisibilityContext } from "./useVisibilityContext";
+
+export function useMembershipAgreement(params: {
+  user: { lastContractEvent?: ContractEventDto } | null | undefined;
+  refreshUser: () => Promise<void>;
+  showError: (message: string) => void;
+}) {
+  const { user, refreshUser, showError } = params;
+  const currentContract = useCurrentContract();
+  const latestContract = currentContract.data;
+  const invalidateVisibilityContext = useInvalidateVisibilityContext();
+  const [signedName, setSignedName] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [lastContractEvent, setLastContractEvent] =
+    useState<ContractEventState>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const canSign =
+    latestContract != null &&
+    canSignAgreement({ signedName, confirmation, isSubmitting });
+  // The server always has a current contract, so an empty response failed too.
+  const contractLoadFailed =
+    failedToLoad(currentContract) || latestContract === null;
+  // `undefined` only while loading: a failed load still shows what was signed.
+  const settledContract = contractLoadFailed ? null : latestContract;
+  const signedId = signedContractId(lastContractEvent);
+  const { data: previousSignedContract } = useContractById(
+    settledContract !== undefined && signedId !== settledContract?.id
+      ? signedId
+      : null,
+  );
+
+  useEffect(() => {
+    if (user) {
+      setLastContractEvent(user.lastContractEvent ?? null);
+    }
+  }, [user]);
+
+  const sign = async () => {
+    if (!latestContract || !canSign) return;
+    setIsSubmitting(true);
+    try {
+      const res = await contractSignContract({
+        path: { id: latestContract.id },
+        body: { signedName },
+      });
+      if (res.data) {
+        setLastContractEvent(
+          signedContractEvent({
+            contractId: latestContract.id,
+            date: res.data.date,
+          }),
+        );
+        setConfirmation("");
+        invalidateVisibilityContext();
+        await refreshUser();
+      }
+    } catch (error) {
+      console.error("Error signing contract:", error);
+      showError("There was an error signing the contract. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /** Call once the member has confirmed. */
+  const suspend = async () => {
+    setIsSubmitting(true);
+    try {
+      const res = await contractSuspendContract();
+      if (res.data) {
+        setLastContractEvent(suspendedContractEvent(res.data.date));
+        await refreshUser();
+      }
+    } catch (error) {
+      console.error("Error suspending contract:", error);
+      showError(
+        "There was an error suspending the contract. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return {
+    latestContract,
+    contractLoadFailed,
+    retryContractLoad: () => void currentContract.refetch(),
+    retryingContractLoad: currentContract.isFetching,
+    lastContractEvent,
+    signedName,
+    setSignedName,
+    confirmation,
+    setConfirmation,
+    isSubmitting,
+    canSign,
+    sign,
+    suspend,
+    previousSignedContract: previousSignedContract ?? null,
+    latestSigned: latestContract != null && signedId === latestContract.id,
+    // The notice contrasts the two contracts, so it waits until the previous one is on screen.
+    updateAvailable: previousSignedContract != null && latestContract != null,
+  };
+}

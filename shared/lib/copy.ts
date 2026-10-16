@@ -250,6 +250,9 @@ export const guestReferral = {
   createAccountToSubmit: "Create an account to submit",
 } as const;
 
+export const membershipAgreementLoadFailed =
+  "The membership agreement couldn't be loaded.";
+
 export const suspendContractConfirmation =
   "Are you sure you want to suspend your contract? You will be removed from your groups.";
 
