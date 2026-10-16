@@ -1,12 +1,5 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import type { CohortExpression } from "@alliance/common/cohort-expression";
-import { R } from "@alliance/common/result";
-import { ensureHttpProtocol } from "@alliance/common/url";
-import {
-  ActionCategory,
-  actionsExportActionAdmin,
-  CreateActionDto,
-} from "@alliance/shared/client";
+import { actionsExportActionAdmin } from "@alliance/shared/client";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useMembers } from "@alliance/shared/lib/useMembers";
@@ -46,7 +39,7 @@ import { ActionCategoryIcons } from "../components/ActionCategoryIcons";
 import ActionCohortDecisionsTab from "../components/ActionCohortDecisionsTab";
 import ActionCompletionCurveChart from "../components/ActionCompletionCurveChart";
 import ActionFollowUpFormsTab from "../components/ActionFollowUpFormsTab";
-import ActionForm, { type ReviewerRow } from "../components/ActionForm";
+import ActionForm from "../components/ActionForm";
 import ActionFormVariantsTab from "../components/ActionFormVariantsTab";
 import ActionMergedResponsesTab from "../components/ActionMergedResponsesTab";
 import {
@@ -57,28 +50,19 @@ import ActionUpdatesTab from "../components/ActionUpdatesTab";
 import EventManagementTab from "../components/EventManagementTab";
 import { FormBuilder } from "../components/FormBuilder";
 import FormResponseStatistics from "../components/FormResponseStatistics";
-import { actionFormInputValue } from "../lib/actionFormInputValue";
-import { changedActionImages } from "../lib/actionImages";
 import {
   ACTION_STATUS_COLORS,
   ACTION_STATUS_LABELS,
 } from "../lib/actionStatusDisplay";
 import { getSiteUrl } from "../lib/config";
 import type { FormResponseFilter } from "../lib/responseFilter";
-import { makeTempId } from "../lib/tempId";
 import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useAllActions } from "../lib/useAllActions";
-import { useCoverImage } from "../lib/useCoverImage";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 import ActionReadinessChecklist from "./action-dashboard/ActionReadinessChecklist";
-import {
-  imageUploadingMessage,
-  logActionError,
-} from "./action-dashboard/actionSaveErrors";
-import {
-  useActionCommands,
-  useNavigateToCreatedAction,
-} from "./action-dashboard/useActionCommands";
+import { imageUploadingMessage } from "./action-dashboard/actionSaveErrors";
+import { useActionCommands } from "./action-dashboard/useActionCommands";
+import { useActionEditor } from "./action-dashboard/useActionEditor";
 import { useActionReporting } from "./action-dashboard/useActionReporting";
 
 const tabs = [
@@ -104,26 +88,13 @@ const ActionDashboard: React.FC = () => {
     action,
     cohortExpressionError,
     isPending: actionPending,
-    isFetching: actionFetching,
     isError: actionLoadFailed,
     setActionFromDto,
-    createAction,
     isCreating,
-    updateAction,
     isUpdating,
     isRemoving,
   } = admin;
   const cohortParseFailed = cohortExpressionError != null;
-  // Which action id the draft state was last seeded from (see the seeding
-  // effect below); null means the next loaded action should (re)seed. Kept as
-  // state (not a ref) so `loading` covers the cached-data window where the
-  // seed is still waiting out a background refetch.
-  const [seededActionId, setSeededActionId] = useState<number | null>(null);
-  const loading =
-    (!isNew &&
-      !actionLoadFailed &&
-      (actionPending || seededActionId !== actionId)) ||
-    isRemoving;
   const saving = isCreating || isUpdating;
   const [error, setError] = useState<string | null>(null);
   const { allActions, allActionsLoading, allActionsLoadFailed } =
@@ -142,15 +113,6 @@ const ActionDashboard: React.FC = () => {
     }
   }, [errorMessage]);
   const {
-    key: imageKey,
-    preview: imagePreview,
-    error: imageError,
-    uploading: imageUploading,
-    pick: pickCoverImage,
-    cancel: cancelCoverImage,
-    reset: resetCoverImage,
-  } = useCoverImage();
-  const {
     tags: availableTags,
     isLoading: tagsLoading,
     isLoadingError: tagsError,
@@ -162,8 +124,6 @@ const ActionDashboard: React.FC = () => {
       isLoadingError: suitesError,
     },
   } = useActionSuitesAdmin();
-  const [cohortExpression, setCohortExpression] =
-    useState<CohortExpression | null>(null);
   const {
     users: availableUsers,
     isLoading: usersLoading,
@@ -190,111 +150,37 @@ const ActionDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedTab, onTabChange] = useSearchParamTab(tabs, "overview");
 
-  const [form, setForm] = useState<CreateActionDto>({
-    name: "",
-    category: [],
-    image: "",
-    body: "",
-    timeEstimate: 0,
-    shortDescription: "",
-    visibilityMode: "public",
-    isContractSigningAction: false,
-    preventCompletion: false,
-    staffPreview: false,
-    taskFormId: undefined,
-    isForumParticipationAction: false,
-    shouldCompleteAfterDeadline: false,
-    publicOnly: false,
-    suiteId: undefined,
-    optional: false,
-    authorIds: [],
-    onboarding: false,
+  const {
+    draftSeeded,
+    form,
+    reviewerRows,
+    setReviewerRows,
+    cohortExpression,
+    imageKey,
+    imagePreview,
+    imageError,
+    imageUploading,
+    cancelCoverImage,
+    setTaskFormId,
+    handleInputChange,
+    handleCohortExpressionChange,
+    handlePrerequisitesChange,
+    handleAuthorsChange,
+    handleCategoryChange,
+    handleImageChange,
+    handleSubmit,
+  } = useActionEditor({
+    admin,
+    actionId,
+    isNew,
+    cohortParseFailed,
+    searchParams,
+    setError,
   });
-  const [reviewerRows, setReviewerRows] = useState<ReviewerRow[]>([]);
+  const loading =
+    (!isNew && !actionLoadFailed && (actionPending || !draftSeeded)) ||
+    isRemoving;
 
-  // Reset form when switching to new action mode
-  useEffect(() => {
-    if (isNew) {
-      setForm({
-        name: "",
-        category: [],
-        image: "",
-        body: "",
-        timeEstimate: 0,
-        shortDescription: "",
-        visibilityMode: "public",
-        preventCompletion: false,
-        staffPreview: false,
-        taskFormId: undefined,
-        shouldCompleteAfterDeadline: false,
-        publicOnly: false,
-        isForumParticipationAction: false,
-        isContractSigningAction: false,
-        suiteId: searchParams.get("suiteId")
-          ? parseInt(searchParams.get("suiteId")!)
-          : undefined,
-        optional: false,
-        authorIds: [],
-        onboarding: false,
-      });
-      setReviewerRows([]);
-      resetCoverImage(null);
-      setError(null);
-      setCohortExpression(null);
-      setSeededActionId(null);
-    }
-  }, [isNew, searchParams, resetCoverImage]);
-
-  const setTaskFormId = async (formId: number) => {
-    setForm((prev) => ({ ...prev, taskFormId: formId }));
-    if (actionId) {
-      const result = await R.fromPromise(updateAction({ taskFormId: formId }));
-      if (!result.ok) {
-        setError("Failed to update action form");
-        console.error(result.error);
-      }
-    }
-  };
-
-  // Seed the editable draft state (form fields, reviewers, cohort expression,
-  // image) once per action; background refetches and cache writes must not
-  // stomp in-progress edits. Wait out in-flight fetches so the seed comes
-  // from fresh data, not a stale cache entry.
-  useEffect(() => {
-    const parsedAction = action;
-    if (!parsedAction || actionFetching || seededActionId === parsedAction.id) {
-      return;
-    }
-    setSeededActionId(parsedAction.id);
-
-    const {
-      usersCompleted: _usersCompleted,
-      usersJoined: _usersJoined,
-      events: _events,
-      updates: _updates,
-      suite,
-      reviewers,
-      followUpForms: _followUpForms,
-      ...formData
-    } = parsedAction;
-
-    const authors = parsedAction.authors ?? [];
-    const authorIds = authors.map((user) => user.id);
-
-    setForm({
-      ...formData,
-      taskFormId: parsedAction.taskFormId,
-      suiteId: suite?.id,
-      authorIds,
-    });
-    setReviewerRows(reviewers.map((r) => ({ ...r, key: makeTempId() })));
-
-    setCohortExpression(parsedAction.cohortExpression ?? null);
-
-    resetCoverImage(parsedAction.image ?? null);
-  }, [action, actionFetching, seededActionId, resetCoverImage]);
-
-  const handleActionCreated = useNavigateToCreatedAction();
   const { handleDuplicate, handleArchive, handleDelete } = useActionCommands({
     admin,
     actionId,
@@ -308,36 +194,7 @@ const ActionDashboard: React.FC = () => {
     navigate("/actions");
   }, [navigate]);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
-  ) => {
-    const target = e.target as HTMLInputElement;
-    const { name, value, type } = target;
-
-    if (type === "checkbox") {
-      setForm((prev) => ({
-        ...prev,
-        [name]: target.checked,
-      }));
-      return;
-    }
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: actionFormInputValue(name, value),
-    }));
-  };
-
   const { error: pushError } = useToast();
-
-  const handleCohortExpressionChange = useCallback(
-    (expr: CohortExpression | null) => {
-      setCohortExpression(expr);
-    },
-    [],
-  );
 
   const memberActionStart = action?.memberActionStart
     ? new Date(action.memberActionStart)
@@ -345,84 +202,6 @@ const ActionDashboard: React.FC = () => {
   const memberActionDeadline = action?.memberActionDeadline
     ? new Date(action.memberActionDeadline)
     : null;
-
-  const handlePrerequisitesChange = useCallback((ids: number[]) => {
-    setForm((prev) => ({ ...prev, prerequisiteActionIds: ids }));
-  }, []);
-
-  const handleAuthorsChange = useCallback((ids: number[]) => {
-    setForm((prev) => ({
-      ...prev,
-      authorIds: ids,
-    }));
-  }, []);
-
-  const handleCategoryChange = useCallback((category: ActionCategory[]) => {
-    setForm((prev) => ({ ...prev, category }));
-  }, []);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    // Clear the input so re-picking the same file after a failure still fires a
-    // change event.
-    e.target.value = "";
-    if (file) void pickCoverImage(file);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    // Saving would overwrite the stored (unparseable) cohort expression with
-    // the empty editor state
-    if (cohortParseFailed) {
-      setError(
-        "Saving is disabled: the stored cohort expression could not be parsed.",
-      );
-      return;
-    }
-
-    if (imageUploading) {
-      setError(imageUploadingMessage);
-      return;
-    }
-
-    const formData = {
-      ...form,
-      ...changedActionImages({ form, action, imageKey }),
-      cohortExpression,
-      reviewers: reviewerRows
-        .map((r) => {
-          const url = r.url?.trim();
-          return {
-            name: r.name.trim(),
-            url: url ? ensureHttpProtocol(url) : undefined,
-            icon: r.icon,
-          };
-        })
-        .filter((r) => r.name),
-    };
-
-    if (isNew) {
-      const result = await R.fromPromise(
-        createAction(formData),
-        logActionError(),
-      );
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      handleActionCreated(result.value);
-    } else if (actionId) {
-      // The mutation invalidates the action query, so fresh data is
-      // refetched before this resolves.
-      const result = await R.fromPromise(
-        updateAction(formData),
-        logActionError(),
-      );
-      if (!result.ok) setError(result.error);
-    }
-  };
 
   const [exportActionOpen, setExportActionOpen] = useState(false);
   const [exportActionEvents, setExportActionEvents] = useState(false);
