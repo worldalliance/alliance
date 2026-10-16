@@ -1,10 +1,10 @@
-import { communityJoinPublicCommunity } from "@alliance/shared/client";
 import type { CommunityDto } from "@alliance/shared/client/types.gen";
 import {
   getMemberCount,
   groupRemovalMessage,
   publicGroupJoinState,
 } from "@alliance/shared/lib/communityUtils";
+import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useCallback, useState } from "react";
 import { Alert, View } from "react-native";
 import { useAuth } from "../../lib/AuthContext";
@@ -18,19 +18,18 @@ export function PublicGroupsSection({
   memberCommunities,
   memberCommunityIds,
   didGroupsFail,
-  refreshAll,
 }: {
   communities: CommunityDto[];
   isError: boolean;
   memberCommunities: CommunityDto[];
   memberCommunityIds: Set<number>;
   didGroupsFail: boolean;
-  refreshAll: () => Promise<void>;
 }) {
   const { user, refreshUser } = useAuth();
   const [joiningCommunityId, setJoiningCommunityId] = useState<number | null>(
     null,
   );
+  const { joinPublicCommunity } = useMyCommunities();
 
   const handleJoinPublicCommunity = useCallback(
     (community: CommunityDto) => {
@@ -38,13 +37,7 @@ export function PublicGroupsSection({
       const proceed = async () => {
         setJoiningCommunityId(community.id);
         try {
-          const res = await communityJoinPublicCommunity({
-            path: { communityId: community.id },
-          });
-          if (!res.data) {
-            throw new Error("no community returned");
-          }
-          await refreshAll();
+          await joinPublicCommunity(community.id);
           await refreshUser();
         } catch (e) {
           console.error("Failed to join public group", e);
@@ -62,7 +55,7 @@ export function PublicGroupsSection({
         void proceed();
       }
     },
-    [memberCommunities, refreshAll, refreshUser],
+    [joinPublicCommunity, memberCommunities, refreshUser],
   );
 
   return (

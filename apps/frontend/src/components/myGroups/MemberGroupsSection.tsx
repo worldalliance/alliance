@@ -1,7 +1,8 @@
-import { CommunityDto, communityLeave } from "@alliance/shared/client";
+import { CommunityDto } from "@alliance/shared/client";
 import { groupAssignmentLabels } from "@alliance/shared/lib/communityUtils";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
 import { useGroupAssignment } from "@alliance/shared/lib/useGroupAssignment";
+import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import List from "@alliance/sharedweb/ui/List";
@@ -15,20 +16,18 @@ export type MemberGroupsSectionProps = {
   communities: CommunityDto[];
   didGroupsFail: boolean;
   onSelectCommunity: (communityId: number | null) => void;
-  removeCommunity: (communityId: number) => void;
 };
 
 const MemberGroupsSection = ({
   communities,
   didGroupsFail,
   onSelectCommunity,
-  removeCommunity,
 }: MemberGroupsSectionProps) => {
   const { user, refreshUser } = useAuth();
   const [leavingCommunityId, setLeavingCommunityId] = useState<number | null>(
     null,
   );
-  const [isLeavingGroup, setIsLeavingGroup] = useState(false);
+  const { leaveCommunity, isLeaving } = useMyCommunities();
   const justOpenedDialogRef = useRef(false);
   const { confirm, error: showError } = useToast();
   const handleCloseLeaveGroupConfirmation = useCallback(() => {
@@ -65,24 +64,17 @@ const MemberGroupsSection = ({
 
   const onConfirmLeaveGroup = useCallback(
     async (community: CommunityDto) => {
-      setIsLeavingGroup(true);
       try {
-        await communityLeave({
-          path: { communityId: community.id },
-          throwOnError: true,
-        });
+        await leaveCommunity(community.id);
       } catch (err) {
         console.error("Failed to leave group", err);
         showError("Unable to leave that group right now.");
         return;
-      } finally {
-        setIsLeavingGroup(false);
       }
       onSelectCommunity(null);
       setLeavingCommunityId(null);
-      removeCommunity(community.id);
     },
-    [onSelectCommunity, removeCommunity, showError],
+    [leaveCommunity, onSelectCommunity, showError],
   );
 
   const { join, leave } = useGroupAssignment({ onChanged: refreshUser });
@@ -235,7 +227,7 @@ const MemberGroupsSection = ({
                       <Button
                         color={ButtonColor.Red}
                         size="small"
-                        disabled={isLeavingGroup}
+                        disabled={isLeaving}
                         onClick={() => {
                           onConfirmLeaveGroup(community);
                         }}

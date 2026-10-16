@@ -8,6 +8,7 @@ import {
 } from "../client";
 import { failedToLoad } from "./failedToLoad";
 import { queryKeys } from "./queryKeys";
+import { refreshMemberships } from "./useMyCommunities";
 
 /** The current user's incoming group invites, and accepting or declining one.
  * Both writes throw when refused. Accepting moves the user into the invite's
@@ -58,14 +59,7 @@ export function useIncomingCommunityInvites() {
         }),
       onSuccess: async (_, inviteId) => {
         await storeStatus(inviteId, "invitee_accepted");
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.myCommunities(),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.publicCommunities(),
-          }),
-        ]);
+        await refreshMemberships(queryClient);
       },
     });
 

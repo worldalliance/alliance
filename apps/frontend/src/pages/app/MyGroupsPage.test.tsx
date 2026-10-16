@@ -199,6 +199,7 @@ it("holds Leave group while its request is in flight", async () => {
   fireEvent.click(screen.getByText("Leave group"));
   await waitFor(() => expect(isDisabled("Leave group")).toBe(true));
 
+  myGroups = async () => Response.json([]);
   resolve(Response.json({}));
   await waitFor(() => expect(screen.queryByText("My group")).toBeNull());
 });

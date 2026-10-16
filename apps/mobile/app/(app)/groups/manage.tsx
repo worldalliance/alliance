@@ -363,7 +363,6 @@ export default function GroupManageScreen() {
                 memberCommunities={memberCommunities}
                 memberCommunityIds={memberCommunityIds}
                 didGroupsFail={didGroupsFail}
-                refreshAll={refreshAll}
               />
             </View>
           </KeyboardAwareScrollView>
