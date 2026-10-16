@@ -17,6 +17,7 @@ import {
   type UpdatePostDto,
 } from "../client";
 import { queryKeys } from "./queryKeys";
+import { dropForumPost } from "./useForumPosts";
 
 /** One forum post and its writes. An undefined `postId` fetches nothing, for
  * the create form; `update` and `remove` throw then. `refetchOnMount:
@@ -113,6 +114,7 @@ export function useForumPost(
     onSuccess: async () => {
       await queryClient.cancelQueries({ queryKey });
       queryClient.setQueryData(queryKey, null);
+      await dropForumPost(queryClient, Number(postId));
     },
   });
 

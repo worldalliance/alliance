@@ -1,20 +1,17 @@
-import { forumFindAllPosts } from "@alliance/shared/client";
+import { useForumPosts } from "@alliance/shared/lib/useForumPosts";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Card from "@alliance/sharedweb/ui/Card";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import List from "@alliance/sharedweb/ui/List";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import React, { useCallback } from "react";
-import { href, useLoaderData, useNavigate } from "react-router";
+import { href, useNavigate } from "react-router";
 import ForumListPost from "../../components/ForumListPost";
 import { useGrayBackground } from "../../components/HtmlBackgroundManager";
-
-export async function clientLoader() {
-  const response = await forumFindAllPosts();
-  return response.data ?? null;
-}
+import LoadFailed from "../../components/LoadFailed";
 
 const ForumPage: React.FC = () => {
-  const posts = useLoaderData<typeof clientLoader>();
+  const { posts, isLoading, didFail, isFetching, refetch } = useForumPosts();
 
   const navigate = useNavigate();
 
@@ -23,10 +20,6 @@ const ForumPage: React.FC = () => {
   }, [navigate]);
 
   useGrayBackground();
-
-  if (posts === null) {
-    return null;
-  }
 
   return (
     <CenterLayout className="space-y-3">
@@ -37,6 +30,18 @@ const ForumPage: React.FC = () => {
       >
         <p>Create a new thread...</p>
       </Card>
+      {isLoading && !didFail && (
+        <div className="flex items-center justify-center py-5">
+          <Spinner size="large" />
+        </div>
+      )}
+      {didFail && (
+        <LoadFailed
+          message="Couldn't load forum posts."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+      )}
       <List className="mb-10">
         {posts.map((post) => (
           <ForumListPost key={post.id} post={post} />

@@ -1,9 +1,9 @@
 import { postBylineAuthors } from "@alliance/common/postAuthors";
-import { PostDto, forumFindAllPosts } from "@alliance/shared/client";
+import { useForumPosts } from "@alliance/shared/lib/useForumPosts";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { router } from "expo-router";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -18,36 +18,14 @@ import Text, { FontWeight } from "../../../components/system/Text";
 import { colors } from "../../../lib/style/colors";
 
 export default function ForumScreen() {
-  const [posts, setPosts] = useState<PostDto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { posts, isLoading, isError, refetch } = useForumPosts();
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchPosts = useCallback(async () => {
-    try {
-      const response = await forumFindAllPosts();
-      if (response.error) {
-        throw new Error("Failed to fetch posts");
-      }
-      setPosts(response.data || []);
-      setError(null);
-    } catch (err) {
-      setError("Failed to load forum posts");
-      console.error("Error fetching posts:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchPosts();
+    await refetch();
     setRefreshing(false);
-  }, [fetchPosts]);
+  }, [refetch]);
 
   const navigateToPost = useCallback((postId: number) => {
     router.push(`/forum/post/${postId}`);
@@ -76,14 +54,14 @@ export default function ForumScreen() {
             <Text className="text-zinc-500">Create a new thread...</Text>
           </TouchableOpacity>
 
-          {loading ? (
+          {isLoading ? (
             <ActivityIndicator size="large" color={colors.green} />
-          ) : error ? (
+          ) : isError ? (
             <View className="bg-red-50 border border-red-200 rounded p-4">
-              <Text className="text-red-600">{error}</Text>
+              <Text className="text-red-600">Failed to load forum posts</Text>
               <TouchableOpacity
                 className="mt-3 px-3 py-2 rounded bg-white border border-zinc-200 self-start"
-                onPress={fetchPosts}
+                onPress={() => void refetch()}
                 activeOpacity={0.8}
               >
                 <Text className="text-zinc-700">Retry</Text>
