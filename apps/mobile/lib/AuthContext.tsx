@@ -15,11 +15,12 @@ import React, {
   useState,
 } from "react";
 import { Alert } from "react-native";
-import { authMe, UserDto } from "../../../shared/client";
+import { UserDto } from "../../../shared/client";
 import { getBinaryApiUrl, setReviewSession } from "./config";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
 import { signInWithProvider } from "./oauth";
 import { thrownFailure, type OAuthFailure } from "./oauthResult";
+import { refreshUser as refreshMe } from "./refreshUser";
 import { unregisterDevice } from "./registeredDevice";
 import { requestSession, type RequestedSession } from "./reviewSignIn";
 import {
@@ -151,14 +152,7 @@ export const AuthProvider: React.FC<
     [user, dropRefusedSession],
   );
 
-  const refreshUser = useCallback(async () => {
-    try {
-      const profile = (await authMe()).data;
-      setUser(profile?.user);
-    } catch {
-      // Leave current user on transient failure; session refresh handles auth.
-    }
-  }, []);
+  const refreshUser = useCallback(() => refreshMe(setUser), []);
 
   const posthog = usePostHog();
 
