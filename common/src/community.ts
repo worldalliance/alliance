@@ -78,11 +78,14 @@ export function validateCommunitySettings(params: {
   );
 }
 
-/**
- * Non-leader member count (users minus leaders). Safe when relations are unloaded.
- */
+/** Non-leader member count (users minus leaders). */
 export function getMemberCount(c: CommunitySeats): number {
-  return (c.users?.length ?? 0) - (c.leaders?.length ?? 0);
+  if (!c.users || !c.leaders) {
+    throw new Error(
+      "A community's users and leaders must be loaded to count its members",
+    );
+  }
+  return c.users.length - c.leaders.length;
 }
 
 /**

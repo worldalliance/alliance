@@ -185,10 +185,18 @@ describe("group capacity", () => {
     acceptsPublicJoin,
   ];
 
-  it("counts members without leaders, and nothing when relations are unloaded", () => {
+  it("counts members without leaders", () => {
     expect(getMemberCount(group)).toBe(1);
     expect(freeSlots(group)).toBe(1);
-    expect(getMemberCount({ maxCapacity: null })).toBe(0);
+  });
+
+  it("refuses to count a community whose relations are unloaded", () => {
+    expect(() => getMemberCount({ maxCapacity: 2, users: [] })).toThrow(
+      /users and leaders must be loaded/,
+    );
+    expect(() => isAtCapacity({ maxCapacity: 2, leaders: [] })).toThrow(
+      /users and leaders must be loaded/,
+    );
   });
 
   it("takes non-consensual placements only while seats remain", () => {
