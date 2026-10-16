@@ -2602,29 +2602,6 @@ export type AdminActionDto = {
     memberActionDeadline: string | null;
 };
 
-export type CreateFollowUpFormDto = {
-    actionId: number;
-    formId: number;
-    name?: string | null;
-    startDate?: string | null;
-    endDate?: string | null;
-    instructions?: string | null;
-    cohortExpression?: {
-        [key: string]: unknown;
-    } | null;
-};
-
-export type UpdateFollowUpFormDto = {
-    name?: string | null;
-    startDate?: string | null;
-    endDate?: string | null;
-    instructions?: string | null;
-    cohortExpression?: {
-        [key: string]: unknown;
-    } | null;
-    formId?: number;
-};
-
 export type WelcomeQueueMemberDto = {
     user: ProfileDto;
     actionId: number;
@@ -2649,53 +2626,6 @@ export type EvaluateCohortExpressionDto = {
 
 export type EvaluateCohortExpressionResponseDto = {
     userIds: Array<number>;
-};
-
-export type ActionFormVariantDto = {
-    id: number;
-    actionId: number;
-    formId: number;
-    name: string;
-    splitValue: number;
-    createdAt: string;
-    updatedAt: string;
-};
-
-export type ActionFormVariantStatsDto = {
-    /**
-     * null = the action's default form (taskFormId)
-     */
-    variantId: number | null;
-    name: string;
-    formId: number | null;
-    splitValue: number | null;
-    assigned: number;
-    submitted: number;
-};
-
-export type ActionFormVariantsListDto = {
-    variants: Array<ActionFormVariantDto>;
-    stats: Array<ActionFormVariantStatsDto>;
-};
-
-export type CreateActionFormVariantDto = {
-    name: string;
-    /**
-     * Fraction of new joiners (0-1).
-     */
-    splitValue: number;
-    /**
-     * Form to clone for this variant. Defaults to the action's current taskFormId.
-     */
-    sourceFormId?: number | null;
-};
-
-export type UpdateActionFormVariantDto = {
-    name?: string;
-    /**
-     * Fraction of new joiners (0-1).
-     */
-    splitValue?: number;
 };
 
 export type ActionReviewerDto = {
@@ -3568,6 +3498,76 @@ export type TimelineFeedItemDto = {
     action: ActionDto;
     actionUpdate?: ActionUpdateDto;
     actionEvent?: ActionEventDto;
+};
+
+export type CreateFollowUpFormDto = {
+    actionId: number;
+    formId: number;
+    name?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    instructions?: string | null;
+    cohortExpression?: {
+        [key: string]: unknown;
+    } | null;
+};
+
+export type UpdateFollowUpFormDto = {
+    name?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    instructions?: string | null;
+    cohortExpression?: {
+        [key: string]: unknown;
+    } | null;
+    formId?: number;
+};
+
+export type ActionFormVariantDto = {
+    id: number;
+    actionId: number;
+    formId: number;
+    name: string;
+    splitValue: number;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type ActionFormVariantStatsDto = {
+    /**
+     * null = the action's default form (taskFormId)
+     */
+    variantId: number | null;
+    name: string;
+    formId: number | null;
+    splitValue: number | null;
+    assigned: number;
+    submitted: number;
+};
+
+export type ActionFormVariantsListDto = {
+    variants: Array<ActionFormVariantDto>;
+    stats: Array<ActionFormVariantStatsDto>;
+};
+
+export type CreateActionFormVariantDto = {
+    name: string;
+    /**
+     * Fraction of new joiners (0-1).
+     */
+    splitValue: number;
+    /**
+     * Form to clone for this variant. Defaults to the action's current taskFormId.
+     */
+    sourceFormId?: number | null;
+};
+
+export type UpdateActionFormVariantDto = {
+    name?: string;
+    /**
+     * Fraction of new joiners (0-1).
+     */
+    splitValue?: number;
 };
 
 export type CohortDecisionReason = 'launch' | 'signing' | 'resolved_after_deadline' | 'backfill' | 'staff_correction' | 'prerequisites_resolved';
@@ -9892,80 +9892,6 @@ export type ActionsFindOneAdminResponses = {
 
 export type ActionsFindOneAdminResponse = ActionsFindOneAdminResponses[keyof ActionsFindOneAdminResponses];
 
-export type ActionsCreateFollowUpFormAdminData = {
-    body: CreateFollowUpFormDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/{id}/follow-up-forms';
-};
-
-export type ActionsCreateFollowUpFormAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsCreateFollowUpFormAdminError = ActionsCreateFollowUpFormAdminErrors[keyof ActionsCreateFollowUpFormAdminErrors];
-
-export type ActionsCreateFollowUpFormAdminResponses = {
-    200: AdminFollowUpFormDto;
-};
-
-export type ActionsCreateFollowUpFormAdminResponse = ActionsCreateFollowUpFormAdminResponses[keyof ActionsCreateFollowUpFormAdminResponses];
-
-export type ActionsDeleteFollowUpFormAdminData = {
-    body?: never;
-    path: {
-        followUpFormId: number;
-    };
-    query?: never;
-    url: '/actions/follow-up-forms/{followUpFormId}';
-};
-
-export type ActionsDeleteFollowUpFormAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsDeleteFollowUpFormAdminError = ActionsDeleteFollowUpFormAdminErrors[keyof ActionsDeleteFollowUpFormAdminErrors];
-
-export type ActionsDeleteFollowUpFormAdminResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type ActionsDeleteFollowUpFormAdminResponse = ActionsDeleteFollowUpFormAdminResponses[keyof ActionsDeleteFollowUpFormAdminResponses];
-
-export type ActionsUpdateFollowUpFormAdminData = {
-    body: UpdateFollowUpFormDto;
-    path: {
-        followUpFormId: number;
-    };
-    query?: never;
-    url: '/actions/follow-up-forms/{followUpFormId}';
-};
-
-export type ActionsUpdateFollowUpFormAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsUpdateFollowUpFormAdminError = ActionsUpdateFollowUpFormAdminErrors[keyof ActionsUpdateFollowUpFormAdminErrors];
-
-export type ActionsUpdateFollowUpFormAdminResponses = {
-    200: AdminFollowUpFormDto;
-};
-
-export type ActionsUpdateFollowUpFormAdminResponse = ActionsUpdateFollowUpFormAdminResponses[keyof ActionsUpdateFollowUpFormAdminResponses];
-
 export type ActionsGetIncompleteUsersAdminData = {
     body?: never;
     path: {
@@ -10033,104 +9959,6 @@ export type ActionsEvaluateCohortAdminResponses = {
 };
 
 export type ActionsEvaluateCohortAdminResponse = ActionsEvaluateCohortAdminResponses[keyof ActionsEvaluateCohortAdminResponses];
-
-export type ActionsListFormVariantsAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/{id}/form-variants';
-};
-
-export type ActionsListFormVariantsAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsListFormVariantsAdminError = ActionsListFormVariantsAdminErrors[keyof ActionsListFormVariantsAdminErrors];
-
-export type ActionsListFormVariantsAdminResponses = {
-    200: ActionFormVariantsListDto;
-};
-
-export type ActionsListFormVariantsAdminResponse = ActionsListFormVariantsAdminResponses[keyof ActionsListFormVariantsAdminResponses];
-
-export type ActionsCreateFormVariantAdminData = {
-    body: CreateActionFormVariantDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/{id}/form-variants';
-};
-
-export type ActionsCreateFormVariantAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsCreateFormVariantAdminError = ActionsCreateFormVariantAdminErrors[keyof ActionsCreateFormVariantAdminErrors];
-
-export type ActionsCreateFormVariantAdminResponses = {
-    200: ActionFormVariantDto;
-};
-
-export type ActionsCreateFormVariantAdminResponse = ActionsCreateFormVariantAdminResponses[keyof ActionsCreateFormVariantAdminResponses];
-
-export type ActionsDeleteFormVariantAdminData = {
-    body?: never;
-    path: {
-        variantId: number;
-    };
-    query?: never;
-    url: '/actions/form-variants/{variantId}';
-};
-
-export type ActionsDeleteFormVariantAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsDeleteFormVariantAdminError = ActionsDeleteFormVariantAdminErrors[keyof ActionsDeleteFormVariantAdminErrors];
-
-export type ActionsDeleteFormVariantAdminResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type ActionsDeleteFormVariantAdminResponse = ActionsDeleteFormVariantAdminResponses[keyof ActionsDeleteFormVariantAdminResponses];
-
-export type ActionsUpdateFormVariantAdminData = {
-    body: UpdateActionFormVariantDto;
-    path: {
-        variantId: number;
-    };
-    query?: never;
-    url: '/actions/form-variants/{variantId}';
-};
-
-export type ActionsUpdateFormVariantAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsUpdateFormVariantAdminError = ActionsUpdateFormVariantAdminErrors[keyof ActionsUpdateFormVariantAdminErrors];
-
-export type ActionsUpdateFormVariantAdminResponses = {
-    200: ActionFormVariantDto;
-};
-
-export type ActionsUpdateFormVariantAdminResponse = ActionsUpdateFormVariantAdminResponses[keyof ActionsUpdateFormVariantAdminResponses];
 
 export type ActionsCreateAdminData = {
     body: CreateActionDto;
@@ -11800,6 +11628,178 @@ export type ActionFeedGetTimelineFeedResponses = {
 };
 
 export type ActionFeedGetTimelineFeedResponse = ActionFeedGetTimelineFeedResponses[keyof ActionFeedGetTimelineFeedResponses];
+
+export type ActionFormsCreateFollowUpFormAdminData = {
+    body: CreateFollowUpFormDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/follow-up-forms';
+};
+
+export type ActionFormsCreateFollowUpFormAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFormsCreateFollowUpFormAdminError = ActionFormsCreateFollowUpFormAdminErrors[keyof ActionFormsCreateFollowUpFormAdminErrors];
+
+export type ActionFormsCreateFollowUpFormAdminResponses = {
+    200: AdminFollowUpFormDto;
+};
+
+export type ActionFormsCreateFollowUpFormAdminResponse = ActionFormsCreateFollowUpFormAdminResponses[keyof ActionFormsCreateFollowUpFormAdminResponses];
+
+export type ActionFormsDeleteFollowUpFormAdminData = {
+    body?: never;
+    path: {
+        followUpFormId: number;
+    };
+    query?: never;
+    url: '/actions/follow-up-forms/{followUpFormId}';
+};
+
+export type ActionFormsDeleteFollowUpFormAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFormsDeleteFollowUpFormAdminError = ActionFormsDeleteFollowUpFormAdminErrors[keyof ActionFormsDeleteFollowUpFormAdminErrors];
+
+export type ActionFormsDeleteFollowUpFormAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type ActionFormsDeleteFollowUpFormAdminResponse = ActionFormsDeleteFollowUpFormAdminResponses[keyof ActionFormsDeleteFollowUpFormAdminResponses];
+
+export type ActionFormsUpdateFollowUpFormAdminData = {
+    body: UpdateFollowUpFormDto;
+    path: {
+        followUpFormId: number;
+    };
+    query?: never;
+    url: '/actions/follow-up-forms/{followUpFormId}';
+};
+
+export type ActionFormsUpdateFollowUpFormAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFormsUpdateFollowUpFormAdminError = ActionFormsUpdateFollowUpFormAdminErrors[keyof ActionFormsUpdateFollowUpFormAdminErrors];
+
+export type ActionFormsUpdateFollowUpFormAdminResponses = {
+    200: AdminFollowUpFormDto;
+};
+
+export type ActionFormsUpdateFollowUpFormAdminResponse = ActionFormsUpdateFollowUpFormAdminResponses[keyof ActionFormsUpdateFollowUpFormAdminResponses];
+
+export type ActionFormsListFormVariantsAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/form-variants';
+};
+
+export type ActionFormsListFormVariantsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFormsListFormVariantsAdminError = ActionFormsListFormVariantsAdminErrors[keyof ActionFormsListFormVariantsAdminErrors];
+
+export type ActionFormsListFormVariantsAdminResponses = {
+    200: ActionFormVariantsListDto;
+};
+
+export type ActionFormsListFormVariantsAdminResponse = ActionFormsListFormVariantsAdminResponses[keyof ActionFormsListFormVariantsAdminResponses];
+
+export type ActionFormsCreateFormVariantAdminData = {
+    body: CreateActionFormVariantDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/form-variants';
+};
+
+export type ActionFormsCreateFormVariantAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFormsCreateFormVariantAdminError = ActionFormsCreateFormVariantAdminErrors[keyof ActionFormsCreateFormVariantAdminErrors];
+
+export type ActionFormsCreateFormVariantAdminResponses = {
+    200: ActionFormVariantDto;
+};
+
+export type ActionFormsCreateFormVariantAdminResponse = ActionFormsCreateFormVariantAdminResponses[keyof ActionFormsCreateFormVariantAdminResponses];
+
+export type ActionFormsDeleteFormVariantAdminData = {
+    body?: never;
+    path: {
+        variantId: number;
+    };
+    query?: never;
+    url: '/actions/form-variants/{variantId}';
+};
+
+export type ActionFormsDeleteFormVariantAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFormsDeleteFormVariantAdminError = ActionFormsDeleteFormVariantAdminErrors[keyof ActionFormsDeleteFormVariantAdminErrors];
+
+export type ActionFormsDeleteFormVariantAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type ActionFormsDeleteFormVariantAdminResponse = ActionFormsDeleteFormVariantAdminResponses[keyof ActionFormsDeleteFormVariantAdminResponses];
+
+export type ActionFormsUpdateFormVariantAdminData = {
+    body: UpdateActionFormVariantDto;
+    path: {
+        variantId: number;
+    };
+    query?: never;
+    url: '/actions/form-variants/{variantId}';
+};
+
+export type ActionFormsUpdateFormVariantAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionFormsUpdateFormVariantAdminError = ActionFormsUpdateFormVariantAdminErrors[keyof ActionFormsUpdateFormVariantAdminErrors];
+
+export type ActionFormsUpdateFormVariantAdminResponses = {
+    200: ActionFormVariantDto;
+};
+
+export type ActionFormsUpdateFormVariantAdminResponse = ActionFormsUpdateFormVariantAdminResponses[keyof ActionFormsUpdateFormVariantAdminResponses];
 
 export type CohortDecisionsListForActionAdminData = {
     body?: never;

@@ -189,7 +189,7 @@ export const queryKeys = {
     ["actionsGetWithdrawalsAdmin", formId] as const,
   formsAdmin: () => [...formsAdminAll(), "index"] as const,
   formVariantsAdmin: (actionId: number) =>
-    ["actionsListFormVariantsAdmin", actionId] as const,
+    ["actionFormsListFormVariantsAdmin", actionId] as const,
   formQuestionFieldsAdmin: (formId: number | null) =>
     [...formsAdminAll(), "questionFields", formId] as const,
   formResponseCountsAdmin: (formIds: readonly number[]) =>
