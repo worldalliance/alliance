@@ -1,20 +1,11 @@
 import { CONVERSATION_TITLE_MAX_LENGTH } from "@alliance/common/conversation";
 import {
-  conversationAddParticipant,
-  conversationLeave,
-  conversationRemoveParticipant,
-  conversationUpdateInfo,
-} from "@alliance/shared/client";
-import {
   canEditConversationInfo,
   canEditConversationMembers,
   canLeaveConversation,
 } from "@alliance/shared/lib/conversations";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
-import {
-  type Explanation,
-  sendOrExplain,
-} from "@alliance/shared/lib/sendOrExplain";
+import { type Explanation } from "@alliance/shared/lib/sendOrExplain";
 import { useOneAtATime } from "@alliance/shared/lib/useOneAtATime";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
 import { cn } from "@alliance/shared/styles/util";
@@ -39,10 +30,7 @@ import Text, {
   resolveFontFamily,
 } from "../../../../components/system/Text";
 import { useAuth } from "../../../../lib/AuthContext";
-import {
-  mergeConversationUpdate,
-  useConversations,
-} from "../../../../lib/messages";
+import { useConversations } from "../../../../lib/messages";
 import { pickImageDataUri } from "../../../../lib/pickImageDataUri";
 import { colors } from "../../../../lib/style/colors";
 
@@ -60,9 +48,14 @@ export default function ConversationInfoScreen() {
       )
     : NaN;
   const { user } = useAuth();
-  const { conversations, setConversations, loading } = useConversations(
-    Number.isNaN(convoId) ? null : convoId,
-  );
+  const {
+    conversations,
+    loading,
+    updateInfo,
+    addParticipant,
+    removeParticipant,
+    leave,
+  } = useConversations(Number.isNaN(convoId) ? null : convoId);
 
   const selectedConvo = useMemo(
     () =>
@@ -80,6 +73,7 @@ export default function ConversationInfoScreen() {
   const [editingPhoto, setEditingPhoto] = useState<string | null>(null);
   const { busy: saving, run: save } = useOneAtATime();
   const [search, setSearch] = useState("");
+  const [hasLeft, setHasLeft] = useState(false);
   const { busy: changingMembers, run: changeMembers } = useOneAtATime();
   const messageableUsersQuery = useMessageableUsersQuery({
     enabled: canEditMembers,
@@ -123,89 +117,67 @@ export default function ConversationInfoScreen() {
   const handleSave = useCallback(async () => {
     if (!selectedConvo) return;
     await save(async () => {
-      const saved = await sendOrExplain({
-        send: conversationUpdateInfo,
-        options: {
-          path: { conversationId: selectedConvo.id },
-          body: {
-            title: editingTitle,
-            photo: editingPhoto ?? undefined,
-          },
-        },
-        action: "save the group",
+      const saved = await updateInfo(selectedConvo.id, {
+        title: editingTitle,
+        photo: editingPhoto ?? undefined,
       });
       if (!saved.ok) {
         explain(saved.error);
         return;
       }
-      setConversations((prev) => mergeConversationUpdate(prev, saved.value));
       setIsEditing(false);
     });
-  }, [editingPhoto, editingTitle, save, selectedConvo, setConversations]);
+  }, [editingPhoto, editingTitle, save, selectedConvo, updateInfo]);
 
   const handleAddMember = useCallback(
     async (userId: number) => {
       if (!selectedConvo) return;
       await changeMembers(async () => {
-        const added = await sendOrExplain({
-          send: conversationAddParticipant,
-          options: {
-            path: { conversationId: selectedConvo.id },
-            body: { userId },
-          },
-          action: "add that member",
+        const added = await addParticipant({
+          conversationId: selectedConvo.id,
+          userId,
         });
         if (!added.ok) {
           explain(added.error);
           return;
         }
-        setConversations((prev) => mergeConversationUpdate(prev, added.value));
         setSearch("");
       });
     },
-    [changeMembers, selectedConvo, setConversations],
+    [addParticipant, changeMembers, selectedConvo],
   );
 
   const handleRemoveMember = useCallback(
     async (userId: number) => {
       if (!selectedConvo) return;
       await changeMembers(async () => {
-        const removed = await sendOrExplain({
-          send: conversationRemoveParticipant,
-          options: {
-            path: { conversationId: selectedConvo.id, userId },
-          },
-          action: "remove that member",
+        const removed = await removeParticipant({
+          conversationId: selectedConvo.id,
+          userId,
         });
-        if (!removed.ok) {
-          explain(removed.error);
-          return;
-        }
-        setConversations((prev) =>
-          mergeConversationUpdate(prev, removed.value),
-        );
+        if (!removed.ok) explain(removed.error);
       });
     },
-    [changeMembers, selectedConvo, setConversations],
+    [changeMembers, removeParticipant, selectedConvo],
   );
 
   const handleLeave = useCallback(async () => {
     if (!selectedConvo) return;
     await changeMembers(async () => {
-      const left = await sendOrExplain({
-        send: conversationLeave,
-        options: {
-          path: { conversationId: selectedConvo.id },
-        },
-        action: "leave the group",
-      });
+      const left = await leave(selectedConvo.id);
       if (!left.ok) {
         explain(left.error);
         return;
       }
+      setHasLeft(true);
       router.replace("/messages");
     });
-  }, [changeMembers, selectedConvo]);
+  }, [changeMembers, leave, selectedConvo]);
+
+  // Leaving drops the group from the list while this screen animates away.
+  if (hasLeft) {
+    return <View className="flex-1 bg-white" />;
+  }
 
   if (Number.isNaN(convoId)) {
     return (
