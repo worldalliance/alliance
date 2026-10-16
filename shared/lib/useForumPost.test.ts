@@ -1,7 +1,9 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { queryKeys } from "./queryKeys";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { useForumPost } from "./useForumPost";
+import { useForumPosts } from "./useForumPosts";
 
 const post = { id: 7, title: "Hello", likedByMe: false, likeCount: 2 };
 let requests: string[] = [];
@@ -9,9 +11,11 @@ let likeResponse: Promise<Response>;
 let getResponse: () => Response | Promise<Response>;
 let updateResponse: () => Response;
 let removeResponse: () => Response;
+let listResponse: () => Response | Promise<Response>;
 
 serveApi(
   routes({
+    "GET /forum/posts": () => listResponse(),
     "GET /forum/posts/7": () => {
       requests.push("get");
       return getResponse();
@@ -45,6 +49,7 @@ beforeEach(() => {
   getResponse = () => Response.json(post);
   updateResponse = () => Response.json(renamed);
   removeResponse = () => new Response(null);
+  listResponse = () => Response.json([post]);
 });
 
 const renamed = { ...post, title: "Renamed" };
@@ -242,6 +247,39 @@ it("forgets the post it removed", async () => {
 
   await waitFor(() => expect(hook.result.current.post).toBeNull());
   expect(requests).toEqual(["get", "remove"]);
+});
+
+it("drops the post it removed from the cached forum list", async () => {
+  const { wrapper, client } = queryWrapper();
+  const other = { ...post, id: 8 };
+  client.setQueryData(queryKeys.forumPosts(), [post, other]);
+  const hook = renderHook(() => useForumPost("7"), { wrapper });
+  await waitFor(() => expect(hook.result.current.post).toEqual(post));
+
+  await act(() => hook.result.current.remove());
+
+  expect(client.getQueryData(queryKeys.forumPosts())).toEqual([other]);
+});
+
+it("keeps a removal over a list reload that read the post before it", async () => {
+  const { wrapper } = queryWrapper();
+  const other = { ...post, id: 8 };
+  const hook = renderHook(
+    () => ({ list: useForumPosts(), one: useForumPost("7") }),
+    { wrapper },
+  );
+  await waitFor(() => expect(hook.result.current.one.post).toEqual(post));
+  await waitFor(() => expect(hook.result.current.list.posts).toEqual([post]));
+  const reload = Promise.withResolvers<Response>();
+  listResponse = () => reload.promise;
+  void hook.result.current.list.refetch();
+  await waitFor(() => expect(hook.result.current.list.isFetching).toBe(true));
+
+  await act(() => hook.result.current.one.remove());
+  reload.resolve(Response.json([post, other]));
+
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(hook.result.current.list.posts).toEqual([]);
 });
 
 it("keeps a removal over a reload that read the post before it", async () => {

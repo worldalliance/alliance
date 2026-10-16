@@ -88,6 +88,7 @@ export const queryKeys = {
   currentContract: () => ["contractGetCurrent"] as const,
   forumPost: (postId: string | undefined) =>
     ["forumFindOnePost", postId] as const,
+  forumPosts: () => ["forumFindAllPosts"] as const,
   generalUpdatesAll: () => ["generalUpdatesAllGeneralUpdates"] as const,
   generalUpdatesUnread: () => ["actions", "generalUpdates", "unread"] as const,
   incomingCommunityInvites: () =>
