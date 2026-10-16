@@ -1,5 +1,4 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import type { OnetimeInviteDto } from "@alliance/shared/client";
 import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { MEMBER_GOAL } from "@alliance/shared/lib/constants";
 import {
@@ -292,7 +291,6 @@ export default function InvitesScreen() {
     isLoading: loadingInvites,
     isError,
     refetch,
-    upsertInvite,
     approveInvite,
     rejectInvite,
     updateInvite,
@@ -447,15 +445,11 @@ export default function InvitesScreen() {
     },
   };
 
-  const handleInviteCreated = useCallback(
-    (invite: OnetimeInviteDto) => {
-      upsertInvite(invite);
-      if (user?.ambassador) {
-        void refetchAmbassadorDashboard();
-      }
-    },
-    [refetchAmbassadorDashboard, upsertInvite, user?.ambassador],
-  );
+  const handleInviteCreated = useCallback(() => {
+    if (user?.ambassador) {
+      void refetchAmbassadorDashboard();
+    }
+  }, [refetchAmbassadorDashboard, user?.ambassador]);
 
   const handleDeleteGoal = useCallback(() => {
     if (!currentGoal) {
