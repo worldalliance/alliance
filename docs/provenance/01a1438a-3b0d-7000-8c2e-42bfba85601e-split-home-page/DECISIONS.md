@@ -8,3 +8,7 @@ The waiver defers splitting a page over the 500-line `alliance/max-lines` limit,
 
 - `apps/frontend/src/components/HomeGeneralUpdates.tsx` renders the updates row, the general updates load failure, and the sorted general update cards. The page rendered this block twice, once per screen size, and now renders the component in both places.
 - `apps/frontend/src/lib/useSidebarProgressBarEntries.ts` fetches the aggregate views for the member's open task forms and derives the sorted progress bar entries. `apps/frontend/src/components/SidebarProgressBars.tsx` renders those entries as links to their actions. The hook stays on the page, not inside the component, because the page renders the bars in the sidebar on a large screen and in the main column otherwise; a hook inside the component would refetch whenever the screen crosses that width.
+
+## Tests
+
+`HomePage.test.tsx` had no coverage of the progress bars or of picking a task or follow-up form from the list. It now covers a progress bar linking to its task, and the main column opening the task or follow-up form the member picks. The tests land before the task list moves out of the page, so they pass against the page both before and after that move.
