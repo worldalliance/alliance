@@ -1,3 +1,8 @@
+import {
+  AWAY_RANGE_NOTE_MISSING,
+  isAwayRangeNoteMissing,
+  isAwayRangeNoteRequired,
+} from "@alliance/common/awayRange";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { UserAwayRangeDto, UserAwayRangeReason } from "@alliance/shared/client";
 import {
@@ -56,6 +61,11 @@ export default function AwayRangesSection() {
   const [noteInput, setNoteInput] = useState("");
   const [selectedReason, setSelectedReason] =
     useState<UserAwayRangeReason | null>(null);
+  const noteRequired = isAwayRangeNoteRequired(selectedReason);
+  const noteMissing = isAwayRangeNoteMissing({
+    reason: selectedReason,
+    note: noteInput,
+  });
   const [error, setError] = useState<string | null>(null);
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
 
@@ -72,8 +82,8 @@ export default function AwayRangesSection() {
       return;
     }
 
-    if (selectedReason === "other" && !noteInput.trim()) {
-      Alert.alert("Error", "Please provide details for 'Other' reason.");
+    if (noteMissing) {
+      Alert.alert("Error", AWAY_RANGE_NOTE_MISSING);
       return;
     }
 
@@ -294,16 +304,14 @@ export default function AwayRangesSection() {
 
           <View>
             <Text className="text-sm mb-1" weight={FontWeight.Medium}>
-              Note{selectedReason !== "other" && " (optional)"}
+              Note{!noteRequired && " (optional)"}
             </Text>
             <TextInput
               className={inputClasses}
               value={noteInput}
               onChangeText={setNoteInput}
               placeholder={
-                selectedReason === "other"
-                  ? "Please provide more details"
-                  : "Optional note"
+                noteRequired ? "Please provide more details" : "Optional note"
               }
               placeholderTextColor="#9ca3af"
             />
@@ -323,7 +331,7 @@ export default function AwayRangesSection() {
               !startDateInput ||
               !endDateInput ||
               !selectedReason ||
-              (selectedReason === "other" && !noteInput.trim())
+              noteMissing
             }
             title={creating ? "Creating..." : "Schedule"}
           />

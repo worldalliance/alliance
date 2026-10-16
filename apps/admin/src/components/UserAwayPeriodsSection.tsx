@@ -1,3 +1,8 @@
+import {
+  AWAY_RANGE_NOTE_MISSING,
+  isAwayRangeNoteMissing,
+  isAwayRangeNoteRequired,
+} from "@alliance/common/awayRange";
 import { errorMessage } from "@alliance/common/errorMessage";
 import type {
   UserAdminDetailDto,
@@ -100,8 +105,8 @@ export default function UserAwayPeriodsSection({
       return;
     }
 
-    if (awayReason === "other" && !awayNote.trim()) {
-      setAwayMutationError("Add a note for an Other away period.");
+    if (isAwayRangeNoteMissing({ reason: awayReason, note: awayNote })) {
+      setAwayMutationError(AWAY_RANGE_NOTE_MISSING);
       return;
     }
 
@@ -140,8 +145,10 @@ export default function UserAwayPeriodsSection({
       return;
     }
 
-    if (editAwayReason === "other" && !editAwayNote.trim()) {
-      setAwayMutationError("Add a note for an Other away period.");
+    if (
+      isAwayRangeNoteMissing({ reason: editAwayReason, note: editAwayNote })
+    ) {
+      setAwayMutationError(AWAY_RANGE_NOTE_MISSING);
       return;
     }
 
@@ -283,7 +290,7 @@ export default function UserAwayPeriodsSection({
                       value={editAwayNote}
                       onChange={(e) => setEditAwayNote(e.target.value)}
                       placeholder={
-                        editAwayReason === "other"
+                        isAwayRangeNoteRequired(editAwayReason)
                           ? "Note required"
                           : "Note optional"
                       }
@@ -298,7 +305,10 @@ export default function UserAwayPeriodsSection({
                           !editAwayStartDate ||
                           !editAwayEndDate ||
                           !editAwayReason ||
-                          (editAwayReason === "other" && !editAwayNote.trim())
+                          isAwayRangeNoteMissing({
+                            reason: editAwayReason,
+                            note: editAwayNote,
+                          })
                         }
                       >
                         Save
@@ -383,7 +393,9 @@ export default function UserAwayPeriodsSection({
           value={awayNote}
           onChange={(e) => setAwayNote(e.target.value)}
           placeholder={
-            awayReason === "other" ? "Note required" : "Note optional"
+            isAwayRangeNoteRequired(awayReason)
+              ? "Note required"
+              : "Note optional"
           }
         />
         <Button
@@ -395,7 +407,7 @@ export default function UserAwayPeriodsSection({
             !awayStartDate ||
             !awayEndDate ||
             !awayReason ||
-            (awayReason === "other" && !awayNote.trim())
+            isAwayRangeNoteMissing({ reason: awayReason, note: awayNote })
           }
         >
           {isAwayMutationPending ? "Saving..." : "Schedule"}

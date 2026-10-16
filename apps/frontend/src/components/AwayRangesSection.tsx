@@ -1,5 +1,7 @@
 import {
   hasAwayRangeEnded,
+  isAwayRangeNoteMissing,
+  isAwayRangeNoteRequired,
   isAwayRangeStartLocked,
 } from "@alliance/common/awayRange";
 import { errorMessage } from "@alliance/common/errorMessage";
@@ -56,6 +58,7 @@ const AwayRangesSection: React.FC = () => {
   const [selectedReason, setSelectedReason] =
     useState<UserAwayRangeReason | null>(null);
   const selectedReasonIsOther = selectedReason === "other";
+  const noteRequired = isAwayRangeNoteRequired(selectedReason);
 
   // Edit state
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -67,7 +70,7 @@ const AwayRangesSection: React.FC = () => {
     null,
   );
   const [editError, setEditError] = useState<string | null>(null);
-  const editReasonIsOther = editReason === "other";
+  const editNoteRequired = isAwayRangeNoteRequired(editReason);
 
   const handleCreate = async () => {
     setError(null);
@@ -300,7 +303,7 @@ const AwayRangesSection: React.FC = () => {
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="block text-sm font-medium">
-                      Note{!editReasonIsOther && " (optional)"}
+                      Note{!editNoteRequired && " (optional)"}
                     </label>
                     <FormInput
                       name="editNote"
@@ -308,7 +311,7 @@ const AwayRangesSection: React.FC = () => {
                       value={editNote}
                       onChange={(e) => setEditNote(e.target.value)}
                       placeholder={
-                        editReasonIsOther
+                        editNoteRequired
                           ? "Please provide more details"
                           : undefined
                       }
@@ -323,7 +326,10 @@ const AwayRangesSection: React.FC = () => {
                         !editStartDate ||
                         !editEndDate ||
                         !editReason ||
-                        (editReasonIsOther && !editNote.trim())
+                        isAwayRangeNoteMissing({
+                          reason: editReason,
+                          note: editNote,
+                        })
                       }
                     >
                       {updating ? "Saving..." : "Save"}
@@ -417,7 +423,7 @@ const AwayRangesSection: React.FC = () => {
           </div>
           <div className="flex flex-col gap-1">
             <label className="block text-sm font-medium">
-              Note{!selectedReasonIsOther && " (optional)"}
+              Note{!noteRequired && " (optional)"}
             </label>
             <FormInput
               name="note"
@@ -425,9 +431,7 @@ const AwayRangesSection: React.FC = () => {
               value={noteInput}
               onChange={(e) => setNoteInput(e.target.value)}
               placeholder={
-                selectedReasonIsOther
-                  ? "Please provide more details"
-                  : undefined
+                noteRequired ? "Please provide more details" : undefined
               }
             />
             {selectedReasonIsOther && (
@@ -446,7 +450,10 @@ const AwayRangesSection: React.FC = () => {
                 !startDateInput ||
                 !endDateInput ||
                 !selectedReason ||
-                (selectedReasonIsOther && !noteInput.trim())
+                isAwayRangeNoteMissing({
+                  reason: selectedReason,
+                  note: noteInput,
+                })
               }
               className="w-full md:w-auto"
             >
