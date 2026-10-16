@@ -7,7 +7,6 @@ import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { getApiUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -39,7 +38,6 @@ import { ActionCategoryIcons } from "../components/ActionCategoryIcons";
 import ActionCohortDecisionsTab from "../components/ActionCohortDecisionsTab";
 import ActionCompletionCurveChart from "../components/ActionCompletionCurveChart";
 import ActionFollowUpFormsTab from "../components/ActionFollowUpFormsTab";
-import ActionForm from "../components/ActionForm";
 import ActionFormVariantsTab from "../components/ActionFormVariantsTab";
 import ActionMergedResponsesTab from "../components/ActionMergedResponsesTab";
 import {
@@ -59,6 +57,7 @@ import type { FormResponseFilter } from "../lib/responseFilter";
 import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useAllActions } from "../lib/useAllActions";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
+import ActionEditor from "./action-dashboard/ActionEditor";
 import ActionReadinessChecklist from "./action-dashboard/ActionReadinessChecklist";
 import { imageUploadingMessage } from "./action-dashboard/actionSaveErrors";
 import { useActionCommands } from "./action-dashboard/useActionCommands";
@@ -137,6 +136,21 @@ const ActionDashboard: React.FC = () => {
       ),
     [members],
   );
+  const lookups = {
+    availableTags,
+    tagsLoading,
+    tagsError,
+    availableSuites,
+    suitesLoading,
+    suitesError,
+    availableUsers,
+    usersLoading,
+    usersError,
+    activeContractUserIds,
+    allActions,
+    allActionsLoading,
+    allActionsLoadFailed,
+  };
 
   const {
     shareUrlStats,
@@ -150,26 +164,7 @@ const ActionDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedTab, onTabChange] = useSearchParamTab(tabs, "overview");
 
-  const {
-    draftSeeded,
-    form,
-    reviewerRows,
-    setReviewerRows,
-    cohortExpression,
-    imageKey,
-    imagePreview,
-    imageError,
-    imageUploading,
-    cancelCoverImage,
-    setTaskFormId,
-    handleInputChange,
-    handleCohortExpressionChange,
-    handlePrerequisitesChange,
-    handleAuthorsChange,
-    handleCategoryChange,
-    handleImageChange,
-    handleSubmit,
-  } = useActionEditor({
+  const editor = useActionEditor({
     admin,
     actionId,
     isNew,
@@ -178,15 +173,15 @@ const ActionDashboard: React.FC = () => {
     setError,
   });
   const loading =
-    (!isNew && !actionLoadFailed && (actionPending || !draftSeeded)) ||
+    (!isNew && !actionLoadFailed && (actionPending || !editor.draftSeeded)) ||
     isRemoving;
 
   const { handleDuplicate, handleArchive, handleDelete } = useActionCommands({
     admin,
     actionId,
-    form,
-    imageKey,
-    imageUploading,
+    form: editor.form,
+    imageKey: editor.imageKey,
+    imageUploading: editor.imageUploading,
     setError,
   });
 
@@ -195,13 +190,6 @@ const ActionDashboard: React.FC = () => {
   }, [navigate]);
 
   const { error: pushError } = useToast();
-
-  const memberActionStart = action?.memberActionStart
-    ? new Date(action.memberActionStart)
-    : null;
-  const memberActionDeadline = action?.memberActionDeadline
-    ? new Date(action.memberActionDeadline)
-    : null;
 
   const [exportActionOpen, setExportActionOpen] = useState(false);
   const [exportActionEvents, setExportActionEvents] = useState(false);
@@ -246,8 +234,6 @@ const ActionDashboard: React.FC = () => {
       );
     }
   };
-
-  const baseUrl = getApiUrl();
 
   const tabData: { key: Tab; label: string }[] = [
     { key: "overview", label: "Status Overview" },
@@ -343,46 +329,13 @@ const ActionDashboard: React.FC = () => {
       )}
 
       {isNew ? (
-        // New Action Creation Form
-        <div className="p-5">
-          <ActionForm
-            form={form}
-            onInputChange={handleInputChange}
-            onImageChange={handleImageChange}
-            onSubmit={handleSubmit}
-            saving={saving}
-            imagePreview={imagePreview}
-            imageError={imageError}
-            imageUploading={imageUploading}
-            onCancelImageUpload={cancelCoverImage}
-            isNew={true}
-            onCancel={handleCancel}
-            availableTags={availableTags}
-            tagsLoading={tagsLoading}
-            tagsError={tagsError}
-            availableSuites={availableSuites}
-            suitesLoading={suitesLoading}
-            suitesError={suitesError}
-            availableUsers={availableUsers}
-            usersLoading={usersLoading}
-            usersError={usersError}
-            activeContractUserIds={activeContractUserIds}
-            onboarding={form.onboarding ?? false}
-            cohortExpression={cohortExpression}
-            onCohortExpressionChange={handleCohortExpressionChange}
-            onPrerequisitesChange={handlePrerequisitesChange}
-            authorIds={form.authorIds ?? []}
-            onAuthorsChange={handleAuthorsChange}
-            onCategoryChange={handleCategoryChange}
-            reviewers={reviewerRows}
-            onReviewersChange={setReviewerRows}
-            allActions={allActions}
-            allActionsLoading={allActionsLoading}
-            allActionsLoadFailed={allActionsLoadFailed}
-            memberActionStart={memberActionStart}
-            memberActionDeadline={memberActionDeadline}
-          />
-        </div>
+        <ActionEditor
+          editor={editor}
+          lookups={lookups}
+          action={action}
+          saving={saving}
+          mode={{ isNew: true, onCancel: handleCancel }}
+        />
       ) : (
         // Existing Action Dashboard
         <div className="space-y-4 flex-1 min-h-0 mx-5">
@@ -437,8 +390,10 @@ const ActionDashboard: React.FC = () => {
                   )}
                   <Button
                     onClick={() => handleDuplicate()}
-                    disabled={imageUploading}
-                    title={imageUploading ? imageUploadingMessage : undefined}
+                    disabled={editor.imageUploading}
+                    title={
+                      editor.imageUploading ? imageUploadingMessage : undefined
+                    }
                     color={ButtonColor.White}
                     className="!px-3 !text-sm gap-x-1"
                   >
@@ -859,67 +814,30 @@ const ActionDashboard: React.FC = () => {
             )}
 
             {activeTab === "details" && (
-              <div className="space-y-4">
-                <ActionReadinessChecklist
-                  action={action}
-                  taskForm={taskForm}
-                  collapsed={checklistCollapsed}
-                  onCollapsedChange={setChecklistCollapsed}
-                />
-                {cohortParseFailed && (
-                  <p className="text-xs text-red-600 mb-2">
-                    The stored cohort expression could not be parsed and is not
-                    shown in the cohort editor (details in the console). Saving
-                    is disabled so it isn&apos;t accidentally deleted — fix the
-                    stored data, then refresh the page.
-                  </p>
-                )}
-                <ActionForm
-                  form={form}
-                  onInputChange={handleInputChange}
-                  onImageChange={handleImageChange}
-                  onSubmit={handleSubmit}
-                  saving={saving}
-                  saveDisabled={cohortParseFailed}
-                  imagePreview={imagePreview}
-                  imageError={imageError}
-                  imageUploading={imageUploading}
-                  onCancelImageUpload={cancelCoverImage}
-                  isNew={false}
-                  actionId={action?.id}
-                  onDelete={handleDelete}
-                  baseUrl={baseUrl}
-                  availableTags={availableTags}
-                  tagsLoading={tagsLoading}
-                  tagsError={tagsError}
-                  availableSuites={availableSuites}
-                  suitesLoading={suitesLoading}
-                  suitesError={suitesError}
-                  availableUsers={availableUsers}
-                  usersLoading={usersLoading}
-                  usersError={usersError}
-                  activeContractUserIds={activeContractUserIds}
-                  onboarding={form.onboarding ?? false}
-                  cohortExpression={cohortExpression}
-                  onCohortExpressionChange={handleCohortExpressionChange}
-                  onPrerequisitesChange={handlePrerequisitesChange}
-                  authorIds={form.authorIds ?? []}
-                  onAuthorsChange={handleAuthorsChange}
-                  onCategoryChange={handleCategoryChange}
-                  reviewers={reviewerRows}
-                  onReviewersChange={setReviewerRows}
-                  allActions={allActions}
-                  allActionsLoading={allActionsLoading}
-                  allActionsLoadFailed={allActionsLoadFailed}
-                  memberActionStart={memberActionStart}
-                  memberActionDeadline={memberActionDeadline}
-                />
-              </div>
+              <ActionEditor
+                editor={editor}
+                lookups={lookups}
+                action={action}
+                saving={saving}
+                mode={{
+                  isNew: false,
+                  cohortParseFailed,
+                  onDelete: handleDelete,
+                  checklist: (
+                    <ActionReadinessChecklist
+                      action={action}
+                      taskForm={taskForm}
+                      collapsed={checklistCollapsed}
+                      onCollapsedChange={setChecklistCollapsed}
+                    />
+                  ),
+                }}
+              />
             )}
             {activeTab === "form" && action && (
               <FormBuilder
                 formId={action.taskFormId}
-                setFormId={setTaskFormId}
+                setFormId={editor.setTaskFormId}
                 actionName={action.name}
               />
             )}
