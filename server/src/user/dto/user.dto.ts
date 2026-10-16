@@ -238,7 +238,6 @@ export class UserDto extends PickType(User, [
   "pushNotifsForActions",
   "textNotifsForActions",
   "profileDescription",
-  "forumDigestPreference",
   "switchedDomainAt",
   "turnedOffAllNotifs",
   "referralCode",
@@ -317,7 +316,6 @@ export class UserDto extends PickType(User, [
     this.sharePhoneNumberWithCommunityLead =
       user.sharePhoneNumberWithCommunityLead;
     this.turnedOffAllNotifs = user.turnedOffAllNotifs;
-    this.forumDigestPreference = user.forumDigestPreference;
     this.switchedDomainAt = user.switchedDomainAt;
     this.admin = user.admin;
     this.staff = user.staff;
@@ -541,7 +539,6 @@ export class UpdateProfileDto extends PartialType(
     "remindAboutUncompletedGroupMembers",
     "receiveReplyNotifications",
     "sharePhoneNumberWithCommunityLead",
-    "forumDigestPreference",
     "formDataPreference",
     "shareInfoPublicly",
     "pushesForLikes",

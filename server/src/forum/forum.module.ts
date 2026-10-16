@@ -10,17 +10,14 @@ import { NotifsModule } from "src/notifs/notifs.module";
 import { S3Module } from "src/s3/s3.module";
 import { UserModule } from "src/user/user.module";
 import { ActionActivity } from "../actions/entities/action-activity.entity";
-import { Notification } from "../notifs/entities/notification.entity";
 import { User } from "../user/entities/user.entity";
 import { Comment } from "./entities/comment.entity";
 import { EditableContent } from "./entities/editablecontent.entity";
-import { ForumDigestLog } from "./entities/forum-digest-log.entity";
 import { PostTag } from "./entities/post-tag.entity";
 import { Post } from "./entities/post.entity";
 import { ForumAdminService } from "./forum-admin.service";
 import { ForumCommentQueryService } from "./forum-comment-query.service";
 import { ForumCommentService } from "./forum-comment.service";
-import { ForumDigestService } from "./forum-digest.service";
 import { ForumExportService } from "./forum-export.service";
 import { ForumLikesService } from "./forum-likes.service";
 import { ForumController } from "./forum.controller";
@@ -32,12 +29,10 @@ import { LegacyDeletedFlagService } from "./legacy-deleted-flag.service";
     TypeOrmModule.forFeature([
       Post,
       Comment,
-      Notification,
       User,
       ActionActivity,
       EditableContent,
       Action,
-      ForumDigestLog,
       PostTag,
     ]),
     MailModule,
@@ -55,7 +50,6 @@ import { LegacyDeletedFlagService } from "./legacy-deleted-flag.service";
     ForumAdminService,
     ForumCommentService,
     ForumCommentQueryService,
-    ForumDigestService,
     ForumExportService,
     ForumLikesService,
     LegacyDeletedFlagService,

@@ -89,9 +89,9 @@ DB_NAME="$(cd "$REPO_ROOT" && bun scripts/ports.ts reseed-database)"
 export PGPASSWORD="$DB_PASSWORD"
 PSQL_BASE=(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME")
 
-# Tables populated by migrations, not seed data. Excluding them avoids
-# duplicate-key conflicts when the seed loads on a freshly-migrated DB.
-EXCLUDE_TABLE_DATA=(migrations contract)
+# Tables populated by migrations, not seed data. Their rows would conflict
+# with or duplicate the ones a freshly-migrated DB already has.
+EXCLUDE_TABLE_DATA=(migrations contract typeorm_metadata)
 
 run_migration() {
   local cmd="$1" # run | revert

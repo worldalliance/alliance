@@ -51,9 +51,6 @@ export default function UserMemberInfoSection({
           <DetailItem label="Form responses">
             {humanize(user.formDataPreference)}
           </DetailItem>
-          <DetailItem label="Forum digest">
-            {humanize(user.forumDigestPreference)}
-          </DetailItem>
           <DetailItem label="Reminder time">
             {formatReminderTime(user)}
           </DetailItem>

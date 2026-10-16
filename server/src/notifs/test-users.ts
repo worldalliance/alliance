@@ -1,6 +1,5 @@
 import { ContractEventType } from "src/user/entities/contract-event.entity";
 import {
-  ForumDigestPreference,
   NotificationPreference,
   PublicFormResponseDefault,
   ReferralSource,
@@ -38,7 +37,7 @@ export const testUser = new User({
   pushesForComments: false,
   pushesForFriendRequests: false,
   turnedOffAllNotifs: false,
-  forumDigestPreference: ForumDigestPreference.Off,
+  legacyForumDigestPreference: "off",
   switchedDomainAt: null,
   contractReminderSentAt: null,
   password: "",

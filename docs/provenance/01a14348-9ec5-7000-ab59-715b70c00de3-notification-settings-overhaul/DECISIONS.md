@@ -45,7 +45,7 @@ Defaults copy from the three general toggles; in-app starts On for everyone. For
 | `textsForNewGroupMembers`            | Someone joined your group · SMS                              |
 | `remindAboutUncompletedGroupMembers` | Group members with uncompleted tasks · every offered channel |
 
-Kinds whose current gating ignores a general toggle get an On override wherever the member's default for that channel is Off. Overrides on leader-only kinds are written for every member, leader or not, so an opt-out survives becoming a leader. The migration then drops every column it read, plus `forumDigestPreference`, `socialNotifsPreference`, `turnedOffAllNotifs`, and `forum_digest_log`. The admin user detail page stops showing `turnedOffAllNotifs`. Overrides it writes have `source = migrated`.
+Kinds whose current gating ignores a general toggle get an On override wherever the member's default for that channel is Off. Overrides on leader-only kinds are written for every member, leader or not, so an opt-out survives becoming a leader. The core retires every column the migration read, plus `socialNotifsPreference` and `turnedOffAllNotifs`, and a PR deployed after it drops them with `forumDigestPreference` (see Retiring a column). The admin user detail page stops showing `turnedOffAllNotifs`. Overrides it writes have `source = migrated`.
 
 ## In-app visibility
 
@@ -71,6 +71,14 @@ Each kind renders its example through the producer's own copy function with fixe
 ## Group join audience
 
 `GroupJoinNotifsService` drops the group's leaders from the `group_member_joined` audience. This replaces the "every existing member and leader" audience in `docs/provenance/01a11f9d-b3d3-7000-998a-59cea0d92543-group-join-notification/`.
+
+## Forum digest removal
+
+`EmailType.ForumDigest` and `MessageSource.ForumDigest` stay, with no template, because `mail` and `message_tracking` rows of those types record digests already sent, as retired types such as `EmailType.Commitment` do. `forum_digest_log` drops without a backup: it duplicates what those `mail` rows hold. `forumDigestPreference` is retired in the same PR and dropped later (see Retiring a column); its enum type outlives the table, whose `preferenceUsed` column used it.
+
+## Retiring a column
+
+A column the running release maps is retired in one deploy and dropped in a later one. `scripts/deploy_backend.sh` migrates while the old backend still serves, and after a failed health check restarts the old release without reverting the migration, so a dropped column that release still selects fails its every load of the entity. Retiring renames the field `legacy<Name>`, maps it `select: false` without `@ApiProperty`, and keeps its column default, as `Action.legacyReviewers` does: CI's migrations drift check fails on a column no entity maps, and inserts no longer set it.
 
 ## Settings screens
 
