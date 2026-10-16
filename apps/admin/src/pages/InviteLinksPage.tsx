@@ -1,16 +1,15 @@
-import { inviteLinkAdminSearch } from "@alliance/shared/client";
 import type {
   InviteLinkKind,
   InviteLinkSort,
 } from "@alliance/shared/client/types.gen";
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
-import { usePaginatedQuery } from "@alliance/shared/lib/usePaginatedQuery";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
+import { useInviteLinksAdmin } from "../lib/useInviteLinksAdmin";
 
 const KINDS: Record<InviteLinkKind, string> = {
   individual: "Individual",
@@ -24,7 +23,6 @@ const SORTS: Record<InviteLinkSort, string> = {
 };
 const kindSchema = z.enum(["individual", "multi_use"]);
 const sortSchema = z.enum(["newest", "oldest", "most_used", "least_used"]);
-const PAGE_SIZE = 50;
 
 export default function InviteLinksPage() {
   const [kind, setKind] = useState<InviteLinkKind>();
@@ -38,14 +36,7 @@ export default function InviteLinksPage() {
     isError,
     isPlaceholderData,
     refetch,
-  } = usePaginatedQuery({
-    queryKey: (page) => ["inviteLinksAdmin", kind, sort, page, PAGE_SIZE],
-    queryFn: (page) =>
-      inviteLinkAdminSearch({
-        query: { kind, sort, page, limit: PAGE_SIZE },
-        throwOnError: true,
-      }).then((response) => response.data),
-  });
+  } = useInviteLinksAdmin({ kind, sort });
 
   const copy = async (url: string) => {
     if (await copyToClipboard(url)) success("Invite link copied");
