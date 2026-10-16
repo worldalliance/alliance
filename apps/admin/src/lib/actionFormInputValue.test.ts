@@ -1,7 +1,7 @@
 import { actionFormInputValue } from "./actionFormInputValue";
 
 describe("actionFormInputValue", () => {
-  it.each(["suiteId", "forumParticipationPostId"])(
+  it.each(["suiteId", "forumParticipationPostId", "timeEstimate"])(
     "clears a blank %s to null and keeps a typed number as is",
     (name) => {
       expect(actionFormInputValue(name, "")).toBeNull();

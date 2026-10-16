@@ -1,6 +1,7 @@
 const nullableNumberFields: ReadonlySet<string> = new Set([
   "suiteId",
   "forumParticipationPostId",
+  "timeEstimate",
 ]);
 
 export const actionFormInputValue = (
