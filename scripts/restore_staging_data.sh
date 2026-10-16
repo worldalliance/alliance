@@ -43,12 +43,36 @@ fi
 
 echo "==> Restoring into local DB: ${LOCAL_DB_NAME} on ${LOCAL_PGHOST}:${LOCAL_PGPORT}"
 
+# pg_restore exits nonzero after ignoring any error, as when RESET_LOCAL_DB=0
+# restores over an existing schema, yet still loads rows; those need clearing too.
+restore_status=0
 PGPASSWORD="${LOCAL_PGPASSWORD:-}" \
 pg_restore \
   -h "$LOCAL_PGHOST" -p "$LOCAL_PGPORT" -U "$LOCAL_PGUSER" \
   --no-owner \
   -d "$LOCAL_DB_NAME" \
-  "$DUMP_FILE"
+  "$DUMP_FILE" || restore_status=$?
+
+# Devices registered on staging keep their real tokens there, and local servers
+# send dev notifs, so a restored token would reach that device.
+echo "==> Clearing push tokens"
+clear_status=0
+PGPASSWORD="${LOCAL_PGPASSWORD:-}" \
+psql \
+  -h "$LOCAL_PGHOST" -p "$LOCAL_PGPORT" -U "$LOCAL_PGUSER" \
+  -d "$LOCAL_DB_NAME" \
+  -v ON_ERROR_STOP=1 \
+  -c 'UPDATE "user_device" SET "expoPushToken" = NULL;' || clear_status=$?
+
+if (( restore_status != 0 )); then
+  if (( clear_status == 0 )); then
+    echo "Error: pg_restore exited ${restore_status}; push tokens were cleared, but the restore is incomplete." >&2
+  else
+    echo "Error: pg_restore exited ${restore_status}, and push tokens could not be cleared." >&2
+  fi
+  exit "$restore_status"
+fi
+(( clear_status == 0 )) || exit "$clear_status"
 
 echo "==> Done ✅"
 echo "    Local DB restored: ${LOCAL_DB_NAME} on ${LOCAL_PGHOST}:${LOCAL_PGPORT}"

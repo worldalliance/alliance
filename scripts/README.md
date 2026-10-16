@@ -23,7 +23,7 @@ Download plus restore in one step. This is the one you usually want.
 Pulls a `pg_dump` of staging over SSH into `./db_dumps`. Override `SSH_HOST_ALIAS`, `REMOTE_ENV_FILE`, `DUMP_DIR`.
 
 `restore_staging_data.sh <dump-file>`
-Drops and recreates the local db named by `server/.env`, then restores the dump. `RESET_LOCAL_DB=0` skips the drop; `LOCAL_DB_NAME` and the `LOCAL_PG*` vars override the target.
+Drops and recreates the local db named by `server/.env`, then restores the dump and clears push tokens. `RESET_LOCAL_DB=0` skips the drop; `LOCAL_DB_NAME` and the `LOCAL_PG*` vars override the target.
 
 ## Deploy
 
