@@ -45,9 +45,9 @@ const actionReminderGroupsAdminAll = () =>
  */
 export const queryKeys = {
   action: (actionId: number | null) => ["actionsFindOne", actionId] as const,
-  actionUpdatesAll: () => ["actionsAllUpdates"] as const,
+  actionUpdatesAll: () => ["actionUpdatesAllUpdates"] as const,
   actionUpdatesRecent: (limit: number) =>
-    ["actionsRecentUpdates", limit] as const,
+    ["actionUpdatesRecentUpdates", limit] as const,
   /** Also prefixes generalUpdatesUnread, so invalidating it refetches that too. */
   actions: () => ["actions"] as const,
   activitiesAll,
@@ -132,11 +132,12 @@ export const queryKeys = {
     [...actionCompletionCurvesAdminAll(), granularity] as const,
   actionStatsAdmin: () => ["analyticsGetActionStatsAdmin"] as const,
   actionUpdateAdmin: (id: number | null) =>
-    ["actionsFindOneUpdateAdmin", id] as const,
+    ["actionUpdatesFindOneUpdateAdmin", id] as const,
   actionUpdateRecognitionPreviewCountsAdmin: (
     id: number,
     audience: { notifyType: string; tagId: string | null },
-  ) => ["actionsPreviewUpdateRecognitionCountsAdmin", id, audience] as const,
+  ) =>
+    ["actionUpdatesPreviewUpdateRecognitionCountsAdmin", id, audience] as const,
   actionSuiteAdmin: (suiteId: number) =>
     ["actionsSuiteAdmin", suiteId] as const,
   actionSuitesAdmin: () => ["actionsSuitesAdmin"] as const,

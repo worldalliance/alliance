@@ -37,6 +37,7 @@ import { ActionStatsService } from "./action-stats.service";
 import { ActionUpdateRecognitionPreviewService } from "./action-update-recognition-preview.service";
 import { ActionUpdateRecognitionService } from "./action-update-recognition.service";
 import { ActionUpdateRecognitionWorker } from "./action-update-recognition.worker";
+import { ActionUpdatesController } from "./action-updates.controller";
 import { ActionVisibilityModule } from "./action-visibility.module";
 import { ActionsController } from "./actions.controller";
 import { ActionsGateway } from "./actions.gateway";
@@ -123,6 +124,7 @@ import { TaskBadgeService } from "./task-badge.service";
   controllers: [
     ActionsController,
     GeneralUpdatesController,
+    ActionUpdatesController,
     CohortDecisionsController,
     ProjectsController,
   ],

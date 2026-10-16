@@ -3154,84 +3154,6 @@ export type ReminderAnchorCandidateDto = {
     deadlineEventDate: string;
 };
 
-export type CreateActionUpdateDto = {
-    title: string;
-    /**
-     * What the update is displayed and sorted by.
-     */
-    date: string;
-    shortNotifString: string;
-    notifyType: ActionUpdateNotifyType;
-    splitCollectiveResult?: boolean;
-    nonCompleterResult?: string | null;
-    uninvolvedResult?: string | null;
-    associatedEventId?: number;
-    tagId?: string;
-};
-
-export type ActionUpdateNotificationMode = 'legacy' | 'normal';
-
-export type AdminActionUpdateDto = {
-    id: number;
-    actionId: number;
-    title: string;
-    schemaSnapshotId: number;
-    /**
-     * What the update is displayed and sorted by.
-     */
-    date: string;
-    /**
-     * When the update became visible to members; null while unpublished.
-     */
-    visibleAt: string | null;
-    shortNotifString: string;
-    associatedEvent?: ActionEvent | null;
-    associatedEventId: number | null;
-    notifyType: ActionUpdateNotifyType;
-    notifiedAt: string | null;
-    tag?: Tag | null;
-    schema: {
-        [key: string]: unknown;
-    };
-    actionName?: string;
-    notificationMode: ActionUpdateNotificationMode;
-    splitCollectiveResult: boolean;
-    nonCompleterResult: string | null;
-    uninvolvedResult: string | null;
-    recognitionPreparedAt: string | null;
-    notificationHeldReason: string | null;
-};
-
-export type UpdateActionUpdateDto = {
-    title?: string;
-    /**
-     * What the update is displayed and sorted by.
-     */
-    date?: string;
-    shortNotifString?: string;
-    splitCollectiveResult?: boolean;
-    nonCompleterResult?: string | null;
-    uninvolvedResult?: string | null;
-    notifyType?: ActionUpdateNotifyType;
-    associatedEventId?: number | null;
-    tagId?: string | null;
-    schema?: {
-        [key: string]: unknown;
-    };
-    expectedSchemaSnapshotId?: number;
-};
-
-export type RecognitionPreviewAudienceDto = {
-    notifyType: ActionUpdateNotifyType;
-    tagId?: string | null;
-};
-
-export type RecognitionPreviewCountsDto = {
-    completed: number;
-    didNotComplete: number;
-    uninvolved: number;
-};
-
 export type GeneralUpdateDto = {
     id: number;
     name: string;
@@ -3568,6 +3490,84 @@ export type UpdateGeneralUpdateDto = {
     expectedSchemaSnapshotId?: number;
     tagIds?: Array<string>;
     suiteIds?: Array<number>;
+};
+
+export type CreateActionUpdateDto = {
+    title: string;
+    /**
+     * What the update is displayed and sorted by.
+     */
+    date: string;
+    shortNotifString: string;
+    notifyType: ActionUpdateNotifyType;
+    splitCollectiveResult?: boolean;
+    nonCompleterResult?: string | null;
+    uninvolvedResult?: string | null;
+    associatedEventId?: number;
+    tagId?: string;
+};
+
+export type ActionUpdateNotificationMode = 'legacy' | 'normal';
+
+export type AdminActionUpdateDto = {
+    id: number;
+    actionId: number;
+    title: string;
+    schemaSnapshotId: number;
+    /**
+     * What the update is displayed and sorted by.
+     */
+    date: string;
+    /**
+     * When the update became visible to members; null while unpublished.
+     */
+    visibleAt: string | null;
+    shortNotifString: string;
+    associatedEvent?: ActionEvent | null;
+    associatedEventId: number | null;
+    notifyType: ActionUpdateNotifyType;
+    notifiedAt: string | null;
+    tag?: Tag | null;
+    schema: {
+        [key: string]: unknown;
+    };
+    actionName?: string;
+    notificationMode: ActionUpdateNotificationMode;
+    splitCollectiveResult: boolean;
+    nonCompleterResult: string | null;
+    uninvolvedResult: string | null;
+    recognitionPreparedAt: string | null;
+    notificationHeldReason: string | null;
+};
+
+export type UpdateActionUpdateDto = {
+    title?: string;
+    /**
+     * What the update is displayed and sorted by.
+     */
+    date?: string;
+    shortNotifString?: string;
+    splitCollectiveResult?: boolean;
+    nonCompleterResult?: string | null;
+    uninvolvedResult?: string | null;
+    notifyType?: ActionUpdateNotifyType;
+    associatedEventId?: number | null;
+    tagId?: string | null;
+    schema?: {
+        [key: string]: unknown;
+    };
+    expectedSchemaSnapshotId?: number;
+};
+
+export type RecognitionPreviewAudienceDto = {
+    notifyType: ActionUpdateNotifyType;
+    tagId?: string | null;
+};
+
+export type RecognitionPreviewCountsDto = {
+    completed: number;
+    didNotComplete: number;
+    uninvolved: number;
 };
 
 export type CohortDecisionReason = 'launch' | 'signing' | 'resolved_after_deadline' | 'backfill' | 'staff_correction' | 'prerequisites_resolved';
@@ -10937,246 +10937,6 @@ export type ActionsReminderAnchorCandidatesAdminResponses = {
 
 export type ActionsReminderAnchorCandidatesAdminResponse = ActionsReminderAnchorCandidatesAdminResponses[keyof ActionsReminderAnchorCandidatesAdminResponses];
 
-export type ActionsCreateUpdateAdminData = {
-    body: CreateActionUpdateDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/createUpdate/{id}';
-};
-
-export type ActionsCreateUpdateAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsCreateUpdateAdminError = ActionsCreateUpdateAdminErrors[keyof ActionsCreateUpdateAdminErrors];
-
-export type ActionsCreateUpdateAdminResponses = {
-    200: AdminActionUpdateDto;
-};
-
-export type ActionsCreateUpdateAdminResponse = ActionsCreateUpdateAdminResponses[keyof ActionsCreateUpdateAdminResponses];
-
-export type ActionsFindOneUpdateAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/updates/admin/{id}';
-};
-
-export type ActionsFindOneUpdateAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsFindOneUpdateAdminError = ActionsFindOneUpdateAdminErrors[keyof ActionsFindOneUpdateAdminErrors];
-
-export type ActionsFindOneUpdateAdminResponses = {
-    200: AdminActionUpdateDto;
-};
-
-export type ActionsFindOneUpdateAdminResponse = ActionsFindOneUpdateAdminResponses[keyof ActionsFindOneUpdateAdminResponses];
-
-export type ActionsUpdateUpdateAdminData = {
-    body: UpdateActionUpdateDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/updateUpdate/{id}';
-};
-
-export type ActionsUpdateUpdateAdminErrors = {
-    /**
-     * The update was changed by someone else since the editor loaded it.
-     */
-    409: HeyApiError;
-};
-
-export type ActionsUpdateUpdateAdminError = ActionsUpdateUpdateAdminErrors[keyof ActionsUpdateUpdateAdminErrors];
-
-export type ActionsUpdateUpdateAdminResponses = {
-    200: AdminActionUpdateDto;
-};
-
-export type ActionsUpdateUpdateAdminResponse = ActionsUpdateUpdateAdminResponses[keyof ActionsUpdateUpdateAdminResponses];
-
-export type ActionsNotifyUpdateAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/updates/{id}/notify';
-};
-
-export type ActionsNotifyUpdateAdminErrors = {
-    /**
-     * The update has already been notified about.
-     */
-    409: HeyApiError;
-};
-
-export type ActionsNotifyUpdateAdminError = ActionsNotifyUpdateAdminErrors[keyof ActionsNotifyUpdateAdminErrors];
-
-export type ActionsNotifyUpdateAdminResponses = {
-    200: AdminActionUpdateDto;
-};
-
-export type ActionsNotifyUpdateAdminResponse = ActionsNotifyUpdateAdminResponses[keyof ActionsNotifyUpdateAdminResponses];
-
-export type ActionsPreviewUpdateRecognitionCountsAdminData = {
-    body: RecognitionPreviewAudienceDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/updates/{id}/recognition-preview-counts';
-};
-
-export type ActionsPreviewUpdateRecognitionCountsAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsPreviewUpdateRecognitionCountsAdminError = ActionsPreviewUpdateRecognitionCountsAdminErrors[keyof ActionsPreviewUpdateRecognitionCountsAdminErrors];
-
-export type ActionsPreviewUpdateRecognitionCountsAdminResponses = {
-    200: RecognitionPreviewCountsDto;
-};
-
-export type ActionsPreviewUpdateRecognitionCountsAdminResponse = ActionsPreviewUpdateRecognitionCountsAdminResponses[keyof ActionsPreviewUpdateRecognitionCountsAdminResponses];
-
-export type ActionsUnpublishUpdateAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/updates/{id}/unpublish';
-};
-
-export type ActionsUnpublishUpdateAdminErrors = {
-    /**
-     * The update is unpublished already, or its displayed date has passed.
-     */
-    400: HeyApiError;
-};
-
-export type ActionsUnpublishUpdateAdminError = ActionsUnpublishUpdateAdminErrors[keyof ActionsUnpublishUpdateAdminErrors];
-
-export type ActionsUnpublishUpdateAdminResponses = {
-    200: AdminActionUpdateDto;
-};
-
-export type ActionsUnpublishUpdateAdminResponse = ActionsUnpublishUpdateAdminResponses[keyof ActionsUnpublishUpdateAdminResponses];
-
-export type ActionsPublishUpdateNowAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/updates/{id}/publish-now';
-};
-
-export type ActionsPublishUpdateNowAdminErrors = {
-    /**
-     * The update is not waiting on a future date.
-     */
-    400: HeyApiError;
-};
-
-export type ActionsPublishUpdateNowAdminError = ActionsPublishUpdateNowAdminErrors[keyof ActionsPublishUpdateNowAdminErrors];
-
-export type ActionsPublishUpdateNowAdminResponses = {
-    200: AdminActionUpdateDto;
-};
-
-export type ActionsPublishUpdateNowAdminResponse = ActionsPublishUpdateNowAdminResponses[keyof ActionsPublishUpdateNowAdminResponses];
-
-export type ActionsDeleteUpdateAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/deleteUpdate/{id}';
-};
-
-export type ActionsDeleteUpdateAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsDeleteUpdateAdminError = ActionsDeleteUpdateAdminErrors[keyof ActionsDeleteUpdateAdminErrors];
-
-export type ActionsDeleteUpdateAdminResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type ActionsDeleteUpdateAdminResponse = ActionsDeleteUpdateAdminResponses[keyof ActionsDeleteUpdateAdminResponses];
-
-export type ActionsAllUpdatesData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions/allUpdates';
-};
-
-export type ActionsAllUpdatesErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsAllUpdatesError = ActionsAllUpdatesErrors[keyof ActionsAllUpdatesErrors];
-
-export type ActionsAllUpdatesResponses = {
-    200: Array<ActionUpdateDto>;
-};
-
-export type ActionsAllUpdatesResponse = ActionsAllUpdatesResponses[keyof ActionsAllUpdatesResponses];
-
-export type ActionsRecentUpdatesData = {
-    body?: never;
-    path?: never;
-    query: {
-        limit: number;
-    };
-    url: '/actions/updates';
-};
-
-export type ActionsRecentUpdatesErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsRecentUpdatesError = ActionsRecentUpdatesErrors[keyof ActionsRecentUpdatesErrors];
-
-export type ActionsRecentUpdatesResponses = {
-    200: Array<ActionUpdateDto>;
-};
-
-export type ActionsRecentUpdatesResponse = ActionsRecentUpdatesResponses[keyof ActionsRecentUpdatesResponses];
-
 export type ActionsSuitesAdminData = {
     body?: never;
     path?: never;
@@ -11800,6 +11560,246 @@ export type GeneralUpdatesUpdateGeneralUpdateAdminResponses = {
 };
 
 export type GeneralUpdatesUpdateGeneralUpdateAdminResponse = GeneralUpdatesUpdateGeneralUpdateAdminResponses[keyof GeneralUpdatesUpdateGeneralUpdateAdminResponses];
+
+export type ActionUpdatesCreateUpdateAdminData = {
+    body: CreateActionUpdateDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/createUpdate/{id}';
+};
+
+export type ActionUpdatesCreateUpdateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionUpdatesCreateUpdateAdminError = ActionUpdatesCreateUpdateAdminErrors[keyof ActionUpdatesCreateUpdateAdminErrors];
+
+export type ActionUpdatesCreateUpdateAdminResponses = {
+    200: AdminActionUpdateDto;
+};
+
+export type ActionUpdatesCreateUpdateAdminResponse = ActionUpdatesCreateUpdateAdminResponses[keyof ActionUpdatesCreateUpdateAdminResponses];
+
+export type ActionUpdatesFindOneUpdateAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/updates/admin/{id}';
+};
+
+export type ActionUpdatesFindOneUpdateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionUpdatesFindOneUpdateAdminError = ActionUpdatesFindOneUpdateAdminErrors[keyof ActionUpdatesFindOneUpdateAdminErrors];
+
+export type ActionUpdatesFindOneUpdateAdminResponses = {
+    200: AdminActionUpdateDto;
+};
+
+export type ActionUpdatesFindOneUpdateAdminResponse = ActionUpdatesFindOneUpdateAdminResponses[keyof ActionUpdatesFindOneUpdateAdminResponses];
+
+export type ActionUpdatesUpdateUpdateAdminData = {
+    body: UpdateActionUpdateDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/updateUpdate/{id}';
+};
+
+export type ActionUpdatesUpdateUpdateAdminErrors = {
+    /**
+     * The update was changed by someone else since the editor loaded it.
+     */
+    409: HeyApiError;
+};
+
+export type ActionUpdatesUpdateUpdateAdminError = ActionUpdatesUpdateUpdateAdminErrors[keyof ActionUpdatesUpdateUpdateAdminErrors];
+
+export type ActionUpdatesUpdateUpdateAdminResponses = {
+    200: AdminActionUpdateDto;
+};
+
+export type ActionUpdatesUpdateUpdateAdminResponse = ActionUpdatesUpdateUpdateAdminResponses[keyof ActionUpdatesUpdateUpdateAdminResponses];
+
+export type ActionUpdatesNotifyUpdateAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/updates/{id}/notify';
+};
+
+export type ActionUpdatesNotifyUpdateAdminErrors = {
+    /**
+     * The update has already been notified about.
+     */
+    409: HeyApiError;
+};
+
+export type ActionUpdatesNotifyUpdateAdminError = ActionUpdatesNotifyUpdateAdminErrors[keyof ActionUpdatesNotifyUpdateAdminErrors];
+
+export type ActionUpdatesNotifyUpdateAdminResponses = {
+    200: AdminActionUpdateDto;
+};
+
+export type ActionUpdatesNotifyUpdateAdminResponse = ActionUpdatesNotifyUpdateAdminResponses[keyof ActionUpdatesNotifyUpdateAdminResponses];
+
+export type ActionUpdatesPreviewUpdateRecognitionCountsAdminData = {
+    body: RecognitionPreviewAudienceDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/updates/{id}/recognition-preview-counts';
+};
+
+export type ActionUpdatesPreviewUpdateRecognitionCountsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionUpdatesPreviewUpdateRecognitionCountsAdminError = ActionUpdatesPreviewUpdateRecognitionCountsAdminErrors[keyof ActionUpdatesPreviewUpdateRecognitionCountsAdminErrors];
+
+export type ActionUpdatesPreviewUpdateRecognitionCountsAdminResponses = {
+    200: RecognitionPreviewCountsDto;
+};
+
+export type ActionUpdatesPreviewUpdateRecognitionCountsAdminResponse = ActionUpdatesPreviewUpdateRecognitionCountsAdminResponses[keyof ActionUpdatesPreviewUpdateRecognitionCountsAdminResponses];
+
+export type ActionUpdatesUnpublishUpdateAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/updates/{id}/unpublish';
+};
+
+export type ActionUpdatesUnpublishUpdateAdminErrors = {
+    /**
+     * The update is unpublished already, or its displayed date has passed.
+     */
+    400: HeyApiError;
+};
+
+export type ActionUpdatesUnpublishUpdateAdminError = ActionUpdatesUnpublishUpdateAdminErrors[keyof ActionUpdatesUnpublishUpdateAdminErrors];
+
+export type ActionUpdatesUnpublishUpdateAdminResponses = {
+    200: AdminActionUpdateDto;
+};
+
+export type ActionUpdatesUnpublishUpdateAdminResponse = ActionUpdatesUnpublishUpdateAdminResponses[keyof ActionUpdatesUnpublishUpdateAdminResponses];
+
+export type ActionUpdatesPublishUpdateNowAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/updates/{id}/publish-now';
+};
+
+export type ActionUpdatesPublishUpdateNowAdminErrors = {
+    /**
+     * The update is not waiting on a future date.
+     */
+    400: HeyApiError;
+};
+
+export type ActionUpdatesPublishUpdateNowAdminError = ActionUpdatesPublishUpdateNowAdminErrors[keyof ActionUpdatesPublishUpdateNowAdminErrors];
+
+export type ActionUpdatesPublishUpdateNowAdminResponses = {
+    200: AdminActionUpdateDto;
+};
+
+export type ActionUpdatesPublishUpdateNowAdminResponse = ActionUpdatesPublishUpdateNowAdminResponses[keyof ActionUpdatesPublishUpdateNowAdminResponses];
+
+export type ActionUpdatesDeleteUpdateAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/deleteUpdate/{id}';
+};
+
+export type ActionUpdatesDeleteUpdateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionUpdatesDeleteUpdateAdminError = ActionUpdatesDeleteUpdateAdminErrors[keyof ActionUpdatesDeleteUpdateAdminErrors];
+
+export type ActionUpdatesDeleteUpdateAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type ActionUpdatesDeleteUpdateAdminResponse = ActionUpdatesDeleteUpdateAdminResponses[keyof ActionUpdatesDeleteUpdateAdminResponses];
+
+export type ActionUpdatesAllUpdatesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/allUpdates';
+};
+
+export type ActionUpdatesAllUpdatesErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionUpdatesAllUpdatesError = ActionUpdatesAllUpdatesErrors[keyof ActionUpdatesAllUpdatesErrors];
+
+export type ActionUpdatesAllUpdatesResponses = {
+    200: Array<ActionUpdateDto>;
+};
+
+export type ActionUpdatesAllUpdatesResponse = ActionUpdatesAllUpdatesResponses[keyof ActionUpdatesAllUpdatesResponses];
+
+export type ActionUpdatesRecentUpdatesData = {
+    body?: never;
+    path?: never;
+    query: {
+        limit: number;
+    };
+    url: '/actions/updates';
+};
+
+export type ActionUpdatesRecentUpdatesErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionUpdatesRecentUpdatesError = ActionUpdatesRecentUpdatesErrors[keyof ActionUpdatesRecentUpdatesErrors];
+
+export type ActionUpdatesRecentUpdatesResponses = {
+    200: Array<ActionUpdateDto>;
+};
+
+export type ActionUpdatesRecentUpdatesResponse = ActionUpdatesRecentUpdatesResponses[keyof ActionUpdatesRecentUpdatesResponses];
 
 export type CohortDecisionsListForActionAdminData = {
     body?: never;

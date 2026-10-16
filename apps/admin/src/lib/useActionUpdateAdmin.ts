@@ -1,11 +1,11 @@
 import {
-  actionsCreateUpdateAdmin,
-  actionsDeleteUpdateAdmin,
-  actionsFindOneUpdateAdmin,
-  actionsNotifyUpdateAdmin,
-  actionsPublishUpdateNowAdmin,
-  actionsUnpublishUpdateAdmin,
-  actionsUpdateUpdateAdmin,
+  actionUpdatesCreateUpdateAdmin,
+  actionUpdatesDeleteUpdateAdmin,
+  actionUpdatesFindOneUpdateAdmin,
+  actionUpdatesNotifyUpdateAdmin,
+  actionUpdatesPublishUpdateNowAdmin,
+  actionUpdatesUnpublishUpdateAdmin,
+  actionUpdatesUpdateUpdateAdmin,
   type ActionUpdateDto,
   type AdminActionUpdateDto,
   type CreateActionUpdateDto,
@@ -42,7 +42,7 @@ export function useActionUpdateAdmin(id: number | null) {
       id === null
         ? skipToken
         : () =>
-            actionsFindOneUpdateAdmin({
+            actionUpdatesFindOneUpdateAdmin({
               path: { id },
               throwOnError: true,
             }).then((r) => r.data),
@@ -75,7 +75,7 @@ export function useActionUpdateAdmin(id: number | null) {
 
   const create = useMutation({
     mutationFn: (params: { actionId: number; body: CreateActionUpdateDto }) =>
-      actionsCreateUpdateAdmin({
+      actionUpdatesCreateUpdateAdmin({
         path: { id: params.actionId },
         body: params.body,
         throwOnError: true,
@@ -87,7 +87,7 @@ export function useActionUpdateAdmin(id: number | null) {
 
   const update = useMutation({
     mutationFn: (body: UpdateActionUpdateDto) =>
-      actionsUpdateUpdateAdmin({
+      actionUpdatesUpdateUpdateAdmin({
         path: { id: requireId() },
         body,
         throwOnError: true,
@@ -97,7 +97,7 @@ export function useActionUpdateAdmin(id: number | null) {
 
   const notify = useMutation({
     mutationFn: () =>
-      actionsNotifyUpdateAdmin({
+      actionUpdatesNotifyUpdateAdmin({
         path: { id: requireId() },
         throwOnError: true,
       }).then((r) => r.data),
@@ -106,7 +106,7 @@ export function useActionUpdateAdmin(id: number | null) {
 
   const publishNow = useMutation({
     mutationFn: () =>
-      actionsPublishUpdateNowAdmin({
+      actionUpdatesPublishUpdateNowAdmin({
         path: { id: requireId() },
         throwOnError: true,
       }).then((r) => r.data),
@@ -115,7 +115,7 @@ export function useActionUpdateAdmin(id: number | null) {
 
   const unpublish = useMutation({
     mutationFn: () =>
-      actionsUnpublishUpdateAdmin({
+      actionUpdatesUnpublishUpdateAdmin({
         path: { id: requireId() },
         throwOnError: true,
       }).then((r) => r.data),
@@ -124,7 +124,7 @@ export function useActionUpdateAdmin(id: number | null) {
 
   const remove = useMutation({
     mutationFn: (target: Pick<ActionUpdateDto, "id" | "actionId">) =>
-      actionsDeleteUpdateAdmin({
+      actionUpdatesDeleteUpdateAdmin({
         path: { id: target.id },
         throwOnError: true,
       }).then(() => undefined, rethrowUnlessNotFound),
@@ -140,11 +140,11 @@ export function useActionUpdateAdmin(id: number | null) {
     ownerLabel: "Updates",
     save: useCallback(
       (body: DisplayOnlySchemaSaveBody) =>
-        actionsUpdateUpdateAdmin({ path: { id: requireId() }, body }),
+        actionUpdatesUpdateUpdateAdmin({ path: { id: requireId() }, body }),
       [requireId],
     ),
     refetch: useCallback(
-      () => actionsFindOneUpdateAdmin({ path: { id: requireId() } }),
+      () => actionUpdatesFindOneUpdateAdmin({ path: { id: requireId() } }),
       [requireId],
     ),
     onSaved: useCallback(

@@ -1,5 +1,5 @@
 import {
-  actionsPreviewUpdateRecognitionCountsAdmin,
+  actionUpdatesPreviewUpdateRecognitionCountsAdmin,
   type ActionUpdateNotifyType,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -21,7 +21,7 @@ export function useRecognitionPreviewCounts(params: {
     ),
     queryFn: enabled
       ? () =>
-          actionsPreviewUpdateRecognitionCountsAdmin({
+          actionUpdatesPreviewUpdateRecognitionCountsAdmin({
             path: { id: updateId },
             body: audience,
             throwOnError: true,
