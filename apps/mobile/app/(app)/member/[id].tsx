@@ -1,3 +1,4 @@
+import { commentPath } from "@alliance/common/commentPath";
 import { postBylineAuthors } from "@alliance/common/postAuthors";
 import { run } from "@alliance/common/run";
 import { ActionActivityDto, HomeFeedItemDto } from "@alliance/shared/client";
@@ -197,18 +198,11 @@ export default function UserProfileScreen() {
         );
       }
 
-      const parentRoute =
-        item.comment.parentObjectType === "post"
-          ? `/forum/post/${item.comment.parentObjectId}?replyId=${item.comment.id}`
-          : item.comment.parentObjectType === "action"
-            ? `/actions/${item.comment.parentObjectId}`
-            : null;
-
-      if (!parentRoute) return null;
-
       return (
         <TouchableOpacity
-          onPress={() => router.push(parentRoute as RelativePathString)}
+          onPress={() =>
+            router.push(commentPath(item.comment) as RelativePathString)
+          }
           className="px-4 py-4 border-b border-zinc-200"
           activeOpacity={0.8}
         >

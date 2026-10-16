@@ -895,6 +895,33 @@ describe("Notification content stability (e2e)", () => {
     );
   });
 
+  it("drops a legacy reply on an activity that is gone", async () => {
+    const action = await createVisibleAction("Gone Activity Action");
+    const activityRepo = ctx.dataSource.getRepository(ActionActivity);
+    const activity = await activityRepo.save({
+      userId: recipient.id,
+      actionId: action.id,
+      type: ActionActivityType.USER_COMPLETED,
+    });
+    const comment = await createReply({
+      parentObjectType: CommentParentObject.Activity,
+      parentObjectId: activity.id,
+    });
+    const row = await ctx.dataSource.getRepository(UnreadContent).save({
+      user: recipient,
+      format: NotificationFormat.Legacy,
+      contentType: UnreadContentType.ForumReply,
+      contentId: comment.id,
+      sendTime: new Date(Date.now() - 1000),
+    });
+
+    await activityRepo.softDelete(activity.id);
+
+    expect(
+      await entry(row.id, NotificationSourceType.UnreadContent),
+    ).toBeUndefined();
+  });
+
   describe("like groups", () => {
     const likeGroup = async (postId: number) =>
       notifRepo.find({

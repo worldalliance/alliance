@@ -1,3 +1,4 @@
+import { commentPath } from "@alliance/common/commentPath";
 import { CommentDto } from "@alliance/shared/client";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { RelativePathString, router } from "expo-router";
@@ -31,8 +32,11 @@ export default function ForumCommentCard({
   const hasBody =
     !!comment.editableContent.body ||
     comment.editableContent.attachments.length > 0;
-  const replyUrl =
-    `/forum/post/${postId}?replyId=${comment.id}` as RelativePathString;
+  const replyUrl = commentPath({
+    parentObjectType: "post",
+    parentObjectId: postId,
+    id: comment.id,
+  }) as RelativePathString;
 
   return (
     <View className="bg-white p-4">

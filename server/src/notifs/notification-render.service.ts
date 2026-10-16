@@ -195,12 +195,16 @@ export class NotificationRenderService {
           if (!comment || !rendered) {
             return [];
           }
-          const location = commentUrl(
-            comment,
-            comment.parentObjectType === CommentParentObject.Activity
-              ? references.activityActionIds.get(comment.parentObjectId)
-              : undefined,
-          );
+          const onActivity =
+            comment.parentObjectType === CommentParentObject.Activity;
+          const actionId = onActivity
+            ? references.activityActionIds.get(comment.parentObjectId)
+            : undefined;
+          // Legacy rows skip the access check, so their activity may be gone.
+          if (onActivity && actionId === undefined) {
+            return [];
+          }
+          const location = commentUrl(comment, actionId);
           return [
             NotificationDto.fromUnreadContent({
               ...base,

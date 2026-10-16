@@ -1,4 +1,5 @@
 import { actionActivityTransitiveVerb } from "@alliance/common/actionActivity";
+import { commentPath } from "@alliance/common/commentPath";
 import {
   GlobalFeedActivityGroupDto,
   GlobalFeedForumCommentsDto,
@@ -142,9 +143,11 @@ const ForumCommentsItem = ({ item, date }: ForumCommentsItemProps) => {
   const isSingle = item.count === 1 && item.users.length > 0;
   const postUrl =
     isSingle && item.commentId
-      ? `${href("/forum/post/:id", { id: item.postId.toString() })}?replyId=${
-          item.commentId
-        }`
+      ? commentPath({
+          parentObjectType: "post",
+          parentObjectId: item.postId,
+          id: item.commentId,
+        })
       : href("/forum/post/:id", { id: item.postId.toString() });
 
   return (

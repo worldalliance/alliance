@@ -1,3 +1,4 @@
+import { commentPath } from "@alliance/common/commentPath";
 import { CommentDto } from "@alliance/shared/client";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -26,7 +27,11 @@ const ForumCommentCard = ({
 }: ForumCommentCardProps) => {
   const navigate = useNavigate();
 
-  const postUrlWithReply = `${href("/forum/post/:id", { id: postId.toString() })}?replyId=${comment.id}`;
+  const postUrlWithReply = commentPath({
+    parentObjectType: "post",
+    parentObjectId: postId,
+    id: comment.id,
+  });
 
   const handleCardClick = useCallback(() => {
     navigate(postUrlWithReply);
