@@ -134,6 +134,50 @@ it("names the used invites when they fail to load", async () => {
   ).toBeTruthy();
 });
 
+it("draws no cached used invites once a reload of them fails", async () => {
+  api.alsoServing({
+    "GET /user/onetimeInvites/graphEdges": () =>
+      Response.json({}, { status: 500 }),
+  });
+  const query = queryWrapper();
+  query.client.setQueryData(queryKeys.onetimeInviteGraphEdgesAdmin(), [
+    { invitingUserId: 1, invitedUserId: 4 },
+  ]);
+
+  const { container } = await renderPage(query);
+
+  expect(
+    screen.getByText("Could not load used invites.", { exact: false }),
+  ).toBeTruthy();
+  expect(drawnLinks(container).has("ada->lee")).toBe(false);
+});
+
+it("waits for a fresh used-invite list before drawing cached used invites", async () => {
+  let release = () => {};
+  const edgesGate = new Promise<void>((resolve) => (release = resolve));
+  api.alsoServing({
+    "GET /user/onetimeInvites/graphEdges": async () => {
+      await edgesGate;
+      return Response.json([{ invitingUserId: 3, invitedUserId: 4 }]);
+    },
+  });
+  const query = queryWrapper();
+  query.client.setQueryData(queryKeys.onetimeInviteGraphEdgesAdmin(), [
+    { invitingUserId: 1, invitedUserId: 4 },
+  ]);
+
+  const view = render(<InviteGraphPage />, query);
+  await waitFor(() =>
+    expect(query.client.getQueryData(queryKeys.graphUsersAdmin())).toBeTruthy(),
+  );
+  expect(screen.getByText("Loading graph...")).toBeTruthy();
+
+  release();
+  await waitFor(() => drawnNode(view.container, "lee"));
+  expect(drawnLinks(view.container).has("ren->lee")).toBe(true);
+  expect(drawnLinks(view.container).has("ada->lee")).toBe(false);
+});
+
 it("waits for a fresh user list before drawing cached users", async () => {
   let release = () => {};
   const usersGate = new Promise<void>((resolve) => (release = resolve));
@@ -245,28 +289,37 @@ it.each([
     (on: boolean) => onlineManager.setOnline(on),
     () => onlineManager.setOnline(true),
   ],
-])("keeps its users and campaigns when %s", async (_event, toggle, reset) => {
-  let userLoads = 0;
-  let campaignLoads = 0;
-  api.alsoServing({
-    "GET /user/list-graph": () => {
-      userLoads += 1;
-      return withCampaignMember["GET /user/list-graph"]();
-    },
-    "GET /campaigns": () => {
-      campaignLoads += 1;
-      return Response.json([]);
-    },
-  });
-  await renderPage();
+])(
+  "keeps its users, campaigns, and used invites when %s",
+  async (_event, toggle, reset) => {
+    let userLoads = 0;
+    let campaignLoads = 0;
+    let edgeLoads = 0;
+    api.alsoServing({
+      "GET /user/list-graph": () => {
+        userLoads += 1;
+        return withCampaignMember["GET /user/list-graph"]();
+      },
+      "GET /campaigns": () => {
+        campaignLoads += 1;
+        return Response.json([]);
+      },
+      "GET /user/onetimeInvites/graphEdges": () => {
+        edgeLoads += 1;
+        return Response.json([]);
+      },
+    });
+    await renderPage();
 
-  act(() => {
-    toggle(false);
-    toggle(true);
-  });
-  await act(async () => {});
-  reset();
+    act(() => {
+      toggle(false);
+      toggle(true);
+    });
+    await act(async () => {});
+    reset();
 
-  expect(userLoads).toBe(1);
-  expect(campaignLoads).toBe(1);
-});
+    expect(userLoads).toBe(1);
+    expect(campaignLoads).toBe(1);
+    expect(edgeLoads).toBe(1);
+  },
+);

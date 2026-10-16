@@ -54,6 +54,16 @@ export interface DrawnGraph<N extends ForceGraphNode> {
   link: Selection<SVGLineElement, ForceGraphLink<N>, SVGGElement, unknown>;
 }
 
+/**
+ * Query options for the lists a graph draws. A changed list rebuilds the
+ * layout and drops the selection, so the graph skips the refetches that land
+ * while an admin is exploring it.
+ */
+export const KEEP_LAYOUT = {
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+};
+
 /** forceLink swaps each id for its node when the simulation starts. */
 export function linkEnd<N extends ForceGraphNode>(end: string | N): N {
   if (typeof end === "string") {
