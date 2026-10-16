@@ -231,6 +231,9 @@ export class User {
   @ApiProperty({ type: Date, nullable: true })
   switchedDomainAt: Date | null;
 
+  @Column({ type: "timestamptz", nullable: true })
+  contractReminderSentAt: Date | null;
+
   @Column({ type: "varchar", nullable: true })
   @IsOptional()
   password: string | null;

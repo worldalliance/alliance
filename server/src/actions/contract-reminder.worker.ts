@@ -1,11 +1,11 @@
 import { nameParts } from "@alliance/common/nameParts";
+import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { CONTRACT_REMINDER_COPY } from "src/mail/contract-reminder-copy";
-import { EmailType } from "src/mail/mail.entity";
-import { MailService } from "src/mail/mail.service";
+import { MailNotSentError, MailService } from "src/mail/mail.service";
 import { Experiment } from "src/notifs/entities/experiment-assignment.entity";
 import { assignExperimentArm } from "src/notifs/experiment-assignment";
 import { User } from "src/user/entities/user.entity";
@@ -40,24 +40,12 @@ export class ContractReminderWorker {
       async () => {
         const cutoff = new Date(Date.now() - milliseconds({ days: 1 }));
 
-        // Find users who:
-        // 1. Created their account more than 24 hours ago
-        // 2. Have no contract events at all
-        // 3. Haven't already received this reminder email
         const users = await this.userRepository
           .createQueryBuilder("user")
           .leftJoin("user.contractEvents", "ce")
           .where("user.createdAt <= :cutoff", { cutoff })
           .andWhere("ce.id IS NULL")
-          // Deleted mail still went out, so it counts.
-          .andWhere(
-            `NOT EXISTS (
-              SELECT 1 FROM mail
-              WHERE mail."to" = "user"."email"
-              AND mail."emailType" = :emailType
-            )`,
-            { emailType: EmailType.ContractReminder },
-          )
+          .andWhere("user.contractReminderSentAt IS NULL")
           .getMany();
 
         if (users.length > 0) {
@@ -72,12 +60,25 @@ export class ContractReminderWorker {
               experiment: Experiment.ContractReminder,
               userId: user.id,
             });
-            await this.mailService.sendContractReminderEmail({
-              userId: user.id,
-              email: user.email,
-              name: nameParts(user.name).firstname,
-              copy: CONTRACT_REMINDER_COPY[arm],
+            // Marked before the send, so a lost write costs a missed reminder, not a second one.
+            await this.userRepository.update(user.id, {
+              contractReminderSentAt: new Date(),
             });
+            const sent = await R.fromPromise(
+              this.mailService.sendContractReminderEmail({
+                userId: user.id,
+                email: user.email,
+                name: nameParts(user.name).firstname,
+                copy: CONTRACT_REMINDER_COPY[arm],
+              }),
+            );
+            // Any other failure may still have sent the mail, so it stays marked.
+            if (!sent.ok && sent.error instanceof MailNotSentError) {
+              await this.userRepository.update(user.id, {
+                contractReminderSentAt: null,
+              });
+            }
+            if (!sent.ok) throw sent.error;
           } catch (err) {
             this.logger.error(
               `Failed to send contract reminder to user ${user.id}`,

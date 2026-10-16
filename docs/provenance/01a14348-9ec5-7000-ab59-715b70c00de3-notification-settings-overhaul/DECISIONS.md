@@ -66,7 +66,7 @@ Each kind renders its example through the producer's own copy function with fixe
 
 ## Contract reminder
 
-`user.contractReminderSentAt timestamptz NULL`, set when the reminder sends. The hourly worker selects accounts at least 24 hours old with no contract events and a null `contractReminderSentAt`. The backfill sets it on every account whose current email matches a past `contract_reminder` mail, using that mail's send time. `mail` records only the recipient address, so the current email is the only link to an account; members can't change their email in the app.
+`user.contractReminderSentAt timestamptz NULL`, set just before the send, so no failed write can mail an account twice. Only a `MailNotSentError`, a failure before any mail row exists, clears it again for the next run to retry, matching the old rule that any `contract_reminder` mail row counted. The hourly worker selects accounts at least 24 hours old with no contract events and a null `contractReminderSentAt`. The backfill sets it on every account whose current email matches a past `contract_reminder` mail, using that mail's send time. `mail` records only the recipient address, so the current email is the only link to an account; members can't change their email in the app. The previous release keeps sending by the old rule while a deploy migrates, and again if a failed deploy restores it, so the core migration reruns the backfill on accounts still null.
 
 ## Group join audience
 
