@@ -147,6 +147,9 @@ export class Action {
     description: "Time estimate in minutes",
   })
   @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(2_147_483_647)
   timeEstimate: number | null;
 
   @Column({ nullable: true })

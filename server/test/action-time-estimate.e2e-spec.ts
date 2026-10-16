@@ -79,4 +79,20 @@ describe("Action time estimate (e2e)", () => {
       .findOneByOrFail({ id: created.body.id });
     expect(stored.timeEstimate).toBeNull();
   });
+
+  it("accepts a zero time estimate", async () => {
+    const created = await create({}).expect(201);
+    const zeroed = await patch(created.body.id, { timeEstimate: 0 }).expect(
+      200,
+    );
+    expect(zeroed.body.timeEstimate).toBe(0);
+  });
+
+  it.each(["", "15", 1.5, -1, 2_147_483_648, true])(
+    "rejects a time estimate of %p",
+    async (timeEstimate) => {
+      const created = await create({}).expect(201);
+      await patch(created.body.id, { timeEstimate }).expect(400);
+    },
+  );
 });
