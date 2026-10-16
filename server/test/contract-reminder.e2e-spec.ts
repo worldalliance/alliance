@@ -1,4 +1,5 @@
 import { Logger } from "@nestjs/common";
+import { getRepositoryToken } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { ContractReminderWorker } from "src/actions/contract-reminder.worker";
 import {
@@ -10,13 +11,15 @@ import {
   ContractReminderCopy,
 } from "src/mail/contract-reminder-copy";
 import { EmailStatus, EmailType, Mail } from "src/mail/mail.entity";
-import { MailService } from "src/mail/mail.service";
+import { MailNotSentError, MailService } from "src/mail/mail.service";
 import {
   Experiment,
   ExperimentArm,
   ExperimentAssignment,
 } from "src/notifs/entities/experiment-assignment.entity";
 import { ReferralSource, User } from "src/user/entities/user.entity";
+import { Repository } from "typeorm";
+import { ContractReminderSentAt1792141515694 } from "../migrations/1792141515694-ContractReminderSentAt";
 import {
   createTestApp,
   giveActiveContract,
@@ -100,31 +103,15 @@ describe("ContractReminderWorker (e2e)", () => {
     });
     const signed = await member({ email: "signed@example.com" });
     await giveActiveContract(ctx, signed.id);
-    const otherEmail = await member({ email: "other-email@example.com" });
-    const mailRepo = ctx.dataSource.getRepository(Mail);
-    await mailRepo.save(
-      mailRepo.create({
-        to: otherEmail.email,
-        emailType: EmailType.Welcome,
-        status: EmailStatus.Sent,
-      }),
-    );
-    const suppressed = await Promise.all(
-      [EmailStatus.Pending, EmailStatus.Failed, null].map(async (status, i) => {
-        const user = await member({ email: `suppressed-${i}@example.com` });
-        const mail = await mailRepo.save(
-          mailRepo.create({
-            to: user.email,
-            emailType: EmailType.ContractReminder,
-            status: status ?? EmailStatus.Sent,
-          }),
-        );
-        if (status === null) await mailRepo.softDelete(mail.id);
-        return user;
-      }),
-    );
+    const reminded = await member({ email: "reminded@example.com" });
+    await ctx.dataSource
+      .getRepository(User)
+      .update(reminded.id, { contractReminderSentAt: hoursAgo(1) });
 
     await run();
+    await ctx.dataSource
+      .getRepository(User)
+      .update(control.id, { email: "control-renamed@example.com" });
     await run();
 
     for (const [user, copy, subject] of [
@@ -158,14 +145,10 @@ describe("ContractReminderWorker (e2e)", () => {
         contractReminderCopy: CONTRACT_REMINDER_COPY[unassignedArms[0].arm],
       },
     });
-    expect(await remindersTo(otherEmail.email)).toHaveLength(1);
+    expect(await remindersTo("control-renamed@example.com")).toEqual([]);
 
-    for (const user of [tooNew, signed]) {
+    for (const user of [tooNew, signed, reminded]) {
       expect(await remindersTo(user.email)).toEqual([]);
-      expect(await assignmentsOf(user.id)).toEqual([]);
-    }
-    for (const user of suppressed) {
-      expect(await remindersTo(user.email)).toHaveLength(1);
       expect(await assignmentsOf(user.id)).toEqual([]);
     }
   });
@@ -179,7 +162,7 @@ describe("ContractReminderWorker (e2e)", () => {
       .spyOn(mailService, "sendContractReminderEmail")
       .mockImplementation((params) =>
         params.userId === failing.id
-          ? Promise.reject(new Error("tracking insert failed"))
+          ? Promise.reject(new MailNotSentError("tracking insert failed"))
           : original(params),
       );
     const error = jest
@@ -208,5 +191,122 @@ describe("ContractReminderWorker (e2e)", () => {
       context: { contractReminderCopy: CONTRACT_REMINDER_COPY[assignment.arm] },
     });
     expect(await assignmentsOf(failing.id)).toEqual([assignment]);
+  });
+
+  it("counts a send the mail server rejected as sent", async () => {
+    const rejected = await member({ email: "rejected@example.com" });
+    const mailService = ctx.app.get(MailService);
+    const spy = jest
+      .spyOn(mailService, "sendContractReminderEmail")
+      .mockRejectedValue(new Error("mailgun unavailable"));
+    const error = jest
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => {});
+
+    await run();
+    spy.mockRestore();
+    error.mockRestore();
+    await run();
+
+    expect(await remindersTo(rejected.email)).toEqual([]);
+    expect(
+      await ctx.dataSource
+        .getRepository(User)
+        .findOneByOrFail({ id: rejected.id }),
+    ).toMatchObject({ contractReminderSentAt: expect.any(Date) });
+  });
+
+  it("reminds once when marking the member as reminded fails", async () => {
+    const unmarked = await member({ email: "unmarked@example.com" });
+    const update = jest
+      .spyOn(ctx.app.get<Repository<User>>(getRepositoryToken(User)), "update")
+      .mockRejectedValueOnce(new Error("connection reset"));
+    const error = jest
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => {});
+
+    await run();
+    update.mockRestore();
+    error.mockRestore();
+    await run();
+
+    expect(await remindersTo(unmarked.email)).toHaveLength(1);
+  });
+
+  it("backfills from every past reminder to the member's current email", async () => {
+    const migration = new ContractReminderSentAt1792141515694();
+    const [earlier, later] = [hoursAgo(30), hoursAgo(10)];
+    const mailRepo = ctx.dataSource.getRepository(Mail);
+    const userRepo = ctx.dataSource.getRepository(User);
+    const pastMail = async (params: {
+      to: string;
+      emailType: EmailType;
+      status: EmailStatus;
+      createdAt: Date;
+      deleted?: boolean;
+    }) => {
+      const mail = await mailRepo.save(
+        mailRepo.create({
+          to: params.to,
+          emailType: params.emailType,
+          status: params.status,
+        }),
+      );
+      await mailRepo.update(mail.id, { createdAt: params.createdAt });
+      if (params.deleted) await mailRepo.softDelete(mail.id);
+    };
+    const statuses = [
+      EmailStatus.Pending,
+      EmailStatus.Failed,
+      EmailStatus.Sent,
+    ] as const;
+    const byStatus = await Promise.all(
+      statuses.map(async (status) => {
+        const user = await member({ email: `backfill-${status}@example.com` });
+        await pastMail({
+          to: user.email,
+          emailType: EmailType.ContractReminder,
+          status,
+          createdAt: later,
+        });
+        return user;
+      }),
+    );
+    const twice = await member({ email: "backfill-twice@example.com" });
+    for (const [createdAt, deleted] of [
+      [earlier, true],
+      [later, false],
+    ] as const) {
+      await pastMail({
+        to: twice.email,
+        emailType: EmailType.ContractReminder,
+        status: EmailStatus.Sent,
+        createdAt,
+        deleted,
+      });
+    }
+    const welcomed = await member({ email: "backfill-welcomed@example.com" });
+    await pastMail({
+      to: welcomed.email,
+      emailType: EmailType.Welcome,
+      status: EmailStatus.Sent,
+      createdAt: later,
+    });
+
+    const runner = ctx.dataSource.createQueryRunner();
+    try {
+      await migration.down(runner);
+      await migration.up(runner);
+    } finally {
+      await runner.release();
+    }
+
+    const sentAt = async (user: User) =>
+      (await userRepo.findOneByOrFail({ id: user.id })).contractReminderSentAt;
+    for (const user of byStatus) {
+      expect(await sentAt(user)).toEqual(later);
+    }
+    expect(await sentAt(twice)).toEqual(earlier);
+    expect(await sentAt(welcomed)).toBeNull();
   });
 });
