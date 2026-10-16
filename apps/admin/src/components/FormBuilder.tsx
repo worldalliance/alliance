@@ -1,8 +1,4 @@
 import { type FormSchema } from "@alliance/common/forms/form-schema";
-import {
-  collectUnresolvedVariableReferences,
-  type UnresolvedVariableReference,
-} from "@alliance/common/forms/variable-interpolation";
 import { syncSchemaListInputs } from "@alliance/common/forms/variable-scope";
 import { cn } from "@alliance/shared/styles/util";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -22,7 +18,6 @@ import { useInputSources } from "../lib/useInputSources";
 import { useSavedForm } from "../lib/useSavedForm";
 import { type VisibilityGroups } from "../lib/visibilityGroups";
 import { AggregateBuilder } from "./AggregateBuilder";
-import ConfirmDialog from "./ConfirmDialog";
 import { DisplayOnlyPreview } from "./DisplayOnlyPreview";
 import { elementTarget } from "./form-canvas/canvasSelection";
 import { PreviewBoundary } from "./form-canvas/ElementBoundary";
@@ -45,22 +40,8 @@ import { FormulaSourcesProvider } from "./FormulaSourcesContext";
 import { FormVariablesProvider } from "./FormVariablesContext";
 import { OutputBuilder } from "./OutputBuilder";
 import { ShareableTextBuilder } from "./ShareableTextBuilder";
+import { useSaveGate } from "./useSaveGate";
 import { VariableBuilder } from "./VariableBuilder";
-
-function describeUnresolvedReferences(
-  references: UnresolvedVariableReference[],
-): string {
-  const lines = references.map(
-    ({ name, locations }) => `#{${name}} — in ${locations.join(", ")}`,
-  );
-  return [
-    "These references don't match any variable on this form, so respondents will see them exactly as written:",
-    "",
-    ...lines,
-    "",
-    "Save anyway?",
-  ].join("\n");
-}
 
 // The two editors save through entirely different paths, so the props each one
 // needs are spelled as a union rather than as independent optionals: a
@@ -164,8 +145,6 @@ export function FormBuilder(props: FormBuilderProps) {
   });
   const { hasUnsavedChanges, conflict, isLoading, loadError, retryLoad } =
     saved;
-  const [confirmUnresolvedVariables, setConfirmUnresolvedVariables] =
-    useState(false);
 
   const {
     sourceForms,
@@ -199,6 +178,10 @@ export function FormBuilder(props: FormBuilderProps) {
   );
 
   const [issueList, setIssueList] = useState<IssueListState>(null);
+  const showSaveIssues = useCallback(
+    () => setIssueList({ gate: IssueGate.Save }),
+    [],
+  );
   const {
     saveForm,
     isSaving,
@@ -218,7 +201,7 @@ export function FormBuilder(props: FormBuilderProps) {
     sourceFormsLoading,
     validation,
     reloadEditors,
-    onInvalid: useCallback(() => setIssueList({ gate: IssueGate.Save }), []),
+    onInvalid: showSaveIssues,
   });
   const [outputViewId, setOutputViewId] = useState<string | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
@@ -268,14 +251,6 @@ export function FormBuilder(props: FormBuilderProps) {
     setJsonScope(null);
   };
 
-  // A dangling `#{name}` renders as written rather than breaking the form, so
-  // it is worth a confirmation but not a refusal — an admin renaming a variable
-  // would otherwise be unable to save until every reference was updated.
-  const unresolvedVariableReferences = useMemo(
-    () => collectUnresolvedVariableReferences(schema),
-    [schema],
-  );
-
   const issues = useMemo(
     () =>
       collectFormIssues({
@@ -297,23 +272,13 @@ export function FormBuilder(props: FormBuilderProps) {
           onRetry: retryLoad,
         };
 
-  const handleSaveForm = useCallback(() => {
-    if (loadError !== null || (issues.length > 0 && !sourceFormsLoading)) {
-      setIssueList({ gate: IssueGate.Save });
-      return;
-    }
-    if (unresolvedVariableReferences.length > 0) {
-      setConfirmUnresolvedVariables(true);
-      return;
-    }
-    void saveForm();
-  }, [
-    issues.length,
-    loadError,
+  const { handleSaveForm, dialog: saveGateDialog } = useSaveGate({
+    schema,
+    blocked: loadError !== null || (issues.length > 0 && !sourceFormsLoading),
+    onBlocked: showSaveIssues,
     saveForm,
-    sourceFormsLoading,
-    unresolvedVariableReferences,
-  ]);
+    isSaving,
+  });
 
   const historyLocked =
     isSaving || isLoading || isPreviewMode || conflict !== null;
@@ -369,17 +334,7 @@ export function FormBuilder(props: FormBuilderProps) {
           onCancel={closeConflict}
         />
       )}
-      <ConfirmDialog
-        isOpen={confirmUnresolvedVariables}
-        title="Save with unmatched variable references?"
-        message={describeUnresolvedReferences(unresolvedVariableReferences)}
-        isLoading={isSaving}
-        onCancel={() => setConfirmUnresolvedVariables(false)}
-        onConfirm={() => {
-          setConfirmUnresolvedVariables(false);
-          void saveForm();
-        }}
-      />
+      {saveGateDialog}
       {deletionDialog}
       {jsonScope && (
         <FormJsonModal
