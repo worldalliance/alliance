@@ -55,6 +55,7 @@ import {
 } from "./dto/user.dto";
 import { FriendService } from "./friend.service";
 import { UserAdminService } from "./user-admin.service";
+import { UserDirectoryService } from "./user-directory.service";
 import { UserVisibilityContextService } from "./user-visibility-context.service";
 import { UserService } from "./user.service";
 
@@ -68,6 +69,7 @@ class VerifyEmailBody {
 export class UserController {
   constructor(
     private readonly userService: UserService,
+    private readonly userDirectoryService: UserDirectoryService,
     private readonly accountEmailService: AccountEmailService,
     private readonly userAdminService: UserAdminService,
     private readonly accountDeletionService: AccountDeletionService,
@@ -139,9 +141,9 @@ export class UserController {
     if (!req.user) {
       throw new UnauthorizedException("User not found");
     }
-    return (await this.userService.findMessageableUsers(req.user.sub)).map(
-      (user) => new ProfileDto(user),
-    );
+    return (
+      await this.userDirectoryService.findMessageableUsers(req.user.sub)
+    ).map((user) => new ProfileDto(user));
   }
 
   @Get("list")
@@ -170,7 +172,7 @@ export class UserController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [UserCityCountDto] })
   async cityCountsAdmin(): Promise<UserCityCountDto[]> {
-    return (await this.userService.getUserCityCounts()).map(
+    return (await this.userDirectoryService.getUserCityCounts()).map(
       (c) => new UserCityCountDto(c),
     );
   }
@@ -244,7 +246,7 @@ export class UserController {
   @Public()
   @ApiOkResponse({ type: [ProfileDto] })
   async membersPublic(): Promise<ProfileDto[]> {
-    return (await this.userService.findAllMembersPublic()).map(
+    return (await this.userDirectoryService.findAllMembersPublic()).map(
       (user) => new ProfileDto(user),
     );
   }
@@ -253,7 +255,7 @@ export class UserController {
   @Public()
   @ApiOkResponse({ type: [StaffDirectoryEntryDto] })
   async staffDirectory(): Promise<StaffDirectoryEntryDto[]> {
-    return (await this.userService.findStaffDirectory()).map(
+    return (await this.userDirectoryService.findStaffDirectory()).map(
       (user) => new StaffDirectoryEntryDto(user),
     );
   }
@@ -262,7 +264,7 @@ export class UserController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [StaffDirectoryEntryDto] })
   async staffDirectoryAdmin(): Promise<StaffDirectoryEntryDto[]> {
-    return (await this.userService.findStaffDirectory()).map(
+    return (await this.userDirectoryService.findStaffDirectory()).map(
       (user) => new StaffDirectoryEntryDto(user),
     );
   }
@@ -273,9 +275,9 @@ export class UserController {
   async updateStaffDirectoryAdmin(
     @Body() body: UpdateStaffDirectoryDto,
   ): Promise<StaffDirectoryEntryDto[]> {
-    return (await this.userService.updateStaffDirectory(body.items)).map(
-      (user) => new StaffDirectoryEntryDto(user),
-    );
+    return (
+      await this.userDirectoryService.updateStaffDirectory(body.items)
+    ).map((user) => new StaffDirectoryEntryDto(user));
   }
 
   @Get("membersWithFriends")

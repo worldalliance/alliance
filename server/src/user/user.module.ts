@@ -40,6 +40,7 @@ import { UserAwayRangeController } from "./user-away-range.controller";
 import { UserAwayRangeService } from "./user-away-range.service";
 import { UserDeviceController } from "./user-device.controller";
 import { UserDeviceService } from "./user-device.service";
+import { UserDirectoryService } from "./user-directory.service";
 import { UserFriendController } from "./user-friend.controller";
 import { UserGroupAssignmentController } from "./user-group-assignment.controller";
 import { UserOnetimeInviteController } from "./user-onetime-invite.controller";
@@ -106,6 +107,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     AccountDeletionService,
     UserAdminService,
     AccountEmailService,
+    UserDirectoryService,
     IsUserAlreadyExist,
   ],
   exports: [

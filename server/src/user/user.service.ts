@@ -1,12 +1,9 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { hasProfilePicture } from "@alliance/common/profilePicture";
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { countBy } from "es-toolkit";
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { Community } from "src/community/entities/community.entity";
 import {
@@ -45,21 +42,14 @@ import {
   ILike,
   In,
   IsNull,
-  Not,
   type Repository,
 } from "typeorm";
-import { UpdateProfileDto, UserCityCount } from "./dto/user.dto";
-import { Friend } from "./entities/friend.entity";
+import { UpdateProfileDto } from "./dto/user.dto";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "./entities/onetime-invite.entity";
-import {
-  loadedUserCommunities,
-  sqlUserHasActiveContractAt,
-  User,
-} from "./entities/user.entity";
-import { acceptedFriendshipsOf, friendOf } from "./friendship";
+import { sqlUserHasActiveContractAt, User } from "./entities/user.entity";
 import { CLAIMABLE_INVITE } from "./invite-claim";
 import { referralLabel } from "./user.utils";
 
@@ -71,8 +61,6 @@ export class UserService {
     private userRepository: Repository<User>,
     @InjectRepository(City)
     private cityRepository: TypedRepository<City>,
-    @InjectRepository(Friend)
-    private readonly friendRepository: Repository<Friend>,
     private readonly shareUrlsService: ShareUrlsService,
     private readonly imagesService: ImagesService,
     private readonly eventLogService: EventLogService,
@@ -245,53 +233,6 @@ export class UserService {
     });
   }
 
-  async findAllMembersPublic(): Promise<User[]> {
-    const users = await this.userRepository.find({
-      where: { shareInfoPublicly: true, staff: false },
-      relations: {
-        contractEvents: true,
-      },
-    });
-    return users.filter(
-      (user) => user.hasActiveContract && hasProfilePicture(user),
-    );
-  }
-
-  async findStaffDirectory(): Promise<User[]> {
-    return this.userRepository.find({
-      where: { staff: true },
-      order: { staffDisplayOrder: "ASC", id: "ASC" },
-    });
-  }
-
-  async updateStaffDirectory(
-    items: {
-      id: number;
-      staffTitle?: string | null;
-      staffLink?: string | null;
-      staffDisplayOrder: number;
-    }[],
-  ): Promise<User[]> {
-    await Promise.all(
-      items.map((item) =>
-        updateLive(this.dataSource.manager, {
-          target: User,
-          id: item.id,
-          changes: {
-            staffDisplayOrder: item.staffDisplayOrder,
-            ...(item.staffTitle !== undefined
-              ? { staffTitle: item.staffTitle }
-              : {}),
-            ...(item.staffLink !== undefined
-              ? { staffLink: item.staffLink }
-              : {}),
-          },
-        }),
-      ),
-    );
-    return this.findStaffDirectory();
-  }
-
   findOne(id: number, relations?: Relations<User>): Promise<User | null> {
     return this.userRepository.findOne({
       where: { id },
@@ -396,60 +337,6 @@ export class UserService {
     return rows.map((r) => r.id);
   }
 
-  async findMessageableUsers(userId: number): Promise<User[]> {
-    const user = await this.findOneOrFail(userId, { communities: true });
-
-    if (user.staff) {
-      return this.userRepository.find({
-        where: { id: Not(userId) },
-      });
-    }
-
-    const memberCommunityIds = loadedUserCommunities(user).map((c) => c.id);
-    const leaderCommunityIds = user.leaderOfIds;
-
-    const [rels, staff, communityUsers] = await Promise.all([
-      this.friendRepository.find({
-        where: acceptedFriendshipsOf(userId),
-        relations: { requester: true, addressee: true },
-      }),
-
-      this.userRepository.find({ where: { staff: true } }),
-
-      this.userRepository
-        .createQueryBuilder("u")
-        .distinct(true)
-        .leftJoin("u.leaderOf", "leadCommunity")
-        .leftJoin("u.communities", "memberCommunity")
-        .where(
-          `
-            (
-              leadCommunity.id IN (:...memberCommunityIds)
-              OR memberCommunity.id IN (:...leaderCommunityIds)
-            )
-          `,
-          {
-            memberCommunityIds: memberCommunityIds.length
-              ? memberCommunityIds
-              : [-1],
-            leaderCommunityIds: leaderCommunityIds.length
-              ? leaderCommunityIds
-              : [-1],
-          },
-        )
-        .getMany(),
-    ]);
-
-    const friends = rels.map((r) => friendOf(r, userId));
-
-    const byId = new Map<number, User>();
-    for (const u of [...staff, ...communityUsers, ...friends]) {
-      if (u?.id && u.id !== userId) byId.set(u.id, u);
-    }
-
-    return [...byId.values()];
-  }
-
   async notifyReferrerOfNewMember(referrer: User, newMember: User) {
     await this.notifsService.sendNotif({
       user: referrer,
@@ -494,56 +381,6 @@ export class UserService {
       throw new NotFoundException(`User ${userId} not found`);
     }
     return user.city ?? undefined;
-  }
-
-  async getUserCityCounts(): Promise<UserCityCount[]> {
-    // return (
-    //   await this.userRepository.find({
-    //     relations: { contractEvents: true },
-    //   })
-    // ).filter((user) => user.hasActiveContract)
-
-    const allUsers = await this.userRepository.find({
-      relations: { contractEvents: true, city: true },
-    });
-    const users = allUsers.filter((user) => user.hasActiveContract);
-
-    const cityIds = users
-      .map((user) => user.city?.id)
-      .filter((id) => id != null);
-    const nullCityCount = users.length - cityIds.length;
-    const cityCounts = countBy(cityIds, (id) => id);
-
-    const cities = await this.cityRepository.find({
-      where: { id: In(Object.keys(cityCounts)) },
-    });
-    const cityById = new Map(cities.map((c) => [c.id, c]));
-
-    const cityCountsArray = Object.entries(cityCounts).map(
-      ([cityId, count]) => {
-        const city = cityById.get(parseInt(cityId, 10));
-        return {
-          cityId: city?.id ?? null,
-          cityName: city?.name ?? null,
-          countryCode: city?.countryCode ?? null,
-          count,
-          latitude: city?.latitude ?? null,
-          longitude: city?.longitude ?? null,
-        } satisfies UserCityCount;
-      },
-    );
-
-    return [
-      ...cityCountsArray,
-      {
-        cityId: null,
-        cityName: "Unknown",
-        countryCode: null,
-        count: nullCityCount,
-        latitude: null,
-        longitude: null,
-      },
-    ];
   }
 
   async setOptInMms(userId: number, mmsId: number) {
