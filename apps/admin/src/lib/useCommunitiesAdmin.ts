@@ -12,7 +12,7 @@ import {
   communityUpdate,
   type CreateCommunityDto,
   type UpdateCommunityDto,
-  userAssignGroupsAdmin,
+  userGroupAssignmentAssignGroupsAdmin,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
@@ -74,7 +74,7 @@ export function useAssignGroupsAdmin() {
   const invalidate = useInvalidateCommunities();
   return useMutation({
     mutationFn: (body: AssignGroupsDto) =>
-      userAssignGroupsAdmin({ body, throwOnError: true }),
+      userGroupAssignmentAssignGroupsAdmin({ body, throwOnError: true }),
     onSettled: invalidate,
   });
 }

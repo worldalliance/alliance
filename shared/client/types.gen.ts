@@ -1368,15 +1368,6 @@ export type OnetimeInviteEdgeDto = {
     invitedUserId: number;
 };
 
-export type SingleGroupAssignmentDto = {
-    userId: number;
-    communityId: number;
-};
-
-export type AssignGroupsDto = {
-    assignments: Array<SingleGroupAssignmentDto>;
-};
-
 export type CreateTagDto = {
     name: string;
     description: string;
@@ -1470,6 +1461,15 @@ export type PushDto = {
     lastCheckedStatusAt: string | null;
     idempotencyKey: string;
     openedAt: string | null;
+};
+
+export type SingleGroupAssignmentDto = {
+    userId: number;
+    communityId: number;
+};
+
+export type AssignGroupsDto = {
+    assignments: Array<SingleGroupAssignmentDto>;
 };
 
 export type StreamableFile = {
@@ -6906,100 +6906,6 @@ export type UserGetOnetimeInvitesByRequesterResponses = {
 
 export type UserGetOnetimeInvitesByRequesterResponse = UserGetOnetimeInvitesByRequesterResponses[keyof UserGetOnetimeInvitesByRequesterResponses];
 
-export type UserJoinGroupAssignmentData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/groupAssignment/join';
-};
-
-export type UserJoinGroupAssignmentErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserJoinGroupAssignmentError = UserJoinGroupAssignmentErrors[keyof UserJoinGroupAssignmentErrors];
-
-export type UserJoinGroupAssignmentResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserJoinGroupAssignmentResponse = UserJoinGroupAssignmentResponses[keyof UserJoinGroupAssignmentResponses];
-
-export type UserLeaveGroupAssignmentData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/groupAssignment/leave';
-};
-
-export type UserLeaveGroupAssignmentErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserLeaveGroupAssignmentError = UserLeaveGroupAssignmentErrors[keyof UserLeaveGroupAssignmentErrors];
-
-export type UserLeaveGroupAssignmentResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserLeaveGroupAssignmentResponse = UserLeaveGroupAssignmentResponses[keyof UserLeaveGroupAssignmentResponses];
-
-export type UserGetGroupAssignmentMembersAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/groupAssignment/members';
-};
-
-export type UserGetGroupAssignmentMembersAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetGroupAssignmentMembersAdminError = UserGetGroupAssignmentMembersAdminErrors[keyof UserGetGroupAssignmentMembersAdminErrors];
-
-export type UserGetGroupAssignmentMembersAdminResponses = {
-    200: Array<UserDto>;
-};
-
-export type UserGetGroupAssignmentMembersAdminResponse = UserGetGroupAssignmentMembersAdminResponses[keyof UserGetGroupAssignmentMembersAdminResponses];
-
-export type UserAssignGroupsAdminData = {
-    body: AssignGroupsDto;
-    path?: never;
-    query?: never;
-    url: '/user/groupAssignment/assign';
-};
-
-export type UserAssignGroupsAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserAssignGroupsAdminError = UserAssignGroupsAdminErrors[keyof UserAssignGroupsAdminErrors];
-
-export type UserAssignGroupsAdminResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserAssignGroupsAdminResponse = UserAssignGroupsAdminResponses[keyof UserAssignGroupsAdminResponses];
-
 export type UserRequestAccountDeletionData = {
     body?: never;
     path?: never;
@@ -7425,6 +7331,100 @@ export type UserDeviceSendPushNotificationAdminResponses = {
 };
 
 export type UserDeviceSendPushNotificationAdminResponse = UserDeviceSendPushNotificationAdminResponses[keyof UserDeviceSendPushNotificationAdminResponses];
+
+export type UserGroupAssignmentJoinGroupAssignmentData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/groupAssignment/join';
+};
+
+export type UserGroupAssignmentJoinGroupAssignmentErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserGroupAssignmentJoinGroupAssignmentError = UserGroupAssignmentJoinGroupAssignmentErrors[keyof UserGroupAssignmentJoinGroupAssignmentErrors];
+
+export type UserGroupAssignmentJoinGroupAssignmentResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserGroupAssignmentJoinGroupAssignmentResponse = UserGroupAssignmentJoinGroupAssignmentResponses[keyof UserGroupAssignmentJoinGroupAssignmentResponses];
+
+export type UserGroupAssignmentLeaveGroupAssignmentData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/groupAssignment/leave';
+};
+
+export type UserGroupAssignmentLeaveGroupAssignmentErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserGroupAssignmentLeaveGroupAssignmentError = UserGroupAssignmentLeaveGroupAssignmentErrors[keyof UserGroupAssignmentLeaveGroupAssignmentErrors];
+
+export type UserGroupAssignmentLeaveGroupAssignmentResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserGroupAssignmentLeaveGroupAssignmentResponse = UserGroupAssignmentLeaveGroupAssignmentResponses[keyof UserGroupAssignmentLeaveGroupAssignmentResponses];
+
+export type UserGroupAssignmentGetGroupAssignmentMembersAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/groupAssignment/members';
+};
+
+export type UserGroupAssignmentGetGroupAssignmentMembersAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserGroupAssignmentGetGroupAssignmentMembersAdminError = UserGroupAssignmentGetGroupAssignmentMembersAdminErrors[keyof UserGroupAssignmentGetGroupAssignmentMembersAdminErrors];
+
+export type UserGroupAssignmentGetGroupAssignmentMembersAdminResponses = {
+    200: Array<UserDto>;
+};
+
+export type UserGroupAssignmentGetGroupAssignmentMembersAdminResponse = UserGroupAssignmentGetGroupAssignmentMembersAdminResponses[keyof UserGroupAssignmentGetGroupAssignmentMembersAdminResponses];
+
+export type UserGroupAssignmentAssignGroupsAdminData = {
+    body: AssignGroupsDto;
+    path?: never;
+    query?: never;
+    url: '/user/groupAssignment/assign';
+};
+
+export type UserGroupAssignmentAssignGroupsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserGroupAssignmentAssignGroupsAdminError = UserGroupAssignmentAssignGroupsAdminErrors[keyof UserGroupAssignmentAssignGroupsAdminErrors];
+
+export type UserGroupAssignmentAssignGroupsAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserGroupAssignmentAssignGroupsAdminResponse = UserGroupAssignmentAssignGroupsAdminResponses[keyof UserGroupAssignmentAssignGroupsAdminResponses];
 
 export type ImagesGetImageData = {
     body?: never;
