@@ -1,54 +1,44 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
-import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import {
-  isQuestionField,
   type AnyField,
-  type FieldKind,
   type FormSchema,
   type Page,
 } from "@alliance/common/forms/form-schema";
-import { withCount } from "@alliance/common/plural";
+import { collectOutputFieldMap } from "@alliance/common/forms/output-resolution";
 import type {
   ActionWithdrawalDto,
   FormDto,
   FormResponseDto,
   ProfileDto,
 } from "@alliance/shared/client";
-import { CardStyle } from "@alliance/shared/styles/card";
-import { cn } from "@alliance/shared/styles/util";
-import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
-import Pagination from "@alliance/sharedweb/ui/Pagination";
-import { CirclePlay } from "lucide-react";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
-import { isEmptyAnswer, normalizeBoolean } from "../lib/answerValues";
+import { downloadBlob } from "../lib/downloadBlob";
 import {
   getDirectSnapshotTarget,
   type ReturnToState,
   type SnapshotMigrationTarget,
 } from "../lib/navigation";
-import { choiceAnswerText, getSelections } from "../lib/questionAnswer";
 import { respondentName as buildRespondentName } from "../lib/respondent";
+import { answerFieldLabels } from "../lib/responseFields";
 import {
+  FILTERABLE_FIELD_KINDS,
   filterDescription,
+  isResponseFilterOp,
+  matchesResponseFilter,
   type FormResponseFilter,
-  type ResponseFilterOp,
 } from "../lib/responseFilter";
+import { buildResponsesCsv } from "../lib/responsesCsvExport";
 import { buildResponsesHtml } from "../lib/responsesHtmlExport";
+import FormResponsesHeader, {
+  isTab,
+} from "./form-responses/FormResponsesHeader";
+import QuestionResponses from "./form-responses/QuestionResponses";
+import ResponseReplay from "./form-responses/ResponseReplay";
+import ResponseReplayNavigator from "./form-responses/ResponseReplayNavigator";
+import { useRespondentSearch } from "./form-responses/useRespondentSearch";
 import FormResponseStatistics from "./FormResponseStatistics";
-import { IdentityChip } from "./IdentitySwatch";
 import ResponsesTable from "./responses-table/ResponsesTable";
 import SnapshotTargetPicker from "./SnapshotTargetPicker";
-import { WithdrawalBadge, WithdrawalInfo } from "./WithdrawalInfo";
 
 export type FormWithSchema = Pick<
   FormDto,
@@ -67,92 +57,6 @@ export type ResponseVariantOption = {
   variantId: number | null;
   formId: number;
   name: string;
-};
-
-// Runtime guard: distinguish answer fields from display blocks
-const ANSWER_FIELD_KINDS = new Set<FieldKind>([
-  "text",
-  "textarea",
-  "email",
-  "number",
-  "range",
-  "phone",
-  "checkbox",
-  "radio",
-  "select",
-  "multiselect",
-  "ranking",
-  "date",
-  "time",
-  "timezone",
-  "city",
-  "file",
-]);
-
-const FILTERABLE_FIELD_KINDS = new Set<FieldKind>([
-  "checkbox",
-  "radio",
-  "select",
-  "multiselect",
-  "range",
-]);
-
-const AI_SCORE_FIELD_KINDS = new Set<FieldKind>(["text", "textarea"]);
-
-type Tab = "responses" | "stats" | "questions" | "replays";
-
-const isAnswerField = (node: AnyField | DisplayBlock): node is AnyField =>
-  isQuestionField(node) && ANSWER_FIELD_KINDS.has(node.kind);
-
-const isResponseFilterOp = (value: string | null): value is ResponseFilterOp =>
-  value === "equals" || value === "includes" || value === "no-response";
-
-const isTab = (value: string | null): value is Tab =>
-  value === "responses" ||
-  value === "stats" ||
-  value === "questions" ||
-  value === "replays";
-
-const formatAiScore = (value: number | null): string => {
-  if (typeof value !== "number" || Number.isNaN(value)) return "--";
-  return `${Math.round(value * 100)}%`;
-};
-
-const matchesResponseFilter = (
-  response: FormResponseDto,
-  filter: FormResponseFilter,
-  field: AnyField,
-): boolean => {
-  const rawValue = response.answers?.[filter.fieldId];
-  if (filter.op === "no-response") {
-    return isEmptyAnswer(rawValue);
-  }
-
-  switch (field.kind) {
-    case "checkbox": {
-      if (filter.op !== "equals") return false;
-      const desired = normalizeBoolean(filter.value);
-      const actual = normalizeBoolean(rawValue);
-      if (desired === null || actual === null) return false;
-      return actual === desired;
-    }
-    case "multiselect": {
-      if (filter.op !== "includes") return false;
-      const selections = getSelections(rawValue);
-      return selections.includes(filter.value ?? "");
-    }
-    case "radio":
-    case "select":
-    case "range": {
-      if (filter.op !== "equals") return false;
-      if (rawValue === null || rawValue === undefined || rawValue === "") {
-        return false;
-      }
-      return String(rawValue) === (filter.value ?? "");
-    }
-    default:
-      return false;
-  }
 };
 
 export const REFERRALS_LOAD_ERROR =
@@ -325,25 +229,17 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   }, [filterFieldId, filterOpParam, filterValueParam]);
 
   const { fieldLabels, orderedFieldIds } = useMemo(() => {
-    const labels = new Map<string, string>();
-    form?.schema?.pages?.forEach((page) => {
-      page.fields.forEach((field) => {
-        if (!isAnswerField(field) || labels.has(field.id)) return;
-        labels.set(field.id, elementInternalDescriptor(field));
-      });
-    });
+    const labels = answerFieldLabels(form?.schema);
     return { fieldLabels: labels, orderedFieldIds: [...labels.keys()] };
   }, [form]);
 
-  const fieldsById = useMemo(() => {
-    const fields = new Map<string, AnyField>();
-    form?.schema?.pages?.forEach((page) => {
-      page.fields.forEach((field) => {
-        if (isQuestionField(field)) fields.set(field.id, field);
-      });
-    });
-    return fields;
-  }, [form]);
+  const fieldsById = useMemo(
+    () =>
+      form?.schema
+        ? collectOutputFieldMap(form.schema)
+        : new Map<string, AnyField>(),
+    [form],
+  );
 
   const activeFilterField = useMemo(() => {
     if (!activeFilter) return null;
@@ -366,11 +262,6 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     return orderedFieldIds[0] ?? "";
   }, [questionFieldParam, orderedFieldIds]);
 
-  const selectedQuestionField = useMemo(
-    () => fieldsById.get(selectedQuestionFieldId),
-    [fieldsById, selectedQuestionFieldId],
-  );
-
   useEffect(() => {
     setPage(1);
   }, [filterFieldId, filterOpParam, filterValueParam, variantParam]);
@@ -383,41 +274,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
 
   const total = scopedResponses.length;
   const filteredTotal = filteredResponses.length;
-  const totalPages = Math.max(1, filteredTotal);
   const currentResponse = filteredResponses[page - 1];
-
-  const currentResponseAiInlineLabels = useMemo<
-    Record<string, React.ReactNode>
-  >(() => {
-    const response = currentResponse as FormResponseDto | undefined;
-    const detections = response?.aiDetectionResults ?? [];
-    const inlineScores: Record<string, React.ReactNode> = {};
-
-    for (const detection of detections) {
-      if (!detection.fieldPath.startsWith("answers.")) {
-        continue;
-      }
-      const fieldId = detection.fieldPath.slice("answers.".length);
-      const field = fieldsById.get(fieldId);
-      if (!field || !AI_SCORE_FIELD_KINDS.has(field.kind)) {
-        continue;
-      }
-      if (
-        typeof detection.aiProbability !== "number" ||
-        Number.isNaN(detection.aiProbability) ||
-        detection.aiProbability <= 0
-      ) {
-        continue;
-      }
-      inlineScores[fieldId] = (
-        <span className="text-sm font-semibold text-red-600">
-          {formatAiScore(detection.aiProbability)}
-        </span>
-      );
-    }
-
-    return inlineScores;
-  }, [currentResponse, fieldsById]);
 
   const filterSummary = useMemo(() => {
     if (!activeFilter || !activeFilterField) return null;
@@ -427,10 +284,6 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
       responses: scopedResponses,
     });
   }, [activeFilter, activeFilterField, scopedResponses]);
-
-  const emptyStateMessage = filterSummary
-    ? "No responses match this filter."
-    : "No responses yet for this form.";
 
   const handleStatFilter = useCallback(
     (filter: FormResponseFilter) => {
@@ -453,99 +306,24 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     });
   }, [updateParams]);
 
-  const formatValue = useCallback((v: unknown): string => {
-    if (v == null || v === undefined) return "NULL";
-    if (Array.isArray(v)) return v.map((x) => formatValue(x)).join(", ");
-    if (typeof v === "object") {
-      const o = v as { name?: string; key: string };
-      if (o && typeof o === "object" && (o.name || o.key)) {
-        return o.name || o.key;
-      }
-      try {
-        return JSON.stringify(v);
-      } catch {
-        return String(v);
-      }
-    }
-    return String(v);
-  }, []);
-
-  const questionResponses = useMemo(() => {
-    if (!selectedQuestionFieldId) return [];
-    return scopedResponses.filter(
-      (response) => !isEmptyAnswer(response.answers?.[selectedQuestionFieldId]),
-    );
-  }, [scopedResponses, selectedQuestionFieldId]);
-
-  const formatSelectedQuestionAnswer = useCallback(
-    (value: unknown, response: FormResponseDto): string =>
-      (selectedQuestionField &&
-        choiceAnswerText({ field: selectedQuestionField, value, response })) ??
-      formatValue(value),
-    [selectedQuestionField, formatValue],
-  );
-
-  const csvEscape = (s: string): string => {
-    const needsQuotes = /[",\n\r]/.test(s);
-    let v = s.replace(/"/g, '""');
-    v = v.replace(/\r?\n/g, " ");
-    return needsQuotes ? `"${v}"` : v;
-  };
-
   const handleExportCsv = useCallback(() => {
     if (!form) return;
-    const metaHeaders = ["Response ID", "User ID", "User Name", "SID"];
-    if (variantOptions) metaHeaders.push("Variant");
-    const used = new Set<string>();
-    const questionHeaders = orderedFieldIds.map((id) => {
-      const base = fieldLabels.get(id) ?? id;
-      let name = base;
-      let i = 2;
-      while (used.has(name)) {
-        name = `${base} (${i++})`;
-      }
-      used.add(name);
-      return name;
+    const csv = buildResponsesCsv({
+      responses: scopedResponses,
+      orderedFieldIds,
+      fieldLabels,
+      variantName: variantOptions && getResponseVariantName,
     });
-    const headers = [...metaHeaders, ...questionHeaders];
-
-    const rows = scopedResponses.map((resp) => {
-      const user = resp?.user;
-      const userName = [user?.name ?? resp.id].filter(Boolean).join(" ");
-      const values = [
-        String(resp.id ?? ""),
-        String(user?.id ?? ""),
-        userName,
-        resp.sid ?? "",
-        ...(variantOptions ? [getResponseVariantName(resp) ?? ""] : []),
-        ...orderedFieldIds.map((id) => formatValue(resp.answers?.[id])),
-      ];
-      return values;
-    });
-
-    const csv = [
-      headers.map(csvEscape).join(","),
-      ...rows.map((r) => r.map((c) => csvEscape(String(c ?? ""))).join(",")),
-    ].join("\n");
-
     const blob = new Blob(["﻿" + csv], {
       type: "text/csv;charset=utf-8;",
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
     const safeTitle = exportFileBase.replace(/[^a-z0-9-_]+/gi, "-");
-    a.href = url;
-    a.download = `${safeTitle}-responses.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `${safeTitle}-responses.csv`);
   }, [
     form,
     scopedResponses,
     orderedFieldIds,
     fieldLabels,
-    formatValue,
     exportFileBase,
     variantOptions,
     getResponseVariantName,
@@ -566,14 +344,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     });
 
     const blob = new Blob([html], { type: "text/html;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${safeTitle}-responses.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `${safeTitle}-responses.html`);
   }, [
     form,
     title,
@@ -584,412 +355,80 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     exportFileBase,
   ]);
 
-  const [userSearch, setUserSearch] = useState("");
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const userSearchRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        userSearchRef.current &&
-        !userSearchRef.current.contains(e.target as Node)
-      ) {
-        setUserDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const respondentName = currentResponse
-    ? (currentResponse.user?.name ??
-      (sidsToUserMap[currentResponse.sid ?? ""]
-        ? "anonymous invited by " +
-          sidsToUserMap[currentResponse.sid ?? ""]?.displayName
-        : "anonymous"))
-    : "";
-
-  const currentWithdrawal =
-    currentResponse?.user?.id != null
-      ? (withdrawnUserMap.get(currentResponse.user.id) ?? null)
-      : null;
-
   const getRespondentName = useCallback(
     (response: FormResponseDto): string =>
       buildRespondentName({ response, sidsToUserMap }),
     [sidsToUserMap],
   );
 
-  const userSearchResults = useMemo(() => {
-    const query = userSearch.toLowerCase();
-    const items = filteredResponses.map((response, idx) => ({
-      response,
-      idx,
-      name: getRespondentName(response),
-    }));
-    if (!query) return items;
-    const matched = items.filter(({ name }) =>
-      name.toLowerCase().includes(query),
-    );
-    matched.sort((a, b) => {
-      const aStarts = a.name.toLowerCase().startsWith(query) ? 0 : 1;
-      const bStarts = b.name.toLowerCase().startsWith(query) ? 0 : 1;
-      return aStarts - bStarts;
-    });
-    return matched;
-  }, [filteredResponses, userSearch, getRespondentName]);
-
-  const handleUserSearchKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" && userSearchResults.length > 0) {
-        e.preventDefault();
-        setPage(userSearchResults[0].idx + 1);
-        setUserSearch("");
-        setUserDropdownOpen(false);
-      }
-    },
-    [userSearchResults],
-  );
-
-  const currentResponseVariantName = currentResponse
-    ? getResponseVariantName(currentResponse)
-    : null;
-
-  // Every response, so the date does not move with the search or a filter.
-  const releaseDate = useMemo(() => {
-    const earliest = responses.reduce<string | null>(
-      (oldest, response) =>
-        oldest === null || response.createdAt < oldest
-          ? response.createdAt
-          : oldest,
-      null,
-    );
-    return earliest
-      ? new Date(earliest).toLocaleDateString(undefined, {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })
-      : null;
-  }, [responses]);
+  const respondentSearch = useRespondentSearch({
+    responses: filteredResponses,
+    getRespondentName,
+    onSelect: useCallback((index: number) => setPage(index + 1), []),
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div>
-                <div className="flex items-baseline gap-2">
-                  <h1 className="text-xl font-semibold text-gray-900">
-                    {title}
-                  </h1>
-                  {releaseDate && (
-                    <span className="text-sm text-gray-500">
-                      Released {releaseDate}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-500">
-                  {withCount(total, "response")}
-                </p>
-                {referralsError && (
-                  <p className="text-sm text-red-500">{referralsError}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-2 ml-3">
-                <Button
-                  onClick={() => updateParams({ tab: "responses" })}
-                  color={
-                    tab === "responses" ? ButtonColor.Black : ButtonColor.White
+        <FormResponsesHeader
+          title={title}
+          responses={responses}
+          total={total}
+          referralsError={referralsError}
+          tab={tab}
+          onTabChange={(next) =>
+            updateParams(
+              next === "questions"
+                ? { tab: next, questionField: selectedQuestionFieldId || null }
+                : { tab: next },
+            )
+          }
+          variantOptions={variantOptions}
+          selectedVariantKey={variantParam}
+          onVariantChange={(key) => updateParams({ variant: key })}
+          onRefresh={onRefresh}
+          onReassignSnapshots={
+            snapshotTargets && snapshotTargets.length > 0
+              ? () => {
+                  if (directSnapshotTarget) {
+                    goToSnapshots(directSnapshotTarget.formId);
+                  } else {
+                    setPickingSnapshotTarget(true);
                   }
-                  size="small"
-                >
-                  Responses
-                </Button>
-                <Button
-                  onClick={() => updateParams({ tab: "stats" })}
-                  color={
-                    tab === "stats" ? ButtonColor.Black : ButtonColor.White
-                  }
-                  size="small"
-                >
-                  Stats
-                </Button>
-                <Button
-                  onClick={() =>
-                    updateParams({
-                      tab: "questions",
-                      questionField: selectedQuestionFieldId || null,
-                    })
-                  }
-                  color={
-                    tab === "questions" ? ButtonColor.Black : ButtonColor.White
-                  }
-                  size="small"
-                >
-                  Questions
-                </Button>
-                <Button
-                  onClick={() => updateParams({ tab: "replays" })}
-                  color={
-                    tab === "replays" ? ButtonColor.Black : ButtonColor.White
-                  }
-                  size="small"
-                >
-                  Replays
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {variantOptions && variantOptions.length > 0 && (
-                <select
-                  value={variantParam || "all"}
-                  onChange={(e) =>
-                    updateParams({
-                      variant: e.target.value === "all" ? null : e.target.value,
-                    })
-                  }
-                  className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-black focus:outline-none"
-                  title="Filter by variant"
-                >
-                  <option value="all">All variants</option>
-                  {variantOptions.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <Button
-                onClick={onRefresh}
-                color={ButtonColor.White}
-                size="small"
-              >
-                Refresh
-              </Button>
-              {snapshotTargets && snapshotTargets.length > 0 && (
-                <Button
-                  onClick={() => {
-                    if (directSnapshotTarget) {
-                      goToSnapshots(directSnapshotTarget.formId);
-                    } else {
-                      setPickingSnapshotTarget(true);
-                    }
-                  }}
-                  color={ButtonColor.White}
-                  size="small"
-                >
-                  Reassign snapshots
-                </Button>
-              )}
-              <Button
-                onClick={handleExportCsv}
-                disabled={scopedResponses.length === 0}
-                color={ButtonColor.Black}
-                size="small"
-              >
-                Export CSV
-              </Button>
-              <Button
-                onClick={handleExportHtml}
-                disabled={responses.length === 0}
-                color={ButtonColor.White}
-                size="small"
-              >
-                Export HTML
-              </Button>
-            </div>
-          </div>
-        </div>
-        {/* Response Navigator (inside header) */}
+                }
+              : undefined
+          }
+          onExportCsv={handleExportCsv}
+          onExportHtml={handleExportHtml}
+        />
         {tab === "replays" && !loading && !error && filteredTotal > 0 && (
-          <div className="px-6 pb-4 border-t border-gray-100 pt-3">
-            {filterSummary && (
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                <div className="text-sm text-gray-600">
-                  Filtered:{" "}
-                  <span className="font-medium text-gray-900">
-                    {filterSummary.fieldLabel}
-                  </span>{" "}
-                  — {filterSummary.description}{" "}
-                  <span className="text-gray-400">
-                    ({filteredTotal} of {total})
-                  </span>
-                </div>
-                <Button
-                  onClick={clearFilter}
-                  color={ButtonColor.White}
-                  size="small"
-                >
-                  Clear filter
-                </Button>
-              </div>
-            )}
-            <div className="flex items-center justify-between flex-wrap md:flex-nowrap gap-3">
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                onPageChange={setPage}
-              />
-
-              {/* User Search Dropdown */}
-              <div className="relative" ref={userSearchRef}>
-                <input
-                  type="text"
-                  value={userSearch}
-                  onChange={(e) => {
-                    setUserSearch(e.target.value);
-                    setUserDropdownOpen(true);
-                  }}
-                  onFocus={() => setUserDropdownOpen(true)}
-                  onKeyDown={handleUserSearchKeyDown}
-                  placeholder="Search by name..."
-                  className="w-56 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-black focus:outline-none"
-                />
-                {userDropdownOpen && (
-                  <div className="absolute z-30 mt-1 w-72 max-h-64 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                    {userSearchResults.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-gray-500">
-                        No matching responses
-                      </div>
-                    ) : (
-                      userSearchResults.map(({ response, idx, name }) => (
-                        <button
-                          key={response.id ?? `${response.sid}-${idx}`}
-                          type="button"
-                          className={cn(
-                            "w-full text-left px-3 py-2 text-sm hover:bg-gray-100 border-b border-gray-50 last:border-b-0",
-                            idx + 1 === page && "bg-blue-50 font-medium",
-                          )}
-                          onClick={() => {
-                            setPage(idx + 1);
-                            setUserSearch("");
-                            setUserDropdownOpen(false);
-                          }}
-                        >
-                          <div className="truncate text-gray-900">{name}</div>
-                          <div className="text-xs text-gray-500">
-                            {new Date(response.createdAt).toLocaleString()}
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Response Info */}
-              {currentResponse && (
-                <div className="flex items-center gap-4">
-                  <div className="text-right min-w-[200px]">
-                    <div className="flex items-center justify-end gap-2">
-                      <p className="font-medium text-gray-900 truncate max-w-[700px]">
-                        {respondentName}
-                      </p>
-                      {currentResponseVariantName && (
-                        <IdentityChip
-                          seed={currentResponseVariantName}
-                          label={currentResponseVariantName}
-                        />
-                      )}
-                      {currentWithdrawal && (
-                        <WithdrawalInfo withdrawal={currentWithdrawal} />
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-500">
-                      {new Date(currentResponse.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  {currentResponse.sessionReplayUrl && (
-                    <Button
-                      size="small"
-                      color={ButtonColor.BlueOutline}
-                      onClick={() =>
-                        window.open(
-                          "https://us.posthog.com/project/188181/replay/home?sessionRecordingId=" +
-                            currentResponse.sessionReplayUrl!.substring(
-                              currentResponse.sessionReplayUrl!.lastIndexOf(
-                                "/",
-                              ) + 1,
-                            ),
-                          "_blank",
-                        )
-                      }
-                    >
-                      <CirclePlay size={14} className="mr-1.5" />
-                      Replay
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          <ResponseReplayNavigator
+            filterSummary={filterSummary}
+            filteredTotal={filteredTotal}
+            total={total}
+            onClearFilter={clearFilter}
+            page={page}
+            onPageChange={setPage}
+            search={respondentSearch}
+            currentResponse={currentResponse}
+            getRespondentName={getRespondentName}
+            getResponseVariantName={getResponseVariantName}
+            withdrawnUserMap={withdrawnUserMap}
+          />
         )}
       </div>
 
       {tab === "replays" && (
-        <div className="px-2">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-gray-500">Loading responses...</p>
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-red-500">{error}</p>
-            </div>
-          ) : filteredTotal === 0 ? (
-            <Card style={CardStyle.White} className="flex items-center gap-3">
-              <p className="text-gray-600">{emptyStateMessage}</p>
-              {filterSummary && (
-                <Button
-                  onClick={clearFilter}
-                  color={ButtonColor.White}
-                  size="small"
-                >
-                  Clear filter
-                </Button>
-              )}
-            </Card>
-          ) : (
-            <>
-              {/* Form Response */}
-              {form !== null && (
-                <div className="max-w-[600px] mx-auto">
-                  {(() => {
-                    const responseSchema =
-                      (currentResponse?.schemaSnapshot as unknown as FormSchema) ??
-                      form.schema;
-                    return (
-                      <div className="bg-white p-6 border border-gray-200 rounded-lg">
-                        <FormRenderer
-                          id={currentResponse?.formId ?? form.id}
-                          formSnapshotId={
-                            currentResponse?.formSnapshotId ??
-                            form.formSnapshotId
-                          }
-                          actionId={0}
-                          form={responseSchema}
-                          completedFormResponse={currentResponse}
-                          renderFormAsCompleted
-                          onSubmit={null}
-                          userId={currentResponse?.user?.id}
-                          user={currentResponse?.user ?? undefined}
-                          adminPreviewUserId={currentResponse?.user?.id}
-                          showVariableError
-                          disableOptionRandomization
-                          fieldLabelRightContent={currentResponseAiInlineLabels}
-                        />
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        <ResponseReplay
+          loading={loading}
+          error={error}
+          form={form}
+          filteredTotal={filteredTotal}
+          filterActive={filterSummary !== null}
+          onClearFilter={clearFilter}
+          currentResponse={currentResponse}
+          fieldsById={fieldsById}
+        />
       )}
       {tab === "responses" && (
         <div className="px-2 py-3">
@@ -1013,149 +452,21 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
         />
       )}
       {tab === "questions" && (
-        <div className="px-2">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-gray-500">Loading responses...</p>
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-red-500">{error}</p>
-            </div>
-          ) : orderedFieldIds.length === 0 ? (
-            <Card style={CardStyle.White}>
-              <p className="text-gray-600">No answerable questions found.</p>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex flex-col gap-2 mt-3">
-                <label
-                  htmlFor="question-field-select"
-                  className="text-xs font-semibold tracking-wide text-gray-600 uppercase"
-                >
-                  Question
-                </label>
-                <select
-                  id="question-field-select"
-                  value={selectedQuestionFieldId}
-                  onChange={(event) =>
-                    updateParams({ questionField: event.target.value })
-                  }
-                  className="w-full max-w-xl rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-black focus:outline-none"
-                >
-                  {orderedFieldIds.map((fieldId) => (
-                    <option key={fieldId} value={fieldId}>
-                      {fieldLabels.get(fieldId) ?? fieldId}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {questionResponses.length === 0 ? (
-                <Card style={CardStyle.White}>
-                  <p className="text-gray-600">
-                    No users responded to this question.
-                  </p>
-                </Card>
-              ) : (
-                <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-                  <div className="grid grid-cols-1 gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold tracking-wide text-gray-600 uppercase md:grid-cols-[260px_minmax(0,1fr)_auto]">
-                    <div>Respondent</div>
-                    <div>Answer</div>
-                    {selectedQuestionField &&
-                      AI_SCORE_FIELD_KINDS.has(selectedQuestionField.kind) && (
-                        <div>AI Score</div>
-                      )}
-                  </div>
-                  {questionResponses.map((response, index) => {
-                    const answerValue = selectedQuestionFieldId
-                      ? response.answers?.[selectedQuestionFieldId]
-                      : null;
-                    const variantName = getResponseVariantName(response);
-                    const aiDetection =
-                      selectedQuestionField &&
-                      AI_SCORE_FIELD_KINDS.has(selectedQuestionField.kind)
-                        ? (response.aiDetectionResults ?? []).find(
-                            (d) =>
-                              d.fieldPath ===
-                              `answers.${selectedQuestionFieldId}`,
-                          )
-                        : null;
-                    return (
-                      <div
-                        key={
-                          response.id ??
-                          `${response.sid ?? "anonymous"}-${
-                            response.createdAt
-                          }-${index}`
-                        }
-                        className={cn(
-                          "grid grid-cols-1 gap-1 border-b border-gray-100 px-3 py-2 last:border-b-0 md:gap-3",
-                          selectedQuestionField &&
-                            AI_SCORE_FIELD_KINDS.has(selectedQuestionField.kind)
-                            ? "md:grid-cols-[260px_minmax(0,1fr)_auto]"
-                            : "md:grid-cols-[260px_minmax(0,1fr)]",
-                        )}
-                      >
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <p className="truncate text-sm font-semibold text-gray-900">
-                              {getRespondentName(response)}
-                            </p>
-                            {variantName && (
-                              <IdentityChip
-                                seed={variantName}
-                                label={variantName}
-                                className="shrink-0"
-                              />
-                            )}
-                            {response.user?.id != null &&
-                              withdrawnUserMap.has(response.user.id) && (
-                                <WithdrawalBadge className="shrink-0" />
-                              )}
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            {new Date(response.createdAt).toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm text-gray-800 whitespace-pre-wrap break-words leading-5">
-                            {formatSelectedQuestionAnswer(
-                              answerValue,
-                              response,
-                            )}
-                          </p>
-                        </div>
-                        {selectedQuestionField &&
-                          AI_SCORE_FIELD_KINDS.has(
-                            selectedQuestionField.kind,
-                          ) && (
-                            <div className="flex items-start">
-                              <span
-                                className={cn(
-                                  "text-sm font-semibold",
-                                  aiDetection &&
-                                    typeof aiDetection.aiProbability ===
-                                      "number" &&
-                                    aiDetection.aiProbability > 0
-                                    ? "text-red-600"
-                                    : "text-gray-400",
-                                )}
-                              >
-                                {formatAiScore(
-                                  aiDetection?.aiProbability ?? null,
-                                )}
-                              </span>
-                            </div>
-                          )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <QuestionResponses
+          loading={loading}
+          error={error}
+          responses={scopedResponses}
+          orderedFieldIds={orderedFieldIds}
+          fieldLabels={fieldLabels}
+          fieldsById={fieldsById}
+          selectedQuestionFieldId={selectedQuestionFieldId}
+          onSelectQuestionField={(fieldId) =>
+            updateParams({ questionField: fieldId })
+          }
+          getResponseVariantName={getResponseVariantName}
+          getRespondentName={getRespondentName}
+          withdrawnUserMap={withdrawnUserMap}
+        />
       )}
 
       {snapshotPickerTargets && (
