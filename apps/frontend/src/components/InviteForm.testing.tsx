@@ -53,6 +53,8 @@ interface InviteFormApi {
   onetimeBodies: unknown[];
   reusableBodies: unknown[];
   communityBodies: unknown[];
+  communityRefusal: { status: number; message: string } | null;
+  communityUnreachable: boolean;
   copied: string[];
 }
 
@@ -66,6 +68,8 @@ const freshApi = (): InviteFormApi => ({
   onetimeBodies: [],
   reusableBodies: [],
   communityBodies: [],
+  communityRefusal: null,
+  communityUnreachable: false,
   copied: [],
 });
 
@@ -102,6 +106,11 @@ export const serveInviteForm = () => {
       "POST /community/create": async ({ request }) => {
         api.communityBodies.push(await request.json());
         await api.createHeld;
+        if (api.communityUnreachable) throw new TypeError("Failed to fetch");
+        if (api.communityRefusal !== null) {
+          const { status, message } = api.communityRefusal;
+          return Response.json({ message, statusCode: status }, { status });
+        }
         const created = makeCommunity({
           id: 11,
           name: "First's Group",

@@ -4,16 +4,15 @@ import {
   isMaxCapacityRequired,
   validateCommunitySettings,
 } from "@alliance/common/community";
-import { errorMessage } from "@alliance/common/errorMessage";
 import { nameParts } from "@alliance/common/nameParts";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  CommunityDto,
-  CreateCommunityDto,
-  communityCreateCommunity,
-} from "@alliance/shared/client";
+import { CommunityDto, CreateCommunityDto } from "@alliance/shared/client";
 import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { groupSettings } from "@alliance/shared/lib/copy";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
+import {
+  CREATE_GROUP_SESSION_EXPIRED,
+  useMyCommunities,
+} from "@alliance/shared/lib/useMyCommunities";
 import { cn } from "@alliance/shared/styles/util";
 import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -51,6 +50,7 @@ const CommunityCreateForm = ({
   onCancel,
   onSuccess,
 }: CommunityCreateFormProps) => {
+  const { createCommunity } = useMyCommunities();
   const initialFormValues = useMemo<CreateCommunityDto>(() => {
     const firstName = name && nameParts(name).firstname;
     return {
@@ -83,30 +83,25 @@ const CommunityCreateForm = ({
     setIsSubmitting(true);
     setError(null);
     try {
-      const response = await communityCreateCommunity({
-        body: {
-          ...formValues,
-          photo: photoUrl ?? undefined,
-          maxCapacity: validated.value.maxCapacity,
-        },
+      const community = await createCommunity({
+        ...formValues,
+        photo: photoUrl ?? undefined,
+        maxCapacity: validated.value.maxCapacity,
       });
-      if (response.data) {
-        await onSuccess(response.data);
-      } else {
-        setError(
-          errorMessage({
-            error: response.error,
-            fallback: "Failed to create community",
-          }),
-        );
-      }
+      await onSuccess(community);
     } catch (err) {
       console.error("Failed to create community:", err);
-      setError("Failed to create community");
+      setError(
+        thrownRefusalMessage({
+          error: err,
+          fallback: "Failed to create community",
+          sessionExpired: CREATE_GROUP_SESSION_EXPIRED,
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
-  }, [formValues, photoUrl, onSuccess]);
+  }, [createCommunity, formValues, photoUrl, onSuccess]);
 
   useEffect(() => {
     if (!submitRef) {

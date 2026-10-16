@@ -6,15 +6,20 @@ import {
 } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import {
+  communityCreateCommunity,
   CommunityDto,
   communityGetMyCommunities,
   communityJoinPublicCommunity,
   communityLeave,
+  CreateCommunityDto,
 } from "../client";
 import { failedToLoad } from "./failedToLoad";
 import { queryKeys } from "./queryKeys";
 
 const QUERY_KEY = queryKeys.myCommunities();
+
+export const CREATE_GROUP_SESSION_EXPIRED =
+  "Your session has expired. Sign in again to create a group.";
 
 /** Refetches every list a change to the user's group membership alters: their
  * groups, and the public groups' member counts. */
@@ -41,10 +46,10 @@ function findCommunityById(
  * Consume this instead of calling the generated client directly, so the request
  * is de-duplicated and cache mutations stay consistent across screens.
  *
- * Leaving a group or joining a public one throws when refused. Leaving drops
- * the group from the cache at once. Joining resolves only once the user's
- * groups have been refetched, since the server also removes the user from
- * every group they don't lead.
+ * Creating a group, leaving one, or joining a public one throws when refused.
+ * Creating adds the group to the cache at once, and leaving drops it.
+ * Joining resolves only once the user's groups have been refetched, since the
+ * server also removes the user from every group they don't lead.
  */
 export function useMyCommunities(params?: {
   selectedCommunityId?: number | null;
@@ -120,6 +125,19 @@ export function useMyCommunities(params?: {
     [queryClient],
   );
 
+  const { mutateAsync: createCommunity } = useMutation({
+    mutationFn: (body: CreateCommunityDto) =>
+      communityCreateCommunity({ body, throwOnError: true }).then(
+        (response) => response.data,
+      ),
+    // Offline, the create fails its form at once instead of pausing.
+    networkMode: "always",
+    onSuccess: (community) => {
+      updateCommunity(community);
+      void refreshMemberships(queryClient);
+    },
+  });
+
   const { mutateAsync: leaveCommunity, isPending: isLeaving } = useMutation({
     mutationFn: (communityId: number) =>
       communityLeave({ path: { communityId }, throwOnError: true }),
@@ -155,6 +173,7 @@ export function useMyCommunities(params?: {
     removeCommunity,
     removeMemberFromCommunity,
     updateCommunity,
+    createCommunity,
     leaveCommunity,
     isLeaving,
     joinPublicCommunity,
