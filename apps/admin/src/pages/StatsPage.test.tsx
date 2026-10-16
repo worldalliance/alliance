@@ -14,6 +14,7 @@ afterEach(cleanup);
 let clickRatesStatus = 200;
 let dailyStatsStatus = 200;
 let dailyStatsRequests: URL[] = [];
+let inviteFunnelStatus = 200;
 
 serveApi(
   routes({
@@ -29,7 +30,15 @@ serveApi(
     "GET /analytics/time-to-churn": () => Response.json([]),
     "GET /analytics/contract-status-history": () => Response.json([]),
     "GET /analytics/aggregate-stats": () => Response.json(null),
-    "GET /analytics/invite-funnel": () => Response.json(null),
+    "GET /analytics/invite-funnel": () =>
+      inviteFunnelStatus === 200
+        ? Response.json({
+            invitesCreated: 4,
+            invitesUsed: 3,
+            contractSigned: 2,
+            onboardingCompleted: 1,
+          })
+        : Response.json({}, { status: inviteFunnelStatus }),
     "GET /analytics/reminder-group-click-rates": () =>
       clickRatesStatus === 200
         ? Response.json([])
@@ -41,6 +50,7 @@ afterEach(() => {
   clickRatesStatus = 200;
   dailyStatsStatus = 200;
   dailyStatsRequests = [];
+  inviteFunnelStatus = 200;
 });
 
 const renderPage = () => {
@@ -137,5 +147,23 @@ describe("StatsPage daily stats", () => {
         dailyStatsRequests.map((url) => url.searchParams.get("endDate")),
       ).toContain("2026-02-10T00:00:00.000Z"),
     );
+  });
+});
+
+describe("StatsPage invite funnel", () => {
+  it("charts the funnel's stages", async () => {
+    renderPage();
+
+    await screen.findByText("Finished Onboarding");
+    expect(screen.queryByText("Loading invite funnel...")).toBeNull();
+  });
+
+  it("says the load failed instead of charting nothing", async () => {
+    inviteFunnelStatus = 500;
+
+    renderPage();
+
+    await screen.findByText("Unable to load the invite funnel.");
+    expect(screen.queryByText("Loading invite funnel...")).toBeNull();
   });
 });

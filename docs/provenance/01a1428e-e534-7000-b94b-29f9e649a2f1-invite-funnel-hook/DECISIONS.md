@@ -1,0 +1,3 @@
+- `useInviteFunnelAdmin` in `apps/admin/src/lib` owns the load under `queryKeys.inviteFunnelAdmin(range)`, following `useDailyStatsAdmin` in the same page.
+- The hook throws on a refused request. A failed load shows its refusal message, or "Unable to load the invite funnel.", where it previously logged to the console and showed "No invite funnel data." The endpoint always returns a funnel, so that empty message only ever stood in for a failure and goes.
+- `placeholderData: keepPreviousData` keeps the previous range's chart up while a new range loads, as the local state did; typing in the date inputs refetches on every change, as before.

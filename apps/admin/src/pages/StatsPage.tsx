@@ -2,7 +2,6 @@
 import {
   analyticsGetAggregateStatsAdmin,
   analyticsGetContractStatusHistoryAdmin,
-  analyticsGetInviteFunnelAdmin,
   analyticsGetMemberCompletionRetentionAdmin,
   analyticsGetMemberReliabilityWindowAdmin,
   analyticsGetMissedActionsAdmin,
@@ -14,7 +13,6 @@ import {
   AggregateStatsDto,
   ContractStatusPointDto,
   DailyStatsDto,
-  InviteFunnelDto,
   MemberCompletionRetentionCohortDto,
   MemberReliabilityWindowDto,
   MissedActionsDto,
@@ -56,6 +54,7 @@ import { adminRefusalMessage } from "../lib/adminRefusal";
 import { defaultInviteFunnelRange } from "../lib/defaultInviteFunnelRange";
 import { useActionStats } from "../lib/useActionStats";
 import { useDailyStatsAdmin } from "../lib/useDailyStatsAdmin";
+import { useInviteFunnelAdmin } from "../lib/useInviteFunnelAdmin";
 import { useReminderGroupClickRatesAdmin } from "../lib/useReminderGroupClickRatesAdmin";
 
 type ParsedDailyStats = DailyStatsDto & { parsedDate: Date };
@@ -359,11 +358,6 @@ const StatsPage: React.FC = () => {
       end: dateToInputValue(end),
     };
   });
-  const [inviteFunnel, setInviteFunnel] = useState<InviteFunnelDto | null>(
-    null,
-  );
-  const [inviteFunnelLoading, setInviteFunnelLoading] =
-    useState<boolean>(false);
   const [inviteFunnelRange, setInviteFunnelRange] = useState(() =>
     defaultInviteFunnelRange(new Date()),
   );
@@ -417,6 +411,12 @@ const StatsPage: React.FC = () => {
     isPending: reminderGroupClickRatesLoading,
     isError: reminderGroupClickRatesLoadFailed,
   } = useReminderGroupClickRatesAdmin();
+
+  const {
+    data: inviteFunnel,
+    isPending: inviteFunnelLoading,
+    error: inviteFunnelError,
+  } = useInviteFunnelAdmin(inviteFunnelRange);
 
   const loadRetentionCohorts = useCallback(async () => {
     setRetentionLoading(true);
@@ -534,27 +534,6 @@ const StatsPage: React.FC = () => {
   useEffect(() => {
     void loadTimeToChurnSamples();
   }, [loadTimeToChurnSamples]);
-
-  const loadInviteFunnel = useCallback(async () => {
-    setInviteFunnelLoading(true);
-    try {
-      const response = await analyticsGetInviteFunnelAdmin({
-        query: {
-          startDate: inviteFunnelRange.start,
-          endDate: inviteFunnelRange.end,
-        },
-      });
-      setInviteFunnel(response.data ?? null);
-    } catch (err) {
-      console.error("Failed to load invite funnel", err);
-    } finally {
-      setInviteFunnelLoading(false);
-    }
-  }, [inviteFunnelRange]);
-
-  useEffect(() => {
-    void loadInviteFunnel();
-  }, [loadInviteFunnel]);
 
   const loadContractStatusHistory = useCallback(async () => {
     setContractStatusLoading(true);
@@ -1926,11 +1905,16 @@ const StatsPage: React.FC = () => {
           </div>
         </div>
         <div className="relative p-4">
-          {inviteFunnelLoading && !inviteFunnel && (
+          {inviteFunnelLoading && (
             <p className="text-sm text-gray-600">Loading invite funnel...</p>
           )}
-          {!inviteFunnelLoading && !inviteFunnel && (
-            <p className="text-sm text-gray-600">No invite funnel data.</p>
+          {inviteFunnelError && (
+            <p className="text-sm text-red-600">
+              {adminRefusalMessage(
+                inviteFunnelError,
+                "Unable to load the invite funnel.",
+              )}
+            </p>
           )}
           {inviteFunnelGeometry && inviteFunnel && (
             <svg
