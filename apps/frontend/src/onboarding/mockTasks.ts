@@ -20,6 +20,7 @@ function mockTask(
   return {
     ...fields,
     image: "",
+    squareThumbnailImageAlt: null,
     status: "member_action",
     visibilityMode: "public",
     isContractSigningAction: false,

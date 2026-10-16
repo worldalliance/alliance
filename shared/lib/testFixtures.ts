@@ -66,6 +66,7 @@ export function makeAction(
     body: "",
     shortDescription: "",
     timeEstimate: null,
+    squareThumbnailImageAlt: null,
     createdAt: new Date(0).toISOString(),
     updatedAt: new Date(0).toISOString(),
     isContractSigningAction: false,

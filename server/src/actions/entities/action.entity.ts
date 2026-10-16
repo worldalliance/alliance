@@ -122,15 +122,16 @@ export class Action {
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   squareThumbnailImage?: string;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({
+    type: String,
+    nullable: true,
     description: "Square thumbnail image alt for the action",
   })
   @IsOptional()
   @IsString()
   @Transform(trimToNull)
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  squareThumbnailImageAlt?: string;
+  squareThumbnailImageAlt: string | null;
 
   @Column()
   @ApiProperty({ description: "markdown page body" })
