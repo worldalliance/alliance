@@ -1,14 +1,8 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import {
-  COMMUNITY_DESCRIPTION_MAX_LENGTH,
-  COMMUNITY_NAME_MAX_LENGTH,
-} from "@alliance/common/community";
 import {
   calculateAllCompletionData,
   CompletionData,
 } from "@alliance/shared/lib/actionUtils";
 import { getMemberCount, isLedBy } from "@alliance/shared/lib/communityUtils";
-import { groupSettings } from "@alliance/shared/lib/copy";
 import { Features } from "@alliance/shared/lib/features";
 import { useCommunityCompletedActionsCount } from "@alliance/shared/lib/useCommunityCompletedActionsCount";
 import { useCommunityConversation } from "@alliance/shared/lib/useCommunityConversation";
@@ -17,14 +11,10 @@ import { useCommunityMemberInfo } from "@alliance/shared/lib/useCommunityMemberI
 import { useIncomingCommunityInvites } from "@alliance/shared/lib/useIncomingCommunityInvites";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { cn } from "@alliance/shared/styles/util";
-import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
-import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import BottomSpacer from "@alliance/sharedweb/ui/BottomSpacer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import CharacterLimitNotice from "@alliance/sharedweb/ui/CharacterLimitNotice";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
 import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
@@ -34,9 +24,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { href, Link, useSearchParams } from "react-router";
 import CommunityActivityTab from "../../components/CommunityActivityTab";
 import CommunityInvitesLeaderTab from "../../components/CommunityInvitesLeaderTab";
+import CommunityProfile from "../../components/CommunityProfile";
 import CommunitySelectDropdown from "../../components/CommunitySelectDropdown";
 import FloatingChatPanel from "../../components/FloatingChatpanel";
-import ImageEditor from "../../components/ImageEditor";
 import PillTab from "../../components/PillTab";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import { useAuth } from "../../lib/AuthContext";
@@ -201,32 +191,7 @@ const CommunityPage = () => {
     [removeCommunity, setParams],
   );
 
-  const {
-    isEditing,
-    setIsEditing,
-    editName,
-    setEditName,
-    editDescription,
-    setEditDescription,
-    editPublic,
-    setEditPublic,
-    editAllowMemberInvites,
-    setEditAllowMemberInvites,
-    editAllowStaffAssignments,
-    setEditAllowStaffAssignments,
-    editMaxCapacity,
-    setEditMaxCapacity,
-    editPhotoUrl,
-    setEditPhotoUrl,
-    photoEditorKey,
-    isSaving,
-    error,
-    isPhotoUploadPending,
-    useMaxCapacity,
-    handleSave,
-    handleCancel,
-    handleDelete,
-  } = useCommunityEditor({
+  const editor = useCommunityEditor({
     community,
     memberCount,
     onUpdated: updateCommunity,
@@ -304,7 +269,6 @@ const CommunityPage = () => {
   const nonLeaderMembers = community.users.filter(
     (user) => !isLedBy(community, user.id),
   );
-  const canDelete = (amLeader && community.users.length === 1) ?? false;
 
   return (
     <TwoColumnLayout
@@ -334,223 +298,12 @@ const CommunityPage = () => {
                 className="relative z-0 px-4 md:px-8 pb-6 gap-y-2"
                 data-walkthrough={WalkthroughAnchor.Group}
               >
-                {isEditing ? (
-                  <ImageEditor
-                    key={photoEditorKey}
-                    className="mt-[-55px]"
-                    initialImageUrl={editPhotoUrl}
-                    onChange={setEditPhotoUrl}
-                    canRemove
-                    allowedMimeTypes={sharp_allowed_mime_types}
-                    isUploading={isPhotoUploadPending}
-                  />
-                ) : (
-                  <AvatarProfile
-                    pfp={community.photo ?? null}
-                    size="huge"
-                    className="mt-[-55px]"
-                  />
-                )}
-                <div className="absolute right-0 top-0 z-10 flex flex-row flex-wrap items-start justify-end gap-2 p-5">
-                  {amLeader && (
-                    <>
-                      {isEditing ? (
-                        <div className="flex flex-row flex-wrap justify-end gap-x-1 gap-y-1">
-                          {canDelete && (
-                            <Button
-                              color={ButtonColor.Red}
-                              onClick={handleDelete}
-                              disabled={isSaving}
-                            >
-                              Delete
-                            </Button>
-                          )}
-                          <Button
-                            color={ButtonColor.Light}
-                            onClick={handleCancel}
-                            disabled={isSaving}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            color={ButtonColor.Blue}
-                            onClick={handleSave}
-                            disabled={isSaving || !editName.trim()}
-                          >
-                            {isSaving ? "Saving..." : "Save"}
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          color={ButtonColor.White}
-                          onClick={() => setIsEditing(true)}
-                        >
-                          Edit
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
-                <div className="flex flex-col gap-y-4 mb-2 mt-3">
-                  {isEditing ? (
-                    <div className="flex flex-col gap-y-4">
-                      <div className="flex flex-col gap-1">
-                        <input
-                          type="text"
-                          value={editName}
-                          maxLength={COMMUNITY_NAME_MAX_LENGTH}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="text-title-small w-full border-none !bg-zinc-100 px-2 -mx-2 rounded focus:outline-none"
-                          placeholder="Enter group name"
-                        />
-                        <CharacterLimitNotice
-                          value={editName}
-                          max={COMMUNITY_NAME_MAX_LENGTH}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <textarea
-                          value={editDescription}
-                          maxLength={COMMUNITY_DESCRIPTION_MAX_LENGTH}
-                          onChange={(e) => setEditDescription(e.target.value)}
-                          rows={6}
-                          className="w-full border-none !bg-zinc-100 px-2 -mx-2 rounded focus:outline-none p-2"
-                          placeholder="Enter group description..."
-                        />
-                        <CharacterLimitNotice
-                          value={editDescription}
-                          max={COMMUNITY_DESCRIPTION_MAX_LENGTH}
-                        />
-                      </div>
-                      <div className="mt-3 rounded border border-zinc-200 bg-zinc-50 p-3">
-                        <div className="flex flex-col gap-y-3">
-                          <label
-                            className="flex items-start gap-x-2 text-black text-sm font-semibold"
-                            htmlFor="public"
-                          >
-                            <input
-                              id="public"
-                              type="checkbox"
-                              checked={editPublic}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                setEditPublic(checked);
-                                if (checked) {
-                                  setEditAllowMemberInvites(true);
-                                  setEditAllowStaffAssignments(true);
-                                }
-                              }}
-                              className="mt-1"
-                            />
-                            <div>
-                              <p className="text-base font-medium">
-                                {groupSettings.public.name}
-                              </p>
-                              <p className="text-sm text-zinc-500 font-normal">
-                                {groupSettings.public.explanation}
-                              </p>
-                            </div>
-                          </label>
-                          <label
-                            className="flex items-start gap-x-2 text-black text-sm font-semibold"
-                            htmlFor="allowMemberInvites"
-                          >
-                            <input
-                              id="allowMemberInvites"
-                              type="checkbox"
-                              checked={editAllowMemberInvites}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                setEditAllowMemberInvites(checked);
-                              }}
-                              disabled={editPublic}
-                              className="mt-1"
-                            />
-                            <div>
-                              <p className="text-base font-medium">
-                                {groupSettings.allowMemberInvites.name}
-                              </p>
-                              <p className="text-sm text-zinc-500 font-normal">
-                                {groupSettings.allowMemberInvites.explanation}
-                              </p>
-                            </div>
-                          </label>
-                          <label
-                            className="flex items-start gap-x-2 text-black text-sm font-semibold"
-                            htmlFor="allowStaffAssignments"
-                          >
-                            <input
-                              id="allowStaffAssignments"
-                              type="checkbox"
-                              checked={editAllowStaffAssignments}
-                              onChange={(e) =>
-                                setEditAllowStaffAssignments(e.target.checked)
-                              }
-                              disabled={editPublic}
-                              className="mt-1"
-                            />
-                            <div>
-                              <p className="text-base font-medium">
-                                {groupSettings.allowStaffAssignments.name}
-                              </p>
-                              <p className="text-sm text-zinc-500 font-normal">
-                                {
-                                  groupSettings.allowStaffAssignments
-                                    .explanation
-                                }
-                              </p>
-                            </div>
-                          </label>
-                        </div>
-                        {useMaxCapacity && (
-                          <div className="mt-4">
-                            <label
-                              className="text-black font-medium"
-                              htmlFor="maxCapacity"
-                            >
-                              <p className="text-base font-medium">
-                                {groupSettings.maxCapacity.name}
-                                {` (${memberCount} members)`}
-                              </p>
-                              <p className="text-sm text-zinc-500 font-normal">
-                                {groupSettings.maxCapacity.explanation}
-                              </p>
-                            </label>
-                            <input
-                              id="maxCapacity"
-                              type="number"
-                              min={Math.max(memberCount, 1)}
-                              value={editMaxCapacity ?? ""}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                const parsed = Number(value);
-                                setEditMaxCapacity(
-                                  value === "" || Number.isNaN(parsed)
-                                    ? null
-                                    : parsed,
-                                );
-                              }}
-                              className="mt-2 border border-zinc-300 rounded px-3 py-2 w-full bg-white"
-                            />
-                          </div>
-                        )}
-                      </div>
-                      {error && (
-                        <p className="text-red-500 text-sm mt-1">{error}</p>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-y-2">
-                      <div className="flex gap-2">
-                        <h1 className="text-title-small">{community.name}</h1>
-                      </div>
-                      <AppMarkdownWrapper
-                        markdownContent={community.description}
-                        className="mb-2 text-base"
-                      />
-                    </div>
-                  )}
-                </div>
+                <CommunityProfile
+                  community={community}
+                  amLeader={amLeader ?? false}
+                  memberCount={memberCount}
+                  editor={editor}
+                />
 
                 <div
                   className={cn(

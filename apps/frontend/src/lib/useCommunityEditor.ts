@@ -11,6 +11,8 @@ import {
 } from "@alliance/shared/client";
 import { useCallback, useEffect, useState } from "react";
 
+export type CommunityEditor = ReturnType<typeof useCommunityEditor>;
+
 export function useCommunityEditor(params: {
   community: CommunityDto | null;
   memberCount: number;
