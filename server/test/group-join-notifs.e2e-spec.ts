@@ -27,7 +27,7 @@ import {
 } from "src/user/entities/onetime-invite.entity";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { ReferralSource, User } from "src/user/entities/user.entity";
-import { UserService } from "src/user/user.service";
+import { GroupAssignmentService } from "src/user/group-assignment.service";
 import { In, Not, type Repository } from "typeorm";
 import {
   createTestApp,
@@ -43,7 +43,7 @@ describe("Group join notifications (e2e)", () => {
   let mmsRepo: Repository<Mms>;
   let communityService: CommunityService;
   let contractService: ContractService;
-  let userService: UserService;
+  let groupAssignmentService: GroupAssignmentService;
   let userCounter = 0;
 
   const createUser = async (
@@ -105,7 +105,7 @@ describe("Group join notifications (e2e)", () => {
     mmsRepo = ctx.dataSource.getRepository(Mms);
     communityService = ctx.app.get(CommunityService);
     contractService = ctx.app.get(ContractService);
-    userService = ctx.app.get(UserService);
+    groupAssignmentService = ctx.app.get(GroupAssignmentService);
   }, 50000);
 
   afterEach(async () => {
@@ -179,7 +179,7 @@ describe("Group join notifications (e2e)", () => {
     const first = await createUser({ undergoingGroupAssignment: true });
     const second = await createUser({ undergoingGroupAssignment: true });
 
-    await userService.assignGroupsAdmin({
+    await groupAssignmentService.assignGroupsAdmin({
       assignments: [
         { userId: first.id, communityId: group.id },
         { userId: second.id, communityId: group.id },
@@ -216,7 +216,7 @@ describe("Group join notifications (e2e)", () => {
     });
     const newcomer = await createUser({ undergoingGroupAssignment: true });
 
-    await userService.assignGroupsAdmin({
+    await groupAssignmentService.assignGroupsAdmin({
       assignments: [
         { userId: leaving.id, communityId: destination.id },
         { userId: staying.id, communityId: destination.id },

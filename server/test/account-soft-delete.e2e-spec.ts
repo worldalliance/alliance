@@ -8,6 +8,7 @@ import {
 } from "src/forum/entities/comment.entity";
 import { Post } from "src/forum/entities/post.entity";
 import { User } from "src/user/entities/user.entity";
+import { GroupAssignmentService } from "src/user/group-assignment.service";
 import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
@@ -166,7 +167,7 @@ describe("Account soft deletion (e2e)", () => {
     await deleteAccount(member);
 
     await expect(
-      ctx.app.get(UserService).joinGroupAssignment(member.id),
+      ctx.app.get(GroupAssignmentService).joinGroupAssignment(member.id),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(
       await userRepo.findOne({ where: { id: member.id }, withDeleted: true }),
