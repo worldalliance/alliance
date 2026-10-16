@@ -1,6 +1,6 @@
 import { publicDisplayName } from "@alliance/common/displayName";
-import { AlertTriangle } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import { FailedLoadsBanner } from "../components/FailedLoadsBanner";
 import {
   type DrawnGraph,
   ForceGraph,
@@ -58,10 +58,6 @@ const FriendGraphPage = () => {
   ]
     .filter((load) => load.failed)
     .map((load) => load.name);
-  const loadError =
-    failed.length > 0
-      ? `Could not load ${failed.join(", ")}. The graph below is incomplete.`
-      : null;
 
   const activeUsers = useMemo(
     () => users.filter((u) => u.hasActiveContract),
@@ -193,12 +189,11 @@ const FriendGraphPage = () => {
         </p>
       </div>
 
-      {loadError && (
-        <div className="flex items-start gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 shrink-0">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-          <span>{loadError}</span>
-        </div>
-      )}
+      <FailedLoadsBanner
+        failed={failed}
+        consequence="The graph below is incomplete."
+        className="border-b shrink-0"
+      />
 
       <div className="px-4 py-2 border-b border-gray-200 shrink-0 flex flex-wrap items-center gap-3 text-sm">
         <UserGraphFilterControls filters={filters} />
