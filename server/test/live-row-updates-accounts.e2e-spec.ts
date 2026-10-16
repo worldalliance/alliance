@@ -12,6 +12,7 @@ import { ContractService } from "src/contract/contract.service";
 import { ImagesService } from "src/images/images.service";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { AccountEmailService } from "src/user/account-email.service";
 import { AwayRangeEditor } from "src/user/away-range-history";
 import {
   OnetimeInvite,
@@ -353,12 +354,14 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
 
   it("verifies no email of a deleted account", async () => {
     const user = await member();
-    const token = await userService.getVerifyEmailToken(user.id);
+    const token = await ctx.app
+      .get(AccountEmailService)
+      .getVerifyEmailToken(user.id);
     await userRepo.softDelete(user.id);
 
-    await expect(userService.verifyEmail(token)).rejects.toThrow(
-      "Invalid or expired verification link",
-    );
+    await expect(
+      ctx.app.get(AccountEmailService).verifyEmail(token),
+    ).rejects.toThrow("Invalid or expired verification link");
     expect(
       await userRepo.findOneOrFail({
         where: { id: user.id },

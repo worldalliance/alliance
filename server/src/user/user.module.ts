@@ -16,6 +16,7 @@ import { Action } from "../actions/entities/action.entity";
 import { City } from "../geo/city.entity";
 import { Notification } from "../notifs/entities/notification.entity";
 import { AccountDeletionService } from "./account-deletion.service";
+import { AccountEmailService } from "./account-email.service";
 import { AmbassadorInviteGoalService } from "./ambassador-invite-goal.service";
 import { AmbassadorInviteStatsService } from "./ambassador-invite-stats.service";
 import { AmbassadorProgramService } from "./ambassador-program.service";
@@ -104,6 +105,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     UserVisibilityContextService,
     AccountDeletionService,
     UserAdminService,
+    AccountEmailService,
     IsUserAlreadyExist,
   ],
   exports: [
@@ -113,6 +115,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     ReferralService,
     FriendService,
     UserVisibilityContextService,
+    AccountEmailService,
   ],
 })
 export class UserModule {}

@@ -25,6 +25,7 @@ import { MaybeUserLocationDto } from "src/geo/city.dto";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { Public } from "../auth/public.decorator";
 import { AccountDeletionService } from "./account-deletion.service";
+import { AccountEmailService } from "./account-email.service";
 import { AmbassadorInviteGoalService } from "./ambassador-invite-goal.service";
 import { AmbassadorProgramService } from "./ambassador-program.service";
 import {
@@ -67,6 +68,7 @@ class VerifyEmailBody {
 export class UserController {
   constructor(
     private readonly userService: UserService,
+    private readonly accountEmailService: AccountEmailService,
     private readonly userAdminService: UserAdminService,
     private readonly accountDeletionService: AccountDeletionService,
     private readonly userVisibilityContextService: UserVisibilityContextService,
@@ -327,7 +329,7 @@ export class UserController {
   @Public()
   @ApiOkResponse()
   async verifyEmail(@Body() body: VerifyEmailBody): Promise<void> {
-    return this.userService.verifyEmail(body.token);
+    return this.accountEmailService.verifyEmail(body.token);
   }
 
   @Post("nmembers")

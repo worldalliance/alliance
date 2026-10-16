@@ -24,6 +24,7 @@ import {
 } from "src/user/entities/onetime-invite.entity";
 import type { Repository } from "src/utils/Repository";
 import { MailService } from "../mail/mail.service";
+import { AccountEmailService } from "../user/account-email.service";
 import {
   hasPassword,
   ReferralSource,
@@ -76,6 +77,7 @@ type PasswordSession = {
 export class AuthService {
   constructor(
     private usersService: UserService,
+    private readonly accountEmailService: AccountEmailService,
     private readonly friendService: FriendService,
     private readonly referralService: ReferralService,
     private jwtService: JwtService,
@@ -354,7 +356,7 @@ export class AuthService {
 
     // The user row is already committed; a mail failure must not fail the signup.
     const welcomeMail = await R.fromPromise(
-      this.usersService.sendWelcomeEmail(user.id),
+      this.accountEmailService.sendWelcomeEmail(user.id),
     );
     if (!welcomeMail.ok) {
       this.logger.error(

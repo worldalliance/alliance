@@ -5,14 +5,8 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { countBy } from "es-toolkit";
-import {
-  JWTTokenType,
-  type MailedJwtPayload,
-  verifyMailedToken,
-} from "src/auth/tokens";
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { Community } from "src/community/entities/community.entity";
 import {
@@ -25,7 +19,6 @@ import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { City } from "src/geo/city.entity";
 import { ImagesService } from "src/images/images.service";
-import { MailService } from "src/mail/mail.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
   member,
@@ -81,9 +74,7 @@ export class UserService {
     @InjectRepository(Friend)
     private readonly friendRepository: Repository<Friend>,
     private readonly shareUrlsService: ShareUrlsService,
-    private readonly jwtService: JwtService,
     private readonly imagesService: ImagesService,
-    private readonly mailService: MailService,
     private readonly eventLogService: EventLogService,
     private readonly notifsService: NotifsService,
   ) {}
@@ -367,53 +358,6 @@ export class UserService {
 
   async count(): Promise<number> {
     return this.userRepository.count();
-  }
-
-  async sendWelcomeEmail(userId: number) {
-    if (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "staging") {
-      return;
-    }
-
-    const user = await this.findOneOrFail(userId);
-    const token = await this.getVerifyEmailToken(userId);
-    const mail = await this.mailService.sendWelcomeEmail({
-      recipient: user.email,
-      name: user.name,
-      verifyToken: token,
-    });
-    await updateLive(this.dataSource.manager, {
-      target: User,
-      id: userId,
-      changes: { welcomeMail: mail },
-    });
-  }
-
-  async verifyEmail(token: string) {
-    const userId = await verifyMailedToken(this.jwtService, {
-      token,
-      tokenType: JWTTokenType.verifyEmail,
-    });
-    if (
-      !userId.ok ||
-      !(await updateLive(this.dataSource.manager, {
-        target: User,
-        id: userId.value,
-        changes: { emailVerified: true },
-      }))
-    ) {
-      throw new BadRequestException("Invalid or expired verification link");
-    }
-  }
-
-  async getVerifyEmailToken(userId: number) {
-    const payload: MailedJwtPayload = {
-      sub: userId,
-      tokenType: JWTTokenType.verifyEmail,
-    };
-    return this.jwtService.sign(payload, {
-      expiresIn: `7d`,
-      secret: process.env.JWT_SECRET,
-    });
   }
 
   async countActiveUsers(ids: number[]): Promise<number> {

@@ -21,6 +21,7 @@ import {
 } from "src/share-urls/entities/share-url.entity";
 import { StoredInviteAssignmentKind } from "src/share-urls/invite-assignment";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { AccountEmailService } from "src/user/account-email.service";
 import { AmbassadorInviteGoalService } from "src/user/ambassador-invite-goal.service";
 import { AmbassadorProgramService } from "src/user/ambassador-program.service";
 import { AmbassadorInviteGoal } from "src/user/entities/ambassador-invite-goal.entity";
@@ -33,7 +34,6 @@ import {
   OnetimeInviteStatus,
 } from "src/user/entities/onetime-invite.entity";
 import { FriendService } from "src/user/friend.service";
-import { UserService } from "src/user/user.service";
 import request from "supertest";
 import { IsNull, type Repository } from "typeorm";
 import {
@@ -59,7 +59,7 @@ describe("Users (e2e)", () => {
   let cityRepo: Repository<City>;
   let communityRepo: Repository<Community>;
   let onetimeInviteRepo: Repository<OnetimeInvite>;
-  let userService: UserService;
+  let accountEmailService: AccountEmailService;
   let ambassadorProgramService: AmbassadorProgramService;
   let ambassadorInviteGoalService: AmbassadorInviteGoalService;
   let friendService: FriendService;
@@ -82,7 +82,7 @@ describe("Users (e2e)", () => {
     cityRepo = ctx.dataSource.getRepository(City);
     communityRepo = ctx.dataSource.getRepository(Community);
     onetimeInviteRepo = ctx.dataSource.getRepository(OnetimeInvite);
-    userService = ctx.app.get(UserService);
+    accountEmailService = ctx.app.get(AccountEmailService);
     ambassadorProgramService = ctx.app.get(AmbassadorProgramService);
     ambassadorInviteGoalService = ctx.app.get(AmbassadorInviteGoalService);
     friendService = ctx.app.get(FriendService);
@@ -2775,7 +2775,7 @@ describe("Users (e2e)", () => {
   });
 
   it("verifies email tokens via the public endpoint", async () => {
-    const token = await userService.getVerifyEmailToken(userAId);
+    const token = await accountEmailService.getVerifyEmailToken(userAId);
 
     await request(ctx.app.getHttpServer())
       .post("/user/verifyEmail")
@@ -3709,7 +3709,7 @@ describe("Users (e2e)", () => {
     });
 
     it("refuses a verify-email token for a deleted user with 400", async () => {
-      const token = await userService.getVerifyEmailToken(999_999_999);
+      const token = await accountEmailService.getVerifyEmailToken(999_999_999);
       await request(ctx.app.getHttpServer())
         .post("/user/verifyEmail")
         .send({ token })
@@ -3728,7 +3728,7 @@ describe("Users (e2e)", () => {
       expect(await isVerified(userBId)).toBe(true);
 
       await userRepo.update(userBId, { emailVerified: false });
-      const token = await userService.getVerifyEmailToken(userBId);
+      const token = await accountEmailService.getVerifyEmailToken(userBId);
       await request(ctx.app.getHttpServer())
         .post("/user/verifyEmail")
         .send({ token })
@@ -3764,7 +3764,7 @@ describe("Users (e2e)", () => {
     });
 
     it("refuses a verify-email token as a password reset", async () => {
-      const token = await userService.getVerifyEmailToken(userBId);
+      const token = await accountEmailService.getVerifyEmailToken(userBId);
 
       await request(ctx.app.getHttpServer())
         .post("/auth/reset-password")
