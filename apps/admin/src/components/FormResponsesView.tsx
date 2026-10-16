@@ -1,12 +1,9 @@
-import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
-import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import {
-  isQuestionField,
   type AnyField,
-  type FieldKind,
   type FormSchema,
   type Page,
 } from "@alliance/common/forms/form-schema";
+import { collectOutputFieldMap } from "@alliance/common/forms/output-resolution";
 import type {
   ActionWithdrawalDto,
   FormDto,
@@ -22,6 +19,7 @@ import {
   type SnapshotMigrationTarget,
 } from "../lib/navigation";
 import { respondentName as buildRespondentName } from "../lib/respondent";
+import { answerFieldLabels } from "../lib/responseFields";
 import {
   FILTERABLE_FIELD_KINDS,
   filterDescription,
@@ -60,29 +58,6 @@ export type ResponseVariantOption = {
   formId: number;
   name: string;
 };
-
-// Runtime guard: distinguish answer fields from display blocks
-const ANSWER_FIELD_KINDS = new Set<FieldKind>([
-  "text",
-  "textarea",
-  "email",
-  "number",
-  "range",
-  "phone",
-  "checkbox",
-  "radio",
-  "select",
-  "multiselect",
-  "ranking",
-  "date",
-  "time",
-  "timezone",
-  "city",
-  "file",
-]);
-
-const isAnswerField = (node: AnyField | DisplayBlock): node is AnyField =>
-  isQuestionField(node) && ANSWER_FIELD_KINDS.has(node.kind);
 
 export const REFERRALS_LOAD_ERROR =
   "Failed to load share links, so invited respondents show as anonymous";
@@ -254,25 +229,17 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   }, [filterFieldId, filterOpParam, filterValueParam]);
 
   const { fieldLabels, orderedFieldIds } = useMemo(() => {
-    const labels = new Map<string, string>();
-    form?.schema?.pages?.forEach((page) => {
-      page.fields.forEach((field) => {
-        if (!isAnswerField(field) || labels.has(field.id)) return;
-        labels.set(field.id, elementInternalDescriptor(field));
-      });
-    });
+    const labels = answerFieldLabels(form?.schema);
     return { fieldLabels: labels, orderedFieldIds: [...labels.keys()] };
   }, [form]);
 
-  const fieldsById = useMemo(() => {
-    const fields = new Map<string, AnyField>();
-    form?.schema?.pages?.forEach((page) => {
-      page.fields.forEach((field) => {
-        if (isQuestionField(field)) fields.set(field.id, field);
-      });
-    });
-    return fields;
-  }, [form]);
+  const fieldsById = useMemo(
+    () =>
+      form?.schema
+        ? collectOutputFieldMap(form.schema)
+        : new Map<string, AnyField>(),
+    [form],
+  );
 
   const activeFilterField = useMemo(() => {
     if (!activeFilter) return null;
