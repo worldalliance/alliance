@@ -1,5 +1,6 @@
 import type { CommunityDto } from "@alliance/shared/client";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   makeCommunity,
   makeOnetimeInvite,
@@ -43,6 +44,7 @@ const reusableLink = makeShareUrlMine({
 let myCommunities: CommunityDto[];
 let groupLoads: number;
 let onetimeInviteStatus: number;
+let onetimeInviteRefusal: object;
 let createHeld: Promise<void>;
 let reusableInviteStatus: number;
 let onetimeBodies: unknown[];
@@ -61,7 +63,7 @@ serveApi(
       await createHeld;
       return onetimeInviteStatus === 200
         ? Response.json(makeOnetimeInvite())
-        : Response.json({}, { status: onetimeInviteStatus });
+        : Response.json(onetimeInviteRefusal, { status: onetimeInviteStatus });
     },
     "POST /share-urls/mine/invite-duplicate": async ({ request }) => {
       reusableBodies.push(await request.json());
@@ -71,6 +73,7 @@ serveApi(
         : Response.json({}, { status: reusableInviteStatus });
     },
     "GET /share-urls/mine/invites": () => Response.json([reusableLink]),
+    "GET /user/onetimeInvites/overview": () => Response.json([]),
     "POST /community/create": async ({ request }) => {
       communityBodies.push(await request.json());
       await createHeld;
@@ -90,6 +93,7 @@ beforeEach(() => {
   myCommunities = [ledGroup];
   groupLoads = 0;
   onetimeInviteStatus = 200;
+  onetimeInviteRefusal = {};
   createHeld = Promise.resolve();
   reusableInviteStatus = 200;
   onetimeBodies = [];
@@ -133,7 +137,7 @@ const renderForm = () => {
       expect(groupLoads).toBeGreaterThan(0);
       expect(client.isFetching()).toBe(0);
     });
-  return { onInviteCreated, onReusableInviteCreated, groupsLoaded };
+  return { client, onInviteCreated, onReusableInviteCreated, groupsLoaded };
 };
 
 const button = (name: string) => screen.getByRole("button", { name });
@@ -273,7 +277,7 @@ it.each([
 );
 
 it("creates a single-use invite into the group the user leads, then starts over", async () => {
-  const { onInviteCreated } = renderForm();
+  const { client, onInviteCreated } = renderForm();
   enterSingleUseName("  Sam ");
   await ledGroupPicked();
   screen.getByText(
@@ -285,7 +289,10 @@ it("creates a single-use invite into the group the user leads, then starts over"
   await screen.findByText("Invite created and copied to clipboard!");
   expect(onetimeBodies).toEqual([{ invitee: "Sam", communityId: 7 }]);
   expect(copied).toEqual(["https://example.com/signup?ref=abc123"]);
-  expect(onInviteCreated).toHaveBeenCalledWith(makeOnetimeInvite());
+  expect(onInviteCreated).toHaveBeenCalled();
+  expect(client.getQueryData(queryKeys.onetimeInvitesOverview())).toEqual([
+    makeOnetimeInvite(),
+  ]);
   screen.getByText("Who are you inviting?");
 });
 
@@ -323,6 +330,24 @@ it.each([
     expect(callbacks.onInviteCreated).not.toHaveBeenCalled();
     expect(callbacks.onReusableInviteCreated).not.toHaveBeenCalled();
     screen.getByText("Which group should they join?");
+  },
+);
+
+it.each([
+  [{ message: "Invitee is too long" }, "Invitee is too long"],
+  [{}, "Unknown error"],
+])(
+  "says why the server refused a single-use invite",
+  async (refusal, reason) => {
+    onetimeInviteStatus = 400;
+    onetimeInviteRefusal = refusal;
+    renderForm();
+    enterSingleUseName("Sam");
+    await ledGroupPicked();
+
+    fireEvent.click(button(createButton[InviteType.Single]));
+
+    await screen.findByText(`Failed to create invite: ${reason}`);
   },
 );
 

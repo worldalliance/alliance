@@ -1,6 +1,5 @@
+import { acceptsAutomatedMember, freeSlots } from "@alliance/common/community";
 import {
-  acceptsAutomatedMember,
-  getMemberCount,
   isCommunityLedBy,
   memberJoinedCommunityNotif,
 } from "src/community/community.utils";
@@ -27,7 +26,7 @@ import {
  */
 function headroomForOrdering(c: Community): number {
   if (c.maxCapacity === null) return -1;
-  return c.maxCapacity - getMemberCount(c);
+  return freeSlots(c);
 }
 
 /**

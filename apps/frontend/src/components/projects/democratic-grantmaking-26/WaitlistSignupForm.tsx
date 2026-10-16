@@ -4,6 +4,7 @@ import {
   type CountryCode,
 } from "@alliance/common/phone";
 import { R } from "@alliance/common/result";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   waitlistCreate,
   type CreateWaitlistEntryDto,

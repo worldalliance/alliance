@@ -7,6 +7,7 @@ import {
   type UseQueryOptions,
 } from "@tanstack/react-query";
 import { useMemo } from "react";
+// eslint-disable-next-line api-client/named-hooks-only -- the TanStack hooks in this file own these calls
 import {
   FriendStatusDto,
   PostDto,

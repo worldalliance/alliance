@@ -1,5 +1,12 @@
 import {
+  acceptsAutomatedMember,
+  acceptsPublicJoin,
+  acceptsStaffAssignment,
   checkCommunityAccessRules,
+  freeSlots,
+  getMemberCount,
+  hasRoomForReturningMember,
+  isAtCapacity,
   isMaxCapacityRequired,
   validateCommunitySettings,
 } from "./community";
@@ -158,5 +165,72 @@ describe("validateCommunitySettings", () => {
         memberCount: null,
       }),
     ).toEqual(R.success({ name: "North", maxCapacity: 2 }));
+  });
+});
+
+describe("group capacity", () => {
+  const leader = { id: 1 };
+  const group = {
+    public: true,
+    allowMemberInvites: true,
+    allowStaffAssignments: true,
+    maxCapacity: 2,
+    users: [leader, { id: 2 }],
+    leaders: [leader],
+  };
+  const full = { ...group, users: [...group.users, { id: 3 }] };
+  const accepts = [
+    acceptsAutomatedMember,
+    acceptsStaffAssignment,
+    acceptsPublicJoin,
+  ];
+
+  it("counts members without leaders", () => {
+    expect(getMemberCount(group)).toBe(1);
+    expect(freeSlots(group)).toBe(1);
+  });
+
+  it("refuses to count a community whose relations are unloaded", () => {
+    expect(() => getMemberCount({ maxCapacity: 2, users: [] })).toThrow(
+      /users and leaders must be loaded/,
+    );
+    expect(() => isAtCapacity({ maxCapacity: 2, leaders: [] })).toThrow(
+      /users and leaders must be loaded/,
+    );
+  });
+
+  it("takes non-consensual placements only while seats remain", () => {
+    for (const predicate of accepts) {
+      expect(predicate(group)).toBe(true);
+      expect(predicate(full)).toBe(false);
+    }
+    expect(isAtCapacity(group)).toBe(false);
+    expect(isAtCapacity(full)).toBe(true);
+    expect(hasRoomForReturningMember(full)).toBe(false);
+  });
+
+  it("gates each non-consensual placement on its own opt-in flag", () => {
+    expect(
+      acceptsAutomatedMember({ ...group, allowMemberInvites: false }),
+    ).toBe(false);
+    expect(
+      acceptsStaffAssignment({ ...group, allowStaffAssignments: false }),
+    ).toBe(false);
+    expect(acceptsPublicJoin({ ...group, public: false })).toBe(false);
+  });
+
+  it("never fills an uncapped group", () => {
+    const uncapped = {
+      ...full,
+      public: false,
+      allowMemberInvites: false,
+      allowStaffAssignments: false,
+      maxCapacity: null,
+    };
+    expect(isAtCapacity(uncapped)).toBe(false);
+    expect(hasRoomForReturningMember(uncapped)).toBe(true);
+    for (const predicate of accepts) {
+      expect(predicate(uncapped)).toBe(false);
+    }
   });
 });

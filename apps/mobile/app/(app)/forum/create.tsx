@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { Alert, View } from "react-native";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import { forumCreatePost } from "../../../../../shared/client";
 import KeyboardAwareScrollView from "../../../components/KeyboardAwareScrollView";
 import Button, { ButtonColor } from "../../../components/system/Button";

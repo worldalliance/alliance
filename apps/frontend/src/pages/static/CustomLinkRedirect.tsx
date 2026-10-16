@@ -1,5 +1,6 @@
 import { R } from "@alliance/common/result";
 import { siteHref } from "@alliance/common/url";
+// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
 import { customLinksResolve } from "@alliance/shared/client";
 import { redirect } from "react-router";
 

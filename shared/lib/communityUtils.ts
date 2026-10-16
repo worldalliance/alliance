@@ -1,3 +1,5 @@
+import { isAtCapacity } from "@alliance/common/community";
+
 export function isLedBy(
   community: { leaders: { id: number }[] },
   userId: number | undefined,
@@ -25,13 +27,6 @@ export function groupRemovalMessage(
   return `Joining ${targetName} will remove you from ${base}.`;
 }
 
-export function getMemberCount(community: {
-  users: unknown[];
-  leaders: unknown[];
-}) {
-  return community.users.length - community.leaders.length;
-}
-
 export function publicGroupJoinState({
   community,
   userId,
@@ -50,9 +45,7 @@ export function publicGroupJoinState({
   didGroupsFail: boolean;
 }) {
   const isLeader = isLedBy(community, userId);
-  const isFull =
-    community.maxCapacity !== null &&
-    getMemberCount(community) >= community.maxCapacity;
+  const isFull = isAtCapacity(community);
   const label = isLeader
     ? "Leader"
     : isMember

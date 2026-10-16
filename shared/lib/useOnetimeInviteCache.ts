@@ -5,15 +5,18 @@ import {
 } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
+  CreateOnetimeInviteDto,
   OnetimeInviteDto,
   userApproveOnetimeInvite,
+  userCreateOnetimeInvite,
   userDeleteOnetimeInvite,
   userRejectOnetimeInvite,
 } from "../client";
 
 /**
- * Cache helpers and the approve/reject/delete mutations shared by every cached
- * list of one-time invites, each writing its result into the list at `queryKey`.
+ * Cache helpers and the create/approve/reject/delete mutations shared by every
+ * cached list of one-time invites, each writing its result into the list at
+ * `queryKey`.
  */
 export function useOnetimeInviteCache(queryKey: QueryKey) {
   const queryClient = useQueryClient();
@@ -40,6 +43,12 @@ export function useOnetimeInviteCache(queryKey: QueryKey) {
     },
     [queryClient, queryKey],
   );
+
+  const createMutation = useMutation({
+    mutationFn: (body: CreateOnetimeInviteDto) =>
+      userCreateOnetimeInvite({ body, throwOnError: true }).then((r) => r.data),
+    onSuccess: (invite) => upsertInvite(invite),
+  });
 
   const approveMutation = useMutation({
     mutationFn: (inviteId: number) =>
@@ -68,6 +77,8 @@ export function useOnetimeInviteCache(queryKey: QueryKey) {
   return {
     upsertInvite,
     removeInvite,
+    createInvite: createMutation.mutateAsync,
+    isCreatingInvite: createMutation.isPending,
     approveInvite: approveMutation.mutateAsync,
     rejectInvite: rejectMutation.mutateAsync,
     deleteInvite: deleteMutation.mutateAsync,

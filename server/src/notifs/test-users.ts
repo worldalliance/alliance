@@ -40,6 +40,7 @@ export const testUser = new User({
   turnedOffAllNotifs: false,
   forumDigestPreference: ForumDigestPreference.Off,
   switchedDomainAt: null,
+  contractReminderSentAt: null,
   password: "",
   admin: false,
   isTestUser: false,

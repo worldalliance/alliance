@@ -3,19 +3,14 @@ import {
   COMMUNITY_NAME_MAX_LENGTH,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
-import type {
-  CreateOnetimeInviteDto,
-  OnetimeInviteDto,
-} from "@alliance/shared/client";
-import {
-  communityCreateCommunity,
-  userCreateOnetimeInvite,
-} from "@alliance/shared/client";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
+import { communityCreateCommunity } from "@alliance/shared/client";
 import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { useInvitePlacement } from "@alliance/shared/lib/useInvitePlacement";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
+import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
 import { ChevronRight } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { Alert, Linking, TouchableOpacity, View } from "react-native";
@@ -32,13 +27,13 @@ import Input from "./system/Input";
 import Text, { FontWeight } from "./system/Text";
 
 type InviteFormProps = {
-  onInviteCreated: (invite: OnetimeInviteDto) => void;
+  onInviteCreated: () => void;
 };
 
 export default function InviteForm({ onInviteCreated }: InviteFormProps) {
   const { user } = useAuth();
   const [inviteeName, setInviteeName] = useState("");
-  const [creatingInvite, setCreatingInvite] = useState(false);
+  const { createInvite, isCreatingInvite } = useOnetimeInvitesOverview();
   const { communities, refreshCommunities } = useMyCommunities({});
   const { placement, setPlacement, leaderCommunities, selectedCommunity } =
     useInvitePlacement(communities, user?.id);
@@ -55,42 +50,33 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
         return;
       }
 
-      setCreatingInvite(true);
       try {
-        const body: CreateOnetimeInviteDto = {
+        const invite = await createInvite({
           invitee: inviteeName.trim(),
           ...(communityId !== null && { communityId }),
-        };
-
-        const response = await userCreateOnetimeInvite({ body });
-        if (response.data) {
-          if (
-            await copyToClipboard(
-              getOnetimeInviteSignupUrl(getSiteUrl(), response.data.code),
-            )
-          ) {
-            Alert.alert("Success", "Invite created and copied to clipboard.");
-          } else {
-            Alert.alert(
-              "Invite created",
-              "The invite link could not be copied to the clipboard.",
-            );
-          }
-          setInviteeName("");
-          onInviteCreated(response.data);
+        });
+        if (
+          await copyToClipboard(
+            getOnetimeInviteSignupUrl(getSiteUrl(), invite.code),
+          )
+        ) {
+          Alert.alert("Success", "Invite created and copied to clipboard.");
         } else {
           Alert.alert(
-            "Error",
-            `Failed to create invite: ${response.response?.statusText || "Unknown error"}`,
+            "Invite created",
+            "The invite link could not be copied to the clipboard.",
           );
         }
-      } catch {
-        Alert.alert("Error", "Failed to create invite");
-      } finally {
-        setCreatingInvite(false);
+        setInviteeName("");
+        onInviteCreated();
+      } catch (error) {
+        Alert.alert(
+          "Error",
+          `Failed to create invite: ${errorMessage({ error, fallback: "Unknown error" })}`,
+        );
       }
     },
-    [inviteeName, onInviteCreated],
+    [createInvite, inviteeName, onInviteCreated],
   );
 
   const handleCreateGroup = useCallback(async () => {
@@ -193,9 +179,9 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
             <Button
               onPress={() => handleCreateInvite(null)}
               color={ButtonColor.Black}
-              title={creatingInvite ? "Creating…" : "Create invite"}
-              disabled={creatingInvite || !inviteeName.trim()}
-              loading={creatingInvite}
+              title={isCreatingInvite ? "Creating…" : "Create invite"}
+              disabled={isCreatingInvite || !inviteeName.trim()}
+              loading={isCreatingInvite}
             />
           </View>
         )}
@@ -282,9 +268,9 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
             <Button
               onPress={() => handleCreateInvite(placement.id)}
               color={ButtonColor.Black}
-              title={creatingInvite ? "Creating…" : "Create invite"}
-              disabled={creatingInvite || !inviteeName.trim()}
-              loading={creatingInvite}
+              title={isCreatingInvite ? "Creating…" : "Create invite"}
+              disabled={isCreatingInvite || !inviteeName.trim()}
+              loading={isCreatingInvite}
             />
           </View>
         )}

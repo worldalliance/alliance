@@ -1,3 +1,4 @@
+import { freeSlots } from "@alliance/common/community";
 import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
 import type {
@@ -5,7 +6,6 @@ import type {
   CommunityDto,
   UserDto,
 } from "@alliance/shared/client/types.gen";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -209,10 +209,9 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
         return;
       }
       const pending = pendingAssignmentsByCommunityId[community.id] ?? 0;
-      const openSlots =
-        getMemberCount(community) + pending - community.maxCapacity;
-      if (pending > 0 && openSlots > 0) {
-        overages.set(community.id, openSlots);
+      const overage = pending - freeSlots(community);
+      if (pending > 0 && overage > 0) {
+        overages.set(community.id, overage);
       }
     });
     return overages;
@@ -274,7 +273,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
           if (isSelected) {
             return true;
           }
-          return getMemberCount(community) + pending < community.maxCapacity;
+          return freeSlots(community) > pending;
         })
         .map((community) => ({
           value: community.id.toString(),

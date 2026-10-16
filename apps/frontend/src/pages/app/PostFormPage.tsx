@@ -1,3 +1,4 @@
+// eslint-disable-next-line api-client/named-hooks-only -- file upload; its result is used once, not cached
 import {
   CreateEditableContentDto,
   CreatePostDto,

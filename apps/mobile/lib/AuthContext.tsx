@@ -15,7 +15,7 @@ import React, {
   useState,
 } from "react";
 import { Alert } from "react-native";
-import { UserDto } from "../../../shared/client";
+import type { UserDto } from "../../../shared/client";
 import { getBinaryApiUrl, setReviewSession } from "./config";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
 import { signInWithProvider } from "./oauth";

@@ -1,5 +1,6 @@
 import { refusalMessage } from "@alliance/common/errorMessage";
 import type { VideoBlock } from "@alliance/common/forms/display-blocks";
+// eslint-disable-next-line api-client/named-hooks-only -- file upload; its result is used once, not cached
 import { videosUploadVideoAdmin } from "@alliance/shared/client";
 import React, { useState } from "react";
 import { Link, href } from "react-router";

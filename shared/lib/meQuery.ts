@@ -1,4 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
+// eslint-disable-next-line api-client/named-hooks-only -- the queryOptions in this file own this call
 import { authMe, type UserDto } from "../client";
 
 export async function fetchMe(): Promise<UserDto> {

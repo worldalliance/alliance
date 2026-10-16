@@ -3,6 +3,7 @@ import type {
   MobileFingerprintsDto,
   MobilePlatformFingerprintDto,
 } from "@alliance/shared/client";
+// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
 import { appGetMobileFingerprints } from "@alliance/shared/client";
 import * as Application from "expo-application";
 import * as Updates from "expo-updates";

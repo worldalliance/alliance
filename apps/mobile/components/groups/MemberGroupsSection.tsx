@@ -1,9 +1,7 @@
+import { getMemberCount } from "@alliance/common/community";
 import { forCount, withCount } from "@alliance/common/plural";
 import type { CommunityDto } from "@alliance/shared/client/types.gen";
-import {
-  getMemberCount,
-  groupAssignmentLabels,
-} from "@alliance/shared/lib/communityUtils";
+import { groupAssignmentLabels } from "@alliance/shared/lib/communityUtils";
 import { requestGroupAssignmentConfirmation } from "@alliance/shared/lib/copy";
 import { useGroupAssignment } from "@alliance/shared/lib/useGroupAssignment";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";

@@ -1,13 +1,10 @@
-import {
-  CommunityDto,
-  CreateOnetimeInviteDto,
-  OnetimeInviteDto,
-  userCreateOnetimeInvite,
-} from "@alliance/shared/client";
+import { errorMessage } from "@alliance/common/errorMessage";
+import { CommunityDto } from "@alliance/shared/client";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { useInvitePlacement } from "@alliance/shared/lib/useInvitePlacement";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
+import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
 import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -67,7 +64,7 @@ const STEP_INDEX: Record<InviteFormStep, number> = {
 };
 
 type InviteFormProps = {
-  onInviteCreated: (invite: OnetimeInviteDto) => void;
+  onInviteCreated: () => void;
   onReusableInviteCreated: () => void;
 };
 
@@ -80,13 +77,13 @@ const InviteForm = ({
   const [step, setStep] = useState(InviteFormStep.Type);
   const [multipleUseInvite, setMultipleUseInvite] = useState(false);
   const [inviteeName, setInviteeName] = useState("");
-  const [creatingInvite, setCreatingInvite] = useState(false);
   const [creatingCommunity, setCreatingCommunity] = useState(false);
   const { communities, refreshCommunities } = useMyCommunities({});
   const { placement, setPlacement, leaderCommunities, selectedCommunity } =
     useInvitePlacement(communities, user?.id);
   const { createInvite: createReusableInvite, isCreating: creatingReusable } =
     useReusableInvites();
+  const { createInvite, isCreatingInvite } = useOnetimeInvitesOverview();
   const communityCreateSubmitRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
@@ -105,28 +102,19 @@ const InviteForm = ({
         return;
       }
 
-      setCreatingInvite(true);
-      try {
-        const body: CreateOnetimeInviteDto = {
-          invitee: inviteeName.trim(),
-          ...(communityId !== null && { communityId }),
-        };
-        // Started rather than awaited: the clipboard write has to be issued
-        // inside the click, before the request it depends on resolves.
-        const request = userCreateOnetimeInvite({ body });
-        const copying = copyToClipboard(
-          request.then((response) =>
-            response.data
-              ? getOnetimeInviteSignupUrl(
-                  getInviteBaseUrl(),
-                  response.data.code,
-                )
-              : Promise.reject(new Error("invite was not created")),
-          ),
-        );
-
-        const response = await request;
-        if (response.data) {
+      // Started rather than awaited: the clipboard write has to be issued
+      // inside the click, before the request it depends on resolves.
+      const creation = createInvite({
+        invitee: inviteeName.trim(),
+        ...(communityId !== null && { communityId }),
+      });
+      const copying = copyToClipboard(
+        creation.then((invite) =>
+          getOnetimeInviteSignupUrl(getInviteBaseUrl(), invite.code),
+        ),
+      );
+      return creation.then(
+        async () => {
           if (await copying) {
             successToast("Invite created and copied to clipboard!");
           } else {
@@ -134,22 +122,26 @@ const InviteForm = ({
               "Invite created, but it could not be copied to the clipboard.",
             );
           }
-          onInviteCreated(response.data);
+          onInviteCreated();
           resetWizard();
-        } else {
+        },
+        (error: unknown) =>
           errorToast(
-            `Failed to create invite: ${
-              response.response?.statusText || "Unknown error"
-            }`,
-          );
-        }
-      } catch {
-        errorToast("Failed to create invite");
-      } finally {
-        setCreatingInvite(false);
-      }
+            `Failed to create invite: ${errorMessage({
+              error,
+              fallback: "Unknown error",
+            })}`,
+          ),
+      );
     },
-    [inviteeName, errorToast, successToast, onInviteCreated, resetWizard],
+    [
+      createInvite,
+      errorToast,
+      inviteeName,
+      onInviteCreated,
+      resetWizard,
+      successToast,
+    ],
   );
 
   const handleCreateReusableInvite = useCallback(
@@ -217,7 +209,7 @@ const InviteForm = ({
 
   const inviteIsCreating = multipleUseInvite
     ? creatingReusable
-    : creatingInvite;
+    : isCreatingInvite;
   const wizardIsBusy = inviteIsCreating || creatingCommunity;
 
   const goBack = useCallback(() => {

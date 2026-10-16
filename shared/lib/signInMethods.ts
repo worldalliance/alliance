@@ -5,6 +5,7 @@ import {
   useQueryClient,
   type QueryClient,
 } from "@tanstack/react-query";
+// eslint-disable-next-line api-client/named-hooks-only -- the TanStack hooks in this file own these calls
 import { oAuthUnlink, type OAuthAccountDto, type UserDto } from "../client";
 import { thrownRefusalMessage } from "./hey-api";
 import { meQuery } from "./meQuery";

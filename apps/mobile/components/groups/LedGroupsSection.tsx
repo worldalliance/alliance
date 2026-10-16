@@ -1,6 +1,6 @@
+import { getMemberCount } from "@alliance/common/community";
 import { forCount, withCount } from "@alliance/common/plural";
 import type { CommunityDto } from "@alliance/shared/client/types.gen";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
 import { View } from "react-native";
 import { colors } from "../../lib/style/colors";
 import Text, { FontWeight } from "../system/Text";

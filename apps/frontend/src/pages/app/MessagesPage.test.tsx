@@ -35,12 +35,19 @@ const GRACE: ProfileDto = {
   isCommunityLeader: false,
 };
 
+const ALAN: ProfileDto = { ...GRACE, id: 3, displayName: "Alan" };
+
 const conversationsHook = (conversations: ConversationDto[]) => ({
   conversations,
   setConversations: () => {},
   loading: false,
   reloadFailed: false,
   refreshConversations: async () => {},
+  createDirectConversation: jest.fn(),
+  createGroupConversation: jest.fn(),
+  acceptInvite: jest.fn(),
+  declineInvite: jest.fn(),
+  markRead: jest.fn(),
   updateInfo: jest.fn(),
   addParticipant: jest.fn(),
   removeParticipant: jest.fn(),
@@ -52,17 +59,29 @@ let listFails = false;
 let messageableUsersCalls = 0;
 let heldRetry: Promise<Response> | null = null;
 let markedRead: string[] = [];
+let answered: ConversationDto | null = null;
+let groupsStarted: unknown[] = [];
 
 serveApi(
   routes({
     "GET /user/listMessageableUsers": () =>
       ++messageableUsersCalls === 1
         ? Response.json({ message: "Internal server error" }, { status: 500 })
-        : (heldRetry ?? Response.json([GRACE])),
+        : (heldRetry ?? Response.json([GRACE, ALAN])),
     "GET /messaging/conversations": () =>
       listFails
         ? Response.json({ message: "Internal server error" }, { status: 500 })
         : Response.json(listed),
+    "POST /messaging/conversations/direct": () => Response.json(answered),
+    "POST /messaging/conversations/group": async ({ request }) => {
+      groupsStarted.push(await request.json());
+      return Response.json(answered);
+    },
+    "POST /messaging/messages": () => Response.json({}),
+    "POST /messaging/conversations/:conversationId/accept": () =>
+      Response.json(answered),
+    "POST /messaging/conversations/:conversationId/decline": () =>
+      Response.json(answered),
     "POST /messaging/conversations/:conversationId/read": ({ params }) => {
       markedRead.push(params.conversationId);
       return new Response(null, { status: 201 });
@@ -76,6 +95,8 @@ beforeEach(() => {
   messageableUsersCalls = 0;
   heldRetry = null;
   markedRead = [];
+  answered = null;
+  groupsStarted = [];
   jest
     .spyOn(messagesModule, "useConversations")
     .mockReturnValue(conversationsHook([]));
@@ -157,9 +178,8 @@ it("offers a retry in place of the add-member field when messageable users fail 
     makeParticipant(testAuthUser.id, "admin"),
     makeParticipant(GRACE.id + 1, "member"),
   ]);
-  jest
-    .spyOn(messagesModule, "useConversations")
-    .mockReturnValue(conversationsHook([group]));
+  const hook = conversationsHook([group]);
+  jest.spyOn(messagesModule, "useConversations").mockReturnValue(hook);
   renderPage({}, `/?chat=${group.id}`);
   fireEvent.click(screen.getByText(group.title, { selector: "p" }));
 
@@ -172,7 +192,7 @@ it("offers a retry in place of the add-member field when messageable users fail 
   expect(
     screen.queryByText("Couldn't load the people you can add."),
   ).toBeNull();
-  await waitFor(() => expect(markedRead).toEqual([String(group.id)]));
+  expect(hook.markRead).toHaveBeenCalledWith(group.id);
 });
 
 it("opens the direct chat a profile links to once a cached list that predates it reloads", async () => {
@@ -239,4 +259,109 @@ it("keeps the cached chats and offers a retry when reloading them fails", async 
   await waitFor(() =>
     expect(screen.queryByText("Couldn't refresh your chats.")).toBeNull(),
   );
+});
+
+const invitation = () => {
+  const joined = {
+    ...makeConversation([
+      makeParticipant(testAuthUser.id, "member"),
+      makeParticipant(GRACE.id, "admin"),
+    ]),
+    title: "Invited group",
+  };
+  const invited = {
+    ...joined,
+    participants: [
+      { ...joined.participants[0], state: "invited" as const },
+      joined.participants[1],
+    ],
+  };
+  listed = [invited];
+  jest
+    .spyOn(messagesModule, "useConversations")
+    .mockImplementation(() => useMyConversations());
+  renderPage({}, `/?chat=${invited.id}`);
+  return joined;
+};
+
+it("lists an accepted group among the chats", async () => {
+  answered = invitation();
+
+  fireEvent.click(await screen.findByRole("button", { name: "Accept" }));
+
+  await waitFor(() =>
+    expect(
+      screen.queryByText("You have been invited to the group chat"),
+    ).toBeNull(),
+  );
+  screen.getByText("Invited group", { selector: "p" });
+});
+
+it("drops a declined group and closes it", async () => {
+  const joined = invitation();
+  answered = { ...joined, participants: joined.participants.slice(1) };
+
+  fireEvent.click(await screen.findByRole("button", { name: "Decline" }));
+
+  await screen.findByText("No chat selected");
+  expect(screen.queryByText("Invited group")).toBeNull();
+});
+
+it("lists and opens a chat the viewer starts", async () => {
+  answered = {
+    ...makeConversation(
+      [
+        makeParticipant(testAuthUser.id, "member"),
+        makeParticipant(GRACE.id, "member"),
+      ],
+      "direct",
+    ),
+    title: "Chat with Grace",
+  };
+  jest
+    .spyOn(messagesModule, "useConversations")
+    .mockImplementation(() => useMyConversations());
+  renderPage({ retry: retryUnlessRefused(3), retryDelay: 0 });
+  fireEvent.click(await screen.findByRole("button", { name: "New chat" }));
+  await searchRecipients("Gra");
+  fireEvent.click(await screen.findByText("Grace"));
+  const draft = screen.getByPlaceholderText("Message");
+  fireEvent.change(draft, { target: { value: "Hi" } });
+
+  fireEvent.keyDown(draft, { key: "Enter" });
+
+  await screen.findByText("Chat with Grace", { selector: "p" });
+  await waitFor(() => expect(markedRead).toEqual([String(answered?.id)]));
+});
+
+it("names a group the viewer starts after everyone in it, and opens it", async () => {
+  answered = {
+    ...makeConversation([
+      makeParticipant(testAuthUser.id, "admin"),
+      makeParticipant(GRACE.id, "member"),
+      makeParticipant(ALAN.id, "member"),
+    ]),
+    title: "Grace, Alan, First Lastname",
+  };
+  jest
+    .spyOn(messagesModule, "useConversations")
+    .mockImplementation(() => useMyConversations());
+  renderPage({ retry: retryUnlessRefused(3), retryDelay: 0 });
+  fireEvent.click(await screen.findByRole("button", { name: "New chat" }));
+  await searchRecipients("Gra");
+  fireEvent.click(await screen.findByText("Grace"));
+  await searchRecipients("Ala");
+  fireEvent.click(await screen.findByText("Alan"));
+  const draft = screen.getByPlaceholderText("Message");
+  fireEvent.change(draft, { target: { value: "Hi" } });
+
+  fireEvent.keyDown(draft, { key: "Enter" });
+
+  await screen.findByText("Grace, Alan, First Lastname", { selector: "p" });
+  expect(groupsStarted).toEqual([
+    {
+      participantIds: [GRACE.id, ALAN.id],
+      title: "Grace, Alan, First Lastname",
+    },
+  ]);
 });

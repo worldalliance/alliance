@@ -16,6 +16,7 @@ const moduleMockMessage =
   "bun writes a module mock into a registry every later test file in the process reads, and restores it for none of them. Reach for jest.spyOn(module, export) with jest.restoreAllMocks(), or serveApi() from @alliance/shared/lib/testing/serveApi to answer the generated client.";
 
 export default [
+  { linterOptions: { reportUnusedDisableDirectives: "error" } },
   {
     files: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
     rules: {

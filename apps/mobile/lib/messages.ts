@@ -8,7 +8,6 @@ import {
   getMessageRequestPreview,
   getPendingInvites,
   mergeConversationUpdate,
-  sortConversations,
   updateConversationsForLastMessage,
 } from "@alliance/shared/lib/conversations";
 import { createMessagingHooks } from "@alliance/shared/lib/messages";
@@ -45,7 +44,6 @@ export {
   getMessageRequestPreview,
   getPendingInvites,
   mergeConversationUpdate,
-  sortConversations,
   updateConversationsForLastMessage,
   useConversations,
   useLiveConvoMessages,

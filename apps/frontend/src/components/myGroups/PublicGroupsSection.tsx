@@ -1,8 +1,6 @@
+import { getMemberCount } from "@alliance/common/community";
 import { CommunityDto } from "@alliance/shared/client";
-import {
-  getMemberCount,
-  publicGroupJoinState,
-} from "@alliance/shared/lib/communityUtils";
+import { publicGroupJoinState } from "@alliance/shared/lib/communityUtils";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { usePublicCommunities } from "@alliance/shared/lib/usePublicCommunities";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";

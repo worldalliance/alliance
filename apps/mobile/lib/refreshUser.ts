@@ -1,3 +1,4 @@
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import { authMe, type UserDto } from "@alliance/shared/client";
 
 export async function refreshUser(

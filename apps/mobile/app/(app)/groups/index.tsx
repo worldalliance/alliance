@@ -1,10 +1,12 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
+  getMemberCount,
   isMaxCapacityRequired,
   validateCommunitySettings,
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { changedPhoto } from "@alliance/common/image-src";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   communityUpdate,
   userGetOnetimeInvitesByCommunity,
@@ -19,7 +21,7 @@ import {
   hasActionsToComplete,
   sortMembersByNextTaskDue,
 } from "@alliance/shared/lib/communityMemberActions";
-import { getMemberCount, isLedBy } from "@alliance/shared/lib/communityUtils";
+import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import useActivities, {
   ActivityList,

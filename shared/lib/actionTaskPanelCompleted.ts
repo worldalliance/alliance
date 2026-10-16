@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+// eslint-disable-next-line api-client/named-hooks-only -- the TanStack hooks in this file own these calls
 import {
   tasksGetGuestFormResponse,
   tasksGetMyFormResponse,

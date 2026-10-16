@@ -1,4 +1,9 @@
-import { makeCommunity, makeUser } from "@alliance/shared/lib/testFixtures";
+import type { UserDto } from "@alliance/shared/client/types.gen";
+import {
+  makeCommunity,
+  makeProfile,
+  makeUser,
+} from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
@@ -16,6 +21,7 @@ afterEach(cleanup);
 
 let listStatus = 200;
 let listCalls = 0;
+let north = makeCommunity({ id: 4, name: "North" });
 let assignStatus = 200;
 
 serveApi(
@@ -23,7 +29,7 @@ serveApi(
     "GET /community/list": () => {
       listCalls += 1;
       return listStatus === 200
-        ? Response.json([makeCommunity({ id: 4, name: "North" })])
+        ? Response.json([north])
         : Response.json({ message: "Admins only" }, { status: listStatus });
     },
     "POST /user/groupAssignment/assign": () =>
@@ -38,6 +44,7 @@ const assignMembers = jest.fn();
 afterEach(() => {
   listStatus = 200;
   listCalls = 0;
+  north = makeCommunity({ id: 4, name: "North" });
   assignStatus = 200;
   localStorage.clear();
   assignMembers.mockClear();
@@ -45,7 +52,7 @@ afterEach(() => {
 
 const members = [makeUser({ id: 7, name: "Sam" })];
 
-const Page = () => {
+const Page = ({ members }: { members: UserDto[] }) => {
   const [, setCounts] = useState<Record<number, number>>({});
   return (
     <GroupAssignmentPanel
@@ -56,10 +63,10 @@ const Page = () => {
   );
 };
 
-const renderPanel = () =>
+const renderPanel = (panelMembers = members) =>
   render(
     <MemoryRouter>
-      <Page />
+      <Page members={panelMembers} />
     </MemoryRouter>,
     queryWrapper(),
   );
@@ -125,4 +132,25 @@ it("keeps the loaded groups when the refetch after an assignment fails", async (
     screen.queryByText("Unable to load groups. Please try again."),
   ).toBeNull();
   expect(screen.getByRole("option", { name: "North" })).toBeTruthy();
+});
+
+it("blocks queued assignments that outnumber a group's free seats", async () => {
+  north = makeCommunity({
+    id: 4,
+    name: "North",
+    maxCapacity: 2,
+    users: [makeProfile(1)],
+  });
+  localStorage.setItem(
+    "admin.groupAssignmentSelections",
+    JSON.stringify({ 7: "4", 8: "4" }),
+  );
+  renderPanel([...members, makeUser({ id: 8, name: "Kim" })]);
+
+  expect(await screen.findAllByText("Over capacity by 1.")).toHaveLength(2);
+  expect(
+    screen
+      .getByRole("button", { name: "Confirm assignments" })
+      .hasAttribute("disabled"),
+  ).toBe(true);
 });

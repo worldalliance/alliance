@@ -1,5 +1,6 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 import { R, type Result } from "@alliance/common/result";
+// eslint-disable-next-line api-client/named-hooks-only -- file upload; its result is used once, not cached
 import { imagesUploadImage } from "../client";
 import { imageUploadFailed } from "./copy";
 

@@ -1,6 +1,7 @@
 import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import { R } from "@alliance/common/result";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import { AdminActionDto, tasksCreateFormAdmin } from "@alliance/shared/client";
 import type {
   AdminFollowUpFormDto,

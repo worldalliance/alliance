@@ -1,8 +1,9 @@
+import { getMemberCount } from "@alliance/common/community";
 import {
   calculateAllCompletionData,
   CompletionData,
 } from "@alliance/shared/lib/actionUtils";
-import { getMemberCount, isLedBy } from "@alliance/shared/lib/communityUtils";
+import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { Features } from "@alliance/shared/lib/features";
 import { useCommunityCompletedActionsCount } from "@alliance/shared/lib/useCommunityCompletedActionsCount";
 import { useCommunityConversation } from "@alliance/shared/lib/useCommunityConversation";

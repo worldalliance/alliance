@@ -5,6 +5,7 @@ import {
 } from "@alliance/common/forms/display-only-schema";
 import { R } from "@alliance/common/result";
 import { run } from "@alliance/common/run";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   actionsFindOneAdmin,
   ActionUpdateNotifyType,

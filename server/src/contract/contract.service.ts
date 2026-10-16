@@ -1,10 +1,12 @@
+import {
+  hasRoomForReturningMember,
+  isAtCapacity,
+} from "@alliance/common/community";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CommunityService } from "src/community/community.service";
 import {
-  hasRoomForReturningMember,
-  isAtCapacity,
   isCommunityLedBy,
   memberJoinedCommunityNotif,
 } from "src/community/community.utils";

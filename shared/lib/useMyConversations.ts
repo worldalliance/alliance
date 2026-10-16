@@ -6,12 +6,18 @@ import {
 } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
+  conversationAcceptInvite,
   conversationAddParticipant,
+  conversationCreateDirectConversation,
+  conversationCreateGroupConversation,
+  conversationDeclineInvite,
   type ConversationDto,
   conversationGetMyConversations,
   conversationLeave,
+  conversationMarkRead,
   conversationRemoveParticipant,
   conversationUpdateInfo,
+  type CreateGroupConversationDto,
   type UpdateConversationDto,
 } from "../client";
 import { mergeConversationUpdate, sortConversations } from "./conversations";
@@ -97,6 +103,66 @@ export function useMyConversations({ load = true }: { load?: boolean } = {}) {
     return sent;
   };
 
+  const storeCreated = (
+    sent: Result<ConversationDto, Explanation>,
+  ): Result<ConversationDto, Explanation> => {
+    if (sent.ok) {
+      setConversations((prev) =>
+        [
+          sent.value,
+          ...(prev ?? []).filter(({ id }) => id !== sent.value.id),
+        ].sort(sortConversations),
+      );
+    }
+    return sent;
+  };
+
+  const createDirectConversation = async (targetUserId: number) =>
+    storeCreated(
+      await sendOrExplain({
+        send: conversationCreateDirectConversation,
+        options: { body: { targetUserId } },
+        action: "start the chat",
+      }),
+    );
+
+  const createGroupConversation = async (body: CreateGroupConversationDto) =>
+    storeCreated(
+      await sendOrExplain({
+        send: conversationCreateGroupConversation,
+        options: { body },
+        action: "start the group chat",
+      }),
+    );
+
+  const acceptInvite = async (conversationId: number) =>
+    storeConversation(
+      await sendOrExplain({
+        send: conversationAcceptInvite,
+        options: { path: { conversationId } },
+        action: "accept the request",
+      }),
+    );
+
+  const declineInvite = async (conversationId: number) =>
+    storeConversation(
+      await sendOrExplain({
+        send: conversationDeclineInvite,
+        options: { path: { conversationId } },
+        action: "decline the request",
+      }),
+    );
+
+  const markRead = useCallback(
+    (conversationId: number) =>
+      sendOrExplain({
+        send: conversationMarkRead,
+        options: { path: { conversationId } },
+        action: "mark the chat read",
+      }),
+    [],
+  );
+
   const updateInfo = async (
     conversationId: number,
     body: UpdateConversationDto,
@@ -158,6 +224,11 @@ export function useMyConversations({ load = true }: { load?: boolean } = {}) {
       query.errorUpdatedAt > (lastLoadedAt.get(queryClient) ?? 0),
     setConversations,
     refreshConversations,
+    createDirectConversation,
+    createGroupConversation,
+    acceptInvite,
+    declineInvite,
+    markRead,
     updateInfo,
     addParticipant,
     removeParticipant,

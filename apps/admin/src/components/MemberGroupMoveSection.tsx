@@ -1,9 +1,8 @@
-import { userUserDetailAdmin } from "@alliance/shared/client";
+import { acceptsStaffAssignment } from "@alliance/common/community";
 import type {
   CommunityDto,
   UserAdminDetailDto,
 } from "@alliance/shared/client/types.gen";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -20,10 +19,10 @@ const NO_COMMUNITIES: CommunityDto[] = [];
 
 export default function MemberGroupMoveSection({
   user,
-  onUserUpdated,
+  refreshUser,
 }: {
   user: UserAdminDetailDto;
-  onUserUpdated: (user: UserAdminDetailDto) => void;
+  refreshUser: () => Promise<unknown>;
 }) {
   const {
     data: communities = NO_COMMUNITIES,
@@ -71,9 +70,7 @@ export default function MemberGroupMoveSection({
         .filter(
           (community) =>
             !currentCommunityIdSet.has(community.id) &&
-            community.allowStaffAssignments &&
-            community.maxCapacity !== null &&
-            getMemberCount(community) < community.maxCapacity,
+            acceptsStaffAssignment(community),
         )
         .sort((a, b) => a.name.localeCompare(b.name)),
     [communities, currentCommunityIdSet],
@@ -148,11 +145,7 @@ export default function MemberGroupMoveSection({
       }
       membershipUpdated = true;
 
-      const refreshedUser = await userUserDetailAdmin({
-        path: { id: user.id },
-        throwOnError: true,
-      });
-      onUserUpdated(refreshedUser.data);
+      await refreshUser();
       success(
         sourceCommunity ? "Member moved" : "Member assigned",
         destinationCommunity.name,
@@ -182,7 +175,7 @@ export default function MemberGroupMoveSection({
     destinationCommunityId,
     memberCommunities,
     moveMember,
-    onUserUpdated,
+    refreshUser,
     sourceCommunityId,
     success,
     user.id,

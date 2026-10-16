@@ -44,7 +44,4 @@ export default tseslint.config([
       "local-rules/no-returned-thenable": "error",
     },
   },
-  {
-    linterOptions: { reportUnusedDisableDirectives: "error" },
-  },
 ]);

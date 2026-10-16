@@ -6,6 +6,7 @@ import {
   OAuthProvider,
 } from "@alliance/common/oauth";
 import { R, type Result } from "@alliance/common/result";
+// eslint-disable-next-line api-client/named-hooks-only -- auth and session flow, which no query cache holds
 import { authForgotPassword, authRefreshTokens } from "@alliance/shared/client";
 import { disconnectAccount, passwordLink } from "@alliance/shared/lib/copy";
 import { readPosthogContext } from "@alliance/shared/lib/posthog-request";

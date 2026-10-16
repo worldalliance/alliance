@@ -1,5 +1,6 @@
 import { R } from "@alliance/common/result";
 import { useCallback, useEffect, useState } from "react";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import { ActionDto, actionsFindOne } from "../client";
 import { withOptimisticRelation } from "./actionUtils";
 import { useOnNextActionEvent } from "./useOnNextDeadline";
