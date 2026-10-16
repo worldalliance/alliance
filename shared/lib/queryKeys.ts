@@ -211,6 +211,8 @@ export const queryKeys = {
     [...onetimeInvitesAdminAll(), page, limit] as const,
   onetimeInviteMemberStatsAdmin: () =>
     ["userGetOnetimeInviteMemberStatsAdmin"] as const,
+  onetimeInviteGraphEdgesAdmin: () =>
+    ["userGetOnetimeInviteGraphEdgesAdmin"] as const,
   postsAdmin: () => ["forumGetPostsForAdmin"] as const,
   projectsAdminAll,
   projectsAdmin: () => [...projectsAdminAll(), "list"] as const,

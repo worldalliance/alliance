@@ -1,9 +1,5 @@
-import {
-  OnetimeInviteEdgeDto,
-  userGetOnetimeInviteGraphEdgesAdmin,
-} from "@alliance/shared/client";
 import { AlertTriangle } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { EnumFilterSelect } from "../components/force-graph/EnumFilterSelect";
 import {
   type DrawnGraph,
@@ -25,6 +21,7 @@ import {
 } from "../components/invite-graph/buildInviteGraph";
 import { useCampaignsAdmin } from "../lib/useCampaignsAdmin";
 import { useGraphUsersAdmin } from "../lib/useGraphUsersAdmin";
+import { useOnetimeInviteGraphEdgesAdmin } from "../lib/useOnetimeInviteGraphEdgesAdmin";
 
 enum ContractFilter {
   All = "all",
@@ -110,7 +107,6 @@ const LINK_TONE: Record<LinkTone, { color: string; markerId: string }> = {
 };
 
 const InviteGraphPage = () => {
-  const [inviteEdges, setInviteEdges] = useState<OnetimeInviteEdgeDto[]>([]);
   const usersQuery = useGraphUsersAdmin(KEEP_LAYOUT);
   const users = useMemo(() => usersQuery.data ?? [], [usersQuery.data]);
   const campaignsQuery = useCampaignsAdmin(KEEP_LAYOUT);
@@ -118,43 +114,28 @@ const InviteGraphPage = () => {
     () => campaignsQuery.data ?? [],
     [campaignsQuery.data],
   );
-  const [loading, setLoading] = useState(true);
-  const [edgesFailed, setEdgesFailed] = useState(false);
-  const [unreachable, setUnreachable] = useState(false);
+  const edgesQuery = useOnetimeInviteGraphEdgesAdmin(KEEP_LAYOUT);
+  const inviteEdges = useMemo(
+    () => (edgesQuery.isError ? [] : (edgesQuery.data ?? [])),
+    [edgesQuery.isError, edgesQuery.data],
+  );
 
   // Filters
   const [contractFilter, setContractFilter] = useState(ContractFilter.Active);
   const [isolateSubgraph, setIsolateSubgraph] = useState(false);
-
-  useEffect(() => {
-    userGetOnetimeInviteGraphEdgesAdmin()
-      .then((edgesRes) => {
-        setInviteEdges(edgesRes.data ?? []);
-        if (edgesRes.error !== undefined) {
-          console.error(
-            "Invite graph: could not load used invites",
-            edgesRes.error,
-          );
-          setEdgesFailed(true);
-        }
-      })
-      .catch(() => setUnreachable(true))
-      .finally(() => setLoading(false));
-  }, []);
 
   // A failed request leaves a whole class of edges out of the graph, which
   // reads as "no attribution" rather than as a failure — so name what is
   // missing instead of drawing a wrong graph.
   const failed = [
     { name: "users", failed: usersQuery.isError },
-    { name: "used invites", failed: edgesFailed },
+    { name: "used invites", failed: edgesQuery.isError },
     { name: "campaigns", failed: campaignsQuery.isError },
   ]
     .filter((load) => load.failed)
     .map((load) => load.name);
-  const loadError = unreachable
-    ? "Could not load the graph data. Try reloading the page."
-    : failed.length > 0
+  const loadError =
+    failed.length > 0
       ? `Could not load ${failed.join(", ")}. The graph below is incomplete — attribution from the missing data shows as "no attribution".`
       : null;
 
@@ -290,9 +271,9 @@ const InviteGraphPage = () => {
   }, [users, filteredUserIds, hasActiveFilters]);
 
   if (
-    loading ||
     !usersQuery.isFetchedAfterMount ||
-    !campaignsQuery.isFetchedAfterMount
+    !campaignsQuery.isFetchedAfterMount ||
+    !edgesQuery.isFetchedAfterMount
   ) {
     return (
       <div className="flex items-center justify-center h-full">
