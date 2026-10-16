@@ -1,7 +1,8 @@
 import request from "supertest";
 import { Like } from "typeorm";
 import { CreateActionDto } from "../src/actions/dto/action.dto";
-import { Action, VisibilityMode } from "../src/actions/entities/action.entity";
+import { Action } from "../src/actions/entities/action.entity";
+import { createActionAsAdmin, patchActionAsAdmin } from "./action-requests";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
 const NAME_PREFIX = "action-time-estimate e2e";
@@ -24,30 +25,10 @@ describe("Action time estimate (e2e)", () => {
   });
 
   const create = (body: Partial<CreateActionDto>) =>
-    request(ctx.app.getHttpServer())
-      .post("/actions/create")
-      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-      .send({
-        name: NAME_PREFIX,
-        body: "Body",
-        category: [],
-        shortDescription: "Short",
-        visibilityMode: VisibilityMode.Public,
-        isContractSigningAction: false,
-        shouldCompleteAfterDeadline: false,
-        isForumParticipationAction: false,
-        optional: false,
-        preventCompletion: false,
-        publicOnly: false,
-        onboarding: false,
-        ...body,
-      } satisfies CreateActionDto);
+    createActionAsAdmin(ctx, { name: NAME_PREFIX, ...body });
 
   const patch = (id: number, body: Record<string, unknown>) =>
-    request(ctx.app.getHttpServer())
-      .patch(`/actions/${id}`)
-      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-      .send(body);
+    patchActionAsAdmin(ctx, id, body);
 
   it("returns null for the time estimate on an action created without it", async () => {
     const created = await create({}).expect(201);
