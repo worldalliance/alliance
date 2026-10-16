@@ -8,7 +8,7 @@ import {
 import { R } from "@alliance/common/result";
 import type { HeyApiError } from "@alliance/shared/client";
 import { useCallback } from "react";
-import type { DisplayOnlySave } from "../components/FormBuilder";
+import type { DisplayOnlySave } from "./useFormSave";
 
 export type DisplayOnlySchemaOwner = {
   schema: { [key: string]: unknown };
