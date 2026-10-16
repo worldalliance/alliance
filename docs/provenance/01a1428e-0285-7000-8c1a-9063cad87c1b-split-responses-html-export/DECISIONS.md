@@ -6,5 +6,5 @@
   - `xml.ts`: escaping and tag construction, used by every other part.
   - `schema.ts`: stored-schema parsing and rendering of what respondents saw.
   - `responses.ts`: answer, respondent and response rendering.
-  - `assets.ts`: the embedded CSS and browser script, which are plain strings with no TypeScript dependencies.
+  - `assets.ts`: the embedded CSS and browser script, which are plain strings with no TypeScript dependencies. It exports `exportScript(csvFileName)` rather than the bare script, so the `CSV_FILE_NAME` global the script reads is declared in the same file that uses it.
 - Each extraction is its own commit so each passes typecheck and tests on its own; the waiver goes in the commit that brings the file under the limit.
