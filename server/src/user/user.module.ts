@@ -15,6 +15,7 @@ import { ShareUrlsModule } from "src/share-urls/share-urls.module";
 import { Action } from "../actions/entities/action.entity";
 import { City } from "../geo/city.entity";
 import { Notification } from "../notifs/entities/notification.entity";
+import { AccountDeletionService } from "./account-deletion.service";
 import { AmbassadorInviteGoalService } from "./ambassador-invite-goal.service";
 import { AmbassadorInviteStatsService } from "./ambassador-invite-stats.service";
 import { AmbassadorProgramService } from "./ambassador-program.service";
@@ -100,6 +101,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     AmbassadorInviteGoalService,
     AmbassadorProgramService,
     UserVisibilityContextService,
+    AccountDeletionService,
     IsUserAlreadyExist,
   ],
   exports: [

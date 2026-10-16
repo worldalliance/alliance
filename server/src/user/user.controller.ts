@@ -24,6 +24,7 @@ import type { JwtRequest } from "src/auth/tokens";
 import { MaybeUserLocationDto } from "src/geo/city.dto";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { Public } from "../auth/public.decorator";
+import { AccountDeletionService } from "./account-deletion.service";
 import { AmbassadorInviteGoalService } from "./ambassador-invite-goal.service";
 import { AmbassadorProgramService } from "./ambassador-program.service";
 import {
@@ -65,6 +66,7 @@ class VerifyEmailBody {
 export class UserController {
   constructor(
     private readonly userService: UserService,
+    private readonly accountDeletionService: AccountDeletionService,
     private readonly userVisibilityContextService: UserVisibilityContextService,
     private readonly ambassadorProgramService: AmbassadorProgramService,
     private readonly ambassadorInviteGoalService: AmbassadorInviteGoalService,
@@ -207,7 +209,7 @@ export class UserController {
     @Param("id", ParseIntPipe) id: number,
     @Body() body: DeleteUserAdminDto,
   ): Promise<void> {
-    await this.userService.deleteUserAdmin({
+    await this.accountDeletionService.deleteUserAdmin({
       userId: id,
       adminId: req.user.sub,
       reason: body.reason,
@@ -445,6 +447,8 @@ export class UserController {
   @UseGuards(AuthGuard)
   @ApiOkResponse()
   async requestAccountDeletion(@Request() req: JwtRequest): Promise<void> {
-    R.unwrap(await this.userService.requestAccountDeletion(req.user.sub));
+    R.unwrap(
+      await this.accountDeletionService.requestAccountDeletion(req.user.sub),
+    );
   }
 }
