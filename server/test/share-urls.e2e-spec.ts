@@ -16,6 +16,7 @@ import {
   ShareUrlKind,
 } from "../src/share-urls/entities/share-url.entity";
 import { StoredInviteAssignmentKind } from "../src/share-urls/invite-assignment";
+import { InviteShareUrlsService } from "../src/share-urls/invite-share-urls.service";
 import { ShareUrlsService } from "../src/share-urls/share-urls.service";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
 import {
@@ -35,6 +36,7 @@ describe("Share URLs (e2e)", () => {
   let communityRepo: Repository<Community>;
   let userRepo: Repository<User>;
   let shareUrlsService: ShareUrlsService;
+  let inviteShareUrlsService: InviteShareUrlsService;
   let action: Action;
   let target: ExternalShareTarget;
 
@@ -51,6 +53,7 @@ describe("Share URLs (e2e)", () => {
     communityRepo = ctx.dataSource.getRepository(Community);
     userRepo = ctx.dataSource.getRepository(User);
     shareUrlsService = ctx.app.get(ShareUrlsService);
+    inviteShareUrlsService = ctx.app.get(InviteShareUrlsService);
 
     action = await actionRepo.save(
       actionRepo.create({
@@ -156,11 +159,12 @@ describe("Share URLs (e2e)", () => {
         type: "user",
         userId: ctx.testUserId,
       });
-      const duplicate = await shareUrlsService.createDuplicateInviteForUser(
-        ctx.testUserId,
-        "Unused duplicate",
-        null,
-      );
+      const duplicate =
+        await inviteShareUrlsService.createDuplicateInviteForUser(
+          ctx.testUserId,
+          "Unused duplicate",
+          null,
+        );
       await userRepo.save(
         userRepo.create({
           name: "Reusable Invite Recruit",
@@ -225,7 +229,7 @@ describe("Share URLs (e2e)", () => {
           maxCapacity: 10,
         }),
       );
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Doomed group invite",
         community.id,
@@ -260,7 +264,7 @@ describe("Share URLs (e2e)", () => {
           maxCapacity: 10,
         }),
       );
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Open invite",
         null,
@@ -335,7 +339,7 @@ describe("Share URLs (e2e)", () => {
     it("retargets an invite at another group the owner leads", async () => {
       const first = await ledCommunity("Retarget Origin");
       const second = await ledCommunity("Retarget Destination");
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Retargeted invite",
         first.id,
@@ -354,7 +358,7 @@ describe("Share URLs (e2e)", () => {
 
     it("points an invite at any open group", async () => {
       const community = await ledCommunity("Open Retarget Origin");
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Open retarget",
         community.id,
@@ -368,7 +372,7 @@ describe("Share URLs (e2e)", () => {
 
     it("renames without disturbing the destination", async () => {
       const community = await ledCommunity("Rename Destination");
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Before",
         community.id,
@@ -382,7 +386,7 @@ describe("Share URLs (e2e)", () => {
     });
 
     it("clears the label when sent an empty one", async () => {
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Labelled",
         null,
@@ -394,7 +398,7 @@ describe("Share URLs (e2e)", () => {
     });
 
     it("rejects a null label rather than choking on it", async () => {
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Labelled",
         null,
@@ -414,7 +418,7 @@ describe("Share URLs (e2e)", () => {
           maxCapacity: 10,
         }),
       );
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Unretargetable",
         null,
@@ -428,7 +432,7 @@ describe("Share URLs (e2e)", () => {
     });
 
     it("refuses to edit someone else's invite", async () => {
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.adminUserId,
         "Admin's invite",
         null,
@@ -440,7 +444,7 @@ describe("Share URLs (e2e)", () => {
     it("leaves people who already signed up where the link sent them", async () => {
       const original = await ledCommunity("Snapshot Origin");
       const retargeted = await ledCommunity("Snapshot Destination");
-      const invite = await shareUrlsService.createDuplicateInviteForUser(
+      const invite = await inviteShareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         "Snapshot invite",
         original.id,

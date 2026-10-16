@@ -14,6 +14,7 @@ import { MessageService } from "src/messaging/message.service";
 import { Notification } from "src/notifs/entities/notification.entity";
 import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
+import { InviteShareUrlsService } from "src/share-urls/invite-share-urls.service";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import { AmbassadorInviteGoalService } from "src/user/ambassador-invite-goal.service";
 import { AmbassadorProgramService } from "src/user/ambassador-program.service";
@@ -287,11 +288,9 @@ describe("Updates to a row deleted after its load (e2e)", () => {
   it("leaves a share link deleted while an admin relabels it", async () => {
     const owner = await member();
     const shareUrls = ctx.app.get(ShareUrlsService);
-    const link = await shareUrls.createDuplicateInviteForUser(
-      owner.id,
-      "Before",
-      null,
-    );
+    const link = await ctx.app
+      .get(InviteShareUrlsService)
+      .createDuplicateInviteForUser(owner.id, "Before", null);
     await ctx.dataSource.getRepository(ShareUrl).softDelete(link.id);
 
     await expect(shareUrls.updateLabel(link.id, "After")).rejects.toThrow(

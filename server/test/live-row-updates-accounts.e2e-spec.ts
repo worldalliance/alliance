@@ -11,7 +11,7 @@ import { Community } from "src/community/entities/community.entity";
 import { ContractService } from "src/contract/contract.service";
 import { ImagesService } from "src/images/images.service";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
-import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { InviteShareUrlsService } from "src/share-urls/invite-share-urls.service";
 import { AccountEmailService } from "src/user/account-email.service";
 import { AwayRangeEditor } from "src/user/away-range-history";
 import {
@@ -247,8 +247,8 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
 
   it("leaves an invite link deleted while its owner edits it", async () => {
     const owner = await member();
-    const shareUrls = ctx.app.get(ShareUrlsService);
-    const link = await shareUrls.createDuplicateInviteForUser(
+    const inviteShareUrls = ctx.app.get(InviteShareUrlsService);
+    const link = await inviteShareUrls.createDuplicateInviteForUser(
       owner.id,
       "Before",
       null,
@@ -262,7 +262,7 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
     });
 
     await expect(
-      shareUrls.updateInviteForUser({
+      inviteShareUrls.updateInviteForUser({
         id: link.id,
         userId: owner.id,
         label: "After",

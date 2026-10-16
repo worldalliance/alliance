@@ -30,6 +30,7 @@ import {
   UpdateInviteMessageTemplateDto,
   UpdateShareLinkLabelDto,
 } from "./dto/share-url.dto";
+import { InviteShareUrlsService } from "./invite-share-urls.service";
 import type { ShareUrlOwner } from "./share-url-owner";
 import { ShareUrlsService } from "./share-urls.service";
 
@@ -48,7 +49,10 @@ function ownerFromDto(body: CreateDuplicateShareLinkDto): ShareUrlOwner {
 
 @Controller("share-urls")
 export class ShareUrlsController {
-  constructor(private readonly shareUrlsService: ShareUrlsService) {}
+  constructor(
+    private readonly shareUrlsService: ShareUrlsService,
+    private readonly inviteShareUrlsService: InviteShareUrlsService,
+  ) {}
 
   @Post("get-share-link")
   @UseGuards(AuthGuard)
@@ -70,7 +74,9 @@ export class ShareUrlsController {
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ShareUrlMineDto, isArray: true })
   async findMyInvites(@Request() req: JwtRequest): Promise<ShareUrlMineDto[]> {
-    const rows = await this.shareUrlsService.findInvitesForUser(req.user.sub);
+    const rows = await this.inviteShareUrlsService.findInvitesForUser(
+      req.user.sub,
+    );
     return rows.map((r) => new ShareUrlMineDto(r));
   }
 
@@ -81,12 +87,14 @@ export class ShareUrlsController {
     @Body() body: CreateInviteDuplicateDto,
     @Request() req: JwtRequest,
   ): Promise<ShareUrlMineDto> {
-    const row = await this.shareUrlsService.createDuplicateInviteForUser(
+    const row = await this.inviteShareUrlsService.createDuplicateInviteForUser(
       req.user.sub,
       body.label,
       body.communityId,
     );
-    const [result] = await this.shareUrlsService.withInviteDestinations([row]);
+    const [result] = await this.inviteShareUrlsService.withInviteDestinations([
+      row,
+    ]);
     return new ShareUrlMineDto(result);
   }
 
@@ -95,7 +103,7 @@ export class ShareUrlsController {
   @ApiOkResponse({ type: InviteMessageTemplateDto })
   async getInviteMessageTemplate(): Promise<InviteMessageTemplateDto> {
     return new InviteMessageTemplateDto(
-      await this.shareUrlsService.getInviteMessageTemplate(),
+      await this.inviteShareUrlsService.getInviteMessageTemplate(),
     );
   }
 
@@ -106,7 +114,9 @@ export class ShareUrlsController {
     @Body() body: UpdateInviteMessageTemplateDto,
   ): Promise<InviteMessageTemplateDto> {
     return new InviteMessageTemplateDto(
-      await this.shareUrlsService.updateInviteMessageTemplate(body.template),
+      await this.inviteShareUrlsService.updateInviteMessageTemplate(
+        body.template,
+      ),
     );
   }
 
@@ -117,7 +127,7 @@ export class ShareUrlsController {
     @Query() query: ReusableInviteFeedQueryDto,
   ): Promise<ReusableInviteFeedDto> {
     return new ReusableInviteFeedDto(
-      await this.shareUrlsService.findReusableInviteFeed(
+      await this.inviteShareUrlsService.findReusableInviteFeed(
         new Date(query.startAt),
       ),
     );
@@ -131,13 +141,15 @@ export class ShareUrlsController {
     @Body() body: UpdateInviteDto,
     @Request() req: JwtRequest,
   ): Promise<ShareUrlMineDto> {
-    const row = await this.shareUrlsService.updateInviteForUser({
+    const row = await this.inviteShareUrlsService.updateInviteForUser({
       id,
       userId: req.user.sub,
       label: body.label,
       communityId: body.communityId,
     });
-    const [result] = await this.shareUrlsService.withInviteDestinations([row]);
+    const [result] = await this.inviteShareUrlsService.withInviteDestinations([
+      row,
+    ]);
     return new ShareUrlMineDto(result);
   }
 
@@ -148,7 +160,7 @@ export class ShareUrlsController {
     @Param("id") id: string,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    await this.shareUrlsService.deleteInviteForUser(id, req.user.sub);
+    await this.inviteShareUrlsService.deleteInviteForUser(id, req.user.sub);
   }
 
   @Post("create-duplicate")
