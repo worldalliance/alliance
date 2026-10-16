@@ -83,6 +83,21 @@ it("names the friendships when they fail to load", async () => {
   ).toBeTruthy();
 });
 
+it("draws no cached friendships once a reload of them fails", async () => {
+  api.alsoServing({
+    "GET /user/friends/graphEdges": () => Response.json({}, { status: 500 }),
+  });
+  const query = queryWrapper();
+  query.client.setQueryData(queryKeys.friendGraphEdgesAdmin(), [
+    { userAId: 1, userBId: 2 },
+  ]);
+
+  const view = render(<FriendGraphPage />, query);
+
+  await screen.findByText("Could not load friendships.", { exact: false });
+  expect(drawnLinks(view.container).size).toBe(0);
+});
+
 it("waits for a fresh user list before drawing cached users", async () => {
   let release = () => {};
   const usersGate = new Promise<void>((resolve) => (release = resolve));
@@ -106,6 +121,31 @@ it("waits for a fresh user list before drawing cached users", async () => {
   expect(() => drawnNode(view.container, "sam")).toThrow();
 });
 
+it("waits for a fresh friendship list before drawing cached friendships", async () => {
+  let release = () => {};
+  const edgesGate = new Promise<void>((resolve) => (release = resolve));
+  api.alsoServing({
+    "GET /user/friends/graphEdges": async () => {
+      await edgesGate;
+      return Response.json([{ userAId: 3, userBId: 4 }]);
+    },
+  });
+  const query = queryWrapper();
+  query.client.setQueryData(queryKeys.friendGraphEdgesAdmin(), [
+    { userAId: 1, userBId: 2 },
+  ]);
+
+  const view = render(<FriendGraphPage />, query);
+  await waitFor(() =>
+    expect(query.client.getQueryData(queryKeys.graphUsersAdmin())).toBeTruthy(),
+  );
+  expect(screen.getByText("Loading graph...")).toBeTruthy();
+
+  release();
+  await waitFor(() => drawnNode(view.container, "ren"));
+  expect([...drawnLinks(view.container).keys()]).toEqual(["ren->lee"]);
+});
+
 it.each([
   [
     "the window regains focus",
@@ -117,12 +157,17 @@ it.each([
     (on: boolean) => onlineManager.setOnline(on),
     () => onlineManager.setOnline(true),
   ],
-])("keeps its users when %s", async (_event, toggle, reset) => {
+])("keeps its users and friendships when %s", async (_event, toggle, reset) => {
   let userLoads = 0;
+  let edgeLoads = 0;
   api.alsoServing({
     "GET /user/list-graph": () => {
       userLoads += 1;
       return Response.json([user({ id: 1, name: "ada" })]);
+    },
+    "GET /user/friends/graphEdges": () => {
+      edgeLoads += 1;
+      return Response.json([]);
     },
   });
   const { container } = render(<FriendGraphPage />, queryWrapper());
@@ -136,4 +181,5 @@ it.each([
   reset();
 
   expect(userLoads).toBe(1);
+  expect(edgeLoads).toBe(1);
 });
