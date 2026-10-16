@@ -14,6 +14,7 @@ import {
   loadedActionEvents,
   parseAction,
 } from "src/actions/entities/action.entity";
+import { hasTakenEffect } from "src/actions/utils/action-event";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { In, type Repository } from "typeorm";
 import { ActionCompletionCurve } from "./action-completion-curve.dto";
@@ -43,7 +44,9 @@ export class ActionStatsAnalyticsService {
 
     const completedEvent = loadedActionEvents(action)
       .filter(
-        (e) => completedStatuses.includes(e.newStatus) && e.date < new Date(),
+        (e) =>
+          completedStatuses.includes(e.newStatus) &&
+          hasTakenEffect(e.date, new Date()),
       )
       .sort((a, b) => b.date.getTime() - a.date.getTime())[0];
 
@@ -122,25 +125,10 @@ export class ActionStatsAnalyticsService {
       const usersDismissed = dismissalByActionId.get(action.id) ?? 0;
       const completionRate = usersJoined > 0 ? usersCompleted / usersJoined : 0;
 
-      // Find member_action event dates
-      const sortedEvents = loadedActionEvents(action).sort(
-        (a, b) => a.date.getTime() - b.date.getTime(),
-      );
-      const memberActionEvent = sortedEvents.find(
-        (e) => e.newStatus === ActionStatus.MemberAction,
-      );
+      const { event: memberActionEvent, deadlineEvent } =
+        action.memberActionPhase;
       const memberActionStartDate = memberActionEvent?.date ?? null;
-
-      // Find the end date (first event after member_action that changes status)
-      let memberActionEndDate: Date | null = null;
-      if (memberActionEvent) {
-        const endEvent = sortedEvents.find(
-          (e) =>
-            e.date > memberActionEvent.date &&
-            e.newStatus !== ActionStatus.MemberAction,
-        );
-        memberActionEndDate = endEvent?.date ?? null;
-      }
+      const memberActionEndDate = deadlineEvent?.date ?? null;
 
       // Determine if action should show in chart:
       // - not publicOnly
@@ -277,7 +265,7 @@ export class ActionStatsAnalyticsService {
         if (!record.memberActionStartDate || record.usersJoined <= 0) {
           return false;
         }
-        if (record.memberActionStartDate > now) {
+        if (!hasTakenEffect(record.memberActionStartDate, now)) {
           return false;
         }
         if (onboardingByActionId.get(record.actionId)) {

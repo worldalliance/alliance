@@ -9,6 +9,33 @@ export type MemberActionPhase =
   | { event: null; deadlineEvent: null };
 
 /**
+ * Each event is in effect over `[its date, the next event's date)`, so an event
+ * has taken effect at the instant of its own date.
+ */
+export function hasTakenEffect(date: Date, at: Date): boolean {
+  return date <= at;
+}
+
+/** The event in effect at `at`, and the next event, which ends it. */
+export function eventInEffectAt<E extends Pick<ActionEvent, "date">>(
+  events: E[],
+  at: Date,
+): { event: E | null; nextEvent: E | null } {
+  return {
+    event: findLeast(
+      events,
+      (a, b) => b.date.getTime() - a.date.getTime(), // reverse order
+      (candidate) => hasTakenEffect(candidate.date, at),
+    ),
+    nextEvent: findLeast(
+      events,
+      (a, b) => a.date.getTime() - b.date.getTime(),
+      (candidate) => !hasTakenEffect(candidate.date, at),
+    ),
+  };
+}
+
+/**
  * The member-action phase of an action: the event that opens it and the event
  * that closes it.
  */
@@ -21,13 +48,10 @@ export function memberActionPhase(events: ActionEvent[]): MemberActionPhase {
   if (!event) {
     return { event: null, deadlineEvent: null };
   }
-  const deadlineEvent =
-    findLeast(
-      events,
-      (a, b) => a.date.getTime() - b.date.getTime(),
-      (candidate) => candidate.date > event.date,
-    ) ?? null;
-  return { event, deadlineEvent };
+  return {
+    event,
+    deadlineEvent: eventInEffectAt(events, event.date).nextEvent,
+  };
 }
 
 /**

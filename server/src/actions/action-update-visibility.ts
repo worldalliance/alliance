@@ -1,5 +1,5 @@
 import { R, type Result } from "@alliance/common/result";
-import { addMilliseconds, max } from "date-fns";
+import { max } from "date-fns";
 import { LessThanOrEqual, type FindOptionsWhere } from "typeorm";
 import { ActionStatus, type ActionEvent } from "./entities/action-event.entity";
 import type { ActionUpdate } from "./entities/action-update.entity";
@@ -44,16 +44,12 @@ export function checkActionShowsWhenEntriesArrive(params: {
       "This action is archived, so members can't see it. Unarchive it before sending the notification.",
     );
   }
-  // Entries due in the past arrive now. An event dated at the arrival has
-  // taken effect by then.
+  // Entries due in the past arrive now.
   const arrival = max([
     actionUpdateEntrySendTime(params.actionUpdate),
     params.now,
   ]);
-  if (
-    actionStatusAt(params.action.events, addMilliseconds(arrival, 1)) ===
-    ActionStatus.Draft
-  ) {
+  if (actionStatusAt(params.action.events, arrival) === ActionStatus.Draft) {
     return R.failure(
       "This action is still a draft when the notification arrives. Date the update on or after the action's launch, or send it once the action has launched.",
     );

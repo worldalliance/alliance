@@ -8,6 +8,7 @@ import {
 } from "src/utils/action-user";
 import type { Action, ParsedAction } from "./entities/action.entity";
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
+import { hasTakenEffect } from "./utils/action-event";
 
 /**
  * Longer than any signing request. A member who signs through a task form has
@@ -40,7 +41,7 @@ export function computeCohortEnrollment(
   now: Date,
 ): CohortEnrollment {
   const { event, deadlineEvent } = action.memberActionPhase;
-  if (!event || event.date > now) {
+  if (!event || !hasTakenEffect(event.date, now)) {
     return { state: CohortEnrollmentState.NotStarted };
   }
   if (

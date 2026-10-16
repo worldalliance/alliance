@@ -25,7 +25,6 @@ import {
   UpdateDateColumnTz,
 } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
-import { findLeast } from "src/utils/filter";
 import type { Relation } from "src/utils/Repository";
 import { toDateTime } from "src/utils/transforms";
 import {
@@ -40,6 +39,7 @@ import {
 } from "typeorm";
 import { ActionCategory } from "../action-category";
 import {
+  eventInEffectAt,
   memberActionPhase,
   type MemberActionPhase,
 } from "../utils/action-event";
@@ -67,17 +67,12 @@ export enum VisibilityMode {
   ParticipatingGroups = "participating_groups",
 }
 
-/** The newest event before `at` sets the status; with none, it's Draft. */
+/** The event in effect at `at` sets the status; with none, it's Draft. */
 export function actionStatusAt(
   events: Pick<ActionEvent, "date" | "newStatus">[],
   at: Date,
 ): ActionStatus {
-  const latestPastEvent = findLeast(
-    events,
-    (a, b) => b.date.getTime() - a.date.getTime(), // reverse order
-    (event) => event.date < at,
-  );
-  return latestPastEvent ? latestPastEvent.newStatus : ActionStatus.Draft;
+  return eventInEffectAt(events, at).event?.newStatus ?? ActionStatus.Draft;
 }
 
 @Entity()

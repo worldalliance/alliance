@@ -1,14 +1,20 @@
 import { millisecondsInSecond } from "date-fns/constants";
-import { ActionStatus } from "../actions/entities/action-event.entity";
+import {
+  ActionEvent,
+  ActionStatus,
+} from "../actions/entities/action-event.entity";
+import { UserAwayRange } from "../user/entities/user-away-range.entity";
 import type { User } from "../user/entities/user.entity";
 import {
   ActionAssignment,
   computeActionAssignment,
   computeContractSignedAfterOnboardingStart,
-  computeIsAssignedFromCohortSet,
   computeIsRequiredForAction,
+  computeMemberActionAwayStatus,
   computeMissedActionDeadline,
   hasMemberActionDeadlinePassed,
+  hasMemberActionStarted,
+  TaskAwayStatus,
 } from "./action-user";
 
 type Params = Parameters<typeof computeActionAssignment>[0];
@@ -252,144 +258,6 @@ describe("computeIsRequiredForAction", () => {
   });
 });
 
-describe("computeIsAssignedFromCohortSet", () => {
-  type PopulationParams = Parameters<typeof computeIsAssignedFromCohortSet>[0];
-
-  function makePopulationUser(opts: {
-    id?: number;
-    hasContractInFullRange?: boolean;
-    hasContractAtWindowEnd?: boolean;
-    contractSignedAt?: Date | null;
-  }): {
-    user: User;
-    fullRangeCalls: { startDate?: Date | null; endDate?: Date | null }[];
-  } {
-    const {
-      id = 1,
-      hasContractInFullRange = true,
-      hasContractAtWindowEnd = hasContractInFullRange,
-      contractSignedAt = null,
-    } = opts;
-    const fullRangeCalls: { startDate?: Date | null; endDate?: Date | null }[] =
-      [];
-    const user = {
-      id,
-      contractEvents: contractSignedAt ? [{ date: contractSignedAt }] : [],
-      hasActiveContractInFullRange: (range: {
-        startDate?: Date | null;
-        endDate?: Date | null;
-      }) => {
-        fullRangeCalls.push(range);
-        return hasContractInFullRange;
-      },
-      hasActiveContractAt: () => hasContractAtWindowEnd,
-    } as unknown as User;
-    return { user, fullRangeCalls };
-  }
-
-  function populationInput(
-    overrides: Partial<PopulationParams> = {},
-  ): PopulationParams {
-    return {
-      eventDate: PHASE_START,
-      deadlineDate: DEADLINE,
-      cohortMemberIds: new Set([1]),
-      user: makePopulationUser({}).user,
-      onboarding: false,
-      ...overrides,
-    };
-  }
-
-  it("participates when in cohort with a contract active over the window", () => {
-    expect(computeIsAssignedFromCohortSet(populationInput())).toBe(true);
-  });
-
-  it("does not participate when not in the cohort", () => {
-    expect(
-      computeIsAssignedFromCohortSet(
-        populationInput({ cohortMemberIds: new Set([999]) }),
-      ),
-    ).toBe(false);
-  });
-
-  it("does not participate without a contract active over the window", () => {
-    const { user } = makePopulationUser({ hasContractInFullRange: false });
-    expect(computeIsAssignedFromCohortSet(populationInput({ user }))).toBe(
-      false,
-    );
-  });
-
-  it("still requires the full-window contract when the deadline is null", () => {
-    // Regression: a null deadline used to skip the full-range check, so
-    // lapsed-contract users were included here but excluded by the self-view
-    // predicate (computeActionAssignment).
-    const { user, fullRangeCalls } = makePopulationUser({
-      hasContractInFullRange: false,
-    });
-    expect(
-      computeIsAssignedFromCohortSet(
-        populationInput({ user, deadlineDate: null }),
-      ),
-    ).toBe(false);
-    expect(fullRangeCalls).toEqual([{ startDate: PHASE_START, endDate: null }]);
-  });
-
-  it("includeSuspended skips the contract-lapse exclusion", () => {
-    const { user, fullRangeCalls } = makePopulationUser({
-      hasContractInFullRange: false,
-    });
-    expect(
-      computeIsAssignedFromCohortSet(
-        populationInput({ user, includeSuspended: true }),
-      ),
-    ).toBe(true);
-    expect(
-      computeIsAssignedFromCohortSet(
-        populationInput({ user, deadlineDate: null, includeSuspended: true }),
-      ),
-    ).toBe(true);
-    expect(fullRangeCalls).toEqual([]);
-  });
-
-  it("excludes a mid-window joiner the self-view predicate calls optional", () => {
-    const { user } = makePopulationUser({
-      hasContractInFullRange: false,
-      hasContractAtWindowEnd: true,
-    });
-    expect(computeIsAssignedFromCohortSet(populationInput({ user }))).toBe(
-      false,
-    );
-  });
-
-  describe("onboarding join timing", () => {
-    it("excludes an existing member who joined before the event", () => {
-      const { user } = makePopulationUser({
-        contractSignedAt: new Date(
-          PHASE_START.getTime() - millisecondsInSecond,
-        ),
-      });
-      expect(
-        computeIsAssignedFromCohortSet(
-          populationInput({ user, onboarding: true }),
-        ),
-      ).toBe(false);
-    });
-
-    it("includes a new member who joined at/after the event", () => {
-      const { user } = makePopulationUser({
-        contractSignedAt: new Date(
-          PHASE_START.getTime() + millisecondsInSecond,
-        ),
-      });
-      expect(
-        computeIsAssignedFromCohortSet(
-          populationInput({ user, onboarding: true }),
-        ),
-      ).toBe(true);
-    });
-  });
-});
-
 describe("computeContractSignedAfterOnboardingStart", () => {
   it("treats a user with no contract events as in time", () => {
     expect(
@@ -427,6 +295,44 @@ describe("computeContractSignedAfterOnboardingStart", () => {
         memberActionPhaseStart: null,
       }),
     ).toBe(false);
+  });
+});
+
+describe("hasMemberActionStarted", () => {
+  const events = [{ newStatus: ActionStatus.MemberAction, date: PHASE_START }];
+
+  it("is false before the member-action event", () => {
+    expect(
+      hasMemberActionStarted(
+        events,
+        new Date(PHASE_START.getTime() - millisecondsInSecond),
+      ),
+    ).toBe(false);
+  });
+
+  it("is true at the instant of the member-action event", () => {
+    expect(hasMemberActionStarted(events, PHASE_START)).toBe(true);
+  });
+});
+
+describe("computeMemberActionAwayStatus", () => {
+  it("measures the window from the member-action event, not an earlier event", () => {
+    const events = [
+      { newStatus: ActionStatus.Planned, date: new Date("2019-12-01") },
+      { newStatus: ActionStatus.MemberAction, date: PHASE_START },
+      { newStatus: ActionStatus.Resolution, date: DEADLINE },
+    ].map((event) => Object.assign(new ActionEvent(), event));
+    const awayRange = Object.assign(new UserAwayRange(), {
+      startDate: new Date("2019-12-05"),
+      endDate: new Date("2019-12-10"),
+    });
+    expect(
+      computeMemberActionAwayStatus({
+        action: { events },
+        user: { awayRanges: [awayRange] },
+        now: NOW,
+      }),
+    ).toBe(TaskAwayStatus.NotAway);
   });
 });
 

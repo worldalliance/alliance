@@ -101,6 +101,16 @@ describe("actionHomePlacement", () => {
     ).toEqual([PlacementBadge.ActiveTask]);
   });
 
+  it("takes an event's status at the instant of its date", () => {
+    expect(
+      placementOf({
+        events: [
+          makeEvent({ newStatus: "member_action", date: now.toISOString() }),
+        ],
+      }).badges,
+    ).toEqual([PlacementBadge.ActiveTask]);
+  });
+
   it("doesn't call a completion-blocked preview scheduled for members", () => {
     expect(
       placementOf({
