@@ -4282,7 +4282,7 @@ export type ActionStatsWithOnboardingDto = {
      */
     usersJoined: number;
     /**
-     * Number of users who withdrew from this action (declined or wont_complete)
+     * Number of users whose latest completion or withdrawal on this action is a withdrawal
      */
     usersWithdrawn: number;
     /**
