@@ -67,12 +67,12 @@ import {
   getNextVisiblePageIndex,
   getPreviousVisiblePageIndex,
   getVisiblePageIndices,
-  resolveFieldDefaultValue,
 } from "./formrenderer";
 import {
   getListSubFieldErrors,
   validateFieldValue as validateFieldValueShared,
 } from "./forms/fieldValidation";
+import { resolveFieldDefaultValue } from "./forms/formDrafts";
 import {
   completedFormSchema,
   useDropUnofferedChoices,

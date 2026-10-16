@@ -7,7 +7,7 @@ import {
   type FollowUpFormDto,
   type SubmitFormDto,
 } from "../client";
-import { computeFormStorageKey } from "../formrenderer";
+import { computeFormStorageKey } from "../forms/formDrafts";
 import {
   formulaSourcesChanged,
   type SubmitResult,
