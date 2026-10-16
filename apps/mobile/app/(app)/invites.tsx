@@ -6,7 +6,7 @@ import {
   inviteBuckets,
   roleBadges,
 } from "@alliance/shared/lib/copy";
-import { dateToInputValue } from "@alliance/shared/lib/dateInput";
+import { formatMediumDate } from "@alliance/shared/lib/dateFormatters";
 import {
   inviteGoalProgressPercent,
   inviteGoalStatus,
@@ -29,10 +29,7 @@ import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvite
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
 import { milliseconds } from "date-fns";
 import {
-  CalendarDays,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   ChevronUp,
   MoreHorizontal,
   Trash2,
@@ -51,7 +48,7 @@ import InviteSettingsModal from "../../components/InviteSettingsModal";
 import InviteShareLink from "../../components/InviteShareLink";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import ReferralQrSection from "../../components/ReferralQrSection";
-import FormModal from "../../components/forms/FormModal";
+import DatePickerField from "../../components/forms/DatePickerField";
 import Button, { ButtonColor } from "../../components/system/Button";
 import Card from "../../components/system/Card";
 import Input from "../../components/system/Input";
@@ -86,203 +83,6 @@ const INVITES_TABS_ORDER: InvitesTab[] = [
 ];
 
 const INVITES_EMPTY_MESSAGE = "Your invites will appear here.";
-
-const formatDate = (value: string | Date) =>
-  new Date(value).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-
-const CALENDAR_WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
-
-function DatePickerField({
-  label,
-  value,
-  onChange,
-  lightLabel = false,
-  disabled = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  lightLabel?: boolean;
-  disabled?: boolean;
-}) {
-  const selectedDate = new Date(`${value}T12:00:00`);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [visibleMonth, setVisibleMonth] = useState(
-    () => new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1),
-  );
-  const firstWeekday = new Date(
-    visibleMonth.getFullYear(),
-    visibleMonth.getMonth(),
-    1,
-  ).getDay();
-  const daysInMonth = new Date(
-    visibleMonth.getFullYear(),
-    visibleMonth.getMonth() + 1,
-    0,
-  ).getDate();
-
-  const openPicker = () => {
-    setVisibleMonth(
-      new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1),
-    );
-    setPickerOpen(true);
-  };
-
-  const changeMonth = (offset: number) => {
-    setVisibleMonth(
-      (month) => new Date(month.getFullYear(), month.getMonth() + offset, 1),
-    );
-  };
-
-  const selectDate = (date: Date) => {
-    onChange(dateToInputValue(date));
-    setPickerOpen(false);
-  };
-
-  return (
-    <View>
-      <Text
-        className={
-          lightLabel
-            ? "text-xs text-white/70 mb-1"
-            : "text-sm text-zinc-700 mb-2"
-        }
-        weight={FontWeight.Semibold}
-      >
-        {label}
-      </Text>
-      <TouchableOpacity
-        className="min-h-11 rounded-lg border border-zinc-200 bg-white px-3 flex-row items-center justify-between"
-        accessibilityRole="button"
-        accessibilityLabel={`Select ${label.toLowerCase()}`}
-        disabled={disabled}
-        onPress={openPicker}
-      >
-        <Text className="text-base text-zinc-700">
-          {formatDate(selectedDate)}
-        </Text>
-        <CalendarDays size={18} color={colors.text.icon} />
-      </TouchableOpacity>
-
-      <FormModal visible={pickerOpen} onClose={() => setPickerOpen(false)}>
-        <View className="gap-4">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-xl" weight={FontWeight.Semibold}>
-              Select {label.toLowerCase()}
-            </Text>
-            <TouchableOpacity
-              className="px-2 py-1"
-              accessibilityRole="button"
-              onPress={() => setPickerOpen(false)}
-            >
-              <Text style={{ color: colors.green }} weight={FontWeight.Medium}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View className="flex-row items-center justify-between">
-            <TouchableOpacity
-              className="w-11 h-11 items-center justify-center rounded-full"
-              accessibilityRole="button"
-              accessibilityLabel="Previous month"
-              onPress={() => changeMonth(-1)}
-            >
-              <ChevronLeft size={22} color={colors.text.icon} />
-            </TouchableOpacity>
-            <Text className="text-lg" weight={FontWeight.Semibold}>
-              {visibleMonth.toLocaleDateString(undefined, {
-                month: "long",
-                year: "numeric",
-              })}
-            </Text>
-            <TouchableOpacity
-              className="w-11 h-11 items-center justify-center rounded-full"
-              accessibilityRole="button"
-              accessibilityLabel="Next month"
-              onPress={() => changeMonth(1)}
-            >
-              <ChevronRight size={22} color={colors.text.icon} />
-            </TouchableOpacity>
-          </View>
-
-          <View className="flex-row flex-wrap">
-            {CALENDAR_WEEKDAYS.map((weekday, index) => (
-              <View
-                key={`${weekday}-${index}`}
-                className="h-8 items-center justify-center"
-                style={{ width: "14.2857%" }}
-              >
-                <Text
-                  className="text-xs text-zinc-500"
-                  weight={FontWeight.Semibold}
-                >
-                  {weekday}
-                </Text>
-              </View>
-            ))}
-            {Array.from({ length: firstWeekday }, (_, index) => (
-              <View
-                key={`empty-${index}`}
-                className="h-11"
-                style={{ width: "14.2857%" }}
-              />
-            ))}
-            {Array.from({ length: daysInMonth }, (_, index) => {
-              const day = index + 1;
-              const date = new Date(
-                visibleMonth.getFullYear(),
-                visibleMonth.getMonth(),
-                day,
-              );
-              const dateValue = dateToInputValue(date);
-              const selected = dateValue === value;
-
-              return (
-                <View
-                  key={dateValue}
-                  className="h-11 items-center justify-center"
-                  style={{ width: "14.2857%" }}
-                >
-                  <TouchableOpacity
-                    className={
-                      selected
-                        ? "w-10 h-10 rounded-full items-center justify-center bg-green"
-                        : "w-10 h-10 rounded-full items-center justify-center"
-                    }
-                    accessibilityRole="button"
-                    accessibilityLabel={formatDate(date)}
-                    accessibilityState={{ selected }}
-                    onPress={() => selectDate(date)}
-                  >
-                    <Text
-                      className={selected ? "text-white" : "text-zinc-800"}
-                      weight={
-                        selected ? FontWeight.Semibold : FontWeight.Regular
-                      }
-                    >
-                      {day}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
-          </View>
-
-          <Button
-            title="Today"
-            color={ButtonColor.Outline}
-            onPress={() => selectDate(new Date())}
-          />
-        </View>
-      </FormModal>
-    </View>
-  );
-}
 
 export default function InvitesScreen() {
   const { user } = useAuth();
@@ -721,8 +521,13 @@ export default function InvitesScreen() {
                               <View className="flex-1">
                                 {currentGoalSummary}
                                 <Text className="text-sm text-white/70">
-                                  {formatDate(currentGoal.goal.startAt)} -{" "}
-                                  {formatDate(currentGoal.goal.dueAt)}
+                                  {formatMediumDate(
+                                    new Date(currentGoal.goal.startAt),
+                                  )}{" "}
+                                  -{" "}
+                                  {formatMediumDate(
+                                    new Date(currentGoal.goal.dueAt),
+                                  )}
                                 </Text>
                               </View>
                               <View className="flex-row gap-2">
@@ -894,8 +699,13 @@ export default function InvitesScreen() {
                                   }
                                 >
                                   <Text className="text-sm text-white/70">
-                                    {formatDate(goal.goal.startAt)} -{" "}
-                                    {formatDate(goal.goal.dueAt)}
+                                    {formatMediumDate(
+                                      new Date(goal.goal.startAt),
+                                    )}{" "}
+                                    -{" "}
+                                    {formatMediumDate(
+                                      new Date(goal.goal.dueAt),
+                                    )}
                                   </Text>
                                   <Text className="text-sm text-white/70">
                                     <Text
