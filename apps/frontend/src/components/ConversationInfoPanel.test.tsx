@@ -4,12 +4,14 @@ import {
   ConversationType,
   ParticipantRole,
 } from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import {
   makeConversation,
   makeParticipant,
   makeProfile,
 } from "@alliance/shared/lib/testFixtures";
 import { pending, type Pending } from "@alliance/shared/lib/testing/pending";
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
   act,
@@ -35,7 +37,11 @@ let addResponse: () => Response;
 let removeResponse: () => Response;
 let memberChangesSent: number;
 let savesSent: number;
+let listFetches: number;
+let query: ReturnType<typeof queryWrapper>;
 beforeEach(() => {
+  listFetches = 0;
+  query = queryWrapper();
   updateResponse = () => new Response(null, { status: 500 });
   leaveResponse = () =>
     Response.json(
@@ -49,6 +55,10 @@ beforeEach(() => {
 });
 serveApi(
   routes({
+    "GET /messaging/conversations": () => {
+      listFetches++;
+      return Response.json([]);
+    },
     "POST /messaging/conversations/:conversationId/update": () => {
       savesSent++;
       return updateResponse();
@@ -73,20 +83,32 @@ const panel = (
   convo: ConversationDto,
   props: Partial<ConversationInfoPanelProps> = {},
 ) => (
-  <MemoryRouter>
-    <AuthContext.Provider value={authValue({ user: testAuthUser })}>
-      <ConversationInfoPanel
-        selectedConvo={convo}
-        handleConversationUpdated={() => {}}
-        friends={[]}
-        friendsFailure={null}
-        onLeave={() => {}}
-        onClose={() => {}}
-        {...props}
-      />
-    </AuthContext.Provider>
-  </MemoryRouter>
+  <query.wrapper>
+    <MemoryRouter>
+      <AuthContext.Provider value={authValue({ user: testAuthUser })}>
+        <ConversationInfoPanel
+          selectedConvo={convo}
+          friends={[]}
+          friendsFailure={null}
+          onLeave={() => {}}
+          onClose={() => {}}
+          {...props}
+        />
+      </AuthContext.Provider>
+    </MemoryRouter>
+  </query.wrapper>
 );
+
+const renderListed = (
+  convo: ConversationDto,
+  props: Partial<ConversationInfoPanelProps> = {},
+) => {
+  query.client.setQueryData(queryKeys.myConversations(), [convo]);
+  render(panel(convo, props));
+};
+
+const listedConversations = () =>
+  query.client.getQueryData<ConversationDto[]>(queryKeys.myConversations());
 
 const groupWith = (
   viewerRole: ParticipantRole,
@@ -383,6 +405,17 @@ it("tells the page the viewer left once leaving works", async () => {
   await waitFor(() => expect(left).toHaveBeenCalled());
 });
 
+it("drops the group from the conversation list once leaving works, without loading the list itself", async () => {
+  const convo = groupWith("member");
+  leaveResponse = () => Response.json(convo);
+  renderListed(convo);
+
+  fireEvent.click(screen.getByRole("button", { name: "Leave group" }));
+
+  await waitFor(() => expect(listedConversations()).toEqual([]));
+  expect(listFetches).toBe(0);
+});
+
 it("sends one removal when a member's X is clicked twice", async () => {
   renderPanel("admin");
   const remove = screen.getByRole("button", {
@@ -397,22 +430,21 @@ it("sends one removal when a member's X is clicked twice", async () => {
   expect(memberChangesSent).toBe(1);
 });
 
-it("passes on the group the server returns after a removal", async () => {
+it("lists the group the server returns after a removal", async () => {
   const convo = groupWith("admin");
   const withoutTheOwner = {
     ...convo,
     participants: convo.participants.slice(0, 1),
   };
   removeResponse = () => Response.json(withoutTheOwner);
-  const updated = jest.fn();
-  render(panel(convo, { handleConversationUpdated: updated }));
+  renderListed(convo);
   const remove = screen.getByRole("button", {
     name: `Remove User ${testAuthUser.id + 1}`,
   });
 
   fireEvent.click(remove);
 
-  await waitFor(() => expect(updated).toHaveBeenCalledWith(withoutTheOwner));
+  await waitFor(() => expect(listedConversations()).toEqual([withoutTheOwner]));
 });
 
 it("sends one add when a search result is clicked twice", async () => {
@@ -430,7 +462,7 @@ it("sends one add when a search result is clicked twice", async () => {
   expect(memberChangesSent).toBe(1);
 });
 
-it("passes on the group the server returns after an add, and clears the search", async () => {
+it("lists the group the server returns after an add, and clears the search", async () => {
   const friend = makeProfile(testAuthUser.id + 2);
   const convo = groupWith("admin");
   const withTheFriend = {
@@ -438,17 +470,27 @@ it("passes on the group the server returns after an add, and clears the search",
     participants: [...convo.participants, makeParticipant(friend.id, "member")],
   };
   addResponse = () => Response.json(withTheFriend);
-  const updated = jest.fn();
-  render(
-    panel(convo, { friends: [friend], handleConversationUpdated: updated }),
-  );
+  renderListed(convo, { friends: [friend] });
   const search = screen.getByPlaceholderText("Add member...");
   fireEvent.change(search, { target: { value: friend.displayName } });
 
   fireEvent.click(screen.getByText(friend.displayName));
 
-  await waitFor(() => expect(updated).toHaveBeenCalledWith(withTheFriend));
+  await waitFor(() => expect(listedConversations()).toEqual([withTheFriend]));
   expect(search.getAttribute("value")).toBe("");
+});
+
+it("lists the group the server returns after a save, and closes the editor", async () => {
+  const convo = groupWith("admin");
+  const renamed = { ...convo, title: "Renamed" };
+  updateResponse = () => Response.json(renamed);
+  renderListed(convo);
+  fireEvent.click(screen.getByRole("button", { name: "Edit group" }));
+
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+  await waitFor(() => expect(listedConversations()).toEqual([renamed]));
+  expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
 });
 
 it("keeps the leave button from a community chat member", () => {

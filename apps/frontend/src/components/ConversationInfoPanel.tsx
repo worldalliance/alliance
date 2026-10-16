@@ -1,21 +1,12 @@
 import { CONVERSATION_TITLE_MAX_LENGTH } from "@alliance/common/conversation";
-import {
-  conversationAddParticipant,
-  ConversationDto,
-  conversationLeave,
-  conversationRemoveParticipant,
-  conversationUpdateInfo,
-  ProfileDto,
-} from "@alliance/shared/client";
+import { ConversationDto, ProfileDto } from "@alliance/shared/client";
 import {
   canEditConversationInfo,
   canEditConversationMembers,
   canLeaveConversation,
 } from "@alliance/shared/lib/conversations";
-import {
-  type Explanation,
-  sendOrExplain,
-} from "@alliance/shared/lib/sendOrExplain";
+import { type Explanation } from "@alliance/shared/lib/sendOrExplain";
+import { useMyConversations } from "@alliance/shared/lib/useMyConversations";
 import { useOneAtATime } from "@alliance/shared/lib/useOneAtATime";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -36,7 +27,6 @@ import LoadFailed from "./LoadFailed";
 
 export interface ConversationInfoPanelProps {
   selectedConvo: ConversationDto;
-  handleConversationUpdated: (conversation: ConversationDto) => void;
   friends: ProfileDto[] | null;
   friendsFailure: { onRetry: () => void; retrying: boolean } | null;
   onLeave: () => void;
@@ -45,13 +35,14 @@ export interface ConversationInfoPanelProps {
 
 const ConversationInfoPanel = ({
   selectedConvo,
-  handleConversationUpdated,
   friends,
   friendsFailure,
   onLeave,
   onClose,
 }: ConversationInfoPanelProps) => {
   const { user } = useAuth();
+  const { updateInfo, addParticipant, removeParticipant, leave } =
+    useMyConversations({ load: false });
 
   const canEditInfo = canEditConversationInfo(selectedConvo, user?.id);
   const canEditMembers = canEditConversationMembers(selectedConvo, user?.id);
@@ -74,30 +65,17 @@ const ConversationInfoPanel = ({
   const handleRemoveParticipant = (userId: number) =>
     changeMembers(async () => {
       setError(null);
-      const removed = await sendOrExplain({
-        send: conversationRemoveParticipant,
-        options: {
-          path: { conversationId: selectedConvo.id, userId },
-        },
-        action: "remove that member",
+      const removed = await removeParticipant({
+        conversationId: selectedConvo.id,
+        userId,
       });
-      if (!removed.ok) {
-        showExplanation(removed.error);
-        return;
-      }
-      handleConversationUpdated(removed.value);
+      if (!removed.ok) showExplanation(removed.error);
     });
 
   const handleLeaveGroup = () =>
     changeMembers(async () => {
       setError(null);
-      const left = await sendOrExplain({
-        send: conversationLeave,
-        options: {
-          path: { conversationId: selectedConvo.id },
-        },
-        action: "leave the group",
-      });
+      const left = await leave(selectedConvo.id);
       if (!left.ok) {
         showExplanation(left.error);
         return;
@@ -134,41 +112,28 @@ const ConversationInfoPanel = ({
   const handleSaveGroup = () =>
     save(async () => {
       setError(null);
-      const saved = await sendOrExplain({
-        send: conversationUpdateInfo,
-        options: {
-          path: { conversationId: selectedConvo.id },
-          body: {
-            title: editingGroupTitle,
-            photo: editingGroupPhoto ?? undefined,
-          },
-        },
-        action: "save the group",
+      const saved = await updateInfo(selectedConvo.id, {
+        title: editingGroupTitle,
+        photo: editingGroupPhoto ?? undefined,
       });
       if (!saved.ok) {
         showExplanation(saved.error);
         return;
       }
-      handleConversationUpdated(saved.value);
       setIsEditingGroup(false);
     });
 
   const handleAddMember = (userId: number) =>
     changeMembers(async () => {
       setError(null);
-      const added = await sendOrExplain({
-        send: conversationAddParticipant,
-        options: {
-          path: { conversationId: selectedConvo.id },
-          body: { userId },
-        },
-        action: "add that member",
+      const added = await addParticipant({
+        conversationId: selectedConvo.id,
+        userId,
       });
       if (!added.ok) {
         showExplanation(added.error);
         return;
       }
-      handleConversationUpdated(added.value);
       setAddMemberSearch("");
       setJustAddedMember(userId);
     });

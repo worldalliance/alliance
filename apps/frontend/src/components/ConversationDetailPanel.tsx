@@ -290,7 +290,6 @@ const ConversationDetailPanel = ({
       {groupInfoOpen && mode === "existing" ? (
         <ConversationInfoPanel
           selectedConvo={selectedConvo}
-          handleConversationUpdated={handleConversationUpdated}
           friends={friends}
           friendsFailure={friendsFailure}
           onLeave={onLeave}
