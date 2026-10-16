@@ -1,9 +1,6 @@
 import { phoneSearchDigits, phoneSearchTerm } from "@alliance/common/phone";
 import { withCount } from "@alliance/common/plural";
-import {
-  analyticsGetTimeSpentPerUserTotalAdmin,
-  communityGetAllMemberContactInfoAdmin,
-} from "@alliance/shared/client";
+import { communityGetAllMemberContactInfoAdmin } from "@alliance/shared/client";
 import {
   CommunityMemberContactInfoDto,
   ProfileDto,
@@ -23,6 +20,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link, useSearchParams } from "react-router";
 import MemberFilterDropdown from "../components/MemberFilterDropdown";
 import UserCard from "../components/UserCard";
+import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
   matchesSelectedRoles,
   ROLE_FILTERS,
@@ -30,21 +28,18 @@ import {
 } from "../lib/memberRoleFilter";
 import { useActionRelationsAdmin } from "../lib/useActionRelationsAdmin";
 import { useCompletedAllActiveActions } from "../lib/useCompletedAllActiveActions";
+import { useTimeSpentPerUserTotalAdmin } from "../lib/useTimeSpentPerUserTotalAdmin";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
 
 type ViewMode = "cards" | "rows";
 
 const MEMBERS_PER_PAGE = 50;
+const NO_TIMES: Record<number, number> = {};
 
 const UsersList: React.FC = () => {
   const { data: users = [] } = useUsersAdmin();
-  const { data: timeSpentPerUserTotal = [] } = useQuery({
-    queryKey: queryKeys.timeSpentPerUserTotalAdmin(),
-    queryFn: () =>
-      analyticsGetTimeSpentPerUserTotalAdmin({ throwOnError: true }).then(
-        (response) => response.data,
-      ),
-  });
+  const timeSpentTotal = useTimeSpentPerUserTotalAdmin();
+  const userToTimeSpentTotal = timeSpentTotal.data ?? NO_TIMES;
   const { tags, addUserToTag, removeUserFromTag } = useTagsAdmin();
   const { data: relationsResponse } = useActionRelationsAdmin();
   // latest on the right
@@ -75,14 +70,6 @@ const UsersList: React.FC = () => {
   const viewMode = (params.get("viewMode") as ViewMode | undefined) ?? "rows";
 
   const [shuffledIds, setShuffledIds] = useState<number[] | null>(null);
-
-  const userToTimeSpentTotal = useMemo(
-    () =>
-      Object.fromEntries(
-        timeSpentPerUserTotal.map((time) => [time.userId, time.timeSpent]),
-      ),
-    [timeSpentPerUserTotal],
-  );
 
   const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
@@ -378,6 +365,14 @@ const UsersList: React.FC = () => {
           </button>
         </div>
       </div>
+      {timeSpentTotal.isLoadingError && (
+        <p role="alert" className="w-full text-sm text-red-500">
+          {adminRefusalMessage(
+            timeSpentTotal.error,
+            "Unable to load time spent, so members aren't sorted by it.",
+          )}
+        </p>
+      )}
       {tagMutationError && (
         <div className="w-full">
           <p className="text-sm text-red-500">{tagMutationError}</p>

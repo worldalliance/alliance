@@ -47,12 +47,13 @@ const lee = makeUser({
 let users: UserDto[] = [];
 let tags: TagDto[] = [];
 let addUserStatus = 200;
+let timeSpentTotal: () => Response;
 const tagCalls: { path: string; body: unknown }[] = [];
 
 serveApi(
   routes({
     "GET /user/list": () => Response.json(users),
-    "GET /analytics/time-spent-per-user-total": () => Response.json([]),
+    "GET /analytics/time-spent-per-user-total": () => timeSpentTotal(),
     "GET /user/tags": () => Response.json(tags),
     "GET /actions/action-relations": () =>
       Response.json({ actions: [], suites: [], users: [] }),
@@ -84,6 +85,7 @@ beforeEach(() => {
     makeTag({ id: "t2", name: "Donors", users: [makeProfile(sam.id)] }),
   ];
   addUserStatus = 200;
+  timeSpentTotal = () => Response.json([]);
   tagCalls.length = 0;
 });
 
@@ -111,6 +113,33 @@ const search = (query: string) =>
     screen.getByPlaceholderText("Search by name, email, or phone..."),
     { target: { value: query } },
   );
+
+it("orders members by total time spent", async () => {
+  timeSpentTotal = () =>
+    Response.json([
+      { userId: sam.id, timeSpent: 30 },
+      { userId: lee.id, timeSpent: 90 },
+    ]);
+
+  renderPage();
+
+  await waitFor(() => expect(shownNames()).toEqual(["Lee", "Sam", "Ada"]));
+});
+
+it("says members aren't sorted when time spent fails to load", async () => {
+  timeSpentTotal = () => Response.json({}, { status: 500 });
+
+  renderPage();
+
+  expect(
+    (
+      await screen.findByText(
+        "Unable to load time spent, so members aren't sorted by it.",
+      )
+    ).role,
+  ).toBe("alert");
+  expect(shownNames()).toEqual(["Ada", "Sam", "Lee"]);
+});
 
 it("filters by role and names the selection on the button", async () => {
   renderPage();
