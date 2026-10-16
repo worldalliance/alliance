@@ -4,7 +4,6 @@ import {
   type UnresolvedVariableReference,
 } from "@alliance/common/forms/variable-interpolation";
 import { syncSchemaListInputs } from "@alliance/common/forms/variable-scope";
-import { FormFieldsStatus } from "@alliance/shared/lib/useFormSchema";
 import { cn } from "@alliance/shared/styles/util";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
@@ -18,7 +17,7 @@ import { JsonScopeKind, type JsonScope } from "../lib/formJson";
 import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
 import { useFormDraft } from "../lib/useFormDraft";
 import { useFormSave, type DisplayOnlySave } from "../lib/useFormSave";
-import { useFormulaSourceForms } from "../lib/useFormulaSourceForms";
+import { useFormulaSourceValidation } from "../lib/useFormulaSourceForms";
 import { useInputSources } from "../lib/useInputSources";
 import { useSavedForm } from "../lib/useSavedForm";
 import { type VisibilityGroups } from "../lib/visibilityGroups";
@@ -42,7 +41,6 @@ import { FormBuilderPreview } from "./FormBuilderPreview";
 import { FormConflictModal } from "./FormConflictModal";
 import { FormDraftContexts } from "./FormDraftContexts";
 import { FormJsonModal } from "./FormJsonModal";
-import { formFieldsErrorReason } from "./FormPickerError";
 import { FormulaSourcesProvider } from "./FormulaSourcesContext";
 import { FormVariablesProvider } from "./FormVariablesContext";
 import { OutputBuilder } from "./OutputBuilder";
@@ -171,28 +169,16 @@ export function FormBuilder(props: FormBuilderProps) {
 
   const {
     sourceForms,
-    statusByForm: sourceFormStatus,
-    retryFailed: retrySourceForms,
-  } = useFormulaSourceForms(conflict ? [schema, conflict.theirs] : [schema]);
-  const sourceStatuses = Object.entries(sourceFormStatus);
-  const pendingSourceForms = useMemo(
-    () =>
-      new Set(
-        Object.entries(sourceFormStatus)
-          .filter(([, status]) => status === FormFieldsStatus.Pending)
-          .map(([id]) => Number(id)),
-      ),
-    [sourceFormStatus],
-  );
-  const failedSourceForms = sourceStatuses.filter(
-    ([, status]) => formFieldsErrorReason(status) !== null,
-  ).length;
+    pendingSourceForms,
+    failedSourceForms,
+    retrySourceForms,
+    validation,
+  } = useFormulaSourceValidation({
+    formId,
+    schemas: conflict ? [schema, conflict.theirs] : [schema],
+  });
   const sourceFormsLoading = pendingSourceForms.size > 0;
   const sourceFormsFailed = failedSourceForms > 0;
-  const validation = useMemo(
-    () => ({ formId, sourceForms, pendingSourceForms }),
-    [formId, sourceForms, pendingSourceForms],
-  );
   const formulaSources = useInputSources({ formId, schema });
 
   const [searchParams, setSearchParams] = useSearchParams();
