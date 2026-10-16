@@ -1,3 +1,4 @@
+import { type Pending, pending } from "@alliance/shared/lib/testing/pending";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
@@ -6,12 +7,15 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import StatsPage from "./StatsPage";
 
 afterEach(cleanup);
 
 let clickRatesStatus = 200;
+let contractStatusHistoryStatus = 200;
+let respondToContractStatusHistory: (() => Promise<Response>) | null = null;
 let dailyStatsStatus = 200;
 let dailyStatsRequests: URL[] = [];
 let inviteFunnelStatus = 200;
@@ -28,7 +32,13 @@ serveApi(
     "GET /analytics/action-completion-curves": () => Response.json([]),
     "GET /analytics/member-completion-retention": () => Response.json([]),
     "GET /analytics/time-to-churn": () => Response.json([]),
-    "GET /analytics/contract-status-history": () => Response.json([]),
+    "GET /analytics/contract-status-history": () => {
+      if (respondToContractStatusHistory)
+        return respondToContractStatusHistory();
+      return contractStatusHistoryStatus === 200
+        ? Response.json([])
+        : Response.json({}, { status: contractStatusHistoryStatus });
+    },
     "GET /analytics/aggregate-stats": () => Response.json(null),
     "GET /analytics/invite-funnel": () =>
       inviteFunnelStatus === 200
@@ -48,6 +58,8 @@ serveApi(
 
 afterEach(() => {
   clickRatesStatus = 200;
+  contractStatusHistoryStatus = 200;
+  respondToContractStatusHistory = null;
   dailyStatsStatus = 200;
   dailyStatsRequests = [];
   inviteFunnelStatus = 200;
@@ -165,5 +177,44 @@ describe("StatsPage invite funnel", () => {
 
     await screen.findByText("Unable to load the invite funnel.");
     expect(screen.queryByText("Loading invite funnel...")).toBeNull();
+  });
+});
+
+describe("StatsPage members over time", () => {
+  it("says so when there is no history in range", async () => {
+    renderPage();
+
+    await screen.findByText("No contract status data in this date range.");
+  });
+
+  it("says the load failed instead of reporting none", async () => {
+    contractStatusHistoryStatus = 500;
+
+    renderPage();
+
+    await screen.findByText("Unable to load members over time.");
+    expect(
+      screen.queryByText("No contract status data in this date range."),
+    ).toBeNull();
+  });
+
+  it("says it is loading, not that there is none, while a range change loads", async () => {
+    renderPage();
+    await screen.findByText("No contract status data in this date range.");
+    const next: Pending<Response>[] = [];
+    respondToContractStatusHistory = () => pending(next);
+
+    const section = screen
+      .getByText("Members over time")
+      .closest<HTMLElement>("div.relative");
+    const from = section?.querySelector('input[type="date"]');
+    if (!section || !from) throw new Error("no members over time range input");
+    fireEvent.change(from, { target: { value: "2025-01-01" } });
+    await waitFor(() => expect(next).toHaveLength(1));
+
+    expect(within(section).getByText("Loading...")).toBeTruthy();
+    expect(
+      screen.queryByText("No contract status data in this date range."),
+    ).toBeNull();
   });
 });

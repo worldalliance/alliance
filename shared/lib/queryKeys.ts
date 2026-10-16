@@ -170,6 +170,8 @@ export const queryKeys = {
     [...communityMemberInfoAdminAll(communityId), "contactInfo"] as const,
   contractAdmin: (id: number | null) => ["contractFindOneAdmin", id] as const,
   contractsAdmin: () => ["contractAllAdmin"] as const,
+  contractStatusHistoryAdmin: (range: { start: string; end: string }) =>
+    ["analyticsGetContractStatusHistoryAdmin", range] as const,
   customValidatorAdmin: (id: number) =>
     ["tasksFindOneCustomValidatorAdmin", id] as const,
   dailyStatsAdmin: (range: { start: string; end: string }) =>

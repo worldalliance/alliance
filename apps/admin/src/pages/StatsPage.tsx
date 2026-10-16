@@ -1,7 +1,6 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
   analyticsGetAggregateStatsAdmin,
-  analyticsGetContractStatusHistoryAdmin,
   analyticsGetMemberCompletionRetentionAdmin,
   analyticsGetMemberReliabilityWindowAdmin,
   analyticsGetMissedActionsAdmin,
@@ -53,6 +52,7 @@ import {
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { defaultInviteFunnelRange } from "../lib/defaultInviteFunnelRange";
 import { useActionStats } from "../lib/useActionStats";
+import { useContractStatusHistoryAdmin } from "../lib/useContractStatusHistoryAdmin";
 import { useDailyStatsAdmin } from "../lib/useDailyStatsAdmin";
 import { useInviteFunnelAdmin } from "../lib/useInviteFunnelAdmin";
 import { useReminderGroupClickRatesAdmin } from "../lib/useReminderGroupClickRatesAdmin";
@@ -362,11 +362,6 @@ const StatsPage: React.FC = () => {
     defaultInviteFunnelRange(new Date()),
   );
   const [assumedHourlyRate, setAssumedHourlyRate] = useState<number>(15);
-  const [contractStatusHistory, setContractStatusHistory] = useState<
-    ContractStatusPointDto[]
-  >([]);
-  const [contractStatusLoading, setContractStatusLoading] =
-    useState<boolean>(false);
   const [contractStatusRange, setContractStatusRange] = useState(() => {
     const end = new Date();
     const start = new Date();
@@ -417,6 +412,15 @@ const StatsPage: React.FC = () => {
     isPending: inviteFunnelLoading,
     error: inviteFunnelError,
   } = useInviteFunnelAdmin(inviteFunnelRange);
+
+  const {
+    data: contractStatusHistory = [],
+    isPending: contractStatusPending,
+    isPlaceholderData: contractStatusPlaceholder,
+    error: contractStatusError,
+  } = useContractStatusHistoryAdmin(contractStatusRange);
+  const contractStatusLoading =
+    contractStatusPending || contractStatusPlaceholder;
 
   const loadRetentionCohorts = useCallback(async () => {
     setRetentionLoading(true);
@@ -534,27 +538,6 @@ const StatsPage: React.FC = () => {
   useEffect(() => {
     void loadTimeToChurnSamples();
   }, [loadTimeToChurnSamples]);
-
-  const loadContractStatusHistory = useCallback(async () => {
-    setContractStatusLoading(true);
-    try {
-      const response = await analyticsGetContractStatusHistoryAdmin({
-        query: {
-          startDate: contractStatusRange.start,
-          endDate: contractStatusRange.end,
-        },
-      });
-      setContractStatusHistory(response.data ?? []);
-    } catch (err) {
-      console.error("Failed to load contract status history", err);
-    } finally {
-      setContractStatusLoading(false);
-    }
-  }, [contractStatusRange]);
-
-  useEffect(() => {
-    void loadContractStatusHistory();
-  }, [loadContractStatusHistory]);
 
   const parsedStats = useMemo<ParsedDailyStats[]>(() => {
     return stats
@@ -2056,7 +2039,16 @@ const StatsPage: React.FC = () => {
             parsedContractStatusHistory.length === 0 && (
               <p className="text-sm text-gray-600">Loading...</p>
             )}
+          {contractStatusError && (
+            <p className="text-sm text-red-600">
+              {adminRefusalMessage(
+                contractStatusError,
+                "Unable to load members over time.",
+              )}
+            </p>
+          )}
           {!contractStatusLoading &&
+            !contractStatusError &&
             parsedContractStatusHistory.length === 0 && (
               <p className="text-sm text-gray-600">
                 No contract status data in this date range.
