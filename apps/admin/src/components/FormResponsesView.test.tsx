@@ -1,6 +1,6 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import FormResponsesView from "./FormResponsesView";
 
@@ -10,7 +10,10 @@ const schema: FormSchema = {
   pages: [
     {
       id: "page-1",
-      fields: [{ id: "home", type: "input", kind: "city", label: "Home" }],
+      fields: [
+        { id: "home", type: "input", kind: "city", label: "Home" },
+        { id: "note", type: "input", kind: "text", label: "Note" },
+      ],
     },
   ],
   outputViews: [],
@@ -19,7 +22,7 @@ const schema: FormSchema = {
 const response = makeFormResponse({
   formSnapshotId: 7,
   createdAt: "2026-03-05T10:00:00.000Z",
-  answers: { home: {} },
+  answers: { home: {}, note: "Hello there" },
   schemaSnapshot: schema,
 });
 
@@ -63,4 +66,13 @@ it("says the referrals failed to load beside the responses", () => {
 
   expect(screen.getByText("No share links")).toBeTruthy();
   expect(screen.getByText("1 response")).toBeTruthy();
+});
+
+it("shows the answers to the question picked", () => {
+  renderView({ path: "/?tab=questions" });
+  fireEvent.change(screen.getByLabelText("Question"), {
+    target: { value: "note" },
+  });
+
+  expect(screen.getByText("Hello there")).toBeTruthy();
 });

@@ -30,14 +30,13 @@ import React, {
   useState,
 } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
-import { formatAnswerValue, isEmptyAnswer } from "../lib/answerValues";
+import { AI_SCORE_FIELD_KINDS, formatAiScore } from "../lib/aiScore";
 import { downloadBlob } from "../lib/downloadBlob";
 import {
   getDirectSnapshotTarget,
   type ReturnToState,
   type SnapshotMigrationTarget,
 } from "../lib/navigation";
-import { choiceAnswerText } from "../lib/questionAnswer";
 import { respondentName as buildRespondentName } from "../lib/respondent";
 import {
   FILTERABLE_FIELD_KINDS,
@@ -48,11 +47,12 @@ import {
 } from "../lib/responseFilter";
 import { buildResponsesCsv } from "../lib/responsesCsvExport";
 import { buildResponsesHtml } from "../lib/responsesHtmlExport";
+import QuestionResponses from "./form-responses/QuestionResponses";
 import FormResponseStatistics from "./FormResponseStatistics";
 import { IdentityChip } from "./IdentitySwatch";
 import ResponsesTable from "./responses-table/ResponsesTable";
 import SnapshotTargetPicker from "./SnapshotTargetPicker";
-import { WithdrawalBadge, WithdrawalInfo } from "./WithdrawalInfo";
+import { WithdrawalInfo } from "./WithdrawalInfo";
 
 export type FormWithSchema = Pick<
   FormDto,
@@ -93,8 +93,6 @@ const ANSWER_FIELD_KINDS = new Set<FieldKind>([
   "file",
 ]);
 
-const AI_SCORE_FIELD_KINDS = new Set<FieldKind>(["text", "textarea"]);
-
 type Tab = "responses" | "stats" | "questions" | "replays";
 
 const isAnswerField = (node: AnyField | DisplayBlock): node is AnyField =>
@@ -105,11 +103,6 @@ const isTab = (value: string | null): value is Tab =>
   value === "stats" ||
   value === "questions" ||
   value === "replays";
-
-const formatAiScore = (value: number | null): string => {
-  if (typeof value !== "number" || Number.isNaN(value)) return "--";
-  return `${Math.round(value * 100)}%`;
-};
 
 export const REFERRALS_LOAD_ERROR =
   "Failed to load share links, so invited respondents show as anonymous";
@@ -322,11 +315,6 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     return orderedFieldIds[0] ?? "";
   }, [questionFieldParam, orderedFieldIds]);
 
-  const selectedQuestionField = useMemo(
-    () => fieldsById.get(selectedQuestionFieldId),
-    [fieldsById, selectedQuestionFieldId],
-  );
-
   useEffect(() => {
     setPage(1);
   }, [filterFieldId, filterOpParam, filterValueParam, variantParam]);
@@ -408,21 +396,6 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
       filterValue: null,
     });
   }, [updateParams]);
-
-  const questionResponses = useMemo(() => {
-    if (!selectedQuestionFieldId) return [];
-    return scopedResponses.filter(
-      (response) => !isEmptyAnswer(response.answers?.[selectedQuestionFieldId]),
-    );
-  }, [scopedResponses, selectedQuestionFieldId]);
-
-  const formatSelectedQuestionAnswer = useCallback(
-    (value: unknown, response: FormResponseDto): string =>
-      (selectedQuestionField &&
-        choiceAnswerText({ field: selectedQuestionField, value, response })) ??
-      formatAnswerValue(value),
-    [selectedQuestionField],
-  );
 
   const handleExportCsv = useCallback(() => {
     if (!form) return;
@@ -902,149 +875,21 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
         />
       )}
       {tab === "questions" && (
-        <div className="px-2">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-gray-500">Loading responses...</p>
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-red-500">{error}</p>
-            </div>
-          ) : orderedFieldIds.length === 0 ? (
-            <Card style={CardStyle.White}>
-              <p className="text-gray-600">No answerable questions found.</p>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex flex-col gap-2 mt-3">
-                <label
-                  htmlFor="question-field-select"
-                  className="text-xs font-semibold tracking-wide text-gray-600 uppercase"
-                >
-                  Question
-                </label>
-                <select
-                  id="question-field-select"
-                  value={selectedQuestionFieldId}
-                  onChange={(event) =>
-                    updateParams({ questionField: event.target.value })
-                  }
-                  className="w-full max-w-xl rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-black focus:outline-none"
-                >
-                  {orderedFieldIds.map((fieldId) => (
-                    <option key={fieldId} value={fieldId}>
-                      {fieldLabels.get(fieldId) ?? fieldId}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {questionResponses.length === 0 ? (
-                <Card style={CardStyle.White}>
-                  <p className="text-gray-600">
-                    No users responded to this question.
-                  </p>
-                </Card>
-              ) : (
-                <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-                  <div className="grid grid-cols-1 gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold tracking-wide text-gray-600 uppercase md:grid-cols-[260px_minmax(0,1fr)_auto]">
-                    <div>Respondent</div>
-                    <div>Answer</div>
-                    {selectedQuestionField &&
-                      AI_SCORE_FIELD_KINDS.has(selectedQuestionField.kind) && (
-                        <div>AI Score</div>
-                      )}
-                  </div>
-                  {questionResponses.map((response, index) => {
-                    const answerValue = selectedQuestionFieldId
-                      ? response.answers?.[selectedQuestionFieldId]
-                      : null;
-                    const variantName = getResponseVariantName(response);
-                    const aiDetection =
-                      selectedQuestionField &&
-                      AI_SCORE_FIELD_KINDS.has(selectedQuestionField.kind)
-                        ? (response.aiDetectionResults ?? []).find(
-                            (d) =>
-                              d.fieldPath ===
-                              `answers.${selectedQuestionFieldId}`,
-                          )
-                        : null;
-                    return (
-                      <div
-                        key={
-                          response.id ??
-                          `${response.sid ?? "anonymous"}-${
-                            response.createdAt
-                          }-${index}`
-                        }
-                        className={cn(
-                          "grid grid-cols-1 gap-1 border-b border-gray-100 px-3 py-2 last:border-b-0 md:gap-3",
-                          selectedQuestionField &&
-                            AI_SCORE_FIELD_KINDS.has(selectedQuestionField.kind)
-                            ? "md:grid-cols-[260px_minmax(0,1fr)_auto]"
-                            : "md:grid-cols-[260px_minmax(0,1fr)]",
-                        )}
-                      >
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <p className="truncate text-sm font-semibold text-gray-900">
-                              {getRespondentName(response)}
-                            </p>
-                            {variantName && (
-                              <IdentityChip
-                                seed={variantName}
-                                label={variantName}
-                                className="shrink-0"
-                              />
-                            )}
-                            {response.user?.id != null &&
-                              withdrawnUserMap.has(response.user.id) && (
-                                <WithdrawalBadge className="shrink-0" />
-                              )}
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            {new Date(response.createdAt).toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm text-gray-800 whitespace-pre-wrap break-words leading-5">
-                            {formatSelectedQuestionAnswer(
-                              answerValue,
-                              response,
-                            )}
-                          </p>
-                        </div>
-                        {selectedQuestionField &&
-                          AI_SCORE_FIELD_KINDS.has(
-                            selectedQuestionField.kind,
-                          ) && (
-                            <div className="flex items-start">
-                              <span
-                                className={cn(
-                                  "text-sm font-semibold",
-                                  aiDetection &&
-                                    typeof aiDetection.aiProbability ===
-                                      "number" &&
-                                    aiDetection.aiProbability > 0
-                                    ? "text-red-600"
-                                    : "text-gray-400",
-                                )}
-                              >
-                                {formatAiScore(
-                                  aiDetection?.aiProbability ?? null,
-                                )}
-                              </span>
-                            </div>
-                          )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <QuestionResponses
+          loading={loading}
+          error={error}
+          responses={scopedResponses}
+          orderedFieldIds={orderedFieldIds}
+          fieldLabels={fieldLabels}
+          fieldsById={fieldsById}
+          selectedQuestionFieldId={selectedQuestionFieldId}
+          onSelectQuestionField={(fieldId) =>
+            updateParams({ questionField: fieldId })
+          }
+          getResponseVariantName={getResponseVariantName}
+          getRespondentName={getRespondentName}
+          withdrawnUserMap={withdrawnUserMap}
+        />
       )}
 
       {snapshotPickerTargets && (
