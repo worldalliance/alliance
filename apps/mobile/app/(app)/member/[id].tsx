@@ -12,16 +12,14 @@ import useActivities, {
 import { useProfileDraft } from "@alliance/shared/lib/useProfileDraft";
 import useUserFeed from "@alliance/shared/lib/useUserFeed";
 import {
-  friendMutationErrorMessage,
   useAcceptFriendRequestMutation,
   useDeclineFriendRequestMutation,
   useMessageableUsersQuery,
   useRemoveFriendMutation,
-  useSendFriendRequestMutation,
   useUserCompletedActionCountQuery,
   useUserForumActivity,
-  useUserFriendsQuery,
   useUserFriendStatusQuery,
+  useUserFriendsQuery,
   useUserProfileQuery,
   useUserReceivedFriendRequestsQuery,
   useUserSentFriendRequestsQuery,
@@ -30,13 +28,7 @@ import {
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { RelativePathString, router, useLocalSearchParams } from "expo-router";
-import {
-  ChevronDown,
-  Edit,
-  Menu,
-  MessageSquare,
-  RefreshCw,
-} from "lucide-react-native";
+import { Edit, Menu, MessageSquare } from "lucide-react-native";
 import {
   useCallback,
   useEffect,
@@ -62,6 +54,8 @@ import ProfileImage, {
   resolveProfileImageUri,
 } from "../../../components/ProfileImage";
 import UserActivityCard from "../../../components/UserActivityCard";
+import FriendRequestButton from "../../../components/member/FriendRequestButton";
+import { alertFriendFailure } from "../../../components/member/alertFriendFailure";
 import BackButton from "../../../components/system/BackButton";
 import Button, {
   ButtonColor,
@@ -112,9 +106,6 @@ const FRIENDS_TAB_LABELS: Record<FriendsTab, string> = {
   [FriendsTab.Sent]: "Sent",
 };
 
-const alertFriendFailure = (title: string, error: unknown) =>
-  Alert.alert(title, friendMutationErrorMessage(error));
-
 export default function UserProfileScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -128,15 +119,8 @@ export default function UserProfileScreen() {
     isPending: profilePending,
     isError: profileError,
   } = useUserProfileQuery(userId);
-  const friendStatusQuery = useUserFriendStatusQuery(userId, {
-    enabled: isAuthenticated && !isMe,
-  });
-  const {
-    data: friendStatus,
-    isFetching: isFetchingFriendStatus,
-    refetch: refetchFriendStatus,
-  } = friendStatusQuery;
-  const didFriendStatusFail = failedToLoad(friendStatusQuery);
+  // Starts the request alongside the profile's; FriendRequestButton mounts only once the profile loads.
+  useUserFriendStatusQuery(userId, { enabled: isAuthenticated && !isMe });
   const {
     items: forumActivityItems,
     didFail: didForumFail,
@@ -172,7 +156,6 @@ export default function UserProfileScreen() {
     enabled: isAuthenticated,
   });
 
-  const sendFriendRequest = useSendFriendRequestMutation();
   const acceptFriendRequest = useAcceptFriendRequestMutation();
   const declineFriendRequest = useDeclineFriendRequestMutation();
   const removeFriend = useRemoveFriendMutation();
@@ -202,7 +185,6 @@ export default function UserProfileScreen() {
     }
   }, [selectedTab, feedHasNextPage, feedFetchingNextPage, fetchNextFeedPage]);
   const [friendsTab, setFriendsTab] = useState<FriendsTab>(FriendsTab.Friends);
-  const [friendActionsOpen, setFriendActionsOpen] = useState(false);
   const {
     isEditing,
     setIsEditing,
@@ -263,53 +245,6 @@ export default function UserProfileScreen() {
     }
   }, [isMe, isSavingProfile, saveProfile]);
 
-  const handleSendFriendRequest = useCallback(async () => {
-    if (!userId) return;
-    try {
-      await sendFriendRequest.mutateAsync(userId);
-    } catch (error) {
-      console.error("Failed to send friend request", error);
-      alertFriendFailure("Couldn't send friend request", error);
-    }
-  }, [userId, sendFriendRequest]);
-
-  const handleAcceptFriendRequest = useCallback(async () => {
-    if (!userId) return;
-    try {
-      await acceptFriendRequest.mutateAsync(userId);
-    } catch (error) {
-      console.error("Failed to accept friend request", error);
-      alertFriendFailure("Couldn't accept friend request", error);
-    }
-  }, [userId, acceptFriendRequest]);
-
-  const handleDeclineFriendRequest = useCallback(async () => {
-    if (!userId) return;
-    try {
-      await declineFriendRequest.mutateAsync(userId);
-    } catch (error) {
-      console.error("Failed to decline friend request", error);
-      alertFriendFailure("Couldn't decline friend request", error);
-    }
-  }, [userId, declineFriendRequest]);
-
-  const handleRemoveFriend = useCallback(async () => {
-    if (!userId) return;
-    try {
-      await removeFriend.mutateAsync(userId);
-      setFriendActionsOpen(false);
-    } catch (error) {
-      console.error("Failed to remove friend", error);
-      alertFriendFailure("Couldn't remove friend", error);
-    }
-  }, [userId, removeFriend]);
-
-  useEffect(() => {
-    if (friendStatus?.status !== "accepted") {
-      setFriendActionsOpen(false);
-    }
-  }, [friendStatus?.status]);
-
   const confirmCancelRequest = useCallback(
     (targetId: number) => {
       Alert.alert("Cancel request", "Cancel this friend request?", [
@@ -328,129 +263,6 @@ export default function UserProfileScreen() {
     },
     [removeFriend],
   );
-
-  const renderFriendAction = useCallback(() => {
-    if (!isAuthenticated || isMe) return null;
-
-    if (!friendStatus) {
-      if (!didFriendStatusFail) return null;
-      return (
-        <Button
-          color={ButtonColor.White}
-          size={ButtonSize.Small}
-          onPress={() => void refetchFriendStatus()}
-          loading={isFetchingFriendStatus}
-          accessibilityLabel="Retry loading friend status"
-        >
-          <RefreshCw size={14} color="#27272a" />
-        </Button>
-      );
-    }
-
-    const status = friendStatus.status ?? "none";
-    switch (status) {
-      case "none":
-      case "declined":
-        return (
-          <Button
-            title="Send friend request"
-            color={ButtonColor.White}
-            size={ButtonSize.Small}
-            onPress={handleSendFriendRequest}
-          />
-        );
-      case "accepted":
-        return (
-          <View className="relative">
-            {friendActionsOpen ? (
-              <Pressable
-                className="absolute -inset-4"
-                onPress={() => setFriendActionsOpen(false)}
-              />
-            ) : null}
-            <Button
-              color={ButtonColor.White}
-              size={ButtonSize.Small}
-              onPress={() => setFriendActionsOpen((prev) => !prev)}
-            >
-              <View className="flex-row items-center gap-1">
-                <Text className="text-zinc-800" weight={FontWeight.Medium}>
-                  Friends
-                </Text>
-                <ChevronDown size={14} color="#27272a" />
-              </View>
-            </Button>
-            {friendActionsOpen ? (
-              <View className="absolute left-0 top-full z-20 self-start rounded-sm border border-stone-300 bg-white">
-                <TouchableOpacity
-                  className="flex-row self-start px-3 py-2"
-                  onPress={handleRemoveFriend}
-                  activeOpacity={0.8}
-                >
-                  <View className="flex-row gap-1">
-                    <Text className="shrink-0 text-sm text-red-600">
-                      Remove
-                    </Text>
-                    <Text className="shrink-0 text-sm text-red-600">
-                      friend
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            ) : null}
-          </View>
-        );
-      case "pending":
-        if (friendStatus.didReceiveRequest) {
-          return (
-            <View className="flex-row items-center gap-2">
-              <Text className="text-zinc-600 text-sm">
-                Sent you a friend request
-              </Text>
-              <Button
-                title="Accept"
-                color={ButtonColor.Green}
-                size={ButtonSize.Small}
-                onPress={handleAcceptFriendRequest}
-                disabled={answeringRequest}
-              />
-              <Button
-                title="Decline"
-                color={ButtonColor.Light}
-                size={ButtonSize.Small}
-                onPress={handleDeclineFriendRequest}
-                disabled={answeringRequest}
-              />
-            </View>
-          );
-        }
-        return (
-          <Button
-            title="Friend request sent"
-            color={ButtonColor.Light}
-            size={ButtonSize.Small}
-            onPress={handleSendFriendRequest}
-            disabled
-          />
-        );
-      default:
-        status satisfies never;
-        return null;
-    }
-  }, [
-    isAuthenticated,
-    isMe,
-    friendStatus,
-    didFriendStatusFail,
-    isFetchingFriendStatus,
-    refetchFriendStatus,
-    handleSendFriendRequest,
-    handleAcceptFriendRequest,
-    handleDeclineFriendRequest,
-    handleRemoveFriend,
-    friendActionsOpen,
-    answeringRequest,
-  ]);
 
   const renderActionItem = useCallback(
     ({ item }: { item: ParsedHomeFeedItemDto }) => {
@@ -1029,7 +841,7 @@ export default function UserProfileScreen() {
                 </>
               ) : null
             ) : (
-              renderFriendAction()
+              <FriendRequestButton userId={userId} />
             )}
           </View>
         )}
