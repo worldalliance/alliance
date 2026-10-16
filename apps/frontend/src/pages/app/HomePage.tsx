@@ -1,6 +1,4 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
-import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
 import { withCount } from "@alliance/common/plural";
 import { FollowUpFormDto } from "@alliance/shared/client";
 import {
@@ -24,29 +22,22 @@ import { getTaskDismissInfo } from "@alliance/shared/lib/largeActionCard";
 import { useBoundedIndex } from "@alliance/shared/lib/useBoundedIndex";
 import useGlobalFeed from "@alliance/shared/lib/useGlobalFeed";
 import { resetHomeFeed } from "@alliance/shared/lib/useHomeFeed";
-import { runAsync } from "@alliance/shared/lib/utils";
 import { useMediaQuery } from "@alliance/sharedweb/lib/useMediaQuery";
-import AggregateProgressBarBlock from "@alliance/sharedweb/ui/AggregateProgressBarBlock";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { href, Link } from "react-router";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import FollowUpFormPanel from "../../components/FollowUpFormPanel";
 import GlobalFeed from "../../components/GlobalFeed";
 import HomeFeed from "../../components/HomeFeed";
 import HomeGeneralUpdates from "../../components/HomeGeneralUpdates";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
 import LoadFailed from "../../components/LoadFailed";
+import SidebarProgressBars from "../../components/SidebarProgressBars";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import { useAuth } from "../../lib/AuthContext";
-import {
-  buildSidebarProgressBarEntries,
-  fetchTaskFormProgressViewsByFormId,
-  mapFormViewsToActionIds,
-  sidebarProgressActionCandidates,
-} from "../../lib/fetchTaskFormProgressViews";
+import { useSidebarProgressBarEntries } from "../../lib/useSidebarProgressBarEntries";
 import { useTaskActionsData } from "../../lib/useTaskActionsData";
 import { useSidFromParams } from "../../lib/utils";
 import { MOCK_TASK_FORMS, MOCK_TASKS } from "../../onboarding/mockTasks";
@@ -101,9 +92,6 @@ const HomePage = () => {
   }, [user, refreshUser]);
 
   const mainScrollRef = useRef<HTMLDivElement | null>(null);
-  const [actionProgressViews, setActionProgressViews] = useState<
-    Record<number, AggregateViewSchema[]>
-  >({});
 
   const { items: globalFeedItems, loading: globalFeedLoading } = useGlobalFeed({
     limit: 10,
@@ -122,44 +110,7 @@ const HomePage = () => {
 
   const isLargeScreen = useMediaQuery("(min-width: 1150px)");
 
-  useEffect(() => {
-    if (!actions) {
-      setActionProgressViews({});
-      return;
-    }
-
-    const candidates = sidebarProgressActionCandidates(actions);
-    if (candidates.length === 0) {
-      setActionProgressViews({});
-      return;
-    }
-
-    let cancelled = false;
-    const formIds = candidates.map((c) => c.formId);
-
-    runAsync(async () => {
-      const viewsByFormId = await fetchTaskFormProgressViewsByFormId(formIds);
-      if (cancelled) {
-        return;
-      }
-      setActionProgressViews(
-        mapFormViewsToActionIds(candidates, viewsByFormId),
-      );
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [actions]);
-
-  const sidebarProgressBarEntries = useMemo(() => {
-    if (!actions) {
-      return [];
-    }
-    return buildSidebarProgressBarEntries(actions, actionProgressViews).sort(
-      (a, b) => homePagePriorityComparator(a.action, b.action),
-    );
-  }, [actionProgressViews, actions]);
+  const sidebarProgressBarEntries = useSidebarProgressBarEntries(actions);
 
   const followUpFormsByActionId = useMemo(() => {
     const map: Record<number, FollowUpFormDto[]> = {};
@@ -337,42 +288,6 @@ const HomePage = () => {
     remainingTasksEstimatedTimeCurrentWeek,
   ]);
 
-  const sidebarProgressActionProgressBars = useMemo(() => {
-    if (sidebarProgressBarEntries.length === 0) {
-      return <></>;
-    }
-    return (
-      <>
-        <div className="flex flex-col gap-y-3">
-          <div className="flex flex-col gap-y-2">
-            {sidebarProgressBarEntries.map(({ action, progressBars }) => (
-              <Link
-                key={action.id}
-                to={href("/actions/:id", { id: action.id.toString() })}
-                className="block p-4 rounded bg-white hover:bg-grey-1"
-              >
-                <p className="text-sm font-medium text-green mb-2">
-                  {action.name}
-                </p>
-                <div className="flex flex-col gap-y-2">
-                  {progressBars.map((view) => (
-                    <AggregateProgressBarBlock
-                      key={view.id}
-                      view={view}
-                      titleClassName="text-base font-medium text-black"
-                      captionClassName="text-sm text-zinc-600"
-                      className="flex flex-col gap-y-1"
-                    />
-                  ))}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </>
-    );
-  }, [sidebarProgressBarEntries]);
-
   const mainContent = useMemo(() => {
     if (actions === null) {
       return actionsFailure ? (
@@ -404,7 +319,11 @@ const HomePage = () => {
             />
           )}
 
-          {!isLargeScreen && <div>{sidebarProgressActionProgressBars}</div>}
+          {!isLargeScreen && (
+            <div>
+              <SidebarProgressBars entries={sidebarProgressBarEntries} />
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-4 flex-1">
@@ -542,13 +461,13 @@ const HomePage = () => {
     activeCompletableFollowUpForms,
     isLargeScreen,
     mocked,
-    sidebarProgressActionProgressBars,
+    sidebarProgressBarEntries,
   ]);
 
   const sidebarContent = useMemo(() => {
     return (
       <div className="pt-6 px-4 flex flex-col *:pb-4 *:px-2 h-[calc(100vh-var(--navbar-top-bar-height))]">
-        {sidebarProgressActionProgressBars}
+        <SidebarProgressBars entries={sidebarProgressBarEntries} />
         <div className="flex-1 min-h-0 flex flex-col">
           <GlobalFeed
             items={globalFeedItems}
@@ -558,7 +477,7 @@ const HomePage = () => {
         </div>
       </div>
     );
-  }, [globalFeedItems, globalFeedLoading, sidebarProgressActionProgressBars]);
+  }, [globalFeedItems, globalFeedLoading, sidebarProgressBarEntries]);
 
   useWhiteBackground();
 
