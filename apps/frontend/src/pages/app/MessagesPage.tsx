@@ -1,19 +1,10 @@
-import {
-  conversationAcceptInvite,
-  conversationCreateDirectConversation,
-  conversationCreateGroupConversation,
-  conversationDeclineInvite,
-  ConversationDto,
-  conversationMarkRead,
-  MessageDto,
-} from "@alliance/shared/client";
+import { ConversationDto, MessageDto } from "@alliance/shared/client";
 import {
   buildGroupConversationTitle,
   findMatchingConversation,
   getJoinedConversations,
   getPendingInvites,
   mergeConversationUpdate,
-  sortConversations,
   updateConversationsForLastMessage,
 } from "@alliance/shared/lib/conversations";
 import { failedToLoad } from "@alliance/shared/lib/failedToLoad";
@@ -45,6 +36,11 @@ const MessagesPage = () => {
     loading,
     reloadFailed,
     refreshConversations,
+    createDirectConversation,
+    createGroupConversation,
+    acceptInvite,
+    declineInvite,
+    markRead,
   } = useConversations(selectedConvoId);
 
   const setSelectedConvoId = useCallback(
@@ -128,15 +124,6 @@ const MessagesPage = () => {
       if (sendingNewMessageToIds.length === 0) return null;
 
       const onSuccess = (response: ConversationDto) => {
-        setConversations((prev) => {
-          const ids: Map<number, ConversationDto> = new Map();
-          for (const convo of prev ?? []) {
-            ids.set(convo.id, convo);
-          }
-          ids.set(response.id, response);
-          const updated = Array.from(ids.values()).sort(sortConversations);
-          return updated;
-        });
         setSelectedConvoId(response.id);
         setSendingNewMessageToIds([]);
         setCreatingNewConversation(false);
@@ -148,14 +135,12 @@ const MessagesPage = () => {
       }
 
       if (sendingNewMessageToIds.length === 1) {
-        const response = await conversationCreateDirectConversation({
-          body: {
-            targetUserId: sendingNewMessageToIds[0],
-          },
-        });
-        if (response.data) {
-          onSuccess(response.data);
-          return response.data;
+        const created = await createDirectConversation(
+          sendingNewMessageToIds[0],
+        );
+        if (created.ok) {
+          onSuccess(created.value);
+          return created.value;
         }
       } else {
         const names = sendingNewMessageToIds
@@ -169,22 +154,21 @@ const MessagesPage = () => {
         }
         const title = buildGroupConversationTitle(names);
 
-        const response = await conversationCreateGroupConversation({
-          body: {
-            participantIds: sendingNewMessageToIds,
-            title: title,
-          },
+        const created = await createGroupConversation({
+          participantIds: sendingNewMessageToIds,
+          title: title,
         });
-        if (response.data) {
-          onSuccess(response.data);
-          return response.data;
+        if (created.ok) {
+          onSuccess(created.value);
+          return created.value;
         }
       }
       return null;
     }, [
       sendingNewMessageToIds,
       setSelectedConvoId,
-      setConversations,
+      createDirectConversation,
+      createGroupConversation,
       selectedConvo,
       messageableUsers,
       user,
@@ -202,26 +186,15 @@ const MessagesPage = () => {
 
   const handleAcceptMessageRequest = useCallback(() => {
     if (!selectedConvo) return;
-    conversationAcceptInvite({
-      path: { conversationId: selectedConvo.id },
-    }).then((response) => {
-      if (response.data) {
-        handleConversationUpdated(response.data);
-      }
-    });
-  }, [selectedConvo, handleConversationUpdated]);
+    void acceptInvite(selectedConvo.id);
+  }, [selectedConvo, acceptInvite]);
 
   const handleDeclineMessageRequest = useCallback(() => {
     if (!selectedConvo) return;
-    conversationDeclineInvite({
-      path: { conversationId: selectedConvo.id },
-    }).then((response) => {
-      if (response.data) {
-        handleConversationUpdated(response.data);
-        setSelectedConvoId(null);
-      }
+    void declineInvite(selectedConvo.id).then((declined) => {
+      if (declined.ok) setSelectedConvoId(null);
     });
-  }, [selectedConvo, handleConversationUpdated, setSelectedConvoId]);
+  }, [selectedConvo, declineInvite, setSelectedConvoId]);
 
   const handleConversationClick = useCallback(
     (conversationId: number) => () => {
@@ -287,12 +260,8 @@ const MessagesPage = () => {
   ]);
 
   useEffect(() => {
-    if (selectedConvoId) {
-      conversationMarkRead({
-        path: { conversationId: selectedConvoId },
-      });
-    }
-  }, [selectedConvoId]);
+    if (selectedConvoId) void markRead(selectedConvoId);
+  }, [selectedConvoId, markRead]);
 
   if (!conversations && loading) {
     return (
