@@ -23,6 +23,7 @@ import {
   OnetimeInviteStatus,
 } from "src/user/entities/onetime-invite.entity";
 import { User } from "src/user/entities/user.entity";
+import { FriendService } from "src/user/friend.service";
 import { UserService } from "src/user/user.service";
 import {
   EntityManager,
@@ -42,6 +43,7 @@ describe("Updates to a row deleted after its load (e2e)", () => {
   let ctx: TestContext;
   let userRepo: Repository<User>;
   let userService: UserService;
+  let friendService: FriendService;
   let emails = 0;
 
   const member = (overrides: Partial<User> = {}) =>
@@ -113,6 +115,7 @@ describe("Updates to a row deleted after its load (e2e)", () => {
     ctx = await createTestApp([]);
     userRepo = ctx.dataSource.getRepository(User);
     userService = ctx.app.get(UserService);
+    friendService = ctx.app.get(FriendService);
   }, 50000);
 
   afterEach(() => {
@@ -138,7 +141,7 @@ describe("Updates to a row deleted after its load (e2e)", () => {
     });
 
     await expect(
-      userService.updateFriendRequestStatus(
+      friendService.updateFriendRequestStatus(
         requester.id,
         addressee.id,
         FriendStatus.Accepted,

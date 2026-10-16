@@ -23,7 +23,7 @@ import {
 } from "src/user/entities/onetime-invite.entity";
 import { Tag } from "src/user/entities/tag.entity";
 import { User } from "src/user/entities/user.entity";
-import { UserService } from "src/user/user.service";
+import { FriendService } from "src/user/friend.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
@@ -109,7 +109,7 @@ describe("Soft-deleted records' lifecycle (e2e)", () => {
         ids: [addressee.user.id],
       });
       const requested = ctx.app
-        .get(UserService)
+        .get(FriendService)
         .createFriendRequest(requester.user.id, addressee.user.id)
         .then(
           () => "requested",
@@ -132,8 +132,8 @@ describe("Soft-deleted records' lifecycle (e2e)", () => {
   it("keeps a friendship deleted when its acceptance waits on the deletion", async () => {
     const requester = await member();
     const addressee = await member();
-    const users = ctx.app.get(UserService);
-    await users.createFriendRequest(requester.user.id, addressee.user.id);
+    const friends = ctx.app.get(FriendService);
+    await friends.createFriendRequest(requester.user.id, addressee.user.id);
     const deletion = ctx.dataSource.createQueryRunner();
     await deletion.startTransaction();
     try {
@@ -141,7 +141,7 @@ describe("Soft-deleted records' lifecycle (e2e)", () => {
         target: User,
         ids: [requester.user.id],
       });
-      const accepted = users
+      const accepted = friends
         .updateFriendRequestStatus(
           requester.user.id,
           addressee.user.id,

@@ -9,6 +9,7 @@ import { Post } from "src/forum/entities/post.entity";
 import { ForumService } from "src/forum/forum.service";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
+import { FriendService } from "src/user/friend.service";
 import { UserService } from "src/user/user.service";
 import type { Repository } from "src/utils/Repository";
 import { actionUrl, postUrl, profileUrl } from "./approutes";
@@ -32,6 +33,7 @@ const maxRecentSearchesScanned = 50;
 export class SearchService {
   constructor(
     private usersService: UserService,
+    private readonly friendService: FriendService,
     private actionsService: ActionsService,
     private forumService: ForumService,
     @InjectRepository(RecentSearch)
@@ -70,7 +72,7 @@ export class SearchService {
     }
 
     const users = await this.usersService.findByUsername(query);
-    const friends = await this.usersService.findFriends(userId);
+    const friends = await this.friendService.findFriends(userId);
     const userItems = users.slice(0, maxItemsPerType).map((user) =>
       this.userToSearchItem(
         user,

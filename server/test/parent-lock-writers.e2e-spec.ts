@@ -10,6 +10,7 @@ import { ForumCommentService } from "src/forum/forum-comment.service";
 import { ForumService } from "src/forum/forum.service";
 import { Friend } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
+import { FriendService } from "src/user/friend.service";
 import { UserService } from "src/user/user.service";
 import type { Repository } from "typeorm";
 import {
@@ -60,7 +61,9 @@ describe("Writers locking the parents they attach to (e2e)", () => {
       });
 
     await expect(
-      userService.createFriendRequest(requester.id, addressee.id),
+      ctx.app
+        .get(FriendService)
+        .createFriendRequest(requester.id, addressee.id),
     ).rejects.toThrow(NotFoundException);
     expect(
       await ctx.dataSource.getRepository(Friend).find({

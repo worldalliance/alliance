@@ -61,6 +61,7 @@ import {
   UserCityCountDto,
   UserDto,
 } from "./dto/user.dto";
+import { FriendService } from "./friend.service";
 import { UserService } from "./user.service";
 
 class VerifyEmailBody {
@@ -73,6 +74,7 @@ class VerifyEmailBody {
 export class UserController {
   constructor(
     private readonly userService: UserService,
+    private readonly friendService: FriendService,
     private readonly posthog: PosthogService,
   ) {}
 
@@ -284,7 +286,7 @@ export class UserController {
   ): Promise<ProfileDtoWithFriends[]> {
     const [users, friendIdsByUserId] = await Promise.all([
       this.userService.findAll({ contractEvents: true }),
-      this.userService.findAcceptedFriendIdsByUserId(),
+      this.friendService.findAcceptedFriendIdsByUserId(),
     ]);
 
     const members = requireSignedContract

@@ -29,6 +29,7 @@ import {
   ReferralSource,
   User,
 } from "../user/entities/user.entity";
+import { FriendService } from "../user/friend.service";
 import { ReferralService } from "../user/referral.service";
 import { UserService } from "../user/user.service";
 import { SignUpDto } from "./dto/sign-up.dto";
@@ -74,6 +75,7 @@ type PasswordSession = {
 export class AuthService {
   constructor(
     private usersService: UserService,
+    private readonly friendService: FriendService,
     private readonly referralService: ReferralService,
     private jwtService: JwtService,
     private mailService: MailService,
@@ -343,7 +345,10 @@ export class AuthService {
     );
 
     if (user.referredBy) {
-      await this.usersService.makeFriendsAutomated(user.referredBy.id, user.id);
+      await this.friendService.makeFriendsAutomated(
+        user.referredBy.id,
+        user.id,
+      );
     }
 
     // The user row is already committed; a mail failure must not fail the signup.

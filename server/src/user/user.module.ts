@@ -25,6 +25,7 @@ import { Tag } from "./entities/tag.entity";
 import { UserAwayRange } from "./entities/user-away-range.entity";
 import { UserDevice } from "./entities/user-device.entity";
 import { User } from "./entities/user.entity";
+import { FriendService } from "./friend.service";
 import { GroupAssignmentService } from "./group-assignment.service";
 import { ReferralService } from "./referral.service";
 import { TagService } from "./tag.service";
@@ -86,8 +87,15 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     UserDeviceService,
     GroupAssignmentService,
     ReferralService,
+    FriendService,
     IsUserAlreadyExist,
   ],
-  exports: [UserService, TagService, UserAwayRangeService, ReferralService],
+  exports: [
+    UserService,
+    TagService,
+    UserAwayRangeService,
+    ReferralService,
+    FriendService,
+  ],
 })
 export class UserModule {}

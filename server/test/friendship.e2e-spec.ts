@@ -6,8 +6,8 @@ import {
 import { MessagingModule } from "src/messaging/messaging.module";
 import { FriendStatus } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
+import { FriendService } from "src/user/friend.service";
 import { ReferralService } from "src/user/referral.service";
-import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import {
@@ -21,7 +21,7 @@ import {
 describe("Accepted friendship in either direction (e2e)", () => {
   let ctx: TestContext;
   let userRepo: Repository<User>;
-  let userService: UserService;
+  let friendService: FriendService;
 
   let hub: User;
   let hubToken: string;
@@ -53,7 +53,7 @@ describe("Accepted friendship in either direction (e2e)", () => {
   beforeAll(async () => {
     ctx = await createTestApp([MessagingModule]);
     userRepo = ctx.dataSource.getRepository(User);
-    userService = ctx.app.get(UserService);
+    friendService = ctx.app.get(FriendService);
 
     pendingRequester = await saveUser("PendingRequester");
     pendingAddressee = await saveUser("PendingAddressee");
@@ -73,10 +73,10 @@ describe("Accepted friendship in either direction (e2e)", () => {
     requesterFriendToken = signAccessToken(ctx.jwtService, requesterFriend);
     pendingRequesterToken = signAccessToken(ctx.jwtService, pendingRequester);
 
-    await userService.makeFriendsAutomated(requesterFriend.id, hub.id);
-    await userService.makeFriendsAutomated(hub.id, addresseeFriend.id);
-    await userService.createFriendRequest(pendingRequester.id, hub.id);
-    await userService.createFriendRequest(hub.id, pendingAddressee.id);
+    await friendService.makeFriendsAutomated(requesterFriend.id, hub.id);
+    await friendService.makeFriendsAutomated(hub.id, addresseeFriend.id);
+    await friendService.createFriendRequest(pendingRequester.id, hub.id);
+    await friendService.createFriendRequest(hub.id, pendingAddressee.id);
   }, 50000);
 
   afterAll(async () => {
@@ -205,7 +205,7 @@ describe("Accepted friendship in either direction (e2e)", () => {
       ).state;
     expect(await inviteeState()).toBe(ParticipantState.Invited);
 
-    await userService.makeFriendsAutomated(sender.id, invitee.id);
+    await friendService.makeFriendsAutomated(sender.id, invitee.id);
 
     await eventually(
       inviteeState,

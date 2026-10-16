@@ -30,6 +30,7 @@ import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "src/user/entities/onetime-invite.entity";
+import { FriendService } from "src/user/friend.service";
 import { UserService } from "src/user/user.service";
 import request from "supertest";
 import { IsNull, type Repository } from "typeorm";
@@ -57,6 +58,7 @@ describe("Users (e2e)", () => {
   let communityRepo: Repository<Community>;
   let onetimeInviteRepo: Repository<OnetimeInvite>;
   let userService: UserService;
+  let friendService: FriendService;
   let contractService: ContractService;
   let shareUrlsService: ShareUrlsService;
   let authService: AuthService;
@@ -77,6 +79,7 @@ describe("Users (e2e)", () => {
     communityRepo = ctx.dataSource.getRepository(Community);
     onetimeInviteRepo = ctx.dataSource.getRepository(OnetimeInvite);
     userService = ctx.app.get(UserService);
+    friendService = ctx.app.get(FriendService);
     contractService = ctx.app.get(ContractService);
     shareUrlsService = ctx.app.get(ShareUrlsService);
     authService = ctx.app.get(AuthService);
@@ -1012,7 +1015,7 @@ describe("Users (e2e)", () => {
 
   it("User cannot be made friends with themself automatically", async () => {
     await expect(
-      userService.makeFriendsAutomated(userAId, userAId),
+      friendService.makeFriendsAutomated(userAId, userAId),
     ).rejects.toThrow(/violates check constraint/);
   });
 
@@ -3807,7 +3810,7 @@ describe("Users (e2e)", () => {
       const userB = await saveGraphUser("Active B");
       await giveActiveContract(ctx, userA.id);
       await giveActiveContract(ctx, userB.id);
-      await userService.makeFriendsAutomated(userA.id, userB.id);
+      await friendService.makeFriendsAutomated(userA.id, userB.id);
 
       expect(await fetchHasEdge(userA.id, userB.id)).toBe(true);
 
@@ -3818,7 +3821,7 @@ describe("Users (e2e)", () => {
       const requester = await saveGraphUser("Active Requester");
       const addressee = await saveGraphUser("Inactive Addressee");
       await giveActiveContract(ctx, requester.id);
-      await userService.makeFriendsAutomated(requester.id, addressee.id);
+      await friendService.makeFriendsAutomated(requester.id, addressee.id);
 
       expect(await fetchHasEdge(requester.id, addressee.id)).toBe(false);
 
@@ -3829,7 +3832,7 @@ describe("Users (e2e)", () => {
       const requester = await saveGraphUser("Inactive Requester");
       const addressee = await saveGraphUser("Active Addressee");
       await giveActiveContract(ctx, addressee.id);
-      await userService.makeFriendsAutomated(requester.id, addressee.id);
+      await friendService.makeFriendsAutomated(requester.id, addressee.id);
 
       expect(await fetchHasEdge(requester.id, addressee.id)).toBe(false);
 
@@ -3841,7 +3844,7 @@ describe("Users (e2e)", () => {
       const addressee = await saveGraphUser("Pending Addressee");
       await giveActiveContract(ctx, requester.id);
       await giveActiveContract(ctx, addressee.id);
-      await userService.createFriendRequest(requester.id, addressee.id);
+      await friendService.createFriendRequest(requester.id, addressee.id);
 
       expect(await fetchHasEdge(requester.id, addressee.id)).toBe(false);
 

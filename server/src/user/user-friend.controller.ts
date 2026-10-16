@@ -23,12 +23,12 @@ import { AuthGuard } from "../auth/guards/auth.guard";
 import { FriendGraphEdgeDto } from "./dto/friend-graph.dto";
 import { FriendStatusDto, ProfileDto } from "./dto/user.dto";
 import { FriendStatus } from "./entities/friend.entity";
-import { UserService } from "./user.service";
+import { FriendService } from "./friend.service";
 
 @Controller("user")
 export class UserFriendController {
   constructor(
-    private readonly userService: UserService,
+    private readonly friendService: FriendService,
     private readonly posthog: PosthogService,
   ) {}
 
@@ -41,7 +41,7 @@ export class UserFriendController {
     @Param("targetUserId", ParseIntPipe) targetUserId: number,
     @Request() req: JwtRequest,
   ): Promise<FriendStatusDto> {
-    const rel = await this.userService.createFriendRequest(
+    const rel = await this.friendService.createFriendRequest(
       req.user.sub,
       targetUserId,
     );
@@ -59,7 +59,10 @@ export class UserFriendController {
           },
     );
     return new FriendStatusDto(
-      await this.userService.getRelationshipStatus(req.user.sub, targetUserId),
+      await this.friendService.getRelationshipStatus(
+        req.user.sub,
+        targetUserId,
+      ),
     );
   }
 
@@ -71,7 +74,7 @@ export class UserFriendController {
     @Param("requesterId", ParseIntPipe) requesterId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    await this.userService.updateFriendRequestStatus(
+    await this.friendService.updateFriendRequestStatus(
       requesterId,
       req.user.sub,
       FriendStatus.Accepted,
@@ -93,7 +96,7 @@ export class UserFriendController {
     @Param("requesterId", ParseIntPipe) requesterId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    await this.userService.updateFriendRequestStatus(
+    await this.friendService.updateFriendRequestStatus(
       requesterId,
       req.user.sub,
       FriendStatus.Declined,
@@ -108,7 +111,7 @@ export class UserFriendController {
     @Param("targetUserId", ParseIntPipe) targetUserId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    await this.userService.removeFriend(req.user.sub, targetUserId);
+    await this.friendService.removeFriend(req.user.sub, targetUserId);
     this.posthog.capture({
       event: AnalyticsEvent.FriendRemoved,
       distinctId: String(req.user.sub),
@@ -126,7 +129,7 @@ export class UserFriendController {
     @Request() req: JwtRequest,
   ): Promise<ProfileDto[]> {
     return (
-      await this.userService.findPendingRequests(req.user.sub, "received")
+      await this.friendService.findPendingRequests(req.user.sub, "received")
     ).map((user) => new ProfileDto(user));
   }
 
@@ -136,7 +139,7 @@ export class UserFriendController {
   @ApiOkResponse({ type: [ProfileDto] })
   async listSentRequests(@Request() req: JwtRequest): Promise<ProfileDto[]> {
     return (
-      await this.userService.findPendingRequests(req.user.sub, "sent")
+      await this.friendService.findPendingRequests(req.user.sub, "sent")
     ).map((user) => new ProfileDto(user));
   }
 
@@ -148,7 +151,7 @@ export class UserFriendController {
     @Param("id", ParseIntPipe) id: number,
   ): Promise<FriendStatusDto> {
     return new FriendStatusDto(
-      await this.userService.getRelationshipStatus(req.user.sub, +id),
+      await this.friendService.getRelationshipStatus(req.user.sub, +id),
     );
   }
 
@@ -162,7 +165,7 @@ export class UserFriendController {
     if (!req.user) {
       throw new UnauthorizedException("User not found");
     }
-    return (await this.userService.findFriends(id)).map(
+    return (await this.friendService.findFriends(id)).map(
       (user) => new ProfileDto(user),
     );
   }
@@ -171,7 +174,7 @@ export class UserFriendController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [FriendGraphEdgeDto] })
   async getFriendGraphEdgesAdmin(): Promise<FriendGraphEdgeDto[]> {
-    return (await this.userService.findFriendGraphEdges()).map(
+    return (await this.friendService.findFriendGraphEdges()).map(
       (edge) => new FriendGraphEdgeDto(edge),
     );
   }
