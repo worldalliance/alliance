@@ -29,7 +29,6 @@ const user: UserAdminDetailDto = {
 let listCalls = 0;
 let listStatus = 200;
 let moveStatus = 200;
-let detailStatus = 200;
 let addStatus = 200;
 const moves: unknown[] = [];
 const adds: unknown[] = [];
@@ -60,13 +59,6 @@ serveApi(
         ? Response.json({ ...south, users: [] })
         : Response.json({ message: "South is full" }, { status: addStatus });
     },
-    "GET /user/userdetail/:id": () =>
-      detailStatus === 200
-        ? Response.json({
-            ...user,
-            communities: [{ ...south, users: [], leaders: [] }],
-          })
-        : Response.json({}, { status: detailStatus }),
   }),
 );
 
@@ -74,7 +66,6 @@ afterEach(() => {
   listCalls = 0;
   listStatus = 200;
   moveStatus = 200;
-  detailStatus = 200;
   addStatus = 200;
   moves.length = 0;
   adds.length = 0;
@@ -84,14 +75,15 @@ const submitTo = async (params: {
   member: UserAdminDetailDto;
   field: string;
   button: string;
+  refreshUser?: () => Promise<unknown>;
 }) => {
-  const onUserUpdated = jest.fn();
+  const refreshUser = jest.fn(params.refreshUser ?? (async () => {}));
   render(
     <MemoryRouter>
       <ToastProvider>
         <MemberGroupMoveSection
           user={params.member}
-          onUserUpdated={onUserUpdated}
+          refreshUser={refreshUser}
         />
       </ToastProvider>
     </MemoryRouter>,
@@ -108,16 +100,21 @@ const submitTo = async (params: {
   );
   const [, confirm] = screen.getAllByRole("button", { name: params.button });
   fireEvent.click(confirm);
-  return onUserUpdated;
+  return refreshUser;
 };
 
-const moveToSouth = () =>
-  submitTo({ member: user, field: "Move to", button: "Move member" });
+const moveToSouth = (refreshUser?: () => Promise<unknown>) =>
+  submitTo({
+    member: user,
+    field: "Move to",
+    button: "Move member",
+    refreshUser,
+  });
 
 it("moves the member and refreshes the groups and the member", async () => {
-  const onUserUpdated = await moveToSouth();
+  const refreshUser = await moveToSouth();
 
-  await waitFor(() => expect(onUserUpdated).toHaveBeenCalled());
+  await waitFor(() => expect(refreshUser).toHaveBeenCalled());
   expect(moves).toEqual([
     { from: "4", body: { userId: 7, destinationCommunityId: 5 } },
   ]);
@@ -125,8 +122,7 @@ it("moves the member and refreshes the groups and the member", async () => {
 });
 
 it("says to reload when the member could not refresh", async () => {
-  detailStatus = 500;
-  await moveToSouth();
+  await moveToSouth(() => Promise.reject(new Error("refresh failed")));
 
   expect(
     await screen.findByText(
@@ -136,33 +132,33 @@ it("says to reload when the member could not refresh", async () => {
 });
 
 it("assigns a member with no group", async () => {
-  const onUserUpdated = await submitTo({
+  const refreshUser = await submitTo({
     member: { ...user, communities: [] },
     field: "Assign to",
     button: "Assign member",
   });
 
-  await waitFor(() => expect(onUserUpdated).toHaveBeenCalled());
+  await waitFor(() => expect(refreshUser).toHaveBeenCalled());
   expect(adds).toEqual([{ to: "5", body: { userId: 7 } }]);
 });
 
 it("hides a server error's own text behind the assign fallback", async () => {
   addStatus = 500;
-  const onUserUpdated = await submitTo({
+  const refreshUser = await submitTo({
     member: { ...user, communities: [] },
     field: "Assign to",
     button: "Assign member",
   });
 
   expect(await screen.findByText("Could not assign this member.")).toBeTruthy();
-  expect(onUserUpdated).not.toHaveBeenCalled();
+  expect(refreshUser).not.toHaveBeenCalled();
 });
 
 const renderSection = () =>
   render(
     <MemoryRouter>
       <ToastProvider>
-        <MemberGroupMoveSection user={user} onUserUpdated={() => {}} />
+        <MemberGroupMoveSection user={user} refreshUser={async () => {}} />
       </ToastProvider>
     </MemoryRouter>,
     queryWrapper(),
@@ -196,11 +192,11 @@ it("says when the groups failed to load", async () => {
 
 it("says why a move was refused and refreshes the groups", async () => {
   moveStatus = 400;
-  const onUserUpdated = await moveToSouth();
+  const refreshUser = await moveToSouth();
 
   expect(await screen.findByText("South is full")).toBeTruthy();
   await waitFor(() => expect(listCalls).toBe(2));
-  expect(onUserUpdated).not.toHaveBeenCalled();
+  expect(refreshUser).not.toHaveBeenCalled();
 });
 
 it("hides a server error's own text behind the move fallback", async () => {

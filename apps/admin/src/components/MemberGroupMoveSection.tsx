@@ -1,5 +1,4 @@
 import { acceptsStaffAssignment } from "@alliance/common/community";
-import { userUserDetailAdmin } from "@alliance/shared/client";
 import type {
   CommunityDto,
   UserAdminDetailDto,
@@ -20,10 +19,10 @@ const NO_COMMUNITIES: CommunityDto[] = [];
 
 export default function MemberGroupMoveSection({
   user,
-  onUserUpdated,
+  refreshUser,
 }: {
   user: UserAdminDetailDto;
-  onUserUpdated: (user: UserAdminDetailDto) => void;
+  refreshUser: () => Promise<unknown>;
 }) {
   const {
     data: communities = NO_COMMUNITIES,
@@ -146,11 +145,7 @@ export default function MemberGroupMoveSection({
       }
       membershipUpdated = true;
 
-      const refreshedUser = await userUserDetailAdmin({
-        path: { id: user.id },
-        throwOnError: true,
-      });
-      onUserUpdated(refreshedUser.data);
+      await refreshUser();
       success(
         sourceCommunity ? "Member moved" : "Member assigned",
         destinationCommunity.name,
@@ -180,7 +175,7 @@ export default function MemberGroupMoveSection({
     destinationCommunityId,
     memberCommunities,
     moveMember,
-    onUserUpdated,
+    refreshUser,
     sourceCommunityId,
     success,
     user.id,
