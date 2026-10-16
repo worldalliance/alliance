@@ -1,8 +1,9 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
+import type { FormResponseDto } from "@alliance/shared/client";
+import { makeFormResponse, makeUser } from "@alliance/shared/lib/testFixtures";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import FormResponsesView from "./FormResponsesView";
+import FormResponsesView, { type FormWithSchema } from "./FormResponsesView";
 
 afterEach(cleanup);
 
@@ -29,6 +30,8 @@ const response = makeFormResponse({
 const renderView = (params: {
   path: string;
   referralsError?: string | null;
+  responses?: FormResponseDto[];
+  form?: FormWithSchema | null;
 }) => {
   const router = createMemoryRouter(
     [
@@ -37,8 +40,12 @@ const renderView = (params: {
         element: (
           <FormResponsesView
             title="Form"
-            form={{ id: 1, title: "Form", formSnapshotId: 7, schema }}
-            responses={[response]}
+            form={
+              params.form === undefined
+                ? { id: 1, title: "Form", formSnapshotId: 7, schema }
+                : params.form
+            }
+            responses={params.responses ?? [response]}
             loading={false}
             error={null}
             onRefresh={() => {}}
@@ -75,4 +82,22 @@ it("shows the answers to the question picked", () => {
   });
 
   expect(screen.getByText("Hello there")).toBeTruthy();
+});
+
+it("replays the respondent picked from the name search", () => {
+  renderView({
+    path: "/?tab=replays",
+    form: null,
+    responses: [
+      { ...response, id: 1, user: makeUser({ id: 1, name: "Ana" }) },
+      { ...response, id: 2, user: makeUser({ id: 2, name: "Bea" }) },
+    ],
+  });
+  fireEvent.change(screen.getByPlaceholderText("Search by name..."), {
+    target: { value: "bea" },
+  });
+  fireEvent.click(screen.getByText("Bea"));
+
+  expect(screen.getByText("Bea")).toBeTruthy();
+  expect(screen.queryByText("Ana")).toBeNull();
 });

@@ -16,19 +16,10 @@ import type {
   ProfileDto,
 } from "@alliance/shared/client";
 import { CardStyle } from "@alliance/shared/styles/card";
-import { cn } from "@alliance/shared/styles/util";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import Pagination from "@alliance/sharedweb/ui/Pagination";
-import { CirclePlay } from "lucide-react";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { AI_SCORE_FIELD_KINDS, formatAiScore } from "../lib/aiScore";
 import { downloadBlob } from "../lib/downloadBlob";
@@ -48,11 +39,11 @@ import {
 import { buildResponsesCsv } from "../lib/responsesCsvExport";
 import { buildResponsesHtml } from "../lib/responsesHtmlExport";
 import QuestionResponses from "./form-responses/QuestionResponses";
+import ResponseReplayNavigator from "./form-responses/ResponseReplayNavigator";
+import { useRespondentSearch } from "./form-responses/useRespondentSearch";
 import FormResponseStatistics from "./FormResponseStatistics";
-import { IdentityChip } from "./IdentitySwatch";
 import ResponsesTable from "./responses-table/ResponsesTable";
 import SnapshotTargetPicker from "./SnapshotTargetPicker";
-import { WithdrawalInfo } from "./WithdrawalInfo";
 
 export type FormWithSchema = Pick<
   FormDto,
@@ -327,7 +318,6 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
 
   const total = scopedResponses.length;
   const filteredTotal = filteredResponses.length;
-  const totalPages = Math.max(1, filteredTotal);
   const currentResponse = filteredResponses[page - 1];
 
   const currentResponseAiInlineLabels = useMemo<
@@ -446,76 +436,17 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     exportFileBase,
   ]);
 
-  const [userSearch, setUserSearch] = useState("");
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const userSearchRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        userSearchRef.current &&
-        !userSearchRef.current.contains(e.target as Node)
-      ) {
-        setUserDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const respondentName = currentResponse
-    ? (currentResponse.user?.name ??
-      (sidsToUserMap[currentResponse.sid ?? ""]
-        ? "anonymous invited by " +
-          sidsToUserMap[currentResponse.sid ?? ""]?.displayName
-        : "anonymous"))
-    : "";
-
-  const currentWithdrawal =
-    currentResponse?.user?.id != null
-      ? (withdrawnUserMap.get(currentResponse.user.id) ?? null)
-      : null;
-
   const getRespondentName = useCallback(
     (response: FormResponseDto): string =>
       buildRespondentName({ response, sidsToUserMap }),
     [sidsToUserMap],
   );
 
-  const userSearchResults = useMemo(() => {
-    const query = userSearch.toLowerCase();
-    const items = filteredResponses.map((response, idx) => ({
-      response,
-      idx,
-      name: getRespondentName(response),
-    }));
-    if (!query) return items;
-    const matched = items.filter(({ name }) =>
-      name.toLowerCase().includes(query),
-    );
-    matched.sort((a, b) => {
-      const aStarts = a.name.toLowerCase().startsWith(query) ? 0 : 1;
-      const bStarts = b.name.toLowerCase().startsWith(query) ? 0 : 1;
-      return aStarts - bStarts;
-    });
-    return matched;
-  }, [filteredResponses, userSearch, getRespondentName]);
-
-  const handleUserSearchKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" && userSearchResults.length > 0) {
-        e.preventDefault();
-        setPage(userSearchResults[0].idx + 1);
-        setUserSearch("");
-        setUserDropdownOpen(false);
-      }
-    },
-    [userSearchResults],
-  );
-
-  const currentResponseVariantName = currentResponse
-    ? getResponseVariantName(currentResponse)
-    : null;
+  const respondentSearch = useRespondentSearch({
+    responses: filteredResponses,
+    getRespondentName,
+    onSelect: useCallback((index: number) => setPage(index + 1), []),
+  });
 
   // Every response, so the date does not move with the search or a filter.
   const releaseDate = useMemo(() => {
@@ -666,129 +597,20 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
             </div>
           </div>
         </div>
-        {/* Response Navigator (inside header) */}
         {tab === "replays" && !loading && !error && filteredTotal > 0 && (
-          <div className="px-6 pb-4 border-t border-gray-100 pt-3">
-            {filterSummary && (
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                <div className="text-sm text-gray-600">
-                  Filtered:{" "}
-                  <span className="font-medium text-gray-900">
-                    {filterSummary.fieldLabel}
-                  </span>{" "}
-                  — {filterSummary.description}{" "}
-                  <span className="text-gray-400">
-                    ({filteredTotal} of {total})
-                  </span>
-                </div>
-                <Button
-                  onClick={clearFilter}
-                  color={ButtonColor.White}
-                  size="small"
-                >
-                  Clear filter
-                </Button>
-              </div>
-            )}
-            <div className="flex items-center justify-between flex-wrap md:flex-nowrap gap-3">
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                onPageChange={setPage}
-              />
-
-              {/* User Search Dropdown */}
-              <div className="relative" ref={userSearchRef}>
-                <input
-                  type="text"
-                  value={userSearch}
-                  onChange={(e) => {
-                    setUserSearch(e.target.value);
-                    setUserDropdownOpen(true);
-                  }}
-                  onFocus={() => setUserDropdownOpen(true)}
-                  onKeyDown={handleUserSearchKeyDown}
-                  placeholder="Search by name..."
-                  className="w-56 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-black focus:outline-none"
-                />
-                {userDropdownOpen && (
-                  <div className="absolute z-30 mt-1 w-72 max-h-64 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                    {userSearchResults.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-gray-500">
-                        No matching responses
-                      </div>
-                    ) : (
-                      userSearchResults.map(({ response, idx, name }) => (
-                        <button
-                          key={response.id ?? `${response.sid}-${idx}`}
-                          type="button"
-                          className={cn(
-                            "w-full text-left px-3 py-2 text-sm hover:bg-gray-100 border-b border-gray-50 last:border-b-0",
-                            idx + 1 === page && "bg-blue-50 font-medium",
-                          )}
-                          onClick={() => {
-                            setPage(idx + 1);
-                            setUserSearch("");
-                            setUserDropdownOpen(false);
-                          }}
-                        >
-                          <div className="truncate text-gray-900">{name}</div>
-                          <div className="text-xs text-gray-500">
-                            {new Date(response.createdAt).toLocaleString()}
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Response Info */}
-              {currentResponse && (
-                <div className="flex items-center gap-4">
-                  <div className="text-right min-w-[200px]">
-                    <div className="flex items-center justify-end gap-2">
-                      <p className="font-medium text-gray-900 truncate max-w-[700px]">
-                        {respondentName}
-                      </p>
-                      {currentResponseVariantName && (
-                        <IdentityChip
-                          seed={currentResponseVariantName}
-                          label={currentResponseVariantName}
-                        />
-                      )}
-                      {currentWithdrawal && (
-                        <WithdrawalInfo withdrawal={currentWithdrawal} />
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-500">
-                      {new Date(currentResponse.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  {currentResponse.sessionReplayUrl && (
-                    <Button
-                      size="small"
-                      color={ButtonColor.BlueOutline}
-                      onClick={() =>
-                        window.open(
-                          "https://us.posthog.com/project/188181/replay/home?sessionRecordingId=" +
-                            currentResponse.sessionReplayUrl!.substring(
-                              currentResponse.sessionReplayUrl!.lastIndexOf(
-                                "/",
-                              ) + 1,
-                            ),
-                          "_blank",
-                        )
-                      }
-                    >
-                      <CirclePlay size={14} className="mr-1.5" />
-                      Replay
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          <ResponseReplayNavigator
+            filterSummary={filterSummary}
+            filteredTotal={filteredTotal}
+            total={total}
+            onClearFilter={clearFilter}
+            page={page}
+            onPageChange={setPage}
+            search={respondentSearch}
+            currentResponse={currentResponse}
+            getRespondentName={getRespondentName}
+            getResponseVariantName={getResponseVariantName}
+            withdrawnUserMap={withdrawnUserMap}
+          />
         )}
       </div>
 
