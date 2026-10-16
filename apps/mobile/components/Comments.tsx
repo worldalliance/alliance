@@ -1,25 +1,13 @@
-import { errorMessage } from "@alliance/common/errorMessage";
-import { R, type Result } from "@alliance/common/result";
 import {
   CommentDto,
   CommentParentObject,
-  CreateCommentDto,
-  CreateEditableContentDto,
   PostTagDto,
-  forumCreateComment,
-  forumUpdateComment,
 } from "@alliance/shared/client";
 import { useCommentFiltering } from "@alliance/shared/lib/commentsFilter";
 import { TagFilter } from "@alliance/shared/lib/commentTags";
-import {
-  collectCommentIds,
-  updateCommentInTree,
-} from "@alliance/shared/lib/commentTree";
+import { collectCommentIds } from "@alliance/shared/lib/commentTree";
 import { commentThreadLanding } from "@alliance/shared/lib/copy";
-import { replyRefusalMessage } from "@alliance/shared/lib/replyRefusal";
-import { useCommentLikeMutation } from "@alliance/shared/lib/useCommentLikeMutation";
-import { useDeleteComment } from "@alliance/shared/lib/useDeleteComment";
-import { useLoadComments } from "@alliance/shared/lib/useLoadComments";
+import { useCommentThread } from "@alliance/shared/lib/useCommentThread";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { cn } from "@alliance/shared/styles/util";
 import { milliseconds } from "date-fns";
@@ -108,15 +96,19 @@ export default function Comments({
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
   const {
     comments,
-    setComments,
     error,
     canRetry,
     spinning,
     status,
     movesReader,
-    fetchComments,
     retry,
-  } = useLoadComments({ objectId, type, initialComments });
+    createComment,
+    updateComment,
+    likeComment,
+    deleteReply,
+    deleteErrorFor,
+    clearDeleteError,
+  } = useCommentThread({ objectId, type, initialComments, userId: user?.id });
   useAnnounceOnIos(status);
   const thread = useRef<ComponentRef<typeof View>>(null);
   const moved = useRef(false);
@@ -135,10 +127,6 @@ export default function Comments({
     moved.current = true;
     AccessibilityInfo.sendAccessibilityEvent(thread.current, "focus");
   }, []);
-  const { deleteReply, deleteErrorFor, clearDeleteError } = useDeleteComment({
-    comments,
-    fetchComments,
-  });
   // Keyed by the form that produced it, so a nested reply's rejection shows
   // under that reply rather than at the top of the thread.
   const [submitError, setSubmitError] = useState<{
@@ -176,73 +164,46 @@ export default function Comments({
 
   const handleSubmitReply = useCallback(
     async ({ content, parentId, onSuccess }: SubmitReplyInput) => {
-      try {
-        setSubmitError(null);
-        const commentDto: CreateCommentDto = {
-          parentObjectId: Number(objectId),
-          parentId: parentId ?? undefined,
-          parentObjectType: type,
-          editableContent: content,
-          tagId: parentId ? undefined : selectedTagId,
-        };
+      setSubmitError(null);
+      const created = await createComment({
+        content,
+        parentId,
+        tagId: selectedTagId,
+      });
 
-        const response = await forumCreateComment({
-          body: commentDto,
-          throwOnError: false,
-        });
+      if (!created.ok) {
+        setSubmitError({ parentId, message: created.error });
+        return;
+      }
 
-        if (response.error) {
-          setSubmitError({
-            parentId,
-            message: replyRefusalMessage({
-              status: response.response.status,
-              error: response.error,
-            }),
-          });
-          // The comment may have been deleted, which a reload shows.
-          if (parentId !== null && response.response.status === 404) {
-            await fetchComments();
-          }
-          return;
-        }
-
-        if (response.data) {
+      const newReplyId = created.value.id;
+      setNewlyAddedReplies((prev) => {
+        const next = new Set(prev);
+        next.add(newReplyId);
+        return next;
+      });
+      setTimeout(
+        () => {
           setNewlyAddedReplies((prev) => {
             const next = new Set(prev);
-            next.add(response.data!.id);
+            next.delete(newReplyId);
             return next;
           });
-          setTimeout(
-            () => {
-              setNewlyAddedReplies((prev) => {
-                const next = new Set(prev);
-                next.delete(response.data!.id);
-                return next;
-              });
-            },
-            milliseconds({ seconds: 3 }),
-          );
-        }
+        },
+        milliseconds({ seconds: 3 }),
+      );
 
-        await fetchComments();
-        onSuccess();
-        openReplyForm(null);
-        if (!parentId) {
-          setTagFilter(selectedTagId);
-          setSelectedTagId(undefined);
-          setIsComposing(false);
-        } else {
-          setFocusComposer(false);
-        }
-      } catch (err) {
-        console.error("Error posting reply:", err);
-        setSubmitError({
-          parentId,
-          message: "Failed to submit reply",
-        });
+      onSuccess();
+      openReplyForm(null);
+      if (!parentId) {
+        setTagFilter(selectedTagId);
+        setSelectedTagId(undefined);
+        setIsComposing(false);
+      } else {
+        setFocusComposer(false);
       }
     },
-    [fetchComments, objectId, openReplyForm, selectedTagId, type],
+    [createComment, openReplyForm, selectedTagId],
   );
 
   const handleDeleteReply = useCallback(
@@ -267,48 +228,6 @@ export default function Comments({
     [deleteReply],
   );
 
-  const handleUpdateReply = useCallback(
-    async (
-      replyId: number,
-      content: CreateEditableContentDto,
-    ): Promise<Result<void, string>> => {
-      const saved = await R.fromPromiseFn(async () => {
-        const response = await forumUpdateComment({
-          path: { id: replyId },
-          body: {
-            editableContent: content,
-          },
-        });
-        return response.error;
-      });
-
-      if (!saved.ok) {
-        console.error("Failed to update comment:", saved.error);
-        return R.failure("Failed to save your edit");
-      }
-
-      if (saved.value) {
-        return R.failure(
-          errorMessage({
-            error: saved.value,
-            fallback: "Failed to save your edit",
-          }),
-        );
-      }
-
-      setComments((prevComments) =>
-        updateCommentInTree({
-          comments: prevComments,
-          id: replyId,
-          update: (comment) => ({ ...comment, editableContent: content }),
-        }),
-      );
-
-      return R.success(undefined);
-    },
-    [setComments],
-  );
-
   const submitErrorFor = useCallback(
     (parentId: number | null) =>
       submitError?.parentId === parentId ? submitError.message : null,
@@ -316,12 +235,6 @@ export default function Comments({
   );
 
   const clearSubmitError = useCallback(() => setSubmitError(null), []);
-
-  const handleLikeReply = useCommentLikeMutation({
-    userId: user?.id,
-    setComments,
-    fetchComments,
-  });
 
   const {
     topLevelComments,
@@ -494,13 +407,13 @@ export default function Comments({
               showClusterTags={showClusterTags}
               tags={tags}
               onSubmitReply={handleSubmitReply}
-              onUpdateReply={handleUpdateReply}
+              onUpdateReply={updateComment}
               submitErrorFor={submitErrorFor}
               clearSubmitError={clearSubmitError}
               deleteErrorFor={deleteErrorFor}
               clearDeleteError={clearDeleteError}
               onDeleteReply={handleDeleteReply}
-              onLikeReply={handleLikeReply}
+              onLikeReply={likeComment}
             />
           ))}
         </View>
