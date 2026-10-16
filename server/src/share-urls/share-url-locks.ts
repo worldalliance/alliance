@@ -8,7 +8,7 @@ import {
   type QueryDeepPartialEntity,
 } from "typeorm";
 import { ShareUrl } from "./entities/share-url.entity";
-import type { ShareUrlOwner } from "./share-urls.service";
+import type { ShareUrlOwner } from "./share-url-owner";
 
 /** Whether the owner is live; holds it so a deletion cannot land mid-insert. */
 export function lockOwner(

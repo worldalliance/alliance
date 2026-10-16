@@ -1,7 +1,6 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { publicDisplayName } from "@alliance/common/displayName";
 import { DEFAULT_INVITE_MESSAGE_TEMPLATE } from "@alliance/common/inviteMessage";
-import { run } from "@alliance/common/run";
 import { appendQueryParam } from "@alliance/common/url";
 import {
   BadRequestException,
@@ -10,30 +9,21 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Action } from "src/actions/entities/action.entity";
 import { Community } from "src/community/entities/community.entity";
 import {
-  assertLive,
   softDeleteCascade,
   updateLive,
   writeUnderLive,
 } from "src/datasources/soft-delete";
 import { InviteFeedEvents } from "src/invite-feed.events";
-import {
-  generateCIDForExternalTarget,
-  generateCIDForShareUrl,
-} from "src/notifs/notif-utils";
-import { actionUrl, signupUrl, withRef, withSid } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
 import {
   EntityManager,
-  type FindOptionsWhere,
   In,
   IsNull,
   MoreThanOrEqual,
   Not,
   type QueryDeepPartialEntity,
-  QueryFailedError,
   Repository,
 } from "typeorm";
 import { ExternalShareTarget } from "./entities/external-share-target.entity";
@@ -45,87 +35,21 @@ import {
   type StoredInviteAssignment,
   StoredInviteAssignmentKind,
 } from "./invite-assignment";
-import { lockOwner, updateLiveShareUrl } from "./share-url-locks";
+import { updateLiveShareUrl } from "./share-url-locks";
+import { ownerWhere, type ShareUrlOwner } from "./share-url-owner";
 import { shareUrlPublicUrl } from "./share-url-public-url";
+import {
+  buildAndSaveShareUrl,
+  getOrCreateShareUrl,
+  lockExternalTarget,
+} from "./share-url-rows";
 import type {
   ReusableInviteFeedItem,
   ShareUrlMine,
   ShareUrlWithSignupCount,
 } from "./share-url-views";
 
-const NOT_FOUND_MESSAGE: Record<ShareUrlKind, string> = {
-  [ShareUrlKind.Action]: "specified action not found",
-  [ShareUrlKind.ExternalTarget]: "specified share target not found",
-  [ShareUrlKind.Invite]: "invite share link could not be created",
-} as const;
-
-const OWNER_NOT_FOUND: Record<ShareUrlOwner["type"], string> = {
-  user: "specified user not found",
-  campaign: "specified campaign not found",
-};
-
-async function lockExternalTarget(
-  manager: EntityManager,
-  id: number,
-): Promise<ExternalShareTarget> {
-  const target = await manager.findOne(ExternalShareTarget, {
-    where: { id },
-    lock: { mode: "pessimistic_read" },
-  });
-  if (!target) {
-    throw new NotFoundException(NOT_FOUND_MESSAGE[ShareUrlKind.ExternalTarget]);
-  }
-  return target;
-}
-
 const INVITE_MESSAGE_TEMPLATE_ID = "default";
-
-export type ShareUrlOwner =
-  | { type: "user"; userId: number }
-  | { type: "campaign"; campaignId: number };
-
-function ownerWhere(owner: ShareUrlOwner): FindOptionsWhere<ShareUrl> {
-  switch (owner.type) {
-    case "user":
-      return { user: { id: owner.userId } };
-    case "campaign":
-      return { campaign: { id: owner.campaignId } };
-    default:
-      throw new Error(`unknown share url owner: ${owner satisfies never}`);
-  }
-}
-
-function ownerColumns(owner: ShareUrlOwner): {
-  userId: number | null;
-  campaignId: number | null;
-} {
-  switch (owner.type) {
-    case "user":
-      return { userId: owner.userId, campaignId: null };
-    case "campaign":
-      return { userId: null, campaignId: owner.campaignId };
-    default:
-      throw new Error(`unknown share url owner: ${owner satisfies never}`);
-  }
-}
-
-type GetOrCreateInput =
-  | { kind: ShareUrlKind.Action; actionId: number; owner: ShareUrlOwner }
-  | {
-      kind: ShareUrlKind.ExternalTarget;
-      externalTarget: ExternalShareTarget;
-      owner: ShareUrlOwner;
-    }
-  | {
-      kind: ShareUrlKind.Invite;
-      owner: ShareUrlOwner;
-      inviteAssignment?: StoredInviteAssignment;
-    };
-
-type BuildRowInput = GetOrCreateInput & {
-  duplicate: boolean;
-  label?: string | null;
-};
 
 /** A chosen group, or no group at all, as the link stores it. */
 function inviteAssignmentFor(
@@ -269,7 +193,7 @@ export class ShareUrlsService {
     label: string | null,
     inviteAssignment?: StoredInviteAssignment,
   ): Promise<ShareUrl> {
-    const shareUrl = await this.buildAndSaveRow(
+    const shareUrl = await buildAndSaveShareUrl(
       this.shareUrlRepository.manager,
       {
         kind: ShareUrlKind.Invite,
@@ -284,7 +208,7 @@ export class ShareUrlsService {
   }
 
   async getOrCreateForInvite(owner: ShareUrlOwner): Promise<ShareUrl> {
-    return this.getOrCreate(this.shareUrlRepository.manager, {
+    return getOrCreateShareUrl(this.shareUrlRepository.manager, {
       kind: ShareUrlKind.Invite,
       owner,
     });
@@ -297,7 +221,7 @@ export class ShareUrlsService {
   ): Promise<ShareUrl> {
     return this.shareUrlRepository.manager.transaction(async (m) => {
       const target = await lockExternalTarget(m, externalTargetId);
-      return this.buildAndSaveRow(m, {
+      return buildAndSaveShareUrl(m, {
         kind: ShareUrlKind.ExternalTarget,
         externalTarget: target,
         owner,
@@ -312,7 +236,7 @@ export class ShareUrlsService {
     owner: ShareUrlOwner,
     label: string | null,
   ): Promise<ShareUrl> {
-    return this.buildAndSaveRow(this.shareUrlRepository.manager, {
+    return buildAndSaveShareUrl(this.shareUrlRepository.manager, {
       kind: ShareUrlKind.Action,
       actionId,
       owner,
@@ -571,7 +495,7 @@ export class ShareUrlsService {
   ): Promise<ShareUrl> {
     return this.shareUrlRepository.manager.transaction(async (m) => {
       const target = await lockExternalTarget(m, externalTargetId);
-      return this.getOrCreate(m, {
+      return getOrCreateShareUrl(m, {
         kind: ShareUrlKind.ExternalTarget,
         externalTarget: target,
         owner,
@@ -583,7 +507,7 @@ export class ShareUrlsService {
     actionId: number,
     owner: ShareUrlOwner,
   ): Promise<ShareUrl> {
-    return this.getOrCreate(this.shareUrlRepository.manager, {
+    return getOrCreateShareUrl(this.shareUrlRepository.manager, {
       kind: ShareUrlKind.Action,
       actionId,
       owner,
@@ -658,161 +582,5 @@ export class ShareUrlsService {
         },
       });
     }
-  }
-
-  private async getOrCreate(
-    manager: EntityManager,
-    input: GetOrCreateInput,
-  ): Promise<ShareUrl> {
-    const repo = manager.getRepository(ShareUrl);
-    const where = run((): FindOptionsWhere<ShareUrl> => {
-      switch (input.kind) {
-        case ShareUrlKind.Action:
-          return {
-            ...ownerWhere(input.owner),
-            action: { id: input.actionId },
-            duplicate: false,
-          };
-        case ShareUrlKind.ExternalTarget:
-          return {
-            ...ownerWhere(input.owner),
-            externalTarget: { id: input.externalTarget.id },
-            duplicate: false,
-          };
-        case ShareUrlKind.Invite:
-          return {
-            ...ownerWhere(input.owner),
-            kind: ShareUrlKind.Invite,
-            duplicate: false,
-          };
-        default:
-          throw new Error(
-            `getOrCreate: unknown share url kind: ${input satisfies never}`,
-          );
-      }
-    });
-    const existing = await repo.findOne({ where });
-    if (existing) {
-      return existing;
-    }
-
-    try {
-      return await this.buildAndSaveRow(manager, {
-        ...input,
-        duplicate: false,
-      });
-    } catch (err) {
-      if (err instanceof QueryFailedError) {
-        const code = (err as { code?: string }).code;
-        if (code === "23505") {
-          const winner = await repo.findOne({ where });
-          if (winner) {
-            return winner;
-          }
-        }
-      }
-      throw err;
-    }
-  }
-
-  private async buildAndSaveRow(
-    manager: EntityManager,
-    input: BuildRowInput,
-  ): Promise<ShareUrl> {
-    if (!manager.queryRunner?.isTransactionActive) {
-      return manager.transaction((m) => this.buildAndSaveRow(m, input));
-    }
-    const repo = manager.getRepository(ShareUrl);
-    // An account locks before the group its link places members in, a
-    // campaign after it: the orders their deletions take them in.
-    const ownerFirst = input.owner.type === "user";
-    if (ownerFirst && !(await lockOwner(manager, input.owner))) {
-      throw new NotFoundException(OWNER_NOT_FOUND[input.owner.type]);
-    }
-    const built = await run(
-      async (): Promise<{
-        sid: string;
-        url: string;
-        action: Action | null;
-        externalTarget: ExternalShareTarget | null;
-      }> => {
-        switch (input.kind) {
-          case ShareUrlKind.Action: {
-            const action = await manager.findOne(Action, {
-              where: { id: input.actionId },
-              lock: { mode: "for_key_share" },
-            });
-            if (!action) {
-              throw new NotFoundException(NOT_FOUND_MESSAGE[input.kind]);
-            }
-            const sid = generateCIDForShareUrl();
-            return {
-              sid,
-              url: withSid(actionUrl(input.actionId, true), sid),
-              action,
-              externalTarget: null,
-            };
-          }
-          case ShareUrlKind.ExternalTarget: {
-            const sid = generateCIDForExternalTarget();
-            return {
-              sid,
-              url: appendQueryParam(
-                input.externalTarget.url,
-                input.externalTarget.paramName,
-                sid,
-              ),
-              action: null,
-              externalTarget: input.externalTarget,
-            };
-          }
-          case ShareUrlKind.Invite: {
-            const sid = generateCIDForShareUrl();
-            const assignment = input.inviteAssignment;
-            if (
-              assignment?.kind === StoredInviteAssignmentKind.Community &&
-              assignment.communityId !== null
-            ) {
-              await assertLive(manager, {
-                rows: [{ target: Community, id: assignment.communityId }],
-                gone: () => new NotFoundException("Community not found"),
-              });
-            }
-            return {
-              sid,
-              url: withRef(signupUrl(true), sid),
-              action: null,
-              externalTarget: null,
-            };
-          }
-          default:
-            throw new Error(
-              `buildAndSaveRow: unknown share url kind: ${input satisfies never}`,
-            );
-        }
-      },
-    );
-
-    if (!ownerFirst && !(await lockOwner(manager, input.owner))) {
-      throw new NotFoundException(OWNER_NOT_FOUND[input.owner.type]);
-    }
-
-    const shareUrl = repo.create({
-      url: built.url,
-      kind: input.kind,
-      ...ownerColumns(input.owner),
-      action: built.action,
-      externalTarget: built.externalTarget,
-      sid: built.sid,
-      ...inviteAssignmentColumns(
-        input.kind === ShareUrlKind.Invite
-          ? (input.inviteAssignment ?? null)
-          : null,
-      ),
-      duplicate: input.duplicate,
-      label: input.label ?? null,
-    });
-
-    return repo.save(shareUrl);
   }
 }

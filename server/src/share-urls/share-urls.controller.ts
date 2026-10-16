@@ -30,7 +30,8 @@ import {
   UpdateInviteMessageTemplateDto,
   UpdateShareLinkLabelDto,
 } from "./dto/share-url.dto";
-import { type ShareUrlOwner, ShareUrlsService } from "./share-urls.service";
+import type { ShareUrlOwner } from "./share-url-owner";
+import { ShareUrlsService } from "./share-urls.service";
 
 function ownerFromDto(body: CreateDuplicateShareLinkDto): ShareUrlOwner {
   const hasUser = body.userId !== undefined;
