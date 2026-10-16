@@ -1,5 +1,4 @@
 import { formatInviteMessage } from "@alliance/common/inviteMessage";
-import { OnetimeInviteDto } from "@alliance/shared/client";
 import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import {
   deleteInviteConfirmation,
@@ -64,7 +63,6 @@ const InvitesPage = () => {
     invites,
     isLoading: loadingInvites,
     isError,
-    upsertInvite,
     approveInvite,
     rejectInvite,
     updateInvite,
@@ -248,16 +246,12 @@ const InvitesPage = () => {
     [deleteInvite],
   );
 
-  const handleInviteCreated = useCallback(
-    (invite: OnetimeInviteDto) => {
-      upsertInvite(invite);
-      setInviteListTab(InviteListTab.Individual);
-      if (user?.ambassador) {
-        void refetchAmbassadorDashboard();
-      }
-    },
-    [refetchAmbassadorDashboard, upsertInvite, user?.ambassador],
-  );
+  const handleInviteCreated = useCallback(() => {
+    setInviteListTab(InviteListTab.Individual);
+    if (user?.ambassador) {
+      void refetchAmbassadorDashboard();
+    }
+  }, [refetchAmbassadorDashboard, user?.ambassador]);
 
   const handleReusableInviteCreated = useCallback(() => {
     setInviteListTab(InviteListTab.Group);

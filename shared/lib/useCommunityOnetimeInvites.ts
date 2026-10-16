@@ -1,9 +1,5 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import {
-  CreateOnetimeInviteDto,
-  userCreateOnetimeInvite,
-  userGetOnetimeInvitesByCommunity,
-} from "../client";
+import { useQuery } from "@tanstack/react-query";
+import { userGetOnetimeInvitesByCommunity } from "../client";
 import { queryKeys } from "./queryKeys";
 import { useOnetimeInviteCache } from "./useOnetimeInviteCache";
 
@@ -39,12 +35,6 @@ export function useCommunityOnetimeInvites(
 
   const cache = useOnetimeInviteCache(queryKey);
 
-  const createMutation = useMutation({
-    mutationFn: (body: CreateOnetimeInviteDto) =>
-      userCreateOnetimeInvite({ body, throwOnError: true }).then((r) => r.data),
-    onSuccess: (invite) => cache.upsertInvite(invite),
-  });
-
   return {
     invites,
     isLoading,
@@ -52,6 +42,5 @@ export function useCommunityOnetimeInvites(
     isError,
     refetch,
     ...cache,
-    createInvite: createMutation.mutateAsync,
   };
 }
