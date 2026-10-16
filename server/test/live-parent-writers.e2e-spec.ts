@@ -30,6 +30,7 @@ import {
 } from "src/user/entities/user-away-range.entity";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
+import { OnetimeInviteService } from "src/user/onetime-invite.service";
 import { TagService } from "src/user/tag.service";
 import { UserAwayRangeService } from "src/user/user-away-range.service";
 import { UserDeviceService } from "src/user/user-device.service";
@@ -154,10 +155,12 @@ describe("Writers beside a deletion (e2e)", () => {
     deleteAfterUserLoad({ ctx, deleted: inviter });
 
     await expect(
-      userService.createOnetimeInvite(
-        { invitee: "Invitee", invitingUserId: inviter.id },
-        ctx.adminUserId,
-      ),
+      ctx.app
+        .get(OnetimeInviteService)
+        .createOnetimeInvite(
+          { invitee: "Invitee", invitingUserId: inviter.id },
+          ctx.adminUserId,
+        ),
     ).rejects.toThrow(NotFoundException);
     expect(
       await ctx.dataSource.getRepository(OnetimeInvite).find({

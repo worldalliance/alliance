@@ -20,6 +20,7 @@ import {
   User,
 } from "./entities/user.entity";
 import { acceptedFriendshipSql, friendOf } from "./friendship";
+import { OnetimeInviteService } from "./onetime-invite.service";
 import { sqlUserHasProfilePicture } from "./profile-picture";
 import { UserService } from "./user.service";
 
@@ -77,6 +78,7 @@ export class ReferralService {
     @InjectRepository(Friend)
     private readonly friendRepository: Repository<Friend>,
     private readonly userService: UserService,
+    private readonly onetimeInviteService: OnetimeInviteService,
     private readonly shareUrlsService: ShareUrlsService,
     private readonly campaignService: CampaignService,
   ) {}
@@ -94,7 +96,7 @@ export class ReferralService {
     code: string,
     opts?: { inviteRelations?: Relations<OnetimeInvite> },
   ): Promise<ReferralResolution | null> {
-    const invite = await this.userService.findInviteByCode(
+    const invite = await this.onetimeInviteService.findInviteByCode(
       code,
       opts?.inviteRelations,
     );

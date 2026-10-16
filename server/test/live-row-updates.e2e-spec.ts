@@ -24,6 +24,7 @@ import {
 } from "src/user/entities/onetime-invite.entity";
 import { User } from "src/user/entities/user.entity";
 import { FriendService } from "src/user/friend.service";
+import { OnetimeInviteService } from "src/user/onetime-invite.service";
 import { UserService } from "src/user/user.service";
 import {
   EntityManager,
@@ -221,7 +222,7 @@ describe("Updates to a row deleted after its load (e2e)", () => {
     });
 
     await expect(
-      userService.updateOnetimeInvite({
+      ctx.app.get(OnetimeInviteService).updateOnetimeInvite({
         inviteId: invite.id,
         userId: inviter.id,
         invitee: "After",

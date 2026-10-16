@@ -17,6 +17,7 @@ import {
   OnetimeInviteStatus,
 } from "../src/user/entities/onetime-invite.entity";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
+import { OnetimeInviteService } from "../src/user/onetime-invite.service";
 import { UserService } from "../src/user/user.service";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
@@ -103,9 +104,9 @@ describe("accepted invites (e2e)", () => {
     });
 
     const userService = ctx.app.get(UserService);
-    const overview = await userService.findOnetimeInvitesOverviewForUser(
-      inviter.id,
-    );
+    const onetimeInviteService = ctx.app.get(OnetimeInviteService);
+    const overview =
+      await onetimeInviteService.findOnetimeInvitesOverviewForUser(inviter.id);
     expect(
       overview
         .map((invite) => new OnetimeInviteDto(invite))
@@ -113,12 +114,13 @@ describe("accepted invites (e2e)", () => {
         .map(({ code }) => code),
     ).toEqual(["ACCEPTED"]);
 
-    const memberStats = await userService.getOnetimeInviteMemberStats();
+    const memberStats =
+      await onetimeInviteService.getOnetimeInviteMemberStats();
     expect(
       memberStats.find(({ invitingUser }) => invitingUser.id === inviter.id),
     ).toMatchObject({ sent: 3, accepted: 1 });
 
-    const edges = await userService.findOnetimeInviteEdges();
+    const edges = await onetimeInviteService.findOnetimeInviteEdges();
     expect(
       edges.filter(({ invitingUserId }) => invitingUserId === inviter.id),
     ).toEqual([{ invitingUserId: inviter.id, invitedUserId: claimant?.id }]);

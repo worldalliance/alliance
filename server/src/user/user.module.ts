@@ -27,6 +27,7 @@ import { UserDevice } from "./entities/user-device.entity";
 import { User } from "./entities/user.entity";
 import { FriendService } from "./friend.service";
 import { GroupAssignmentService } from "./group-assignment.service";
+import { OnetimeInviteService } from "./onetime-invite.service";
 import { ReferralService } from "./referral.service";
 import { TagService } from "./tag.service";
 import { UserAwayRangeController } from "./user-away-range.controller";
@@ -90,6 +91,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     GroupAssignmentService,
     ReferralService,
     FriendService,
+    OnetimeInviteService,
     IsUserAlreadyExist,
   ],
   exports: [

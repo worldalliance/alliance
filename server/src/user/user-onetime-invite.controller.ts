@@ -30,12 +30,12 @@ import {
   RequestOnetimeInviteDto,
   UpdateOnetimeInviteDto,
 } from "./dto/invite.dto";
-import { UserService } from "./user.service";
+import { OnetimeInviteService } from "./onetime-invite.service";
 
 @Controller("user")
 export class UserOnetimeInviteController {
   constructor(
-    private readonly userService: UserService,
+    private readonly onetimeInviteService: OnetimeInviteService,
     private readonly posthog: PosthogService,
   ) {}
 
@@ -43,7 +43,7 @@ export class UserOnetimeInviteController {
   @Public()
   @ApiOkResponse({ type: OnetimeInviteDto })
   async onetimeInvite(@Param("code") code: string): Promise<OnetimeInviteDto> {
-    const invite = await this.userService.findInviteByCode(code);
+    const invite = await this.onetimeInviteService.findInviteByCode(code);
     if (!invite) {
       throw new NotFoundException("Invite not found");
     }
@@ -57,7 +57,7 @@ export class UserOnetimeInviteController {
     @Body() body: RequestOnetimeInviteDto,
     @Request() req: JwtRequest,
   ): Promise<OnetimeInviteDto> {
-    const invite = await this.userService.requestOnetimeInvite(
+    const invite = await this.onetimeInviteService.requestOnetimeInvite(
       body,
       req.user.sub,
     );
@@ -80,7 +80,7 @@ export class UserOnetimeInviteController {
     @Param("inviteId", ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ): Promise<OnetimeInviteDto> {
-    const invite = await this.userService.approveOnetimeInviteRequest(
+    const invite = await this.onetimeInviteService.approveOnetimeInviteRequest(
       inviteId,
       req.user.sub,
     );
@@ -103,7 +103,10 @@ export class UserOnetimeInviteController {
     @Param("inviteId", ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    return this.userService.rejectOnetimeInviteRequest(inviteId, req.user.sub);
+    return this.onetimeInviteService.rejectOnetimeInviteRequest(
+      inviteId,
+      req.user.sub,
+    );
   }
 
   @Post("onetimeInvite/create")
@@ -113,7 +116,7 @@ export class UserOnetimeInviteController {
     @Body() body: CreateOnetimeInviteDto,
     @Request() req: JwtRequest,
   ): Promise<OnetimeInviteDto> {
-    const invite = await this.userService.createOnetimeInvite(
+    const invite = await this.onetimeInviteService.createOnetimeInvite(
       body,
       req.user.sub,
     );
@@ -137,7 +140,7 @@ export class UserOnetimeInviteController {
     @Body() body: UpdateOnetimeInviteDto,
     @Request() req: JwtRequest,
   ): Promise<OnetimeInviteDto> {
-    const invite = await this.userService.updateOnetimeInvite({
+    const invite = await this.onetimeInviteService.updateOnetimeInvite({
       inviteId,
       userId: req.user.sub,
       invitee: body.invitee,
@@ -153,7 +156,7 @@ export class UserOnetimeInviteController {
     @Param("inviteId", ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    await this.userService.deleteOnetimeInvite(inviteId, req.user.sub);
+    await this.onetimeInviteService.deleteOnetimeInvite(inviteId, req.user.sub);
   }
 
   @Get("onetimeInvites")
@@ -163,7 +166,7 @@ export class UserOnetimeInviteController {
     @Query() query: PaginationQueryDto,
   ): Promise<OnetimeInviteListDto> {
     return new OnetimeInviteListDto(
-      await this.userService.findAllOnetimeInvites(query),
+      await this.onetimeInviteService.findAllOnetimeInvites(query),
     );
   }
 
@@ -173,7 +176,7 @@ export class UserOnetimeInviteController {
   async getOnetimeInviteMemberStatsAdmin(): Promise<
     OnetimeInviteMemberStatsDto[]
   > {
-    return (await this.userService.getOnetimeInviteMemberStats()).map(
+    return (await this.onetimeInviteService.getOnetimeInviteMemberStats()).map(
       (stats) => new OnetimeInviteMemberStatsDto(stats),
     );
   }
@@ -182,7 +185,7 @@ export class UserOnetimeInviteController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [OnetimeInviteEdgeDto] })
   async getOnetimeInviteGraphEdgesAdmin(): Promise<OnetimeInviteEdgeDto[]> {
-    return (await this.userService.findOnetimeInviteEdges()).map(
+    return (await this.onetimeInviteService.findOnetimeInviteEdges()).map(
       (edge) => new OnetimeInviteEdgeDto(edge),
     );
   }
@@ -194,7 +197,9 @@ export class UserOnetimeInviteController {
     @Request() req: JwtRequest,
   ): Promise<OnetimeInviteDto[]> {
     return (
-      await this.userService.findOnetimeInvitesOverviewForUser(req.user.sub)
+      await this.onetimeInviteService.findOnetimeInvitesOverviewForUser(
+        req.user.sub,
+      )
     ).map((invite) => new OnetimeInviteDto(invite));
   }
 
@@ -206,7 +211,10 @@ export class UserOnetimeInviteController {
     @Request() req: JwtRequest,
   ): Promise<OnetimeInviteDto[]> {
     return (
-      await this.userService.findOnetimeInvites(req.user.sub, communityId)
+      await this.onetimeInviteService.findOnetimeInvites(
+        req.user.sub,
+        communityId,
+      )
     ).map((invite) => new OnetimeInviteDto(invite));
   }
 
@@ -218,7 +226,7 @@ export class UserOnetimeInviteController {
     @Param("communityId", ParseIntPipe) communityId: number,
   ): Promise<OnetimeInviteDto[]> {
     return (
-      await this.userService.findOnetimeInvitesByRequester(
+      await this.onetimeInviteService.findOnetimeInvitesByRequester(
         req.user.sub,
         communityId,
       )

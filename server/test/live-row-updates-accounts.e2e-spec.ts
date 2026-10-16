@@ -23,6 +23,7 @@ import {
 } from "src/user/entities/user-away-range.entity";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
+import { OnetimeInviteService } from "src/user/onetime-invite.service";
 import { UserAwayRangeService } from "src/user/user-away-range.service";
 import { UserDeviceService } from "src/user/user-device.service";
 import { UserService } from "src/user/user.service";
@@ -300,7 +301,7 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
       });
 
     await expect(
-      userService.approveOrRejectOnetimeInviteRequest({
+      ctx.app.get(OnetimeInviteService).approveOrRejectOnetimeInviteRequest({
         userId: leader.id,
         inviteId: request.id,
         newStatus: "approve",
