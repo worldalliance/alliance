@@ -1,15 +1,11 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { type DisplayKind } from "@alliance/common/forms/display-blocks";
 import {
   PlaceKind,
   type ConditionHolder,
 } from "@alliance/common/forms/form-conditions";
 import {
   isQuestionField,
-  type FieldKind,
   type FormSchema,
-  type Page,
-  type PageItem,
 } from "@alliance/common/forms/form-schema";
 import {
   collectUnresolvedVariableReferences,
@@ -23,12 +19,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { conditionSourceFields } from "../lib/conditionSourceFields";
-import {
-  collectSchemaIds,
-  copyElementWithUniqueIds,
-  copyPageWithUniqueIds,
-  createUniqueFormBuilderId,
-} from "../lib/copyWithUniqueIds";
+import { copyElementWithUniqueIds } from "../lib/copyWithUniqueIds";
 import { addressedWrite } from "../lib/displayBlockById";
 import { ensurePages, ensureSchemaViews } from "../lib/ensureFormSchema";
 import {
@@ -37,27 +28,23 @@ import {
   type FormIssue,
 } from "../lib/formIssues";
 import { JsonScopeKind, type JsonScope } from "../lib/formJson";
-import { reorderPages } from "../lib/reorderPages";
-import { updatePageElement } from "../lib/updatePageElement";
 import { useConditionFieldLookup } from "../lib/useConditionFieldLookup";
 import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
-import { DropPosition, moveItem } from "../lib/useDragReorder";
+import { DropPosition } from "../lib/useDragReorder";
 import { useFormDraft } from "../lib/useFormDraft";
 import { useFormSave, type DisplayOnlySave } from "../lib/useFormSave";
 import { useFormulaSourceForms } from "../lib/useFormulaSourceForms";
 import { useInputSources } from "../lib/useInputSources";
 import { useSavedForm } from "../lib/useSavedForm";
 import {
-  deriveVisibilityGroups,
   NeighborDirection,
   stepPast,
-  type GroupedPages,
   type VisibilityGroups,
 } from "../lib/visibilityGroups";
 import { summarizeVisibility } from "../lib/visibilitySummary";
 import { AggregateBuilder } from "./AggregateBuilder";
 import ConfirmDialog from "./ConfirmDialog";
-import { createDisplayBlock, PerViewerOptions } from "./display-blocks";
+import { PerViewerOptions } from "./display-blocks";
 import { renderBlockEditor } from "./display-blocks/blockEditors";
 import { OverrideTargetContext } from "./display-blocks/perUserContent";
 import { DisplayOnlyPreview } from "./DisplayOnlyPreview";
@@ -66,8 +53,6 @@ import {
   ChildKind,
   childPlace,
   elementTarget,
-  followElement,
-  type ChildTarget,
 } from "./form-canvas/canvasSelection";
 import { CanvasWorkspace } from "./form-canvas/CanvasWorkspace";
 import { SelectChildProvider } from "./form-canvas/ChildRows";
@@ -87,7 +72,6 @@ import {
   InsertMode,
   InsertPoint,
   sameInsertLoc,
-  type AvailableElement,
   type InsertLoc,
 } from "./form-canvas/InsertPoint";
 import {
@@ -100,19 +84,17 @@ import { PageSettings, PageSettingsSidebar } from "./form-canvas/PageSettings";
 import { RangeSettings } from "./form-canvas/RangeSettings";
 import { SettingsSidebar } from "./form-canvas/SettingsSidebar";
 import { SidebarSection } from "./form-canvas/sidebarSections";
+import { useCanvasEdits } from "./form-canvas/useCanvasEdits";
 import {
   SECTION_ON_SELECT,
   useCanvasSelection,
 } from "./form-canvas/useCanvasSelection";
-import { useGuardedDeletion } from "./form-canvas/useGuardedDeletion";
-import type { ListMove } from "./form-canvas/useListDrag";
 import { useOverrideTarget } from "./form-canvas/useOverrideTarget";
 import { VisibilityGroupSettings } from "./form-canvas/VisibilityGroupSettings";
 import {
   ElementExpressionScope,
   expressionKeys,
 } from "./form-fields/conditions/expressionBuffers";
-import { createField } from "./form-fields/createField";
 import { renderFieldEditor } from "./form-fields/fieldEditors";
 import {
   FormBuilderBanners,
@@ -236,12 +218,15 @@ export function FormBuilder(props: FormBuilderProps) {
     setExpression,
   } = formDraft;
   const canvasGroups = displayOnly ? NO_VISIBILITY_GROUPS : visibilityGroups;
+  const canvas = useCanvasSelection({
+    pages: schema.pages,
+    groups: canvasGroups,
+  });
   const {
     schemaLoads,
     reloadEditors,
     selectPlace,
     selectedPageIndex,
-    setSelectedPageIndex,
     keepPage,
     currentPage,
     setSelection,
@@ -253,15 +238,13 @@ export function FormBuilder(props: FormBuilderProps) {
     drawer,
     setDrawer,
     focusPending,
-    setFocusPending,
     focused,
     revealPending,
     revealed,
     select,
-    showPage,
     selectFromOutline,
     extendTo,
-  } = useCanvasSelection({ pages: schema.pages, groups: canvasGroups });
+  } = canvas;
   const saved = useSavedForm({
     displayOnly,
     formId,
@@ -346,11 +329,6 @@ export function FormBuilder(props: FormBuilderProps) {
   const [outputViewId, setOutputViewId] = useState<string | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewUserId, setPreviewUserId] = useState<string>("preview");
-  const [insertion, setInsertion] = useState<{
-    loc: InsertLoc;
-    mode: InsertMode;
-  } | null>(null);
-  const closeInsertion = useCallback(() => setInsertion(null), []);
   const [jsonScope, setJsonScope] = useState<JsonScope | null>(null);
   const draftValidatorIdRef = useRef(-1);
   const createDraftId = useCallback(() => {
@@ -373,95 +351,45 @@ export function FormBuilder(props: FormBuilderProps) {
   );
   const builderRef = useRef<HTMLDivElement | null>(null);
 
-  const { guard: guardDeletion, dialog: deletionDialog } = useGuardedDeletion({
-    pages: schema.pages,
-    groups: canvasGroups,
-  });
   const { target: overrideTarget, override } = useOverrideTarget(selectionKey);
-
-  const applyInsert = (item: PageItem, loc: InsertLoc) => {
-    const { index, groupKey } = loc;
-    const groupFormula =
-      groupKey == null
-        ? undefined
-        : currentPage.fields[index - 1]?.visibleIfFormula;
-    const inserted =
-      groupFormula && item.id
-        ? { ...item, visibleIfFormula: groupFormula }
-        : item;
-    const newFields = [...currentPage.fields];
-    newFields.splice(index, 0, inserted);
-    updateSchema(
-      {
-        ...schema,
-        pages: schema.pages.map((page, idx) =>
-          idx === selectedPageIndex ? { ...page, fields: newFields } : page,
-        ),
-      },
-      groupKey != null && inserted.id
-        ? new Map(visibilityGroups).set(inserted.id, groupKey)
-        : undefined,
-    );
-  };
-  const insertAndSelect = (item: PageItem, loc: InsertLoc) => {
-    applyInsert(item, loc);
-    setInsertion(null);
-    select(elementTarget(item, loc.index), SidebarSection.Content);
-    setFocusPending(true);
-  };
-
-  const pickElement = (element: AvailableElement, loc: InsertLoc) => {
-    switch (element.type) {
-      case "field":
-        addField(element.id, loc);
-        break;
-      case "block":
-        addDisplayBlock(element.kind, loc);
-        break;
-      case "copy":
-        setInsertion({ loc, mode: InsertMode.Copy });
-        break;
-      default:
-        throw new Error(
-          `Unknown element type: ${(element satisfies never as AvailableElement).type}`,
-        );
-    }
-  };
-
-  // An insert position is relative to the current page, so it can't survive a
-  // page switch.
-  useEffect(() => {
-    setInsertion(null);
-  }, [selectedPageIndex]);
-
-  const addField = (kind: FieldKind, loc: InsertLoc) => {
-    insertAndSelect(createField(kind, `field-${Date.now()}`), loc);
-  };
-
-  const addDisplayBlock = (kind: DisplayKind, loc: InsertLoc) => {
-    insertAndSelect(createDisplayBlock(kind, `block-${Date.now()}`), loc);
-  };
 
   const updateSchema = (newSchema: FormSchema, groups?: VisibilityGroups) => {
     setSchema(ensureSchemaViews(newSchema), groups);
   };
 
   const updateBlockById = useDisplayBlockWrite(schema, updateSchema);
+  const {
+    insertion,
+    setInsertion,
+    closeInsertion,
+    guardDeletion,
+    deletionDialog,
+    insertAndSelect,
+    pickElement,
+    updateCurrentPage,
+    addPage,
+    movePage,
+    copyPage,
+    removePage,
+    deleteElement,
+    moveElement,
+    duplicateElement,
+    applyGrouped,
+    updateElementAt,
+    selectChildOf,
+  } = useCanvasEdits({
+    schema,
+    visibilityGroups,
+    canvasGroups,
+    updateSchema,
+    canvas,
+  });
 
   useEffect(() => {
     if (activeEditor !== "form" && isPreviewMode) {
       setIsPreviewMode(false);
     }
   }, [activeEditor, isPreviewMode]);
-
-  const updateCurrentPage = (updates: Partial<Page>) => {
-    updateSchema({
-      ...schema,
-      pages: schema.pages.map((page, idx) =>
-        idx === selectedPageIndex ? { ...page, ...updates } : page,
-      ),
-    });
-  };
 
   // Fields a page-level visibility condition can reference: anything answered
   // before this page can show, i.e. fields on earlier pages.
@@ -473,55 +401,6 @@ export function FormBuilder(props: FormBuilderProps) {
         .filter(isQuestionField),
     [schema.pages, selectedPageIndex],
   );
-
-  const addPage = () => {
-    const pageNumber = schema.pages.length + 1;
-    const newPage: Page = {
-      id: createUniqueFormBuilderId("page", collectSchemaIds(schema)),
-      title: `Page ${pageNumber}`,
-      fields: [],
-    };
-    updateSchema({
-      ...schema,
-      pages: [...schema.pages, newPage],
-    });
-    selectFromOutline({
-      page: newPage,
-      pageIndex: schema.pages.length,
-      target: { kind: CanvasTargetKind.Page },
-    });
-    setFocusPending(true);
-  };
-
-  const movePage = ({ from, dropIndex, position }: ListMove) => {
-    const moved = reorderPages({
-      pages: schema.pages,
-      draggedIndex: from,
-      dropIndex,
-      position,
-      selectedIndex: selectedPageIndex,
-    });
-    if (moved) {
-      updateSchema({ ...schema, pages: moved.pages });
-      setSelectedPageIndex(moved.selectedIndex);
-    }
-  };
-
-  const copyPage = (pageIndex: number) => {
-    const sourcePage = schema.pages[pageIndex];
-    if (!sourcePage) return;
-
-    const copiedPage = copyPageWithUniqueIds(sourcePage, schema);
-    const nextPages = [...schema.pages];
-    const copiedPageIndex = pageIndex + 1;
-    nextPages.splice(copiedPageIndex, 0, copiedPage);
-
-    updateSchema(
-      { ...schema, pages: nextPages },
-      new Map([...visibilityGroups, ...deriveVisibilityGroups([copiedPage])]),
-    );
-    showPage(copiedPage, copiedPageIndex);
-  };
 
   const applyJson = (next: FormSchema) => {
     if (jsonScope && REGROUPS_ON_JSON_APPLY[jsonScope.kind]) {
@@ -541,14 +420,6 @@ export function FormBuilder(props: FormBuilderProps) {
     }
     reloadEditors();
     setJsonScope(null);
-  };
-
-  const removePage = (pageIndex: number) => {
-    if (schema.pages.length <= 1) return;
-    updateSchema({
-      ...schema,
-      pages: schema.pages.filter((_, i) => i !== pageIndex),
-    });
   };
 
   // A dangling `#{name}` renders as written rather than breaking the form, so
@@ -607,98 +478,12 @@ export function FormBuilder(props: FormBuilderProps) {
     (move: () => void) => {
       keepPage(move);
       reloadEditors();
-      setInsertion(null);
+      closeInsertion();
     },
-    [keepPage, reloadEditors],
+    [closeInsertion, keepPage, reloadEditors],
   );
   const undo = useCallback(() => travel(undoDraft), [travel, undoDraft]);
   const redo = useCallback(() => travel(redoDraft), [travel, redoDraft]);
-
-  const replaceFields = (fields: PageItem[], pageIndex = selectedPageIndex) => {
-    const before = schema.pages[pageIndex];
-    if (!before) return;
-    updateSchema({
-      ...schema,
-      pages: schema.pages.map((page, idx) =>
-        idx === pageIndex ? { ...page, fields } : page,
-      ),
-    });
-    setSelection((current) =>
-      current.pageId === before.id
-        ? {
-            ...current,
-            target: followElement({
-              before: before.fields,
-              after: fields,
-              target: current.target,
-            }),
-          }
-        : current,
-    );
-  };
-
-  const removeElement = (index: number) => {
-    if (
-      resolvedTarget.kind === CanvasTargetKind.Element &&
-      resolvedTarget.index === index
-    ) {
-      setSection(SidebarSection.Content);
-    }
-    replaceFields(currentPage.fields.filter((_, i) => i !== index));
-  };
-
-  const deleteElement = (index: number) =>
-    guardDeletion(
-      { kind: PlaceKind.Element, pageIndex: selectedPageIndex, index },
-      () => removeElement(index),
-    );
-
-  const moveElement = (
-    { from, dropIndex, position }: ListMove,
-    pageIndex = selectedPageIndex,
-  ) => {
-    const moved = moveItem({
-      items: schema.pages[pageIndex]?.fields ?? [],
-      draggedIndex: from,
-      dropIndex,
-      position,
-    });
-    if (moved) replaceFields(moved.items, pageIndex);
-  };
-
-  const duplicateElement = (index: number) => {
-    const element = currentPage.fields[index];
-    if (!element) return;
-    insertAndSelect(copyElementWithUniqueIds(element, schema), {
-      groupKey: (element.id && canvasGroups.get(element.id)) || null,
-      index: index + 1,
-    });
-  };
-
-  const applyGrouped = ({ pages, groups }: GroupedPages) =>
-    updateSchema({ ...schema, pages }, groups);
-
-  const updateElementAt = (index: number) => (updates: Partial<PageItem>) =>
-    updateSchema({
-      ...schema,
-      pages: updatePageElement({
-        pages: schema.pages,
-        pageIndex: selectedPageIndex,
-        index,
-        updates,
-      }),
-    });
-
-  const selectChildOf =
-    (index: number) => (child: ChildTarget, options?: { focus: true }) => {
-      const element = currentPage.fields[index];
-      if (!element) return;
-      select(
-        { ...elementTarget(element, index), child },
-        SidebarSection.Content,
-      );
-      if (options?.focus) setFocusPending(true);
-    };
 
   const renderElementEditor = (index: number) => {
     const field = currentPage.fields[index];

@@ -140,3 +140,5 @@ export function useCanvasSelection({
     extendTo,
   };
 }
+
+export type CanvasSelectionState = ReturnType<typeof useCanvasSelection>;
