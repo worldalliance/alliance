@@ -1,14 +1,14 @@
 import { hasTakenEffect } from "@alliance/common/actionEvent";
 import type { ActionEventDto } from "@alliance/shared/client";
+import { sortByDateDescending } from "@alliance/shared/lib/actionEventsPanel";
 
 export function currentEventIdAt(
   events: ActionEventDto[],
   now: Date,
 ): number | undefined {
-  return events
-    .filter((event) => hasTakenEffect(event.date, now))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
-    ?.id;
+  return sortByDateDescending(
+    events.filter((event) => hasTakenEffect(event.date, now)),
+  )[0]?.id;
 }
 
 export function hasMemberActionStartedAt(

@@ -1,3 +1,4 @@
+import { sortByDateDescending } from "@alliance/shared/lib/actionEventsPanel";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -117,38 +118,31 @@ const ActionOverviewTab: React.FC<ActionOverviewTabProps> = ({
         <h2 className="text-lg font-semibold mb-3">Timeline</h2>
         <div className="space-y-2">
           {action.events.length > 0 ? (
-            action.events
-              .sort(
-                (a, b) =>
-                  new Date(b.date).getTime() - new Date(a.date).getTime(),
-              )
-              .map((event) => (
+            sortByDateDescending(action.events).map((event) => (
+              <div
+                key={event.id}
+                className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0"
+              >
                 <div
-                  key={event.id}
-                  className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0"
-                >
-                  <div
-                    className={cn(
-                      "w-2 h-2 rounded-full flex-shrink-0",
-                      event.id === currentEventId
-                        ? "bg-blue-500"
-                        : "bg-gray-300",
-                    )}
-                  />
-                  <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="">{event.title}</span>
-                    </div>
-                    <span className="text-xs text-gray-500 flex-shrink-0">
-                      {new Date(event.date).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
+                  className={cn(
+                    "w-2 h-2 rounded-full flex-shrink-0",
+                    event.id === currentEventId ? "bg-blue-500" : "bg-gray-300",
+                  )}
+                />
+                <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="">{event.title}</span>
                   </div>
+                  <span className="text-xs text-gray-500 flex-shrink-0">
+                    {new Date(event.date).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </span>
                 </div>
-              ))
+              </div>
+            ))
           ) : (
             <div className="text-sm text-gray-500">
               No events yet. This action is in Draft status by default.
