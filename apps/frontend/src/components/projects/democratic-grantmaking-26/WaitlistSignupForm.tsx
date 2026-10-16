@@ -4,22 +4,15 @@ import {
   type CountryCode,
 } from "@alliance/common/phone";
 import { R } from "@alliance/common/result";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  waitlistCreate,
-  type CreateWaitlistEntryDto,
-  type WaitlistReferralDto,
-} from "@alliance/shared/client";
+import type { WaitlistReferralDto } from "@alliance/shared/client";
 import {
   thrownRefusalMessage,
   thrownStatus,
 } from "@alliance/shared/lib/hey-api";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { isRefused } from "@alliance/shared/lib/retryQuery";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { RotateCw } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { ACCOUNT_BUTTON } from "../../../onboarding/chrome";
@@ -79,7 +72,6 @@ function ReferralBanner({ referral }: { referral: WaitlistReferralDto }) {
 }
 
 export function WaitlistSignupForm({ className }: { className?: string }) {
-  const queryClient = useQueryClient();
   const {
     codes,
     hasCode,
@@ -87,7 +79,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
     dropReferral,
   } = useWaitlistReferral();
   const mailEnabled = useWaitlistMailEnabled();
-  const { query: browser, forget } = useWaitlistBrowser();
+  const { query: browser, forget, join: submit } = useWaitlistBrowser();
   const { signupHref: inviteSignupHref } = useInviteSession();
   const [contact, setContact] = useState("");
   const [country, setCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY);
@@ -96,18 +88,6 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
     const parsed = parseWaitlistContact(contact, inCountry);
     return contact.trim() && R.isFailure(parsed) ? parsed.error : null;
   };
-  const submit = useMutation({
-    mutationFn: (body: CreateWaitlistEntryDto) =>
-      waitlistCreate({ body, throwOnError: true }).then((res) => res.data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.waitlistBrowser(),
-      });
-      return queryClient.invalidateQueries({
-        queryKey: queryKeys.waitlistCount(),
-      });
-    },
-  });
   // Until the browser state answers, a returning entrant's input would vanish
   // into their confirmation. An error falls through to a usable form.
   const restoring = browser.isPending;

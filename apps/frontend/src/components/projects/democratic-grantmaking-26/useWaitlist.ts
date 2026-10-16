@@ -6,10 +6,12 @@ import {
 import {
   waitlistBrowser,
   waitlistCount,
+  waitlistCreate,
   waitlistFindReferral,
   waitlistForgetBrowser,
   waitlistMailConfig,
   waitlistUpdateNominations,
+  type CreateWaitlistEntryDto,
   type WaitlistBrowserDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -30,6 +32,7 @@ export function useWaitlistCount() {
   });
 }
 
+/** This browser's remembered waitlist entry and every write to it. */
 export function useWaitlistBrowser() {
   const queryClient = useQueryClient();
   const query = useQuery({
@@ -58,7 +61,19 @@ export function useWaitlistBrowser() {
         queryKey: queryKeys.waitlistBrowser(),
       }),
   });
-  return { query, forget, saveNominations };
+  const join = useMutation({
+    mutationFn: (body: CreateWaitlistEntryDto) =>
+      waitlistCreate({ body, throwOnError: true }).then((res) => res.data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.waitlistBrowser(),
+      });
+      return queryClient.invalidateQueries({
+        queryKey: queryKeys.waitlistCount(),
+      });
+    },
+  });
+  return { query, forget, saveNominations, join };
 }
 
 /** True only once the server says public email is on. */
