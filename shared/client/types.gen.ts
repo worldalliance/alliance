@@ -2371,25 +2371,6 @@ export type ActionWithdrawalDto = {
     outOfTime: boolean | null;
 };
 
-export type NotificationScheduleMetadataDto = {
-    currentEventId?: number;
-    nextEventId?: number;
-    deadlineEventId?: number;
-    isSecondMiss?: boolean;
-    reminderId?: number;
-};
-
-export type NotificationScheduleEntryDto = {
-    type: ActionEventNotifType;
-    scheduledFor: string;
-    actionId: number;
-    actionName: string;
-    actionStatus: ActionStatus;
-    eventId: number;
-    recipients: Array<ProfileDto>;
-    metadata?: NotificationScheduleMetadataDto;
-};
-
 export type SetActionPriorityDto = {
     /**
      * Unique identifier for the action
@@ -3072,27 +3053,13 @@ export type CreateActionEventDto = {
     date: string;
 };
 
-export type CreateReminderGroupDto = {
-    name: string;
-    timingMode: ReminderGroupTimingMode;
-    cohortType: ReminderCohortType;
-    emailMessage: string;
-    emailSubject: string;
-    textMessage: string;
-    pushMessage: string;
-    useSuiteTaskCount: boolean;
-    excludeOptionalActions: boolean;
-    excludePreviouslyNotified: boolean;
-    send_range_start?: string | null;
-    send_range_end?: string | null;
-    sendAtAbsolute?: string | null;
-    sendAtSecondsFromDeadline?: number | null;
-    relative_range_start_seconds_from_deadline?: number | null;
-    relative_range_end_seconds_from_deadline?: number | null;
-    userIds?: Array<number>;
-    userTagId?: string;
-    suiteId?: number;
-    timingAnchorEventId?: number;
+export type CreateActionActivityDto = {
+    /**
+     * Type of action activity
+     */
+    type: ActionActivityType;
+    actionId: number;
+    userId: number;
 };
 
 export type ReminderGroupDto = {
@@ -3124,34 +3091,6 @@ export type ReminderGroupDto = {
      * Whether the group's email uses a missed-suite keyword, so dispatch sends it as a missed-suite notice
      */
     isMissedSuite: boolean;
-};
-
-export type NotificationChannel = 'text' | 'email' | 'push';
-
-export type PreviewNotificationPlanDto = {
-    scheduledFor: string;
-    user: UserDto;
-    channels: Array<NotificationChannel>;
-    /**
-     * The member's run of consecutive missed suites, once a missed-suite group's suite has closed
-     */
-    missNumber: number | null;
-};
-
-export type CreateActionActivityDto = {
-    /**
-     * Type of action activity
-     */
-    type: ActionActivityType;
-    actionId: number;
-    userId: number;
-};
-
-export type ReminderAnchorCandidateDto = {
-    actionId: number;
-    actionName: string;
-    deadlineEventId: number;
-    deadlineEventDate: string;
 };
 
 export type GeneralUpdateDto = {
@@ -3195,30 +3134,6 @@ export type UpdateActionEventDto = {
      * time of the event (for display)
      */
     date?: string;
-};
-
-export type PreviewEmailHtmlDto = {
-    emailMessage: string;
-    emailSubject: string;
-    taskCount: number;
-    cohortType?: 'all_uncompleted' | 'group_leads_with_uncompleted' | 'tag' | 'custom';
-    uncompletedMembersInGroupCount?: number;
-};
-
-export type PreviewEmailHtmlResponseDto = {
-    subject: string;
-    html: string;
-};
-
-export type PreviewTextDto = {
-    textMessage: string;
-    taskCount: number;
-    cohortType?: 'all_uncompleted' | 'group_leads_with_uncompleted' | 'tag' | 'custom';
-    uncompletedMembersInGroupCount?: number;
-};
-
-export type PreviewTextMessageResponseDto = {
-    text: string;
 };
 
 export type ExportActionDto = {
@@ -3568,6 +3483,91 @@ export type RecognitionPreviewCountsDto = {
     completed: number;
     didNotComplete: number;
     uninvolved: number;
+};
+
+export type NotificationScheduleMetadataDto = {
+    currentEventId?: number;
+    nextEventId?: number;
+    deadlineEventId?: number;
+    isSecondMiss?: boolean;
+    reminderId?: number;
+};
+
+export type NotificationScheduleEntryDto = {
+    type: ActionEventNotifType;
+    scheduledFor: string;
+    actionId: number;
+    actionName: string;
+    actionStatus: ActionStatus;
+    eventId: number;
+    recipients: Array<ProfileDto>;
+    metadata?: NotificationScheduleMetadataDto;
+};
+
+export type CreateReminderGroupDto = {
+    name: string;
+    timingMode: ReminderGroupTimingMode;
+    cohortType: ReminderCohortType;
+    emailMessage: string;
+    emailSubject: string;
+    textMessage: string;
+    pushMessage: string;
+    useSuiteTaskCount: boolean;
+    excludeOptionalActions: boolean;
+    excludePreviouslyNotified: boolean;
+    send_range_start?: string | null;
+    send_range_end?: string | null;
+    sendAtAbsolute?: string | null;
+    sendAtSecondsFromDeadline?: number | null;
+    relative_range_start_seconds_from_deadline?: number | null;
+    relative_range_end_seconds_from_deadline?: number | null;
+    userIds?: Array<number>;
+    userTagId?: string;
+    suiteId?: number;
+    timingAnchorEventId?: number;
+};
+
+export type NotificationChannel = 'text' | 'email' | 'push';
+
+export type PreviewNotificationPlanDto = {
+    scheduledFor: string;
+    user: UserDto;
+    channels: Array<NotificationChannel>;
+    /**
+     * The member's run of consecutive missed suites, once a missed-suite group's suite has closed
+     */
+    missNumber: number | null;
+};
+
+export type ReminderAnchorCandidateDto = {
+    actionId: number;
+    actionName: string;
+    deadlineEventId: number;
+    deadlineEventDate: string;
+};
+
+export type PreviewEmailHtmlDto = {
+    emailMessage: string;
+    emailSubject: string;
+    taskCount: number;
+    cohortType?: 'all_uncompleted' | 'group_leads_with_uncompleted' | 'tag' | 'custom';
+    uncompletedMembersInGroupCount?: number;
+};
+
+export type PreviewEmailHtmlResponseDto = {
+    subject: string;
+    html: string;
+};
+
+export type PreviewTextDto = {
+    textMessage: string;
+    taskCount: number;
+    cohortType?: 'all_uncompleted' | 'group_leads_with_uncompleted' | 'tag' | 'custom';
+    uncompletedMembersInGroupCount?: number;
+};
+
+export type PreviewTextMessageResponseDto = {
+    text: string;
 };
 
 export type CohortDecisionReason = 'launch' | 'signing' | 'resolved_after_deadline' | 'backfill' | 'staff_correction' | 'prerequisites_resolved';
@@ -9877,37 +9877,6 @@ export type ActionsGetWithdrawalsAdminResponses = {
 
 export type ActionsGetWithdrawalsAdminResponse = ActionsGetWithdrawalsAdminResponses[keyof ActionsGetWithdrawalsAdminResponses];
 
-export type ActionsGetNotificationScheduleAdminData = {
-    body?: never;
-    path?: never;
-    query: {
-        /**
-         * ISO timestamp for the start of the window
-         */
-        windowStart: string;
-        /**
-         * ISO timestamp for the end of the window
-         */
-        windowEnd: string;
-    };
-    url: '/actions/notification-schedule';
-};
-
-export type ActionsGetNotificationScheduleAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsGetNotificationScheduleAdminError = ActionsGetNotificationScheduleAdminErrors[keyof ActionsGetNotificationScheduleAdminErrors];
-
-export type ActionsGetNotificationScheduleAdminResponses = {
-    200: Array<NotificationScheduleEntryDto>;
-};
-
-export type ActionsGetNotificationScheduleAdminResponse = ActionsGetNotificationScheduleAdminResponses[keyof ActionsGetNotificationScheduleAdminResponses];
-
 export type ActionsGetActionActivitiesData = {
     body?: never;
     path: {
@@ -10625,128 +10594,6 @@ export type ActionsAddEventAdminResponses = {
 
 export type ActionsAddEventAdminResponse = ActionsAddEventAdminResponses[keyof ActionsAddEventAdminResponses];
 
-export type ActionsUpdateReminderGroupAdminData = {
-    body: CreateReminderGroupDto;
-    path: {
-        groupId: number;
-    };
-    query?: never;
-    url: '/actions/remindergroups/{groupId}';
-};
-
-export type ActionsUpdateReminderGroupAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsUpdateReminderGroupAdminError = ActionsUpdateReminderGroupAdminErrors[keyof ActionsUpdateReminderGroupAdminErrors];
-
-export type ActionsUpdateReminderGroupAdminResponses = {
-    200: ReminderGroupDto;
-};
-
-export type ActionsUpdateReminderGroupAdminResponse = ActionsUpdateReminderGroupAdminResponses[keyof ActionsUpdateReminderGroupAdminResponses];
-
-export type ActionsCreateReminderGroupAdminData = {
-    body: CreateReminderGroupDto;
-    path: {
-        eventId: number;
-    };
-    query?: never;
-    url: '/actions/events/{eventId}/createremindergroup';
-};
-
-export type ActionsCreateReminderGroupAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsCreateReminderGroupAdminError = ActionsCreateReminderGroupAdminErrors[keyof ActionsCreateReminderGroupAdminErrors];
-
-export type ActionsCreateReminderGroupAdminResponses = {
-    200: ReminderGroupDto;
-};
-
-export type ActionsCreateReminderGroupAdminResponse = ActionsCreateReminderGroupAdminResponses[keyof ActionsCreateReminderGroupAdminResponses];
-
-export type ActionsDeleteReminderGroupAdminData = {
-    body?: never;
-    path: {
-        groupId: number;
-    };
-    query?: never;
-    url: '/actions/reminders/{groupId}';
-};
-
-export type ActionsDeleteReminderGroupAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsDeleteReminderGroupAdminError = ActionsDeleteReminderGroupAdminErrors[keyof ActionsDeleteReminderGroupAdminErrors];
-
-export type ActionsDeleteReminderGroupAdminResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type ActionsDeleteReminderGroupAdminResponse = ActionsDeleteReminderGroupAdminResponses[keyof ActionsDeleteReminderGroupAdminResponses];
-
-export type ActionsPlansForGroupAdminData = {
-    body?: never;
-    path: {
-        groupId: number;
-    };
-    query?: never;
-    url: '/actions/plansForGroup/{groupId}';
-};
-
-export type ActionsPlansForGroupAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsPlansForGroupAdminError = ActionsPlansForGroupAdminErrors[keyof ActionsPlansForGroupAdminErrors];
-
-export type ActionsPlansForGroupAdminResponses = {
-    200: Array<PreviewNotificationPlanDto>;
-};
-
-export type ActionsPlansForGroupAdminResponse = ActionsPlansForGroupAdminResponses[keyof ActionsPlansForGroupAdminResponses];
-
-export type ActionsSentNotifsForGroupAdminData = {
-    body?: never;
-    path: {
-        groupId: number;
-    };
-    query?: never;
-    url: '/actions/sentNotifsForGroup/{groupId}';
-};
-
-export type ActionsSentNotifsForGroupAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsSentNotifsForGroupAdminError = ActionsSentNotifsForGroupAdminErrors[keyof ActionsSentNotifsForGroupAdminErrors];
-
-export type ActionsSentNotifsForGroupAdminResponses = {
-    200: Array<ActionEventNotifDto>;
-};
-
-export type ActionsSentNotifsForGroupAdminResponse = ActionsSentNotifsForGroupAdminResponses[keyof ActionsSentNotifsForGroupAdminResponses];
-
 export type ActionsLikeActivityData = {
     body?: never;
     path: {
@@ -10888,54 +10735,6 @@ export type ActionsUnarchiveAdminResponses = {
 };
 
 export type ActionsUnarchiveAdminResponse = ActionsUnarchiveAdminResponses[keyof ActionsUnarchiveAdminResponses];
-
-export type ActionsReminderGroupsForEventAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/reminderGroupsForEvent/{id}';
-};
-
-export type ActionsReminderGroupsForEventAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsReminderGroupsForEventAdminError = ActionsReminderGroupsForEventAdminErrors[keyof ActionsReminderGroupsForEventAdminErrors];
-
-export type ActionsReminderGroupsForEventAdminResponses = {
-    200: Array<ReminderGroupDto>;
-};
-
-export type ActionsReminderGroupsForEventAdminResponse = ActionsReminderGroupsForEventAdminResponses[keyof ActionsReminderGroupsForEventAdminResponses];
-
-export type ActionsReminderAnchorCandidatesAdminData = {
-    body?: never;
-    path: {
-        eventId: number;
-    };
-    query?: never;
-    url: '/actions/reminderAnchorCandidates/{eventId}';
-};
-
-export type ActionsReminderAnchorCandidatesAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsReminderAnchorCandidatesAdminError = ActionsReminderAnchorCandidatesAdminErrors[keyof ActionsReminderAnchorCandidatesAdminErrors];
-
-export type ActionsReminderAnchorCandidatesAdminResponses = {
-    200: Array<ReminderAnchorCandidateDto>;
-};
-
-export type ActionsReminderAnchorCandidatesAdminResponse = ActionsReminderAnchorCandidatesAdminResponses[keyof ActionsReminderAnchorCandidatesAdminResponses];
 
 export type ActionsSuitesAdminData = {
     body?: never;
@@ -11082,78 +10881,6 @@ export type ActionsDeleteSuiteEventAdminResponses = {
 };
 
 export type ActionsDeleteSuiteEventAdminResponse = ActionsDeleteSuiteEventAdminResponses[keyof ActionsDeleteSuiteEventAdminResponses];
-
-export type ActionsTentativePlansForGroupAdminData = {
-    body: CreateReminderGroupDto;
-    path: {
-        eventId: number;
-    };
-    query?: never;
-    url: '/actions/events/{eventId}/checkTentativePlans';
-};
-
-export type ActionsTentativePlansForGroupAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsTentativePlansForGroupAdminError = ActionsTentativePlansForGroupAdminErrors[keyof ActionsTentativePlansForGroupAdminErrors];
-
-export type ActionsTentativePlansForGroupAdminResponses = {
-    200: Array<PreviewNotificationPlanDto>;
-};
-
-export type ActionsTentativePlansForGroupAdminResponse = ActionsTentativePlansForGroupAdminResponses[keyof ActionsTentativePlansForGroupAdminResponses];
-
-export type ActionsPreviewEmailHtmlAdminData = {
-    body: PreviewEmailHtmlDto;
-    path: {
-        eventId: number;
-    };
-    query?: never;
-    url: '/actions/previewEmailHtml/{eventId}';
-};
-
-export type ActionsPreviewEmailHtmlAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsPreviewEmailHtmlAdminError = ActionsPreviewEmailHtmlAdminErrors[keyof ActionsPreviewEmailHtmlAdminErrors];
-
-export type ActionsPreviewEmailHtmlAdminResponses = {
-    200: PreviewEmailHtmlResponseDto;
-};
-
-export type ActionsPreviewEmailHtmlAdminResponse = ActionsPreviewEmailHtmlAdminResponses[keyof ActionsPreviewEmailHtmlAdminResponses];
-
-export type ActionsPreviewTextMessageAdminData = {
-    body: PreviewTextDto;
-    path: {
-        eventId: number;
-    };
-    query?: never;
-    url: '/actions/previewTextMessage/{eventId}';
-};
-
-export type ActionsPreviewTextMessageAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ActionsPreviewTextMessageAdminError = ActionsPreviewTextMessageAdminErrors[keyof ActionsPreviewTextMessageAdminErrors];
-
-export type ActionsPreviewTextMessageAdminResponses = {
-    200: PreviewTextMessageResponseDto;
-};
-
-export type ActionsPreviewTextMessageAdminResponse = ActionsPreviewTextMessageAdminResponses[keyof ActionsPreviewTextMessageAdminResponses];
 
 export type ActionsExportActionAdminData = {
     body?: never;
@@ -11800,6 +11527,279 @@ export type ActionUpdatesRecentUpdatesResponses = {
 };
 
 export type ActionUpdatesRecentUpdatesResponse = ActionUpdatesRecentUpdatesResponses[keyof ActionUpdatesRecentUpdatesResponses];
+
+export type ActionRemindersGetNotificationScheduleAdminData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * ISO timestamp for the start of the window
+         */
+        windowStart: string;
+        /**
+         * ISO timestamp for the end of the window
+         */
+        windowEnd: string;
+    };
+    url: '/actions/notification-schedule';
+};
+
+export type ActionRemindersGetNotificationScheduleAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionRemindersGetNotificationScheduleAdminError = ActionRemindersGetNotificationScheduleAdminErrors[keyof ActionRemindersGetNotificationScheduleAdminErrors];
+
+export type ActionRemindersGetNotificationScheduleAdminResponses = {
+    200: Array<NotificationScheduleEntryDto>;
+};
+
+export type ActionRemindersGetNotificationScheduleAdminResponse = ActionRemindersGetNotificationScheduleAdminResponses[keyof ActionRemindersGetNotificationScheduleAdminResponses];
+
+export type ActionRemindersUpdateReminderGroupAdminData = {
+    body: CreateReminderGroupDto;
+    path: {
+        groupId: number;
+    };
+    query?: never;
+    url: '/actions/remindergroups/{groupId}';
+};
+
+export type ActionRemindersUpdateReminderGroupAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionRemindersUpdateReminderGroupAdminError = ActionRemindersUpdateReminderGroupAdminErrors[keyof ActionRemindersUpdateReminderGroupAdminErrors];
+
+export type ActionRemindersUpdateReminderGroupAdminResponses = {
+    200: ReminderGroupDto;
+};
+
+export type ActionRemindersUpdateReminderGroupAdminResponse = ActionRemindersUpdateReminderGroupAdminResponses[keyof ActionRemindersUpdateReminderGroupAdminResponses];
+
+export type ActionRemindersCreateReminderGroupAdminData = {
+    body: CreateReminderGroupDto;
+    path: {
+        eventId: number;
+    };
+    query?: never;
+    url: '/actions/events/{eventId}/createremindergroup';
+};
+
+export type ActionRemindersCreateReminderGroupAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionRemindersCreateReminderGroupAdminError = ActionRemindersCreateReminderGroupAdminErrors[keyof ActionRemindersCreateReminderGroupAdminErrors];
+
+export type ActionRemindersCreateReminderGroupAdminResponses = {
+    200: ReminderGroupDto;
+};
+
+export type ActionRemindersCreateReminderGroupAdminResponse = ActionRemindersCreateReminderGroupAdminResponses[keyof ActionRemindersCreateReminderGroupAdminResponses];
+
+export type ActionRemindersDeleteReminderGroupAdminData = {
+    body?: never;
+    path: {
+        groupId: number;
+    };
+    query?: never;
+    url: '/actions/reminders/{groupId}';
+};
+
+export type ActionRemindersDeleteReminderGroupAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionRemindersDeleteReminderGroupAdminError = ActionRemindersDeleteReminderGroupAdminErrors[keyof ActionRemindersDeleteReminderGroupAdminErrors];
+
+export type ActionRemindersDeleteReminderGroupAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type ActionRemindersDeleteReminderGroupAdminResponse = ActionRemindersDeleteReminderGroupAdminResponses[keyof ActionRemindersDeleteReminderGroupAdminResponses];
+
+export type ActionRemindersPlansForGroupAdminData = {
+    body?: never;
+    path: {
+        groupId: number;
+    };
+    query?: never;
+    url: '/actions/plansForGroup/{groupId}';
+};
+
+export type ActionRemindersPlansForGroupAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionRemindersPlansForGroupAdminError = ActionRemindersPlansForGroupAdminErrors[keyof ActionRemindersPlansForGroupAdminErrors];
+
+export type ActionRemindersPlansForGroupAdminResponses = {
+    200: Array<PreviewNotificationPlanDto>;
+};
+
+export type ActionRemindersPlansForGroupAdminResponse = ActionRemindersPlansForGroupAdminResponses[keyof ActionRemindersPlansForGroupAdminResponses];
+
+export type ActionRemindersSentNotifsForGroupAdminData = {
+    body?: never;
+    path: {
+        groupId: number;
+    };
+    query?: never;
+    url: '/actions/sentNotifsForGroup/{groupId}';
+};
+
+export type ActionRemindersSentNotifsForGroupAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionRemindersSentNotifsForGroupAdminError = ActionRemindersSentNotifsForGroupAdminErrors[keyof ActionRemindersSentNotifsForGroupAdminErrors];
+
+export type ActionRemindersSentNotifsForGroupAdminResponses = {
+    200: Array<ActionEventNotifDto>;
+};
+
+export type ActionRemindersSentNotifsForGroupAdminResponse = ActionRemindersSentNotifsForGroupAdminResponses[keyof ActionRemindersSentNotifsForGroupAdminResponses];
+
+export type ActionRemindersReminderGroupsForEventAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/reminderGroupsForEvent/{id}';
+};
+
+export type ActionRemindersReminderGroupsForEventAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionRemindersReminderGroupsForEventAdminError = ActionRemindersReminderGroupsForEventAdminErrors[keyof ActionRemindersReminderGroupsForEventAdminErrors];
+
+export type ActionRemindersReminderGroupsForEventAdminResponses = {
+    200: Array<ReminderGroupDto>;
+};
+
+export type ActionRemindersReminderGroupsForEventAdminResponse = ActionRemindersReminderGroupsForEventAdminResponses[keyof ActionRemindersReminderGroupsForEventAdminResponses];
+
+export type ActionRemindersReminderAnchorCandidatesAdminData = {
+    body?: never;
+    path: {
+        eventId: number;
+    };
+    query?: never;
+    url: '/actions/reminderAnchorCandidates/{eventId}';
+};
+
+export type ActionRemindersReminderAnchorCandidatesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionRemindersReminderAnchorCandidatesAdminError = ActionRemindersReminderAnchorCandidatesAdminErrors[keyof ActionRemindersReminderAnchorCandidatesAdminErrors];
+
+export type ActionRemindersReminderAnchorCandidatesAdminResponses = {
+    200: Array<ReminderAnchorCandidateDto>;
+};
+
+export type ActionRemindersReminderAnchorCandidatesAdminResponse = ActionRemindersReminderAnchorCandidatesAdminResponses[keyof ActionRemindersReminderAnchorCandidatesAdminResponses];
+
+export type ActionRemindersTentativePlansForGroupAdminData = {
+    body: CreateReminderGroupDto;
+    path: {
+        eventId: number;
+    };
+    query?: never;
+    url: '/actions/events/{eventId}/checkTentativePlans';
+};
+
+export type ActionRemindersTentativePlansForGroupAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionRemindersTentativePlansForGroupAdminError = ActionRemindersTentativePlansForGroupAdminErrors[keyof ActionRemindersTentativePlansForGroupAdminErrors];
+
+export type ActionRemindersTentativePlansForGroupAdminResponses = {
+    200: Array<PreviewNotificationPlanDto>;
+};
+
+export type ActionRemindersTentativePlansForGroupAdminResponse = ActionRemindersTentativePlansForGroupAdminResponses[keyof ActionRemindersTentativePlansForGroupAdminResponses];
+
+export type ActionRemindersPreviewEmailHtmlAdminData = {
+    body: PreviewEmailHtmlDto;
+    path: {
+        eventId: number;
+    };
+    query?: never;
+    url: '/actions/previewEmailHtml/{eventId}';
+};
+
+export type ActionRemindersPreviewEmailHtmlAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionRemindersPreviewEmailHtmlAdminError = ActionRemindersPreviewEmailHtmlAdminErrors[keyof ActionRemindersPreviewEmailHtmlAdminErrors];
+
+export type ActionRemindersPreviewEmailHtmlAdminResponses = {
+    200: PreviewEmailHtmlResponseDto;
+};
+
+export type ActionRemindersPreviewEmailHtmlAdminResponse = ActionRemindersPreviewEmailHtmlAdminResponses[keyof ActionRemindersPreviewEmailHtmlAdminResponses];
+
+export type ActionRemindersPreviewTextMessageAdminData = {
+    body: PreviewTextDto;
+    path: {
+        eventId: number;
+    };
+    query?: never;
+    url: '/actions/previewTextMessage/{eventId}';
+};
+
+export type ActionRemindersPreviewTextMessageAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionRemindersPreviewTextMessageAdminError = ActionRemindersPreviewTextMessageAdminErrors[keyof ActionRemindersPreviewTextMessageAdminErrors];
+
+export type ActionRemindersPreviewTextMessageAdminResponses = {
+    200: PreviewTextMessageResponseDto;
+};
+
+export type ActionRemindersPreviewTextMessageAdminResponse = ActionRemindersPreviewTextMessageAdminResponses[keyof ActionRemindersPreviewTextMessageAdminResponses];
 
 export type CohortDecisionsListForActionAdminData = {
     body?: never;

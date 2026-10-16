@@ -33,6 +33,7 @@ import { User } from "../user/entities/user.entity";
 import { UserModule } from "../user/user.module";
 import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionParticipantsService } from "./action-participants.service";
+import { ActionRemindersController } from "./action-reminders.controller";
 import { ActionStatsService } from "./action-stats.service";
 import { ActionUpdateRecognitionPreviewService } from "./action-update-recognition-preview.service";
 import { ActionUpdateRecognitionService } from "./action-update-recognition.service";
@@ -125,6 +126,7 @@ import { TaskBadgeService } from "./task-badge.service";
     ActionsController,
     GeneralUpdatesController,
     ActionUpdatesController,
+    ActionRemindersController,
     CohortDecisionsController,
     ProjectsController,
   ],

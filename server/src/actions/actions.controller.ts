@@ -29,10 +29,6 @@ import {
 } from "@nestjs/swagger";
 import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
 import type { JwtRequest } from "src/auth/tokens";
-import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
-import { PreviewNotificationPlanDto } from "src/notifs/dto/notification-plan.dto";
-import { ActionEventNotifDto } from "src/notifs/entities/action-event-notif.dto";
-import { MissedSuitePlanService } from "src/notifs/missed-suite-plans.service";
 import { PosthogService } from "src/posthog/posthog.service";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import {
@@ -70,19 +66,12 @@ import {
   CreateActionDto,
   CreateActionEventDto,
   CreateActionSuiteDto,
-  CreateReminderGroupDto,
   EvaluateCohortExpressionDto,
   EvaluateCohortExpressionResponseDto,
   ExportActionDto,
   GlobalFeedItemDto,
   HomeFeedItemDto,
   PasteJsonDto,
-  PreviewEmailHtmlDto,
-  PreviewEmailHtmlResponseDto,
-  PreviewTextDto,
-  PreviewTextMessageResponseDto,
-  ReminderAnchorCandidateDto,
-  ReminderGroupDto,
   ScheduledPlansOverviewDto,
   SetPriorityDto,
   TimelineFeedItemDto,
@@ -96,10 +85,6 @@ import {
   CreateFollowUpFormDto,
   UpdateFollowUpFormDto,
 } from "./dto/follow-up-form.dto";
-import {
-  NotificationScheduleEntryDto,
-  NotificationScheduleQueryDto,
-} from "./dto/notification-schedule.dto";
 import { ShareUrlDto, ShareUrlStatsDto } from "./dto/share-url.dto";
 import { UserCompletedActionsCountDto } from "./dto/user-completed-actions-count.dto";
 import { loadedActionFollowUpForms } from "./entities/action.entity";
@@ -126,8 +111,6 @@ export class ActionsController {
   constructor(
     private readonly actionsService: ActionsService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly actionEventReminderService: ActionEventReminderService,
-    private readonly missedSuitePlanService: MissedSuitePlanService,
     private readonly forumActionCompleterWorker: ForumActionCompleterWorker,
     private readonly actionFormVariantService: ActionFormVariantService,
     private readonly shareUrlsService: ShareUrlsService,
@@ -279,21 +262,6 @@ export class ActionsController {
   ): Promise<ActionWithdrawalDto[]> {
     const activities = await this.actionsService.getWithdrawalsForForm(formId);
     return activities.map((a) => new ActionWithdrawalDto(a));
-  }
-
-  @Get("notification-schedule")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: NotificationScheduleEntryDto, isArray: true })
-  async getNotificationScheduleAdmin(
-    @Query() query: NotificationScheduleQueryDto,
-  ): Promise<NotificationScheduleEntryDto[]> {
-    const start = new Date(query.windowStart);
-    const end = new Date(query.windowEnd);
-
-    const schedule =
-      await this.actionEventReminderService.getNotificationSchedule(start, end);
-
-    return schedule.map((entry) => new NotificationScheduleEntryDto(entry));
   }
 
   @Get(":id/activities")
@@ -733,61 +701,6 @@ export class ActionsController {
     );
   }
 
-  @Patch("remindergroups/:groupId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ReminderGroupDto })
-  async updateReminderGroupAdmin(
-    @Param("groupId", ParseIntPipe) groupId: number,
-    @Body() body: CreateReminderGroupDto,
-  ): Promise<ReminderGroupDto> {
-    return new ReminderGroupDto(
-      await this.actionEventReminderService.updateReminderGroup(groupId, body),
-    );
-  }
-
-  @Post("events/:eventId/createremindergroup")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ReminderGroupDto })
-  async createReminderGroupAdmin(
-    @Param("eventId", ParseIntPipe) eventId: number,
-    @Body() body: CreateReminderGroupDto,
-  ): Promise<ReminderGroupDto> {
-    return new ReminderGroupDto(
-      await this.actionEventReminderService.createReminderGroup(eventId, body),
-    );
-  }
-
-  @Delete("reminders/:groupId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse()
-  async deleteReminderGroupAdmin(
-    @Param("groupId", ParseIntPipe) groupId: number,
-  ): Promise<void> {
-    await this.actionEventReminderService.deleteReminderGroup(groupId);
-  }
-
-  @Get("plansForGroup/:groupId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: PreviewNotificationPlanDto, isArray: true })
-  async plansForGroupAdmin(
-    @Param("groupId", ParseIntPipe) groupId: number,
-  ): Promise<PreviewNotificationPlanDto[]> {
-    return this.missedSuitePlanService.toPreview(
-      await this.actionEventReminderService.findNotificationPlansForGroup(
-        groupId,
-      ),
-    );
-  }
-
-  @Get("sentNotifsForGroup/:groupId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionEventNotifDto, isArray: true })
-  async sentNotifsForGroupAdmin(
-    @Param("groupId", ParseIntPipe) groupId: number,
-  ): Promise<ActionEventNotifDto[]> {
-    return this.actionEventReminderService.getSentNotifsForGroup(groupId);
-  }
-
   @Post("likeActivity/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ActionActivityDto })
@@ -871,30 +784,6 @@ export class ActionsController {
     return new AdminActionDto(await this.actionsService.unarchive(id));
   }
 
-  @Get("reminderGroupsForEvent/:id")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ReminderGroupDto, isArray: true })
-  async reminderGroupsForEventAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<ReminderGroupDto[]> {
-    const groups =
-      await this.actionEventReminderService.getReminderGroupsForEvent(id);
-    return groups.map((group) => new ReminderGroupDto(group));
-  }
-
-  @Get("reminderAnchorCandidates/:eventId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ReminderAnchorCandidateDto, isArray: true })
-  async reminderAnchorCandidatesAdmin(
-    @Param("eventId", ParseIntPipe) eventId: number,
-  ): Promise<ReminderAnchorCandidateDto[]> {
-    const candidates =
-      await this.actionsService.findReminderAnchorCandidates(eventId);
-    return candidates.map(
-      (candidate) => new ReminderAnchorCandidateDto(candidate),
-    );
-  }
-
   @Get("suites")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ActionSuiteDto, isArray: true })
@@ -970,42 +859,6 @@ export class ActionsController {
   ): Promise<ActionSuiteDto> {
     const suite = await this.actionsService.deleteSuiteEvent(suiteId, eventId);
     return new ActionSuiteDto(suite, suite.actions);
-  }
-
-  @Post("events/:eventId/checkTentativePlans")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: PreviewNotificationPlanDto, isArray: true })
-  async tentativePlansForGroupAdmin(
-    @Param("eventId", ParseIntPipe) eventId: number,
-    @Body() body: CreateReminderGroupDto,
-  ): Promise<PreviewNotificationPlanDto[]> {
-    return this.missedSuitePlanService.toPreview(
-      await this.actionsService.tentativePlansForGroup(eventId, body),
-    );
-  }
-
-  @Post("previewEmailHtml/:eventId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: PreviewEmailHtmlResponseDto })
-  async previewEmailHtmlAdmin(
-    @Param("eventId", ParseIntPipe) eventId: number,
-    @Body() body: PreviewEmailHtmlDto,
-  ): Promise<PreviewEmailHtmlResponseDto> {
-    return new PreviewEmailHtmlResponseDto(
-      await this.actionEventReminderService.previewEmailHtml(eventId, body),
-    );
-  }
-
-  @Post("previewTextMessage/:eventId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: PreviewTextMessageResponseDto })
-  async previewTextMessageAdmin(
-    @Param("eventId", ParseIntPipe) eventId: number,
-    @Body() body: PreviewTextDto,
-  ): Promise<PreviewTextMessageResponseDto> {
-    return new PreviewTextMessageResponseDto(
-      await this.actionEventReminderService.previewTextMessage(eventId, body),
-    );
   }
 
   @Get("export/:id")

@@ -154,7 +154,7 @@ export const queryKeys = {
   actionReminderGroupDetailsAdmin: (groupId: number) =>
     [...actionReminderGroupsAdminAll(), "group", groupId] as const,
   actionReminderAnchorCandidatesAdmin: (eventId: number | null) =>
-    ["actionsReminderAnchorCandidatesAdmin", eventId] as const,
+    ["actionRemindersReminderAnchorCandidatesAdmin", eventId] as const,
   ambassadorProgramAdmin: () => ["userGetAmbassadorProgramAdmin"] as const,
   campaignsAdmin: () => ["campaignFindAllAdmin"] as const,
   clustersAdmin: () => ["clusterListAdmin"] as const,
@@ -218,13 +218,13 @@ export const queryKeys = {
   reminderEmailPreviewAdmin: (
     eventId: number | null,
     preview: PreviewEmailHtmlDto | null,
-  ) => ["actionsPreviewEmailHtmlAdmin", eventId, preview] as const,
+  ) => ["actionRemindersPreviewEmailHtmlAdmin", eventId, preview] as const,
   reminderGroupClickRatesAdmin: () =>
     ["analyticsGetReminderGroupClickRatesAdmin"] as const,
   reminderTextPreviewAdmin: (
     eventId: number | null,
     preview: PreviewTextDto | null,
-  ) => ["actionsPreviewTextMessageAdmin", eventId, preview] as const,
+  ) => ["actionRemindersPreviewTextMessageAdmin", eventId, preview] as const,
   responseSnapshotMigrationAdmin: (formId: number | null) =>
     ["tasksGetResponseSnapshotMigrationAdmin", formId] as const,
   scheduledPlansAdmin: () => ["actionsScheduledPlansAdmin"] as const,
