@@ -1,26 +1,16 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import {
-  PlaceKind,
-  type ConditionHolder,
-} from "@alliance/common/forms/form-conditions";
-import {
-  isQuestionField,
-  type FormSchema,
-} from "@alliance/common/forms/form-schema";
+import { type FormSchema } from "@alliance/common/forms/form-schema";
 import {
   collectUnresolvedVariableReferences,
   type UnresolvedVariableReference,
 } from "@alliance/common/forms/variable-interpolation";
 import { syncSchemaListInputs } from "@alliance/common/forms/variable-scope";
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
-import { withCount } from "@alliance/common/plural";
 import { FormFieldsStatus } from "@alliance/shared/lib/useFormSchema";
 import { cn } from "@alliance/shared/styles/util";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { conditionSourceFields } from "../lib/conditionSourceFields";
 import { copyElementWithUniqueIds } from "../lib/copyWithUniqueIds";
-import { addressedWrite } from "../lib/displayBlockById";
 import { ensurePages, ensureSchemaViews } from "../lib/ensureFormSchema";
 import {
   collectFormIssues,
@@ -30,40 +20,19 @@ import {
 import { JsonScopeKind, type JsonScope } from "../lib/formJson";
 import { useConditionFieldLookup } from "../lib/useConditionFieldLookup";
 import { useDisplayBlockWrite } from "../lib/useDisplayBlockWrite";
-import { DropPosition } from "../lib/useDragReorder";
 import { useFormDraft } from "../lib/useFormDraft";
 import { useFormSave, type DisplayOnlySave } from "../lib/useFormSave";
 import { useFormulaSourceForms } from "../lib/useFormulaSourceForms";
 import { useInputSources } from "../lib/useInputSources";
 import { useSavedForm } from "../lib/useSavedForm";
-import {
-  NeighborDirection,
-  stepPast,
-  type VisibilityGroups,
-} from "../lib/visibilityGroups";
+import { type VisibilityGroups } from "../lib/visibilityGroups";
 import { summarizeVisibility } from "../lib/visibilitySummary";
 import { AggregateBuilder } from "./AggregateBuilder";
 import ConfirmDialog from "./ConfirmDialog";
-import { PerViewerOptions } from "./display-blocks";
-import { renderBlockEditor } from "./display-blocks/blockEditors";
-import { OverrideTargetContext } from "./display-blocks/perUserContent";
 import { DisplayOnlyPreview } from "./DisplayOnlyPreview";
-import {
-  CanvasTargetKind,
-  ChildKind,
-  childPlace,
-  elementTarget,
-} from "./form-canvas/canvasSelection";
+import { elementTarget } from "./form-canvas/canvasSelection";
 import { CanvasWorkspace } from "./form-canvas/CanvasWorkspace";
-import { SelectChildProvider } from "./form-canvas/ChildRows";
-import { ChildSettings } from "./form-canvas/ChildSettings";
-import { DependencyLinks } from "./form-canvas/DependencyLinks";
-import {
-  ElementBoundary,
-  FlaggedSettings,
-  PreviewBoundary,
-} from "./form-canvas/ElementBoundary";
-import { ElementSettings } from "./form-canvas/ElementSettings";
+import { PreviewBoundary } from "./form-canvas/ElementBoundary";
 import { FormCanvas } from "./form-canvas/FormCanvas";
 import { FormOutline } from "./form-canvas/FormOutline";
 import {
@@ -80,22 +49,12 @@ import {
   selectionIssues,
   SidebarIssues,
 } from "./form-canvas/IssueList";
-import { PageSettings, PageSettingsSidebar } from "./form-canvas/PageSettings";
-import { RangeSettings } from "./form-canvas/RangeSettings";
-import { SettingsSidebar } from "./form-canvas/SettingsSidebar";
-import { SidebarSection } from "./form-canvas/sidebarSections";
 import { useCanvasEdits } from "./form-canvas/useCanvasEdits";
 import {
   SECTION_ON_SELECT,
   useCanvasSelection,
 } from "./form-canvas/useCanvasSelection";
 import { useOverrideTarget } from "./form-canvas/useOverrideTarget";
-import { VisibilityGroupSettings } from "./form-canvas/VisibilityGroupSettings";
-import {
-  ElementExpressionScope,
-  expressionKeys,
-} from "./form-fields/conditions/expressionBuffers";
-import { renderFieldEditor } from "./form-fields/fieldEditors";
 import {
   FormBuilderBanners,
   FormBuilderHeader,
@@ -103,6 +62,7 @@ import {
   type IssueListState,
 } from "./FormBuilderHeader";
 import { FormBuilderPreview } from "./FormBuilderPreview";
+import { FormBuilderSettings } from "./FormBuilderSettings";
 import { FormConflictModal } from "./FormConflictModal";
 import { FormDraftContexts } from "./FormDraftContexts";
 import { FormJsonModal } from "./FormJsonModal";
@@ -112,10 +72,6 @@ import { FormVariablesProvider } from "./FormVariablesContext";
 import { OutputBuilder } from "./OutputBuilder";
 import { ShareableTextBuilder } from "./ShareableTextBuilder";
 import { VariableBuilder } from "./VariableBuilder";
-import {
-  VisibilityGroupContext,
-  visibilityGroupMember,
-} from "./VisibilityGroupContext";
 
 function describeUnresolvedReferences(
   references: UnresolvedVariableReference[],
@@ -165,9 +121,6 @@ const REGROUPS_ON_JSON_APPLY: Record<JsonScopeKind, boolean> = {
   [JsonScopeKind.Page]: false,
   [JsonScopeKind.Element]: false,
 };
-
-const GROUP_SECTIONS = [SidebarSection.Content, SidebarSection.Conditions];
-const RANGE_SECTIONS = [SidebarSection.Content, SidebarSection.Conditions];
 
 export function FormBuilder(props: FormBuilderProps) {
   const { initialSchema, setFormId } = props;
@@ -232,13 +185,9 @@ export function FormBuilder(props: FormBuilderProps) {
     setSelection,
     resolvedTarget,
     selectionKey,
-    section,
-    setSection,
     wideCanvas,
     drawer,
     setDrawer,
-    focusPending,
-    focused,
     revealPending,
     revealed,
     select,
@@ -358,49 +307,32 @@ export function FormBuilder(props: FormBuilderProps) {
   };
 
   const updateBlockById = useDisplayBlockWrite(schema, updateSchema);
-  const {
-    insertion,
-    setInsertion,
-    closeInsertion,
-    guardDeletion,
-    deletionDialog,
-    insertAndSelect,
-    pickElement,
-    updateCurrentPage,
-    addPage,
-    movePage,
-    copyPage,
-    removePage,
-    deleteElement,
-    moveElement,
-    duplicateElement,
-    applyGrouped,
-    updateElementAt,
-    selectChildOf,
-  } = useCanvasEdits({
+  const edits = useCanvasEdits({
     schema,
     visibilityGroups,
     canvasGroups,
     updateSchema,
     canvas,
   });
+  const {
+    insertion,
+    setInsertion,
+    closeInsertion,
+    deletionDialog,
+    insertAndSelect,
+    pickElement,
+    updateCurrentPage,
+    addPage,
+    movePage,
+    moveElement,
+    updateElementAt,
+  } = edits;
 
   useEffect(() => {
     if (activeEditor !== "form" && isPreviewMode) {
       setIsPreviewMode(false);
     }
   }, [activeEditor, isPreviewMode]);
-
-  // Fields a page-level visibility condition can reference: anything answered
-  // before this page can show, i.e. fields on earlier pages.
-  const pagePreviousFields = useMemo(
-    () =>
-      schema.pages
-        .slice(0, selectedPageIndex)
-        .flatMap((page) => page.fields)
-        .filter(isQuestionField),
-    [schema.pages, selectedPageIndex],
-  );
 
   const applyJson = (next: FormSchema) => {
     if (jsonScope && REGROUPS_ON_JSON_APPLY[jsonScope.kind]) {
@@ -485,82 +417,9 @@ export function FormBuilder(props: FormBuilderProps) {
   const undo = useCallback(() => travel(undoDraft), [travel, undoDraft]);
   const redo = useCallback(() => travel(redoDraft), [travel, redoDraft]);
 
-  const renderElementEditor = (index: number) => {
-    const field = currentPage.fields[index];
-    if (!field) return null;
-    const updateField = updateElementAt(index);
-
-    const { previousFields, laterFields } = conditionSourceFields({
-      pages: schema.pages,
-      pageIndex: selectedPageIndex,
-      index,
-    });
-    const commonProps = {
-      onUpdate: updateField,
-      updateCurrent: addressedWrite(field, updateBlockById),
-      onRemove: () => deleteElement(index),
-      previousFields,
-      laterFields,
-    };
-    return (
-      <ElementExpressionScope
-        parent={expressionKeys.pageElements(currentPage.id)}
-        id={field.id}
-      >
-        <VisibilityGroupContext.Provider
-          value={
-            displayOnly
-              ? null
-              : visibilityGroupMember({
-                  element: field,
-                  groups: visibilityGroups,
-                  setGroups,
-                  summarize,
-                  onOpenGroup: (key) =>
-                    select(
-                      { kind: CanvasTargetKind.Group, key },
-                      SidebarSection.Conditions,
-                    ),
-                })
-          }
-        >
-          <PerViewerOptions allowed={!displayOnly}>
-            <SelectChildProvider value={selectChildOf(index)}>
-              {isQuestionField(field)
-                ? renderFieldEditor({ field, ...commonProps })
-                : renderBlockEditor({ block: field, ...commonProps })}
-            </SelectChildProvider>
-          </PerViewerOptions>
-        </VisibilityGroupContext.Provider>
-      </ElementExpressionScope>
-    );
-  };
-
   const conditionFieldOf = useConditionFieldLookup(schema, currentPage);
   const summarize = (formula: VisibleIfFormula) =>
     summarizeVisibility(formula, conditionFieldOf);
-
-  const renderDependencies = (
-    item: ConditionHolder["formulas"],
-    questionId: string | null,
-  ) =>
-    !displayOnly && (
-      <DependencyLinks
-        pages={schema.pages}
-        groups={canvasGroups}
-        item={item}
-        questionId={questionId}
-        fieldOf={conditionFieldOf}
-        onSelect={(pageIndex, target) =>
-          selectFromOutline({
-            page: schema.pages[pageIndex]!,
-            pageIndex,
-            target,
-            section: SidebarSection.Conditions,
-          })
-        }
-      />
-    );
 
   const goToIssue = (issue: FormIssue) =>
     openIssue(issue, {
@@ -599,241 +458,6 @@ export function FormBuilder(props: FormBuilderProps) {
       prominent={options?.prominent}
     />
   );
-
-  const renderSettings = () => {
-    switch (resolvedTarget.kind) {
-      case CanvasTargetKind.Page:
-        return displayOnly ? (
-          <p className="p-4 text-sm text-gray-500">
-            Select a block on the canvas to edit it.
-          </p>
-        ) : (
-          <PageSettingsSidebar
-            pageId={currentPage.id}
-            section={section}
-            onSection={setSection}
-            focusPending={focusPending}
-            onFocused={focused}
-            onMoveUp={
-              selectedPageIndex > 0
-                ? () =>
-                    movePage({
-                      from: selectedPageIndex,
-                      dropIndex: selectedPageIndex - 1,
-                      position: DropPosition.Before,
-                    })
-                : null
-            }
-            onMoveDown={
-              selectedPageIndex < schema.pages.length - 1
-                ? () =>
-                    movePage({
-                      from: selectedPageIndex,
-                      dropIndex: selectedPageIndex + 1,
-                      position: DropPosition.After,
-                    })
-                : null
-            }
-            onEditJson={() =>
-              setJsonScope({
-                kind: JsonScopeKind.Page,
-                pageIndex: selectedPageIndex,
-              })
-            }
-            onCopy={() => copyPage(selectedPageIndex)}
-            onDelete={
-              schema.pages.length > 1
-                ? () =>
-                    guardDeletion(
-                      { kind: PlaceKind.Page, pageIndex: selectedPageIndex },
-                      () => removePage(selectedPageIndex),
-                    )
-                : null
-            }
-            dependencies={renderDependencies(currentPage, null)}
-          >
-            <PageSettings
-              key={`${currentPage.id}-${schemaLoads}`}
-              page={currentPage}
-              isFirstPage={selectedPageIndex === 0}
-              previousFields={pagePreviousFields}
-              onUpdate={updateCurrentPage}
-            />
-          </PageSettingsSidebar>
-        );
-      case CanvasTargetKind.Element: {
-        const { index, child } = resolvedTarget;
-        const element = currentPage.fields[index]!;
-        if (child) {
-          const sub =
-            child.kind === ChildKind.SubField && element.kind === "list"
-              ? element.fields[child.index]
-              : undefined;
-          return (
-            <ElementExpressionScope
-              parent={expressionKeys.pageElements(currentPage.id)}
-              id={element.id}
-            >
-              <ChildSettings
-                element={element}
-                child={child}
-                onUpdate={updateElementAt(index)}
-                updateCurrent={addressedWrite(element, updateBlockById)}
-                onReselect={(next) =>
-                  setSelection({
-                    pageId: currentPage.id,
-                    target: { ...elementTarget(element, index), child: next },
-                  })
-                }
-                onSelectParent={() =>
-                  select(elementTarget(element, index), SidebarSection.Content)
-                }
-                section={section}
-                onSection={setSection}
-                focusPending={focusPending}
-                onFocused={focused}
-                editorKey={`${selectionKey}-${schemaLoads}`}
-                dependencies={sub && renderDependencies(sub, sub.id)}
-                guardDelete={(run) => {
-                  const place = childPlace({
-                    pageIndex: selectedPageIndex,
-                    index,
-                    child,
-                  });
-                  return place ? guardDeletion(place, run) : run();
-                }}
-              />
-            </ElementExpressionScope>
-          );
-        }
-        const stepTo = (direction: NeighborDirection) => {
-          const step = stepPast({
-            fields: currentPage.fields,
-            groups: canvasGroups,
-            index,
-            direction,
-          });
-          return step && (() => moveElement({ from: index, ...step }));
-        };
-        return (
-          <ElementSettings
-            element={element}
-            displayOnly={displayOnly}
-            section={section}
-            onSection={setSection}
-            focusPending={focusPending}
-            onFocused={focused}
-            onMoveUp={stepTo(NeighborDirection.Previous)}
-            onMoveDown={stepTo(NeighborDirection.Next)}
-            onEditJson={() =>
-              setJsonScope({
-                kind: JsonScopeKind.Element,
-                pageIndex: selectedPageIndex,
-                index,
-              })
-            }
-            onDuplicate={() => duplicateElement(index)}
-            onDelete={() => deleteElement(index)}
-            dependencies={renderDependencies(
-              element,
-              isQuestionField(element) ? element.id : null,
-            )}
-          >
-            <div key={`${element.id || index}-${schemaLoads}`}>
-              <OverrideTargetContext.Provider value={overrideTarget}>
-                <ElementBoundary
-                  element={element}
-                  fallback={(message) => (
-                    <FlaggedSettings
-                      message={message}
-                      repair="Edit its JSON, or delete it, under Advanced."
-                    />
-                  )}
-                >
-                  {() => renderElementEditor(index)}
-                </ElementBoundary>
-              </OverrideTargetContext.Provider>
-            </div>
-          </ElementSettings>
-        );
-      }
-      case CanvasTargetKind.Group:
-        return (
-          <SettingsSidebar
-            heading="Shared visibility"
-            sections={GROUP_SECTIONS}
-            section={section}
-            onSection={setSection}
-            focusPending={focusPending}
-            onFocused={focused}
-            dependencies={renderDependencies(
-              {
-                visibleIfFormula:
-                  currentPage.fields[resolvedTarget.start]?.visibleIfFormula,
-              },
-              null,
-            )}
-          >
-            <VisibilityGroupSettings
-              key={`${resolvedTarget.key}-${schemaLoads}`}
-              schema={schema}
-              pageIndex={selectedPageIndex}
-              groupKey={resolvedTarget.key}
-              groups={visibilityGroups}
-              setGroups={setGroups}
-              applyGrouped={applyGrouped}
-              summarize={summarize}
-              onSelectMember={(memberIndex) =>
-                select(
-                  elementTarget(currentPage.fields[memberIndex]!, memberIndex),
-                  SidebarSection.Content,
-                )
-              }
-            />
-          </SettingsSidebar>
-        );
-      case CanvasTargetKind.Range: {
-        const { start, end } = resolvedTarget;
-        return (
-          <SettingsSidebar
-            heading={`${withCount(end - start, "element")} selected`}
-            sections={RANGE_SECTIONS}
-            section={section}
-            onSection={setSection}
-            focusPending={focusPending}
-            onFocused={focused}
-          >
-            <RangeSettings
-              key={`${selectionKey}-${schemaLoads}`}
-              schema={schema}
-              pageIndex={selectedPageIndex}
-              start={start}
-              end={end}
-              groups={visibilityGroups}
-              applyGrouped={applyGrouped}
-              summarize={summarize}
-              onSelectGroup={(key) =>
-                select(
-                  { kind: CanvasTargetKind.Group, key },
-                  SidebarSection.Conditions,
-                )
-              }
-              onSelectMember={(index) =>
-                select(
-                  elementTarget(currentPage.fields[index]!, index),
-                  SidebarSection.Content,
-                )
-              }
-            />
-          </SettingsSidebar>
-        );
-      }
-      default:
-        throw new Error(
-          `unknown target: ${JSON.stringify(resolvedTarget satisfies never)}`,
-        );
-    }
-  };
 
   return (
     <FormDraftContexts
@@ -1063,7 +687,20 @@ export function FormBuilder(props: FormBuilderProps) {
                             target: resolvedTarget,
                           })}
                         />
-                        {renderSettings()}
+                        <FormBuilderSettings
+                          schema={schema}
+                          displayOnly={displayOnly}
+                          visibilityGroups={visibilityGroups}
+                          setGroups={setGroups}
+                          canvasGroups={canvasGroups}
+                          canvas={canvas}
+                          edits={edits}
+                          updateBlockById={updateBlockById}
+                          conditionFieldOf={conditionFieldOf}
+                          summarize={summarize}
+                          overrideTarget={overrideTarget}
+                          onEditJson={setJsonScope}
+                        />
                       </>
                     }
                   />

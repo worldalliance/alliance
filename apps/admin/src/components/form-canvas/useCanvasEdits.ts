@@ -313,3 +313,5 @@ export function useCanvasEdits({
     selectChildOf,
   };
 }
+
+export type CanvasEdits = ReturnType<typeof useCanvasEdits>;
