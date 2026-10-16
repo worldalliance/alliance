@@ -31,6 +31,7 @@ import React, {
 } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { isEmptyAnswer } from "../lib/answerValues";
+import { downloadBlob } from "../lib/downloadBlob";
 import {
   getDirectSnapshotTarget,
   type ReturnToState,
@@ -485,15 +486,8 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     const blob = new Blob(["﻿" + csv], {
       type: "text/csv;charset=utf-8;",
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
     const safeTitle = exportFileBase.replace(/[^a-z0-9-_]+/gi, "-");
-    a.href = url;
-    a.download = `${safeTitle}-responses.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `${safeTitle}-responses.csv`);
   }, [
     form,
     scopedResponses,
@@ -520,14 +514,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     });
 
     const blob = new Blob([html], { type: "text/html;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${safeTitle}-responses.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `${safeTitle}-responses.html`);
   }, [
     form,
     title,
