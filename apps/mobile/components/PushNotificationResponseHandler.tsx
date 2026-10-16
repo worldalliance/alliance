@@ -1,11 +1,9 @@
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
+// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
 import {
   NotificationDto,
   NotificationSourceType,
-  notifsSetRead,
   pushMarkOpened,
 } from "@alliance/shared/client";
-import { getNotificationReadRequest } from "@alliance/shared/lib/notificationIdentity";
 import {
   addNotificationResponseReceivedListener,
   getLastNotificationResponse,
@@ -36,7 +34,7 @@ type PendingNotificationAction = {
 
 export default function PushNotificationResponseHandler() {
   const { isAuthenticated, isLoading } = useAuth();
-  const { markCachedRead } = useNotificationsCache();
+  const { markRead } = useNotificationsCache();
   const pendingNotificationActionRef = useRef<PendingNotificationAction | null>(
     null,
   );
@@ -46,18 +44,14 @@ export default function PushNotificationResponseHandler() {
 
   const markNotificationReadFromTap = useCallback(
     (notification: Pick<NotificationDto, "id" | "sourceType">) => {
-      markCachedRead([notification]);
-
-      void notifsSetRead(getNotificationReadRequest(notification)).catch(
-        (error) => {
-          console.error(
-            "failed to mark notification as read from push tap",
-            error,
-          );
-        },
-      );
+      void markRead([notification]).catch((error) => {
+        console.error(
+          "failed to mark notification as read from push tap",
+          error,
+        );
+      });
     },
-    [markCachedRead],
+    [markRead],
   );
 
   const handlePendingNotificationAction = useCallback(
