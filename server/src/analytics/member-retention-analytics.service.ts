@@ -1,3 +1,4 @@
+import { findStartedMemberActionEvent } from "@alliance/common/actionEvent";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { sqlIsLatestCompletion } from "src/actions/action-activity-status";
@@ -14,10 +15,7 @@ import {
   ContractEvent,
   ContractEventType,
 } from "src/user/entities/contract-event.entity";
-import {
-  findStartedMemberActionEvent,
-  hasMemberActionDeadlinePassed,
-} from "src/utils/action-user";
+import { hasMemberActionDeadlinePassed } from "src/utils/action-user";
 import { yieldToEventLoop } from "src/utils/event-loop";
 import { type Repository } from "typeorm";
 import { formatDateKey } from "./date-key";

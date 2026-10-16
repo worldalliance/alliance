@@ -1,4 +1,4 @@
-import { hasTakenEffect } from "@alliance/common/actionEvent";
+import { eventInEffectAt } from "@alliance/common/actionEvent";
 import { findLeast } from "src/utils/filter";
 import { ActionEvent, ActionStatus } from "../entities/action-event.entity";
 
@@ -8,25 +8,6 @@ export type MemberActionPhase =
       deadlineEvent: ActionEvent | null;
     }
   | { event: null; deadlineEvent: null };
-
-/** The event in effect at `at`, and the next event, which ends it. */
-export function eventInEffectAt<E extends Pick<ActionEvent, "date">>(
-  events: E[],
-  at: Date,
-): { event: E | null; nextEvent: E | null } {
-  return {
-    event: findLeast(
-      events,
-      (a, b) => b.date.getTime() - a.date.getTime(), // reverse order
-      (candidate) => hasTakenEffect(candidate.date, at),
-    ),
-    nextEvent: findLeast(
-      events,
-      (a, b) => a.date.getTime() - b.date.getTime(),
-      (candidate) => !hasTakenEffect(candidate.date, at),
-    ),
-  };
-}
 
 /**
  * The member-action phase of an action: the event that opens it and the event

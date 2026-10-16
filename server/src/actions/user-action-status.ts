@@ -3,6 +3,7 @@ import {
   WithdrawalOption,
   withdrawalOptionFromFlags,
 } from "@alliance/common/actionActivity";
+import { hasMemberActionStarted } from "@alliance/common/actionEvent";
 import type { User } from "src/user/entities/user.entity";
 import {
   ActionAssignment,
@@ -11,7 +12,6 @@ import {
   computeIsAwayDuringWindow,
   computeMemberActionAwayStatus,
   hasMemberActionDeadlinePassed,
-  hasMemberActionStarted,
   TaskAwayStatus,
 } from "src/utils/action-user";
 import { UserActionRelationPillStatus } from "../user/dto/user-action-relations.dto";

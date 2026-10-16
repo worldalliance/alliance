@@ -1,6 +1,5 @@
 import { ActionEvent, ActionStatus } from "../entities/action-event.entity";
 import {
-  eventInEffectAt,
   memberActionPhase,
   shortensMemberActionDeadline,
 } from "./action-event";
@@ -8,40 +7,6 @@ import {
 function event(id: number, date: string, newStatus: ActionStatus): ActionEvent {
   return { id, date: new Date(date), newStatus } as ActionEvent;
 }
-
-describe("eventInEffectAt", () => {
-  const planned = event(1, "2026-01-01", ActionStatus.Planned);
-  const memberAction = event(2, "2026-02-01", ActionStatus.MemberAction);
-  const resolution = event(3, "2026-03-01", ActionStatus.Resolution);
-  const events = [resolution, planned, memberAction];
-
-  it("is the new event at the instant of its date", () => {
-    expect(eventInEffectAt(events, memberAction.date)).toEqual({
-      event: memberAction,
-      nextEvent: resolution,
-    });
-  });
-
-  it("is the previous event just before that instant", () => {
-    expect(
-      eventInEffectAt(events, new Date(memberAction.date.getTime() - 1)),
-    ).toEqual({ event: planned, nextEvent: memberAction });
-  });
-
-  it("is none before the first event", () => {
-    expect(eventInEffectAt(events, new Date("2025-12-01"))).toEqual({
-      event: null,
-      nextEvent: planned,
-    });
-  });
-
-  it("has no next event once the last one takes effect", () => {
-    expect(eventInEffectAt(events, resolution.date)).toEqual({
-      event: resolution,
-      nextEvent: null,
-    });
-  });
-});
 
 describe("memberActionPhase", () => {
   it("returns nulls when there is no member-action event", () => {

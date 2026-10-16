@@ -1,3 +1,4 @@
+import { hasMemberActionStarted } from "@alliance/common/actionEvent";
 import { millisecondsInSecond } from "date-fns/constants";
 import {
   ActionEvent,
@@ -13,7 +14,6 @@ import {
   computeMemberActionAwayStatus,
   computeMissedActionDeadline,
   hasMemberActionDeadlinePassed,
-  hasMemberActionStarted,
   TaskAwayStatus,
 } from "./action-user";
 

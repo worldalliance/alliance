@@ -1,7 +1,9 @@
+import { milliseconds } from "date-fns";
 import { taskHeaders } from "./copy";
-import { getTaskDismissInfo } from "./largeActionCard";
+import { getNextEvent, getTaskDismissInfo } from "./largeActionCard";
 import {
   makeAction,
+  makeEvent,
   makeViewer,
   makeViewerWithUnknownOptionalReason,
 } from "./testFixtures";
@@ -125,5 +127,26 @@ describe("getTaskDismissInfo", () => {
     expect(info?.message).toBe(
       taskHeaders.homePage.optionalForContractGap.description,
     );
+  });
+});
+
+describe("getNextEvent", () => {
+  const offset = (seconds: number) =>
+    new Date(Date.now() + milliseconds({ seconds })).toISOString();
+
+  it("is the earliest event yet to take effect, whatever the array order", () => {
+    const soon = makeEvent({ id: 2, date: offset(60) });
+    const events = [
+      makeEvent({ id: 3, date: offset(120) }),
+      soon,
+      makeEvent({ id: 1, date: offset(-60) }),
+    ];
+    expect(getNextEvent(makeAction({ events }))).toBe(soon);
+  });
+
+  it("is null once every event has taken effect", () => {
+    expect(
+      getNextEvent(makeAction({ events: [makeEvent({ date: offset(-60) })] })),
+    ).toBeNull();
   });
 });

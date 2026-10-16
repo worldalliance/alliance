@@ -1,3 +1,4 @@
+import { hasMemberActionStarted } from "@alliance/common/actionEvent";
 import {
   ActionDto,
   CommunityUserInfoDto,
@@ -146,9 +147,7 @@ export function canCompleteAction(action: ActionDto): boolean {
     );
   }
   return (
-    action.events
-      .filter((event) => new Date(event.date) <= new Date())
-      .some((event) => event.newStatus === "member_action") &&
+    hasMemberActionStarted(action.events, new Date()) &&
     action.userRelation !== "completed" &&
     action.userRelation !== "declined" &&
     !!(action.canParticipate || action.publicOnly)
@@ -266,11 +265,7 @@ export function deadlineHasPassed(action: ActionDto): boolean {
   if (viewer) {
     return viewer.memberActionStarted;
   }
-  const now = new Date();
-  return action.events.some(
-    (event) =>
-      new Date(event.date) <= now && event.newStatus === "member_action",
-  );
+  return hasMemberActionStarted(action.events, new Date());
 }
 
 /**

@@ -1,3 +1,4 @@
+import { eventInEffectAt } from "@alliance/common/actionEvent";
 import { ActionDto, ActionEventDto, type TaskAwayStatus } from "../client";
 import {
   ActionWithAwayStatus,
@@ -85,9 +86,5 @@ export function getTaskDismissInfo(
 }
 
 export function getNextEvent(action: ActionDto): ActionEventDto | null {
-  const now = new Date();
-  const futureEvents = action.events.filter(
-    (event) => new Date(event.date) > now,
-  );
-  return futureEvents.length > 0 ? futureEvents[0] : null;
+  return eventInEffectAt(action.events, new Date()).nextEvent;
 }
