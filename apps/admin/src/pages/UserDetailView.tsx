@@ -4,7 +4,7 @@ import {
   actionsActionRelationsForUserAdmin,
   notifsNotifsForUserAdmin,
   tasksGetFormsForUserSidAdmin,
-  userListFriends,
+  userFriendListFriends,
   userTagGetTagSummariesAdmin,
 } from "@alliance/shared/client";
 import {
@@ -55,7 +55,7 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
       tasksGetFormsForUserSidAdmin({ path: { userId } }).catch(() => ({
         data: [],
       })),
-      userListFriends({ path: { id: userId } }),
+      userFriendListFriends({ path: { id: userId } }),
     ]);
 
   const actionData: UserActionRelationsResponseDto | undefined =

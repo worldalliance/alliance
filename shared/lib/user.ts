@@ -17,16 +17,16 @@ import {
   actionsUserCompletedCount,
   forumFindCommentsByUser,
   forumFindPostsByUser,
-  userAcceptFriendRequest,
-  userDeclineFriendRequest,
   userFindOne,
-  userListFriends,
+  userFriendAcceptFriendRequest,
+  userFriendDeclineFriendRequest,
+  userFriendListFriends,
+  userFriendListReceivedRequests,
+  userFriendListSentRequests,
+  userFriendMyFriendRelationship,
+  userFriendRemoveFriend,
+  userFriendRequestFriend,
   userListMessageableUsers,
-  userListReceivedRequests,
-  userListSentRequests,
-  userMyFriendRelationship,
-  userRemoveFriend,
-  userRequestFriend,
   userUpdate,
 } from "../client";
 import { failedToLoad } from "./failedToLoad";
@@ -147,7 +147,7 @@ export const useUserFriendStatusQuery = (
     queryKey: userQueryKeys.friendStatus(userId),
     queryFn: async () => {
       if (!userId) return null;
-      const response = await userMyFriendRelationship({
+      const response = await userFriendMyFriendRelationship({
         path: { id: userId },
         throwOnError: true,
       });
@@ -239,7 +239,7 @@ export const useUserFriendsQuery = <TData = ProfileDto[]>(
     queryKey: userQueryKeys.friends(userId),
     queryFn: async () => {
       if (!userId) return [];
-      const response = await userListFriends({
+      const response = await userFriendListFriends({
         path: { id: userId },
         throwOnError: true,
       });
@@ -255,7 +255,9 @@ export const useUserReceivedFriendRequestsQuery = (
     ...options,
     queryKey: userQueryKeys.receivedRequests(),
     queryFn: async () => {
-      const response = await userListReceivedRequests({ throwOnError: true });
+      const response = await userFriendListReceivedRequests({
+        throwOnError: true,
+      });
       return response.data;
     },
   });
@@ -267,7 +269,7 @@ export const useUserSentFriendRequestsQuery = (
     ...options,
     queryKey: userQueryKeys.sentRequests(),
     queryFn: async () => {
-      const response = await userListSentRequests({ throwOnError: true });
+      const response = await userFriendListSentRequests({ throwOnError: true });
       return response.data;
     },
   });
@@ -365,8 +367,12 @@ const useFriendMutation = (params: {
 export const useSendFriendRequestMutation = () =>
   useFriendMutation({
     call: async (targetUserId) =>
-      (await userRequestFriend({ path: { targetUserId }, throwOnError: true }))
-        .data,
+      (
+        await userFriendRequestFriend({
+          path: { targetUserId },
+          throwOnError: true,
+        })
+      ).data,
     // Sending back to someone whose request is pending accepts theirs.
     invalidateOnSuccess: invalidateFriendships,
   });
@@ -374,7 +380,7 @@ export const useSendFriendRequestMutation = () =>
 export const useAcceptFriendRequestMutation = () =>
   useFriendMutation({
     call: async (requesterId) => {
-      await userAcceptFriendRequest({
+      await userFriendAcceptFriendRequest({
         path: { requesterId },
         throwOnError: true,
       });
@@ -386,7 +392,7 @@ export const useAcceptFriendRequestMutation = () =>
 export const useDeclineFriendRequestMutation = () =>
   useFriendMutation({
     call: async (requesterId) => {
-      await userDeclineFriendRequest({
+      await userFriendDeclineFriendRequest({
         path: { requesterId },
         throwOnError: true,
       });
@@ -398,7 +404,10 @@ export const useDeclineFriendRequestMutation = () =>
 export const useRemoveFriendMutation = () =>
   useFriendMutation({
     call: async (targetUserId) => {
-      await userRemoveFriend({ path: { targetUserId }, throwOnError: true });
+      await userFriendRemoveFriend({
+        path: { targetUserId },
+        throwOnError: true,
+      });
       return { status: "none", didReceiveRequest: false };
     },
     invalidateOnSuccess: invalidateFriendships,

@@ -1028,18 +1028,6 @@ export type MyVisibilityContextDto = {
     completedActionCount: number;
 };
 
-export type FriendStatus = 'pending' | 'accepted' | 'declined' | 'none';
-
-export type FriendStatusDto = {
-    status: FriendStatus | null;
-    didReceiveRequest: boolean;
-};
-
-export type FriendGraphEdgeDto = {
-    userAId: number;
-    userBId: number;
-};
-
 export type UserCityCountDto = {
     cityId?: number | null;
     cityName?: string | null;
@@ -1470,6 +1458,18 @@ export type ReferrerProfileDto = {
     kind: ReferrerKind;
     displayName: string;
     profilePicture: string | null;
+};
+
+export type FriendStatus = 'pending' | 'accepted' | 'declined' | 'none';
+
+export type FriendStatusDto = {
+    status: FriendStatus | null;
+    didReceiveRequest: boolean;
+};
+
+export type FriendGraphEdgeDto = {
+    userAId: number;
+    userBId: number;
 };
 
 export type StreamableFile = {
@@ -5728,209 +5728,6 @@ export type UserMyVisibilityContextResponses = {
 
 export type UserMyVisibilityContextResponse = UserMyVisibilityContextResponses[keyof UserMyVisibilityContextResponses];
 
-export type UserRemoveFriendData = {
-    body?: never;
-    path: {
-        targetUserId: number;
-    };
-    query?: never;
-    url: '/user/friends/{targetUserId}';
-};
-
-export type UserRemoveFriendErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserRemoveFriendError = UserRemoveFriendErrors[keyof UserRemoveFriendErrors];
-
-export type UserRemoveFriendResponses = {
-    /**
-     * Relationship removed
-     */
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserRemoveFriendResponse = UserRemoveFriendResponses[keyof UserRemoveFriendResponses];
-
-export type UserRequestFriendData = {
-    body?: never;
-    path: {
-        targetUserId: number;
-    };
-    query?: never;
-    url: '/user/friends/{targetUserId}';
-};
-
-export type UserRequestFriendErrors = {
-    /**
-     * Already friends
-     */
-    409: HeyApiError;
-};
-
-export type UserRequestFriendError = UserRequestFriendErrors[keyof UserRequestFriendErrors];
-
-export type UserRequestFriendResponses = {
-    200: FriendStatusDto;
-};
-
-export type UserRequestFriendResponse = UserRequestFriendResponses[keyof UserRequestFriendResponses];
-
-export type UserAcceptFriendRequestData = {
-    body?: never;
-    path: {
-        requesterId: number;
-    };
-    query?: never;
-    url: '/user/friends/{requesterId}/accept';
-};
-
-export type UserAcceptFriendRequestErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserAcceptFriendRequestError = UserAcceptFriendRequestErrors[keyof UserAcceptFriendRequestErrors];
-
-export type UserAcceptFriendRequestResponses = {
-    /**
-     * Friend request accepted
-     */
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserAcceptFriendRequestResponse = UserAcceptFriendRequestResponses[keyof UserAcceptFriendRequestResponses];
-
-export type UserDeclineFriendRequestData = {
-    body?: never;
-    path: {
-        requesterId: number;
-    };
-    query?: never;
-    url: '/user/friends/{requesterId}/decline';
-};
-
-export type UserDeclineFriendRequestErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserDeclineFriendRequestError = UserDeclineFriendRequestErrors[keyof UserDeclineFriendRequestErrors];
-
-export type UserDeclineFriendRequestResponses = {
-    /**
-     * Friend request declined
-     */
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserDeclineFriendRequestResponse = UserDeclineFriendRequestResponses[keyof UserDeclineFriendRequestResponses];
-
-export type UserListReceivedRequestsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/friends/requests/received';
-};
-
-export type UserListReceivedRequestsErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserListReceivedRequestsError = UserListReceivedRequestsErrors[keyof UserListReceivedRequestsErrors];
-
-export type UserListReceivedRequestsResponses = {
-    200: Array<ProfileDto>;
-};
-
-export type UserListReceivedRequestsResponse = UserListReceivedRequestsResponses[keyof UserListReceivedRequestsResponses];
-
-export type UserListSentRequestsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/friends/requests/sent';
-};
-
-export type UserListSentRequestsErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserListSentRequestsError = UserListSentRequestsErrors[keyof UserListSentRequestsErrors];
-
-export type UserListSentRequestsResponses = {
-    200: Array<ProfileDto>;
-};
-
-export type UserListSentRequestsResponse = UserListSentRequestsResponses[keyof UserListSentRequestsResponses];
-
-export type UserMyFriendRelationshipData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/user/myfriendrelationship/{id}';
-};
-
-export type UserMyFriendRelationshipErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserMyFriendRelationshipError = UserMyFriendRelationshipErrors[keyof UserMyFriendRelationshipErrors];
-
-export type UserMyFriendRelationshipResponses = {
-    200: FriendStatusDto;
-};
-
-export type UserMyFriendRelationshipResponse = UserMyFriendRelationshipResponses[keyof UserMyFriendRelationshipResponses];
-
-export type UserListFriendsData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/user/listfriends/{id}';
-};
-
-export type UserListFriendsErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserListFriendsError = UserListFriendsErrors[keyof UserListFriendsErrors];
-
-export type UserListFriendsResponses = {
-    200: Array<ProfileDto>;
-};
-
-export type UserListFriendsResponse = UserListFriendsResponses[keyof UserListFriendsResponses];
-
 export type UserListMessageableUsersData = {
     body?: never;
     path?: never;
@@ -5996,28 +5793,6 @@ export type UserListForGraphAdminResponses = {
 };
 
 export type UserListForGraphAdminResponse = UserListForGraphAdminResponses[keyof UserListForGraphAdminResponses];
-
-export type UserGetFriendGraphEdgesAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/friends/graphEdges';
-};
-
-export type UserGetFriendGraphEdgesAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetFriendGraphEdgesAdminError = UserGetFriendGraphEdgesAdminErrors[keyof UserGetFriendGraphEdgesAdminErrors];
-
-export type UserGetFriendGraphEdgesAdminResponses = {
-    200: Array<FriendGraphEdgeDto>;
-};
-
-export type UserGetFriendGraphEdgesAdminResponse = UserGetFriendGraphEdgesAdminResponses[keyof UserGetFriendGraphEdgesAdminResponses];
 
 export type UserCityCountsAdminData = {
     body?: never;
@@ -7425,6 +7200,231 @@ export type UserReferralReferrerProfileResponses = {
 };
 
 export type UserReferralReferrerProfileResponse = UserReferralReferrerProfileResponses[keyof UserReferralReferrerProfileResponses];
+
+export type UserFriendRemoveFriendData = {
+    body?: never;
+    path: {
+        targetUserId: number;
+    };
+    query?: never;
+    url: '/user/friends/{targetUserId}';
+};
+
+export type UserFriendRemoveFriendErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendRemoveFriendError = UserFriendRemoveFriendErrors[keyof UserFriendRemoveFriendErrors];
+
+export type UserFriendRemoveFriendResponses = {
+    /**
+     * Relationship removed
+     */
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserFriendRemoveFriendResponse = UserFriendRemoveFriendResponses[keyof UserFriendRemoveFriendResponses];
+
+export type UserFriendRequestFriendData = {
+    body?: never;
+    path: {
+        targetUserId: number;
+    };
+    query?: never;
+    url: '/user/friends/{targetUserId}';
+};
+
+export type UserFriendRequestFriendErrors = {
+    /**
+     * Already friends
+     */
+    409: HeyApiError;
+};
+
+export type UserFriendRequestFriendError = UserFriendRequestFriendErrors[keyof UserFriendRequestFriendErrors];
+
+export type UserFriendRequestFriendResponses = {
+    200: FriendStatusDto;
+};
+
+export type UserFriendRequestFriendResponse = UserFriendRequestFriendResponses[keyof UserFriendRequestFriendResponses];
+
+export type UserFriendAcceptFriendRequestData = {
+    body?: never;
+    path: {
+        requesterId: number;
+    };
+    query?: never;
+    url: '/user/friends/{requesterId}/accept';
+};
+
+export type UserFriendAcceptFriendRequestErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendAcceptFriendRequestError = UserFriendAcceptFriendRequestErrors[keyof UserFriendAcceptFriendRequestErrors];
+
+export type UserFriendAcceptFriendRequestResponses = {
+    /**
+     * Friend request accepted
+     */
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserFriendAcceptFriendRequestResponse = UserFriendAcceptFriendRequestResponses[keyof UserFriendAcceptFriendRequestResponses];
+
+export type UserFriendDeclineFriendRequestData = {
+    body?: never;
+    path: {
+        requesterId: number;
+    };
+    query?: never;
+    url: '/user/friends/{requesterId}/decline';
+};
+
+export type UserFriendDeclineFriendRequestErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendDeclineFriendRequestError = UserFriendDeclineFriendRequestErrors[keyof UserFriendDeclineFriendRequestErrors];
+
+export type UserFriendDeclineFriendRequestResponses = {
+    /**
+     * Friend request declined
+     */
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserFriendDeclineFriendRequestResponse = UserFriendDeclineFriendRequestResponses[keyof UserFriendDeclineFriendRequestResponses];
+
+export type UserFriendListReceivedRequestsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/friends/requests/received';
+};
+
+export type UserFriendListReceivedRequestsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendListReceivedRequestsError = UserFriendListReceivedRequestsErrors[keyof UserFriendListReceivedRequestsErrors];
+
+export type UserFriendListReceivedRequestsResponses = {
+    200: Array<ProfileDto>;
+};
+
+export type UserFriendListReceivedRequestsResponse = UserFriendListReceivedRequestsResponses[keyof UserFriendListReceivedRequestsResponses];
+
+export type UserFriendListSentRequestsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/friends/requests/sent';
+};
+
+export type UserFriendListSentRequestsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendListSentRequestsError = UserFriendListSentRequestsErrors[keyof UserFriendListSentRequestsErrors];
+
+export type UserFriendListSentRequestsResponses = {
+    200: Array<ProfileDto>;
+};
+
+export type UserFriendListSentRequestsResponse = UserFriendListSentRequestsResponses[keyof UserFriendListSentRequestsResponses];
+
+export type UserFriendMyFriendRelationshipData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/myfriendrelationship/{id}';
+};
+
+export type UserFriendMyFriendRelationshipErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendMyFriendRelationshipError = UserFriendMyFriendRelationshipErrors[keyof UserFriendMyFriendRelationshipErrors];
+
+export type UserFriendMyFriendRelationshipResponses = {
+    200: FriendStatusDto;
+};
+
+export type UserFriendMyFriendRelationshipResponse = UserFriendMyFriendRelationshipResponses[keyof UserFriendMyFriendRelationshipResponses];
+
+export type UserFriendListFriendsData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/listfriends/{id}';
+};
+
+export type UserFriendListFriendsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendListFriendsError = UserFriendListFriendsErrors[keyof UserFriendListFriendsErrors];
+
+export type UserFriendListFriendsResponses = {
+    200: Array<ProfileDto>;
+};
+
+export type UserFriendListFriendsResponse = UserFriendListFriendsResponses[keyof UserFriendListFriendsResponses];
+
+export type UserFriendGetFriendGraphEdgesAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/friends/graphEdges';
+};
+
+export type UserFriendGetFriendGraphEdgesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendGetFriendGraphEdgesAdminError = UserFriendGetFriendGraphEdgesAdminErrors[keyof UserFriendGetFriendGraphEdgesAdminErrors];
+
+export type UserFriendGetFriendGraphEdgesAdminResponses = {
+    200: Array<FriendGraphEdgeDto>;
+};
+
+export type UserFriendGetFriendGraphEdgesAdminResponse = UserFriendGetFriendGraphEdgesAdminResponses[keyof UserFriendGetFriendGraphEdgesAdminResponses];
 
 export type ImagesGetImageData = {
     body?: never;

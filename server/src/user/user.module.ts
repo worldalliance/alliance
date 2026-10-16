@@ -32,6 +32,7 @@ import { UserAwayRangeController } from "./user-away-range.controller";
 import { UserAwayRangeService } from "./user-away-range.service";
 import { UserDeviceController } from "./user-device.controller";
 import { UserDeviceService } from "./user-device.service";
+import { UserFriendController } from "./user-friend.controller";
 import { UserGroupAssignmentController } from "./user-group-assignment.controller";
 import { UserReferralController } from "./user-referral.controller";
 import { UserTagController } from "./user-tag.controller";
@@ -76,6 +77,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     UserDeviceController,
     UserGroupAssignmentController,
     UserReferralController,
+    UserFriendController,
   ],
   providers: [
     UserService,
