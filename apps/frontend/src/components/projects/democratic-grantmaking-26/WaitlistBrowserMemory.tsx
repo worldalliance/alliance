@@ -1,14 +1,9 @@
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  waitlistForgetBrowser,
-  type WaitlistBrowserDto,
-} from "@alliance/shared/client";
+import { noop } from "@alliance/shared/lib/constants";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { useInviteSession } from "../../../site/invite/InviteSession";
 import { SiteArrow } from "../../../site/ui";
+import type { useWaitlistBrowser } from "./useWaitlist";
 
 const FORGET_FALLBACK = "We couldn’t forget this browser. Please try again.";
 
@@ -25,25 +20,28 @@ export function RememberedInvite({ signupHref }: { signupHref: string }) {
 }
 
 /** Ends the session's waitlist confirmation and the tab's invitation. */
-export function ForgetBrowser({ onForgotten }: { onForgotten: () => void }) {
-  const queryClient = useQueryClient();
+export function ForgetBrowser({
+  forget,
+  onForgotten,
+}: {
+  forget: ReturnType<typeof useWaitlistBrowser>["forget"];
+  onForgotten: () => void;
+}) {
   const invite = useInviteSession();
-  const forget = useMutation({
-    mutationFn: () => waitlistForgetBrowser({ throwOnError: true }),
-    onSuccess: () => {
-      queryClient.setQueryData(queryKeys.waitlistBrowser(), {
-        entry: null,
-      } satisfies WaitlistBrowserDto);
-      invite.forget();
-      onForgotten();
-    },
-  });
 
   return (
     <>
       <button
         type="button"
-        onClick={() => forget.mutate()}
+        onClick={() =>
+          // mutate's own callbacks skip a caller that unmounted mid-request,
+          // which would leave the tab's invitation behind. forget.error
+          // renders a failure.
+          void forget.mutateAsync().then(() => {
+            invite.forget();
+            onForgotten();
+          }, noop)
+        }
         disabled={forget.isPending}
         className="self-start text-sm text-[var(--site-ink)]/70 underline underline-offset-2"
       >

@@ -87,7 +87,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
     dropReferral,
   } = useWaitlistReferral();
   const mailEnabled = useWaitlistMailEnabled();
-  const browser = useWaitlistBrowser();
+  const { query: browser, forget } = useWaitlistBrowser();
   const { signupHref: inviteSignupHref } = useInviteSession();
   const [contact, setContact] = useState("");
   const [country, setCountry] = useState<CountryCode>(DEFAULT_PHONE_COUNTRY);
@@ -117,6 +117,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
       {inviteSignupHref && <RememberedInvite signupHref={inviteSignupHref} />}
       {(remembered || inviteSignupHref) && (
         <ForgetBrowser
+          forget={forget}
           onForgotten={() => {
             submit.reset();
             setContact("");
@@ -143,6 +144,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
       setContactError(parsed.error);
       return;
     }
+    forget.reset();
     submit.mutate({
       name: String(form.get("name") ?? ""),
       ...parsed.value,

@@ -7,12 +7,14 @@ import {
   waitlistBrowser,
   waitlistCount,
   waitlistFindReferral,
+  waitlistForgetBrowser,
   waitlistMailConfig,
+  type WaitlistBrowserDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import { getInviteBaseUrl } from "@alliance/sharedweb/lib/config";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 
 export const personalShareUrl = (code: string): string =>
@@ -28,13 +30,23 @@ export function useWaitlistCount() {
 }
 
 export function useWaitlistBrowser() {
-  return useQuery({
+  const queryClient = useQueryClient();
+  const query = useQuery({
     queryKey: queryKeys.waitlistBrowser(),
     queryFn: () =>
       waitlistBrowser({ throwOnError: true }).then((res) => res.data),
     retry: retryUnlessRefused(1),
     staleTime: Infinity,
   });
+  const forget = useMutation({
+    mutationFn: () => waitlistForgetBrowser({ throwOnError: true }),
+    onSuccess: () => {
+      queryClient.setQueryData(queryKeys.waitlistBrowser(), {
+        entry: null,
+      } satisfies WaitlistBrowserDto);
+    },
+  });
+  return { query, forget };
 }
 
 /** True only once the server says public email is on. */
