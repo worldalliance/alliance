@@ -1,8 +1,11 @@
-import request from "supertest";
 import { Like } from "typeorm";
 import { CreateActionDto } from "../src/actions/dto/action.dto";
 import { Action } from "../src/actions/entities/action.entity";
-import { createActionAsAdmin, patchActionAsAdmin } from "./action-requests";
+import {
+  createActionAsAdmin,
+  getActionAsAdmin,
+  patchActionAsAdmin,
+} from "./action-requests";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
 const NAME_PREFIX = "action-time-estimate e2e";
@@ -34,10 +37,7 @@ describe("Action time estimate (e2e)", () => {
     const created = await create({}).expect(201);
     expect(created.body.timeEstimate).toBeNull();
 
-    const fetched = await request(ctx.app.getHttpServer())
-      .get(`/actions/adminslug/${created.body.id}`)
-      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
-      .expect(200);
+    const fetched = await getActionAsAdmin(ctx, created.body.id).expect(200);
     expect(fetched.body.timeEstimate).toBeNull();
   });
 

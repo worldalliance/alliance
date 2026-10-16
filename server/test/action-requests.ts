@@ -34,3 +34,8 @@ export const patchActionAsAdmin = (
     .patch(`/actions/${id}`)
     .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
     .send(body);
+
+export const getActionAsAdmin = (ctx: TestContext, id: number) =>
+  request(ctx.app.getHttpServer())
+    .get(`/actions/adminslug/${id}`)
+    .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
