@@ -1,6 +1,5 @@
 import {
   ConversationDto,
-  conversationGetMyConversations,
   conversationGetUnreadSummary,
   conversationMarkRead,
   MessageDto,
@@ -11,12 +10,12 @@ import { Socket } from "socket.io-client";
 import {
   type ConversationUnreadPayload,
   mergeConversationUnreadPayload,
-  sortConversations,
 } from "./conversations";
 import {
   connectMessagingSocket,
   type MessagingConnectionConfig,
 } from "./messagingSocket";
+import { useMyConversations } from "./useMyConversations";
 
 export interface UseLiveConvoMessagesOptions {
   onIncomingMessage?: (message: MessageDto) => void;
@@ -30,42 +29,24 @@ export interface UseLiveConvoMessagesResult {
 }
 
 export const createMessagingHooks = (config: MessagingConnectionConfig) => {
+  // Every mounted screen's socket merges into the one cached list, so each
+  // must zero the unread count of any conversation a screen has open.
+  const openConversations = new Map<number, number>();
+
   const useConversations = (activeConversationId?: number | null) => {
-    const [conversations, setConversations] = useState<
-      ConversationDto[] | null
-    >(null);
-    const [loading, setLoading] = useState(true);
-    const activeConversationRef = useRef<number | null>(
-      activeConversationId ?? null,
-    );
+    const myConversations = useMyConversations();
+    const { setConversations } = myConversations;
 
     useEffect(() => {
-      activeConversationRef.current = activeConversationId ?? null;
-    }, [activeConversationId]);
-
-    const refreshConversations = useCallback(async () => {
-      setLoading(true);
-      try {
-        const response = await conversationGetMyConversations();
-        if (response.data) {
-          setConversations(response.data.sort(sortConversations));
-        }
-      } catch (error) {
-        console.error("Failed to load conversations", error);
-      } finally {
-        setLoading(false);
-      }
-    }, []);
-
-    useEffect(() => {
-      let cancelled = false;
-      refreshConversations().catch(() => {
-        if (!cancelled) setLoading(false);
-      });
+      if (activeConversationId == null) return;
+      const id = activeConversationId;
+      openConversations.set(id, (openConversations.get(id) ?? 0) + 1);
       return () => {
-        cancelled = true;
+        const screens = (openConversations.get(id) ?? 1) - 1;
+        if (screens > 0) openConversations.set(id, screens);
+        else openConversations.delete(id);
       };
-    }, [refreshConversations]);
+    }, [activeConversationId]);
 
     useEffect(() => {
       let cancelled = false;
@@ -86,7 +67,9 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
               mergeConversationUnreadPayload(
                 prev,
                 payload,
-                activeConversationRef.current,
+                openConversations.has(payload.conversationId)
+                  ? payload.conversationId
+                  : null,
               ),
             );
           },
@@ -101,9 +84,9 @@ export const createMessagingHooks = (config: MessagingConnectionConfig) => {
         cancelled = true;
         close?.();
       };
-    }, [config]);
+    }, [config, setConversations]);
 
-    return { conversations, setConversations, loading, refreshConversations };
+    return myConversations;
   };
 
   const useLiveConvoMessages = (

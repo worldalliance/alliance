@@ -39,8 +39,13 @@ const MessagesPage = () => {
     return convoId ? parseInt(convoId) : null;
   }, [params]);
 
-  const { conversations, setConversations, loading } =
-    useConversations(selectedConvoId);
+  const {
+    conversations,
+    setConversations,
+    loading,
+    reloadFailed,
+    refreshConversations,
+  } = useConversations(selectedConvoId);
 
   const setSelectedConvoId = useCallback(
     (convoId: number | null) => {
@@ -254,7 +259,8 @@ const MessagesPage = () => {
   );
 
   useEffect(() => {
-    if (!conversations) return;
+    // A cached list may predate the conversation `to` names.
+    if (!conversations || loading || reloadFailed) return;
     const param = params.get("to");
     if (param) {
       const userId = parseInt(param);
@@ -275,7 +281,14 @@ const MessagesPage = () => {
         handleUpdateRecipientIds([userId]);
       }
     }
-  }, [params, handleUpdateRecipientIds, conversations, setSelectedConvoId]);
+  }, [
+    params,
+    handleUpdateRecipientIds,
+    conversations,
+    loading,
+    reloadFailed,
+    setSelectedConvoId,
+  ]);
 
   useEffect(() => {
     if (selectedConvoId) {
@@ -322,6 +335,14 @@ const MessagesPage = () => {
           onSearchChange={setSearch}
           onSelect={handleConversationClick}
           onCreate={handleCreateNewConversation}
+          refreshFailure={
+            reloadFailed
+              ? {
+                  onRetry: () => void refreshConversations(),
+                  retrying: loading,
+                }
+              : null
+          }
         />
       </div>
       <div
@@ -385,7 +406,11 @@ const MessagesPage = () => {
         )}
         {!selectedConvo && !creatingNewConversation && (
           <div className="flex-1 min-w-0 flex flex-col bg-white rounded-xl overflow-hidden items-center justify-center">
-            <p className="text-zinc-500">No chat selected</p>
+            {loading && selectedConvoId !== null ? (
+              <Spinner size="large" />
+            ) : (
+              <p className="text-zinc-500">No chat selected</p>
+            )}
           </div>
         )}
       </div>

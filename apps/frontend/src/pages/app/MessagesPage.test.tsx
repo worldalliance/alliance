@@ -1,4 +1,5 @@
-import type { ProfileDto } from "@alliance/shared/client";
+import type { ConversationDto, ProfileDto } from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { retryUnlessRefused } from "@alliance/shared/lib/retryQuery";
 import {
   makeConversation,
@@ -6,6 +7,7 @@ import {
 } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { useMyConversations } from "@alliance/shared/lib/useMyConversations";
 import {
   cleanup,
   fireEvent,
@@ -33,6 +35,16 @@ const GRACE: ProfileDto = {
   isCommunityLeader: false,
 };
 
+const conversationsHook = (conversations: ConversationDto[]) => ({
+  conversations,
+  setConversations: () => {},
+  loading: false,
+  reloadFailed: false,
+  refreshConversations: async () => {},
+});
+
+let listed: ConversationDto[] = [];
+let listFails = false;
 let messageableUsersCalls = 0;
 let heldRetry: Promise<Response> | null = null;
 
@@ -42,20 +54,23 @@ serveApi(
       ++messageableUsersCalls === 1
         ? Response.json({ message: "Internal server error" }, { status: 500 })
         : (heldRetry ?? Response.json([GRACE])),
+    "GET /messaging/conversations": () =>
+      listFails
+        ? Response.json({ message: "Internal server error" }, { status: 500 })
+        : Response.json(listed),
     "POST /messaging/conversations/:conversationId/read": () =>
       new Response(null, { status: 201 }),
   }),
 );
 
 beforeEach(() => {
+  listed = [];
+  listFails = false;
   messageableUsersCalls = 0;
   heldRetry = null;
-  jest.spyOn(messagesModule, "useConversations").mockReturnValue({
-    conversations: [],
-    setConversations: () => {},
-    loading: false,
-    refreshConversations: async () => {},
-  });
+  jest
+    .spyOn(messagesModule, "useConversations")
+    .mockReturnValue(conversationsHook([]));
   jest.spyOn(messagesModule, "default").mockReturnValue({
     messages: null,
     addOptimisticMessage: () => {},
@@ -68,8 +83,12 @@ afterEach(cleanup);
 const renderPage = (
   queries: Parameters<typeof queryWrapper>[0],
   path: string = "/",
+  cachedConversations?: ConversationDto[],
 ) => {
-  const { wrapper: QueryWrapper } = queryWrapper(queries);
+  const { wrapper: QueryWrapper, client } = queryWrapper(queries);
+  if (cachedConversations) {
+    client.setQueryData(queryKeys.myConversations(), cachedConversations);
+  }
   render(
     <QueryWrapper>
       <AuthContext.Provider value={authValue({ user: testAuthUser })}>
@@ -130,12 +149,9 @@ it("offers a retry in place of the add-member field when messageable users fail 
     makeParticipant(testAuthUser.id, "admin"),
     makeParticipant(GRACE.id + 1, "member"),
   ]);
-  jest.spyOn(messagesModule, "useConversations").mockReturnValue({
-    conversations: [group],
-    setConversations: () => {},
-    loading: false,
-    refreshConversations: async () => {},
-  });
+  jest
+    .spyOn(messagesModule, "useConversations")
+    .mockReturnValue(conversationsHook([group]));
   renderPage({}, `/?chat=${group.id}`);
   fireEvent.click(screen.getByText(group.title, { selector: "p" }));
 
@@ -148,4 +164,68 @@ it("offers a retry in place of the add-member field when messageable users fail 
   expect(
     screen.queryByText("Couldn't load the people you can add."),
   ).toBeNull();
+});
+
+it("opens the direct chat a profile links to once a cached list that predates it reloads", async () => {
+  const chat = {
+    ...makeConversation(
+      [
+        makeParticipant(testAuthUser.id, "member"),
+        makeParticipant(GRACE.id, "member"),
+      ],
+      "direct",
+    ),
+    title: "Chat with Grace",
+  };
+  listed = [chat];
+  jest
+    .spyOn(messagesModule, "useConversations")
+    .mockImplementation(useMyConversations);
+  renderPage({}, `/?to=${GRACE.id}`, []);
+
+  await screen.findAllByText("Chat with Grace");
+
+  await waitFor(() => expect(screen.queryByText("New message")).toBeNull());
+});
+
+it("waits for a cached list that predates a linked chat to reload, rather than saying no chat is selected", async () => {
+  const group = {
+    ...makeConversation([
+      makeParticipant(testAuthUser.id, "admin"),
+      makeParticipant(GRACE.id, "member"),
+    ]),
+    id: 12,
+    title: "Linked group",
+  };
+  listed = [group];
+  jest
+    .spyOn(messagesModule, "useConversations")
+    .mockImplementation(useMyConversations);
+  renderPage({}, `/?chat=${group.id}`, []);
+
+  expect(screen.queryByText("No chat selected")).toBeNull();
+  await screen.findByText("Linked group", { selector: "p" });
+});
+
+it("keeps the cached chats and offers a retry when reloading them fails", async () => {
+  const group = {
+    ...makeConversation([makeParticipant(testAuthUser.id, "admin")]),
+    title: "Cached group",
+  };
+  listFails = true;
+  jest
+    .spyOn(messagesModule, "useConversations")
+    .mockImplementation(() => useMyConversations());
+  renderPage({}, "/", [group]);
+
+  await screen.findByText("Couldn't refresh your chats.");
+  screen.getByText("Cached group");
+
+  listFails = false;
+  listed = [group];
+  fireEvent.click(screen.getByText("Try again"));
+
+  await waitFor(() =>
+    expect(screen.queryByText("Couldn't refresh your chats.")).toBeNull(),
+  );
 });

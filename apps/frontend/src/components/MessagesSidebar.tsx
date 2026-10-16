@@ -7,6 +7,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { Plus } from "lucide-react";
+import LoadFailed, { type LoadFailure } from "./LoadFailed";
 
 export interface MessagesSidebarProps {
   conversations: ConversationDto[];
@@ -17,6 +18,7 @@ export interface MessagesSidebarProps {
   onSearchChange: (search: string) => void;
   onSelect: (conversationId: number) => () => void;
   onCreate: () => void;
+  refreshFailure: LoadFailure | null;
 }
 
 const MessagesSidebar = ({
@@ -28,6 +30,7 @@ const MessagesSidebar = ({
   onSearchChange,
   onSelect,
   onCreate,
+  refreshFailure,
 }: MessagesSidebarProps) => {
   const filteredConversations = conversations.filter((convo) =>
     convo.title.toLowerCase().includes(search.toLowerCase()),
@@ -56,6 +59,12 @@ const MessagesSidebar = ({
           autoFocus
         />
       </div>
+      {refreshFailure && (
+        <LoadFailed
+          message="Couldn't refresh your chats."
+          {...refreshFailure}
+        />
+      )}
       <div>
         {pendingInvites.length > 0 && (
           <div className="mt-2">

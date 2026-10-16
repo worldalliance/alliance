@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import LoadFailed from "../../../components/LoadFailed";
 import ConversationListItem from "../../../components/messages/ConversationListItem";
 import { ScreenWithLoading } from "../../../components/system/ScreenWithLoading";
 import { SimplePageTitle } from "../../../components/system/SimplePageTitle";
@@ -23,7 +24,7 @@ import {
 
 export default function MessagesScreen() {
   const { user } = useAuth();
-  const { conversations, loading, refreshConversations } =
+  const { conversations, loading, reloadFailed, refreshConversations } =
     useConversations(null);
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -100,6 +101,14 @@ export default function MessagesScreen() {
             />
           </View>
         </View>
+
+        {reloadFailed && (
+          <LoadFailed
+            message="Couldn't refresh your messages."
+            onRetry={() => void refreshConversations()}
+            retrying={loading}
+          />
+        )}
 
         {pendingInvites.length > 0 && (
           <View className="px-4">

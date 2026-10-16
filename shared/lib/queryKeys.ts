@@ -98,6 +98,7 @@ export const queryKeys = {
   membersWithFriends: () => ["userMembersWithFriends"] as const,
   myAwayRanges: () => ["userGetAwayRanges"] as const,
   myCommunities: () => ["communityGetMyCommunities"] as const,
+  myConversations: () => ["conversationGetMyConversations"] as const,
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,
   inviteMessageTemplate: () => ["shareUrlsInviteMessageTemplate"] as const,
   myVisibilityContext: () => ["userMyVisibilityContext"] as const,
