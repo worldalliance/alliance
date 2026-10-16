@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
-  actionsAllGeneralUpdates,
-  actionsDismissGeneralUpdate,
-  actionsUnreadGeneralUpdates,
+  generalUpdatesAllGeneralUpdates,
+  generalUpdatesDismissGeneralUpdate,
+  generalUpdatesUnreadGeneralUpdates,
 } from "../client";
 import { failedToLoad } from "./failedToLoad";
 import { parseGeneralUpdate, type ParsedGeneralUpdate } from "./generalUpdates";
@@ -22,8 +22,8 @@ export function useUnreadGeneralUpdates() {
   const query = useQuery({
     queryKey: UNREAD_QUERY_KEY,
     queryFn: () =>
-      actionsUnreadGeneralUpdates({ throwOnError: true }).then((response) =>
-        response.data.map(parseGeneralUpdate),
+      generalUpdatesUnreadGeneralUpdates({ throwOnError: true }).then(
+        (response) => response.data.map(parseGeneralUpdate),
       ),
     // Both home screens hold their main content until this settles.
     retry: false,
@@ -39,7 +39,7 @@ export function useUnreadGeneralUpdates() {
 
   const dismissGeneralUpdate = useCallback(
     async (generalUpdateId: number) => {
-      await actionsDismissGeneralUpdate({ path: { generalUpdateId } });
+      await generalUpdatesDismissGeneralUpdate({ path: { generalUpdateId } });
       queryClient.setQueryData<ParsedGeneralUpdate[]>(
         UNREAD_QUERY_KEY,
         (prev) => prev?.filter((update) => update.id !== generalUpdateId) ?? [],
@@ -64,7 +64,7 @@ export function useAllGeneralUpdates() {
   const query = useQuery({
     queryKey: ALL_QUERY_KEY,
     queryFn: () =>
-      actionsAllGeneralUpdates({ throwOnError: true }).then((response) =>
+      generalUpdatesAllGeneralUpdates({ throwOnError: true }).then((response) =>
         response.data.map(parseGeneralUpdate),
       ),
   });

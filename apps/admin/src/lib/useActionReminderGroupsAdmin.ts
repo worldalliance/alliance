@@ -1,11 +1,11 @@
 import {
   type ActionEventNotifDto,
-  actionsCreateReminderGroupAdmin,
-  actionsDeleteReminderGroupAdmin,
-  actionsPlansForGroupAdmin,
-  actionsReminderGroupsForEventAdmin,
-  actionsSentNotifsForGroupAdmin,
-  actionsUpdateReminderGroupAdmin,
+  actionRemindersCreateReminderGroupAdmin,
+  actionRemindersDeleteReminderGroupAdmin,
+  actionRemindersPlansForGroupAdmin,
+  actionRemindersReminderGroupsForEventAdmin,
+  actionRemindersSentNotifsForGroupAdmin,
+  actionRemindersUpdateReminderGroupAdmin,
   type CreateReminderGroupDto,
   type PreviewNotificationPlanDto,
   type ReminderGroupDto,
@@ -36,7 +36,7 @@ const reminderGroupsQuery = (eventId: number | null) =>
       eventId === null
         ? skipToken
         : () =>
-            actionsReminderGroupsForEventAdmin({
+            actionRemindersReminderGroupsForEventAdmin({
               path: { id: eventId },
               throwOnError: true,
             }).then((res) => res.data),
@@ -47,8 +47,11 @@ const reminderGroupDetailsQuery = (groupId: number) =>
     queryKey: queryKeys.actionReminderGroupDetailsAdmin(groupId),
     queryFn: async (): Promise<ReminderGroupDetails> => {
       const [plans, sent] = await Promise.all([
-        actionsPlansForGroupAdmin({ path: { groupId }, throwOnError: true }),
-        actionsSentNotifsForGroupAdmin({
+        actionRemindersPlansForGroupAdmin({
+          path: { groupId },
+          throwOnError: true,
+        }),
+        actionRemindersSentNotifsForGroupAdmin({
           path: { groupId },
           throwOnError: true,
         }),
@@ -95,7 +98,7 @@ export function useActionReminderGroupsAdmin(eventId: number | null) {
     }) => {
       const created: ReminderGroupDto[] = [];
       for (const body of params.bodies) {
-        const res = await actionsCreateReminderGroupAdmin({
+        const res = await actionRemindersCreateReminderGroupAdmin({
           path: { eventId: params.eventId },
           body,
           throwOnError: true,
@@ -109,7 +112,7 @@ export function useActionReminderGroupsAdmin(eventId: number | null) {
 
   const update = useMutation({
     mutationFn: (params: { groupId: number; body: CreateReminderGroupDto }) =>
-      actionsUpdateReminderGroupAdmin({
+      actionRemindersUpdateReminderGroupAdmin({
         path: { groupId: params.groupId },
         body: params.body,
         throwOnError: true,
@@ -119,7 +122,7 @@ export function useActionReminderGroupsAdmin(eventId: number | null) {
 
   const remove = useMutation({
     mutationFn: (groupId: number) =>
-      actionsDeleteReminderGroupAdmin({
+      actionRemindersDeleteReminderGroupAdmin({
         path: { groupId },
         throwOnError: true,
       }),

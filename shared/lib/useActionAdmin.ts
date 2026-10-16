@@ -7,15 +7,15 @@ import {
 } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import {
+  actionFormsCreateFollowUpFormAdmin,
+  actionFormsDeleteFollowUpFormAdmin,
+  actionFormsUpdateFollowUpFormAdmin,
   actionsArchiveAdmin,
   actionsCreateAdmin,
-  actionsCreateFollowUpFormAdmin,
-  actionsDeleteFollowUpFormAdmin,
   actionsFindOneAdmin,
   actionsRemoveAdmin,
   actionsUnarchiveAdmin,
   actionsUpdateAdmin,
-  actionsUpdateFollowUpFormAdmin,
   AdminActionDto,
   CreateActionDto,
   CreateFollowUpFormDto,
@@ -189,7 +189,7 @@ export function useActionAdmin(
 
   const createFollowUpFormMutation = useMutation({
     mutationFn: (body: CreateFollowUpFormDto) =>
-      actionsCreateFollowUpFormAdmin({
+      actionFormsCreateFollowUpFormAdmin({
         path: { id: requireActionId() },
         body,
         throwOnError: true,
@@ -215,7 +215,7 @@ export function useActionAdmin(
       followUpFormId: number;
       body: UpdateFollowUpFormDto;
     }) =>
-      actionsUpdateFollowUpFormAdmin({
+      actionFormsUpdateFollowUpFormAdmin({
         path: { followUpFormId },
         body,
         throwOnError: true,
@@ -231,7 +231,7 @@ export function useActionAdmin(
 
   const deleteFollowUpFormMutation = useMutation({
     mutationFn: (followUpFormId: number) =>
-      actionsDeleteFollowUpFormAdmin({
+      actionFormsDeleteFollowUpFormAdmin({
         path: { followUpFormId },
         throwOnError: true,
       }).then((r) => r.data),

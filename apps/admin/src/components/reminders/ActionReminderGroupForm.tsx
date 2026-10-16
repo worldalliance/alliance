@@ -2,7 +2,7 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 import { R } from "@alliance/common/result";
 import {
-  actionsTentativePlansForGroupAdmin,
+  actionRemindersTentativePlansForGroupAdmin,
   Tag,
   TagDto,
   type ActionEventDto,
@@ -364,7 +364,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     let cancelled = false;
     const timer = setTimeout(() => {
       R.fromPromise(
-        actionsTentativePlansForGroupAdmin({
+        actionRemindersTentativePlansForGroupAdmin({
           path: {
             eventId: selectedEventId,
           },

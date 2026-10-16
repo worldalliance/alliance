@@ -1,4 +1,4 @@
-import { actionsHomeFeed } from "@alliance/shared/client";
+import { actionFeedHomeFeed } from "@alliance/shared/client";
 import { buildFeedPage, useFeedQuery } from "./feedHelpers";
 
 export type UseHomeFeedProps = {
@@ -27,7 +27,7 @@ const useHomeFeed = (props: UseHomeFeedProps = {}) => {
     queryKey: [QUERY_KEY_ROOT, limit, comments],
     limit,
     fetchPage: async (before) => {
-      const resp = await actionsHomeFeed({
+      const resp = await actionFeedHomeFeed({
         query: {
           limit: limit.toString(),
           before: before ?? new Date().toISOString(),

@@ -1,4 +1,4 @@
-import { actionsAllGeneralUpdatesAdmin } from "@alliance/shared/client";
+import { generalUpdatesAllGeneralUpdatesAdmin } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
@@ -9,7 +9,9 @@ export function useGeneralUpdatesAdmin() {
   return useQuery({
     queryKey: QUERY_KEY,
     queryFn: () =>
-      actionsAllGeneralUpdatesAdmin({ throwOnError: true }).then((r) => r.data),
+      generalUpdatesAllGeneralUpdatesAdmin({ throwOnError: true }).then(
+        (r) => r.data,
+      ),
   });
 }
 

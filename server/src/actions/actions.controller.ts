@@ -1,18 +1,8 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
-  ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
-  type FeedActionActivity,
-} from "@alliance/common/actionActivity";
-import { AnalyticsEvent } from "@alliance/common/analytics";
-import {
-  BadRequestException,
   Body,
   Controller,
-  DefaultValuePipe,
   Delete,
   Get,
-  HttpCode,
-  HttpStatus,
   Param,
   ParseBoolPipe,
   ParseIntPipe,
@@ -27,16 +17,10 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
-  ApiResponse,
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
 import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
 import type { JwtRequest } from "src/auth/tokens";
-import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
-import { PreviewNotificationPlanDto } from "src/notifs/dto/notification-plan.dto";
-import { ActionEventNotifDto } from "src/notifs/entities/action-event-notif.dto";
-import { MissedSuitePlanService } from "src/notifs/missed-suite-plans.service";
-import { PosthogService } from "src/posthog/posthog.service";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
 import {
   CommunityUserInfoDto,
@@ -51,104 +35,40 @@ import {
   AcknowledgeDeadlineShortening,
   ApiAcknowledgeDeadlineShortening,
 } from "./acknowledge-deadline-shortening";
-import { ActionFormVariantService } from "./action-form-variant.service";
 import { ActionsService } from "./actions.service";
-import {
-  ActionFormVariantDto,
-  ActionFormVariantsListDto,
-  CreateActionFormVariantDto,
-  UpdateActionFormVariantDto,
-} from "./dto/action-form-variant.dto";
-import {
-  AdminActionUpdateDto,
-  RecognitionPreviewAudienceDto,
-  RecognitionPreviewCountsDto,
-} from "./dto/action-update-recognition.dto";
 import {
   ActionActivityDto,
   ActionDto,
   ActionEventDto,
   ActionReferralCodeDto,
   ActionSharePreviewDto,
-  ActionSuiteDto,
-  ActionUpdateDto,
   ActionWithdrawalDto,
   AdminActionDto,
   AdminActionListItemDto,
   CreateActionActivityDto,
   CreateActionDto,
   CreateActionEventDto,
-  CreateActionSuiteDto,
-  CreateActionUpdateDto,
-  CreateReminderGroupDto,
   EvaluateCohortExpressionDto,
   EvaluateCohortExpressionResponseDto,
   ExportActionDto,
-  GlobalFeedItemDto,
-  HomeFeedItemDto,
   PasteJsonDto,
-  PreviewEmailHtmlDto,
-  PreviewEmailHtmlResponseDto,
-  PreviewTextDto,
-  PreviewTextMessageResponseDto,
-  ReminderAnchorCandidateDto,
-  ReminderGroupDto,
   ScheduledPlansOverviewDto,
   SetPriorityDto,
-  TimelineFeedItemDto,
   UpdateActionDto,
-  UpdateActionEventDto,
-  UpdateActionUpdateDto,
   WelcomeQueueDto,
 } from "./dto/action.dto";
 import { CommunityCompletedActionsCountDto } from "./dto/community-completed-actions-count.dto";
-import {
-  AdminFollowUpFormDto,
-  CreateFollowUpFormDto,
-  UpdateFollowUpFormDto,
-} from "./dto/follow-up-form.dto";
-import {
-  CreateGeneralUpdateDto,
-  GeneralUpdateAdminDto,
-  GeneralUpdateDto,
-  UpdateGeneralUpdateDto,
-} from "./dto/general-update.dto";
-import {
-  NotificationScheduleEntryDto,
-  NotificationScheduleQueryDto,
-} from "./dto/notification-schedule.dto";
 import { ShareUrlDto, ShareUrlStatsDto } from "./dto/share-url.dto";
 import { UserCompletedActionsCountDto } from "./dto/user-completed-actions-count.dto";
-import { loadedActionFollowUpForms } from "./entities/action.entity";
-import { parseFeedPage } from "./feed-page";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
-
-const GLOBAL_FEED_MEMBERS_DEFAULT_LIMIT = 30;
-const GLOBAL_FEED_MEMBERS_MAX_LIMIT = 50;
-
-function capGlobalFeedMembersLimit(limit: number): number {
-  return Math.min(Math.max(limit, 1), GLOBAL_FEED_MEMBERS_MAX_LIMIT);
-}
-
-function parseFeedActivityType(value: string): FeedActionActivity {
-  const type = ACTION_ACTIVITY_FEED_VISIBLE_TYPES.find((t) => t === value);
-  if (type) {
-    return type;
-  }
-  throw new BadRequestException(`Invalid activityType: ${value}`);
-}
 
 @Controller("actions")
 export class ActionsController {
   constructor(
     private readonly actionsService: ActionsService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly actionEventReminderService: ActionEventReminderService,
-    private readonly missedSuitePlanService: MissedSuitePlanService,
     private readonly forumActionCompleterWorker: ForumActionCompleterWorker,
-    private readonly actionFormVariantService: ActionFormVariantService,
     private readonly shareUrlsService: ShareUrlsService,
-    private readonly posthog: PosthogService,
     private readonly userService: UserService,
   ) {}
 
@@ -162,217 +82,6 @@ export class ActionsController {
     return this.actionsService.findMemberPublic(req.user.sub, sorted);
   }
 
-  @Get("generalUpdates")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: [GeneralUpdateDto] })
-  async allGeneralUpdates(): Promise<GeneralUpdateDto[]> {
-    return (await this.actionsService.findAllGeneralUpdates()).map(
-      (generalUpdate) => new GeneralUpdateDto(generalUpdate),
-    );
-  }
-
-  @Get("generalUpdates/unread")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: [GeneralUpdateDto] })
-  async unreadGeneralUpdates(
-    @Request() req: JwtRequest,
-  ): Promise<GeneralUpdateDto[]> {
-    return (
-      await this.actionsService.findUnreadGeneralUpdates({
-        userId: req.user.sub,
-        now: new Date(),
-        allowExpired: false,
-      })
-    ).map((generalUpdate) => new GeneralUpdateDto(generalUpdate));
-  }
-
-  @Post("generalUpdates/:generalUpdateId/dismiss")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse()
-  async dismissGeneralUpdate(
-    @Request() req: JwtRequest,
-    @Param("generalUpdateId", ParseIntPipe) generalUpdateId: number,
-  ): Promise<void> {
-    return this.actionsService.dismissGeneralUpdate(
-      req.user.sub,
-      generalUpdateId,
-    );
-  }
-
-  @Get("generalUpdates/admin")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: [GeneralUpdateAdminDto] })
-  async allGeneralUpdatesAdmin(): Promise<GeneralUpdateAdminDto[]> {
-    return (await this.actionsService.findAllGeneralUpdatesAdmin()).map(
-      (generalUpdate) => new GeneralUpdateAdminDto(generalUpdate),
-    );
-  }
-
-  @Get("generalUpdates/admin/:id")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: GeneralUpdateAdminDto })
-  async findOneGeneralUpdateAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<GeneralUpdateAdminDto> {
-    return new GeneralUpdateAdminDto(
-      await this.actionsService.findOneGeneralUpdate(id),
-    );
-  }
-
-  @Post("generalUpdates/create")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: GeneralUpdateAdminDto })
-  async createGeneralUpdateAdmin(
-    @Body() dto: CreateGeneralUpdateDto,
-  ): Promise<GeneralUpdateAdminDto> {
-    return new GeneralUpdateAdminDto(
-      await this.actionsService.createGeneralUpdate(dto),
-    );
-  }
-
-  @Patch("generalUpdates/:id")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: GeneralUpdateAdminDto })
-  @ApiResponse({
-    status: 409,
-    description:
-      "The general update was changed by someone else since it was opened (optimistic-concurrency conflict).",
-  })
-  async updateGeneralUpdateAdmin(
-    @Param("id", ParseIntPipe) id: number,
-    @Body() dto: UpdateGeneralUpdateDto,
-  ): Promise<GeneralUpdateAdminDto> {
-    return new GeneralUpdateAdminDto(
-      await this.actionsService.updateGeneralUpdate(id, dto),
-    );
-  }
-
-  @Get("activities/feed")
-  @UseGuards(AuthOptionalGuard)
-  @ApiOkResponse({ type: [ActionActivityDto] })
-  @ApiOperation({
-    summary: "Get recent activities from all actions for the feed",
-  })
-  async getActivityFeed(
-    @Request() req: JwtRequest,
-    @Query("limit") limit?: string,
-    @Query("before") before?: string,
-    @Query("comments", new ParseBoolPipe({ optional: true }))
-    comments?: boolean,
-  ): Promise<ActionActivityDto[]> {
-    const page = parseFeedPage({ limit, before });
-
-    return await this.actionsService.getActivityFeed(
-      page.limit,
-      page.before,
-      comments,
-      req.user?.sub,
-    );
-  }
-
-  @Get("globalFeed")
-  @UseGuards(AuthOptionalGuard)
-  @ApiOkResponse({ type: [GlobalFeedItemDto] })
-  @ApiOperation({
-    summary:
-      "Get unified global feed with activities, updates, and new members",
-  })
-  async getGlobalFeed(
-    @Request() req: JwtRequest,
-    @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
-  ): Promise<GlobalFeedItemDto[]> {
-    return this.actionsService.getGlobalFeed(limit ?? 15, req.user?.sub);
-  }
-
-  @Get("globalFeed/activityGroupMembers")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: [ProfileDto] })
-  @ApiOperation({
-    summary: "Paginated members behind a global-feed activity-group item",
-  })
-  @ApiQuery({ name: "limit", required: false, type: Number })
-  @ApiQuery({ name: "afterId", required: false, type: Number })
-  async getGlobalFeedActivityMembers(
-    @Request() req: JwtRequest,
-    @Query("actionId", ParseIntPipe) actionId: number,
-    @Query("activityType") activityType: string,
-    @Query(
-      "limit",
-      new DefaultValuePipe(GLOBAL_FEED_MEMBERS_DEFAULT_LIMIT),
-      ParseIntPipe,
-    )
-    limit: number,
-    @Query("afterId", new ParseIntPipe({ optional: true })) afterId?: number,
-  ): Promise<ProfileDto[]> {
-    return this.actionsService.getActivityGroupMembers(
-      actionId,
-      parseFeedActivityType(activityType),
-      capGlobalFeedMembersLimit(limit),
-      afterId,
-      req.user.sub,
-    );
-  }
-
-  @Get("globalFeed/newMembers")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: [ProfileDto] })
-  @ApiOperation({
-    summary: "Paginated members behind the global-feed new-members item",
-  })
-  @ApiQuery({ name: "limit", required: false, type: Number })
-  @ApiQuery({ name: "afterId", required: false, type: Number })
-  async getGlobalFeedNewMembers(
-    @Query(
-      "limit",
-      new DefaultValuePipe(GLOBAL_FEED_MEMBERS_DEFAULT_LIMIT),
-      ParseIntPipe,
-    )
-    limit: number,
-    @Query("afterId", new ParseIntPipe({ optional: true })) afterId?: number,
-  ): Promise<ProfileDto[]> {
-    return this.actionsService.getNewMembers(
-      capGlobalFeedMembersLimit(limit),
-      afterId,
-    );
-  }
-
-  @Get("globalFeed/forumCommentMembers")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: [ProfileDto] })
-  @ApiOperation({
-    summary: "Paginated members behind a global-feed forum-comments item",
-  })
-  @ApiQuery({ name: "limit", required: false, type: Number })
-  @ApiQuery({ name: "afterId", required: false, type: Number })
-  async getGlobalFeedCommentMembers(
-    @Request() req: JwtRequest,
-    @Query("postId", ParseIntPipe) postId: number,
-    @Query(
-      "limit",
-      new DefaultValuePipe(GLOBAL_FEED_MEMBERS_DEFAULT_LIMIT),
-      ParseIntPipe,
-    )
-    limit: number,
-    @Query("afterId", new ParseIntPipe({ optional: true })) afterId?: number,
-  ): Promise<ProfileDto[]> {
-    return this.actionsService.getForumCommentMembers(
-      postId,
-      capGlobalFeedMembersLimit(limit),
-      afterId,
-      req.user.sub,
-    );
-  }
-
-  @Get("activities/:id")
-  @UseGuards(AuthOptionalGuard)
-  @ApiOkResponse({ type: ActionActivityDto })
-  async getActivity(
-    @Request() req: JwtRequest,
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<ActionActivityDto> {
-    return this.actionsService.getActivity(id, req.user?.sub);
-  }
-
   @Get("withdrawals/byForm/:formId")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ActionWithdrawalDto, isArray: true })
@@ -381,43 +90,6 @@ export class ActionsController {
   ): Promise<ActionWithdrawalDto[]> {
     const activities = await this.actionsService.getWithdrawalsForForm(formId);
     return activities.map((a) => new ActionWithdrawalDto(a));
-  }
-
-  @Get("notification-schedule")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: NotificationScheduleEntryDto, isArray: true })
-  async getNotificationScheduleAdmin(
-    @Query() query: NotificationScheduleQueryDto,
-  ): Promise<NotificationScheduleEntryDto[]> {
-    const start = new Date(query.windowStart);
-    const end = new Date(query.windowEnd);
-
-    const schedule =
-      await this.actionEventReminderService.getNotificationSchedule(start, end);
-
-    return schedule.map((entry) => new NotificationScheduleEntryDto(entry));
-  }
-
-  @Get(":id/activities")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: [ActionActivityDto] })
-  @ApiOperation({ summary: "Get recent activities for an action" })
-  async getActionActivities(
-    @Request() req: JwtRequest,
-    @Param("id", ParseIntPipe) id: number,
-    @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
-    @Query("comments", new ParseBoolPipe({ optional: true }))
-    comments?: boolean,
-    @Query("before") before?: string,
-  ): Promise<ActionActivityDto[]> {
-    const beforeDate = before ? new Date(before) : undefined;
-    return this.actionsService.getActionActivities(
-      id,
-      limit,
-      comments,
-      req.user?.sub,
-      beforeDate,
-    );
   }
 
   @Post("priorities")
@@ -439,93 +111,6 @@ export class ActionsController {
       followUpForms: true,
     });
     return actions.map((action) => new AdminActionListItemDto(action));
-  }
-
-  @Get("friendActivity/:actionId")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: [ActionActivityDto] })
-  async friendActivityForAction(
-    @Param("actionId", ParseIntPipe) actionId: number,
-    @Request() req: JwtRequest,
-    @Query("comments", new ParseBoolPipe({ optional: true }))
-    comments?: boolean,
-    @Query("limit", new ParseIntPipe({ optional: true }))
-    limit?: string,
-  ): Promise<ActionActivityDto[]> {
-    const limitNum = limit ? parseInt(limit) : 20;
-    return this.actionsService.friendActivityForAction(
-      req.user.sub,
-      actionId,
-      comments,
-      limitNum,
-    );
-  }
-
-  @Get("friendActivity")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: [ActionActivityDto] })
-  async friendActivity(
-    @Request() req: JwtRequest,
-    @Query("comments", new ParseBoolPipe({ optional: true }))
-    comments?: boolean,
-    @Query("limit", new ParseIntPipe({ optional: true }))
-    limit?: string,
-    @Query("before") before?: string,
-  ): Promise<ActionActivityDto[]> {
-    const limitNum = limit ? parseInt(limit) : 20;
-    const beforeDate = before ? new Date(before) : undefined;
-    return this.actionsService.friendActivity(
-      req.user.sub,
-      comments,
-      limitNum,
-      beforeDate,
-    );
-  }
-
-  @Get("homeFeed")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: [HomeFeedItemDto] })
-  @ApiOperation({
-    summary:
-      "Get contentful completions from friends and group members, interleaved with cluster-mate forum comments on cluster-tagged posts",
-  })
-  async homeFeed(
-    @Request() req: JwtRequest,
-    @Query("limit") limit?: string,
-    @Query("before") before?: string,
-    @Query("comments", new ParseBoolPipe({ optional: true }))
-    comments?: boolean,
-  ): Promise<HomeFeedItemDto[]> {
-    const page = parseFeedPage({ limit, before });
-
-    return this.actionsService.homeFeed(
-      req.user.sub,
-      page.limit,
-      page.before,
-      comments,
-    );
-  }
-
-  @Get("communityActivity")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: [ActionActivityDto] })
-  async communityActivity(
-    @Request() req: JwtRequest,
-    @Query("communityId", ParseIntPipe) communityId: number,
-    @Query("limit") limit?: string,
-    @Query("before") before?: string,
-    @Query("comments", new ParseBoolPipe({ optional: true }))
-    comments?: boolean,
-  ): Promise<ActionActivityDto[]> {
-    const page = parseFeedPage({ limit, before });
-
-    return this.actionsService.communityActivity(
-      page.limit,
-      page.before,
-      communityId,
-      comments,
-      req.user.sub,
-    );
   }
 
   @Get("communityCompletedActionsCount")
@@ -609,47 +194,6 @@ export class ActionsController {
     );
   }
 
-  @Post(":id/follow-up-forms")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: AdminFollowUpFormDto })
-  async createFollowUpFormAdmin(
-    @Param("id", ParseIntPipe) id: number,
-    @Body() dto: CreateFollowUpFormDto,
-  ): Promise<AdminFollowUpFormDto> {
-    const created = await this.actionsService.createFollowUpForm(id, dto);
-    const withForm = await this.actionsService.findOneOrFail({
-      id,
-      serverSide: true,
-    });
-    const found = loadedActionFollowUpForms(withForm).find(
-      (f) => f.id === created.id,
-    );
-    return new AdminFollowUpFormDto(found ?? created);
-  }
-
-  @Patch("follow-up-forms/:followUpFormId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: AdminFollowUpFormDto })
-  async updateFollowUpFormAdmin(
-    @Param("followUpFormId", ParseIntPipe) followUpFormId: number,
-    @Body() dto: UpdateFollowUpFormDto,
-  ): Promise<AdminFollowUpFormDto> {
-    const updated = await this.actionsService.updateFollowUpForm(
-      followUpFormId,
-      dto,
-    );
-    return new AdminFollowUpFormDto(updated);
-  }
-
-  @Delete("follow-up-forms/:followUpFormId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse()
-  async deleteFollowUpFormAdmin(
-    @Param("followUpFormId", ParseIntPipe) followUpFormId: number,
-  ): Promise<void> {
-    return this.actionsService.deleteFollowUpForm(followUpFormId);
-  }
-
   @Get(":id/incomplete-users")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [ProfileDto] })
@@ -677,53 +221,6 @@ export class ActionsController {
       dto.expression,
     );
     return new EvaluateCohortExpressionResponseDto(userIds);
-  }
-
-  @Get(":id/form-variants")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionFormVariantsListDto })
-  async listFormVariantsAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<ActionFormVariantsListDto> {
-    const [variants, stats] = await Promise.all([
-      this.actionFormVariantService.listForAction(id),
-      this.actionFormVariantService.getStatsForAction(id),
-    ]);
-    return new ActionFormVariantsListDto(variants, stats);
-  }
-
-  @Post(":id/form-variants")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionFormVariantDto })
-  async createFormVariantAdmin(
-    @Param("id", ParseIntPipe) id: number,
-    @Body() body: CreateActionFormVariantDto,
-  ): Promise<ActionFormVariantDto> {
-    const variant = await this.actionFormVariantService.createVariant(id, body);
-    return new ActionFormVariantDto(variant);
-  }
-
-  @Patch("form-variants/:variantId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionFormVariantDto })
-  async updateFormVariantAdmin(
-    @Param("variantId", ParseIntPipe) variantId: number,
-    @Body() body: UpdateActionFormVariantDto,
-  ): Promise<ActionFormVariantDto> {
-    const variant = await this.actionFormVariantService.updateVariant(
-      variantId,
-      body,
-    );
-    return new ActionFormVariantDto(variant);
-  }
-
-  @Delete("form-variants/:variantId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse()
-  async deleteFormVariantAdmin(
-    @Param("variantId", ParseIntPipe) variantId: number,
-  ): Promise<void> {
-    await this.actionFormVariantService.deleteVariant(variantId);
   }
 
   @Post("create")
@@ -755,48 +252,6 @@ export class ActionsController {
   @ApiOkResponse()
   removeAdmin(@Param("id", ParseIntPipe) id: number): Promise<void> {
     return this.actionsService.remove(id);
-  }
-
-  @Get("completed/:id")
-  @UseGuards(AuthOptionalGuard)
-  @ApiOkResponse({ type: [ActionActivityDto] })
-  async findCompletedForUser(
-    @Request() req: JwtRequest,
-    @Param("id", ParseIntPipe) id: number,
-    @Query("comments", new ParseBoolPipe({ optional: true }))
-    comments?: boolean,
-  ): Promise<ActionActivityDto[]> {
-    return this.actionsService.findCompletedForUser(
-      +id,
-      comments,
-      req.user?.sub,
-    );
-  }
-
-  @Get("userFeed/:id")
-  @UseGuards(AuthOptionalGuard)
-  @ApiOkResponse({ type: [HomeFeedItemDto] })
-  @ApiOperation({
-    summary:
-      "Get a single user's profile feed: their action completions interleaved with their forum comments (visibility-filtered for the requester)",
-  })
-  async userFeed(
-    @Request() req: JwtRequest,
-    @Param("id", ParseIntPipe) id: number,
-    @Query("limit") limit?: string,
-    @Query("before") before?: string,
-    @Query("comments", new ParseBoolPipe({ optional: true }))
-    comments?: boolean,
-  ): Promise<HomeFeedItemDto[]> {
-    const page = parseFeedPage({ limit, before });
-
-    return this.actionsService.userFeed(
-      +id,
-      req.user?.sub,
-      page.limit,
-      page.before,
-      comments,
-    );
   }
 
   @Get("userCompletedCount/:id")
@@ -833,103 +288,6 @@ export class ActionsController {
         acknowledgeDeadlineShortening,
       }),
     );
-  }
-
-  @Patch("remindergroups/:groupId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ReminderGroupDto })
-  async updateReminderGroupAdmin(
-    @Param("groupId", ParseIntPipe) groupId: number,
-    @Body() body: CreateReminderGroupDto,
-  ): Promise<ReminderGroupDto> {
-    return new ReminderGroupDto(
-      await this.actionEventReminderService.updateReminderGroup(groupId, body),
-    );
-  }
-
-  @Post("events/:eventId/createremindergroup")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ReminderGroupDto })
-  async createReminderGroupAdmin(
-    @Param("eventId", ParseIntPipe) eventId: number,
-    @Body() body: CreateReminderGroupDto,
-  ): Promise<ReminderGroupDto> {
-    return new ReminderGroupDto(
-      await this.actionEventReminderService.createReminderGroup(eventId, body),
-    );
-  }
-
-  @Delete("reminders/:groupId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse()
-  async deleteReminderGroupAdmin(
-    @Param("groupId", ParseIntPipe) groupId: number,
-  ): Promise<void> {
-    await this.actionEventReminderService.deleteReminderGroup(groupId);
-  }
-
-  @Get("plansForGroup/:groupId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: PreviewNotificationPlanDto, isArray: true })
-  async plansForGroupAdmin(
-    @Param("groupId", ParseIntPipe) groupId: number,
-  ): Promise<PreviewNotificationPlanDto[]> {
-    return this.missedSuitePlanService.toPreview(
-      await this.actionEventReminderService.findNotificationPlansForGroup(
-        groupId,
-      ),
-    );
-  }
-
-  @Get("sentNotifsForGroup/:groupId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionEventNotifDto, isArray: true })
-  async sentNotifsForGroupAdmin(
-    @Param("groupId", ParseIntPipe) groupId: number,
-  ): Promise<ActionEventNotifDto[]> {
-    return this.actionEventReminderService.getSentNotifsForGroup(groupId);
-  }
-
-  @Post("likeActivity/:id")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: ActionActivityDto })
-  async likeActivity(
-    @Param("id", ParseIntPipe) id: number,
-    @Request() req: JwtRequest,
-  ): Promise<ActionActivityDto> {
-    const activity = await this.actionsService.likeActivity(id, req.user.sub);
-    this.posthog.capture({
-      event: AnalyticsEvent.ActivityLiked,
-      distinctId: String(req.user.sub),
-      properties: {
-        activityId: id,
-        activityType: activity.type,
-      },
-    });
-    return activity;
-  }
-
-  @Post("unlikeActivity/:id")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: ActionActivityDto })
-  async unlikeActivity(
-    @Param("id", ParseIntPipe) id: number,
-    @Request() req: JwtRequest,
-  ): Promise<ActionActivityDto> {
-    const activity = await this.actionsService.likeActivity(
-      id,
-      req.user.sub,
-      true,
-    );
-    this.posthog.capture({
-      event: AnalyticsEvent.ActivityUnliked,
-      distinctId: String(req.user.sub),
-      properties: {
-        activityId: id,
-        activityType: activity.type,
-      },
-    });
-    return activity;
   }
 
   @Post("dismiss/:id")
@@ -971,282 +329,6 @@ export class ActionsController {
     @Param("id", ParseIntPipe) id: number,
   ): Promise<AdminActionDto> {
     return new AdminActionDto(await this.actionsService.unarchive(id));
-  }
-
-  @Get("reminderGroupsForEvent/:id")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ReminderGroupDto, isArray: true })
-  async reminderGroupsForEventAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<ReminderGroupDto[]> {
-    const groups =
-      await this.actionEventReminderService.getReminderGroupsForEvent(id);
-    return groups.map((group) => new ReminderGroupDto(group));
-  }
-
-  @Get("reminderAnchorCandidates/:eventId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ReminderAnchorCandidateDto, isArray: true })
-  async reminderAnchorCandidatesAdmin(
-    @Param("eventId", ParseIntPipe) eventId: number,
-  ): Promise<ReminderAnchorCandidateDto[]> {
-    const candidates =
-      await this.actionsService.findReminderAnchorCandidates(eventId);
-    return candidates.map(
-      (candidate) => new ReminderAnchorCandidateDto(candidate),
-    );
-  }
-
-  @Post("createUpdate/:id")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: AdminActionUpdateDto })
-  async createUpdateAdmin(
-    @Param("id", ParseIntPipe) id: number,
-    @Body() createActionUpdateDto: CreateActionUpdateDto,
-  ): Promise<AdminActionUpdateDto> {
-    return new AdminActionUpdateDto(
-      await this.actionsService.createActionUpdate(id, createActionUpdateDto),
-    );
-  }
-
-  @Get("updates/admin/:id")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: AdminActionUpdateDto })
-  async findOneUpdateAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<AdminActionUpdateDto> {
-    return new AdminActionUpdateDto(
-      await this.actionsService.findOneActionUpdate(id),
-    );
-  }
-
-  @Patch("updateUpdate/:id")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: AdminActionUpdateDto })
-  @ApiResponse({
-    status: 409,
-    description:
-      "The update was changed by someone else since the editor loaded it.",
-  })
-  async updateUpdateAdmin(
-    @Param("id", ParseIntPipe) id: number,
-    @Body() updateActionUpdateDto: UpdateActionUpdateDto,
-  ): Promise<AdminActionUpdateDto> {
-    return new AdminActionUpdateDto(
-      await this.actionsService.updateActionUpdate(id, updateActionUpdateDto),
-    );
-  }
-
-  @Post("updates/:id/notify")
-  @UseGuards(AdminGuard)
-  @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ type: AdminActionUpdateDto })
-  @ApiResponse({
-    status: 409,
-    description: "The update has already been notified about.",
-  })
-  async notifyUpdateAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<AdminActionUpdateDto> {
-    return new AdminActionUpdateDto(
-      await this.actionsService.notifyActionUpdate(id),
-    );
-  }
-
-  @Post("updates/:id/recognition-preview-counts")
-  @UseGuards(AdminGuard)
-  @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ type: RecognitionPreviewCountsDto })
-  async previewUpdateRecognitionCountsAdmin(
-    @Param("id", ParseIntPipe) id: number,
-    @Body() audience: RecognitionPreviewAudienceDto,
-  ): Promise<RecognitionPreviewCountsDto> {
-    return new RecognitionPreviewCountsDto(
-      await this.actionsService.previewActionUpdateRecognitionCounts(id, {
-        notifyType: audience.notifyType,
-        tagId: audience.tagId ?? null,
-      }),
-    );
-  }
-
-  @Post("updates/:id/unpublish")
-  @UseGuards(AdminGuard)
-  @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ type: AdminActionUpdateDto })
-  @ApiResponse({
-    status: 400,
-    description:
-      "The update is unpublished already, or its displayed date has passed.",
-  })
-  async unpublishUpdateAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<AdminActionUpdateDto> {
-    return new AdminActionUpdateDto(
-      await this.actionsService.unpublishActionUpdateUntilDate(id),
-    );
-  }
-
-  @Post("updates/:id/publish-now")
-  @UseGuards(AdminGuard)
-  @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ type: AdminActionUpdateDto })
-  @ApiResponse({
-    status: 400,
-    description: "The update is not waiting on a future date.",
-  })
-  async publishUpdateNowAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<AdminActionUpdateDto> {
-    return new AdminActionUpdateDto(
-      await this.actionsService.publishActionUpdateNow(id),
-    );
-  }
-
-  @Delete("deleteUpdate/:id")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse()
-  async deleteUpdateAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<void> {
-    await this.actionsService.deleteActionUpdate(id);
-  }
-
-  @Get("allUpdates")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: ActionUpdateDto, isArray: true })
-  async allUpdates(@Request() req: JwtRequest): Promise<ActionUpdateDto[]> {
-    const updates = await this.actionsService.getActionUpdates(
-      undefined,
-      req.user.sub,
-    );
-    return updates.map((update) => new ActionUpdateDto(update));
-  }
-
-  @Get("updates")
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: ActionUpdateDto, isArray: true })
-  async recentUpdates(
-    @Request() req: JwtRequest,
-    @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
-  ): Promise<ActionUpdateDto[]> {
-    const updates = await this.actionsService.getActionUpdates(
-      limit ?? 20,
-      req.user.sub,
-    );
-    return updates.map((update) => new ActionUpdateDto(update));
-  }
-
-  @Get("suites")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionSuiteDto, isArray: true })
-  async suitesAdmin(): Promise<ActionSuiteDto[]> {
-    const suites = await this.actionsService.findSuites();
-    return suites.map((suite) => new ActionSuiteDto(suite, []));
-  }
-
-  @Get("suite/:id")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionSuiteDto })
-  async suiteAdmin(
-    @Param("id", ParseIntPipe) id: number,
-  ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.findSuite(id);
-    return new ActionSuiteDto(suite, suite.actions);
-  }
-
-  @Post("createSuite")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionSuiteDto })
-  async createSuiteAdmin(
-    @Body() createActionSuiteDto: CreateActionSuiteDto,
-  ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.createSuite(createActionSuiteDto);
-    return new ActionSuiteDto(suite, []);
-  }
-
-  @Patch("suite/:suiteId/batchUpdateSuiteEvents/:eventId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionSuiteDto })
-  @ApiAcknowledgeDeadlineShortening()
-  async batchUpdateSuiteEventsAdmin(
-    @Param("suiteId", ParseIntPipe) suiteId: number,
-    @Param("eventId", ParseIntPipe) eventId: number,
-    @Body() body: UpdateActionEventDto,
-    @AcknowledgeDeadlineShortening()
-    acknowledgeDeadlineShortening: boolean,
-  ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.batchUpdateSuiteEvents({
-      suiteId,
-      eventId,
-      body,
-      acknowledgeDeadlineShortening,
-    });
-    return new ActionSuiteDto(suite, suite.actions);
-  }
-
-  @Post("suite/:suiteId/events")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionSuiteDto })
-  @ApiAcknowledgeDeadlineShortening()
-  async addSuiteEventAdmin(
-    @Param("suiteId", ParseIntPipe) suiteId: number,
-    @Body() actionEventDto: CreateActionEventDto,
-    @AcknowledgeDeadlineShortening()
-    acknowledgeDeadlineShortening: boolean,
-  ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.addSuiteEvent({
-      suiteId,
-      event: actionEventDto,
-      acknowledgeDeadlineShortening,
-    });
-    return new ActionSuiteDto(suite, suite.actions);
-  }
-
-  @Delete("suite/:suiteId/events/:eventId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionSuiteDto })
-  async deleteSuiteEventAdmin(
-    @Param("suiteId", ParseIntPipe) suiteId: number,
-    @Param("eventId", ParseIntPipe) eventId: number,
-  ): Promise<ActionSuiteDto> {
-    const suite = await this.actionsService.deleteSuiteEvent(suiteId, eventId);
-    return new ActionSuiteDto(suite, suite.actions);
-  }
-
-  @Post("events/:eventId/checkTentativePlans")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: PreviewNotificationPlanDto, isArray: true })
-  async tentativePlansForGroupAdmin(
-    @Param("eventId", ParseIntPipe) eventId: number,
-    @Body() body: CreateReminderGroupDto,
-  ): Promise<PreviewNotificationPlanDto[]> {
-    return this.missedSuitePlanService.toPreview(
-      await this.actionsService.tentativePlansForGroup(eventId, body),
-    );
-  }
-
-  @Post("previewEmailHtml/:eventId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: PreviewEmailHtmlResponseDto })
-  async previewEmailHtmlAdmin(
-    @Param("eventId", ParseIntPipe) eventId: number,
-    @Body() body: PreviewEmailHtmlDto,
-  ): Promise<PreviewEmailHtmlResponseDto> {
-    return new PreviewEmailHtmlResponseDto(
-      await this.actionEventReminderService.previewEmailHtml(eventId, body),
-    );
-  }
-
-  @Post("previewTextMessage/:eventId")
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: PreviewTextMessageResponseDto })
-  async previewTextMessageAdmin(
-    @Param("eventId", ParseIntPipe) eventId: number,
-    @Body() body: PreviewTextDto,
-  ): Promise<PreviewTextMessageResponseDto> {
-    return new PreviewTextMessageResponseDto(
-      await this.actionEventReminderService.previewTextMessage(eventId, body),
-    );
   }
 
   @Get("export/:id")
@@ -1366,15 +448,5 @@ export class ActionsController {
     return new CommunityUserInfoDto(
       await this.actionsService.findMemberInfo(req.user.sub, communityId),
     );
-  }
-
-  @Get("timeline-feed")
-  @UseGuards(AuthOptionalGuard)
-  @ApiOkResponse({ type: [TimelineFeedItemDto] })
-  async getTimelineFeed(
-    @Request() req: JwtRequest,
-    @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
-  ): Promise<TimelineFeedItemDto[]> {
-    return this.actionsService.getTimelineFeed(limit ?? 15, req.user?.sub);
   }
 }

@@ -1,6 +1,6 @@
 import {
-  actionsPreviewEmailHtmlAdmin,
-  actionsPreviewTextMessageAdmin,
+  actionRemindersPreviewEmailHtmlAdmin,
+  actionRemindersPreviewTextMessageAdmin,
   type PreviewEmailHtmlDto,
   type PreviewTextDto,
 } from "@alliance/shared/client";
@@ -17,7 +17,7 @@ export function useReminderEmailPreviewAdmin(
       eventId === null || preview === null
         ? skipToken
         : () =>
-            actionsPreviewEmailHtmlAdmin({
+            actionRemindersPreviewEmailHtmlAdmin({
               path: { eventId },
               body: preview,
               throwOnError: true,
@@ -36,7 +36,7 @@ export function useReminderTextPreviewAdmin(
       eventId === null || preview === null
         ? skipToken
         : () =>
-            actionsPreviewTextMessageAdmin({
+            actionRemindersPreviewTextMessageAdmin({
               path: { eventId },
               body: preview,
               throwOnError: true,

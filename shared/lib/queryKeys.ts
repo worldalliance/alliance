@@ -45,13 +45,14 @@ const actionReminderGroupsAdminAll = () =>
  */
 export const queryKeys = {
   action: (actionId: number | null) => ["actionsFindOne", actionId] as const,
-  actionUpdatesAll: () => ["actionsAllUpdates"] as const,
+  actionUpdatesAll: () => ["actionUpdatesAllUpdates"] as const,
   actionUpdatesRecent: (limit: number) =>
-    ["actionsRecentUpdates", limit] as const,
+    ["actionUpdatesRecentUpdates", limit] as const,
   /** Also prefixes generalUpdatesUnread, so invalidating it refetches that too. */
   actions: () => ["actions"] as const,
   activitiesAll,
-  activity: (activityId: number) => ["actionsGetActivity", activityId] as const,
+  activity: (activityId: number) =>
+    ["actionFeedGetActivity", activityId] as const,
   activities: ({
     list,
     objectId,
@@ -87,7 +88,7 @@ export const queryKeys = {
   currentContract: () => ["contractGetCurrent"] as const,
   forumPost: (postId: string | undefined) =>
     ["forumFindOnePost", postId] as const,
-  generalUpdatesAll: () => ["actionsAllGeneralUpdates"] as const,
+  generalUpdatesAll: () => ["generalUpdatesAllGeneralUpdates"] as const,
   generalUpdatesUnread: () => ["actions", "generalUpdates", "unread"] as const,
   incomingCommunityInvites: () =>
     ["communityGetIncomingCommunityInvitesForUser"] as const,
@@ -132,14 +133,15 @@ export const queryKeys = {
     [...actionCompletionCurvesAdminAll(), granularity] as const,
   actionStatsAdmin: () => ["analyticsGetActionStatsAdmin"] as const,
   actionUpdateAdmin: (id: number | null) =>
-    ["actionsFindOneUpdateAdmin", id] as const,
+    ["actionUpdatesFindOneUpdateAdmin", id] as const,
   actionUpdateRecognitionPreviewCountsAdmin: (
     id: number,
     audience: { notifyType: string; tagId: string | null },
-  ) => ["actionsPreviewUpdateRecognitionCountsAdmin", id, audience] as const,
+  ) =>
+    ["actionUpdatesPreviewUpdateRecognitionCountsAdmin", id, audience] as const,
   actionSuiteAdmin: (suiteId: number) =>
-    ["actionsSuiteAdmin", suiteId] as const,
-  actionSuitesAdmin: () => ["actionsSuitesAdmin"] as const,
+    ["actionSuitesSuiteAdmin", suiteId] as const,
+  actionSuitesAdmin: () => ["actionSuitesSuitesAdmin"] as const,
   actionsAllAdmin: () => ["actionsFindAllWithDraftsAdmin"] as const,
   actionCohortDecisionsAdmin: (actionId: number) =>
     ["cohortDecisionsListForActionAdmin", actionId] as const,
@@ -153,7 +155,7 @@ export const queryKeys = {
   actionReminderGroupDetailsAdmin: (groupId: number) =>
     [...actionReminderGroupsAdminAll(), "group", groupId] as const,
   actionReminderAnchorCandidatesAdmin: (eventId: number | null) =>
-    ["actionsReminderAnchorCandidatesAdmin", eventId] as const,
+    ["actionRemindersReminderAnchorCandidatesAdmin", eventId] as const,
   ambassadorProgramAdmin: () => ["userGetAmbassadorProgramAdmin"] as const,
   campaignsAdmin: () => ["campaignFindAllAdmin"] as const,
   clustersAdmin: () => ["clusterListAdmin"] as const,
@@ -187,14 +189,14 @@ export const queryKeys = {
     ["actionsGetWithdrawalsAdmin", formId] as const,
   formsAdmin: () => [...formsAdminAll(), "index"] as const,
   formVariantsAdmin: (actionId: number) =>
-    ["actionsListFormVariantsAdmin", actionId] as const,
+    ["actionFormsListFormVariantsAdmin", actionId] as const,
   formQuestionFieldsAdmin: (formId: number | null) =>
     [...formsAdminAll(), "questionFields", formId] as const,
   formResponseCountsAdmin: (formIds: readonly number[]) =>
     [...formsAdminAll(), "responseCounts", formIds] as const,
   generalUpdateAdmin: (id: number | null) =>
-    ["actionsFindOneGeneralUpdateAdmin", id] as const,
-  generalUpdatesAdmin: () => ["actionsAllGeneralUpdatesAdmin"] as const,
+    ["generalUpdatesFindOneGeneralUpdateAdmin", id] as const,
+  generalUpdatesAdmin: () => ["generalUpdatesAllGeneralUpdatesAdmin"] as const,
   graphUsersAdmin: () => ["userListForGraphAdmin"] as const,
   inviteFeedAdmin: (startAt: string | null) =>
     ["inviteFeedAdmin", startAt] as const,
@@ -217,13 +219,13 @@ export const queryKeys = {
   reminderEmailPreviewAdmin: (
     eventId: number | null,
     preview: PreviewEmailHtmlDto | null,
-  ) => ["actionsPreviewEmailHtmlAdmin", eventId, preview] as const,
+  ) => ["actionRemindersPreviewEmailHtmlAdmin", eventId, preview] as const,
   reminderGroupClickRatesAdmin: () =>
     ["analyticsGetReminderGroupClickRatesAdmin"] as const,
   reminderTextPreviewAdmin: (
     eventId: number | null,
     preview: PreviewTextDto | null,
-  ) => ["actionsPreviewTextMessageAdmin", eventId, preview] as const,
+  ) => ["actionRemindersPreviewTextMessageAdmin", eventId, preview] as const,
   responseSnapshotMigrationAdmin: (formId: number | null) =>
     ["tasksGetResponseSnapshotMigrationAdmin", formId] as const,
   scheduledPlansAdmin: () => ["actionsScheduledPlansAdmin"] as const,

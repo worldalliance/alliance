@@ -1,8 +1,8 @@
 import {
   HomeFeedForumCommentDto,
   HomeFeedItemDto,
-  actionsLikeActivity,
-  actionsUnlikeActivity,
+  actionFeedLikeActivity,
+  actionFeedUnlikeActivity,
   forumLikeComment,
   forumUnlikeComment,
 } from "@alliance/shared/client";
@@ -124,8 +124,8 @@ export const useFeedLikeMutations = (
       activityType: string;
     }) => {
       const response = isLiked
-        ? await actionsUnlikeActivity({ path: { id: activityId } })
-        : await actionsLikeActivity({ path: { id: activityId } });
+        ? await actionFeedUnlikeActivity({ path: { id: activityId } })
+        : await actionFeedLikeActivity({ path: { id: activityId } });
       if (response.response.ok && response.data) return response.data;
       throw new Error("Like request failed");
     },

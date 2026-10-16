@@ -1,7 +1,7 @@
 import {
-  actionsCreateGeneralUpdateAdmin,
-  actionsFindOneGeneralUpdateAdmin,
-  actionsUpdateGeneralUpdateAdmin,
+  generalUpdatesCreateGeneralUpdateAdmin,
+  generalUpdatesFindOneGeneralUpdateAdmin,
+  generalUpdatesUpdateGeneralUpdateAdmin,
   type CreateGeneralUpdateDto,
   type GeneralUpdateAdminDto,
   type UpdateGeneralUpdateDto,
@@ -28,7 +28,7 @@ export function useGeneralUpdateAdmin(id: number | null) {
       id === null
         ? skipToken
         : () =>
-            actionsFindOneGeneralUpdateAdmin({
+            generalUpdatesFindOneGeneralUpdateAdmin({
               path: { id },
               throwOnError: true,
             }).then((r) => r.data),
@@ -44,7 +44,7 @@ export function useGeneralUpdateAdmin(id: number | null) {
 
   const create = useMutation({
     mutationFn: (body: CreateGeneralUpdateDto) =>
-      actionsCreateGeneralUpdateAdmin({ body, throwOnError: true }).then(
+      generalUpdatesCreateGeneralUpdateAdmin({ body, throwOnError: true }).then(
         (r) => r.data,
       ),
     onSuccess: store,
@@ -53,7 +53,7 @@ export function useGeneralUpdateAdmin(id: number | null) {
   const update = useMutation({
     mutationFn: (body: UpdateGeneralUpdateDto) => {
       if (id === null) throw new Error("No general update to update");
-      return actionsUpdateGeneralUpdateAdmin({
+      return generalUpdatesUpdateGeneralUpdateAdmin({
         path: { id },
         body,
         throwOnError: true,
@@ -67,13 +67,13 @@ export function useGeneralUpdateAdmin(id: number | null) {
     save: useCallback(
       (body: DisplayOnlySchemaSaveBody) => {
         if (id === null) throw new Error("Missing general update id");
-        return actionsUpdateGeneralUpdateAdmin({ path: { id }, body });
+        return generalUpdatesUpdateGeneralUpdateAdmin({ path: { id }, body });
       },
       [id],
     ),
     refetch: useCallback(() => {
       if (id === null) throw new Error("Missing general update id");
-      return actionsFindOneGeneralUpdateAdmin({ path: { id } });
+      return generalUpdatesFindOneGeneralUpdateAdmin({ path: { id } });
     }, [id]),
     onSaved: useCallback(
       (saved: GeneralUpdateAdminDto) => void store(saved),

@@ -1,8 +1,8 @@
 import {
-  actionsCreateFormVariantAdmin,
-  actionsDeleteFormVariantAdmin,
-  actionsListFormVariantsAdmin,
-  actionsUpdateFormVariantAdmin,
+  actionFormsCreateFormVariantAdmin,
+  actionFormsDeleteFormVariantAdmin,
+  actionFormsListFormVariantsAdmin,
+  actionFormsUpdateFormVariantAdmin,
   type ActionFormVariantsListDto,
   type CreateActionFormVariantDto,
   type UpdateActionFormVariantDto,
@@ -29,7 +29,7 @@ export function useFormVariantsAdmin<T>(
   const variants = useQuery({
     queryKey,
     queryFn: () =>
-      actionsListFormVariantsAdmin({
+      actionFormsListFormVariantsAdmin({
         path: { id: actionId },
         throwOnError: true,
       }).then((res) => res.data),
@@ -43,7 +43,7 @@ export function useFormVariantsAdmin<T>(
       for (const body of drafts) {
         // A request that never reaches the server still has to report the
         // drafts before it as published, or a retry creates them twice.
-        const res = await actionsCreateFormVariantAdmin({
+        const res = await actionFormsCreateFormVariantAdmin({
           path: { id: actionId },
           body,
         }).catch((error: unknown) => ({ error }));
@@ -64,7 +64,7 @@ export function useFormVariantsAdmin<T>(
       variantId: number;
       body: UpdateActionFormVariantDto;
     }) =>
-      actionsUpdateFormVariantAdmin({
+      actionFormsUpdateFormVariantAdmin({
         path: { variantId },
         body,
         throwOnError: true,
@@ -74,7 +74,7 @@ export function useFormVariantsAdmin<T>(
 
   const deleteVariant = useMutation({
     mutationFn: (variantId: number) =>
-      actionsDeleteFormVariantAdmin({
+      actionFormsDeleteFormVariantAdmin({
         path: { variantId },
         throwOnError: true,
       }),

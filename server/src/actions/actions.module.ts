@@ -31,12 +31,17 @@ import { ContractEvent } from "../user/entities/contract-event.entity";
 import { Tag } from "../user/entities/tag.entity";
 import { User } from "../user/entities/user.entity";
 import { UserModule } from "../user/user.module";
+import { ActionFeedController } from "./action-feed.controller";
 import { ActionFormVariantService } from "./action-form-variant.service";
+import { ActionFormsController } from "./action-forms.controller";
 import { ActionParticipantsService } from "./action-participants.service";
+import { ActionRemindersController } from "./action-reminders.controller";
 import { ActionStatsService } from "./action-stats.service";
+import { ActionSuitesController } from "./action-suites.controller";
 import { ActionUpdateRecognitionPreviewService } from "./action-update-recognition-preview.service";
 import { ActionUpdateRecognitionService } from "./action-update-recognition.service";
 import { ActionUpdateRecognitionWorker } from "./action-update-recognition.worker";
+import { ActionUpdatesController } from "./action-updates.controller";
 import { ActionVisibilityModule } from "./action-visibility.module";
 import { ActionsController } from "./actions.controller";
 import { ActionsGateway } from "./actions.gateway";
@@ -66,6 +71,7 @@ import { GeneralUpdate } from "./entities/general-update.entity";
 import { Project } from "./entities/project.entity";
 import { ReminderGroup } from "./entities/reminder-group.entity";
 import { ForumActionCompleterWorker } from "./forum-action-completer.worker";
+import { GeneralUpdatesController } from "./general-updates.controller";
 import { ProjectsController } from "./projects.controller";
 import { ProjectsService } from "./projects.service";
 import { ReloadUsersJoinedWorker } from "./reload-users-joined.worker";
@@ -121,6 +127,12 @@ import { TaskBadgeService } from "./task-badge.service";
   ],
   controllers: [
     ActionsController,
+    GeneralUpdatesController,
+    ActionUpdatesController,
+    ActionRemindersController,
+    ActionSuitesController,
+    ActionFeedController,
+    ActionFormsController,
     CohortDecisionsController,
     ProjectsController,
   ],
