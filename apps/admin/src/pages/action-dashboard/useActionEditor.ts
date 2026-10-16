@@ -4,7 +4,7 @@ import { ensureHttpProtocol } from "@alliance/common/url";
 import { ActionCategory, CreateActionDto } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import React, { useCallback, useEffect, useState } from "react";
-import type { ReviewerRow } from "../../components/ActionForm";
+import type { ReviewerRow } from "../../components/ActionReviewersEditor";
 import { actionFormInputValue } from "../../lib/actionFormInputValue";
 import { changedActionImages } from "../../lib/actionImages";
 import { makeTempId } from "../../lib/tempId";
