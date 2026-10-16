@@ -19,6 +19,10 @@ let respondToContractStatusHistory: (() => Promise<Response>) | null = null;
 let dailyStatsStatus = 200;
 let dailyStatsRequests: URL[] = [];
 let inviteFunnelStatus = 200;
+let platformTenureCohortStatus = 200;
+let platformTenureCohortMessage = "Internal server error";
+let platformTenureCohortRequests: URL[] = [];
+let respondToPlatformTenureCohort: (() => Promise<Response>) | null = null;
 
 serveApi(
   routes({
@@ -49,6 +53,26 @@ serveApi(
             onboardingCompleted: 1,
           })
         : Response.json({}, { status: inviteFunnelStatus }),
+    "GET /analytics/platform-tenure-cohort": ({ request }) => {
+      platformTenureCohortRequests.push(new URL(request.url));
+      if (respondToPlatformTenureCohort) return respondToPlatformTenureCohort();
+      return platformTenureCohortStatus === 200
+        ? Response.json({
+            weeksOnPlatform: 4,
+            cohortSize: 37,
+            activeCount: 30,
+            churnedCount: 7,
+            churnRate: 7 / 37,
+            assignedCount: 50,
+            completedCount: 20,
+            completionRate: 0.4,
+            actions: [],
+          })
+        : Response.json(
+            { message: platformTenureCohortMessage },
+            { status: platformTenureCohortStatus },
+          );
+    },
     "GET /analytics/reminder-group-click-rates": () =>
       clickRatesStatus === 200
         ? Response.json([])
@@ -63,6 +87,10 @@ afterEach(() => {
   dailyStatsStatus = 200;
   dailyStatsRequests = [];
   inviteFunnelStatus = 200;
+  platformTenureCohortStatus = 200;
+  platformTenureCohortMessage = "Internal server error";
+  platformTenureCohortRequests = [];
+  respondToPlatformTenureCohort = null;
 });
 
 const renderPage = () => {
@@ -216,5 +244,103 @@ describe("StatsPage members over time", () => {
     expect(
       screen.queryByText("No contract status data in this date range."),
     ).toBeNull();
+  });
+});
+
+describe("StatsPage platform tenure cohort", () => {
+  const viewCohort = (weeks: string) => {
+    const input = screen
+      .getByText("Weeks after joining")
+      .closest("label")
+      ?.querySelector("input");
+    if (!input) throw new Error("no weeks after joining input");
+    fireEvent.change(input, { target: { value: weeks } });
+    const form = input.closest("form");
+    if (!form) throw new Error("no weeks after joining form");
+    fireEvent.submit(form);
+  };
+
+  it("shows the cohort for the requested weeks", async () => {
+    renderPage();
+
+    viewCohort("4");
+
+    await screen.findByText("37");
+    expect(
+      platformTenureCohortRequests.map((url) =>
+        url.searchParams.get("weeksOnPlatform"),
+      ),
+    ).toEqual(["4"]);
+  });
+
+  it("refuses a week count that isn't a whole number without requesting it", async () => {
+    renderPage();
+
+    viewCohort("-1");
+
+    await screen.findByText("Weeks on platform must be a whole number.");
+    expect(platformTenureCohortRequests).toEqual([]);
+  });
+
+  it("retries the same weeks after a failed load", async () => {
+    platformTenureCohortStatus = 500;
+    renderPage();
+    viewCohort("4");
+    await screen.findByText(
+      "Unable to load this cohort right now. Please try again soon.",
+    );
+
+    platformTenureCohortStatus = 200;
+    viewCohort("4");
+
+    await screen.findByText("37");
+    expect(platformTenureCohortRequests).toHaveLength(2);
+  });
+
+  it("drops the shown cohort when reloading it fails", async () => {
+    renderPage();
+    viewCohort("4");
+    await screen.findByText("37");
+
+    platformTenureCohortStatus = 500;
+    viewCohort("4");
+
+    await screen.findByText(
+      "Unable to load this cohort right now. Please try again soon.",
+    );
+    expect(screen.queryByText("37")).toBeNull();
+  });
+
+  it("says it is loading, not that it failed, while retrying a failed reload", async () => {
+    renderPage();
+    viewCohort("4");
+    await screen.findByText("37");
+    platformTenureCohortStatus = 500;
+    viewCohort("4");
+    await screen.findByText(
+      "Unable to load this cohort right now. Please try again soon.",
+    );
+
+    const next: Pending<Response>[] = [];
+    respondToPlatformTenureCohort = () => pending(next);
+    viewCohort("4");
+    await waitFor(() => expect(next).toHaveLength(1));
+
+    await screen.findByText("Loading cohort...");
+    expect(
+      screen.queryByText(
+        "Unable to load this cohort right now. Please try again soon.",
+      ),
+    ).toBeNull();
+  });
+
+  it("says why the server refused the cohort", async () => {
+    platformTenureCohortStatus = 403;
+    platformTenureCohortMessage = "Admins only";
+    renderPage();
+
+    viewCohort("4");
+
+    await screen.findByText("Admins only");
   });
 });
