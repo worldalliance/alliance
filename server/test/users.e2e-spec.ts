@@ -21,6 +21,9 @@ import {
 } from "src/share-urls/entities/share-url.entity";
 import { StoredInviteAssignmentKind } from "src/share-urls/invite-assignment";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { AccountEmailService } from "src/user/account-email.service";
+import { AmbassadorInviteGoalService } from "src/user/ambassador-invite-goal.service";
+import { AmbassadorProgramService } from "src/user/ambassador-program.service";
 import { AmbassadorInviteGoal } from "src/user/entities/ambassador-invite-goal.entity";
 import {
   ContractEvent,
@@ -30,7 +33,7 @@ import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "src/user/entities/onetime-invite.entity";
-import { UserService } from "src/user/user.service";
+import { FriendService } from "src/user/friend.service";
 import request from "supertest";
 import { IsNull, type Repository } from "typeorm";
 import {
@@ -56,7 +59,10 @@ describe("Users (e2e)", () => {
   let cityRepo: Repository<City>;
   let communityRepo: Repository<Community>;
   let onetimeInviteRepo: Repository<OnetimeInvite>;
-  let userService: UserService;
+  let accountEmailService: AccountEmailService;
+  let ambassadorProgramService: AmbassadorProgramService;
+  let ambassadorInviteGoalService: AmbassadorInviteGoalService;
+  let friendService: FriendService;
   let contractService: ContractService;
   let shareUrlsService: ShareUrlsService;
   let authService: AuthService;
@@ -76,7 +82,10 @@ describe("Users (e2e)", () => {
     cityRepo = ctx.dataSource.getRepository(City);
     communityRepo = ctx.dataSource.getRepository(Community);
     onetimeInviteRepo = ctx.dataSource.getRepository(OnetimeInvite);
-    userService = ctx.app.get(UserService);
+    accountEmailService = ctx.app.get(AccountEmailService);
+    ambassadorProgramService = ctx.app.get(AmbassadorProgramService);
+    ambassadorInviteGoalService = ctx.app.get(AmbassadorInviteGoalService);
+    friendService = ctx.app.get(FriendService);
     contractService = ctx.app.get(ContractService);
     shareUrlsService = ctx.app.get(ShareUrlsService);
     authService = ctx.app.get(AuthService);
@@ -1012,7 +1021,7 @@ describe("Users (e2e)", () => {
 
   it("User cannot be made friends with themself automatically", async () => {
     await expect(
-      userService.makeFriendsAutomated(userAId, userAId),
+      friendService.makeFriendsAutomated(userAId, userAId),
     ).rejects.toThrow(/violates check constraint/);
   });
 
@@ -1108,7 +1117,7 @@ describe("Users (e2e)", () => {
       }),
     );
     const now = new Date();
-    const goal = await userService.createAmbassadorInviteGoal(
+    const goal = await ambassadorInviteGoalService.createAmbassadorInviteGoal(
       {
         targetSuccessfulRecruits: 3,
         startAt: now.toISOString(),
@@ -1119,9 +1128,10 @@ describe("Users (e2e)", () => {
       ambassador.id,
     );
 
-    const beforeSigning = await userService.getAmbassadorInviteDashboard(
-      ambassador.id,
-    );
+    const beforeSigning =
+      await ambassadorInviteGoalService.getAmbassadorInviteDashboard(
+        ambassador.id,
+      );
     expect(beforeSigning.stats.totalSuccessfulRecruits).toBe(0);
     expect(
       beforeSigning.goals.find(
@@ -1148,9 +1158,10 @@ describe("Users (e2e)", () => {
       contractId: ctx.defaultContractId,
     });
 
-    const afterSigning = await userService.getAmbassadorInviteDashboard(
-      ambassador.id,
-    );
+    const afterSigning =
+      await ambassadorInviteGoalService.getAmbassadorInviteDashboard(
+        ambassador.id,
+      );
     expect(afterSigning.stats.totalSuccessfulRecruits).toBe(3);
     expect(
       afterSigning.goals.find(
@@ -1158,12 +1169,12 @@ describe("Users (e2e)", () => {
       )?.stats.goalSuccessfulRecruits,
     ).toBe(3);
 
-    await userService.upsertAmbassadorProgramMember({
+    await ambassadorProgramService.upsertAmbassadorProgramMember({
       userId: ambassador.id,
       activeParticipant: true,
     });
     const programMember = (
-      await userService.getAmbassadorProgramDashboard()
+      await ambassadorProgramService.getAmbassadorProgramDashboard()
     ).members.find((member) => member.userId === ambassador.id);
     expect(programMember?.inviteStats?.totals.totalSuccessfulRecruits).toBe(3);
     expect(
@@ -1332,9 +1343,10 @@ describe("Users (e2e)", () => {
       totalSuccessfulRecruits: 5,
       goalSuccessfulRecruits: 0,
     };
-    const dashboard = await userService.getAmbassadorInviteDashboard(
-      ambassador.id,
-    );
+    const dashboard =
+      await ambassadorInviteGoalService.getAmbassadorInviteDashboard(
+        ambassador.id,
+      );
     expect(dashboard.stats).toEqual(allTime);
     const goalStats = (goalId: number) =>
       dashboard.goals.find(({ goal: { id } }) => id === goalId)?.stats;
@@ -1368,12 +1380,13 @@ describe("Users (e2e)", () => {
       }),
     );
     for (const { id } of [ambassador, otherAmbassador]) {
-      await userService.upsertAmbassadorProgramMember({
+      await ambassadorProgramService.upsertAmbassadorProgramMember({
         userId: id,
         activeParticipant: true,
       });
     }
-    const { members } = await userService.getAmbassadorProgramDashboard();
+    const { members } =
+      await ambassadorProgramService.getAmbassadorProgramDashboard();
     const totalsOf = (userId: number) =>
       members.find((member) => member.userId === userId)?.inviteStats?.totals;
     expect(totalsOf(ambassador.id)).toEqual(allTime);
@@ -1384,7 +1397,7 @@ describe("Users (e2e)", () => {
       goalSuccessfulRecruits: 0,
     });
 
-    await userService.sendDueAmbassadorInviteGoalNotifications();
+    await ambassadorInviteGoalService.sendDueAmbassadorInviteGoalNotifications();
     const notifications = await ctx.dataSource
       .getRepository(Notification)
       .findBy({ user: { id: ambassador.id } });
@@ -1417,8 +1430,8 @@ describe("Users (e2e)", () => {
       dueAt: new Date(now + milliseconds({ minutes: 1 })),
     });
 
-    await userService.sendDueAmbassadorInviteGoalNotifications();
-    await userService.sendDueAmbassadorInviteGoalNotifications();
+    await ambassadorInviteGoalService.sendDueAmbassadorInviteGoalNotifications();
+    await ambassadorInviteGoalService.sendDueAmbassadorInviteGoalNotifications();
 
     const notifications = await ctx.dataSource
       .getRepository(Notification)
@@ -2762,7 +2775,7 @@ describe("Users (e2e)", () => {
   });
 
   it("verifies email tokens via the public endpoint", async () => {
-    const token = await userService.getVerifyEmailToken(userAId);
+    const token = await accountEmailService.getVerifyEmailToken(userAId);
 
     await request(ctx.app.getHttpServer())
       .post("/user/verifyEmail")
@@ -3696,7 +3709,7 @@ describe("Users (e2e)", () => {
     });
 
     it("refuses a verify-email token for a deleted user with 400", async () => {
-      const token = await userService.getVerifyEmailToken(999_999_999);
+      const token = await accountEmailService.getVerifyEmailToken(999_999_999);
       await request(ctx.app.getHttpServer())
         .post("/user/verifyEmail")
         .send({ token })
@@ -3715,7 +3728,7 @@ describe("Users (e2e)", () => {
       expect(await isVerified(userBId)).toBe(true);
 
       await userRepo.update(userBId, { emailVerified: false });
-      const token = await userService.getVerifyEmailToken(userBId);
+      const token = await accountEmailService.getVerifyEmailToken(userBId);
       await request(ctx.app.getHttpServer())
         .post("/user/verifyEmail")
         .send({ token })
@@ -3724,7 +3737,7 @@ describe("Users (e2e)", () => {
     });
 
     it("resets the password with a reset token, minted before or after the type landed", async () => {
-      const token = await userService.generatePasswordResetToken(userBId);
+      const token = await authService.generatePasswordResetToken(userBId);
       await request(ctx.app.getHttpServer())
         .post("/auth/reset-password")
         .send({ token, password: "FreshPassword123!" })
@@ -3751,7 +3764,7 @@ describe("Users (e2e)", () => {
     });
 
     it("refuses a verify-email token as a password reset", async () => {
-      const token = await userService.getVerifyEmailToken(userBId);
+      const token = await accountEmailService.getVerifyEmailToken(userBId);
 
       await request(ctx.app.getHttpServer())
         .post("/auth/reset-password")
@@ -3807,7 +3820,7 @@ describe("Users (e2e)", () => {
       const userB = await saveGraphUser("Active B");
       await giveActiveContract(ctx, userA.id);
       await giveActiveContract(ctx, userB.id);
-      await userService.makeFriendsAutomated(userA.id, userB.id);
+      await friendService.makeFriendsAutomated(userA.id, userB.id);
 
       expect(await fetchHasEdge(userA.id, userB.id)).toBe(true);
 
@@ -3818,7 +3831,7 @@ describe("Users (e2e)", () => {
       const requester = await saveGraphUser("Active Requester");
       const addressee = await saveGraphUser("Inactive Addressee");
       await giveActiveContract(ctx, requester.id);
-      await userService.makeFriendsAutomated(requester.id, addressee.id);
+      await friendService.makeFriendsAutomated(requester.id, addressee.id);
 
       expect(await fetchHasEdge(requester.id, addressee.id)).toBe(false);
 
@@ -3829,7 +3842,7 @@ describe("Users (e2e)", () => {
       const requester = await saveGraphUser("Inactive Requester");
       const addressee = await saveGraphUser("Active Addressee");
       await giveActiveContract(ctx, addressee.id);
-      await userService.makeFriendsAutomated(requester.id, addressee.id);
+      await friendService.makeFriendsAutomated(requester.id, addressee.id);
 
       expect(await fetchHasEdge(requester.id, addressee.id)).toBe(false);
 
@@ -3841,7 +3854,7 @@ describe("Users (e2e)", () => {
       const addressee = await saveGraphUser("Pending Addressee");
       await giveActiveContract(ctx, requester.id);
       await giveActiveContract(ctx, addressee.id);
-      await userService.createFriendRequest(requester.id, addressee.id);
+      await friendService.createFriendRequest(requester.id, addressee.id);
 
       expect(await fetchHasEdge(requester.id, addressee.id)).toBe(false);
 

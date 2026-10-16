@@ -7,10 +7,10 @@ import { useCallback } from "react";
 import {
   CreateOnetimeInviteDto,
   OnetimeInviteDto,
-  userApproveOnetimeInvite,
-  userCreateOnetimeInvite,
-  userDeleteOnetimeInvite,
-  userRejectOnetimeInvite,
+  userOnetimeInviteApproveOnetimeInvite,
+  userOnetimeInviteCreateOnetimeInvite,
+  userOnetimeInviteDeleteOnetimeInvite,
+  userOnetimeInviteRejectOnetimeInvite,
 } from "../client";
 
 /**
@@ -46,21 +46,27 @@ export function useOnetimeInviteCache(queryKey: QueryKey) {
 
   const createMutation = useMutation({
     mutationFn: (body: CreateOnetimeInviteDto) =>
-      userCreateOnetimeInvite({ body, throwOnError: true }).then((r) => r.data),
-    onSuccess: (invite) => upsertInvite(invite),
-  });
-
-  const approveMutation = useMutation({
-    mutationFn: (inviteId: number) =>
-      userApproveOnetimeInvite({ path: { inviteId }, throwOnError: true }).then(
+      userOnetimeInviteCreateOnetimeInvite({ body, throwOnError: true }).then(
         (r) => r.data,
       ),
     onSuccess: (invite) => upsertInvite(invite),
   });
 
+  const approveMutation = useMutation({
+    mutationFn: (inviteId: number) =>
+      userOnetimeInviteApproveOnetimeInvite({
+        path: { inviteId },
+        throwOnError: true,
+      }).then((r) => r.data),
+    onSuccess: (invite) => upsertInvite(invite),
+  });
+
   const rejectMutation = useMutation({
     mutationFn: async (inviteId: number) => {
-      await userRejectOnetimeInvite({ path: { inviteId }, throwOnError: true });
+      await userOnetimeInviteRejectOnetimeInvite({
+        path: { inviteId },
+        throwOnError: true,
+      });
       return inviteId;
     },
     onSuccess: (inviteId) => removeInvite(inviteId),
@@ -68,7 +74,10 @@ export function useOnetimeInviteCache(queryKey: QueryKey) {
 
   const deleteMutation = useMutation({
     mutationFn: async (inviteId: number) => {
-      await userDeleteOnetimeInvite({ path: { inviteId }, throwOnError: true });
+      await userOnetimeInviteDeleteOnetimeInvite({
+        path: { inviteId },
+        throwOnError: true,
+      });
       return inviteId;
     },
     onSuccess: (inviteId) => removeInvite(inviteId),

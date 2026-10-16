@@ -1,6 +1,6 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 // eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
-import { userSendPushNotificationAdmin } from "@alliance/shared/client";
+import { userDeviceSendPushNotificationAdmin } from "@alliance/shared/client";
 import type {
   PushDto,
   TestPushNotificationDto,
@@ -53,7 +53,9 @@ const TestPushNotification: React.FC = () => {
         userId,
         message: trimmed,
       };
-      const response = await userSendPushNotificationAdmin({ body: payload });
+      const response = await userDeviceSendPushNotificationAdmin({
+        body: payload,
+      });
       if (response.error || !response.response.ok) {
         setError(
           errorMessage({

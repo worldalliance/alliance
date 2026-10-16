@@ -38,6 +38,7 @@ import {
   UserAwayRange,
   UserAwayRangeReason,
 } from "src/user/entities/user-away-range.entity";
+import { FriendService } from "src/user/friend.service";
 import { UserService } from "src/user/user.service";
 import request from "supertest";
 import type { Repository } from "typeorm";
@@ -89,6 +90,7 @@ describe("Actions (e2e)", () => {
   let actionRepo: Repository<Action>;
   let eventRepo: Repository<ActionEvent>;
   let userService: UserService;
+  let friendService: FriendService;
   let contractService: ContractService;
   let userRepo: Repository<User>;
   let notifRepo: Repository<Notification>;
@@ -139,6 +141,7 @@ describe("Actions (e2e)", () => {
     actionRepo = ctx.dataSource.getRepository(Action);
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
     userService = ctx.app.get(UserService);
+    friendService = ctx.app.get(FriendService);
     contractService = ctx.app.get(ContractService);
     userRepo = ctx.dataSource.getRepository(User);
     notifRepo = ctx.dataSource.getRepository(Notification);
@@ -2488,7 +2491,7 @@ describe("Actions (e2e)", () => {
         tags: [ctx.defaultTag],
       });
 
-      await userService.makeFriendsAutomated(ctx.testUserId, friend.id);
+      await friendService.makeFriendsAutomated(ctx.testUserId, friend.id);
 
       await ctx.app.get(ActionsService).completeAction(action.id, friend.id);
 
@@ -5016,7 +5019,7 @@ describe("Actions (e2e)", () => {
           tags: [ctx.defaultTag],
           contractEvents: signedContract(),
         });
-        await userService.makeFriendsAutomated(viewer.id, friend.id);
+        await friendService.makeFriendsAutomated(viewer.id, friend.id);
         friendIds.push(friend.id);
       }
 
@@ -5048,7 +5051,7 @@ describe("Actions (e2e)", () => {
           tags: [ctx.defaultTag],
           ...(i < 2 ? { contractEvents: signedContract() } : {}),
         });
-        await userService.makeFriendsAutomated(viewer.id, friend.id);
+        await friendService.makeFriendsAutomated(viewer.id, friend.id);
         friendIds.push(friend.id);
       }
 
@@ -5105,7 +5108,7 @@ describe("Actions (e2e)", () => {
         name: "Feed Regression Friend",
         tags: [ctx.defaultTag],
       });
-      await userService.makeFriendsAutomated(viewer.id, friend.id);
+      await friendService.makeFriendsAutomated(viewer.id, friend.id);
 
       const { action } = await createPublishedAction("Home Feed Regression", {
         status: ActionStatus.MemberAction,
@@ -5374,7 +5377,7 @@ describe("Actions (e2e)", () => {
           name: "Feed Empty Friend",
           tags: [ctx.defaultTag],
         });
-        await userService.makeFriendsAutomated(viewer.id, friend.id);
+        await friendService.makeFriendsAutomated(viewer.id, friend.id);
 
         const { action } = await createPublishedAction("Home Feed Empty", {
           status: ActionStatus.MemberAction,

@@ -15,6 +15,8 @@ import { Notification } from "src/notifs/entities/notification.entity";
 import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { AmbassadorInviteGoalService } from "src/user/ambassador-invite-goal.service";
+import { AmbassadorProgramService } from "src/user/ambassador-program.service";
 import { AmbassadorInviteGoal } from "src/user/entities/ambassador-invite-goal.entity";
 import { AmbassadorProgramMember } from "src/user/entities/ambassador-program-member.entity";
 import { Friend, FriendStatus } from "src/user/entities/friend.entity";
@@ -23,6 +25,8 @@ import {
   OnetimeInviteStatus,
 } from "src/user/entities/onetime-invite.entity";
 import { User } from "src/user/entities/user.entity";
+import { FriendService } from "src/user/friend.service";
+import { OnetimeInviteService } from "src/user/onetime-invite.service";
 import { UserService } from "src/user/user.service";
 import {
   EntityManager,
@@ -42,6 +46,7 @@ describe("Updates to a row deleted after its load (e2e)", () => {
   let ctx: TestContext;
   let userRepo: Repository<User>;
   let userService: UserService;
+  let friendService: FriendService;
   let emails = 0;
 
   const member = (overrides: Partial<User> = {}) =>
@@ -113,6 +118,7 @@ describe("Updates to a row deleted after its load (e2e)", () => {
     ctx = await createTestApp([]);
     userRepo = ctx.dataSource.getRepository(User);
     userService = ctx.app.get(UserService);
+    friendService = ctx.app.get(FriendService);
   }, 50000);
 
   afterEach(() => {
@@ -138,7 +144,7 @@ describe("Updates to a row deleted after its load (e2e)", () => {
     });
 
     await expect(
-      userService.updateFriendRequestStatus(
+      friendService.updateFriendRequestStatus(
         requester.id,
         addressee.id,
         FriendStatus.Accepted,
@@ -163,7 +169,9 @@ describe("Updates to a row deleted after its load (e2e)", () => {
     });
 
     await expect(
-      userService.updateAmbassadorProgramMember(user.id, { invited: true }),
+      ctx.app
+        .get(AmbassadorProgramService)
+        .updateAmbassadorProgramMember(user.id, { invited: true }),
     ).rejects.toThrow(
       new NotFoundException("Ambassador program member not found"),
     );
@@ -188,11 +196,13 @@ describe("Updates to a row deleted after its load (e2e)", () => {
     });
 
     await expect(
-      userService.updateAmbassadorInviteGoal(
-        goal.id,
-        { targetSuccessfulRecruits: 5 },
-        ambassador.id,
-      ),
+      ctx.app
+        .get(AmbassadorInviteGoalService)
+        .updateAmbassadorInviteGoal(
+          goal.id,
+          { targetSuccessfulRecruits: 5 },
+          ambassador.id,
+        ),
     ).rejects.toThrow(
       new NotFoundException("Ambassador invite goal not found"),
     );
@@ -218,7 +228,7 @@ describe("Updates to a row deleted after its load (e2e)", () => {
     });
 
     await expect(
-      userService.updateOnetimeInvite({
+      ctx.app.get(OnetimeInviteService).updateOnetimeInvite({
         inviteId: invite.id,
         userId: inviter.id,
         invitee: "After",

@@ -954,31 +954,6 @@ export type ProfileDto = {
     cluster?: ClusterSummaryDto;
 };
 
-export type UserAwayRangeReason = 'vacation' | 'emergency' | 'other';
-
-export type CreateAwayRangeDto = {
-    reason: UserAwayRangeReason;
-    note?: string | null;
-    startDay: string;
-    endDay: string;
-};
-
-export type UserAwayRangeDto = {
-    id: number;
-    startDate: string;
-    endDate: string;
-    createdAt: string;
-    reason: UserAwayRangeReason;
-    note: string | null;
-};
-
-export type UpdateAwayRangeDto = {
-    reason: UserAwayRangeReason;
-    note?: string | null;
-    startDay?: string;
-    endDay?: string;
-};
-
 export type UpdateProfileDto = {
     emailNotifsForActions?: boolean;
     textNotifsForActions?: boolean;
@@ -1051,18 +1026,6 @@ export type MyVisibilityContextDto = {
     userPropertyHasValue: UserPropertyPresenceDto;
     firstContractSignedAt?: string;
     completedActionCount: number;
-};
-
-export type FriendStatus = 'pending' | 'accepted' | 'declined' | 'none';
-
-export type FriendStatusDto = {
-    status: FriendStatus | null;
-    didReceiveRequest: boolean;
-};
-
-export type FriendGraphEdgeDto = {
-    userAId: number;
-    userBId: number;
 };
 
 export type UserCityCountDto = {
@@ -1206,35 +1169,6 @@ export type NMembersResponseDto = {
     count: number;
 };
 
-export type CreateTagDto = {
-    name: string;
-    description: string;
-    publicDisplayName: string | null;
-};
-
-export type TagDto = {
-    id: string;
-    name: string;
-    description: string;
-    publicDisplayName: string | null;
-    createdAt: string;
-    updatedAt: string;
-    users: Array<ProfileDto>;
-};
-
-export type TagSummaryDto = {
-    id: string;
-    name: string;
-    description: string;
-    publicDisplayName: string | null;
-    createdAt: string;
-    updatedAt: string;
-};
-
-export type AddUserToTagDto = {
-    userId: number;
-};
-
 export type AmbassadorProgramInteractionDto = {
     id: number;
     text: string;
@@ -1314,6 +1248,128 @@ export type CreateAmbassadorProgramInteractionDto = {
     interactionDate: string;
 };
 
+export type AmbassadorInviteDashboardDto = {
+    goals: Array<AmbassadorInviteGoalWithStatsDto>;
+    stats: AmbassadorInviteStatsDto;
+    projection: AmbassadorInviteProjectionDto;
+};
+
+export type CreateAmbassadorInviteGoalDto = {
+    targetSuccessfulRecruits: number;
+    startAt: string;
+    dueAt: string;
+};
+
+export type UpdateAmbassadorInviteGoalDto = {
+    targetSuccessfulRecruits?: number;
+    startAt?: string;
+    dueAt?: string;
+};
+
+export type CreateTagDto = {
+    name: string;
+    description: string;
+    publicDisplayName: string | null;
+};
+
+export type TagDto = {
+    id: string;
+    name: string;
+    description: string;
+    publicDisplayName: string | null;
+    createdAt: string;
+    updatedAt: string;
+    users: Array<ProfileDto>;
+};
+
+export type TagSummaryDto = {
+    id: string;
+    name: string;
+    description: string;
+    publicDisplayName: string | null;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type AddUserToTagDto = {
+    userId: number;
+};
+
+export type UserAwayRangeReason = 'vacation' | 'emergency' | 'other';
+
+export type CreateAwayRangeDto = {
+    reason: UserAwayRangeReason;
+    note?: string | null;
+    startDay: string;
+    endDay: string;
+};
+
+export type UserAwayRangeDto = {
+    id: number;
+    startDate: string;
+    endDate: string;
+    createdAt: string;
+    reason: UserAwayRangeReason;
+    note: string | null;
+};
+
+export type UpdateAwayRangeDto = {
+    reason: UserAwayRangeReason;
+    note?: string | null;
+    startDay?: string;
+    endDay?: string;
+};
+
+export type RegisterDeviceDto = {
+    deviceType: string;
+    expoPushToken: string;
+    deviceId?: string;
+    /**
+     * The build handles badge-only pushes quietly
+     */
+    taskBadgePushes?: boolean;
+};
+
+export type UserDeviceDto = {
+    id: string;
+};
+
+export type UnregisterDeviceDto = {
+    deviceId: string;
+    expoPushToken: string;
+};
+
+export type TestPushNotificationDto = {
+    userId: number;
+    message: string;
+};
+
+export type PushDto = {
+    id: number;
+    expoPushToken: string;
+    createdAt: string;
+    body: string;
+    screen: string | null;
+    updatedAt: string;
+    receiptId: string | null;
+    ticketStatus: string | null;
+    receiptStatus: string | null;
+    errorCode: string | null;
+    errorMessage: string | null;
+    lastCheckedStatusAt: string | null;
+    idempotencyKey: string;
+    openedAt: string | null;
+};
+
+export type SingleGroupAssignmentDto = {
+    userId: number;
+    communityId: number;
+};
+
+export type AssignGroupsDto = {
+    assignments: Array<SingleGroupAssignmentDto>;
+};
+
 export type SignupSocialProofDto = {
     profiles: Array<ProfileDto>;
 };
@@ -1324,6 +1380,18 @@ export type ReferrerProfileDto = {
     kind: ReferrerKind;
     displayName: string;
     profilePicture: string | null;
+};
+
+export type FriendStatus = 'pending' | 'accepted' | 'declined' | 'none';
+
+export type FriendStatusDto = {
+    status: FriendStatus | null;
+    didReceiveRequest: boolean;
+};
+
+export type FriendGraphEdgeDto = {
+    userAId: number;
+    userBId: number;
 };
 
 export type CommunityDto = {
@@ -1368,24 +1436,6 @@ export type CreateOnetimeInviteDto = {
     communityId?: number;
 };
 
-export type AmbassadorInviteDashboardDto = {
-    goals: Array<AmbassadorInviteGoalWithStatsDto>;
-    stats: AmbassadorInviteStatsDto;
-    projection: AmbassadorInviteProjectionDto;
-};
-
-export type CreateAmbassadorInviteGoalDto = {
-    targetSuccessfulRecruits: number;
-    startAt: string;
-    dueAt: string;
-};
-
-export type UpdateAmbassadorInviteGoalDto = {
-    targetSuccessfulRecruits?: number;
-    startAt?: string;
-    dueAt?: string;
-};
-
 export type UpdateOnetimeInviteDto = {
     /**
      * Omit to leave the invitee name as it is.
@@ -1420,56 +1470,6 @@ export type OnetimeInviteMemberStatsDto = {
 export type OnetimeInviteEdgeDto = {
     invitingUserId: number;
     invitedUserId: number;
-};
-
-export type SingleGroupAssignmentDto = {
-    userId: number;
-    communityId: number;
-};
-
-export type AssignGroupsDto = {
-    assignments: Array<SingleGroupAssignmentDto>;
-};
-
-export type RegisterDeviceDto = {
-    deviceType: string;
-    expoPushToken: string;
-    deviceId?: string;
-    /**
-     * The build handles badge-only pushes quietly
-     */
-    taskBadgePushes?: boolean;
-};
-
-export type UserDeviceDto = {
-    id: string;
-};
-
-export type UnregisterDeviceDto = {
-    deviceId: string;
-    expoPushToken: string;
-};
-
-export type TestPushNotificationDto = {
-    userId: number;
-    message: string;
-};
-
-export type PushDto = {
-    id: number;
-    expoPushToken: string;
-    createdAt: string;
-    body: string;
-    screen: string | null;
-    updatedAt: string;
-    receiptId: string | null;
-    ticketStatus: string | null;
-    receiptStatus: string | null;
-    errorCode: string | null;
-    errorMessage: string | null;
-    lastCheckedStatusAt: string | null;
-    idempotencyKey: string;
-    openedAt: string | null;
 };
 
 export type StreamableFile = {
@@ -5638,176 +5638,6 @@ export type UserFindMeResponses = {
 
 export type UserFindMeResponse = UserFindMeResponses[keyof UserFindMeResponses];
 
-export type UserGetAwayRangesData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/awayranges';
-};
-
-export type UserGetAwayRangesErrors = {
-    401: HeyApiError;
-};
-
-export type UserGetAwayRangesError = UserGetAwayRangesErrors[keyof UserGetAwayRangesErrors];
-
-export type UserGetAwayRangesResponses = {
-    200: Array<UserAwayRangeDto>;
-};
-
-export type UserGetAwayRangesResponse = UserGetAwayRangesResponses[keyof UserGetAwayRangesResponses];
-
-export type UserCreateAwayRangeData = {
-    body: CreateAwayRangeDto;
-    path?: never;
-    query?: never;
-    url: '/user/awayranges';
-};
-
-export type UserCreateAwayRangeErrors = {
-    401: HeyApiError;
-};
-
-export type UserCreateAwayRangeError = UserCreateAwayRangeErrors[keyof UserCreateAwayRangeErrors];
-
-export type UserCreateAwayRangeResponses = {
-    200: UserAwayRangeDto;
-};
-
-export type UserCreateAwayRangeResponse = UserCreateAwayRangeResponses[keyof UserCreateAwayRangeResponses];
-
-export type UserDeleteAwayRangeData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/user/awayranges/{id}';
-};
-
-export type UserDeleteAwayRangeErrors = {
-    401: HeyApiError;
-};
-
-export type UserDeleteAwayRangeError = UserDeleteAwayRangeErrors[keyof UserDeleteAwayRangeErrors];
-
-export type UserDeleteAwayRangeResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserDeleteAwayRangeResponse = UserDeleteAwayRangeResponses[keyof UserDeleteAwayRangeResponses];
-
-export type UserGetAwayRangeForUserAdminData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/user/awayranges/{id}';
-};
-
-export type UserGetAwayRangeForUserAdminErrors = {
-    401: HeyApiError;
-};
-
-export type UserGetAwayRangeForUserAdminError = UserGetAwayRangeForUserAdminErrors[keyof UserGetAwayRangeForUserAdminErrors];
-
-export type UserGetAwayRangeForUserAdminResponses = {
-    200: Array<UserAwayRangeDto>;
-};
-
-export type UserGetAwayRangeForUserAdminResponse = UserGetAwayRangeForUserAdminResponses[keyof UserGetAwayRangeForUserAdminResponses];
-
-export type UserUpdateAwayRangeData = {
-    body: UpdateAwayRangeDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/user/awayranges/{id}';
-};
-
-export type UserUpdateAwayRangeErrors = {
-    401: HeyApiError;
-};
-
-export type UserUpdateAwayRangeError = UserUpdateAwayRangeErrors[keyof UserUpdateAwayRangeErrors];
-
-export type UserUpdateAwayRangeResponses = {
-    200: UserAwayRangeDto;
-};
-
-export type UserUpdateAwayRangeResponse = UserUpdateAwayRangeResponses[keyof UserUpdateAwayRangeResponses];
-
-export type UserCreateAwayRangeAdminData = {
-    body: CreateAwayRangeDto;
-    path: {
-        userId: number;
-    };
-    query?: never;
-    url: '/user/admin/{userId}/awayranges';
-};
-
-export type UserCreateAwayRangeAdminErrors = {
-    401: HeyApiError;
-};
-
-export type UserCreateAwayRangeAdminError = UserCreateAwayRangeAdminErrors[keyof UserCreateAwayRangeAdminErrors];
-
-export type UserCreateAwayRangeAdminResponses = {
-    200: UserAwayRangeDto;
-};
-
-export type UserCreateAwayRangeAdminResponse = UserCreateAwayRangeAdminResponses[keyof UserCreateAwayRangeAdminResponses];
-
-export type UserDeleteAwayRangeAdminData = {
-    body?: never;
-    path: {
-        userId: number;
-        id: number;
-    };
-    query?: never;
-    url: '/user/admin/{userId}/awayranges/{id}';
-};
-
-export type UserDeleteAwayRangeAdminErrors = {
-    401: HeyApiError;
-};
-
-export type UserDeleteAwayRangeAdminError = UserDeleteAwayRangeAdminErrors[keyof UserDeleteAwayRangeAdminErrors];
-
-export type UserDeleteAwayRangeAdminResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserDeleteAwayRangeAdminResponse = UserDeleteAwayRangeAdminResponses[keyof UserDeleteAwayRangeAdminResponses];
-
-export type UserUpdateAwayRangeAdminData = {
-    body: UpdateAwayRangeDto;
-    path: {
-        userId: number;
-        id: number;
-    };
-    query?: never;
-    url: '/user/admin/{userId}/awayranges/{id}';
-};
-
-export type UserUpdateAwayRangeAdminErrors = {
-    401: HeyApiError;
-};
-
-export type UserUpdateAwayRangeAdminError = UserUpdateAwayRangeAdminErrors[keyof UserUpdateAwayRangeAdminErrors];
-
-export type UserUpdateAwayRangeAdminResponses = {
-    200: UserAwayRangeDto;
-};
-
-export type UserUpdateAwayRangeAdminResponse = UserUpdateAwayRangeAdminResponses[keyof UserUpdateAwayRangeAdminResponses];
-
 export type UserUpdateData = {
     body: UpdateProfileDto;
     path?: never;
@@ -5898,209 +5728,6 @@ export type UserMyVisibilityContextResponses = {
 
 export type UserMyVisibilityContextResponse = UserMyVisibilityContextResponses[keyof UserMyVisibilityContextResponses];
 
-export type UserRemoveFriendData = {
-    body?: never;
-    path: {
-        targetUserId: number;
-    };
-    query?: never;
-    url: '/user/friends/{targetUserId}';
-};
-
-export type UserRemoveFriendErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserRemoveFriendError = UserRemoveFriendErrors[keyof UserRemoveFriendErrors];
-
-export type UserRemoveFriendResponses = {
-    /**
-     * Relationship removed
-     */
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserRemoveFriendResponse = UserRemoveFriendResponses[keyof UserRemoveFriendResponses];
-
-export type UserRequestFriendData = {
-    body?: never;
-    path: {
-        targetUserId: number;
-    };
-    query?: never;
-    url: '/user/friends/{targetUserId}';
-};
-
-export type UserRequestFriendErrors = {
-    /**
-     * Already friends
-     */
-    409: HeyApiError;
-};
-
-export type UserRequestFriendError = UserRequestFriendErrors[keyof UserRequestFriendErrors];
-
-export type UserRequestFriendResponses = {
-    200: FriendStatusDto;
-};
-
-export type UserRequestFriendResponse = UserRequestFriendResponses[keyof UserRequestFriendResponses];
-
-export type UserAcceptFriendRequestData = {
-    body?: never;
-    path: {
-        requesterId: number;
-    };
-    query?: never;
-    url: '/user/friends/{requesterId}/accept';
-};
-
-export type UserAcceptFriendRequestErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserAcceptFriendRequestError = UserAcceptFriendRequestErrors[keyof UserAcceptFriendRequestErrors];
-
-export type UserAcceptFriendRequestResponses = {
-    /**
-     * Friend request accepted
-     */
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserAcceptFriendRequestResponse = UserAcceptFriendRequestResponses[keyof UserAcceptFriendRequestResponses];
-
-export type UserDeclineFriendRequestData = {
-    body?: never;
-    path: {
-        requesterId: number;
-    };
-    query?: never;
-    url: '/user/friends/{requesterId}/decline';
-};
-
-export type UserDeclineFriendRequestErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserDeclineFriendRequestError = UserDeclineFriendRequestErrors[keyof UserDeclineFriendRequestErrors];
-
-export type UserDeclineFriendRequestResponses = {
-    /**
-     * Friend request declined
-     */
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserDeclineFriendRequestResponse = UserDeclineFriendRequestResponses[keyof UserDeclineFriendRequestResponses];
-
-export type UserListReceivedRequestsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/friends/requests/received';
-};
-
-export type UserListReceivedRequestsErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserListReceivedRequestsError = UserListReceivedRequestsErrors[keyof UserListReceivedRequestsErrors];
-
-export type UserListReceivedRequestsResponses = {
-    200: Array<ProfileDto>;
-};
-
-export type UserListReceivedRequestsResponse = UserListReceivedRequestsResponses[keyof UserListReceivedRequestsResponses];
-
-export type UserListSentRequestsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/friends/requests/sent';
-};
-
-export type UserListSentRequestsErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserListSentRequestsError = UserListSentRequestsErrors[keyof UserListSentRequestsErrors];
-
-export type UserListSentRequestsResponses = {
-    200: Array<ProfileDto>;
-};
-
-export type UserListSentRequestsResponse = UserListSentRequestsResponses[keyof UserListSentRequestsResponses];
-
-export type UserMyFriendRelationshipData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/user/myfriendrelationship/{id}';
-};
-
-export type UserMyFriendRelationshipErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserMyFriendRelationshipError = UserMyFriendRelationshipErrors[keyof UserMyFriendRelationshipErrors];
-
-export type UserMyFriendRelationshipResponses = {
-    200: FriendStatusDto;
-};
-
-export type UserMyFriendRelationshipResponse = UserMyFriendRelationshipResponses[keyof UserMyFriendRelationshipResponses];
-
-export type UserListFriendsData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/user/listfriends/{id}';
-};
-
-export type UserListFriendsErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserListFriendsError = UserListFriendsErrors[keyof UserListFriendsErrors];
-
-export type UserListFriendsResponses = {
-    200: Array<ProfileDto>;
-};
-
-export type UserListFriendsResponse = UserListFriendsResponses[keyof UserListFriendsResponses];
-
 export type UserListMessageableUsersData = {
     body?: never;
     path?: never;
@@ -6166,28 +5793,6 @@ export type UserListForGraphAdminResponses = {
 };
 
 export type UserListForGraphAdminResponse = UserListForGraphAdminResponses[keyof UserListForGraphAdminResponses];
-
-export type UserGetFriendGraphEdgesAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/friends/graphEdges';
-};
-
-export type UserGetFriendGraphEdgesAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetFriendGraphEdgesAdminError = UserGetFriendGraphEdgesAdminErrors[keyof UserGetFriendGraphEdgesAdminErrors];
-
-export type UserGetFriendGraphEdgesAdminResponses = {
-    200: Array<FriendGraphEdgeDto>;
-};
-
-export type UserGetFriendGraphEdgesAdminResponse = UserGetFriendGraphEdgesAdminResponses[keyof UserGetFriendGraphEdgesAdminResponses];
 
 export type UserCityCountsAdminData = {
     body?: never;
@@ -6530,170 +6135,6 @@ export type UserNmembersResponses = {
 
 export type UserNmembersResponse = UserNmembersResponses[keyof UserNmembersResponses];
 
-export type UserCreateTagAdminData = {
-    body: CreateTagDto;
-    path?: never;
-    query?: never;
-    url: '/user/createTag';
-};
-
-export type UserCreateTagAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserCreateTagAdminError = UserCreateTagAdminErrors[keyof UserCreateTagAdminErrors];
-
-export type UserCreateTagAdminResponses = {
-    200: TagDto;
-};
-
-export type UserCreateTagAdminResponse = UserCreateTagAdminResponses[keyof UserCreateTagAdminResponses];
-
-export type UserGetTagsAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/tags';
-};
-
-export type UserGetTagsAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetTagsAdminError = UserGetTagsAdminErrors[keyof UserGetTagsAdminErrors];
-
-export type UserGetTagsAdminResponses = {
-    200: Array<TagDto>;
-};
-
-export type UserGetTagsAdminResponse = UserGetTagsAdminResponses[keyof UserGetTagsAdminResponses];
-
-export type UserGetTagSummariesAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/tag-summaries';
-};
-
-export type UserGetTagSummariesAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetTagSummariesAdminError = UserGetTagSummariesAdminErrors[keyof UserGetTagSummariesAdminErrors];
-
-export type UserGetTagSummariesAdminResponses = {
-    200: Array<TagSummaryDto>;
-};
-
-export type UserGetTagSummariesAdminResponse = UserGetTagSummariesAdminResponses[keyof UserGetTagSummariesAdminResponses];
-
-export type UserAddUserToTagAdminData = {
-    body: AddUserToTagDto;
-    path: {
-        tagId: string;
-    };
-    query?: never;
-    url: '/user/tags/{tagId}/addUser';
-};
-
-export type UserAddUserToTagAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserAddUserToTagAdminError = UserAddUserToTagAdminErrors[keyof UserAddUserToTagAdminErrors];
-
-export type UserAddUserToTagAdminResponses = {
-    200: TagDto;
-};
-
-export type UserAddUserToTagAdminResponse = UserAddUserToTagAdminResponses[keyof UserAddUserToTagAdminResponses];
-
-export type UserRemoveUserFromTagAdminData = {
-    body: AddUserToTagDto;
-    path: {
-        tagId: string;
-    };
-    query?: never;
-    url: '/user/tags/{tagId}/removeUser';
-};
-
-export type UserRemoveUserFromTagAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserRemoveUserFromTagAdminError = UserRemoveUserFromTagAdminErrors[keyof UserRemoveUserFromTagAdminErrors];
-
-export type UserRemoveUserFromTagAdminResponses = {
-    200: TagDto;
-};
-
-export type UserRemoveUserFromTagAdminResponse = UserRemoveUserFromTagAdminResponses[keyof UserRemoveUserFromTagAdminResponses];
-
-export type UserUpdateTagAdminData = {
-    body: CreateTagDto;
-    path: {
-        tagId: string;
-    };
-    query?: never;
-    url: '/user/tags/{tagId}/update';
-};
-
-export type UserUpdateTagAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserUpdateTagAdminError = UserUpdateTagAdminErrors[keyof UserUpdateTagAdminErrors];
-
-export type UserUpdateTagAdminResponses = {
-    200: TagDto;
-};
-
-export type UserUpdateTagAdminResponse = UserUpdateTagAdminResponses[keyof UserUpdateTagAdminResponses];
-
-export type UserDeleteTagAdminData = {
-    body?: never;
-    path: {
-        tagId: string;
-    };
-    query?: never;
-    url: '/user/tags/{tagId}';
-};
-
-export type UserDeleteTagAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserDeleteTagAdminError = UserDeleteTagAdminErrors[keyof UserDeleteTagAdminErrors];
-
-export type UserDeleteTagAdminResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserDeleteTagAdminResponse = UserDeleteTagAdminResponses[keyof UserDeleteTagAdminResponses];
-
 export type UserGetAmbassadorProgramAdminData = {
     body?: never;
     path?: never;
@@ -6783,179 +6224,6 @@ export type UserCreateAmbassadorProgramInteractionAdminResponses = {
 };
 
 export type UserCreateAmbassadorProgramInteractionAdminResponse = UserCreateAmbassadorProgramInteractionAdminResponses[keyof UserCreateAmbassadorProgramInteractionAdminResponses];
-
-export type UserSignupSocialProofData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Referral or invite code to prefer inviter friends
-         */
-        code?: string;
-        /**
-         * How many avatars to return. Defaults to 5, capped at 24.
-         */
-        count?: number;
-    };
-    url: '/user/signupSocialProof';
-};
-
-export type UserSignupSocialProofErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserSignupSocialProofError = UserSignupSocialProofErrors[keyof UserSignupSocialProofErrors];
-
-export type UserSignupSocialProofResponses = {
-    200: SignupSocialProofDto;
-};
-
-export type UserSignupSocialProofResponse = UserSignupSocialProofResponses[keyof UserSignupSocialProofResponses];
-
-export type UserReferrerProfileData = {
-    body?: never;
-    path: {
-        code: string;
-    };
-    query?: never;
-    url: '/user/referrerProfile/{code}';
-};
-
-export type UserReferrerProfileErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserReferrerProfileError = UserReferrerProfileErrors[keyof UserReferrerProfileErrors];
-
-export type UserReferrerProfileResponses = {
-    200: ReferrerProfileDto;
-};
-
-export type UserReferrerProfileResponse = UserReferrerProfileResponses[keyof UserReferrerProfileResponses];
-
-export type UserOnetimeInviteData = {
-    body?: never;
-    path: {
-        code: string;
-    };
-    query?: never;
-    url: '/user/onetimeInvite/{code}';
-};
-
-export type UserOnetimeInviteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserOnetimeInviteError = UserOnetimeInviteErrors[keyof UserOnetimeInviteErrors];
-
-export type UserOnetimeInviteResponses = {
-    200: OnetimeInviteDto;
-};
-
-export type UserOnetimeInviteResponse = UserOnetimeInviteResponses[keyof UserOnetimeInviteResponses];
-
-export type UserRequestOnetimeInviteData = {
-    body: RequestOnetimeInviteDto;
-    path?: never;
-    query?: never;
-    url: '/user/onetimeInvite/request';
-};
-
-export type UserRequestOnetimeInviteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserRequestOnetimeInviteError = UserRequestOnetimeInviteErrors[keyof UserRequestOnetimeInviteErrors];
-
-export type UserRequestOnetimeInviteResponses = {
-    200: OnetimeInviteDto;
-};
-
-export type UserRequestOnetimeInviteResponse = UserRequestOnetimeInviteResponses[keyof UserRequestOnetimeInviteResponses];
-
-export type UserApproveOnetimeInviteData = {
-    body?: never;
-    path: {
-        inviteId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInvite/{inviteId}/approve';
-};
-
-export type UserApproveOnetimeInviteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserApproveOnetimeInviteError = UserApproveOnetimeInviteErrors[keyof UserApproveOnetimeInviteErrors];
-
-export type UserApproveOnetimeInviteResponses = {
-    200: OnetimeInviteDto;
-};
-
-export type UserApproveOnetimeInviteResponse = UserApproveOnetimeInviteResponses[keyof UserApproveOnetimeInviteResponses];
-
-export type UserRejectOnetimeInviteData = {
-    body?: never;
-    path: {
-        inviteId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInvite/{inviteId}/reject';
-};
-
-export type UserRejectOnetimeInviteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserRejectOnetimeInviteError = UserRejectOnetimeInviteErrors[keyof UserRejectOnetimeInviteErrors];
-
-export type UserRejectOnetimeInviteResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserRejectOnetimeInviteResponse = UserRejectOnetimeInviteResponses[keyof UserRejectOnetimeInviteResponses];
-
-export type UserCreateOnetimeInviteData = {
-    body: CreateOnetimeInviteDto;
-    path?: never;
-    query?: never;
-    url: '/user/onetimeInvite/create';
-};
-
-export type UserCreateOnetimeInviteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserCreateOnetimeInviteError = UserCreateOnetimeInviteErrors[keyof UserCreateOnetimeInviteErrors];
-
-export type UserCreateOnetimeInviteResponses = {
-    200: OnetimeInviteDto;
-};
-
-export type UserCreateOnetimeInviteResponse = UserCreateOnetimeInviteResponses[keyof UserCreateOnetimeInviteResponses];
 
 export type UserGetAmbassadorInviteDashboardData = {
     body?: never;
@@ -7051,357 +6319,6 @@ export type UserUpdateAmbassadorInviteGoalResponses = {
 
 export type UserUpdateAmbassadorInviteGoalResponse = UserUpdateAmbassadorInviteGoalResponses[keyof UserUpdateAmbassadorInviteGoalResponses];
 
-export type UserDeleteOnetimeInviteData = {
-    body?: never;
-    path: {
-        inviteId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInvites/{inviteId}';
-};
-
-export type UserDeleteOnetimeInviteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserDeleteOnetimeInviteError = UserDeleteOnetimeInviteErrors[keyof UserDeleteOnetimeInviteErrors];
-
-export type UserDeleteOnetimeInviteResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserDeleteOnetimeInviteResponse = UserDeleteOnetimeInviteResponses[keyof UserDeleteOnetimeInviteResponses];
-
-export type UserUpdateOnetimeInviteData = {
-    body: UpdateOnetimeInviteDto;
-    path: {
-        inviteId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInvites/{inviteId}';
-};
-
-export type UserUpdateOnetimeInviteErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserUpdateOnetimeInviteError = UserUpdateOnetimeInviteErrors[keyof UserUpdateOnetimeInviteErrors];
-
-export type UserUpdateOnetimeInviteResponses = {
-    200: OnetimeInviteDto;
-};
-
-export type UserUpdateOnetimeInviteResponse = UserUpdateOnetimeInviteResponses[keyof UserUpdateOnetimeInviteResponses];
-
-export type UserGetOnetimeInvitesAdminData = {
-    body?: never;
-    path?: never;
-    query?: {
-        page?: number;
-        limit?: number;
-    };
-    url: '/user/onetimeInvites';
-};
-
-export type UserGetOnetimeInvitesAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetOnetimeInvitesAdminError = UserGetOnetimeInvitesAdminErrors[keyof UserGetOnetimeInvitesAdminErrors];
-
-export type UserGetOnetimeInvitesAdminResponses = {
-    200: OnetimeInviteListDto;
-};
-
-export type UserGetOnetimeInvitesAdminResponse = UserGetOnetimeInvitesAdminResponses[keyof UserGetOnetimeInvitesAdminResponses];
-
-export type UserGetOnetimeInviteMemberStatsAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/onetimeInvites/memberStats';
-};
-
-export type UserGetOnetimeInviteMemberStatsAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetOnetimeInviteMemberStatsAdminError = UserGetOnetimeInviteMemberStatsAdminErrors[keyof UserGetOnetimeInviteMemberStatsAdminErrors];
-
-export type UserGetOnetimeInviteMemberStatsAdminResponses = {
-    200: Array<OnetimeInviteMemberStatsDto>;
-};
-
-export type UserGetOnetimeInviteMemberStatsAdminResponse = UserGetOnetimeInviteMemberStatsAdminResponses[keyof UserGetOnetimeInviteMemberStatsAdminResponses];
-
-export type UserGetOnetimeInviteGraphEdgesAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/onetimeInvites/graphEdges';
-};
-
-export type UserGetOnetimeInviteGraphEdgesAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetOnetimeInviteGraphEdgesAdminError = UserGetOnetimeInviteGraphEdgesAdminErrors[keyof UserGetOnetimeInviteGraphEdgesAdminErrors];
-
-export type UserGetOnetimeInviteGraphEdgesAdminResponses = {
-    200: Array<OnetimeInviteEdgeDto>;
-};
-
-export type UserGetOnetimeInviteGraphEdgesAdminResponse = UserGetOnetimeInviteGraphEdgesAdminResponses[keyof UserGetOnetimeInviteGraphEdgesAdminResponses];
-
-export type UserGetOnetimeInvitesOverviewData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/onetimeInvites/overview';
-};
-
-export type UserGetOnetimeInvitesOverviewErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetOnetimeInvitesOverviewError = UserGetOnetimeInvitesOverviewErrors[keyof UserGetOnetimeInvitesOverviewErrors];
-
-export type UserGetOnetimeInvitesOverviewResponses = {
-    200: Array<OnetimeInviteDto>;
-};
-
-export type UserGetOnetimeInvitesOverviewResponse = UserGetOnetimeInvitesOverviewResponses[keyof UserGetOnetimeInvitesOverviewResponses];
-
-export type UserGetOnetimeInvitesByCommunityData = {
-    body?: never;
-    path: {
-        communityId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInvites/{communityId}';
-};
-
-export type UserGetOnetimeInvitesByCommunityErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetOnetimeInvitesByCommunityError = UserGetOnetimeInvitesByCommunityErrors[keyof UserGetOnetimeInvitesByCommunityErrors];
-
-export type UserGetOnetimeInvitesByCommunityResponses = {
-    200: Array<OnetimeInviteDto>;
-};
-
-export type UserGetOnetimeInvitesByCommunityResponse = UserGetOnetimeInvitesByCommunityResponses[keyof UserGetOnetimeInvitesByCommunityResponses];
-
-export type UserGetOnetimeInvitesByRequesterData = {
-    body?: never;
-    path: {
-        communityId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInvites/{communityId}/my';
-};
-
-export type UserGetOnetimeInvitesByRequesterErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetOnetimeInvitesByRequesterError = UserGetOnetimeInvitesByRequesterErrors[keyof UserGetOnetimeInvitesByRequesterErrors];
-
-export type UserGetOnetimeInvitesByRequesterResponses = {
-    200: Array<OnetimeInviteDto>;
-};
-
-export type UserGetOnetimeInvitesByRequesterResponse = UserGetOnetimeInvitesByRequesterResponses[keyof UserGetOnetimeInvitesByRequesterResponses];
-
-export type UserJoinGroupAssignmentData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/groupAssignment/join';
-};
-
-export type UserJoinGroupAssignmentErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserJoinGroupAssignmentError = UserJoinGroupAssignmentErrors[keyof UserJoinGroupAssignmentErrors];
-
-export type UserJoinGroupAssignmentResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserJoinGroupAssignmentResponse = UserJoinGroupAssignmentResponses[keyof UserJoinGroupAssignmentResponses];
-
-export type UserLeaveGroupAssignmentData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/groupAssignment/leave';
-};
-
-export type UserLeaveGroupAssignmentErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserLeaveGroupAssignmentError = UserLeaveGroupAssignmentErrors[keyof UserLeaveGroupAssignmentErrors];
-
-export type UserLeaveGroupAssignmentResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserLeaveGroupAssignmentResponse = UserLeaveGroupAssignmentResponses[keyof UserLeaveGroupAssignmentResponses];
-
-export type UserGetGroupAssignmentMembersAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/groupAssignment/members';
-};
-
-export type UserGetGroupAssignmentMembersAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserGetGroupAssignmentMembersAdminError = UserGetGroupAssignmentMembersAdminErrors[keyof UserGetGroupAssignmentMembersAdminErrors];
-
-export type UserGetGroupAssignmentMembersAdminResponses = {
-    200: Array<UserDto>;
-};
-
-export type UserGetGroupAssignmentMembersAdminResponse = UserGetGroupAssignmentMembersAdminResponses[keyof UserGetGroupAssignmentMembersAdminResponses];
-
-export type UserAssignGroupsAdminData = {
-    body: AssignGroupsDto;
-    path?: never;
-    query?: never;
-    url: '/user/groupAssignment/assign';
-};
-
-export type UserAssignGroupsAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserAssignGroupsAdminError = UserAssignGroupsAdminErrors[keyof UserAssignGroupsAdminErrors];
-
-export type UserAssignGroupsAdminResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserAssignGroupsAdminResponse = UserAssignGroupsAdminResponses[keyof UserAssignGroupsAdminResponses];
-
-export type UserRegisterDeviceData = {
-    body: RegisterDeviceDto;
-    path?: never;
-    query?: never;
-    url: '/user/registerDevice';
-};
-
-export type UserRegisterDeviceErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserRegisterDeviceError = UserRegisterDeviceErrors[keyof UserRegisterDeviceErrors];
-
-export type UserRegisterDeviceResponses = {
-    200: UserDeviceDto;
-};
-
-export type UserRegisterDeviceResponse = UserRegisterDeviceResponses[keyof UserRegisterDeviceResponses];
-
-export type UserUnregisterDeviceData = {
-    body: UnregisterDeviceDto;
-    path?: never;
-    query?: never;
-    url: '/user/unregisterDevice';
-};
-
-export type UserUnregisterDeviceErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserUnregisterDeviceError = UserUnregisterDeviceErrors[keyof UserUnregisterDeviceErrors];
-
-export type UserUnregisterDeviceResponses = {
-    200: {
-        [key: string]: never;
-    };
-};
-
-export type UserUnregisterDeviceResponse = UserUnregisterDeviceResponses[keyof UserUnregisterDeviceResponses];
-
-export type UserSendPushNotificationAdminData = {
-    body: TestPushNotificationDto;
-    path?: never;
-    query?: never;
-    url: '/user/sendPushNotification';
-};
-
-export type UserSendPushNotificationAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type UserSendPushNotificationAdminError = UserSendPushNotificationAdminErrors[keyof UserSendPushNotificationAdminErrors];
-
-export type UserSendPushNotificationAdminResponses = {
-    200: PushDto;
-};
-
-export type UserSendPushNotificationAdminResponse = UserSendPushNotificationAdminResponses[keyof UserSendPushNotificationAdminResponses];
-
 export type UserRequestAccountDeletionData = {
     body?: never;
     path?: never;
@@ -7425,6 +6342,1089 @@ export type UserRequestAccountDeletionResponses = {
 };
 
 export type UserRequestAccountDeletionResponse = UserRequestAccountDeletionResponses[keyof UserRequestAccountDeletionResponses];
+
+export type UserTagCreateTagAdminData = {
+    body: CreateTagDto;
+    path?: never;
+    query?: never;
+    url: '/user/createTag';
+};
+
+export type UserTagCreateTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserTagCreateTagAdminError = UserTagCreateTagAdminErrors[keyof UserTagCreateTagAdminErrors];
+
+export type UserTagCreateTagAdminResponses = {
+    200: TagDto;
+};
+
+export type UserTagCreateTagAdminResponse = UserTagCreateTagAdminResponses[keyof UserTagCreateTagAdminResponses];
+
+export type UserTagGetTagsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/tags';
+};
+
+export type UserTagGetTagsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserTagGetTagsAdminError = UserTagGetTagsAdminErrors[keyof UserTagGetTagsAdminErrors];
+
+export type UserTagGetTagsAdminResponses = {
+    200: Array<TagDto>;
+};
+
+export type UserTagGetTagsAdminResponse = UserTagGetTagsAdminResponses[keyof UserTagGetTagsAdminResponses];
+
+export type UserTagGetTagSummariesAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/tag-summaries';
+};
+
+export type UserTagGetTagSummariesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserTagGetTagSummariesAdminError = UserTagGetTagSummariesAdminErrors[keyof UserTagGetTagSummariesAdminErrors];
+
+export type UserTagGetTagSummariesAdminResponses = {
+    200: Array<TagSummaryDto>;
+};
+
+export type UserTagGetTagSummariesAdminResponse = UserTagGetTagSummariesAdminResponses[keyof UserTagGetTagSummariesAdminResponses];
+
+export type UserTagAddUserToTagAdminData = {
+    body: AddUserToTagDto;
+    path: {
+        tagId: string;
+    };
+    query?: never;
+    url: '/user/tags/{tagId}/addUser';
+};
+
+export type UserTagAddUserToTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserTagAddUserToTagAdminError = UserTagAddUserToTagAdminErrors[keyof UserTagAddUserToTagAdminErrors];
+
+export type UserTagAddUserToTagAdminResponses = {
+    200: TagDto;
+};
+
+export type UserTagAddUserToTagAdminResponse = UserTagAddUserToTagAdminResponses[keyof UserTagAddUserToTagAdminResponses];
+
+export type UserTagRemoveUserFromTagAdminData = {
+    body: AddUserToTagDto;
+    path: {
+        tagId: string;
+    };
+    query?: never;
+    url: '/user/tags/{tagId}/removeUser';
+};
+
+export type UserTagRemoveUserFromTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserTagRemoveUserFromTagAdminError = UserTagRemoveUserFromTagAdminErrors[keyof UserTagRemoveUserFromTagAdminErrors];
+
+export type UserTagRemoveUserFromTagAdminResponses = {
+    200: TagDto;
+};
+
+export type UserTagRemoveUserFromTagAdminResponse = UserTagRemoveUserFromTagAdminResponses[keyof UserTagRemoveUserFromTagAdminResponses];
+
+export type UserTagUpdateTagAdminData = {
+    body: CreateTagDto;
+    path: {
+        tagId: string;
+    };
+    query?: never;
+    url: '/user/tags/{tagId}/update';
+};
+
+export type UserTagUpdateTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserTagUpdateTagAdminError = UserTagUpdateTagAdminErrors[keyof UserTagUpdateTagAdminErrors];
+
+export type UserTagUpdateTagAdminResponses = {
+    200: TagDto;
+};
+
+export type UserTagUpdateTagAdminResponse = UserTagUpdateTagAdminResponses[keyof UserTagUpdateTagAdminResponses];
+
+export type UserTagDeleteTagAdminData = {
+    body?: never;
+    path: {
+        tagId: string;
+    };
+    query?: never;
+    url: '/user/tags/{tagId}';
+};
+
+export type UserTagDeleteTagAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserTagDeleteTagAdminError = UserTagDeleteTagAdminErrors[keyof UserTagDeleteTagAdminErrors];
+
+export type UserTagDeleteTagAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserTagDeleteTagAdminResponse = UserTagDeleteTagAdminResponses[keyof UserTagDeleteTagAdminResponses];
+
+export type UserAwayRangeGetAwayRangesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/awayranges';
+};
+
+export type UserAwayRangeGetAwayRangesErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeGetAwayRangesError = UserAwayRangeGetAwayRangesErrors[keyof UserAwayRangeGetAwayRangesErrors];
+
+export type UserAwayRangeGetAwayRangesResponses = {
+    200: Array<UserAwayRangeDto>;
+};
+
+export type UserAwayRangeGetAwayRangesResponse = UserAwayRangeGetAwayRangesResponses[keyof UserAwayRangeGetAwayRangesResponses];
+
+export type UserAwayRangeCreateAwayRangeData = {
+    body: CreateAwayRangeDto;
+    path?: never;
+    query?: never;
+    url: '/user/awayranges';
+};
+
+export type UserAwayRangeCreateAwayRangeErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeCreateAwayRangeError = UserAwayRangeCreateAwayRangeErrors[keyof UserAwayRangeCreateAwayRangeErrors];
+
+export type UserAwayRangeCreateAwayRangeResponses = {
+    200: UserAwayRangeDto;
+};
+
+export type UserAwayRangeCreateAwayRangeResponse = UserAwayRangeCreateAwayRangeResponses[keyof UserAwayRangeCreateAwayRangeResponses];
+
+export type UserAwayRangeDeleteAwayRangeData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/awayranges/{id}';
+};
+
+export type UserAwayRangeDeleteAwayRangeErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeDeleteAwayRangeError = UserAwayRangeDeleteAwayRangeErrors[keyof UserAwayRangeDeleteAwayRangeErrors];
+
+export type UserAwayRangeDeleteAwayRangeResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserAwayRangeDeleteAwayRangeResponse = UserAwayRangeDeleteAwayRangeResponses[keyof UserAwayRangeDeleteAwayRangeResponses];
+
+export type UserAwayRangeGetAwayRangeForUserAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/awayranges/{id}';
+};
+
+export type UserAwayRangeGetAwayRangeForUserAdminErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeGetAwayRangeForUserAdminError = UserAwayRangeGetAwayRangeForUserAdminErrors[keyof UserAwayRangeGetAwayRangeForUserAdminErrors];
+
+export type UserAwayRangeGetAwayRangeForUserAdminResponses = {
+    200: Array<UserAwayRangeDto>;
+};
+
+export type UserAwayRangeGetAwayRangeForUserAdminResponse = UserAwayRangeGetAwayRangeForUserAdminResponses[keyof UserAwayRangeGetAwayRangeForUserAdminResponses];
+
+export type UserAwayRangeUpdateAwayRangeData = {
+    body: UpdateAwayRangeDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/awayranges/{id}';
+};
+
+export type UserAwayRangeUpdateAwayRangeErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeUpdateAwayRangeError = UserAwayRangeUpdateAwayRangeErrors[keyof UserAwayRangeUpdateAwayRangeErrors];
+
+export type UserAwayRangeUpdateAwayRangeResponses = {
+    200: UserAwayRangeDto;
+};
+
+export type UserAwayRangeUpdateAwayRangeResponse = UserAwayRangeUpdateAwayRangeResponses[keyof UserAwayRangeUpdateAwayRangeResponses];
+
+export type UserAwayRangeCreateAwayRangeAdminData = {
+    body: CreateAwayRangeDto;
+    path: {
+        userId: number;
+    };
+    query?: never;
+    url: '/user/admin/{userId}/awayranges';
+};
+
+export type UserAwayRangeCreateAwayRangeAdminErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeCreateAwayRangeAdminError = UserAwayRangeCreateAwayRangeAdminErrors[keyof UserAwayRangeCreateAwayRangeAdminErrors];
+
+export type UserAwayRangeCreateAwayRangeAdminResponses = {
+    200: UserAwayRangeDto;
+};
+
+export type UserAwayRangeCreateAwayRangeAdminResponse = UserAwayRangeCreateAwayRangeAdminResponses[keyof UserAwayRangeCreateAwayRangeAdminResponses];
+
+export type UserAwayRangeDeleteAwayRangeAdminData = {
+    body?: never;
+    path: {
+        userId: number;
+        id: number;
+    };
+    query?: never;
+    url: '/user/admin/{userId}/awayranges/{id}';
+};
+
+export type UserAwayRangeDeleteAwayRangeAdminErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeDeleteAwayRangeAdminError = UserAwayRangeDeleteAwayRangeAdminErrors[keyof UserAwayRangeDeleteAwayRangeAdminErrors];
+
+export type UserAwayRangeDeleteAwayRangeAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserAwayRangeDeleteAwayRangeAdminResponse = UserAwayRangeDeleteAwayRangeAdminResponses[keyof UserAwayRangeDeleteAwayRangeAdminResponses];
+
+export type UserAwayRangeUpdateAwayRangeAdminData = {
+    body: UpdateAwayRangeDto;
+    path: {
+        userId: number;
+        id: number;
+    };
+    query?: never;
+    url: '/user/admin/{userId}/awayranges/{id}';
+};
+
+export type UserAwayRangeUpdateAwayRangeAdminErrors = {
+    401: HeyApiError;
+};
+
+export type UserAwayRangeUpdateAwayRangeAdminError = UserAwayRangeUpdateAwayRangeAdminErrors[keyof UserAwayRangeUpdateAwayRangeAdminErrors];
+
+export type UserAwayRangeUpdateAwayRangeAdminResponses = {
+    200: UserAwayRangeDto;
+};
+
+export type UserAwayRangeUpdateAwayRangeAdminResponse = UserAwayRangeUpdateAwayRangeAdminResponses[keyof UserAwayRangeUpdateAwayRangeAdminResponses];
+
+export type UserDeviceRegisterDeviceData = {
+    body: RegisterDeviceDto;
+    path?: never;
+    query?: never;
+    url: '/user/registerDevice';
+};
+
+export type UserDeviceRegisterDeviceErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserDeviceRegisterDeviceError = UserDeviceRegisterDeviceErrors[keyof UserDeviceRegisterDeviceErrors];
+
+export type UserDeviceRegisterDeviceResponses = {
+    200: UserDeviceDto;
+};
+
+export type UserDeviceRegisterDeviceResponse = UserDeviceRegisterDeviceResponses[keyof UserDeviceRegisterDeviceResponses];
+
+export type UserDeviceUnregisterDeviceData = {
+    body: UnregisterDeviceDto;
+    path?: never;
+    query?: never;
+    url: '/user/unregisterDevice';
+};
+
+export type UserDeviceUnregisterDeviceErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserDeviceUnregisterDeviceError = UserDeviceUnregisterDeviceErrors[keyof UserDeviceUnregisterDeviceErrors];
+
+export type UserDeviceUnregisterDeviceResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserDeviceUnregisterDeviceResponse = UserDeviceUnregisterDeviceResponses[keyof UserDeviceUnregisterDeviceResponses];
+
+export type UserDeviceSendPushNotificationAdminData = {
+    body: TestPushNotificationDto;
+    path?: never;
+    query?: never;
+    url: '/user/sendPushNotification';
+};
+
+export type UserDeviceSendPushNotificationAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserDeviceSendPushNotificationAdminError = UserDeviceSendPushNotificationAdminErrors[keyof UserDeviceSendPushNotificationAdminErrors];
+
+export type UserDeviceSendPushNotificationAdminResponses = {
+    200: PushDto;
+};
+
+export type UserDeviceSendPushNotificationAdminResponse = UserDeviceSendPushNotificationAdminResponses[keyof UserDeviceSendPushNotificationAdminResponses];
+
+export type UserGroupAssignmentJoinGroupAssignmentData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/groupAssignment/join';
+};
+
+export type UserGroupAssignmentJoinGroupAssignmentErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserGroupAssignmentJoinGroupAssignmentError = UserGroupAssignmentJoinGroupAssignmentErrors[keyof UserGroupAssignmentJoinGroupAssignmentErrors];
+
+export type UserGroupAssignmentJoinGroupAssignmentResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserGroupAssignmentJoinGroupAssignmentResponse = UserGroupAssignmentJoinGroupAssignmentResponses[keyof UserGroupAssignmentJoinGroupAssignmentResponses];
+
+export type UserGroupAssignmentLeaveGroupAssignmentData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/groupAssignment/leave';
+};
+
+export type UserGroupAssignmentLeaveGroupAssignmentErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserGroupAssignmentLeaveGroupAssignmentError = UserGroupAssignmentLeaveGroupAssignmentErrors[keyof UserGroupAssignmentLeaveGroupAssignmentErrors];
+
+export type UserGroupAssignmentLeaveGroupAssignmentResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserGroupAssignmentLeaveGroupAssignmentResponse = UserGroupAssignmentLeaveGroupAssignmentResponses[keyof UserGroupAssignmentLeaveGroupAssignmentResponses];
+
+export type UserGroupAssignmentGetGroupAssignmentMembersAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/groupAssignment/members';
+};
+
+export type UserGroupAssignmentGetGroupAssignmentMembersAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserGroupAssignmentGetGroupAssignmentMembersAdminError = UserGroupAssignmentGetGroupAssignmentMembersAdminErrors[keyof UserGroupAssignmentGetGroupAssignmentMembersAdminErrors];
+
+export type UserGroupAssignmentGetGroupAssignmentMembersAdminResponses = {
+    200: Array<UserDto>;
+};
+
+export type UserGroupAssignmentGetGroupAssignmentMembersAdminResponse = UserGroupAssignmentGetGroupAssignmentMembersAdminResponses[keyof UserGroupAssignmentGetGroupAssignmentMembersAdminResponses];
+
+export type UserGroupAssignmentAssignGroupsAdminData = {
+    body: AssignGroupsDto;
+    path?: never;
+    query?: never;
+    url: '/user/groupAssignment/assign';
+};
+
+export type UserGroupAssignmentAssignGroupsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserGroupAssignmentAssignGroupsAdminError = UserGroupAssignmentAssignGroupsAdminErrors[keyof UserGroupAssignmentAssignGroupsAdminErrors];
+
+export type UserGroupAssignmentAssignGroupsAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserGroupAssignmentAssignGroupsAdminResponse = UserGroupAssignmentAssignGroupsAdminResponses[keyof UserGroupAssignmentAssignGroupsAdminResponses];
+
+export type UserReferralSignupSocialProofData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Referral or invite code to prefer inviter friends
+         */
+        code?: string;
+        /**
+         * How many avatars to return. Defaults to 5, capped at 24.
+         */
+        count?: number;
+    };
+    url: '/user/signupSocialProof';
+};
+
+export type UserReferralSignupSocialProofErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserReferralSignupSocialProofError = UserReferralSignupSocialProofErrors[keyof UserReferralSignupSocialProofErrors];
+
+export type UserReferralSignupSocialProofResponses = {
+    200: SignupSocialProofDto;
+};
+
+export type UserReferralSignupSocialProofResponse = UserReferralSignupSocialProofResponses[keyof UserReferralSignupSocialProofResponses];
+
+export type UserReferralReferrerProfileData = {
+    body?: never;
+    path: {
+        code: string;
+    };
+    query?: never;
+    url: '/user/referrerProfile/{code}';
+};
+
+export type UserReferralReferrerProfileErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserReferralReferrerProfileError = UserReferralReferrerProfileErrors[keyof UserReferralReferrerProfileErrors];
+
+export type UserReferralReferrerProfileResponses = {
+    200: ReferrerProfileDto;
+};
+
+export type UserReferralReferrerProfileResponse = UserReferralReferrerProfileResponses[keyof UserReferralReferrerProfileResponses];
+
+export type UserFriendRemoveFriendData = {
+    body?: never;
+    path: {
+        targetUserId: number;
+    };
+    query?: never;
+    url: '/user/friends/{targetUserId}';
+};
+
+export type UserFriendRemoveFriendErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendRemoveFriendError = UserFriendRemoveFriendErrors[keyof UserFriendRemoveFriendErrors];
+
+export type UserFriendRemoveFriendResponses = {
+    /**
+     * Relationship removed
+     */
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserFriendRemoveFriendResponse = UserFriendRemoveFriendResponses[keyof UserFriendRemoveFriendResponses];
+
+export type UserFriendRequestFriendData = {
+    body?: never;
+    path: {
+        targetUserId: number;
+    };
+    query?: never;
+    url: '/user/friends/{targetUserId}';
+};
+
+export type UserFriendRequestFriendErrors = {
+    /**
+     * Already friends
+     */
+    409: HeyApiError;
+};
+
+export type UserFriendRequestFriendError = UserFriendRequestFriendErrors[keyof UserFriendRequestFriendErrors];
+
+export type UserFriendRequestFriendResponses = {
+    200: FriendStatusDto;
+};
+
+export type UserFriendRequestFriendResponse = UserFriendRequestFriendResponses[keyof UserFriendRequestFriendResponses];
+
+export type UserFriendAcceptFriendRequestData = {
+    body?: never;
+    path: {
+        requesterId: number;
+    };
+    query?: never;
+    url: '/user/friends/{requesterId}/accept';
+};
+
+export type UserFriendAcceptFriendRequestErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendAcceptFriendRequestError = UserFriendAcceptFriendRequestErrors[keyof UserFriendAcceptFriendRequestErrors];
+
+export type UserFriendAcceptFriendRequestResponses = {
+    /**
+     * Friend request accepted
+     */
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserFriendAcceptFriendRequestResponse = UserFriendAcceptFriendRequestResponses[keyof UserFriendAcceptFriendRequestResponses];
+
+export type UserFriendDeclineFriendRequestData = {
+    body?: never;
+    path: {
+        requesterId: number;
+    };
+    query?: never;
+    url: '/user/friends/{requesterId}/decline';
+};
+
+export type UserFriendDeclineFriendRequestErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendDeclineFriendRequestError = UserFriendDeclineFriendRequestErrors[keyof UserFriendDeclineFriendRequestErrors];
+
+export type UserFriendDeclineFriendRequestResponses = {
+    /**
+     * Friend request declined
+     */
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserFriendDeclineFriendRequestResponse = UserFriendDeclineFriendRequestResponses[keyof UserFriendDeclineFriendRequestResponses];
+
+export type UserFriendListReceivedRequestsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/friends/requests/received';
+};
+
+export type UserFriendListReceivedRequestsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendListReceivedRequestsError = UserFriendListReceivedRequestsErrors[keyof UserFriendListReceivedRequestsErrors];
+
+export type UserFriendListReceivedRequestsResponses = {
+    200: Array<ProfileDto>;
+};
+
+export type UserFriendListReceivedRequestsResponse = UserFriendListReceivedRequestsResponses[keyof UserFriendListReceivedRequestsResponses];
+
+export type UserFriendListSentRequestsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/friends/requests/sent';
+};
+
+export type UserFriendListSentRequestsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendListSentRequestsError = UserFriendListSentRequestsErrors[keyof UserFriendListSentRequestsErrors];
+
+export type UserFriendListSentRequestsResponses = {
+    200: Array<ProfileDto>;
+};
+
+export type UserFriendListSentRequestsResponse = UserFriendListSentRequestsResponses[keyof UserFriendListSentRequestsResponses];
+
+export type UserFriendMyFriendRelationshipData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/myfriendrelationship/{id}';
+};
+
+export type UserFriendMyFriendRelationshipErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendMyFriendRelationshipError = UserFriendMyFriendRelationshipErrors[keyof UserFriendMyFriendRelationshipErrors];
+
+export type UserFriendMyFriendRelationshipResponses = {
+    200: FriendStatusDto;
+};
+
+export type UserFriendMyFriendRelationshipResponse = UserFriendMyFriendRelationshipResponses[keyof UserFriendMyFriendRelationshipResponses];
+
+export type UserFriendListFriendsData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/listfriends/{id}';
+};
+
+export type UserFriendListFriendsErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendListFriendsError = UserFriendListFriendsErrors[keyof UserFriendListFriendsErrors];
+
+export type UserFriendListFriendsResponses = {
+    200: Array<ProfileDto>;
+};
+
+export type UserFriendListFriendsResponse = UserFriendListFriendsResponses[keyof UserFriendListFriendsResponses];
+
+export type UserFriendGetFriendGraphEdgesAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/friends/graphEdges';
+};
+
+export type UserFriendGetFriendGraphEdgesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserFriendGetFriendGraphEdgesAdminError = UserFriendGetFriendGraphEdgesAdminErrors[keyof UserFriendGetFriendGraphEdgesAdminErrors];
+
+export type UserFriendGetFriendGraphEdgesAdminResponses = {
+    200: Array<FriendGraphEdgeDto>;
+};
+
+export type UserFriendGetFriendGraphEdgesAdminResponse = UserFriendGetFriendGraphEdgesAdminResponses[keyof UserFriendGetFriendGraphEdgesAdminResponses];
+
+export type UserOnetimeInviteOnetimeInviteData = {
+    body?: never;
+    path: {
+        code: string;
+    };
+    query?: never;
+    url: '/user/onetimeInvite/{code}';
+};
+
+export type UserOnetimeInviteOnetimeInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteOnetimeInviteError = UserOnetimeInviteOnetimeInviteErrors[keyof UserOnetimeInviteOnetimeInviteErrors];
+
+export type UserOnetimeInviteOnetimeInviteResponses = {
+    200: OnetimeInviteDto;
+};
+
+export type UserOnetimeInviteOnetimeInviteResponse = UserOnetimeInviteOnetimeInviteResponses[keyof UserOnetimeInviteOnetimeInviteResponses];
+
+export type UserOnetimeInviteRequestOnetimeInviteData = {
+    body: RequestOnetimeInviteDto;
+    path?: never;
+    query?: never;
+    url: '/user/onetimeInvite/request';
+};
+
+export type UserOnetimeInviteRequestOnetimeInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteRequestOnetimeInviteError = UserOnetimeInviteRequestOnetimeInviteErrors[keyof UserOnetimeInviteRequestOnetimeInviteErrors];
+
+export type UserOnetimeInviteRequestOnetimeInviteResponses = {
+    200: OnetimeInviteDto;
+};
+
+export type UserOnetimeInviteRequestOnetimeInviteResponse = UserOnetimeInviteRequestOnetimeInviteResponses[keyof UserOnetimeInviteRequestOnetimeInviteResponses];
+
+export type UserOnetimeInviteApproveOnetimeInviteData = {
+    body?: never;
+    path: {
+        inviteId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvite/{inviteId}/approve';
+};
+
+export type UserOnetimeInviteApproveOnetimeInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteApproveOnetimeInviteError = UserOnetimeInviteApproveOnetimeInviteErrors[keyof UserOnetimeInviteApproveOnetimeInviteErrors];
+
+export type UserOnetimeInviteApproveOnetimeInviteResponses = {
+    200: OnetimeInviteDto;
+};
+
+export type UserOnetimeInviteApproveOnetimeInviteResponse = UserOnetimeInviteApproveOnetimeInviteResponses[keyof UserOnetimeInviteApproveOnetimeInviteResponses];
+
+export type UserOnetimeInviteRejectOnetimeInviteData = {
+    body?: never;
+    path: {
+        inviteId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvite/{inviteId}/reject';
+};
+
+export type UserOnetimeInviteRejectOnetimeInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteRejectOnetimeInviteError = UserOnetimeInviteRejectOnetimeInviteErrors[keyof UserOnetimeInviteRejectOnetimeInviteErrors];
+
+export type UserOnetimeInviteRejectOnetimeInviteResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserOnetimeInviteRejectOnetimeInviteResponse = UserOnetimeInviteRejectOnetimeInviteResponses[keyof UserOnetimeInviteRejectOnetimeInviteResponses];
+
+export type UserOnetimeInviteCreateOnetimeInviteData = {
+    body: CreateOnetimeInviteDto;
+    path?: never;
+    query?: never;
+    url: '/user/onetimeInvite/create';
+};
+
+export type UserOnetimeInviteCreateOnetimeInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteCreateOnetimeInviteError = UserOnetimeInviteCreateOnetimeInviteErrors[keyof UserOnetimeInviteCreateOnetimeInviteErrors];
+
+export type UserOnetimeInviteCreateOnetimeInviteResponses = {
+    200: OnetimeInviteDto;
+};
+
+export type UserOnetimeInviteCreateOnetimeInviteResponse = UserOnetimeInviteCreateOnetimeInviteResponses[keyof UserOnetimeInviteCreateOnetimeInviteResponses];
+
+export type UserOnetimeInviteDeleteOnetimeInviteData = {
+    body?: never;
+    path: {
+        inviteId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvites/{inviteId}';
+};
+
+export type UserOnetimeInviteDeleteOnetimeInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteDeleteOnetimeInviteError = UserOnetimeInviteDeleteOnetimeInviteErrors[keyof UserOnetimeInviteDeleteOnetimeInviteErrors];
+
+export type UserOnetimeInviteDeleteOnetimeInviteResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserOnetimeInviteDeleteOnetimeInviteResponse = UserOnetimeInviteDeleteOnetimeInviteResponses[keyof UserOnetimeInviteDeleteOnetimeInviteResponses];
+
+export type UserOnetimeInviteUpdateOnetimeInviteData = {
+    body: UpdateOnetimeInviteDto;
+    path: {
+        inviteId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvites/{inviteId}';
+};
+
+export type UserOnetimeInviteUpdateOnetimeInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteUpdateOnetimeInviteError = UserOnetimeInviteUpdateOnetimeInviteErrors[keyof UserOnetimeInviteUpdateOnetimeInviteErrors];
+
+export type UserOnetimeInviteUpdateOnetimeInviteResponses = {
+    200: OnetimeInviteDto;
+};
+
+export type UserOnetimeInviteUpdateOnetimeInviteResponse = UserOnetimeInviteUpdateOnetimeInviteResponses[keyof UserOnetimeInviteUpdateOnetimeInviteResponses];
+
+export type UserOnetimeInviteGetOnetimeInvitesAdminData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        limit?: number;
+    };
+    url: '/user/onetimeInvites';
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesAdminError = UserOnetimeInviteGetOnetimeInvitesAdminErrors[keyof UserOnetimeInviteGetOnetimeInvitesAdminErrors];
+
+export type UserOnetimeInviteGetOnetimeInvitesAdminResponses = {
+    200: OnetimeInviteListDto;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesAdminResponse = UserOnetimeInviteGetOnetimeInvitesAdminResponses[keyof UserOnetimeInviteGetOnetimeInvitesAdminResponses];
+
+export type UserOnetimeInviteGetOnetimeInviteMemberStatsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/onetimeInvites/memberStats';
+};
+
+export type UserOnetimeInviteGetOnetimeInviteMemberStatsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteGetOnetimeInviteMemberStatsAdminError = UserOnetimeInviteGetOnetimeInviteMemberStatsAdminErrors[keyof UserOnetimeInviteGetOnetimeInviteMemberStatsAdminErrors];
+
+export type UserOnetimeInviteGetOnetimeInviteMemberStatsAdminResponses = {
+    200: Array<OnetimeInviteMemberStatsDto>;
+};
+
+export type UserOnetimeInviteGetOnetimeInviteMemberStatsAdminResponse = UserOnetimeInviteGetOnetimeInviteMemberStatsAdminResponses[keyof UserOnetimeInviteGetOnetimeInviteMemberStatsAdminResponses];
+
+export type UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/onetimeInvites/graphEdges';
+};
+
+export type UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminError = UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminErrors[keyof UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminErrors];
+
+export type UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminResponses = {
+    200: Array<OnetimeInviteEdgeDto>;
+};
+
+export type UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminResponse = UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminResponses[keyof UserOnetimeInviteGetOnetimeInviteGraphEdgesAdminResponses];
+
+export type UserOnetimeInviteGetOnetimeInvitesOverviewData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/onetimeInvites/overview';
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesOverviewErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesOverviewError = UserOnetimeInviteGetOnetimeInvitesOverviewErrors[keyof UserOnetimeInviteGetOnetimeInvitesOverviewErrors];
+
+export type UserOnetimeInviteGetOnetimeInvitesOverviewResponses = {
+    200: Array<OnetimeInviteDto>;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesOverviewResponse = UserOnetimeInviteGetOnetimeInvitesOverviewResponses[keyof UserOnetimeInviteGetOnetimeInvitesOverviewResponses];
+
+export type UserOnetimeInviteGetOnetimeInvitesByCommunityData = {
+    body?: never;
+    path: {
+        communityId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvites/{communityId}';
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesByCommunityErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesByCommunityError = UserOnetimeInviteGetOnetimeInvitesByCommunityErrors[keyof UserOnetimeInviteGetOnetimeInvitesByCommunityErrors];
+
+export type UserOnetimeInviteGetOnetimeInvitesByCommunityResponses = {
+    200: Array<OnetimeInviteDto>;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesByCommunityResponse = UserOnetimeInviteGetOnetimeInvitesByCommunityResponses[keyof UserOnetimeInviteGetOnetimeInvitesByCommunityResponses];
+
+export type UserOnetimeInviteGetOnetimeInvitesByRequesterData = {
+    body?: never;
+    path: {
+        communityId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvites/{communityId}/my';
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesByRequesterErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesByRequesterError = UserOnetimeInviteGetOnetimeInvitesByRequesterErrors[keyof UserOnetimeInviteGetOnetimeInvitesByRequesterErrors];
+
+export type UserOnetimeInviteGetOnetimeInvitesByRequesterResponses = {
+    200: Array<OnetimeInviteDto>;
+};
+
+export type UserOnetimeInviteGetOnetimeInvitesByRequesterResponse = UserOnetimeInviteGetOnetimeInvitesByRequesterResponses[keyof UserOnetimeInviteGetOnetimeInvitesByRequesterResponses];
 
 export type ImagesGetImageData = {
     body?: never;

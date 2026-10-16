@@ -44,6 +44,7 @@ import {
   type ParsedAction,
 } from "../actions/entities/action.entity";
 import { User } from "../user/entities/user.entity";
+import { TagService } from "../user/tag.service";
 import { UserService } from "../user/user.service";
 import {
   CohortResolutionSession,
@@ -68,6 +69,7 @@ export class ActionEventRecipientService {
     private readonly userRepository: Repository<User>,
     private readonly communityService: CommunityService,
     private readonly userService: UserService,
+    private readonly tagService: TagService,
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
     private readonly cohortAdmissionService: CohortAdmissionService,
   ) {}
@@ -658,7 +660,7 @@ export class ActionEventRecipientService {
         if (!group.userTag) {
           throw new Error("Group cohort type requires user tag");
         }
-        const userTag = await this.userService.findTagOrFail(group.userTag.id);
+        const userTag = await this.tagService.findTagOrFail(group.userTag.id);
         users = loadedTagUsers(userTag);
         break;
       default:

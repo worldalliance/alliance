@@ -23,12 +23,12 @@ import {
   NotificationCategory,
 } from "src/notifs/entities/notification.entity";
 import { PosthogService } from "src/posthog/posthog.service";
+import { AccountDeletionService } from "src/user/account-deletion.service";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "src/user/entities/onetime-invite.entity";
 import { ReferralSource, User } from "src/user/entities/user.entity";
-import { UserService } from "src/user/user.service";
 import { WaitlistEntry } from "src/waitlist/entities/waitlist-entry.entity";
 import supertest from "supertest";
 import {
@@ -414,7 +414,7 @@ describe("Link openings (e2e)", () => {
     const { entry: bystander } = await saveConvert("Bystander");
     const bystanderMail = await sendWaitlistEmail(bystander);
 
-    await ctx.app.get(UserService).deleteUserAdmin({
+    await ctx.app.get(AccountDeletionService).deleteUserAdmin({
       userId: convert.id,
       adminId: ctx.adminUserId,
       reason: "Asked to be removed",

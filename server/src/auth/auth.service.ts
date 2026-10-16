@@ -24,11 +24,14 @@ import {
 } from "src/user/entities/onetime-invite.entity";
 import type { Repository } from "src/utils/Repository";
 import { MailService } from "../mail/mail.service";
+import { AccountEmailService } from "../user/account-email.service";
 import {
   hasPassword,
   ReferralSource,
   User,
 } from "../user/entities/user.entity";
+import { FriendService } from "../user/friend.service";
+import { ReferralService } from "../user/referral.service";
 import { UserService } from "../user/user.service";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { Guest } from "./entities/guest.entity";
@@ -49,6 +52,7 @@ import {
   verifyMailedToken,
   type GuestJwtPayload,
   type JwtPayload,
+  type MailedJwtPayload,
 } from "./tokens";
 
 export type ReferredUser = {
@@ -73,6 +77,9 @@ type PasswordSession = {
 export class AuthService {
   constructor(
     private usersService: UserService,
+    private readonly accountEmailService: AccountEmailService,
+    private readonly friendService: FriendService,
+    private readonly referralService: ReferralService,
     private jwtService: JwtService,
     private mailService: MailService,
     private sessionService: SessionService,
@@ -224,12 +231,15 @@ export class AuthService {
     inviteAssignment: StoredInviteAssignment | null;
     referralSource: ReferralSource;
   }> {
-    const resolution = await this.usersService.resolveReferral(referralCode, {
-      inviteRelations: {
-        invitingUser: { communities: true },
-        community: true,
+    const resolution = await this.referralService.resolveReferral(
+      referralCode,
+      {
+        inviteRelations: {
+          invitingUser: { communities: true },
+          community: true,
+        },
       },
-    });
+    );
 
     if (!resolution) {
       if (process.env.NODE_ENV !== "test") {
@@ -338,12 +348,15 @@ export class AuthService {
     );
 
     if (user.referredBy) {
-      await this.usersService.makeFriendsAutomated(user.referredBy.id, user.id);
+      await this.friendService.makeFriendsAutomated(
+        user.referredBy.id,
+        user.id,
+      );
     }
 
     // The user row is already committed; a mail failure must not fail the signup.
     const welcomeMail = await R.fromPromise(
-      this.usersService.sendWelcomeEmail(user.id),
+      this.accountEmailService.sendWelcomeEmail(user.id),
     );
     if (!welcomeMail.ok) {
       this.logger.error(
@@ -473,7 +486,7 @@ export class AuthService {
       return; // fail silently to avoid leaking emails
     }
 
-    const token = await this.usersService.generatePasswordResetToken(user.id);
+    const token = await this.generatePasswordResetToken(user.id);
     await this.mailService.sendPasswordResetEmail({
       email: user.email,
       name: user.name,
@@ -481,6 +494,17 @@ export class AuthService {
       hasPassword: hasPassword(user),
     });
     return user;
+  }
+
+  async generatePasswordResetToken(userId: number) {
+    const payload: MailedJwtPayload = {
+      sub: userId,
+      tokenType: JWTTokenType.passwordReset,
+    };
+    return this.jwtService.sign(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: `1d`,
+    });
   }
 
   async resetPassword(token: string, password: string) {

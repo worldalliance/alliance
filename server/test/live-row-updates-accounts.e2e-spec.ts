@@ -12,6 +12,7 @@ import { ContractService } from "src/contract/contract.service";
 import { ImagesService } from "src/images/images.service";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { AccountEmailService } from "src/user/account-email.service";
 import { AwayRangeEditor } from "src/user/away-range-history";
 import {
   OnetimeInvite,
@@ -23,6 +24,9 @@ import {
 } from "src/user/entities/user-away-range.entity";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
+import { OnetimeInviteService } from "src/user/onetime-invite.service";
+import { UserAwayRangeService } from "src/user/user-away-range.service";
+import { UserDeviceService } from "src/user/user-device.service";
 import { UserService } from "src/user/user.service";
 import type { EntityManager, Repository } from "typeorm";
 import {
@@ -105,7 +109,7 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
       );
 
       await expect(
-        userService.updateAwayRange({
+        ctx.app.get(UserAwayRangeService).updateAwayRange({
           userId: user.id,
           awayRangeId: range.id,
           data: { reason: UserAwayRangeReason.OTHER, note: "Edited" },
@@ -126,7 +130,7 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
       );
 
       await expect(
-        userService.deleteAwayRange({
+        ctx.app.get(UserAwayRangeService).deleteAwayRange({
           userId: user.id,
           awayRangeId: range.id,
           editor: AwayRangeEditor.Member,
@@ -157,10 +161,12 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
       return loaded;
     });
 
-    const registered = await userService.registerDevice(next.id, {
-      deviceType: "ios",
-      expoPushToken,
-    });
+    const registered = await ctx.app
+      .get(UserDeviceService)
+      .registerDevice(next.id, {
+        deviceType: "ios",
+        expoPushToken,
+      });
 
     expect(registered).not.toBe(device.id);
     expect(
@@ -296,7 +302,7 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
       });
 
     await expect(
-      userService.approveOrRejectOnetimeInviteRequest({
+      ctx.app.get(OnetimeInviteService).approveOrRejectOnetimeInviteRequest({
         userId: leader.id,
         inviteId: request.id,
         newStatus: "approve",
@@ -348,12 +354,14 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
 
   it("verifies no email of a deleted account", async () => {
     const user = await member();
-    const token = await userService.getVerifyEmailToken(user.id);
+    const token = await ctx.app
+      .get(AccountEmailService)
+      .getVerifyEmailToken(user.id);
     await userRepo.softDelete(user.id);
 
-    await expect(userService.verifyEmail(token)).rejects.toThrow(
-      "Invalid or expired verification link",
-    );
+    await expect(
+      ctx.app.get(AccountEmailService).verifyEmail(token),
+    ).rejects.toThrow("Invalid or expired verification link");
     expect(
       await userRepo.findOneOrFail({
         where: { id: user.id },

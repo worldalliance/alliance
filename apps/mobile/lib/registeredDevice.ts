@@ -1,7 +1,7 @@
 // eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
 import {
-  userRegisterDevice,
-  userUnregisterDevice,
+  userDeviceRegisterDevice,
+  userDeviceUnregisterDevice,
 } from "@alliance/shared/client";
 import { milliseconds } from "date-fns";
 import { getBinaryApiUrl, isReviewSession } from "./config";
@@ -18,14 +18,14 @@ const deviceLink = (params: {
     storage: params.storage,
     register: async (body) =>
       (
-        await userRegisterDevice({
+        await userDeviceRegisterDevice({
           body: { ...body, taskBadgePushes: true },
           baseUrl: params.baseUrl(),
           throwOnError: true,
         })
       ).data.id,
     unregister: async (body) => {
-      await userUnregisterDevice({
+      await userDeviceUnregisterDevice({
         body,
         baseUrl: params.baseUrl(),
         // A retry can unlink the other deployment's device, which must not see

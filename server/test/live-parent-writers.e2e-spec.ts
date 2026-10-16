@@ -16,6 +16,7 @@ import { Push } from "src/push/push.entity";
 import { PushService } from "src/push/push.service";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { AmbassadorProgramService } from "src/user/ambassador-program.service";
 import { AwayRangeEditor } from "src/user/away-range-history";
 import { AmbassadorProgramMember } from "src/user/entities/ambassador-program-member.entity";
 import {
@@ -30,6 +31,10 @@ import {
 } from "src/user/entities/user-away-range.entity";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
+import { OnetimeInviteService } from "src/user/onetime-invite.service";
+import { TagService } from "src/user/tag.service";
+import { UserAwayRangeService } from "src/user/user-away-range.service";
+import { UserDeviceService } from "src/user/user-device.service";
 import { UserService } from "src/user/user.service";
 import type { Repository } from "typeorm";
 import {
@@ -129,7 +134,7 @@ describe("Writers beside a deletion (e2e)", () => {
     deleteAfterUserLoad({ ctx, deleted: user });
 
     await expect(
-      userService.createAwayRange({
+      ctx.app.get(UserAwayRangeService).createAwayRange({
         userId: user.id,
         data: {
           reason: UserAwayRangeReason.VACATION,
@@ -151,10 +156,12 @@ describe("Writers beside a deletion (e2e)", () => {
     deleteAfterUserLoad({ ctx, deleted: inviter });
 
     await expect(
-      userService.createOnetimeInvite(
-        { invitee: "Invitee", invitingUserId: inviter.id },
-        ctx.adminUserId,
-      ),
+      ctx.app
+        .get(OnetimeInviteService)
+        .createOnetimeInvite(
+          { invitee: "Invitee", invitingUserId: inviter.id },
+          ctx.adminUserId,
+        ),
     ).rejects.toThrow(NotFoundException);
     expect(
       await ctx.dataSource.getRepository(OnetimeInvite).find({
@@ -198,7 +205,7 @@ describe("Writers beside a deletion (e2e)", () => {
     deleteAfterUserLoad({ ctx, deleted: user });
 
     await expect(
-      userService.registerDevice(user.id, {
+      ctx.app.get(UserDeviceService).registerDevice(user.id, {
         deviceType: "ios",
         expoPushToken: `ExponentPushToken[writer-${user.id}]`,
       }),
@@ -216,7 +223,7 @@ describe("Writers beside a deletion (e2e)", () => {
     deleteAfterUserLoad({ ctx, deleted: user });
 
     await expect(
-      userService.upsertAmbassadorProgramMember({
+      ctx.app.get(AmbassadorProgramService).upsertAmbassadorProgramMember({
         userId: user.id,
         invited: true,
       }),
@@ -340,7 +347,7 @@ describe("Writers beside a deletion (e2e)", () => {
     deleteAfterUserLoad({ ctx, deleted: tagged });
 
     await expect(
-      userService.addUserToTag(ctx.defaultTag.id, tagged.id),
+      ctx.app.get(TagService).addUserToTag(ctx.defaultTag.id, tagged.id),
     ).rejects.toThrow(NotFoundException);
     const [{ count }] = await ctx.dataSource.query(
       `SELECT count(*)::int AS count FROM "tag_users_user" WHERE "userId" = $1`,

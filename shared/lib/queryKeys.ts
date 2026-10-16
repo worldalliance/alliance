@@ -13,7 +13,8 @@ import type { UseActivitiesProps } from "./useActivities";
 
 const activitiesAll = () => ["useActivities"] as const;
 
-const onetimeInvitesAdminAll = () => ["userGetOnetimeInvitesAdmin"] as const;
+const onetimeInvitesAdminAll = () =>
+  ["userOnetimeInviteGetOnetimeInvitesAdmin"] as const;
 
 /** Prefix over everything derived from a form definition, so one form write
  * invalidates the index and the per-form field lists together. */
@@ -84,7 +85,7 @@ export const queryKeys = {
   communityMemberContactInfo: (communityId: number | null) =>
     ["communityGetMemberContactInfo", communityId] as const,
   communityOnetimeInvites: (communityId: number) =>
-    ["userGetOnetimeInvitesByCommunity", communityId] as const,
+    ["userOnetimeInviteGetOnetimeInvitesByCommunity", communityId] as const,
   contractById: (contractId: number | null) =>
     ["contractGetById", contractId] as const,
   currentContract: () => ["contractGetCurrent"] as const,
@@ -100,7 +101,7 @@ export const queryKeys = {
   linkPreview: (url: string) => ["linkPreviewGetPreview", url] as const,
   members: () => ["userMembers"] as const,
   membersWithFriends: () => ["userMembersWithFriends"] as const,
-  myAwayRanges: () => ["userGetAwayRanges"] as const,
+  myAwayRanges: () => ["userAwayRangeGetAwayRanges"] as const,
   myCommunities: () => ["communityGetMyCommunities"] as const,
   myConversations: () => ["conversationGetMyConversations"] as const,
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,
@@ -111,15 +112,17 @@ export const queryKeys = {
   notifications: () => ["notifications"] as const,
   notificationsLoadedAt: () => ["notifications", "loadedAt"] as const,
   notificationsUnreadCount: () => ["notifications", "unreadCount"] as const,
-  onetimeInvite: (code: string | null) => ["userOnetimeInvite", code] as const,
-  onetimeInvitesOverview: () => ["userGetOnetimeInvitesOverview"] as const,
+  onetimeInvite: (code: string | null) =>
+    ["userOnetimeInviteOnetimeInvite", code] as const,
+  onetimeInvitesOverview: () =>
+    ["userOnetimeInviteGetOnetimeInvitesOverview"] as const,
   publicCommunities: () => ["communityGetPublicCommunities"] as const,
   publicMembers: () => ["userMembersPublic"] as const,
   publicProfile: (userId: number) => ["userFindOne", userId] as const,
   referrerProfile: (code: string | null) =>
-    ["userReferrerProfile", code] as const,
+    ["userReferralReferrerProfile", code] as const,
   signupSocialProof: (referralCode: string | null, count?: number) =>
-    ["userSignupSocialProof", referralCode, count] as const,
+    ["userReferralSignupSocialProof", referralCode, count] as const,
   staffDirectory: () => ["userStaffDirectory"] as const,
   taskFormsAll,
   taskForm: (formId: number | null) => [...taskFormsAll(), formId] as const,
@@ -206,7 +209,7 @@ export const queryKeys = {
     [...formsAdminAll(), "questionFields", formId] as const,
   formResponseCountsAdmin: (formIds: readonly number[]) =>
     [...formsAdminAll(), "responseCounts", formIds] as const,
-  friendGraphEdgesAdmin: () => ["userGetFriendGraphEdgesAdmin"] as const,
+  friendGraphEdgesAdmin: () => ["userFriendGetFriendGraphEdgesAdmin"] as const,
   generalUpdateAdmin: (id: number | null) =>
     ["generalUpdatesFindOneGeneralUpdateAdmin", id] as const,
   generalUpdatesAdmin: () => ["generalUpdatesAllGeneralUpdatesAdmin"] as const,
@@ -227,9 +230,9 @@ export const queryKeys = {
   onetimeInvitesAdmin: (page: number, limit: number) =>
     [...onetimeInvitesAdminAll(), page, limit] as const,
   onetimeInviteMemberStatsAdmin: () =>
-    ["userGetOnetimeInviteMemberStatsAdmin"] as const,
+    ["userOnetimeInviteGetOnetimeInviteMemberStatsAdmin"] as const,
   onetimeInviteGraphEdgesAdmin: () =>
-    ["userGetOnetimeInviteGraphEdgesAdmin"] as const,
+    ["userOnetimeInviteGetOnetimeInviteGraphEdgesAdmin"] as const,
   postsAdmin: () => ["forumGetPostsForAdmin"] as const,
   projectsAdminAll,
   projectsAdmin: () => [...projectsAdminAll(), "list"] as const,
@@ -257,11 +260,11 @@ export const queryKeys = {
       owner?.id ?? null,
     ] as const,
   staffDirectoryAdmin: () => ["userStaffDirectoryAdmin"] as const,
-  tagsAdmin: () => ["userGetTagsAdmin"] as const,
+  tagsAdmin: () => ["userTagGetTagsAdmin"] as const,
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
   userAwayRangesAdmin: (userId: number) =>
-    ["userGetAwayRangeForUserAdmin", userId] as const,
+    ["userAwayRangeGetAwayRangeForUserAdmin", userId] as const,
   userCityCountsAdmin: () => ["userCityCountsAdmin"] as const,
   userDetailAdmin: (userId: number) => ["userUserDetailAdmin", userId] as const,
   usersAdmin: () => ["userListAdmin"] as const,

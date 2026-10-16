@@ -9,7 +9,7 @@ import { changedPhoto } from "@alliance/common/image-src";
 // eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   communityUpdate,
-  userGetOnetimeInvitesByCommunity,
+  userOnetimeInviteGetOnetimeInvitesByCommunity,
 } from "@alliance/shared/client";
 import type {
   CommunityDto,
@@ -613,13 +613,15 @@ function GroupInvitesTab({
     refetch: refetchCommunityInvites,
   } = useCommunityInvites(communityId);
   const [onetimeInvites, setOnetimeInvites] = useState<
-    Awaited<ReturnType<typeof userGetOnetimeInvitesByCommunity>>["data"]
+    Awaited<
+      ReturnType<typeof userOnetimeInviteGetOnetimeInvitesByCommunity>
+    >["data"]
   >([]);
   const [loading, setLoading] = useState(true);
 
   const loadInvites = useCallback(async () => {
     try {
-      const oneRes = await userGetOnetimeInvitesByCommunity({
+      const oneRes = await userOnetimeInviteGetOnetimeInvitesByCommunity({
         path: { communityId },
       });
       setOnetimeInvites(oneRes.data ?? []);

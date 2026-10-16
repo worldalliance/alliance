@@ -26,6 +26,7 @@ import {
   writeUnderLive,
 } from "src/datasources/soft-delete";
 import { Tag } from "src/user/entities/tag.entity";
+import { TagService } from "src/user/tag.service";
 import { UserService } from "src/user/user.service";
 import { In, type Repository } from "typeorm";
 import {
@@ -66,6 +67,7 @@ export class ReminderGroupService {
     @InjectRepository(ActionFormVariant)
     private readonly actionFormVariantRepository: Repository<ActionFormVariant>,
     private readonly userService: UserService,
+    private readonly tagService: TagService,
   ) {}
 
   private async attachDeadlineEvent(
@@ -240,7 +242,7 @@ export class ReminderGroupService {
 
     let userTag: Tag | undefined = undefined;
     if (dto.cohortType === ReminderCohortType.Tag && dto.userTagId) {
-      userTag = await this.userService.findTagOrFail(dto.userTagId);
+      userTag = await this.tagService.findTagOrFail(dto.userTagId);
     }
 
     let users: User[] | undefined = undefined;

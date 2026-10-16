@@ -1,7 +1,7 @@
 // eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   UserDto,
-  userGetGroupAssignmentMembersAdmin,
+  userGroupAssignmentGetGroupAssignmentMembersAdmin,
 } from "@alliance/shared/client";
 import {
   createContext,
@@ -30,7 +30,7 @@ export const GroupAssignmentProvider = memo(
     ] = useState<UserDto[]>([]);
 
     useEffect(() => {
-      userGetGroupAssignmentMembersAdmin().then((response) => {
+      userGroupAssignmentGetGroupAssignmentMembersAdmin().then((response) => {
         if (response.data) {
           setMembersUndergoingGroupAssignment(response.data);
         }

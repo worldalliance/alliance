@@ -18,6 +18,7 @@ import {
   OnetimeInviteStatus,
 } from "../src/user/entities/onetime-invite.entity";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
+import { UserVisibilityContextService } from "../src/user/user-visibility-context.service";
 import { UserService } from "../src/user/user.service";
 import {
   addDays,
@@ -130,7 +131,9 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
       const { member } = await setUp(types);
 
       expect(
-        await ctx.app.get(UserService).getCompletedActionCount(member.id),
+        await ctx.app
+          .get(UserVisibilityContextService)
+          .getCompletedActionCount(member.id),
       ).toBe(completed ? 1 : 0);
     },
   );

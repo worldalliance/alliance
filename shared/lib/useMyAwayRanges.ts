@@ -2,10 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CreateAwayRangeDto,
   UpdateAwayRangeDto,
-  userCreateAwayRange,
-  userDeleteAwayRange,
-  userGetAwayRanges,
-  userUpdateAwayRange,
+  userAwayRangeCreateAwayRange,
+  userAwayRangeDeleteAwayRange,
+  userAwayRangeGetAwayRanges,
+  userAwayRangeUpdateAwayRange,
 } from "../client";
 import { queryKeys } from "./queryKeys";
 import { useAwayRanges } from "./useAwayRanges";
@@ -14,7 +14,7 @@ const QUERY_KEY = queryKeys.myAwayRanges();
 
 /**
  * Single source of truth for the current user's away ranges — wraps
- * `userGetAwayRanges` and the create/update/delete endpoints in react-query,
+ * `userAwayRangeGetAwayRanges` and the create/update/delete endpoints in react-query,
  * sharing one cache key that every mutation invalidates. Also exposes derived
  * helpers from {@link useAwayRanges} (current/upcoming ranges).
  */
@@ -30,7 +30,7 @@ export function useMyAwayRanges(params?: { enabled?: boolean }) {
   } = useQuery({
     queryKey: QUERY_KEY,
     queryFn: () =>
-      userGetAwayRanges({ throwOnError: true }).then(
+      userAwayRangeGetAwayRanges({ throwOnError: true }).then(
         (response) => response.data,
       ),
     enabled,
@@ -41,21 +41,25 @@ export function useMyAwayRanges(params?: { enabled?: boolean }) {
 
   const createAwayRange = useMutation({
     mutationFn: (body: CreateAwayRangeDto) =>
-      userCreateAwayRange({ body, throwOnError: true }).then((r) => r.data),
-    onSuccess: invalidate,
-  });
-
-  const updateAwayRange = useMutation({
-    mutationFn: ({ id, body }: { id: number; body: UpdateAwayRangeDto }) =>
-      userUpdateAwayRange({ path: { id }, body, throwOnError: true }).then(
+      userAwayRangeCreateAwayRange({ body, throwOnError: true }).then(
         (r) => r.data,
       ),
     onSuccess: invalidate,
   });
 
+  const updateAwayRange = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: UpdateAwayRangeDto }) =>
+      userAwayRangeUpdateAwayRange({
+        path: { id },
+        body,
+        throwOnError: true,
+      }).then((r) => r.data),
+    onSuccess: invalidate,
+  });
+
   const deleteAwayRange = useMutation({
     mutationFn: (id: number) =>
-      userDeleteAwayRange({ path: { id }, throwOnError: true }).then(
+      userAwayRangeDeleteAwayRange({ path: { id }, throwOnError: true }).then(
         (r) => r.data,
       ),
     // A refusal means the list on screen is out of date with the server's rule.

@@ -159,6 +159,8 @@ import {
   Or,
   type Repository,
 } from "typeorm";
+import { FriendService } from "../user/friend.service";
+import { TagService } from "../user/tag.service";
 import { UserService } from "../user/user.service";
 import {
   findLatestTerminalActivity,
@@ -420,6 +422,8 @@ export class ActionsService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private userService: UserService,
+    private readonly friendService: FriendService,
+    private readonly tagService: TagService,
     public eventEmitter: EventEmitter2,
     private readonly communityService: CommunityService,
     private readonly notifsService: NotifsService,
@@ -2630,7 +2634,7 @@ export class ActionsService {
     if (!user) {
       throw new NotFoundException("User not found");
     }
-    const friends = await this.userService.findFriends(userId);
+    const friends = await this.friendService.findFriends(userId);
 
     if (friends.length === 0) {
       return [];
@@ -2657,7 +2661,7 @@ export class ActionsService {
     limit?: number,
   ): Promise<ActionActivityDto[]> {
     await this.findOneOrFail({ id: actionId, userId });
-    const friends = await this.userService.findFriends(userId);
+    const friends = await this.friendService.findFriends(userId);
 
     if (friends.length === 0) {
       return [];
@@ -2748,7 +2752,7 @@ export class ActionsService {
     comments?: boolean,
   ): Promise<HomeFeedItemDto[]> {
     const [friends, user] = await Promise.all([
-      this.userService.findFriends(userId),
+      this.friendService.findFriends(userId),
       this.userService.findOne(userId, { communities: true }),
     ]);
     if (!user) throw new NotFoundException("User not found");
@@ -3541,7 +3545,7 @@ export class ActionsService {
         if (!tagId) {
           throw new BadRequestException("Tag is required");
         }
-        return loadedTagUsers(await this.userService.findTagOrFail(tagId));
+        return loadedTagUsers(await this.tagService.findTagOrFail(tagId));
       }
       case ActionUpdateNotifyType.AllMembers:
         return this.userService.findAllUsers();
