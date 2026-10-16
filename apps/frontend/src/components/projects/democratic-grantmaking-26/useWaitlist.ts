@@ -9,6 +9,7 @@ import {
   waitlistFindReferral,
   waitlistForgetBrowser,
   waitlistMailConfig,
+  waitlistUpdateNominations,
   type WaitlistBrowserDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -46,7 +47,18 @@ export function useWaitlistBrowser() {
       } satisfies WaitlistBrowserDto);
     },
   });
-  return { query, forget };
+  const saveNominations = useMutation({
+    mutationFn: (nonprofitNominations: string) =>
+      waitlistUpdateNominations({
+        body: { nonprofitNominations },
+        throwOnError: true,
+      }),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.waitlistBrowser(),
+      }),
+  });
+  return { query, forget, saveNominations };
 }
 
 /** True only once the server says public email is on. */
