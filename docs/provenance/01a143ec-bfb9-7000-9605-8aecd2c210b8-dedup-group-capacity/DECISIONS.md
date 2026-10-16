@@ -1,0 +1,8 @@
+- The capacity functions move from `server/src/community/community.utils.ts` to `common/src/community.ts`, beside `checkCommunityAccessRules`, typed structurally over `{ maxCapacity; users?; leaders? }` plus the access flags, so the server entity (relations may be unloaded) and the client DTOs both fit. The doc comment on consensual vs non-consensual placement moves with them. Callers import from common directly; neither the server nor `shared/lib/communityUtils.ts` re-exports them.
+- `freeSlots` is exported and replaces the server's `getStaffAssignableSlots` wrapper, because the clients need the same seat count for automated invites and the admin stats, not just staff assignment. Its doc says it is meaningless when `maxCapacity` is null.
+- `shared`'s `getMemberCount` is deleted and its callers use common's, which counts unloaded relations as empty instead of throwing. Client DTOs always carry both arrays, so nothing observable changes.
+- `publicGroupJoinState`'s inline `isFull` becomes `isAtCapacity`; both treat a null cap as never full.
+- The admin bulk-assignment panel keeps its own flag and null-cap guards, as the server's bulk assignment in `user.service.ts` does, and counts pending selections against `freeSlots`. The member move picker uses `acceptsStaffAssignment`, as the server's single move does.
+- `headroomForOrdering` in `server/src/contract/contract.utils.ts` keeps its uncapped sentinel and uses `freeSlots` for the capped case.
+- Leadership checks (`isLedBy` in shared, `isCommunityLedBy` on the server) are a separate rule and stay out of this change.
+- The copies agreed before the move; no behavior changes.

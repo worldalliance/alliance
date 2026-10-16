@@ -1,5 +1,9 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { checkCommunityAccessRules } from "@alliance/common/community";
+import {
+  acceptsPublicJoin,
+  acceptsStaffAssignment,
+  checkCommunityAccessRules,
+} from "@alliance/common/community";
 import { run } from "@alliance/common/run";
 import { DEFAULT_TIME_ZONE } from "@alliance/common/timezone";
 import {
@@ -46,8 +50,6 @@ import type { Relations } from "src/utils/Repository";
 import { DeepPartial, In, IsNull, type Repository } from "typeorm";
 import { changeMembers } from "./change-members";
 import {
-  acceptsPublicJoin,
-  acceptsStaffAssignment,
   isCommunityLedBy,
   memberJoinedCommunityNotif,
   memberLeftCommunityNotif,

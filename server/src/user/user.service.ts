@@ -6,6 +6,7 @@ import {
   isAwayRangeNoteMissing,
   isAwayRangeStartLocked,
 } from "@alliance/common/awayRange";
+import { freeSlots } from "@alliance/common/community";
 import {
   emptyUserPropertyPresence,
   type UserPropertyPresence,
@@ -44,7 +45,6 @@ import { CampaignService } from "src/campaign/campaign.service";
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { CommunityService } from "src/community/community.service";
 import {
-  getStaffAssignableSlots,
   isCommunityLedBy,
   membersAndLeaders,
 } from "src/community/community.utils";
@@ -3214,7 +3214,7 @@ export class UserService {
     const remainingSlots = new Map<number, number>();
     for (const { community } of assignments) {
       const remaining =
-        remainingSlots.get(community.id) ?? getStaffAssignableSlots(community);
+        remainingSlots.get(community.id) ?? freeSlots(community);
       if (remaining <= 0) {
         throw new BadRequestException(
           `Too many members assigned to community ${community.id}`,

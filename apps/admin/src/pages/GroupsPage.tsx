@@ -1,6 +1,8 @@
 import {
   COMMUNITY_DESCRIPTION_MAX_LENGTH,
   COMMUNITY_NAME_MAX_LENGTH,
+  freeSlots,
+  getMemberCount,
   isMaxCapacityRequired,
   validateCommunitySettings,
 } from "@alliance/common/community";
@@ -9,7 +11,6 @@ import type {
   CommunityDto,
   CreateCommunityDto,
 } from "@alliance/shared/client/types.gen";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
 import { NEW_COMMUNITY_SETTINGS } from "@alliance/shared/lib/constants";
 import { groupSettings } from "@alliance/shared/lib/copy";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -89,9 +90,7 @@ const GroupsPage: React.FC = () => {
         if (community.maxCapacity === null) {
           return acc;
         }
-        return (
-          acc + Math.max(0, community.maxCapacity - getMemberCount(community))
-        );
+        return acc + Math.max(0, freeSlots(community));
       }, 0) - membersUndergoingGroupAssignment.length,
     );
   }, [communities, membersUndergoingGroupAssignment.length]);
@@ -374,7 +373,6 @@ const CommunityCard: React.FC<CommunityCardProps> = ({
   pendingAssignments,
 }) => {
   const memberCount = getMemberCount(community);
-  const effectiveMemberCount = memberCount + pendingAssignments;
   const leaderCount = community.leaders.length;
   const capacity = community.allowStaffAssignments
     ? community.maxCapacity
@@ -411,7 +409,7 @@ const CommunityCard: React.FC<CommunityCardProps> = ({
               className={cn(
                 "text-sm mr-4 font-medium",
                 capacity !== null &&
-                  effectiveMemberCount >= capacity &&
+                  freeSlots(community) <= pendingAssignments &&
                   "text-zinc-400",
               )}
             >
