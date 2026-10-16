@@ -29,6 +29,7 @@ import { MmsService } from "src/mms/mms.service";
 import { ActionEventNotifWorker } from "src/notifs/action-event-notif.worker";
 import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
+import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import {
@@ -480,7 +481,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       .mockImplementation(async (...args) => {
         deliveries++;
         await ctx.app
-          .get(ActionEventReminderService)
+          .get(ReminderGroupService)
           .deleteReminderGroup(reminderGroup.id);
         return send(...args);
       });
@@ -1773,7 +1774,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
   it("derives reminder anchor candidates from form-response and completed-action cohort conditions", async () => {
     const now = Date.now();
-    const actionsService = ctx.app.get(ActionsService);
+    const reminderGroups = ctx.app.get(ReminderGroupService);
 
     // dependency A: owns the form (taskFormId) and has a deadline
     const { form } = await createFormWithSnapshot(ctx.dataSource, {
@@ -1861,7 +1862,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     });
 
-    const candidates = await actionsService.findReminderAnchorCandidates(
+    const candidates = await reminderGroups.findReminderAnchorCandidates(
       memberEvent.id,
     );
 
@@ -1882,7 +1883,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
   it("only accepts a timing anchor that is a dependency deadline of the action", async () => {
     const now = Date.now();
-    const reminderService = ctx.app.get(ActionEventReminderService);
+    const reminderService = ctx.app.get(ReminderGroupService);
 
     const { action: dependencyAction } = await createActionWithMemberEvent({
       name: uniqueName("anchor-validate-dependency"),
@@ -2212,7 +2213,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
   it("derives anchor candidates from every suite action and never from actions inside the suite", async () => {
     const now = Date.now();
-    const actionsService = ctx.app.get(ActionsService);
+    const reminderGroups = ctx.app.get(ReminderGroupService);
 
     // external dependency with a deadline
     const { action: externalDep } = await createActionWithMemberEvent({
@@ -2268,7 +2269,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       },
     });
 
-    const candidates = await actionsService.findReminderAnchorCandidates(
+    const candidates = await reminderGroups.findReminderAnchorCandidates(
       memberEvent.id,
     );
 

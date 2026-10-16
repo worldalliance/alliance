@@ -15,6 +15,8 @@ import { ActionEventReminderService } from "src/notifs/action-event-reminder.ser
 import { PreviewNotificationPlanDto } from "src/notifs/dto/notification-plan.dto";
 import { ActionEventNotifDto } from "src/notifs/entities/action-event-notif.dto";
 import { MissedSuitePlanService } from "src/notifs/missed-suite-plans.service";
+import { ReminderGroupService } from "src/notifs/reminder-group.service";
+import { ReminderPreviewService } from "src/notifs/reminder-preview.service";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { ActionsService } from "./actions.service";
 import {
@@ -37,6 +39,8 @@ export class ActionRemindersController {
     private readonly actionsService: ActionsService,
     private readonly actionEventReminderService: ActionEventReminderService,
     private readonly missedSuitePlanService: MissedSuitePlanService,
+    private readonly reminderGroupService: ReminderGroupService,
+    private readonly reminderPreviewService: ReminderPreviewService,
   ) {}
 
   @Get("notification-schedule")
@@ -62,7 +66,7 @@ export class ActionRemindersController {
     @Body() body: CreateReminderGroupDto,
   ): Promise<ReminderGroupDto> {
     return new ReminderGroupDto(
-      await this.actionEventReminderService.updateReminderGroup(groupId, body),
+      await this.reminderGroupService.updateReminderGroup(groupId, body),
     );
   }
 
@@ -74,7 +78,7 @@ export class ActionRemindersController {
     @Body() body: CreateReminderGroupDto,
   ): Promise<ReminderGroupDto> {
     return new ReminderGroupDto(
-      await this.actionEventReminderService.createReminderGroup(eventId, body),
+      await this.reminderGroupService.createReminderGroup(eventId, body),
     );
   }
 
@@ -84,7 +88,7 @@ export class ActionRemindersController {
   async deleteReminderGroupAdmin(
     @Param("groupId", ParseIntPipe) groupId: number,
   ): Promise<void> {
-    await this.actionEventReminderService.deleteReminderGroup(groupId);
+    await this.reminderGroupService.deleteReminderGroup(groupId);
   }
 
   @Get("plansForGroup/:groupId")
@@ -116,7 +120,7 @@ export class ActionRemindersController {
     @Param("id", ParseIntPipe) id: number,
   ): Promise<ReminderGroupDto[]> {
     const groups =
-      await this.actionEventReminderService.getReminderGroupsForEvent(id);
+      await this.reminderGroupService.getReminderGroupsForEvent(id);
     return groups.map((group) => new ReminderGroupDto(group));
   }
 
@@ -127,7 +131,7 @@ export class ActionRemindersController {
     @Param("eventId", ParseIntPipe) eventId: number,
   ): Promise<ReminderAnchorCandidateDto[]> {
     const candidates =
-      await this.actionsService.findReminderAnchorCandidates(eventId);
+      await this.reminderGroupService.findReminderAnchorCandidates(eventId);
     return candidates.map(
       (candidate) => new ReminderAnchorCandidateDto(candidate),
     );
@@ -153,7 +157,7 @@ export class ActionRemindersController {
     @Body() body: PreviewEmailHtmlDto,
   ): Promise<PreviewEmailHtmlResponseDto> {
     return new PreviewEmailHtmlResponseDto(
-      await this.actionEventReminderService.previewEmailHtml(eventId, body),
+      await this.reminderPreviewService.previewEmailHtml(eventId, body),
     );
   }
 
@@ -165,7 +169,7 @@ export class ActionRemindersController {
     @Body() body: PreviewTextDto,
   ): Promise<PreviewTextMessageResponseDto> {
     return new PreviewTextMessageResponseDto(
-      await this.actionEventReminderService.previewTextMessage(eventId, body),
+      await this.reminderPreviewService.previewTextMessage(eventId, body),
     );
   }
 }

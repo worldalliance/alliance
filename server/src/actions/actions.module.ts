@@ -19,6 +19,8 @@ import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity"
 import { ExperimentAssignment } from "src/notifs/entities/experiment-assignment.entity";
 import { MissedSuitePlanService } from "src/notifs/missed-suite-plans.service";
 import { NotifsModule } from "src/notifs/notifs.module";
+import { ReminderGroupService } from "src/notifs/reminder-group.service";
+import { ReminderPreviewService } from "src/notifs/reminder-preview.service";
 import { PushModule } from "src/push/push.module";
 import { ShareUrlsModule } from "src/share-urls/share-urls.module";
 import { CustomValidator } from "src/tasks/entities/customvalidator.entity";
@@ -149,6 +151,8 @@ import { TaskBadgeService } from "./task-badge.service";
     ActionUpdateRecognitionWorker,
     ActionEventRecipientService,
     ActionEventReminderService,
+    ReminderGroupService,
+    ReminderPreviewService,
     MissedSuitePlanService,
     ReloadUsersJoinedWorker,
     ContractReminderWorker,
