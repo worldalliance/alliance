@@ -11,6 +11,7 @@ import {
 import { AnalyticsModule } from "../src/analytics/analytics.module";
 import { AnalyticsService } from "../src/analytics/analytics.service";
 import { DailyStatsRecord } from "../src/analytics/dailystats.entity";
+import { AmbassadorInviteGoalService } from "../src/user/ambassador-invite-goal.service";
 import { OnetimeInviteDto } from "../src/user/dto/invite.dto";
 import {
   OnetimeInvite,
@@ -18,7 +19,6 @@ import {
 } from "../src/user/entities/onetime-invite.entity";
 import { ReferralSource, User } from "../src/user/entities/user.entity";
 import { OnetimeInviteService } from "../src/user/onetime-invite.service";
-import { UserService } from "../src/user/user.service";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("accepted invites (e2e)", () => {
@@ -103,7 +103,6 @@ describe("accepted invites (e2e)", () => {
       deleted: false,
     });
 
-    const userService = ctx.app.get(UserService);
     const onetimeInviteService = ctx.app.get(OnetimeInviteService);
     const overview =
       await onetimeInviteService.findOnetimeInvitesOverviewForUser(inviter.id);
@@ -125,9 +124,9 @@ describe("accepted invites (e2e)", () => {
       edges.filter(({ invitingUserId }) => invitingUserId === inviter.id),
     ).toEqual([{ invitingUserId: inviter.id, invitedUserId: claimant?.id }]);
 
-    const dashboard = await userService.getAmbassadorInviteDashboard(
-      inviter.id,
-    );
+    const dashboard = await ctx.app
+      .get(AmbassadorInviteGoalService)
+      .getAmbassadorInviteDashboard(inviter.id);
     expect(dashboard.stats.totalAcceptedInvites).toBe(1);
 
     const analyticsService = ctx.app.get(AnalyticsService);

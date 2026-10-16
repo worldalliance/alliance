@@ -21,6 +21,7 @@ import {
 } from "src/share-urls/entities/share-url.entity";
 import { StoredInviteAssignmentKind } from "src/share-urls/invite-assignment";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { AmbassadorInviteGoalService } from "src/user/ambassador-invite-goal.service";
 import { AmbassadorInviteGoal } from "src/user/entities/ambassador-invite-goal.entity";
 import {
   ContractEvent,
@@ -58,6 +59,7 @@ describe("Users (e2e)", () => {
   let communityRepo: Repository<Community>;
   let onetimeInviteRepo: Repository<OnetimeInvite>;
   let userService: UserService;
+  let ambassadorInviteGoalService: AmbassadorInviteGoalService;
   let friendService: FriendService;
   let contractService: ContractService;
   let shareUrlsService: ShareUrlsService;
@@ -79,6 +81,7 @@ describe("Users (e2e)", () => {
     communityRepo = ctx.dataSource.getRepository(Community);
     onetimeInviteRepo = ctx.dataSource.getRepository(OnetimeInvite);
     userService = ctx.app.get(UserService);
+    ambassadorInviteGoalService = ctx.app.get(AmbassadorInviteGoalService);
     friendService = ctx.app.get(FriendService);
     contractService = ctx.app.get(ContractService);
     shareUrlsService = ctx.app.get(ShareUrlsService);
@@ -1111,7 +1114,7 @@ describe("Users (e2e)", () => {
       }),
     );
     const now = new Date();
-    const goal = await userService.createAmbassadorInviteGoal(
+    const goal = await ambassadorInviteGoalService.createAmbassadorInviteGoal(
       {
         targetSuccessfulRecruits: 3,
         startAt: now.toISOString(),
@@ -1122,9 +1125,10 @@ describe("Users (e2e)", () => {
       ambassador.id,
     );
 
-    const beforeSigning = await userService.getAmbassadorInviteDashboard(
-      ambassador.id,
-    );
+    const beforeSigning =
+      await ambassadorInviteGoalService.getAmbassadorInviteDashboard(
+        ambassador.id,
+      );
     expect(beforeSigning.stats.totalSuccessfulRecruits).toBe(0);
     expect(
       beforeSigning.goals.find(
@@ -1151,9 +1155,10 @@ describe("Users (e2e)", () => {
       contractId: ctx.defaultContractId,
     });
 
-    const afterSigning = await userService.getAmbassadorInviteDashboard(
-      ambassador.id,
-    );
+    const afterSigning =
+      await ambassadorInviteGoalService.getAmbassadorInviteDashboard(
+        ambassador.id,
+      );
     expect(afterSigning.stats.totalSuccessfulRecruits).toBe(3);
     expect(
       afterSigning.goals.find(
@@ -1335,9 +1340,10 @@ describe("Users (e2e)", () => {
       totalSuccessfulRecruits: 5,
       goalSuccessfulRecruits: 0,
     };
-    const dashboard = await userService.getAmbassadorInviteDashboard(
-      ambassador.id,
-    );
+    const dashboard =
+      await ambassadorInviteGoalService.getAmbassadorInviteDashboard(
+        ambassador.id,
+      );
     expect(dashboard.stats).toEqual(allTime);
     const goalStats = (goalId: number) =>
       dashboard.goals.find(({ goal: { id } }) => id === goalId)?.stats;
@@ -1387,7 +1393,7 @@ describe("Users (e2e)", () => {
       goalSuccessfulRecruits: 0,
     });
 
-    await userService.sendDueAmbassadorInviteGoalNotifications();
+    await ambassadorInviteGoalService.sendDueAmbassadorInviteGoalNotifications();
     const notifications = await ctx.dataSource
       .getRepository(Notification)
       .findBy({ user: { id: ambassador.id } });
@@ -1420,8 +1426,8 @@ describe("Users (e2e)", () => {
       dueAt: new Date(now + milliseconds({ minutes: 1 })),
     });
 
-    await userService.sendDueAmbassadorInviteGoalNotifications();
-    await userService.sendDueAmbassadorInviteGoalNotifications();
+    await ambassadorInviteGoalService.sendDueAmbassadorInviteGoalNotifications();
+    await ambassadorInviteGoalService.sendDueAmbassadorInviteGoalNotifications();
 
     const notifications = await ctx.dataSource
       .getRepository(Notification)

@@ -24,6 +24,7 @@ import type { JwtRequest } from "src/auth/tokens";
 import { MaybeUserLocationDto } from "src/geo/city.dto";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { Public } from "../auth/public.decorator";
+import { AmbassadorInviteGoalService } from "./ambassador-invite-goal.service";
 import {
   AmbassadorInviteDashboardDto,
   AmbassadorInviteGoalDto,
@@ -62,6 +63,7 @@ class VerifyEmailBody {
 export class UserController {
   constructor(
     private readonly userService: UserService,
+    private readonly ambassadorInviteGoalService: AmbassadorInviteGoalService,
     private readonly friendService: FriendService,
   ) {}
 
@@ -379,7 +381,9 @@ export class UserController {
     @Request() req: JwtRequest,
   ): Promise<AmbassadorInviteDashboardDto> {
     return new AmbassadorInviteDashboardDto(
-      await this.userService.getAmbassadorInviteDashboard(req.user.sub),
+      await this.ambassadorInviteGoalService.getAmbassadorInviteDashboard(
+        req.user.sub,
+      ),
     );
   }
 
@@ -391,7 +395,10 @@ export class UserController {
     @Request() req: JwtRequest,
   ): Promise<AmbassadorInviteGoalDto> {
     return new AmbassadorInviteGoalDto(
-      await this.userService.createAmbassadorInviteGoal(body, req.user.sub),
+      await this.ambassadorInviteGoalService.createAmbassadorInviteGoal(
+        body,
+        req.user.sub,
+      ),
     );
   }
 
@@ -404,7 +411,7 @@ export class UserController {
     @Request() req: JwtRequest,
   ): Promise<AmbassadorInviteGoalDto> {
     return new AmbassadorInviteGoalDto(
-      await this.userService.updateAmbassadorInviteGoal(
+      await this.ambassadorInviteGoalService.updateAmbassadorInviteGoal(
         goalId,
         body,
         req.user.sub,
@@ -419,7 +426,10 @@ export class UserController {
     @Param("goalId", ParseIntPipe) goalId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    await this.userService.deleteAmbassadorInviteGoal(goalId, req.user.sub);
+    await this.ambassadorInviteGoalService.deleteAmbassadorInviteGoal(
+      goalId,
+      req.user.sub,
+    );
   }
 
   @Post("requestAccountDeletion")

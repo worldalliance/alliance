@@ -15,6 +15,7 @@ import { Notification } from "src/notifs/entities/notification.entity";
 import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { AmbassadorInviteGoalService } from "src/user/ambassador-invite-goal.service";
 import { AmbassadorInviteGoal } from "src/user/entities/ambassador-invite-goal.entity";
 import { AmbassadorProgramMember } from "src/user/entities/ambassador-program-member.entity";
 import { Friend, FriendStatus } from "src/user/entities/friend.entity";
@@ -192,11 +193,13 @@ describe("Updates to a row deleted after its load (e2e)", () => {
     });
 
     await expect(
-      userService.updateAmbassadorInviteGoal(
-        goal.id,
-        { targetSuccessfulRecruits: 5 },
-        ambassador.id,
-      ),
+      ctx.app
+        .get(AmbassadorInviteGoalService)
+        .updateAmbassadorInviteGoal(
+          goal.id,
+          { targetSuccessfulRecruits: 5 },
+          ambassador.id,
+        ),
     ).rejects.toThrow(
       new NotFoundException("Ambassador invite goal not found"),
     );
