@@ -8,6 +8,7 @@ The waiver defers splitting a page over the 500-line `alliance/max-lines` limit,
 
 - `apps/frontend/src/components/HomeGeneralUpdates.tsx` renders the updates row, the general updates load failure, and the sorted general update cards. The page rendered this block twice, once per screen size, and now renders the component in both places.
 - `apps/frontend/src/lib/useSidebarProgressBarEntries.ts` fetches the aggregate views for the member's open task forms and derives the sorted progress bar entries. `apps/frontend/src/components/SidebarProgressBars.tsx` renders those entries as links to their actions. The hook stays on the page, not inside the component, because the page renders the bars in the sidebar on a large screen and in the main column otherwise; a hook inside the component would refetch whenever the screen crosses that width.
+- `apps/frontend/src/pages/app/TaskNavigatorList.tsx` renders the task list: the current-week summary, completed tasks with their follow-up forms, and the current-week and upcoming tasks. This takes the page from 468 non-blank lines, just under the limit, to well under it. The navigator queue and its selection stay on the page, because the page renders its main column under a different parent on each side of the large-screen width, which remounts it; selection state inside the list would reset to the first task on that switch. The list's three row callbacks shared the same find-and-select step, which is now one `selectWhere`.
 
 ## Tests
 

@@ -1,23 +1,13 @@
 import { MEMBER_ACTION_DEADLINE_PASSED } from "@alliance/common/actionActivity";
-import { withCount } from "@alliance/common/plural";
-import { FollowUpFormDto } from "@alliance/shared/client";
 import {
   dismissActionErrorMessage,
   useInvalidateActions,
 } from "@alliance/shared/lib/actionsListPage";
 import {
-  ActionWithAwayStatus,
-  homePagePriorityComparator,
-} from "@alliance/shared/lib/actionUtils";
-import {
   noTasksContractSuspended,
   noTasksToDoRightNow,
 } from "@alliance/shared/lib/copy";
-import {
-  compareFollowUpFormsByStartDateDesc,
-  homeItemKey,
-  useHomePageActions,
-} from "@alliance/shared/lib/homePage";
+import { homeItemKey, useHomePageActions } from "@alliance/shared/lib/homePage";
 import { getTaskDismissInfo } from "@alliance/shared/lib/largeActionCard";
 import { useBoundedIndex } from "@alliance/shared/lib/useBoundedIndex";
 import useGlobalFeed from "@alliance/shared/lib/useGlobalFeed";
@@ -27,7 +17,7 @@ import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import FollowUpFormPanel from "../../components/FollowUpFormPanel";
 import GlobalFeed from "../../components/GlobalFeed";
 import HomeFeed from "../../components/HomeFeed";
@@ -44,26 +34,7 @@ import { MOCK_TASK_FORMS, MOCK_TASKS } from "../../onboarding/mockTasks";
 import { useMockTasks } from "../../onboarding/useMockTasks";
 import { WalkthroughAnchor } from "../../onboarding/walkthrough/steps";
 import LargeActionCard from "./LargeActionCard";
-import {
-  TaskNavigatorCompletedRow,
-  TaskNavigatorTodoActionRow,
-} from "./TaskNavigatorRow";
-
-/** Ordered queue of main-column cards (action or follow-up) driven by the task navigator list. */
-type TaskNavigatorItem =
-  | { kind: "action"; action: ActionWithAwayStatus }
-  | { kind: "followUpForm"; followUpForm: FollowUpFormDto; actionId: number };
-
-function TaskNavigatorListShell({ children }: { children: ReactNode }) {
-  return (
-    <div
-      className="overflow-hidden"
-      data-walkthrough={WalkthroughAnchor.TaskList}
-    >
-      <div className="flex flex-col gap-y-2">{children}</div>
-    </div>
-  );
-}
+import TaskNavigatorList, { type TaskNavigatorItem } from "./TaskNavigatorList";
 
 const HomePage = () => {
   const queryClient = useQueryClient();
@@ -112,33 +83,6 @@ const HomePage = () => {
 
   const sidebarProgressBarEntries = useSidebarProgressBarEntries(actions);
 
-  const followUpFormsByActionId = useMemo(() => {
-    const map: Record<number, FollowUpFormDto[]> = {};
-    for (const { followUpForm, actionId } of activeCompletableFollowUpForms) {
-      (map[actionId] ??= []).push(followUpForm);
-    }
-    for (const forms of Object.values(map)) {
-      forms.sort(compareFollowUpFormsByStartDateDesc);
-    }
-    return map;
-  }, [activeCompletableFollowUpForms]);
-
-  const followUpParentActionsNotInCompletedList = useMemo(() => {
-    if (!actions) {
-      return [];
-    }
-    const completedIds = new Set(completedActions.map((a) => a.id));
-    const orphanIds = new Set<number>();
-    for (const { actionId } of activeCompletableFollowUpForms) {
-      if (!completedIds.has(actionId)) {
-        orphanIds.add(actionId);
-      }
-    }
-    return actions
-      .filter((a) => orphanIds.has(a.id))
-      .sort(homePagePriorityComparator);
-  }, [actions, activeCompletableFollowUpForms, completedActions]);
-
   const taskNavigatorItems = useMemo<TaskNavigatorItem[]>(() => {
     const actionCards: TaskNavigatorItem[] = todoActions.map(
       (action) => ({ kind: "action", action }) as const,
@@ -167,126 +111,6 @@ const HomePage = () => {
     taskNavigatorItems.length === 0
       ? undefined
       : taskNavigatorItems[taskNavigatorIndex];
-
-  const taskNavigatorListContent = useMemo(() => {
-    const activeActionId =
-      selectedTaskNavigatorItem?.kind === "action"
-        ? selectedTaskNavigatorItem.action.id
-        : null;
-    const activeFollowUpFormId =
-      selectedTaskNavigatorItem?.kind === "followUpForm"
-        ? selectedTaskNavigatorItem.followUpForm.id
-        : null;
-    const hasTaskSectionContent =
-      currentWeekTodoActions.length > 0 ||
-      nextWeekTodoActions.length > 0 ||
-      completedActions.length > 0 ||
-      followUpParentActionsNotInCompletedList.length > 0;
-    return (
-      <>
-        {hasTaskSectionContent && (
-          <TaskNavigatorListShell>
-            {currentWeekTodoActions.length > 0 && (
-              <p className="text-zinc-600 mb-1">
-                <span className="text-green font-medium mr-0.5">
-                  {currentWeekTodoActions.length} left
-                </span>
-                {remainingTasksEstimatedTimeCurrentWeek > 0 &&
-                  ` (${withCount(
-                    remainingTasksEstimatedTimeCurrentWeek,
-                    "minute",
-                  )} required)`}
-              </p>
-            )}
-
-            {/* Completed actions */}
-            <div className="flex flex-col gap-y-1">
-              {[
-                ...completedActions,
-                ...followUpParentActionsNotInCompletedList,
-              ].map((action) => (
-                <TaskNavigatorCompletedRow
-                  key={action.id}
-                  action={action}
-                  followUpForms={followUpFormsByActionId[action.id] ?? []}
-                  activeFollowUpFormId={activeFollowUpFormId}
-                  onSelectFollowUp={(formId) => {
-                    const idx = taskNavigatorItems.findIndex(
-                      (c) =>
-                        c.kind === "followUpForm" &&
-                        c.actionId === action.id &&
-                        c.followUpForm.id === formId,
-                    );
-                    if (idx >= 0) {
-                      setTaskNavigatorIndex(idx);
-                    }
-                  }}
-                />
-              ))}
-
-              {/* Actions in the current week */}
-              {currentWeekTodoActions.map((action) => {
-                const isActive = action.id === activeActionId;
-                return (
-                  <TaskNavigatorTodoActionRow
-                    key={action.id}
-                    action={action}
-                    isActive={isActive}
-                    showOptionalPrefix
-                    onSelect={() => {
-                      const idx = taskNavigatorItems.findIndex(
-                        (c) => c.kind === "action" && c.action.id === action.id,
-                      );
-                      if (idx >= 0) {
-                        setTaskNavigatorIndex(idx);
-                      }
-                    }}
-                  />
-                );
-              })}
-              {nextWeekTodoActions.length > 0 && (
-                <>
-                  <div className="pt-2">
-                    <p className="text-zinc-500 font-medium">Upcoming</p>
-                  </div>
-                  {nextWeekTodoActions.map((action) => {
-                    const isActive = action.id === activeActionId;
-                    return (
-                      <TaskNavigatorTodoActionRow
-                        key={action.id}
-                        action={action}
-                        isActive={isActive}
-                        showOptionalPrefix={false}
-                        onSelect={() => {
-                          const idx = taskNavigatorItems.findIndex(
-                            (c) =>
-                              c.kind === "action" && c.action.id === action.id,
-                          );
-                          if (idx >= 0) {
-                            setTaskNavigatorIndex(idx);
-                          }
-                        }}
-                      />
-                    );
-                  })}
-                </>
-              )}
-            </div>
-          </TaskNavigatorListShell>
-        )}
-      </>
-    );
-  }, [
-    completedActions,
-    currentWeekTodoActions,
-    followUpFormsByActionId,
-    followUpParentActionsNotInCompletedList,
-    nextWeekTodoActions,
-    selectedTaskNavigatorItem,
-    setTaskNavigatorIndex,
-    taskNavigatorItems,
-    remainingTasksEstimatedTimeCurrentWeek,
-  ]);
 
   const mainContent = useMemo(() => {
     if (actions === null) {
@@ -328,7 +152,19 @@ const HomePage = () => {
 
         <div className="flex flex-col gap-4 flex-1">
           <p className="text-title">Tasks</p>
-          {taskNavigatorListContent}
+          <TaskNavigatorList
+            actions={actions}
+            completedActions={completedActions}
+            currentWeekTodoActions={currentWeekTodoActions}
+            nextWeekTodoActions={nextWeekTodoActions}
+            remainingTasksEstimatedTimeCurrentWeek={
+              remainingTasksEstimatedTimeCurrentWeek
+            }
+            activeCompletableFollowUpForms={activeCompletableFollowUpForms}
+            items={taskNavigatorItems}
+            selectedItem={selectedTaskNavigatorItem}
+            onSelectIndex={setTaskNavigatorIndex}
+          />
 
           {selectedTaskNavigatorItem?.kind === "action" ? (
             <div data-walkthrough={WalkthroughAnchor.CurrentTask}>
@@ -453,7 +289,12 @@ const HomePage = () => {
     generalUpdates,
     generalUpdatesFailure,
     actionsFailure,
-    taskNavigatorListContent,
+    completedActions,
+    currentWeekTodoActions,
+    nextWeekTodoActions,
+    remainingTasksEstimatedTimeCurrentWeek,
+    taskNavigatorItems,
+    setTaskNavigatorIndex,
     queryClient,
     invalidateActions,
     warning,
