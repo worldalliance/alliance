@@ -15,6 +15,7 @@ import {
   IsInt,
   IsNotEmpty,
   IsOptional,
+  IsString,
   Max,
   Min,
 } from "class-validator";
@@ -26,7 +27,7 @@ import {
 } from "src/datasources/basecolumns";
 import { User } from "src/user/entities/user.entity";
 import type { Relation } from "src/utils/Repository";
-import { toDateTime } from "src/utils/transforms";
+import { toDateTime, trimToNull } from "src/utils/transforms";
 import {
   Column,
   Entity,
@@ -126,6 +127,8 @@ export class Action {
     description: "Square thumbnail image alt for the action",
   })
   @IsOptional()
+  @IsString()
+  @Transform(trimToNull)
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   squareThumbnailImageAlt?: string;
 
