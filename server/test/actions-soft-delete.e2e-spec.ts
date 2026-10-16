@@ -41,6 +41,7 @@ import { TasksModule } from "src/tasks/tasks.module";
 import { TasksService } from "src/tasks/tasks.service";
 import { Tag } from "src/user/entities/tag.entity";
 import { User } from "src/user/entities/user.entity";
+import { TagService } from "src/user/tag.service";
 import { UserService } from "src/user/user.service";
 import { QueryFailedError, type Repository } from "typeorm";
 import {
@@ -799,10 +800,10 @@ describe("Action writers under a deleted parent (e2e)", () => {
       const group = await liveGroup();
       const tags = ctx.dataSource.getRepository(Tag);
       const tag = await tags.save({ name: "Doomed tag", description: "Tag" });
-      const users = ctx.app.get(UserService);
-      const load = users.findTagOrFail.bind(users);
+      const tagService = ctx.app.get(TagService);
+      const load = tagService.findTagOrFail.bind(tagService);
       jest
-        .spyOn(users, "findTagOrFail")
+        .spyOn(tagService, "findTagOrFail")
         .mockImplementationOnce(
           deleteAfter(load, () => tags.softDelete(tag.id)),
         );

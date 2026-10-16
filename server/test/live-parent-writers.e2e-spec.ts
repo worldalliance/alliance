@@ -30,6 +30,7 @@ import {
 } from "src/user/entities/user-away-range.entity";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
+import { TagService } from "src/user/tag.service";
 import { UserService } from "src/user/user.service";
 import type { Repository } from "typeorm";
 import {
@@ -340,7 +341,7 @@ describe("Writers beside a deletion (e2e)", () => {
     deleteAfterUserLoad({ ctx, deleted: tagged });
 
     await expect(
-      userService.addUserToTag(ctx.defaultTag.id, tagged.id),
+      ctx.app.get(TagService).addUserToTag(ctx.defaultTag.id, tagged.id),
     ).rejects.toThrow(NotFoundException);
     const [{ count }] = await ctx.dataSource.query(
       `SELECT count(*)::int AS count FROM "tag_users_user" WHERE "userId" = $1`,

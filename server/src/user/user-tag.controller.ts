@@ -15,31 +15,31 @@ import {
   TagDto,
   TagSummaryDto,
 } from "./dto/tag.dto";
-import { UserService } from "./user.service";
+import { TagService } from "./tag.service";
 
 @Controller("user")
 export class UserTagController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly tagService: TagService) {}
 
   @Post("createTag")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: TagDto })
   async createTagAdmin(@Body() body: CreateTagDto): Promise<TagDto> {
-    return new TagDto(await this.userService.createTag(body));
+    return new TagDto(await this.tagService.createTag(body));
   }
 
   @Get("tags")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [TagDto] })
   async getTagsAdmin(): Promise<TagDto[]> {
-    return (await this.userService.findAllTags()).map((tag) => new TagDto(tag));
+    return (await this.tagService.findAllTags()).map((tag) => new TagDto(tag));
   }
 
   @Get("tag-summaries")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [TagSummaryDto] })
   async getTagSummariesAdmin(): Promise<TagSummaryDto[]> {
-    return (await this.userService.findAllTagSummaries()).map(
+    return (await this.tagService.findAllTagSummaries()).map(
       (tag) => new TagSummaryDto(tag),
     );
   }
@@ -51,7 +51,7 @@ export class UserTagController {
     @Param("tagId") tagId: string,
     @Body() body: AddUserToTagDto,
   ): Promise<TagDto> {
-    return new TagDto(await this.userService.addUserToTag(tagId, body.userId));
+    return new TagDto(await this.tagService.addUserToTag(tagId, body.userId));
   }
 
   @Post("tags/:tagId/removeUser")
@@ -62,7 +62,7 @@ export class UserTagController {
     @Body() body: AddUserToTagDto,
   ): Promise<TagDto> {
     return new TagDto(
-      await this.userService.removeUserFromTag(tagId, body.userId),
+      await this.tagService.removeUserFromTag(tagId, body.userId),
     );
   }
 
@@ -73,13 +73,13 @@ export class UserTagController {
     @Param("tagId") tagId: string,
     @Body() body: CreateTagDto,
   ): Promise<TagDto> {
-    return new TagDto(await this.userService.updateTag(tagId, body));
+    return new TagDto(await this.tagService.updateTag(tagId, body));
   }
 
   @Delete("tags/:tagId")
   @UseGuards(AdminGuard)
   @ApiOkResponse()
   async deleteTagAdmin(@Param("tagId") tagId: string): Promise<void> {
-    await this.userService.deleteTag(tagId);
+    await this.tagService.deleteTag(tagId);
   }
 }

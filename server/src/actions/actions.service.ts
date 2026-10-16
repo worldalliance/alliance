@@ -159,6 +159,7 @@ import {
   Or,
   type Repository,
 } from "typeorm";
+import { TagService } from "../user/tag.service";
 import { UserService } from "../user/user.service";
 import {
   findLatestTerminalActivity,
@@ -420,6 +421,7 @@ export class ActionsService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private userService: UserService,
+    private readonly tagService: TagService,
     public eventEmitter: EventEmitter2,
     private readonly communityService: CommunityService,
     private readonly notifsService: NotifsService,
@@ -3541,7 +3543,7 @@ export class ActionsService {
         if (!tagId) {
           throw new BadRequestException("Tag is required");
         }
-        return loadedTagUsers(await this.userService.findTagOrFail(tagId));
+        return loadedTagUsers(await this.tagService.findTagOrFail(tagId));
       }
       case ActionUpdateNotifyType.AllMembers:
         return this.userService.findAllUsers();

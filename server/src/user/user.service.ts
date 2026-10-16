@@ -151,7 +151,6 @@ import {
   UpdateAmbassadorProgramMemberDto,
   UpsertAmbassadorProgramMemberDto,
 } from "./dto/invite.dto";
-import { CreateTagDto } from "./dto/tag.dto";
 import {
   AssignGroupsDto,
   FriendStatusDtoArgs,
@@ -173,7 +172,6 @@ import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from "./entities/onetime-invite.entity";
-import { loadedTagUsers, Tag } from "./entities/tag.entity";
 import {
   UserAwayRange,
   UserAwayRangeReason,
@@ -297,8 +295,6 @@ export class UserService {
     private cityRepository: TypedRepository<City>,
     @InjectRepository(Friend)
     private readonly friendRepository: Repository<Friend>,
-    @InjectRepository(Tag)
-    private readonly tagRepository: Repository<Tag>,
     @InjectRepository(Community)
     private readonly communityRepository: Repository<Community>,
     @InjectRepository(OnetimeInvite)
@@ -1876,69 +1872,6 @@ export class UserService {
     });
 
     return awayRanges.some((range) => isAwayRangeActiveAt(range, checkDate));
-  }
-
-  async createTag(body: CreateTagDto): Promise<Tag> {
-    const tag = this.tagRepository.create({ ...body, users: [] });
-    return this.tagRepository.save(tag);
-  }
-
-  async findAllTags(): Promise<Tag[]> {
-    return this.tagRepository.find({ relations: { users: true } });
-  }
-
-  async findAllTagSummaries(): Promise<Tag[]> {
-    return this.tagRepository.find();
-  }
-
-  async findTagOrFail(id: string): Promise<Tag> {
-    return this.tagRepository.findOneOrFail({
-      where: { id },
-      relations: { users: { contractEvents: true } },
-    });
-  }
-
-  async addUserToTag(tagId: string, userId: number): Promise<Tag> {
-    const tag = await this.tagRepository.findOneOrFail({
-      where: { id: tagId },
-      relations: { users: true },
-    });
-    tag.users = [...loadedTagUsers(tag), await this.findOneOrFail(userId)];
-    return writeUnderLive(this.dataSource.manager, {
-      parents: [
-        { target: Tag, id: tagId },
-        { target: User, id: userId },
-      ],
-      write: (em) => em.save(tag),
-    });
-  }
-
-  async removeUserFromTag(tagId: string, userId: number): Promise<Tag> {
-    const tag = await this.tagRepository.findOneOrFail({
-      where: { id: tagId },
-      relations: { users: true },
-    });
-    tag.users = loadedTagUsers(tag).filter((user) => user.id !== userId);
-    return this.tagRepository.save(tag);
-  }
-
-  async updateTag(tagId: string, body: CreateTagDto): Promise<Tag> {
-    const tag = await this.tagRepository.findOneOrFail({
-      where: { id: tagId },
-    });
-    Object.assign(tag, body);
-    await this.tagRepository.save(tag);
-    return this.tagRepository.findOneOrFail({
-      where: { id: tagId },
-      relations: { users: true },
-    });
-  }
-
-  async deleteTag(tagId: string): Promise<void> {
-    await softDeleteWhere(this.tagRepository.manager, {
-      target: Tag,
-      where: { id: tagId },
-    });
   }
 
   async getAmbassadorProgramDashboard(): Promise<AmbassadorProgramDashboard> {
