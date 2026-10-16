@@ -8,7 +8,6 @@ import {
 } from "@alliance/common/forms/form-conditions";
 import {
   isQuestionField,
-  type AnyField,
   type FieldKind,
   type FormSchema,
   type Page,
@@ -31,7 +30,6 @@ import {
 import { useInvalidateFormsAdmin } from "@alliance/shared/lib/useFormsAdmin";
 import { FormFieldsStatus } from "@alliance/shared/lib/useFormSchema";
 import { cn } from "@alliance/shared/styles/util";
-import { customComponentRegistry } from "@alliance/sharedweb/forms/components";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -147,6 +145,7 @@ import {
   ElementExpressionScope,
   expressionKeys,
 } from "./form-fields/conditions/expressionBuffers";
+import { createField } from "./form-fields/createField";
 import { isDraftValidatorId } from "./form-fields/customValidatorDrafts";
 import { renderFieldEditor } from "./form-fields/fieldEditors";
 import { FormConflictModal } from "./FormConflictModal";
@@ -652,216 +651,7 @@ export function FormBuilder(props: FormBuilderProps) {
   ]);
 
   const addField = (kind: FieldKind, loc: InsertLoc) => {
-    const fieldId = `field-${Date.now()}`;
-    let newField: AnyField;
-
-    switch (kind) {
-      case "text":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "text",
-          label: "Text Field",
-          required: false,
-        };
-        break;
-      case "textarea":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "textarea",
-          label: "Textarea Field",
-          required: false,
-          rows: 3,
-        };
-        break;
-      case "email":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "email",
-          label: "Email Field",
-          required: false,
-        };
-        break;
-      case "phone":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "phone",
-          label: "Phone Field",
-          required: false,
-          placeholder: "Enter phone number",
-          autoExtractUserData: false,
-        };
-        break;
-      case "number":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "number",
-          label: "Number Field",
-          required: false,
-        };
-        break;
-      case "range":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "range",
-          label: "Range Field",
-          required: false,
-          optionCount: 10,
-          startLabel: "",
-          endLabel: "",
-        };
-        break;
-      case "checkbox":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "checkbox",
-          label: "Checkbox Field",
-          required: false,
-        };
-        break;
-      case "radio":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "radio",
-          label: "Radio Field",
-          required: false,
-          options: [{ label: "Option 1", value: "option1" }],
-        };
-        break;
-      case "select":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "select",
-          label: "Select Field",
-          required: false,
-          options: [{ label: "Option 1", value: "option1" }],
-        };
-        break;
-      case "multiselect":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "multiselect",
-          label: "Multi-Select Field",
-          required: false,
-          options: [{ label: "Option 1", value: "option1" }],
-        };
-        break;
-      case "date":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "date",
-          label: "Date Field",
-          required: false,
-        };
-        break;
-      case "time":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "time",
-          label: "Time Field",
-          required: false,
-          autoExtractUserData: false,
-        };
-        break;
-      case "timezone":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "timezone",
-          label: "Timezone Field",
-          required: false,
-          autoExtractUserData: false,
-        };
-        break;
-      case "city":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "city",
-          label: "City Field",
-          required: false,
-          placeholder: "Search for a city",
-          minLength: 1,
-          autoExtractUserData: false,
-        };
-        break;
-      case "file":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "file",
-          label: "File Field",
-          required: false,
-        };
-        break;
-      case "contract":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "contract",
-          label: "Contract Field",
-          required: false,
-          contractId: null,
-          signQuestion: "Sign the contract?",
-          yesLabel: "Yes",
-          noLabel: "No",
-        };
-        break;
-      case "list":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "list",
-          label: "List Field",
-          fields: [],
-          defaultNumber: 0,
-          min: 0,
-          required: false,
-        };
-        break;
-      case "ranking":
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "ranking",
-          label: "Ranking Field",
-          required: false,
-          options: [
-            { label: "Option 1", value: "option1" },
-            { label: "Option 2", value: "option2" },
-            { label: "Option 3", value: "option3" },
-          ],
-        };
-        break;
-      case "custom": {
-        const defaultComponent = customComponentRegistry[0];
-        newField = {
-          id: fieldId,
-          type: "input",
-          kind: "custom",
-          label: "Custom Component",
-          required: false,
-          componentId: defaultComponent?.id ?? "",
-        } as AnyField;
-        break;
-      }
-      default:
-        kind satisfies never;
-        return;
-    }
-
-    insertAndSelect(newField, loc);
+    insertAndSelect(createField(kind, `field-${Date.now()}`), loc);
   };
 
   const addDisplayBlock = (kind: DisplayKind, loc: InsertLoc) => {
