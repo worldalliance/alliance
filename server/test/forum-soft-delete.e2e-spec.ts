@@ -14,6 +14,8 @@ import {
   CommentParentObject,
 } from "src/forum/entities/comment.entity";
 import { Post } from "src/forum/entities/post.entity";
+import { ForumCommentQueryService } from "src/forum/forum-comment-query.service";
+import { ForumCommentService } from "src/forum/forum-comment.service";
 import { ForumService } from "src/forum/forum.service";
 import { User } from "src/user/entities/user.entity";
 import request from "supertest";
@@ -153,7 +155,7 @@ describe("Forum soft deletion (e2e)", () => {
     await deleteComment(author.token, deleted.id).expect(200);
 
     const [loaded] = await ctx.app
-      .get(ForumService)
+      .get(ForumCommentQueryService)
       .findCommentsForPost(postId);
     expect(loaded.likes!.map((user) => user.id)).toEqual([liker.user.id]);
   });
@@ -292,9 +294,11 @@ describe("Forum soft deletion (e2e)", () => {
 
     expect((await thread(postId)).map((entry) => entry.id)).toEqual([kept.id]);
     expect(
-      (await ctx.app.get(ForumService).findCommentsForPostRaw(postId)).map(
-        (entry) => entry.id,
-      ),
+      (
+        await ctx.app
+          .get(ForumCommentQueryService)
+          .findCommentsForPostRaw(postId)
+      ).map((entry) => entry.id),
     ).toEqual([kept.id]);
     const posts = await request(server())
       .get("/forum/posts")
@@ -415,7 +419,7 @@ describe("Forum soft deletion (e2e)", () => {
     const departing = await member();
     const replier = await member();
     const commentRepo = ctx.dataSource.getRepository(Comment);
-    const forum = ctx.app.get(ForumService);
+    const forum = ctx.app.get(ForumCommentQueryService);
     const threadUnder = async (parentObjectType: CommentParentObject) => {
       const parentObjectId = 900000 + emails++;
       const save = (authorId: number, parentId: number | null = null) =>
@@ -471,9 +475,11 @@ describe("Forum soft deletion (e2e)", () => {
 
     expect((await thread(postId)).map((entry) => entry.id)).toEqual([kept.id]);
     expect(
-      (await ctx.app.get(ForumService).findCommentsForPostRaw(postId)).map(
-        (entry) => entry.id,
-      ),
+      (
+        await ctx.app
+          .get(ForumCommentQueryService)
+          .findCommentsForPostRaw(postId)
+      ).map((entry) => entry.id),
     ).toEqual([kept.id]);
     await comment({ ...replier, postId, parentId: parent.id }).expect(404);
     await comment({ ...replier, postId, parentId: hidden.id }).expect(404);
@@ -533,10 +539,12 @@ describe("Forum soft deletion (e2e)", () => {
     ).toBe(kept.id);
     expect(
       (
-        await ctx.app.get(ForumService).findForumCommentsByUserForFeed({
-          authorId: staying.user.id,
-          limit: 10,
-        })
+        await ctx.app
+          .get(ForumCommentQueryService)
+          .findForumCommentsByUserForFeed({
+            authorId: staying.user.id,
+            limit: 10,
+          })
       ).map((entry) => entry.comment.id),
     ).toEqual([kept.id]);
   });
@@ -561,10 +569,12 @@ describe("Forum soft deletion (e2e)", () => {
     expect(listed.body.map((entry: CommentDto) => entry.id)).toEqual([kept.id]);
     expect(
       (
-        await ctx.app.get(ForumService).findForumCommentsByUserForFeed({
-          authorId: author.user.id,
-          limit: 10,
-        })
+        await ctx.app
+          .get(ForumCommentQueryService)
+          .findForumCommentsByUserForFeed({
+            authorId: author.user.id,
+            limit: 10,
+          })
       ).map((entry) => entry.comment.id),
     ).toEqual([kept.id]);
   });
@@ -717,6 +727,7 @@ describe("Forum soft deletion (e2e)", () => {
     const author = await member();
     const postId = await createPost(ctx.accessToken);
     const forum = ctx.app.get(ForumService);
+    const commentService = ctx.app.get(ForumCommentService);
     const deletion = ctx.dataSource.createQueryRunner();
     await deletion.startTransaction();
     try {
@@ -739,7 +750,7 @@ describe("Forum soft deletion (e2e)", () => {
         ),
       );
       const commented = settle(
-        forum.createComment(
+        commentService.createComment(
           {
             parentObjectType: CommentParentObject.Post,
             parentObjectId: postId,
@@ -775,7 +786,7 @@ describe("Forum soft deletion (e2e)", () => {
         { deletedAt: () => "CURRENT_TIMESTAMP", legacyDeleted: true },
       );
       const commented = ctx.app
-        .get(ForumService)
+        .get(ForumCommentService)
         .createComment(
           {
             parentObjectType: CommentParentObject.Post,
@@ -817,7 +828,7 @@ describe("Forum soft deletion (e2e)", () => {
         { deletedAt: () => "CURRENT_TIMESTAMP", legacyDeleted: true },
       );
       const replied = ctx.app
-        .get(ForumService)
+        .get(ForumCommentService)
         .createComment(
           {
             parentObjectType: CommentParentObject.Post,

@@ -78,6 +78,7 @@ import {
 } from "src/forum/entities/comment.entity";
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { Post } from "src/forum/entities/post.entity";
+import { ForumCommentQueryService } from "src/forum/forum-comment-query.service";
 import { ForumService } from "src/forum/forum.service";
 import {
   hiddenCommentIds,
@@ -426,6 +427,7 @@ export class ActionsService {
     private readonly actionEventReminderService: ActionEventReminderService,
     private readonly likeNotificationService: LikeNotificationService,
     private readonly forumService: ForumService,
+    private readonly forumCommentQueryService: ForumCommentQueryService,
     private readonly eventLogService: EventLogService,
     @Inject(forwardRef(() => ActionFormVariantService))
     private readonly actionFormVariantService: ActionFormVariantService,
@@ -2354,7 +2356,9 @@ export class ActionsService {
     );
 
     const commentsByActivity = includeComments
-      ? await this.forumService.findCommentsForActivities(activityIds)
+      ? await this.forumCommentQueryService.findCommentsForActivities(
+          activityIds,
+        )
       : null;
 
     return activities.map((activity) => {
@@ -2782,13 +2786,14 @@ export class ActionsService {
       await this.actionVisibility.loadUserForActionVisibility(userId);
     const visibilitySession = new CohortResolutionSession();
 
-    const forumComments = await this.forumService.findForumCommentsForFeed({
-      userId,
-      userClusterId,
-      sourceUserIds: allUserIds,
-      limit,
-      before,
-    });
+    const forumComments =
+      await this.forumCommentQueryService.findForumCommentsForFeed({
+        userId,
+        userClusterId,
+        sourceUserIds: allUserIds,
+        limit,
+        before,
+      });
     const forumCommentItems: HomeFeedItem[] = forumComments.map((fc) => ({
       type: HomeFeedItemType.ForumComment,
       date: fc.comment.createdAt,
@@ -2883,7 +2888,7 @@ export class ActionsService {
         order: { createdAt: "DESC" },
         take: limit * 3,
       }),
-      this.forumService.findForumCommentsByUserForFeed({
+      this.forumCommentQueryService.findForumCommentsByUserForFeed({
         authorId: userId,
         requestingUserId,
         limit,

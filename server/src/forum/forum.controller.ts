@@ -31,7 +31,11 @@ import {
   UpdatePostDto,
   UpdatePostSettingsDto,
 } from "./dto/post.dto";
+import { ForumAdminService } from "./forum-admin.service";
+import { ForumCommentQueryService } from "./forum-comment-query.service";
+import { ForumCommentService } from "./forum-comment.service";
 import { ForumExportService } from "./forum-export.service";
+import { ForumLikesService } from "./forum-likes.service";
 import { ForumService } from "./forum.service";
 
 @ApiTags("forum")
@@ -39,7 +43,11 @@ import { ForumService } from "./forum.service";
 export class ForumController {
   constructor(
     private readonly forumService: ForumService,
+    private readonly forumAdminService: ForumAdminService,
+    private readonly forumCommentService: ForumCommentService,
+    private readonly forumCommentQueryService: ForumCommentQueryService,
     private readonly forumExportService: ForumExportService,
+    private readonly forumLikesService: ForumLikesService,
     private readonly posthog: PosthogService,
   ) {}
 
@@ -116,7 +124,7 @@ export class ForumController {
     @Request() req: JwtRequest,
   ): Promise<CommentDto[]> {
     await this.forumService.assertPostVisible(+id, req.user?.sub);
-    return this.forumService
+    return this.forumCommentQueryService
       .findCommentsForPost(+id)
       .then((comments) =>
         comments.map(
@@ -134,7 +142,7 @@ export class ForumController {
     @Param("id") id: string,
     @Request() req: JwtRequest,
   ): Promise<CommentDto[]> {
-    return this.forumService
+    return this.forumCommentQueryService
       .findCommentsForActivity(+id)
       .then((comments) =>
         comments.map(
@@ -152,7 +160,7 @@ export class ForumController {
     @Param("id") id: string,
     @Request() req: JwtRequest,
   ): Promise<CommentDto[]> {
-    return this.forumService
+    return this.forumCommentQueryService
       .findCommentsForAction(+id)
       .then((comments) =>
         comments.map(
@@ -189,7 +197,8 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @Request() req: JwtRequest,
   ): Promise<UserCommentDto[]> {
-    const userComments = await this.forumService.findCommentsByUser(id);
+    const userComments =
+      await this.forumCommentQueryService.findCommentsByUser(id);
     return userComments.map(
       (userComment) =>
         new UserCommentDto({ ...userComment, requestingUserId: req.user?.sub }),
@@ -204,7 +213,7 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @Request() req: JwtRequest,
   ): Promise<CommentDto[]> {
-    return this.forumService
+    return this.forumCommentQueryService
       .findForumCommentsByUser(id)
       .then((comments) =>
         comments.map(
@@ -248,7 +257,7 @@ export class ForumController {
     @Body() createReplyDto: CreateCommentDto,
     @ReqUser() user: JwtPayload,
   ): Promise<CommentDto> {
-    const comment = await this.forumService.createComment(
+    const comment = await this.forumCommentService.createComment(
       createReplyDto,
       user.sub,
     );
@@ -272,7 +281,11 @@ export class ForumController {
     @ReqUser() user: JwtPayload,
   ): Promise<CommentDto> {
     return new CommentDto(
-      await this.forumService.updateComment(id, updateCommentDto, user.sub),
+      await this.forumCommentService.updateComment(
+        id,
+        updateCommentDto,
+        user.sub,
+      ),
       { requestingUserId: user.sub },
     );
   }
@@ -285,7 +298,12 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @ReqUser() user: JwtPayload,
   ): Promise<void> {
-    await this.forumService.likePostOrComment(id, user.sub, false, "comment");
+    await this.forumLikesService.likePostOrComment(
+      id,
+      user.sub,
+      false,
+      "comment",
+    );
     this.posthog.capture({
       event: AnalyticsEvent.ForumCommentLiked,
       distinctId: String(user.sub),
@@ -303,7 +321,12 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @ReqUser() user: JwtPayload,
   ): Promise<void> {
-    await this.forumService.likePostOrComment(id, user.sub, true, "comment");
+    await this.forumLikesService.likePostOrComment(
+      id,
+      user.sub,
+      true,
+      "comment",
+    );
     this.posthog.capture({
       event: AnalyticsEvent.ForumCommentUnliked,
       distinctId: String(user.sub),
@@ -321,7 +344,7 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @ReqUser() user: JwtPayload,
   ): Promise<void> {
-    await this.forumService.likePostOrComment(id, user.sub, false, "post");
+    await this.forumLikesService.likePostOrComment(id, user.sub, false, "post");
     this.posthog.capture({
       event: AnalyticsEvent.ForumPostLiked,
       distinctId: String(user.sub),
@@ -339,7 +362,7 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @ReqUser() user: JwtPayload,
   ): Promise<void> {
-    await this.forumService.likePostOrComment(id, user.sub, true, "post");
+    await this.forumLikesService.likePostOrComment(id, user.sub, true, "post");
     this.posthog.capture({
       event: AnalyticsEvent.ForumPostUnliked,
       distinctId: String(user.sub),
@@ -357,7 +380,7 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @ReqUser() user: JwtPayload,
   ): Promise<void> {
-    return this.forumService.deleteReply(+id, user.sub);
+    return this.forumCommentService.deleteReply(+id, user.sub);
   }
 
   @Get("admin/posts")
@@ -365,7 +388,7 @@ export class ForumController {
   @ApiOperation({ summary: "Get all posts for admin management" })
   @ApiOkResponse({ type: [PostDto] })
   async getPostsForAdmin(): Promise<PostDto[]> {
-    const posts = await this.forumService.getPostsForAdmin();
+    const posts = await this.forumAdminService.getPostsForAdmin();
     return posts.map((post) => new PostDto({ post }));
   }
 
@@ -391,7 +414,7 @@ export class ForumController {
     @Param("id", ParseIntPipe) id: number,
     @Body() updatePostSettingsDto: UpdatePostSettingsDto,
   ): Promise<PostDto> {
-    const post = await this.forumService.updatePostSettings(
+    const post = await this.forumAdminService.updatePostSettings(
       id,
       updatePostSettingsDto,
     );
@@ -405,6 +428,6 @@ export class ForumController {
   async pinCommentAdmin(
     @Param("id", ParseIntPipe) id: number,
   ): Promise<CommentDto> {
-    return new CommentDto(await this.forumService.togglePinComment(id));
+    return new CommentDto(await this.forumAdminService.togglePinComment(id));
   }
 }

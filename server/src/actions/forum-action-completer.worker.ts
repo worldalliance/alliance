@@ -10,7 +10,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { milliseconds } from "date-fns";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
-import { ForumService } from "src/forum/forum.service";
+import { ForumCommentQueryService } from "src/forum/forum-comment-query.service";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import { LOCK_KEYS } from "src/notifs/lock-keys";
 import { withPgAdvisoryLock } from "src/notifs/lock-utils";
@@ -63,7 +63,7 @@ export class ForumActionCompleterWorker {
     private readonly formResponseRepository: Repository<FormResponse>,
     @InjectRepository(CustomValidator)
     private readonly customValidatorRepository: Repository<CustomValidator>,
-    private readonly forumService: ForumService,
+    private readonly forumCommentQueryService: ForumCommentQueryService,
     private readonly actionsService: ActionsService,
     private readonly actionEventRecipientService: ActionEventRecipientService,
     private readonly cohortDecisionService: CohortDecisionService,
@@ -427,12 +427,14 @@ export class ForumActionCompleterWorker {
     type: CustomValidatorType,
   ): Promise<Set<number>> {
     if (type === CustomValidatorType.RepliedToForumPost) {
-      const replies = await this.forumService.findCommentsForPost(postId);
+      const replies =
+        await this.forumCommentQueryService.findCommentsForPost(postId);
       return new Set(replies.map((reply) => reply.authorId));
     }
 
     if (type === CustomValidatorType.RepliedToForumPostOrChild) {
-      const replies = await this.forumService.findCommentsForPostRaw(postId);
+      const replies =
+        await this.forumCommentQueryService.findCommentsForPostRaw(postId);
       return new Set(replies.map((reply) => reply.authorId));
     }
 
