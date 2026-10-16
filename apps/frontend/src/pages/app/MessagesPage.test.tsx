@@ -51,6 +51,7 @@ let listed: ConversationDto[] = [];
 let listFails = false;
 let messageableUsersCalls = 0;
 let heldRetry: Promise<Response> | null = null;
+let markedRead: string[] = [];
 
 serveApi(
   routes({
@@ -62,8 +63,10 @@ serveApi(
       listFails
         ? Response.json({ message: "Internal server error" }, { status: 500 })
         : Response.json(listed),
-    "POST /messaging/conversations/:conversationId/read": () =>
-      new Response(null, { status: 201 }),
+    "POST /messaging/conversations/:conversationId/read": ({ params }) => {
+      markedRead.push(params.conversationId);
+      return new Response(null, { status: 201 });
+    },
   }),
 );
 
@@ -72,6 +75,7 @@ beforeEach(() => {
   listFails = false;
   messageableUsersCalls = 0;
   heldRetry = null;
+  markedRead = [];
   jest
     .spyOn(messagesModule, "useConversations")
     .mockReturnValue(conversationsHook([]));
@@ -168,6 +172,7 @@ it("offers a retry in place of the add-member field when messageable users fail 
   expect(
     screen.queryByText("Couldn't load the people you can add."),
   ).toBeNull();
+  await waitFor(() => expect(markedRead).toEqual([String(group.id)]));
 });
 
 it("opens the direct chat a profile links to once a cached list that predates it reloads", async () => {
@@ -190,6 +195,7 @@ it("opens the direct chat a profile links to once a cached list that predates it
   await screen.findAllByText("Chat with Grace");
 
   await waitFor(() => expect(screen.queryByText("New message")).toBeNull());
+  await waitFor(() => expect(markedRead).toEqual([String(chat.id)]));
 });
 
 it("waits for a cached list that predates a linked chat to reload, rather than saying no chat is selected", async () => {
@@ -209,6 +215,7 @@ it("waits for a cached list that predates a linked chat to reload, rather than s
 
   expect(screen.queryByText("No chat selected")).toBeNull();
   await screen.findByText("Linked group", { selector: "p" });
+  await waitFor(() => expect(markedRead).toEqual([String(group.id)]));
 });
 
 it("keeps the cached chats and offers a retry when reloading them fails", async () => {
