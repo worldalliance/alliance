@@ -1,4 +1,5 @@
 import { forCount, withCount } from "@alliance/common/plural";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import { NotificationDto, notifsSetRead } from "@alliance/shared/client";
 import {
   buildNotificationRenderItems,

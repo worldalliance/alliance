@@ -7,6 +7,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback } from "react";
+// eslint-disable-next-line api-client/named-hooks-only -- the TanStack hooks in this file own these calls
 import {
   ActionDto,
   actionsDismissAction,

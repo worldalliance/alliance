@@ -1,6 +1,7 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { isFollowUpFormActive } from "@alliance/common/followUpForm";
 import { R, type Result } from "@alliance/common/result";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   tasksSubmitFollowUpForm,
   type ActionDto,

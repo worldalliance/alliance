@@ -1,5 +1,6 @@
 import { OAuthError, type OAuthProvider } from "@alliance/common/oauth";
 import { R, type Result } from "@alliance/common/result";
+// eslint-disable-next-line api-client/named-hooks-only -- auth and session flow, which no query cache holds
 import {
   oAuthRedeemMobileHandoff,
   oAuthSignInWithIdentityToken,

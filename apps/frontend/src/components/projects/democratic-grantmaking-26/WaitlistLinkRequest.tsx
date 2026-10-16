@@ -1,3 +1,4 @@
+// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
 import { waitlistRequestLink } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";

@@ -7,6 +7,7 @@ import {
 import { R } from "@alliance/common/result";
 import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import { z } from "zod";
+// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
 import { linkOpeningRecord } from "../client";
 import { captureException } from "./analytics";
 import { isRefusedStatus } from "./retryQuery";

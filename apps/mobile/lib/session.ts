@@ -5,6 +5,7 @@ import {
 } from "@alliance/common/review-account";
 import { run } from "@alliance/common/run";
 import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
+// eslint-disable-next-line api-client/named-hooks-only -- auth and session flow, which no query cache holds
 import {
   authLogin,
   authLogout,

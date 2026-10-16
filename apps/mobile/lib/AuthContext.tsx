@@ -15,6 +15,7 @@ import React, {
   useState,
 } from "react";
 import { Alert } from "react-native";
+// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import { authMe, UserDto } from "../../../shared/client";
 import { getBinaryApiUrl, setReviewSession } from "./config";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";

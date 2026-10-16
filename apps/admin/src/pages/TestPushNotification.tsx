@@ -1,4 +1,5 @@
 import { errorMessage } from "@alliance/common/errorMessage";
+// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
 import { userSendPushNotificationAdmin } from "@alliance/shared/client";
 import type {
   PushDto,

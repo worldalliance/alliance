@@ -1,3 +1,4 @@
+// eslint-disable-next-line api-client/named-hooks-only -- file upload; its result is used once, not cached
 import { imagesUploadImage } from "@alliance/shared/client";
 import { getReferralSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { CardStyle } from "@alliance/shared/styles/card";

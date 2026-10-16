@@ -1,3 +1,4 @@
+// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
 import { actionPartnershipsCreateResponse } from "@alliance/shared/client";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { cn } from "@alliance/shared/styles/util";

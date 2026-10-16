@@ -1,3 +1,4 @@
+// eslint-disable-next-line api-client/named-hooks-only -- one-off request whose result no query cache holds
 import { appHealthCheck, SignInDto } from "@alliance/shared/client";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
