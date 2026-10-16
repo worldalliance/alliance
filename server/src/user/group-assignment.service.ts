@@ -7,8 +7,8 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { CommunityService } from "src/community/community.service";
 import {
-  isCommunityLedBy,
-  membersAndLeaders,
+  groupJoinAudience,
+  memberJoinedCommunityNotif,
 } from "src/community/community.utils";
 import { Community } from "src/community/entities/community.entity";
 import { updateLive } from "src/datasources/soft-delete";
@@ -159,10 +159,8 @@ export class GroupAssignmentService {
     const groupJoinAudiences = new Map(
       assignments.map(({ community }) => [
         community.id,
-        membersAndLeaders(community).filter(
-          (member) =>
-            !batchUserIds.has(member.id) ||
-            isCommunityLedBy(community, member.id),
+        groupJoinAudience(community).filter(
+          (member) => !batchUserIds.has(member.id),
         ),
       ]),
     );
@@ -182,17 +180,13 @@ export class GroupAssignmentService {
         user,
         community: freshCommunity,
         groupJoinAudience: groupJoinAudiences.get(community.id),
-        notifForLeader: ({ leader }) => ({
-          user: leader,
-          category: NotificationCategory.CommunityAssigned,
-          message: notifMessage`Alliance staff assigned ${member(user)} to your group (${group(freshCommunity)})`,
-          destination: communityDestination(freshCommunity.id),
-          webAppLocation: groupUrl({
-            tab: "members",
-            communityId: freshCommunity.id,
+        notifForLeader: ({ leader }) =>
+          memberJoinedCommunityNotif({
+            leader,
+            joiner: user,
+            community: freshCommunity,
+            message: notifMessage`Alliance staff assigned ${member(user)} to your group (${group(freshCommunity)})`,
           }),
-          associatedUsers: [user],
-        }),
       });
 
       userNotifs.push({

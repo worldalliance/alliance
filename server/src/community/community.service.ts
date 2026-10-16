@@ -50,10 +50,11 @@ import type { Relations } from "src/utils/Repository";
 import { DeepPartial, In, IsNull, type Repository } from "typeorm";
 import { changeMembers } from "./change-members";
 import {
+  groupJoinAudience,
   isCommunityLedBy,
   memberJoinedCommunityNotif,
   memberLeftCommunityNotif,
-  membersAndLeaders,
+  staffAddedMemberNotif,
 } from "./community.utils";
 import { CreateCommunityDto, UpdateCommunityDto } from "./dto/community.dto";
 import {
@@ -230,7 +231,7 @@ export class CommunityService {
       contractBeingSigned?: boolean;
       /** Defaults to staff; the self-service joins add the requester. */
       contractRefusalAudience?: ContractRefusalAudience;
-      /** Defaults to the group's members and leaders as loaded. */
+      /** Defaults to the group's members who don't lead it, as loaded. */
       groupJoinAudience?: User[];
     } & (
       | {
@@ -251,7 +252,7 @@ export class CommunityService {
       notifForLeader,
       contractBeingSigned = false,
       contractRefusalAudience = ContractRefusalAudience.Staff,
-      groupJoinAudience: audience = membersAndLeaders(community),
+      groupJoinAudience: audience = groupJoinAudience(community),
     } = params;
     const users = usersParam ?? [user];
 
@@ -883,11 +884,10 @@ export class CommunityService {
     const destinationLeaderNotifs: CreateNotifParams[] = (
       destinationCommunity.leaders ?? []
     ).map((leader) =>
-      memberJoinedCommunityNotif({
+      staffAddedMemberNotif({
         leader,
         joiner: user,
         community: destinationCommunity,
-        message: notifMessage`Staff added ${member(user)} to your group (${group(destinationCommunity)})`,
       }),
     );
     const sourceLeaderNotifs: CreateNotifParams[] = sourceCommunity
@@ -940,7 +940,7 @@ export class CommunityService {
           this.groupJoinNotifsService.notify({
             community: destinationCommunity,
             joiners: [user],
-            audience: membersAndLeaders(destinationCommunity),
+            audience: groupJoinAudience(destinationCommunity),
           }),
       },
     ]);
@@ -979,7 +979,10 @@ export class CommunityService {
       this.userRepository.findOneOrFail({ where: { id: userId } }),
     ]);
 
-    const audience = membersAndLeaders(community);
+    const audience = groupJoinAudience(community);
+    const existingLeaders = community.leaders!.filter(
+      (leader) => leader.id !== userId,
+    );
     const members = loadedCommunityUsers(community);
     const isMember = members.some((existing) => existing.id === userId);
     const isLeader = community.leaders!.some(
@@ -1009,16 +1012,36 @@ export class CommunityService {
     if (!isMember) members.push(user);
     if (!isLeader) community.leaders!.push(user);
 
-    await Promise.all([
-      joined &&
-        this.groupJoinNotifsService.notify({
-          community,
-          joiners: [user],
-          audience,
-        }),
-      this.communityConversationService.syncCommunityConversationMembers(
-        communityId,
-      ),
+    await this.settlePostCommitMembershipEffects([
+      ...(joined
+        ? [
+            {
+              description: `send group join notifications for user ${user.id}`,
+              run: () =>
+                this.groupJoinNotifsService.notify({
+                  community,
+                  joiners: [user],
+                  audience,
+                }),
+            },
+            {
+              description: `send leader notifications for user ${user.id}`,
+              run: () =>
+                this.notifsService.sendNotifs(
+                  existingLeaders.map((leader) =>
+                    staffAddedMemberNotif({ leader, joiner: user, community }),
+                  ),
+                ),
+            },
+          ]
+        : []),
+      {
+        description: `sync community conversation ${communityId}`,
+        run: () =>
+          this.communityConversationService.syncCommunityConversationMembers(
+            communityId,
+          ),
+      },
     ]);
     return community;
   }

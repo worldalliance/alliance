@@ -18,13 +18,14 @@ export function isCommunityLedBy(c: Community, userId: number): boolean {
   return c.leaders?.some((leader) => leader.id === userId) ?? false;
 }
 
-export function membersAndLeaders(community: Community): User[] {
-  return Array.from(
-    new Map(
-      [...loadedCommunityUsers(community), ...(community.leaders ?? [])].map(
-        (user) => [user.id, user],
-      ),
-    ).values(),
+export function groupJoinAudience(community: Community): User[] {
+  const { leaders } = community;
+  if (!leaders) {
+    throw new Error(`leaders of community ${community.id} not loaded`);
+  }
+  const leaderIds = new Set(leaders.map((leader) => leader.id));
+  return loadedCommunityUsers(community).filter(
+    (user) => !leaderIds.has(user.id),
   );
 }
 
@@ -49,6 +50,23 @@ export function memberJoinedCommunityNotif({
     webAppLocation: groupUrl({ tab: "members", communityId: community.id }),
     associatedUsers,
   };
+}
+
+export function staffAddedMemberNotif({
+  leader,
+  joiner,
+  community,
+}: {
+  leader: User;
+  joiner: User;
+  community: Community;
+}): CreateNotifParams {
+  return memberJoinedCommunityNotif({
+    leader,
+    joiner,
+    community,
+    message: notifMessage`Staff added ${member(joiner)} to your group (${group(community)})`,
+  });
 }
 
 export function memberLeftCommunityNotif({
