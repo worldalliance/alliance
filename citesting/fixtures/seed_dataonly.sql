@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict vwgWRzvjIl9vtCkNcuvTL6cuoeyOQXFIGM9dvahjIXs0M3tTAfMFPm5gOvscBHq
+\restrict ilNWOzsEkSU2M3mmCefweL78hJdUcYUV2dBidRizMuThiXLgypOBMbiBDoGBrZf
 
 -- Dumped from database version 18.3 (Homebrew)
 -- Dumped by pg_dump version 18.3 (Homebrew)
@@ -1967,21 +1967,6 @@ COPY public.form_snapshot_history ("formId", "formSnapshotId") FROM stdin;
 
 
 --
--- Data for Name: forum_digest_log; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.forum_digest_log (id, "digestDate", "preferenceUsed", "notificationsCount", "notificationIds", "notificationsSummary", "userId", "createdAt", "deletedAt") FROM stdin;
-2	2026-01-05	daily	1	{1126}	[{"url": "https://worldalliance.org/actions/54/activity/982?replyId=157&cid=6a4ce95f1d", "message": "New reply from James Bowden", "createdAt": "Jan 4, 11:51 PM"}]	7	2026-01-06 06:27:47.225391-08	\N
-3	2026-01-14	daily	5	{1439,1440,1442,1443,1445}	[{"url": "https://worldalliance.org/forum/post/15?replyId=175&cid=ed9aea0d7f", "message": "New reply from Grant Hough", "createdAt": "Jan 14, 3:32 AM"}, {"url": "https://worldalliance.org/forum/post/15?replyId=176&cid=ed9aea0d7f", "message": "New reply from Patrick T.", "createdAt": "Jan 14, 3:33 AM"}, {"url": "https://worldalliance.org/forum/post/15?replyId=177&cid=ed9aea0d7f", "message": "New reply from Grant Hough", "createdAt": "Jan 14, 3:40 AM"}, {"url": "https://worldalliance.org/forum/post/15?replyId=178&cid=ed9aea0d7f", "message": "New reply from Justin Peck", "createdAt": "Jan 14, 3:41 AM"}, {"url": "https://worldalliance.org/forum/post/15?replyId=179&cid=ed9aea0d7f", "message": "New reply from Grant Hough", "createdAt": "Jan 14, 3:41 AM"}]	7	2026-01-15 06:27:46.588227-08	\N
-4	2026-01-19	daily	1	{1792}	[{"url": "https://worldalliance.org/forum/post/15?replyId=240&cid=be29b0bbb7", "message": "New reply from Selina Kim", "createdAt": "Jan 19, 3:05 AM"}]	7	2026-01-20 06:27:47.033317-08	\N
-5	2026-01-29	daily	1	{2160}	[{"url": "https://worldalliance.org/forum/post/16?replyId=257&cid=2ac3727461", "message": "New reply from Alex Hockett", "createdAt": "Jan 29, 3:48 AM"}]	7	2026-01-30 06:27:46.812636-08	\N
-6	2026-02-03	daily	1	{2424}	[{"url": "https://worldalliance.org/forum/post/16?replyId=289&cid=b2b1bec953", "message": "New reply from Justin Peck", "createdAt": "Feb 3, 4:49 AM"}]	7	2026-02-04 06:27:47.480997-08	\N
-7	2026-02-04	daily	1	{2459}	[{"url": "https://worldalliance.org/forum/post/16?replyId=297&cid=b2f789d8ed", "message": "New reply from Bob Grand", "createdAt": "Feb 4, 4:49 AM"}]	7	2026-02-05 06:27:47.145236-08	\N
-8	2026-02-07	daily	2	{2896,2898}	[{"url": "https://worldalliance.org/forum/post/16?replyId=356&cid=f50482b62b", "message": "New reply from Bowen Jiang", "createdAt": "Feb 7, 2:33 AM"}, {"url": "https://worldalliance.org/forum/post/16?replyId=357&cid=f50482b62b", "message": "New reply from Bowen Jiang", "createdAt": "Feb 7, 2:51 AM"}]	7	2026-02-08 06:27:46.847988-08	\N
-\.
-
-
---
 -- Data for Name: friend; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -2749,13 +2734,6 @@ SELECT pg_catalog.setval('public.form_snapshot_id_seq', 57, true);
 
 
 --
--- Name: forum_digest_log_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.forum_digest_log_id_seq', 8, true);
-
-
---
 -- Name: friend_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -2815,7 +2793,7 @@ SELECT pg_catalog.setval('public.message_tracking_id_seq', 1, false);
 -- Name: migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.migrations_id_seq', 445, true);
+SELECT pg_catalog.setval('public.migrations_id_seq', 446, true);
 
 
 --
@@ -3011,5 +2989,5 @@ SELECT pg_catalog.setval('public.waitlist_tag_id_seq', 1, false);
 -- PostgreSQL database dump complete
 --
 
-\unrestrict vwgWRzvjIl9vtCkNcuvTL6cuoeyOQXFIGM9dvahjIXs0M3tTAfMFPm5gOvscBHq
+\unrestrict ilNWOzsEkSU2M3mmCefweL78hJdUcYUV2dBidRizMuThiXLgypOBMbiBDoGBrZf
 

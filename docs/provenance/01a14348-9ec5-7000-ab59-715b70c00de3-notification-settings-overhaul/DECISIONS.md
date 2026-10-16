@@ -72,6 +72,10 @@ Each kind renders its example through the producer's own copy function with fixe
 
 `GroupJoinNotifsService` drops the group's leaders from the `group_member_joined` audience. This replaces the "every existing member and leader" audience in `docs/provenance/01a11f9d-b3d3-7000-998a-59cea0d92543-group-join-notification/`.
 
+## Forum digest removal
+
+`EmailType.ForumDigest` and `MessageSource.ForumDigest` stay, with no template, because `mail` and `message_tracking` rows of those types record digests already sent, as retired types such as `EmailType.Commitment` do. `forum_digest_log` drops without a backup: it duplicates what those `mail` rows hold. The `forum_digest_log` table goes first and `forumDigestPreference` after it, since the table's `preferenceUsed` column uses the preference's enum type.
+
 ## Settings screens
 
 - A per-kind "Reset to defaults" deletes that kind's overrides. There is no global reset.

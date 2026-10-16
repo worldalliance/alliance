@@ -25,7 +25,6 @@ const UNIQUE_ACROSS_DELETED = [
   "DailyStatsRecord.dayId",
   "ExperimentAssignment.userId,experiment",
   "FormSnapshot.hash",
-  "ForumDigestLog.user,digestDate",
   "Friend.acceptedNotif",
   "Friend.sentNotif",
   "LinkOpening.openingId",

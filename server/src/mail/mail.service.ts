@@ -1,5 +1,4 @@
 import { nameParts } from "@alliance/common/nameParts";
-import { withCount } from "@alliance/common/plural";
 import { R } from "@alliance/common/result";
 import { ISendMailOptions, MailerService } from "@nestjs-modules/mailer";
 import { Injectable, NotFoundException } from "@nestjs/common";
@@ -23,7 +22,6 @@ import { getTimeLeftString } from "src/notifs/textnotifcontents";
 import {
   groupMembersListUrl,
   membershipUrl,
-  siteBaseUrl,
   tasksUrl,
 } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
@@ -189,7 +187,7 @@ export class MailService {
     [EmailType.MemberAction]: "memberaction",
     [EmailType.CommitmentReminder]: "commitmentreminder",
     [EmailType.MemberActionReminder]: "memberactionreminder",
-    [EmailType.ForumDigest]: "forumdigest",
+    [EmailType.ForumDigest]: "",
     [EmailType.ForumReply]: "forumreply",
     [EmailType.MissedDeadline]: "misseddeadline",
     [EmailType.MissedSecondDeadline]: "missedseconddeadline",
@@ -424,38 +422,6 @@ export class MailService {
       subject: params.content.subject,
       context: params.content,
       tracking: params.tracking,
-    });
-  }
-
-  public async sendForumDigestEmail(params: {
-    email: string;
-    name: string;
-    unreadCount: number;
-    notifications: {
-      message: string;
-      url?: string | null;
-      createdAt: string;
-    }[];
-    tracking: TrackedMessage;
-  }): Promise<Mail> {
-    const { email, name, unreadCount, notifications, tracking } = params;
-    const subject = `You have ${withCount(unreadCount, "unread Alliance forum notification")}`;
-
-    return this.sendMail({
-      recipient: email,
-      emailType: EmailType.ForumDigest,
-      subject,
-      context: {
-        name,
-        count: unreadCount,
-        notifications: notifications.map((item) => ({
-          message: item.message,
-          url: item.url,
-          createdAt: item.createdAt,
-        })),
-        appUrl: siteBaseUrl(),
-      },
-      tracking,
     });
   }
 
