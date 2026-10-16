@@ -1,55 +1,36 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import { errorMessage } from "@alliance/common/errorMessage";
 import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
 import {
   actionsActionRelationsForUserAdmin,
   contractSuspendContractAdmin,
   notifsNotifsForUserAdmin,
   tasksGetFormsForUserSidAdmin,
-  userAddUserToTagAdmin,
   userGetTagSummariesAdmin,
   userListFriends,
-  userRemoveUserFromTagAdmin,
-  userUpdateUserRolesAdmin,
   userUserDetailAdmin,
 } from "@alliance/shared/client";
 import {
-  ActionEventNotifDto,
   ProfileDto,
-  Push,
-  TagDto,
-  TagSummaryDto,
   UserActionRelationDetailDto,
   UserActionRelationsResponseDto,
   UserActionSummaryDto,
   UserAdminDetailDto,
-  UserAdminInvitedByDto,
 } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { PILL_STATUS_DATA } from "@alliance/sharedweb/ui/UserProgressPills";
-import { keyBy } from "es-toolkit";
-import {
-  ChevronDown,
-  ChevronRight,
-  Globe,
-  Mail,
-  MapPin,
-  Phone,
-  Trash2,
-  UserPlus,
-} from "lucide-react";
+import { Mail, Phone, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLoaderData, useNavigate } from "react-router";
 import { Route } from "../../.react-router/types/src/pages/+types/UserDetailView";
-import CreateActivityControls from "../components/CreateActivityControls";
 import DeleteAccountModal from "../components/DeleteAccountModal";
 import MemberGroupMoveSection from "../components/MemberGroupMoveSection";
 import UserAwayPeriodsSection from "../components/UserAwayPeriodsSection";
-import { WithdrawalInfo } from "../components/WithdrawalInfo";
-import { useAuth } from "../lib/AuthContext";
+import UserActionsSection from "../components/user-detail/UserActionsSection";
+import UserMemberInfoSection from "../components/user-detail/UserMemberInfoSection";
+import UserNotificationsSection from "../components/user-detail/UserNotificationsSection";
+import UserRolesSection from "../components/user-detail/UserRolesSection";
+import UserTagsSection from "../components/user-detail/UserTagsSection";
 import { getApiUrl } from "../lib/config";
 import { useUserAwayRangesAdmin } from "../lib/useUserAwayRangesAdmin";
 
@@ -110,107 +91,18 @@ const UserDetailView: React.FC = () => {
     loaderData;
 
   const [user, setUser] = useState<UserAdminDetailDto>(loaderData.user);
-  const [actionRelationsState, setActionRelationsState] =
-    useState<UserActionRelationDetailDto[]>(actionRelations);
-  const [allTags, setAllTags] = useState<TagSummaryDto[]>(loaderData.allTags);
-  const [pendingTagOps, setPendingTagOps] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const [tagMutationError, setTagMutationError] = useState<string | null>(null);
-  const [isAmbassadorPending, setIsAmbassadorPending] = useState(false);
-  const [isStaffPending, setIsStaffPending] = useState(false);
-  const [isAdminPending, setIsAdminPending] = useState(false);
-  const [roleMutationError, setRoleMutationError] = useState<string | null>(
-    null,
-  );
-  const { user: viewer } = useAuth();
-  const isSelf = viewer?.id === user.id;
   const [isSuspendPending, setIsSuspendPending] = useState(false);
   const [suspendMutationError, setSuspendMutationError] = useState<
     string | null
   >(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [expandedEmailId, setExpandedEmailId] = useState<number | null>(null);
   const { confirm, success } = useToast();
 
   useEffect(() => {
     setUser(loaderData.user);
   }, [loaderData.user]);
 
-  useEffect(() => {
-    setActionRelationsState(actionRelations);
-  }, [actionRelations]);
-
-  const sortedAllTags = useMemo(() => {
-    return [...allTags].sort((a, b) => a.name.localeCompare(b.name));
-  }, [allTags]);
-
   const navigate = useNavigate();
-
-  const upsertActionRelation = useCallback(() => {
-    navigate(window.location.pathname);
-  }, [navigate]);
-
-  const [userTagIds, setUserTagIds] = useState<Set<string>>(
-    () => new Set((user.tags ?? []).map((tag) => tag.id)),
-  );
-
-  useEffect(() => {
-    setUserTagIds(new Set((user.tags ?? []).map((tag) => tag.id)));
-  }, [user.tags]);
-
-  useEffect(() => {
-    setAllTags(loaderData.allTags);
-  }, [loaderData.allTags]);
-
-  const userTags = useMemo(() => {
-    return allTags.filter((tag) => userTagIds.has(tag.id));
-  }, [allTags, userTagIds]);
-
-  const relationByActionId = useMemo(
-    () => keyBy(actionRelationsState, (relation) => relation.actionId),
-    [actionRelationsState],
-  );
-
-  const { emailNotifs, textNotifs, pushNotifs } = useMemo(() => {
-    // Categorize each channel independently
-    const email: ActionEventNotifDto[] = [];
-    const text: ActionEventNotifDto[] = [];
-    const push: Push[] = [];
-    notifs.forEach((notif) => {
-      if (notif.mail) email.push(notif);
-      if (notif.mms) text.push(notif);
-      notif.pushes?.forEach((p) => push.push(p));
-    });
-    const sortDesc = (arr: ActionEventNotifDto[]) =>
-      [...arr].sort((a, b) => notifTimestamp(b) - notifTimestamp(a));
-    return {
-      emailNotifs: sortDesc(email),
-      textNotifs: sortDesc(text),
-      pushNotifs: [...push].sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      ),
-    };
-  }, [notifs]);
-
-  const emailClickRate = useMemo(() => {
-    if (!emailNotifs.length) return null;
-    const clicked = emailNotifs.filter((n) => n.mail?.clickedLink).length;
-    return Math.round((clicked / emailNotifs.length) * 100);
-  }, [emailNotifs]);
-
-  const textClickRate = useMemo(() => {
-    if (!textNotifs.length) return null;
-    const clicked = textNotifs.filter((n) => n.mms?.clickedLink).length;
-    return Math.round((clicked / textNotifs.length) * 100);
-  }, [textNotifs]);
-
-  const pushOpenRate = useMemo(() => {
-    if (!pushNotifs.length) return null;
-    const opened = pushNotifs.filter((p) => p.openedAt).length;
-    return Math.round((opened / pushNotifs.length) * 100);
-  }, [pushNotifs]);
 
   const { currentAwayRange } = useUserAwayRangesAdmin(user.id);
 
@@ -236,142 +128,6 @@ const UserDetailView: React.FC = () => {
       : latestEvent.type === "signed"
         ? "Signed"
         : "Suspended";
-  const tagKey = useCallback(
-    (tagId: string) => `${user.id}-${tagId}`,
-    [user.id],
-  );
-
-  const updateTagInState = useCallback((updatedTag: TagDto) => {
-    const summary: TagSummaryDto = {
-      id: updatedTag.id,
-      name: updatedTag.name,
-      description: updatedTag.description,
-      publicDisplayName: updatedTag.publicDisplayName,
-      createdAt: updatedTag.createdAt,
-      updatedAt: updatedTag.updatedAt,
-    };
-    setAllTags((prev) => {
-      const exists = prev.some((tag) => tag.id === summary.id);
-      if (exists) {
-        return prev.map((tag) => (tag.id === summary.id ? summary : tag));
-      }
-      return [...prev, summary];
-    });
-  }, []);
-
-  const handleTagToggle = useCallback(
-    async (tagId: string, nextChecked: boolean) => {
-      const key = tagKey(tagId);
-      setPendingTagOps((prev) => {
-        const next = new Set(prev);
-        next.add(key);
-        return next;
-      });
-      setTagMutationError(null);
-      try {
-        if (nextChecked) {
-          const res = await userAddUserToTagAdmin({
-            path: { tagId },
-            body: { userId: user.id },
-          });
-          if (res.data) {
-            updateTagInState(res.data);
-            setUserTagIds((prev) => new Set([...prev, tagId]));
-          }
-        } else {
-          const res = await userRemoveUserFromTagAdmin({
-            path: { tagId },
-            body: { userId: user.id },
-          });
-          if (res.data) {
-            updateTagInState(res.data);
-            setUserTagIds((prev) => {
-              const next = new Set(prev);
-              next.delete(tagId);
-              return next;
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Failed to update tag membership", error);
-        setTagMutationError("Failed to update tag membership. Try again.");
-      } finally {
-        setPendingTagOps((prev) => {
-          const next = new Set(prev);
-          next.delete(key);
-          return next;
-        });
-      }
-    },
-    [tagKey, updateTagInState, user.id],
-  );
-
-  const handleAmbassadorToggle = useCallback(
-    async (nextChecked: boolean) => {
-      setIsAmbassadorPending(true);
-      setRoleMutationError(null);
-      try {
-        const res = await userUpdateUserRolesAdmin({
-          path: { id: user.id },
-          body: { ambassador: nextChecked },
-        });
-        if (res.data) {
-          setUser(res.data);
-        }
-      } catch (error) {
-        console.error("Failed to update user role", error);
-        setRoleMutationError("Failed to update role. Try again.");
-      } finally {
-        setIsAmbassadorPending(false);
-      }
-    },
-    [user.id],
-  );
-
-  const handleStaffToggle = useCallback(
-    async (nextChecked: boolean) => {
-      setIsStaffPending(true);
-      setRoleMutationError(null);
-      try {
-        const res = await userUpdateUserRolesAdmin({
-          path: { id: user.id },
-          body: { staff: nextChecked },
-        });
-        if (res.data) {
-          setUser(res.data);
-        }
-      } catch (error) {
-        console.error("Failed to update user role", error);
-        setRoleMutationError("Failed to update role. Try again.");
-      } finally {
-        setIsStaffPending(false);
-      }
-    },
-    [user.id],
-  );
-
-  const handleAdminToggle = useCallback(
-    async (nextChecked: boolean) => {
-      setIsAdminPending(true);
-      setRoleMutationError(null);
-      try {
-        const res = await userUpdateUserRolesAdmin({
-          path: { id: user.id },
-          body: { admin: nextChecked },
-          throwOnError: true,
-        });
-        setUser(res.data);
-      } catch (error) {
-        setRoleMutationError(
-          errorMessage({ error, fallback: "Could not update admin status." }),
-        );
-      } finally {
-        setIsAdminPending(false);
-      }
-    },
-    [user.id],
-  );
-
   const handleSuspendContract = useCallback(async () => {
     const confirmed = await confirm({
       title: "Suspend contract?",
@@ -492,382 +248,17 @@ const UserDetailView: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3 space-y-4">
-          <section className="max-h-128 overflow-y-auto">
-            {actionSummaries.length ? (
-              <div className="border border-zinc-200 rounded overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-zinc-100 text-left">
-                    <tr>
-                      <th className="px-3 py-2 font-medium text-zinc-600">
-                        Action
-                      </th>
-                      <th className="px-3 py-2 font-medium text-zinc-600">
-                        Status
-                      </th>
-                      <th className="px-3 py-2 font-medium text-zinc-600 text-nowrap">
-                        User Status
-                      </th>
-                      <th className="px-3 py-2 font-medium text-zinc-600 text-nowrap">
-                        Last Activity
-                      </th>
-                      <th className="px-3 py-2 font-medium text-zinc-600">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-100">
-                    {actionSummaries.map((action) => {
-                      const relation = relationByActionId[action.id];
-                      const { pillLabel, pillTextStyle } =
-                        PILL_STATUS_DATA[relation.status];
-                      return (
-                        <tr key={action.id} className="hover:bg-zinc-50">
-                          <td className="px-3 py-2">
-                            <Link
-                              to={`/actions/${action.id}`}
-                              className="text-blue-600 hover:underline"
-                            >
-                              {action.name}
-                            </Link>
-                          </td>
-                          <td className="px-3 py-2 text-zinc-500">
-                            {humanize(action.status)}
-                          </td>
-                          <td className="px-3 py-2">
-                            {relation.status === "wont_complete" ? (
-                              <WithdrawalInfo
-                                withdrawal={relation}
-                                trigger={
-                                  <span
-                                    className={cn(
-                                      "font-medium cursor-default",
-                                      pillTextStyle,
-                                    )}
-                                  >
-                                    {pillLabel}
-                                  </span>
-                                }
-                              />
-                            ) : (
-                              <span
-                                className={cn("font-medium", pillTextStyle)}
-                              >
-                                {pillLabel}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-zinc-500">
-                            {relation.latestActivityAt
-                              ? new Date(
-                                  relation.latestActivityAt,
-                                ).toLocaleDateString()
-                              : "—"}
-                          </td>
-                          <td className="px-3 py-2">
-                            <CreateActivityControls
-                              actionId={action.id}
-                              userId={user.id}
-                              onCreated={upsertActionRelation}
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-sm text-zinc-500">No actions tracked.</p>
-            )}
-          </section>
-
-          {/* Notifications Tables */}
-          <section>
-            <h2 className="text-sm font-semibold text-zinc-700 mb-2">
-              Notifications ({notifs.length})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Texts */}
-              <div className="border border-zinc-200 rounded overflow-hidden">
-                <div className="bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-600 border-b border-zinc-200 flex items-center justify-between">
-                  <span>Texts ({textNotifs.length})</span>
-                  {textClickRate !== null && (
-                    <span className="font-normal text-zinc-500">
-                      {textClickRate}% click rate
-                    </span>
-                  )}
-                </div>
-                {textNotifs.length ? (
-                  <div className="max-h-64 overflow-y-auto divide-y divide-zinc-100">
-                    {textNotifs.map((notif) => {
-                      const mms = notif.mms;
-                      const status =
-                        mms?.status || (notif.sent ? "sent" : "pending");
-                      return (
-                        <div
-                          key={keyForNotif(notif)}
-                          className="px-3 py-2 text-xs hover:bg-zinc-50 flex flex-row items-center w-full"
-                        >
-                          <div>
-                            <div className="flex items-center justify-between gap-2">
-                              <span
-                                className={cn(
-                                  "font-medium",
-                                  ["sent", "delivered"].includes(
-                                    status.toLowerCase(),
-                                  )
-                                    ? "text-green-600"
-                                    : ["failed", "undelivered"].includes(
-                                          status.toLowerCase(),
-                                        )
-                                      ? "text-red-600"
-                                      : "text-amber-600",
-                                )}
-                              >
-                                {status}
-                              </span>
-                              <span className="text-zinc-400">
-                                {mms?.createdAt &&
-                                  new Date(mms.createdAt).toLocaleDateString()}
-                              </span>
-                            </div>
-                            {mms?.body && (
-                              <p className="text-zinc-600 line-clamp-2 mt-0.5">
-                                {mms.body}
-                              </p>
-                            )}
-                            {mms?.clickedLink && (
-                              <span className="text-green-600">
-                                Link clicked
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="px-3 py-2 text-xs text-zinc-500">
-                    No texts sent.
-                  </p>
-                )}
-              </div>
-
-              {/* Emails */}
-              <div className="border border-zinc-200 rounded overflow-hidden">
-                <div className="bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-600 border-b border-zinc-200 flex items-center justify-between">
-                  <span>Emails ({emailNotifs.length})</span>
-                  {emailClickRate !== null && (
-                    <span className="font-normal text-zinc-500">
-                      {emailClickRate}% click rate
-                    </span>
-                  )}
-                </div>
-                {emailNotifs.length ? (
-                  <div className="max-h-96 overflow-y-auto divide-y divide-zinc-100">
-                    {emailNotifs.map((notif) => {
-                      const mail = notif.mail;
-                      const isExpanded = expandedEmailId === mail?.id;
-                      return (
-                        <div key={keyForNotif(notif)}>
-                          <div
-                            className="px-3 py-2 text-xs hover:bg-zinc-50 cursor-pointer"
-                            onClick={() =>
-                              setExpandedEmailId(
-                                isExpanded ? null : (mail?.id ?? null),
-                              )
-                            }
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-zinc-400">
-                                  {isExpanded ? (
-                                    <ChevronDown size={16} />
-                                  ) : (
-                                    <ChevronRight size={16} />
-                                  )}
-                                </span>
-                                <span
-                                  className={cn(
-                                    "font-medium",
-                                    mail?.status?.toLowerCase() === "sent"
-                                      ? "text-green-600"
-                                      : mail?.status?.toLowerCase() === "failed"
-                                        ? "text-red-600"
-                                        : "text-amber-600",
-                                  )}
-                                >
-                                  {mail?.status || "unknown"}
-                                </span>
-                              </div>
-                              <span className="text-zinc-400">
-                                {mail?.createdAt &&
-                                  new Date(mail.createdAt).toLocaleDateString()}
-                              </span>
-                            </div>
-                            <p className="text-zinc-500 truncate mt-0.5 ml-5">
-                              {mail?.to}
-                            </p>
-                            {mail?.clickedLink && (
-                              <span className="text-green-600 ml-5">
-                                Link clicked
-                              </span>
-                            )}
-                          </div>
-                          {isExpanded && mail?.renderedHtml && (
-                            <div className="border-t border-zinc-200 bg-white">
-                              <iframe
-                                srcDoc={mail.renderedHtml}
-                                className="w-full h-96 border-0"
-                                title="Email preview"
-                                sandbox=""
-                              />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="px-3 py-2 text-xs text-zinc-500">
-                    No emails sent.
-                  </p>
-                )}
-              </div>
-
-              {/* Push */}
-              <div className="border border-zinc-200 rounded overflow-hidden">
-                <div className="bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-600 border-b border-zinc-200 flex items-center justify-between">
-                  <span>Push ({pushNotifs.length})</span>
-                  {pushOpenRate !== null && (
-                    <span className="font-normal text-zinc-500">
-                      {pushOpenRate}% open rate
-                    </span>
-                  )}
-                </div>
-                {pushNotifs.length ? (
-                  <div className="max-h-64 overflow-y-auto divide-y divide-zinc-100">
-                    {pushNotifs.map((push) => {
-                      const status =
-                        push.receiptStatus ||
-                        push.ticketStatus ||
-                        (push.errorCode ? "error" : "sent");
-                      return (
-                        <div
-                          key={push.id}
-                          className="px-3 py-2 text-xs hover:bg-zinc-50 flex flex-row items-center w-full"
-                        >
-                          <div>
-                            <div className="flex items-center justify-between gap-2">
-                              <span
-                                className={cn(
-                                  "font-medium",
-                                  ["ok", "delivered"].includes(
-                                    status.toLowerCase(),
-                                  )
-                                    ? "text-green-600"
-                                    : ["error", "failed"].includes(
-                                          status.toLowerCase(),
-                                        )
-                                      ? "text-red-600"
-                                      : "text-amber-600",
-                                )}
-                              >
-                                {status}
-                              </span>
-                              <span className="text-zinc-400">
-                                {new Date(push.createdAt).toLocaleDateString()}
-                              </span>
-                            </div>
-                            {push.body && (
-                              <p className="text-zinc-600 line-clamp-2 mt-0.5">
-                                {push.body}
-                              </p>
-                            )}
-                            {push.errorMessage && (
-                              <p className="text-red-500 line-clamp-2 mt-0.5">
-                                {push.errorMessage}
-                              </p>
-                            )}
-                            {push.openedAt && (
-                              <span className="text-green-600">Opened</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="px-3 py-2 text-xs text-zinc-500">
-                    No push notifications sent.
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
+          <UserActionsSection
+            userId={user.id}
+            actionSummaries={actionSummaries}
+            actionRelations={actionRelations}
+          />
+          <UserNotificationsSection notifs={notifs} />
         </div>
 
         {/* Right Column */}
         <div className="space-y-4">
-          {/* Member Info */}
-          <section className="border border-zinc-200 rounded p-3">
-            <h2 className="text-sm font-semibold text-zinc-700 mb-2">
-              Member Info
-            </h2>
-            <div className="space-y-3 text-sm">
-              <div>
-                <p className="text-xs font-medium text-zinc-500 mb-1">Bio</p>
-                {user.profileDescription?.trim() ? (
-                  <p className="text-zinc-800 whitespace-pre-wrap break-words">
-                    {user.profileDescription}
-                  </p>
-                ) : (
-                  <p className="text-zinc-500 text-xs">No bio provided.</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <InfoRow icon={<MapPin size={14} />} label="Location">
-                  {formatUserLocation(user) ?? "No location provided"}
-                </InfoRow>
-                <InfoRow icon={<UserPlus size={14} />} label="Invited by">
-                  {formatInvitedBy(user)}
-                </InfoRow>
-                <InfoRow icon={<Globe size={14} />} label="Public profile">
-                  {user.shareInfoPublicly ? "Shared publicly" : "Private"}
-                </InfoRow>
-              </div>
-
-              <dl className="grid grid-cols-1 gap-2 pt-2 border-t border-zinc-100 text-xs">
-                <DetailItem label="Anonymous">
-                  {user.anonymous ? "Yes" : "No"}
-                </DetailItem>
-                <DetailItem label="Email with leads">
-                  {user.shareEmailWithCommunityLead ? "Shared" : "Private"}
-                </DetailItem>
-                <DetailItem label="Phone with leads">
-                  {user.sharePhoneNumberWithCommunityLead
-                    ? "Shared"
-                    : "Private"}
-                </DetailItem>
-                <DetailItem label="Form responses">
-                  {humanize(user.formDataPreference)}
-                </DetailItem>
-                <DetailItem label="Forum digest">
-                  {humanize(user.forumDigestPreference)}
-                </DetailItem>
-                <DetailItem label="Reminder time">
-                  {formatReminderTime(user)}
-                </DetailItem>
-                <DetailItem label="Time zone">
-                  {user.timeZone ?? "Not provided"}
-                </DetailItem>
-                {user.clusterId !== null && (
-                  <DetailItem label="Cluster">#{user.clusterId}</DetailItem>
-                )}
-              </dl>
-            </div>
-          </section>
+          <UserMemberInfoSection user={user} />
 
           {/* Groups */}
           <MemberGroupMoveSection user={user} onUserUpdated={setUser} />
@@ -888,123 +279,9 @@ const UserDetailView: React.FC = () => {
             )}
           </section>
 
-          {/* Roles */}
-          <section className="border border-zinc-200 rounded p-3">
-            <h2 className="text-sm font-semibold text-zinc-700 mb-2">Roles</h2>
-            {roleMutationError && (
-              <p className="text-xs text-red-500 mb-2">{roleMutationError}</p>
-            )}
-            <div className="space-y-1">
-              <label
-                className={cn(
-                  "flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-50 px-1 py-0.5 rounded",
-                  isStaffPending && "opacity-50",
-                )}
-              >
-                <input
-                  type="checkbox"
-                  checked={user.staff}
-                  disabled={isStaffPending}
-                  onChange={(e) => handleStaffToggle(e.target.checked)}
-                  className="rounded"
-                />
-                <span
-                  className={user.staff ? "text-zinc-900" : "text-zinc-500"}
-                >
-                  Staff
-                </span>
-              </label>
-              <label
-                className={cn(
-                  "flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-50 px-1 py-0.5 rounded",
-                  isAmbassadorPending && "opacity-50",
-                )}
-              >
-                <input
-                  type="checkbox"
-                  checked={user.ambassador}
-                  disabled={isAmbassadorPending}
-                  onChange={(e) => handleAmbassadorToggle(e.target.checked)}
-                  className="rounded"
-                />
-                <span
-                  className={
-                    user.ambassador ? "text-zinc-900" : "text-zinc-500"
-                  }
-                >
-                  Ambassador
-                </span>
-              </label>
-              <label
-                className={cn(
-                  "flex items-center gap-2 text-sm px-1 py-0.5 rounded",
-                  isSelf
-                    ? "cursor-not-allowed"
-                    : "cursor-pointer hover:bg-zinc-50",
-                  isAdminPending && "opacity-50",
-                )}
-                title={
-                  isSelf ? "You cannot change your own admin status" : undefined
-                }
-              >
-                <input
-                  type="checkbox"
-                  checked={user.admin}
-                  disabled={isAdminPending || isSelf}
-                  onChange={(e) => handleAdminToggle(e.target.checked)}
-                  className="rounded"
-                />
-                <span
-                  className={user.admin ? "text-zinc-900" : "text-zinc-500"}
-                >
-                  Admin
-                </span>
-              </label>
-            </div>
-          </section>
+          <UserRolesSection user={user} onUserUpdated={setUser} />
 
-          {/* Tags */}
-          <section className="border border-zinc-200 rounded p-3">
-            <h2 className="text-sm font-semibold text-zinc-700 mb-2">
-              Tags ({userTags.length})
-            </h2>
-            {tagMutationError && (
-              <p className="text-xs text-red-500 mb-2">{tagMutationError}</p>
-            )}
-            <div className="space-y-1 max-h-48 overflow-y-auto">
-              {sortedAllTags.map((tag) => {
-                const checked = userTagIds.has(tag.id);
-                const pending = pendingTagOps.has(tagKey(tag.id));
-                return (
-                  <label
-                    key={tag.id}
-                    className={cn(
-                      "flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-50 px-1 py-0.5 rounded",
-                      pending && "opacity-50",
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={pending}
-                      onChange={(e) =>
-                        handleTagToggle(tag.id, e.target.checked)
-                      }
-                      className="rounded"
-                    />
-                    <span
-                      className={checked ? "text-zinc-900" : "text-zinc-500"}
-                    >
-                      {tag.name}
-                    </span>
-                  </label>
-                );
-              })}
-              {sortedAllTags.length === 0 && (
-                <p className="text-xs text-zinc-500">No tags available.</p>
-              )}
-            </div>
-          </section>
+          <UserTagsSection user={user} loadedTags={loaderData.allTags} />
 
           {/* Away Periods */}
           <UserAwayPeriodsSection user={user} />
@@ -1106,65 +383,7 @@ const UserDetailView: React.FC = () => {
   );
 };
 
-function humanize(value?: string) {
-  if (!value) {
-    return undefined;
-  }
-  return value
-    .split("_")
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
-}
-
-function notifTimestamp(notif: ActionEventNotifDto): number {
-  const source = notif.mail ? notif.mail : notif.mms;
-  const createdAt = source?.createdAt;
-  return createdAt ? new Date(createdAt).getTime() : 0;
-}
-
-function keyForNotif(notif: ActionEventNotifDto) {
-  const mailId = notif.mail?.id;
-  const mmsId = notif.mms?.id;
-  const pushId = notif.pushes?.[0]?.id;
-  return `${notif.user.id}-${mailId ?? mmsId ?? pushId ?? Math.random()}`;
-}
-
 export default UserDetailView;
-
-function InfoRow({
-  icon,
-  label,
-  children,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-start gap-2 text-xs">
-      <span className="text-zinc-400 mt-0.5 shrink-0">{icon}</span>
-      <div className="min-w-0">
-        <p className="font-medium text-zinc-500">{label}</p>
-        <div className="text-zinc-800 break-words">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-function DetailItem({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-3">
-      <dt className="text-zinc-500">{label}</dt>
-      <dd className="text-right text-zinc-800 break-words">{children}</dd>
-    </div>
-  );
-}
 
 function FriendRow({ friend }: { friend: ProfileDto }) {
   return (
@@ -1199,82 +418,4 @@ function formatFriendStatus(friend: ProfileDto) {
     labels.push("Leader");
   }
   return labels.join(" · ");
-}
-
-function formatUserLocation(user: UserAdminDetailDto) {
-  const parts = [
-    user.location.cityName,
-    user.location.countryName ?? user.location.countryCode,
-  ].filter(Boolean);
-  if (parts.length > 0) {
-    return parts.join(", ");
-  }
-  return user.location.customCityString?.trim() || null;
-}
-
-function formatInvitedBy(user: UserAdminDetailDto) {
-  const invitedBy = user.invitedBy;
-  if (!invitedBy) {
-    return "No invite attribution";
-  }
-
-  const source = formatInviteSource(invitedBy);
-  const labelWithSource = `${invitedBy.label}${source}`;
-
-  switch (invitedBy.kind) {
-    case "user":
-      return invitedBy.userId ? (
-        <>
-          <Link
-            to={`/member/${invitedBy.userId}`}
-            className="text-blue-600 hover:underline"
-          >
-            {invitedBy.label}
-          </Link>
-          {source}
-        </>
-      ) : (
-        labelWithSource
-      );
-    case "campaign":
-      return labelWithSource;
-    case "unknown":
-      return invitedBy.label;
-    default:
-      throw new Error(
-        `unknown invited by kind: ${invitedBy.kind satisfies never}`,
-      );
-  }
-}
-
-function formatInviteSource(invitedBy: UserAdminInvitedByDto) {
-  switch (invitedBy.referralSource) {
-    case "onetime_invite":
-      return " via individual single-use invite link";
-    case "invite_share_link":
-      return ` via group invite link${
-        invitedBy.inviteLinkLabel ? ` “${invitedBy.inviteLinkLabel}”` : ""
-      }`;
-    case "referral_link":
-    case "action_share_link":
-    case "external_share_link":
-    case "campaign":
-    case "none":
-      return ` via ${humanize(invitedBy.referralSource)}`;
-    case undefined:
-      return "";
-    default:
-      throw new Error(
-        `unknown referral source: ${invitedBy.referralSource satisfies never}`,
-      );
-  }
-}
-
-function formatReminderTime(user: UserAdminDetailDto) {
-  if (!user.preferredReminderTime) {
-    return "Not provided";
-  }
-  return user.timeZone
-    ? `${user.preferredReminderTime} ${user.timeZone}`
-    : user.preferredReminderTime;
 }
