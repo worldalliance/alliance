@@ -1,9 +1,10 @@
+import { commentPath } from "@alliance/common/commentPath";
 import { UserCommentDto } from "@alliance/shared/client";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
-import { Link, href } from "react-router";
+import { Link } from "react-router";
 
 export interface ForumActivityCommentCardProps {
   comment: UserCommentDto;
@@ -12,24 +13,9 @@ export interface ForumActivityCommentCardProps {
 const ForumActivityCommentCard = ({
   comment,
 }: ForumActivityCommentCardProps) => {
-  const url =
-    comment.parentObjectType === "post"
-      ? `${href("/forum/post/:id", {
-          id: comment.parentObjectId.toString(),
-        })}?replyId=${comment.id}`
-      : comment.parentObjectType === "action"
-        ? `${href("/actions/:id", {
-            id: comment.parentObjectId.toString(),
-          })}?replyId=${comment.id}`
-        : null;
-
-  if (!url) {
-    return null;
-  }
-
   return (
     <Link
-      to={url}
+      to={commentPath(comment)}
       className="w-full mb-0 p-4 hover:bg-zinc-50 bg-white space-y-2"
     >
       <EditableContentRenderer content={comment.editableContent} truncated />

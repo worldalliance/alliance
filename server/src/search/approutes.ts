@@ -1,12 +1,10 @@
+import { commentPath } from "@alliance/common/commentPath";
 import { appendQueryParam } from "@alliance/common/url";
 import {
   waitlistShareUrl,
   waitlistUnsubscribeUrl,
 } from "@alliance/common/waitlist";
-import {
-  Comment,
-  CommentParentObject,
-} from "src/forum/entities/comment.entity";
+import { Comment } from "src/forum/entities/comment.entity";
 
 export function profileUrl(userId: number) {
   return `/member/${userId}`;
@@ -87,22 +85,7 @@ export function commentUrl(
   actionId?: number,
   full = false,
 ) {
-  let path = "";
-  switch (comment.parentObjectType) {
-    case CommentParentObject.Post:
-      path = `/forum/post/${comment.parentObjectId}?replyId=${comment.id}`;
-      break;
-    case CommentParentObject.Action:
-      path = `/actions/${comment.parentObjectId}?replyId=${comment.id}`;
-      break;
-    case CommentParentObject.Activity:
-      path = `/actions/${actionId}/activity/${comment.parentObjectId}?replyId=${comment.id}`;
-      break;
-    default:
-      throw new Error(
-        `Invalid parent object type: ${comment.parentObjectType satisfies never}`,
-      );
-  }
+  const path = commentPath(comment, actionId);
   return full ? `${siteBaseUrl()}${path}` : path;
 }
 
