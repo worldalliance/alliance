@@ -53,6 +53,7 @@ import {
   UserDto,
 } from "./dto/user.dto";
 import { FriendService } from "./friend.service";
+import { UserAdminService } from "./user-admin.service";
 import { UserVisibilityContextService } from "./user-visibility-context.service";
 import { UserService } from "./user.service";
 
@@ -66,6 +67,7 @@ class VerifyEmailBody {
 export class UserController {
   constructor(
     private readonly userService: UserService,
+    private readonly userAdminService: UserAdminService,
     private readonly accountDeletionService: AccountDeletionService,
     private readonly userVisibilityContextService: UserVisibilityContextService,
     private readonly ambassadorProgramService: AmbassadorProgramService,
@@ -144,7 +146,7 @@ export class UserController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: UserDto, isArray: true })
   async listAdmin(): Promise<UserDto[]> {
-    return (await this.userService.findAllForAdminList()).map(
+    return (await this.userAdminService.findAllForAdminList()).map(
       (user) => new UserDto(user),
     );
   }
@@ -177,7 +179,7 @@ export class UserController {
   async userDetailAdmin(
     @Param("id", ParseIntPipe) id: number,
   ): Promise<UserAdminDetailDto> {
-    const user = await this.userService.findAdminDetail(id);
+    const user = await this.userAdminService.findAdminDetail(id);
     if (!user) {
       throw new NotFoundException("User not found");
     }
@@ -193,7 +195,7 @@ export class UserController {
     @Body() body: UpdateUserRolesAdminDto,
   ): Promise<UserAdminDetailDto> {
     return new UserAdminDetailDto(
-      await this.userService.updateRolesAdmin({
+      await this.userAdminService.updateRolesAdmin({
         id,
         actorId: req.user.sub,
         roles: body,

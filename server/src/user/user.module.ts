@@ -34,6 +34,7 @@ import { GroupAssignmentService } from "./group-assignment.service";
 import { OnetimeInviteService } from "./onetime-invite.service";
 import { ReferralService } from "./referral.service";
 import { TagService } from "./tag.service";
+import { UserAdminService } from "./user-admin.service";
 import { UserAwayRangeController } from "./user-away-range.controller";
 import { UserAwayRangeService } from "./user-away-range.service";
 import { UserDeviceController } from "./user-device.controller";
@@ -102,6 +103,7 @@ import { IsUserAlreadyExist } from "./validators/user-already-exists.validator";
     AmbassadorProgramService,
     UserVisibilityContextService,
     AccountDeletionService,
+    UserAdminService,
     IsUserAlreadyExist,
   ],
   exports: [

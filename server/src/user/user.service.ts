@@ -22,10 +22,7 @@ import {
   writeUnderLive,
 } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
-import {
-  EventLogMessage,
-  EventLogService,
-} from "src/eventlog/eventlog.service";
+import { EventLogService } from "src/eventlog/eventlog.service";
 import { City } from "src/geo/city.entity";
 import { ImagesService } from "src/images/images.service";
 import { MailService } from "src/mail/mail.service";
@@ -44,7 +41,6 @@ import {
   type StoredInviteAssignment,
 } from "src/share-urls/invite-assignment";
 import { ShareUrlsService } from "src/share-urls/share-urls.service";
-import { findReferredByInvite } from "src/user/user-soft-delete";
 import type {
   Relations,
   Repository as TypedRepository,
@@ -60,7 +56,6 @@ import {
   type Repository,
 } from "typeorm";
 import { UpdateProfileDto, UserCityCount } from "./dto/user.dto";
-import { ContractEvent } from "./entities/contract-event.entity";
 import { Friend } from "./entities/friend.entity";
 import {
   OnetimeInvite,
@@ -85,8 +80,6 @@ export class UserService {
     private cityRepository: TypedRepository<City>,
     @InjectRepository(Friend)
     private readonly friendRepository: Repository<Friend>,
-    @InjectRepository(ContractEvent)
-    private readonly contractEventRepository: Repository<ContractEvent>,
     private readonly shareUrlsService: ShareUrlsService,
     private readonly jwtService: JwtService,
     private readonly imagesService: ImagesService,
@@ -261,38 +254,6 @@ export class UserService {
     });
   }
 
-  /**
-   * Users for the admin list view: `contractEvents` holds only each user's
-   * latest event. The list views only read the latest (full history lives on
-   * the per-user detail endpoint), and shipping every event for every user
-   * bloats the payload and the join.
-   */
-  async findAllForAdminList(): Promise<User[]> {
-    const [users, latestEvents] = await Promise.all([
-      this.userRepository.find(),
-      this.contractEventRepository
-        .createQueryBuilder("event")
-        .addSelect('event."userId"', "event_user_id")
-        .distinctOn(['event."userId"'])
-        .orderBy('event."userId"')
-        .addOrderBy("event.date", "DESC")
-        .addOrderBy("event.id", "DESC")
-        .getRawAndEntities(),
-    ]);
-
-    const latestEventByUserId = new Map<number, ContractEvent>();
-    latestEvents.entities.forEach((event, index) => {
-      const userId = Number(latestEvents.raw[index].event_user_id);
-      latestEventByUserId.set(userId, event);
-    });
-
-    for (const user of users) {
-      const latest = latestEventByUserId.get(user.id);
-      user.contractEvents = latest ? [latest] : [];
-    }
-    return users;
-  }
-
   async findAllMembersPublic(): Promise<User[]> {
     const users = await this.userRepository.find({
       where: { shareInfoPublicly: true, staff: false },
@@ -402,95 +363,6 @@ export class UserService {
       id,
       changes: { admin },
     });
-  }
-
-  async updateRolesAdmin(params: {
-    id: number;
-    actorId: number;
-    roles: { ambassador?: boolean; staff?: boolean; admin?: boolean };
-  }): Promise<User> {
-    const { id, actorId, roles } = params;
-
-    if (roles.admin !== undefined && id === actorId) {
-      throw new BadRequestException("You cannot change your own admin status");
-    }
-
-    const audit = await this.adminRoleChangeEntry({
-      id,
-      actorId,
-      admin: roles.admin,
-    });
-
-    const forwardAudit = await this.dataSource.transaction(async (manager) => {
-      await updateLive(manager, {
-        target: User,
-        id,
-        changes: roles,
-        notFound: "User not found",
-      });
-      if (!audit) return null;
-      return this.eventLogService.sendMessageInTransaction(manager, audit);
-    });
-    await forwardAudit?.();
-
-    const user = await this.findAdminDetail(id);
-    if (!user) throw new NotFoundException("User not found");
-    return user;
-  }
-
-  async findAdminDetail(id: number): Promise<User | null> {
-    const user = await this.findOne(id, {
-      contractEvents: true,
-      referredBy: true,
-      referredByCampaign: true,
-      referredByShareUrl: true,
-      city: true,
-      tags: true,
-      communities: true,
-      leaderOf: true,
-    });
-    if (!user) return null;
-    user.referredByInvite = await findReferredByInvite(
-      this.dataSource.manager,
-      { userId: id, relations: { invitingUser: true } },
-    );
-    return user;
-  }
-
-  /**
-   * The entry for an admin grant or revocation, or null when the request leaves
-   * the flag as it is. The `admin` column keeps no history, so an entry that
-   * fails to write leaves a privilege change with no record. Callers write this
-   * through the transaction that carries the update.
-   */
-  private async adminRoleChangeEntry(params: {
-    id: number;
-    actorId: number;
-    admin: boolean | undefined;
-  }): Promise<EventLogMessage | null> {
-    const { id, actorId, admin } = params;
-    if (admin === undefined) return null;
-
-    const [target, actor] = await Promise.all([
-      this.findOneOrFail(id),
-      this.findOneOrFail(actorId),
-    ]);
-    if (target.admin === admin) return null;
-
-    const verb = admin ? "granted admin to" : "revoked admin from";
-    return {
-      type: EventType.AdminRoleChanged,
-      message: `${actor.name} ${verb} ${target.name} (${target.email}, id ${target.id})`,
-      userId: target.id,
-      blob: {
-        targetId: target.id,
-        targetEmail: target.email,
-        actorId: actor.id,
-        actorName: actor.name,
-        actorEmail: actor.email,
-        admin,
-      },
-    };
   }
 
   async count(): Promise<number> {
