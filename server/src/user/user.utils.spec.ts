@@ -1,9 +1,7 @@
 import { Campaign } from "src/campaign/entities/campaign.entity";
-import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import { User } from "./entities/user.entity";
 import {
   newGroupMemberTextsEnabled,
-  notificationPushesEnabled,
   referralLabel,
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_push,
@@ -13,7 +11,6 @@ import {
 type EmailUser = Parameters<typeof userActionNotifsEnabled_email>[0];
 type TextUser = Parameters<typeof userActionNotifsEnabled_text>[0];
 type PushUser = Parameters<typeof userActionNotifsEnabled_push>[0];
-type CategoryPushUser = Parameters<typeof notificationPushesEnabled>[0];
 type GroupJoinTextUser = Parameters<typeof newGroupMemberTextsEnabled>[0];
 
 function emailUser(overrides: Partial<EmailUser> = {}): EmailUser {
@@ -40,20 +37,6 @@ function pushUser(overrides: Partial<PushUser> = {}): PushUser {
   return {
     turnedOffAllNotifs: false,
     pushNotifsForActions: true,
-    ...overrides,
-  };
-}
-
-function categoryPushUser(
-  overrides: Partial<CategoryPushUser> = {},
-): CategoryPushUser {
-  return {
-    turnedOffAllNotifs: false,
-    pushesForActionUpdates: true,
-    pushesForComments: true,
-    pushesForFriendRequests: true,
-    pushesForLikes: true,
-    pushesForNewGroupMembers: true,
     ...overrides,
   };
 }
@@ -156,45 +139,6 @@ describe("userActionNotifsEnabled_push", () => {
       userActionNotifsEnabled_push(pushUser({ turnedOffAllNotifs: true })),
     ).toBe(false);
   });
-});
-
-describe("notificationPushesEnabled", () => {
-  it.each(Object.values(NotificationCategory))(
-    "pushes %s when every preference is on",
-    (category) => {
-      expect(notificationPushesEnabled(categoryPushUser(), category)).toBe(
-        true,
-      );
-    },
-  );
-
-  it.each([
-    [NotificationCategory.ActionUpdate, "pushesForActionUpdates"],
-    [NotificationCategory.ForumReply, "pushesForComments"],
-    [NotificationCategory.FriendRequest, "pushesForFriendRequests"],
-    [NotificationCategory.FriendRequestAccepted, "pushesForFriendRequests"],
-    [NotificationCategory.Likes, "pushesForLikes"],
-    [NotificationCategory.GroupMemberJoined, "pushesForNewGroupMembers"],
-  ] as const)("doesn't push %s with %s off", (category, preference) => {
-    expect(
-      notificationPushesEnabled(
-        categoryPushUser({ [preference]: false }),
-        category,
-      ),
-    ).toBe(false);
-  });
-
-  it.each(Object.values(NotificationCategory))(
-    "doesn't push %s when all notifs are turned off",
-    (category) => {
-      expect(
-        notificationPushesEnabled(
-          categoryPushUser({ turnedOffAllNotifs: true }),
-          category,
-        ),
-      ).toBe(false);
-    },
-  );
 });
 
 describe("newGroupMemberTextsEnabled", () => {

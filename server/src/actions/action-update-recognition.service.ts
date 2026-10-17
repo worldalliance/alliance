@@ -10,20 +10,22 @@ import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import type { TrackedMessage } from "src/link-tracking/message-tracking.service";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
-import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import { externalChannels } from "src/notification-settings/external-channels";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import {
+  NotificationPreferencesService,
+  type Preferences,
+} from "src/notification-settings/notification-preferences.service";
 import {
   UnreadContent,
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { NotifsService } from "src/notifs/notifs.service";
 import { PushService } from "src/push/push.service";
 import { actionUrl } from "src/search/approutes";
 import { User } from "src/user/entities/user.entity";
-import {
-  notificationPushesEnabled,
-  userActionNotifsEnabled_email,
-  userActionNotifsEnabled_text,
-} from "src/user/user.utils";
+import { textReachable } from "src/user/user.utils";
 import { DataSource, In, Raw, type EntityManager } from "typeorm";
 import type { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 import {
@@ -62,6 +64,7 @@ export class ActionUpdateRecognitionService {
     private readonly mmsService: MmsService,
     private readonly pushService: PushService,
     private readonly participants: ActionParticipantsService,
+    private readonly preferences: NotificationPreferencesService,
   ) {}
 
   async participantIdsOf(actionId: number): Promise<Set<number>> {
@@ -291,6 +294,10 @@ export class ActionUpdateRecognitionService {
         )
       ).map(({ unreadContent }) => [unreadContent.id, unreadContent]),
     );
+    const preferences = await this.preferences.load({
+      userIds: exposures.map((exposure) => exposure.userId),
+      kinds: [NotificationKind.ActionUpdates],
+    });
     for (const exposure of exposures) {
       // A batch can outlast its 10-minute claim; skip a row another run retook
       // or a deletion marked since the claim.
@@ -305,25 +312,29 @@ export class ActionUpdateRecognitionService {
       );
       if (!renewed.length) continue;
       // A failure stays claimed until the claim expires, then retries alone.
-      await this.deliver(exposure, shownEntries).catch((error: unknown) =>
-        this.logger.error(
-          `delivering action update exposure ${exposure.id} failed`,
-          error,
-        ),
+      await this.deliver({ exposure, shownEntries, preferences }).catch(
+        (error: unknown) =>
+          this.logger.error(
+            `delivering action update exposure ${exposure.id} failed`,
+            error,
+          ),
       );
     }
     return claimed.length === DELIVERY_BATCH;
   }
 
-  private async deliver(
-    exposure: ActionUpdateExposure,
-    shownEntries: ReadonlyMap<number, UnreadContent>,
-  ) {
+  private async deliver(params: {
+    exposure: ActionUpdateExposure;
+    shownEntries: ReadonlyMap<number, UnreadContent>;
+    preferences: Preferences;
+  }) {
+    const { exposure, shownEntries, preferences } = params;
     const { user, actionUpdate } = exposure;
     if (!user || !actionUpdate) {
       throw new Error(`exposure ${exposure.id} loaded without its relations`);
     }
-    // A recipient who can't see the inbox entry gets no external channel either.
+    // A recipient who can no longer access the inbox entry gets no external
+    // channel either; one who hid it by setting still does.
     const entry =
       exposure.unreadContentId === null
         ? undefined
@@ -342,7 +353,12 @@ export class ActionUpdateRecognitionService {
         },
         actionEventNotifId: null,
       };
-      if (notificationPushesEnabled(user, NotificationCategory.ActionUpdate)) {
+      const channels = externalChannels({
+        user,
+        kind: NotificationKind.ActionUpdates,
+        preferences,
+      });
+      if (channels.includes(NotificationChannel.Push)) {
         await this.pushService.sendMessages(
           await this.pushService.getPushForAllUserDevices(user.id, {
             userId: user.id,
@@ -357,8 +373,8 @@ export class ActionUpdateRecognitionService {
       if (
         !exposure.mms &&
         exposure.textFailedAt === null &&
-        user.phoneNumber !== null &&
-        userActionNotifsEnabled_text(user)
+        channels.includes(NotificationChannel.Text) &&
+        textReachable(user)
       ) {
         const mms = await this.mmsService.sendMms({
           to: user.phoneNumber,
@@ -372,7 +388,7 @@ export class ActionUpdateRecognitionService {
       if (
         !exposure.mail &&
         exposure.emailFailedAt === null &&
-        userActionNotifsEnabled_email(user)
+        channels.includes(NotificationChannel.Email)
       ) {
         const mail = await R.fromPromise(
           this.mailService.sendActionEventNotificationEmail({
