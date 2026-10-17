@@ -1374,7 +1374,7 @@ export class CommunityService {
         ? [
             {
               user: invite.invitingUser,
-              category: NotificationCategory.CommunityInviteCreated,
+              category: NotificationCategory.CommunityInviteRequestApproved,
               message: notifMessage`Your request to invite ${member(invitedUser)} was approved`,
               destination: communityDestination(community.id),
               webAppLocation: groupUrl({

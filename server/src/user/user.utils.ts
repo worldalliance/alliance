@@ -97,6 +97,7 @@ export function notificationPushesEnabled(
     [NotificationCategory.OnetimeInviteRequestApproved]: true,
     [NotificationCategory.OnetimeInviteRequestRejected]: true,
     [NotificationCategory.CommunityInviteRequestCreated]: true,
+    [NotificationCategory.CommunityInviteRequestApproved]: true,
     [NotificationCategory.CommunityInviteRequestRejected]: true,
   };
   return enabled[category];

@@ -17,6 +17,10 @@ import { getImageSource } from "../src/images/images.service";
 import { CommunityConversationService } from "../src/messaging/community-conversation.service";
 import { Conversation } from "../src/messaging/entities/conversation.entity";
 import { Participant } from "../src/messaging/entities/participant.entity";
+import {
+  Notification,
+  NotificationCategory,
+} from "../src/notifs/entities/notification.entity";
 import { User } from "../src/user/entities/user.entity";
 import {
   createTestApp,
@@ -1746,6 +1750,14 @@ describe("Community (e2e)", () => {
     expect(res.status).toBe(201);
     expect(res.body.status).toBe(CommunityInviteStatus.InviteePending);
     expect(res.body.id).toBe(invite.id);
+    const notifs = await ctx.dataSource.getRepository(Notification).find({
+      where: { communityInvite: { id: invite.id } },
+      order: { category: "ASC" },
+    });
+    expect(notifs.map((notif) => notif.category)).toEqual([
+      NotificationCategory.CommunityInviteCreated,
+      NotificationCategory.CommunityInviteRequestApproved,
+    ]);
   });
 
   it("POST /community/communityInvites/:inviteId/approveRequest approves request when authenticated as admin", async () => {
