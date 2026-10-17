@@ -5,10 +5,7 @@ import {
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { Post } from "src/forum/entities/post.entity";
 import { NotificationKind } from "src/notification-settings/notification-kind";
-import {
-  NotificationPreference,
-  PreferenceSource,
-} from "src/notification-settings/notification-preference.entity";
+import { NotificationPreference } from "src/notification-settings/notification-preference.entity";
 import {
   Notification,
   NotificationCategory,
@@ -23,7 +20,7 @@ import { notifMessage } from "src/notifs/notification-content";
 import { NotifsService } from "src/notifs/notifs.service";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, setPreference, TestContext } from "./e2e-test-utils";
 
 describe("In-app visibility (e2e)", () => {
   let ctx: TestContext;
@@ -53,12 +50,11 @@ describe("In-app visibility (e2e)", () => {
     (await ctx.agent.get("/notifs/unread-count").expect(200)).body.unreadCount;
 
   const setInApp = (kind: NotificationKind, enabled: boolean) =>
-    preferenceRepo.save({
+    setPreference(ctx, {
       userId: recipient.id,
       kind,
       channel: NotificationChannel.InApp,
       enabled,
-      source: PreferenceSource.Member,
     });
 
   beforeAll(async () => {

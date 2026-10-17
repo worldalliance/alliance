@@ -6,12 +6,15 @@ import {
 } from "src/link-tracking/message-tracking.entity";
 import { MessagingModule } from "src/messaging/messaging.module";
 import { MmsService } from "src/mms/mms.service";
+import { NotificationKind } from "src/notification-settings/notification-kind";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { NotifsService } from "src/notifs/notifs.service";
 import { NotifPushDispatcherWorker } from "src/push/notif-push-dispatcher.worker";
 import { UserDevice } from "src/user/entities/user-device.entity";
+import type { User } from "src/user/entities/user.entity";
 import { Not } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, setPreference, TestContext } from "./e2e-test-utils";
 import { GroupJoinFixtures } from "./group-join-fixtures";
 
 describe("Group join notifications: delivery (e2e)", () => {
@@ -24,6 +27,18 @@ describe("Group join notifications: delivery (e2e)", () => {
     fx = new GroupJoinFixtures(ctx);
     communityService = ctx.app.get(CommunityService);
   }, 50000);
+
+  const setJoinNotice = (
+    user: User,
+    channel: NotificationChannel,
+    enabled: boolean,
+  ) =>
+    setPreference(ctx, {
+      userId: user.id,
+      kind: NotificationKind.GroupMemberJoined,
+      channel,
+      enabled,
+    });
 
   afterEach(async () => {
     jest.restoreAllMocks();
@@ -112,12 +127,14 @@ describe("Group join notifications: delivery (e2e)", () => {
     });
   });
 
-  it("pushes per the new push setting and the overall opt-out, regardless of action-reminder push", async () => {
+  it("pushes per the kind's push setting, falling back to the push default", async () => {
     const pushed = await fx.createUser();
-    const pushOff = await fx.createUser({ pushesForNewGroupMembers: false });
-    const optedOut = await fx.createUser({ turnedOffAllNotifs: true });
-    const actionPushOff = await fx.createUser({ pushNotifsForActions: false });
-    const members = [pushed, pushOff, optedOut, actionPushOff];
+    const pushOff = await fx.createUser();
+    await setJoinNotice(pushOff, NotificationChannel.Push, false);
+    const defaultOff = await fx.createUser({ pushByDefault: false });
+    const pushOn = await fx.createUser({ pushByDefault: false });
+    await setJoinNotice(pushOn, NotificationChannel.Push, true);
+    const members = [pushed, pushOff, defaultOff, pushOn];
     const deviceRepo = ctx.dataSource.getRepository(UserDevice);
     const past = new Date(Date.now() - 60_000);
     for (const user of members) {
@@ -142,7 +159,7 @@ describe("Group join notifications: delivery (e2e)", () => {
       .findNotificationPushes("group-join-test");
 
     expect(messages.map((message) => message.userId).sort()).toEqual(
-      [pushed.id, actionPushOff.id].sort(),
+      [pushed.id, pushOn.id].sort(),
     );
   });
 
