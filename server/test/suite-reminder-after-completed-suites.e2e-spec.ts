@@ -78,10 +78,9 @@ describe("suite reminder after a run of completed suites (e2e)", () => {
 
   it("sends ordinary copy once, with no experiment arm or in-app entry", async () => {
     await ctx.dataSource.getRepository(User).update(ctx.testUserId, {
-      turnedOffAllNotifs: false,
-      emailNotifsForActions: false,
-      textNotifsForActions: true,
-      pushNotifsForActions: false,
+      emailByDefault: false,
+      textByDefault: true,
+      pushByDefault: false,
       phoneNumber: "+14155550100",
     });
     await ctx.dataSource.getRepository(ContractEvent).save({

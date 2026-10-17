@@ -11,6 +11,7 @@ import { ForumModule } from "src/forum/forum.module";
 import { FacepileModule } from "src/likes/facepile.module";
 import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
+import { NotificationSettingsModule } from "src/notification-settings/notification-settings.module";
 import { ActionEventNotifDeliveryService } from "src/notifs/action-event-notif-delivery.service";
 import { ActionEventNotifWorker } from "src/notifs/action-event-notif.worker";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
@@ -117,6 +118,7 @@ import { TaskBadgeService } from "./task-badge.service";
     UserModule,
     CommunityModule,
     NotifsModule,
+    NotificationSettingsModule,
     ActionVisibilityModule,
     MailModule,
     MmsModule,

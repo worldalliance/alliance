@@ -3,6 +3,7 @@ import { InjectDataSource } from "@nestjs/typeorm";
 import { NotificationChannel } from "src/notifs/notif-utils";
 import { User } from "src/user/entities/user.entity";
 import { DataSource, In, Raw, type EntityManager } from "typeorm";
+import { externalChannels, type ExternalRecipient } from "./external-channels";
 import { KIND_POLICY, NotificationKind } from "./notification-kind";
 import { NotificationPreference } from "./notification-preference.entity";
 
@@ -91,5 +92,16 @@ export class NotificationPreferencesService {
       new Map(users.map((user) => [user.id, user])),
       new Map(overrides.map((row) => [overrideKey(row), row.enabled])),
     );
+  }
+
+  async channelsFor(
+    user: ExternalRecipient,
+    kind: NotificationKind,
+  ): Promise<NotificationChannel[]> {
+    return externalChannels({
+      user,
+      kind,
+      preferences: await this.load({ userIds: [user.id], kinds: [kind] }),
+    });
   }
 }

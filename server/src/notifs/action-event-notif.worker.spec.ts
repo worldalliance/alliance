@@ -13,6 +13,7 @@ import {
   ReminderGroupTimingMode,
   getGroupSendTimeForUser,
 } from "src/actions/entities/reminder-group.entity";
+import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
 import { User } from "src/user/entities/user.entity";
 import { DataSource, type Repository } from "typeorm";
 import { ActionEventNotifDeliveryService } from "./action-event-notif-delivery.service";
@@ -56,6 +57,7 @@ describe("ActionEventNotifWorker.processCustomReminderText", () => {
       {} as MissedSuitePlanService,
       {} as ActionEventNotifDeliveryService,
       {} as NotifsService,
+      {} as NotificationPreferencesService,
       {} as Repository<ExperimentAssignment>,
     );
   });
@@ -189,6 +191,7 @@ describe("ActionEventNotifWorker.findUncompletedTasksForPlan", () => {
       {} as MissedSuitePlanService,
       {} as ActionEventNotifDeliveryService,
       {} as NotifsService,
+      {} as NotificationPreferencesService,
       {} as Repository<ExperimentAssignment>,
     );
   });

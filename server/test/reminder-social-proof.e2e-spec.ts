@@ -230,10 +230,9 @@ describe("reminder social proof (e2e)", () => {
     }
     await ctx.dataSource.query(`DELETE FROM "user" WHERE email LIKE 'member%'`);
     await userRepo.update(ctx.testUserId, {
-      turnedOffAllNotifs: false,
-      emailNotifsForActions: false,
-      textNotifsForActions: true,
-      pushNotifsForActions: false,
+      emailByDefault: false,
+      textByDefault: true,
+      pushByDefault: false,
       phoneNumber: "+14155550100",
     });
     await contractEventRepo.delete({ user: { id: ctx.testUserId } });
@@ -250,8 +249,8 @@ describe("reminder social proof (e2e)", () => {
 
   it("names two friends in the push and text, and keeps the group's email", async () => {
     await userRepo.update(ctx.testUserId, {
-      pushNotifsForActions: true,
-      emailNotifsForActions: true,
+      pushByDefault: true,
+      emailByDefault: true,
     });
     const deviceRepo = ctx.dataSource.getRepository(UserDevice);
     await deviceRepo.save(
@@ -402,8 +401,8 @@ describe("reminder social proof (e2e)", () => {
   it("looks up completers once for a reminder left unsent", async () => {
     await setArm(ExperimentArm.Variant);
     await userRepo.update(ctx.testUserId, {
-      textNotifsForActions: false,
-      pushNotifsForActions: true,
+      textByDefault: false,
+      pushByDefault: true,
     });
     const created = await createSuite(["Only task"]);
     for (const member of [await createMember(), await createMember()]) {
@@ -458,8 +457,8 @@ describe("reminder social proof (e2e)", () => {
 
   it("leaves a member with push and text off outside the experiment", async () => {
     await userRepo.update(ctx.testUserId, {
-      textNotifsForActions: false,
-      emailNotifsForActions: true,
+      textByDefault: false,
+      emailByDefault: true,
     });
     const created = await createSuite(["Only task"]);
     for (const member of [await createMember(), await createMember()]) {

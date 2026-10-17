@@ -15,18 +15,24 @@ export function userActionNotifsEnabled_email(
   );
 }
 
+/** Whether a text can reach the member, whatever they prefer. */
+export function textReachable(
+  user: Pick<User, "phoneNumber" | "phoneNumberUnsubscribed">,
+): user is typeof user & { phoneNumber: string } {
+  return (
+    user.phoneNumber !== null &&
+    isCanonicalE164(user.phoneNumber) &&
+    !user.phoneNumberUnsubscribed
+  );
+}
+
 function textable(
   user: Pick<
     User,
     "turnedOffAllNotifs" | "phoneNumber" | "phoneNumberUnsubscribed"
   >,
 ): boolean {
-  return (
-    !user.turnedOffAllNotifs &&
-    user.phoneNumber !== null &&
-    isCanonicalE164(user.phoneNumber) &&
-    !user.phoneNumberUnsubscribed
-  );
+  return !user.turnedOffAllNotifs && textReachable(user);
 }
 
 export function userActionNotifsEnabled_text(

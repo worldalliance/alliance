@@ -20,6 +20,7 @@ import {
 } from "src/link-tracking/message-tracking.entity";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
+import { NotificationKind } from "src/notification-settings/notification-kind";
 import { ActionEventNotifWorker } from "src/notifs/action-event-notif.worker";
 import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
 import {
@@ -36,6 +37,7 @@ import {
   Notification,
   NotificationCategory,
 } from "src/notifs/entities/notification.entity";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import {
   ContractEvent,
@@ -46,7 +48,12 @@ import { User } from "src/user/entities/user.entity";
 import request from "supertest";
 import type { Repository } from "typeorm";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
-import { createTestApp, stubExpoClient, TestContext } from "./e2e-test-utils";
+import {
+  createTestApp,
+  setPreference,
+  stubExpoClient,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("missed-suite notices (e2e)", () => {
   let ctx: TestContext;
@@ -170,6 +177,19 @@ describe("missed-suite notices (e2e)", () => {
       .map((plan) => plan.missNumber);
   };
 
+  const previewChannels = async (group: ReminderGroup) => {
+    await saveLiveCohortDecisions(ctx);
+    const res = await request(ctx.app.getHttpServer())
+      .get(`/actions/plansForGroup/${group.id}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .expect(200);
+    return (
+      res.body as { user: { id: number }; channels: NotificationChannel[] }[]
+    )
+      .filter((plan) => plan.user.id === ctx.testUserId)
+      .map((plan) => plan.channels);
+  };
+
   const findNotices = () =>
     notifRepo.find({
       where: { type: ActionEventNotifType.MissedDeadline },
@@ -207,14 +227,15 @@ describe("missed-suite notices (e2e)", () => {
       "action_event",
       "action",
       "action_suite",
+      "notification_preference",
     ]) {
       await ctx.dataSource.query(`DELETE FROM ${table}`);
     }
     await userRepo.update(ctx.testUserId, {
-      turnedOffAllNotifs: false,
-      emailNotifsForActions: false,
-      textNotifsForActions: true,
-      pushNotifsForActions: false,
+      inAppByDefault: true,
+      emailByDefault: false,
+      textByDefault: true,
+      pushByDefault: false,
       phoneNumber: "+14155550100",
       name: "Missed Tester",
     });
@@ -343,7 +364,7 @@ describe("missed-suite notices (e2e)", () => {
   });
 
   it("tracks the email and text apart, and an opening of either reads the notice", async () => {
-    await userRepo.update(ctx.testUserId, { emailNotifsForActions: true });
+    await userRepo.update(ctx.testUserId, { emailByDefault: true });
     await setArm(ExperimentArm.Control);
     const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
       "Missed task",
@@ -430,7 +451,7 @@ describe("missed-suite notices (e2e)", () => {
   });
 
   it("reads the notice through its text when the email fails", async () => {
-    await userRepo.update(ctx.testUserId, { emailNotifsForActions: true });
+    await userRepo.update(ctx.testUserId, { emailByDefault: true });
     await setArm(ExperimentArm.Control);
     const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
       "Missed task",
@@ -506,7 +527,7 @@ describe("missed-suite notices (e2e)", () => {
   });
 
   it("gives the in-app entry to a member with every channel off", async () => {
-    await userRepo.update(ctx.testUserId, { turnedOffAllNotifs: true });
+    await userRepo.update(ctx.testUserId, { textByDefault: false });
     await setArm(ExperimentArm.Control);
     const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
       "Missed task",
@@ -528,8 +549,51 @@ describe("missed-suite notices (e2e)", () => {
     ]);
   });
 
+  it.each([
+    [NotificationKind.MissedDeadline, null],
+    [NotificationKind.ActionReminders, "Control text"],
+  ])(
+    "texts by the missed deadline setting with %p text off",
+    async (kind, text) => {
+      await setPreference(ctx, {
+        userId: ctx.testUserId,
+        kind,
+        channel: NotificationChannel.Text,
+        enabled: false,
+      });
+      await setArm(ExperimentArm.Control);
+      const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+        "Missed task",
+      ]);
+      await createMissedSuiteGroup(closed);
+
+      await dispatch();
+
+      const [notice] = await findNotices();
+      expect(notice.mms?.body ?? null).toBe(text);
+    },
+  );
+
+  it("records the notice unsent when its in-app entry is hidden too", async () => {
+    await userRepo.update(ctx.testUserId, {
+      inAppByDefault: false,
+      textByDefault: false,
+    });
+    await setArm(ExperimentArm.Control);
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    await createMissedSuiteGroup(closed);
+
+    await dispatch();
+
+    const [notice] = await findNotices();
+    expect(notice).toMatchObject({ sent: false, mms: null });
+    expect(notice.notification?.visible).toBe(false);
+  });
+
   it("links the push to the in-app entry", async () => {
-    await userRepo.update(ctx.testUserId, { pushNotifsForActions: true });
+    await userRepo.update(ctx.testUserId, { pushByDefault: true });
     const deviceRepo = ctx.dataSource.getRepository(UserDevice);
     await deviceRepo.save(
       deviceRepo.create({
@@ -731,6 +795,24 @@ describe("missed-suite notices (e2e)", () => {
     const group = await createMissedSuiteGroup(closed);
 
     expect(await previewTestUser(group)).toEqual([2]);
+  });
+
+  it("previews the channels the member's missed deadline setting allows", async () => {
+    const closed = await createClosedSuite("Week", ago({ minutes: 10 }), [
+      "Missed task",
+    ]);
+    const group = await createMissedSuiteGroup(closed);
+
+    expect(await previewChannels(group)).toEqual([[NotificationChannel.Text]]);
+
+    await setPreference(ctx, {
+      userId: ctx.testUserId,
+      kind: NotificationKind.MissedDeadline,
+      channel: NotificationChannel.Text,
+      enabled: false,
+    });
+
+    expect(await previewChannels(group)).toEqual([[]]);
   });
 
   it("leaves a third consecutive miss out of the preview", async () => {

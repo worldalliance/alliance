@@ -17,6 +17,8 @@ import {
 } from "src/link-tracking/message-tracking.entity";
 import type { TrackedMessage } from "src/link-tracking/message-tracking.service";
 import { processKeywordReplacements } from "src/mail/mail.service";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
 import { tasksUrl } from "src/search/approutes";
 import { isUniqueViolation } from "src/utils/db-errors";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
@@ -53,6 +55,7 @@ import {
 import { MissedSuitePlanService } from "./missed-suite-plans.service";
 import { NotifsService } from "./notifs.service";
 import { recordDelivery } from "./record-delivery";
+import { reminderGroupKind } from "./reminder-group-kind";
 import { buildReminderMessage } from "./reminder-message";
 import {
   assignSocialProofArm,
@@ -100,6 +103,7 @@ export class ActionEventNotifWorker {
     private readonly missedSuitePlans: MissedSuitePlanService,
     private readonly delivery: ActionEventNotifDeliveryService,
     private readonly notifsService: NotifsService,
+    private readonly preferences: NotificationPreferencesService,
     @InjectRepository(ExperimentAssignment)
     private readonly experimentAssignmentRepository: Repository<ExperimentAssignment>,
   ) {}
@@ -273,7 +277,15 @@ export class ActionEventNotifWorker {
     // mentioned. Matches the granularity coverage checks consult and the
     // migration backfill.
     const scopeActionIds = new Set(groupTaskScopeActionIds(plan.group));
-    const arm = await assignSocialProofArm(this.dataSource.manager, plan);
+    const channels = await this.preferences.channelsFor(
+      plan.user,
+      reminderGroupKind(plan.group),
+    );
+    const arm = await assignSocialProofArm(this.dataSource.manager, {
+      group: plan.group,
+      user: plan.user,
+      channels,
+    });
     const plannedNotif = this.actionEventNotifsRepository.create({
       user: plan.user,
       reminderGroup: plan.group,
@@ -323,6 +335,7 @@ export class ActionEventNotifWorker {
     const sendingAnyNotif = await this.delivery.deliver({
       notif,
       user: plan.user,
+      channels,
       tracking: reminderTracking(plan, notif),
       templates: socialProof.templates,
       render: socialProof.render,
@@ -424,7 +437,7 @@ export class ActionEventNotifWorker {
         associatedUsers: [],
         shouldPush: false,
       });
-      notif.sent = true;
+      notif.sent = notif.notification.visible;
     } else {
       this.logger.error(
         `missed-suite reminder group ${plan.group.id} has blank push copy; skipped its in-app entry`,
@@ -437,6 +450,10 @@ export class ActionEventNotifWorker {
     await this.delivery.deliver({
       notif,
       user: plan.user,
+      channels: await this.preferences.channelsFor(
+        plan.user,
+        NotificationKind.MissedDeadline,
+      ),
       tracking: reminderTracking(plan, notif),
       templates,
       render,

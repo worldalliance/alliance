@@ -5,14 +5,10 @@ import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
 import { PushService } from "src/push/push.service";
 import type { User } from "src/user/entities/user.entity";
-import {
-  userActionNotifsEnabled_email,
-  userActionNotifsEnabled_push,
-  userActionNotifsEnabled_text,
-} from "src/user/user.utils";
 import type { ActionEventNotif } from "./entities/action-event-notif.entity";
 import type { Notification } from "./entities/notification.entity";
 import type { ChannelTemplates } from "./missed-suite-notice";
+import { NotificationChannel } from "./notif-utils";
 
 @Injectable()
 export class ActionEventNotifDeliveryService {
@@ -22,10 +18,11 @@ export class ActionEventNotifDeliveryService {
     private readonly pushService: PushService,
   ) {}
 
-  /** Sends on each channel the member enabled; true if any was attempted. */
+  /** Sends on each of `channels`; true if any was attempted. */
   async deliver(params: {
     notif: ActionEventNotif;
     user: User;
+    channels: readonly NotificationChannel[];
     tracking: TrackedMessage;
     templates: ChannelTemplates;
     render: (template: string) => Promise<string>;
@@ -35,10 +32,8 @@ export class ActionEventNotifDeliveryService {
       notification?: Notification;
     };
   }): Promise<boolean> {
-    const { notif, user, tracking, templates, render, push } = params;
-    let sendingAnyNotif = false;
-    if (userActionNotifsEnabled_push(user)) {
-      sendingAnyNotif = true;
+    const { notif, user, channels, tracking, templates, render, push } = params;
+    if (channels.includes(NotificationChannel.Push)) {
       const pushes = await this.pushService.getPushForAllUserDevices(user.id, {
         userId: user.id,
         body: await render(templates.pushMessage),
@@ -53,8 +48,7 @@ export class ActionEventNotifDeliveryService {
         notif.sent = true;
       }
     }
-    if (userActionNotifsEnabled_text(user)) {
-      sendingAnyNotif = true;
+    if (channels.includes(NotificationChannel.Text)) {
       const result = await this.mmsService.sendMms({
         to: user.phoneNumber!,
         userId: user.id,
@@ -68,8 +62,7 @@ export class ActionEventNotifDeliveryService {
       }
       notif.mms = result;
     }
-    if (userActionNotifsEnabled_email(user)) {
-      sendingAnyNotif = true;
+    if (channels.includes(NotificationChannel.Email)) {
       const result = await this.mailService.sendActionEventNotificationEmail({
         subject: await render(templates.emailSubject),
         message: await render(templates.emailMessage),
@@ -81,6 +74,6 @@ export class ActionEventNotifDeliveryService {
         notif.sent = true;
       }
     }
-    return sendingAnyNotif;
+    return channels.length > 0;
   }
 }
