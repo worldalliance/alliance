@@ -718,6 +718,10 @@ export type User = {
     emailNotifsForActions: boolean;
     textNotifsForActions: boolean;
     pushNotifsForActions: boolean;
+    inAppByDefault: boolean;
+    pushByDefault: boolean;
+    textByDefault: boolean;
+    emailByDefault: boolean;
     shareEmailWithCommunityLead: boolean;
     sharePhoneNumberWithCommunityLead: boolean;
     socialNotifsPreference: NotificationPreference;
@@ -803,6 +807,10 @@ export type UserDto = {
     emailNotifsForActions: boolean;
     textNotifsForActions: boolean;
     pushNotifsForActions: boolean;
+    inAppByDefault: boolean;
+    pushByDefault: boolean;
+    textByDefault: boolean;
+    emailByDefault: boolean;
     shareEmailWithCommunityLead: boolean;
     sharePhoneNumberWithCommunityLead: boolean;
     turnedOffAllNotifs: boolean;
@@ -1048,6 +1056,10 @@ export type UserAdminDetailDto = {
     emailNotifsForActions: boolean;
     textNotifsForActions: boolean;
     pushNotifsForActions: boolean;
+    inAppByDefault: boolean;
+    pushByDefault: boolean;
+    textByDefault: boolean;
+    emailByDefault: boolean;
     shareEmailWithCommunityLead: boolean;
     sharePhoneNumberWithCommunityLead: boolean;
     turnedOffAllNotifs: boolean;

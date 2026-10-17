@@ -132,6 +132,27 @@ it("loads the member alongside the rest of the page", async () => {
   expect(await screen.findByRole("heading", { name: "Sam" })).toBeTruthy();
 });
 
+it("shows each channel default under its own channel", async () => {
+  detailStatus = 200;
+  stored = {
+    ...sam,
+    inAppByDefault: false,
+    pushByDefault: false,
+    textByDefault: true,
+    emailByDefault: true,
+  };
+  renderPage();
+
+  for (const text of [
+    "In-app default off",
+    "Push default off",
+    "Text default on",
+    "Email default on",
+  ]) {
+    expect(await screen.findByText(text)).toBeTruthy();
+  }
+});
+
 it("loads the member afresh over one cached moments ago", async () => {
   detailStatus = 200;
   cacheSam({ name: "Sam Before" });

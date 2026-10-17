@@ -236,6 +236,10 @@ export class UserDto extends PickType(User, [
   "id",
   "emailNotifsForActions",
   "pushNotifsForActions",
+  "inAppByDefault",
+  "pushByDefault",
+  "textByDefault",
+  "emailByDefault",
   "textNotifsForActions",
   "profileDescription",
   "switchedDomainAt",
@@ -312,6 +316,10 @@ export class UserDto extends PickType(User, [
     this.emailNotifsForActions = user.emailNotifsForActions;
     this.textNotifsForActions = user.textNotifsForActions;
     this.pushNotifsForActions = user.pushNotifsForActions;
+    this.inAppByDefault = user.inAppByDefault;
+    this.pushByDefault = user.pushByDefault;
+    this.textByDefault = user.textByDefault;
+    this.emailByDefault = user.emailByDefault;
     this.shareEmailWithCommunityLead = user.shareEmailWithCommunityLead;
     this.sharePhoneNumberWithCommunityLead =
       user.sharePhoneNumberWithCommunityLead;

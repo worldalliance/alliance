@@ -182,15 +182,19 @@ export class User {
   pushNotifsForActions: boolean;
 
   @Column({ default: true })
+  @ApiProperty()
   inAppByDefault: boolean;
 
   @Column({ default: true })
+  @ApiProperty()
   pushByDefault: boolean;
 
   @Column({ default: true })
+  @ApiProperty()
   textByDefault: boolean;
 
   @Column({ default: true })
+  @ApiProperty()
   emailByDefault: boolean;
 
   @Column({
