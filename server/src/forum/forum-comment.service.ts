@@ -20,14 +20,13 @@ import type { TrackedMessage } from "src/link-tracking/message-tracking.service"
 import { EmailType } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
 import { UnreadContentType } from "src/notifs/entities/unread-content.entity";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { NotifsService } from "src/notifs/notifs.service";
 import { commentUrl } from "src/search/approutes";
 import { ProfileDto } from "src/user/dto/user.dto";
-import {
-  userActionNotifsEnabled_email,
-  userActionNotifsEnabled_text,
-} from "src/user/user.utils";
 import type { Repository as TypedRepository } from "src/utils/Repository";
 import { IsNull, type EntityManager, type Repository } from "typeorm";
 import { Notification } from "../notifs/entities/notification.entity";
@@ -63,6 +62,7 @@ export class ForumCommentService {
     private readonly mailService: MailService,
     private readonly mmsService: MmsService,
     private readonly forumService: ForumService,
+    private readonly preferences: NotificationPreferencesService,
   ) {}
 
   private async resolveCommentTag(
@@ -259,7 +259,13 @@ export class ForumCommentService {
             notifyForReplies: true,
           },
         });
-        if (post?.notifyForReplies && parentAuthor.receiveReplyNotifications) {
+        if (post?.notifyForReplies) {
+          const channels = await this.preferences.channelsFor(
+            parentAuthor,
+            NotificationKind.CommentsAndReplies,
+          );
+          const texting = channels.includes(NotificationChannel.Text);
+          const emailing = channels.includes(NotificationChannel.Email);
           const url = commentUrl(comment, undefined, true);
           const tracking: TrackedMessage = {
             owner: { userId: parentAuthor.id },
@@ -267,7 +273,7 @@ export class ForumCommentService {
             context: { postId: post.id, commentId: comment.id },
             actionEventNotifId: null,
           };
-          if (userActionNotifsEnabled_text(parentAuthor)) {
+          if (texting) {
             await this.mmsService.sendMms({
               to: parentAuthor.phoneNumber!,
               userId: parentAuthor.id,
@@ -275,7 +281,8 @@ export class ForumCommentService {
               mediaUrls: [],
               tracking,
             });
-          } else if (userActionNotifsEnabled_email(parentAuthor)) {
+          }
+          if (emailing) {
             await this.mailService.sendMail({
               recipient: parentAuthor.email!,
               emailType: EmailType.ForumReply,
@@ -287,7 +294,8 @@ export class ForumCommentService {
               },
               tracking,
             });
-          } else {
+          }
+          if (!texting && !emailing) {
             this.eventLogService.sendMessage({
               type: EventType.ForumReplyNotifFailure,
               message: `Did not notify ${parentAuthor.name} on ${post.title} because they have not enabled text/email notifications`,
