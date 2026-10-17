@@ -45,7 +45,7 @@ Defaults copy from the three general toggles; in-app starts On for everyone. For
 | `textsForNewGroupMembers`            | Someone joined your group · SMS                              |
 | `remindAboutUncompletedGroupMembers` | Group members with uncompleted tasks · every offered channel |
 
-Kinds whose current gating ignores a general toggle get an On override wherever the member's default for that channel is Off. Overrides on leader-only kinds are written for every member, leader or not, so an opt-out survives becoming a leader. The core retires every column the migration read, plus `socialNotifsPreference` and `turnedOffAllNotifs`, and a PR deployed after it drops them with `forumDigestPreference` (see Retiring a column). The admin user detail page stops showing `turnedOffAllNotifs`. Overrides it writes have `source = migrated`.
+Kinds whose current gating ignores a general toggle get an On override wherever the member's default for that channel is Off. Overrides on leader-only kinds are written for every member, leader or not, so an opt-out survives becoming a leader. The core retires every column the migration read, plus `socialNotifsPreference` and `turnedOffAllNotifs`, and a PR deployed after it drops them with `forumDigestPreference` (see Retiring a column). `UserDto` swaps the three action toggles and every per-kind field for the four channel defaults, so the admin user detail page shows the push, text, and email defaults until the admin view replaces them, and stops showing `turnedOffAllNotifs`. The old `NotificationPreference` enum goes with `socialNotifsPreference`, whose retired field lists the enum's values inline. Overrides it writes have `source = migrated`.
 
 ## In-app visibility
 

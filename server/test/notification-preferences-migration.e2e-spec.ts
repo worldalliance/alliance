@@ -62,13 +62,16 @@ const cases: {
   },
   {
     name: "join texts on",
-    old: { textsForNewGroupMembers: true },
+    old: { legacyTextsForNewGroupMembers: true },
     defaults: ON,
     overrides: [],
   },
   {
     name: "push off",
-    old: { textsForNewGroupMembers: true, pushNotifsForActions: false },
+    old: {
+      legacyTextsForNewGroupMembers: true,
+      legacyPushNotifsForActions: false,
+    },
     defaults: { ...ON, pushByDefault: false },
     overrides: [...PUSH_TOGGLES, ...GROUP_NOTICES].map(
       (kind) => `${kind}:push:true`,
@@ -76,33 +79,42 @@ const cases: {
   },
   {
     name: "text off",
-    old: { textsForNewGroupMembers: true, textNotifsForActions: false },
+    old: {
+      legacyTextsForNewGroupMembers: true,
+      legacyTextNotifsForActions: false,
+    },
     defaults: { ...ON, textByDefault: false },
     overrides: ["group_member_joined:text:true"],
   },
   {
     name: "email off",
-    old: { textsForNewGroupMembers: true, emailNotifsForActions: false },
+    old: {
+      legacyTextsForNewGroupMembers: true,
+      legacyEmailNotifsForActions: false,
+    },
     defaults: { ...ON, emailByDefault: false },
     overrides: [],
   },
   ...(
     [
-      ["pushesForActionUpdates", NotificationKind.ActionUpdates],
-      ["pushesForComments", NotificationKind.CommentsAndReplies],
-      ["pushesForMessages", NotificationKind.Messages],
-      ["pushesForLikes", NotificationKind.Likes],
-      ["pushesForNewGroupMembers", NotificationKind.GroupMemberJoined],
+      ["legacyPushesForActionUpdates", NotificationKind.ActionUpdates],
+      ["legacyPushesForComments", NotificationKind.CommentsAndReplies],
+      ["legacyPushesForMessages", NotificationKind.Messages],
+      ["legacyPushesForLikes", NotificationKind.Likes],
+      ["legacyPushesForNewGroupMembers", NotificationKind.GroupMemberJoined],
     ] as const
   ).map(([column, kind]) => ({
     name: `${column} off`,
-    old: { textsForNewGroupMembers: true, [column]: false },
+    old: { legacyTextsForNewGroupMembers: true, [column]: false },
     defaults: ON,
     overrides: [`${kind}:push:false`],
   })),
   {
     name: "pushesForFriendRequests off",
-    old: { textsForNewGroupMembers: true, pushesForFriendRequests: false },
+    old: {
+      legacyTextsForNewGroupMembers: true,
+      legacyPushesForFriendRequests: false,
+    },
     defaults: ON,
     overrides: [
       "friend_request_accepted:push:false",
@@ -112,8 +124,8 @@ const cases: {
   {
     name: "leader reminders off",
     old: {
-      textsForNewGroupMembers: true,
-      remindAboutUncompletedGroupMembers: false,
+      legacyTextsForNewGroupMembers: true,
+      legacyRemindAboutUncompletedGroupMembers: false,
     },
     defaults: ON,
     overrides: ["email", "push", "text"].map(
@@ -123,9 +135,9 @@ const cases: {
   {
     name: "leader reminders off with push off",
     old: {
-      textsForNewGroupMembers: true,
-      remindAboutUncompletedGroupMembers: false,
-      pushNotifsForActions: false,
+      legacyTextsForNewGroupMembers: true,
+      legacyRemindAboutUncompletedGroupMembers: false,
+      legacyPushNotifsForActions: false,
     },
     defaults: { ...ON, pushByDefault: false },
     overrides: [
@@ -136,7 +148,10 @@ const cases: {
   },
   {
     name: "reply notices off",
-    old: { textsForNewGroupMembers: true, receiveReplyNotifications: false },
+    old: {
+      legacyTextsForNewGroupMembers: true,
+      legacyReceiveReplyNotifications: false,
+    },
     defaults: ON,
     overrides: [
       "comments_and_replies:email:false",

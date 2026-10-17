@@ -6,13 +6,7 @@ import { BadRequestException } from "@nestjs/common";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import bcrypt from "bcryptjs";
 import { Exclude, Expose, Type } from "class-transformer";
-import {
-  Allow,
-  IsEmail,
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-} from "class-validator";
+import { Allow, IsEmail, IsNotEmpty, IsOptional } from "class-validator";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { Action } from "src/actions/entities/action.entity";
 import { GeneralUpdateActivity } from "src/actions/entities/general-update-activity.entity";
@@ -63,12 +57,6 @@ import { OnetimeInvite } from "./onetime-invite.entity";
 import { Tag } from "./tag.entity";
 import { UserAwayRange } from "./user-away-range.entity";
 import { UserDevice } from "./user-device.entity";
-
-export enum NotificationPreference {
-  All = "all",
-  Digest = "digest",
-  None = "none",
-}
 
 export enum PublicFormResponseDefault {
   Public = "public",
@@ -163,24 +151,6 @@ export class User {
   // @IsEnum(NotificationChannel)
   // primaryNotificationChannel: NotificationChannel;
 
-  @Column({
-    default: true,
-  })
-  @ApiProperty()
-  emailNotifsForActions: boolean;
-
-  @Column({
-    default: true,
-  })
-  @ApiProperty()
-  textNotifsForActions: boolean;
-
-  @Column({
-    default: true,
-  })
-  @ApiProperty()
-  pushNotifsForActions: boolean;
-
   @Column({ default: true })
   @ApiProperty()
   inAppByDefault: boolean;
@@ -209,25 +179,8 @@ export class User {
   @ApiProperty()
   sharePhoneNumberWithCommunityLead: boolean;
 
-  @Column({
-    type: "enum",
-    enum: NotificationPreference,
-    default: NotificationPreference.All,
-  })
-  @ApiProperty({
-    enum: NotificationPreference,
-    enumName: "NotificationPreference",
-  })
-  @IsOptional()
-  @IsEnum(NotificationPreference)
-  socialNotifsPreference: NotificationPreference;
-
-  @Column({ default: false })
-  @ApiProperty()
-  turnedOffAllNotifs: boolean;
-
-  // TODO: drop the column and this field in a deploy after this one. Until
-  // then the previous release, which selects it, is what a rollback restores.
+  // TODO: drop these columns and fields in a deploy after this one. Until
+  // then the previous release, which selects them, is what a rollback restores.
   @Column({
     name: "forumDigestPreference",
     type: "enum",
@@ -236,6 +189,58 @@ export class User {
     select: false,
   })
   legacyForumDigestPreference: string;
+
+  @Column({
+    name: "socialNotifsPreference",
+    type: "enum",
+    enum: ["all", "digest", "none"],
+    default: "all",
+    select: false,
+  })
+  legacySocialNotifsPreference: string;
+
+  @Column({ name: "emailNotifsForActions", default: true, select: false })
+  legacyEmailNotifsForActions: boolean;
+
+  @Column({ name: "textNotifsForActions", default: true, select: false })
+  legacyTextNotifsForActions: boolean;
+
+  @Column({ name: "pushNotifsForActions", default: true, select: false })
+  legacyPushNotifsForActions: boolean;
+
+  @Column({ name: "turnedOffAllNotifs", default: false, select: false })
+  legacyTurnedOffAllNotifs: boolean;
+
+  @Column({ name: "pushesForLikes", default: true, select: false })
+  legacyPushesForLikes: boolean;
+
+  @Column({ name: "pushesForComments", default: true, select: false })
+  legacyPushesForComments: boolean;
+
+  @Column({ name: "pushesForFriendRequests", default: true, select: false })
+  legacyPushesForFriendRequests: boolean;
+
+  @Column({ name: "pushesForMessages", default: true, select: false })
+  legacyPushesForMessages: boolean;
+
+  @Column({ name: "pushesForActionUpdates", default: true, select: false })
+  legacyPushesForActionUpdates: boolean;
+
+  @Column({ name: "pushesForNewGroupMembers", default: true, select: false })
+  legacyPushesForNewGroupMembers: boolean;
+
+  @Column({ name: "textsForNewGroupMembers", default: false, select: false })
+  legacyTextsForNewGroupMembers: boolean;
+
+  @Column({
+    name: "remindAboutUncompletedGroupMembers",
+    default: true,
+    select: false,
+  })
+  legacyRemindAboutUncompletedGroupMembers: boolean;
+
+  @Column({ name: "receiveReplyNotifications", default: true, select: false })
+  legacyReceiveReplyNotifications: boolean;
 
   @Column({ type: "timestamptz", nullable: true })
   @ApiProperty({ type: Date, nullable: true })
@@ -331,55 +336,10 @@ export class User {
   })
   formDataPreference: PublicFormResponseDefault;
 
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  pushesForLikes: boolean;
-
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  pushesForComments: boolean;
-
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  pushesForFriendRequests: boolean;
-
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  pushesForMessages: boolean;
-
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  pushesForActionUpdates: boolean;
-
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  pushesForNewGroupMembers: boolean;
-
-  @Column({ default: false })
-  @ApiProperty()
-  @Allow()
-  textsForNewGroupMembers: boolean;
-
   @Column({ default: false })
   @ApiProperty()
   @Allow()
   undergoingGroupAssignment: boolean;
-
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  remindAboutUncompletedGroupMembers: boolean;
-
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  receiveReplyNotifications: boolean;
 
   // Relations
 

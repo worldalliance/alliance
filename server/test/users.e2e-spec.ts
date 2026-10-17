@@ -531,9 +531,19 @@ describe("Users (e2e)", () => {
       });
 
       expect(res.status).toBe(201);
-      const user = await userRepo.findOneByOrFail({ id: userAId });
-      expect(user.pushesForLikes).toBe(true);
-      expect(user.textNotifsForActions).toBe(true);
+      expect(
+        await userRepo.findOneOrFail({
+          where: { id: userAId },
+          select: {
+            id: true,
+            legacyPushesForLikes: true,
+            legacyTextNotifsForActions: true,
+          },
+        }),
+      ).toMatchObject({
+        legacyPushesForLikes: true,
+        legacyTextNotifsForActions: true,
+      });
     });
   });
 
