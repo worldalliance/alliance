@@ -3,6 +3,9 @@ import { thrownMessage, thrownStack } from "@alliance/common/errorMessage";
 import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { CreatePushMessage, PushService } from "src/push/push.service";
 import { conversationUrl } from "src/search/approutes";
 import { DetachedWorkTracker } from "src/utils/detached-work";
@@ -37,6 +40,7 @@ export class MessagePushListener implements OnModuleDestroy {
     private readonly conversationRepository: Repository<Conversation>,
     private readonly pushService: PushService,
     private readonly messagingGateway: MessagingGateway,
+    private readonly preferences: NotificationPreferencesService,
   ) {
     this.eventEmitter.on(MessagingEvents.MessageCreated, this.onMessageCreated);
   }
@@ -72,12 +76,22 @@ export class MessagePushListener implements OnModuleDestroy {
 
       const activeViewers =
         await this.messagingGateway.getUsersViewingConversation(conversationId);
+      const preferences = await this.preferences.load({
+        userIds: participants.map((p) => loadedParticipantUser(p).id),
+        kinds: [NotificationKind.Messages],
+      });
 
       const eligibleParticipants = participants.filter((p) => {
         const user = loadedParticipantUser(p);
         if (user.id === message.author.id) return false;
-        if (user.pushesForMessages === false) return false;
-        if (user.turnedOffAllNotifs === true) return false;
+        if (
+          !preferences.wants({
+            userId: user.id,
+            kind: NotificationKind.Messages,
+            channel: NotificationChannel.Push,
+          })
+        )
+          return false;
         if (activeViewers.has(user.id)) return false;
         return true;
       });
