@@ -309,7 +309,7 @@ export class AmbassadorInviteGoalService {
       );
     await this.notifsService.sendNotif({
       user: goal.ambassador,
-      category: NotificationCategory.NewMemberReferred,
+      category: NotificationCategory.AmbassadorInviteGoal,
       message: notifMessage`${params.message(stats)}`,
       destination: null,
       webAppLocation: AMBASSADOR_INVITES_URL,

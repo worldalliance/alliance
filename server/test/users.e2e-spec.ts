@@ -1460,12 +1460,17 @@ describe("Users (e2e)", () => {
       .getRepository(Notification)
       .findBy({ groupingKey: `ambassador-invite-goal:${goal.id}:halfway` });
     expect(
-      notifications.map(({ message, sendTime }) => ({ message, sendTime })),
+      notifications.map(({ message, sendTime, category }) => ({
+        message,
+        sendTime,
+        category,
+      })),
     ).toEqual([
       {
         message:
           "You have 1 day left to successfully invite 4 more people and reach your goal of 4.",
         sendTime: new Date(now - milliseconds({ seconds: 30 })),
+        category: NotificationCategory.AmbassadorInviteGoal,
       },
     ]);
   });

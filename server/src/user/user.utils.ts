@@ -99,6 +99,7 @@ export function notificationPushesEnabled(
     [NotificationCategory.CommunityInviteRequestCreated]: true,
     [NotificationCategory.CommunityInviteRequestApproved]: true,
     [NotificationCategory.CommunityInviteRequestRejected]: true,
+    [NotificationCategory.AmbassadorInviteGoal]: true,
   };
   return enabled[category];
 }

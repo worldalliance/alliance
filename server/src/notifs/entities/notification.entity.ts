@@ -50,6 +50,7 @@ export enum NotificationCategory {
   CommunityInviteRequestCreated = "community_invite_request_created",
   CommunityInviteRequestApproved = "community_invite_request_approved",
   CommunityInviteRequestRejected = "community_invite_request_rejected",
+  AmbassadorInviteGoal = "ambassador_invite_goal",
 }
 
 export enum NotifPriority {
@@ -84,6 +85,7 @@ export const NOTIFICATION_CATEGORY_PRIORITIES = {
   [NotificationCategory.CommunityInviteRequestCreated]: NotifPriority.Low,
   [NotificationCategory.CommunityInviteRequestApproved]: NotifPriority.High,
   [NotificationCategory.CommunityInviteRequestRejected]: NotifPriority.High,
+  [NotificationCategory.AmbassadorInviteGoal]: NotifPriority.High,
 } satisfies Record<NotificationCategory, NotifPriority>;
 
 @Entity()
