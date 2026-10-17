@@ -6,7 +6,7 @@ import { screenshotDatabase } from "./screenshot-database";
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 
-// The dump's own date; every timestamp moves forward by NOW() minus this so
+// The dump's own date; its timestamps move forward by NOW() minus this so
 // relative times and deadlines look the same whenever it loads.
 const SEED_REFERENCE_DATE = "2026-02-10T18:00:00Z";
 
@@ -36,6 +36,11 @@ const psql = ({
     onSpawn,
   });
 
+export const seedTables = (seedContent: string) =>
+  [...seedContent.matchAll(/^COPY public\."?([^"\s]+)"? /gm)].map(
+    ([, table]) => table,
+  );
+
 const loadSeedData = async (database: string, onSpawn?: OnSpawn) => {
   const seedFile = path.join(
     repoRoot,
@@ -62,9 +67,20 @@ const loadSeedData = async (database: string, onSpawn?: OnSpawn) => {
     onSpawn,
     stdin: `SET session_replication_role = 'replica';\n${seedContent}\nSET session_replication_role = 'origin';\n`,
   });
+
+  return seedTables(seedContent);
 };
 
-const shiftTimestamps = (database: string, onSpawn?: OnSpawn) =>
+// Migrations stamp their own rows with NOW(), so only the dump's tables move.
+const shiftTimestamps = ({
+  database,
+  tables,
+  onSpawn,
+}: {
+  database: string;
+  tables: string[];
+  onSpawn?: OnSpawn;
+}) =>
   psql({
     database,
     onSpawn,
@@ -80,6 +96,7 @@ const shiftTimestamps = (database: string, onSpawn?: OnSpawn) =>
         SELECT table_name, column_name
         FROM information_schema.columns
         WHERE table_schema = 'public'
+          AND table_name IN (${tables.map((table) => `'${table}'`).join(", ")})
           AND data_type IN ('timestamp with time zone',
                             'timestamp without time zone')
       LOOP
@@ -144,10 +161,10 @@ export const seedDatabase = async ({
   );
 
   console.log(`${logPrefix} Loading seed dump...`);
-  await loadSeedData(database, onSpawn);
+  const tables = await loadSeedData(database, onSpawn);
 
   console.log(`${logPrefix} Shifting timestamps to current date...`);
-  await shiftTimestamps(database, onSpawn);
+  await shiftTimestamps({ database, tables, onSpawn });
 };
 
 if (require.main === module) {
