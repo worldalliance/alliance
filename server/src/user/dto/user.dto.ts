@@ -532,22 +532,10 @@ function humanizeReferralSource(source: ReferralSource) {
 export class UpdateProfileDto extends PartialType(
   PickType(User, [
     "anonymous",
-    "emailNotifsForActions",
-    "pushNotifsForActions",
-    "textNotifsForActions",
     "shareEmailWithCommunityLead",
-    "remindAboutUncompletedGroupMembers",
-    "receiveReplyNotifications",
     "sharePhoneNumberWithCommunityLead",
     "formDataPreference",
     "shareInfoPublicly",
-    "pushesForLikes",
-    "pushesForComments",
-    "pushesForFriendRequests",
-    "pushesForMessages",
-    "pushesForActionUpdates",
-    "pushesForNewGroupMembers",
-    "textsForNewGroupMembers",
   ]),
 ) {
   @IsOptional()

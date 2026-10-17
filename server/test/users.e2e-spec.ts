@@ -493,15 +493,15 @@ describe("Users (e2e)", () => {
     );
 
     it("keeps the saved value for null and saves the rest", async () => {
-      await update({ timeZone: "Europe/Berlin", pushesForLikes: false });
+      await update({ timeZone: "Europe/Berlin", anonymous: true });
 
-      const res = await update({ timeZone: null, pushesForLikes: true });
+      const res = await update({ timeZone: null, anonymous: false });
 
       expect(res.status).toBe(201);
       expect(await timeZoneOf(userAId)).toBe("Europe/Berlin");
-      expect(
-        (await userRepo.findOneByOrFail({ id: userAId })).pushesForLikes,
-      ).toBe(true);
+      expect((await userRepo.findOneByOrFail({ id: userAId })).anonymous).toBe(
+        false,
+      );
     });
 
     it.each(["not-a-zone", "-08:00", "america/new_york", "", 42])(
@@ -515,6 +515,26 @@ describe("Users (e2e)", () => {
         expect(await timeZoneOf(userAId)).toBe("Europe/Berlin");
       },
     );
+  });
+
+  describe("retired notification settings on /user/update", () => {
+    const update = (body: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .post("/user/update")
+        .send(body)
+        .set("Authorization", `Bearer ${userAToken}`);
+
+    it("ignores them", async () => {
+      const res = await update({
+        pushesForLikes: false,
+        textNotifsForActions: false,
+      });
+
+      expect(res.status).toBe(201);
+      const user = await userRepo.findOneByOrFail({ id: userAId });
+      expect(user.pushesForLikes).toBe(true);
+      expect(user.textNotifsForActions).toBe(true);
+    });
   });
 
   describe("preferred reminder time on /user/update", () => {

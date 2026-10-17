@@ -951,23 +951,11 @@ export type ProfileDto = {
 };
 
 export type UpdateProfileDto = {
-    emailNotifsForActions?: boolean;
-    textNotifsForActions?: boolean;
-    pushNotifsForActions?: boolean;
     shareEmailWithCommunityLead?: boolean;
     sharePhoneNumberWithCommunityLead?: boolean;
     anonymous?: boolean;
     shareInfoPublicly?: boolean;
     formDataPreference?: PublicFormResponseDefault;
-    pushesForLikes?: boolean;
-    pushesForComments?: boolean;
-    pushesForFriendRequests?: boolean;
-    pushesForMessages?: boolean;
-    pushesForActionUpdates?: boolean;
-    pushesForNewGroupMembers?: boolean;
-    textsForNewGroupMembers?: boolean;
-    remindAboutUncompletedGroupMembers?: boolean;
-    receiveReplyNotifications?: boolean;
     name?: string;
     cityId?: number | null;
     phoneNumber?: string | null;
