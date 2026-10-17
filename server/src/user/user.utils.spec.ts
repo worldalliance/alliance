@@ -1,129 +1,31 @@
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { User } from "./entities/user.entity";
-import {
-  referralLabel,
-  userActionNotifsEnabled_email,
-  userActionNotifsEnabled_push,
-  userActionNotifsEnabled_text,
-} from "./user.utils";
+import { referralLabel, textReachable } from "./user.utils";
 
-type EmailUser = Parameters<typeof userActionNotifsEnabled_email>[0];
-type TextUser = Parameters<typeof userActionNotifsEnabled_text>[0];
-type PushUser = Parameters<typeof userActionNotifsEnabled_push>[0];
-
-function emailUser(overrides: Partial<EmailUser> = {}): EmailUser {
-  return {
-    emailNotifsForActions: true,
-    turnedOffAllNotifs: false,
-    hasActiveContract: true,
-    ...overrides,
-  };
-}
-
-function textUser(overrides: Partial<TextUser> = {}): TextUser {
-  return {
-    textNotifsForActions: true,
-    turnedOffAllNotifs: false,
+describe("textReachable", () => {
+  const reachable = {
     phoneNumber: "+14155552671",
-    hasActiveContract: true,
     phoneNumberUnsubscribed: false,
-    ...overrides,
   };
-}
 
-function pushUser(overrides: Partial<PushUser> = {}): PushUser {
-  return {
-    turnedOffAllNotifs: false,
-    pushNotifsForActions: true,
-    ...overrides,
-  };
-}
-
-describe("userActionNotifsEnabled_email", () => {
-  it("is enabled when opted in with an active contract", () => {
-    expect(userActionNotifsEnabled_email(emailUser())).toBe(true);
+  it("reaches a canonical, subscribed phone number", () => {
+    expect(textReachable(reachable)).toBe(true);
   });
 
-  it("is disabled when email notifs for actions are off", () => {
-    expect(
-      userActionNotifsEnabled_email(
-        emailUser({ emailNotifsForActions: false }),
-      ),
-    ).toBe(false);
+  it("can't reach a member without a phone number", () => {
+    expect(textReachable({ ...reachable, phoneNumber: null })).toBe(false);
   });
 
-  it("is disabled when all notifs are turned off", () => {
-    expect(
-      userActionNotifsEnabled_email(emailUser({ turnedOffAllNotifs: true })),
-    ).toBe(false);
-  });
-
-  it("is disabled without an active contract", () => {
-    expect(
-      userActionNotifsEnabled_email(emailUser({ hasActiveContract: false })),
-    ).toBe(false);
-  });
-});
-
-describe("userActionNotifsEnabled_text", () => {
-  it("is enabled when opted in with a canonical, subscribed phone and active contract", () => {
-    expect(userActionNotifsEnabled_text(textUser())).toBe(true);
-  });
-
-  it("is disabled when text notifs for actions are off", () => {
-    expect(
-      userActionNotifsEnabled_text(textUser({ textNotifsForActions: false })),
-    ).toBe(false);
-  });
-
-  it("is disabled when all notifs are turned off", () => {
-    expect(
-      userActionNotifsEnabled_text(textUser({ turnedOffAllNotifs: true })),
-    ).toBe(false);
-  });
-
-  it("is disabled without a phone number", () => {
-    expect(userActionNotifsEnabled_text(textUser({ phoneNumber: null }))).toBe(
-      false,
-    );
-  });
-
-  it("is disabled without an active contract", () => {
-    expect(
-      userActionNotifsEnabled_text(textUser({ hasActiveContract: false })),
-    ).toBe(false);
-  });
-
-  it("is disabled when the phone number is invalid or not canonical", () => {
+  it("can't reach an invalid or non-canonical phone number", () => {
     for (const phoneNumber of ["not-a-phone", "15550100", "(415) 555-2671"]) {
-      expect(userActionNotifsEnabled_text(textUser({ phoneNumber }))).toBe(
-        false,
-      );
+      expect(textReachable({ ...reachable, phoneNumber })).toBe(false);
     }
   });
 
-  it("is disabled when the phone number is unsubscribed", () => {
-    expect(
-      userActionNotifsEnabled_text(textUser({ phoneNumberUnsubscribed: true })),
-    ).toBe(false);
-  });
-});
-
-describe("userActionNotifsEnabled_push", () => {
-  it("is enabled when opted in", () => {
-    expect(userActionNotifsEnabled_push(pushUser())).toBe(true);
-  });
-
-  it("is disabled when push notifs for actions are off", () => {
-    expect(
-      userActionNotifsEnabled_push(pushUser({ pushNotifsForActions: false })),
-    ).toBe(false);
-  });
-
-  it("is disabled when all notifs are turned off", () => {
-    expect(
-      userActionNotifsEnabled_push(pushUser({ turnedOffAllNotifs: true })),
-    ).toBe(false);
+  it("can't reach a number that replied STOP", () => {
+    expect(textReachable({ ...reachable, phoneNumberUnsubscribed: true })).toBe(
+      false,
+    );
   });
 });
 

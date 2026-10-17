@@ -1,19 +1,6 @@
 import { isCanonicalE164 } from "@alliance/common/phone";
 import { User } from "./entities/user.entity";
 
-export function userActionNotifsEnabled_email(
-  user: Pick<
-    User,
-    "emailNotifsForActions" | "turnedOffAllNotifs" | "hasActiveContract"
-  >,
-): boolean {
-  return (
-    user.emailNotifsForActions &&
-    !user.turnedOffAllNotifs &&
-    user.hasActiveContract
-  );
-}
-
 /** Whether a text can reach the member, whatever they prefer. */
 export function textReachable(
   user: Pick<User, "phoneNumber" | "phoneNumberUnsubscribed">,
@@ -23,36 +10,6 @@ export function textReachable(
     isCanonicalE164(user.phoneNumber) &&
     !user.phoneNumberUnsubscribed
   );
-}
-
-function textable(
-  user: Pick<
-    User,
-    "turnedOffAllNotifs" | "phoneNumber" | "phoneNumberUnsubscribed"
-  >,
-): boolean {
-  return !user.turnedOffAllNotifs && textReachable(user);
-}
-
-export function userActionNotifsEnabled_text(
-  user: Pick<
-    User,
-    | "textNotifsForActions"
-    | "turnedOffAllNotifs"
-    | "phoneNumber"
-    | "hasActiveContract"
-    | "phoneNumberUnsubscribed"
-  >,
-): boolean {
-  return Boolean(
-    user.textNotifsForActions && user.hasActiveContract && textable(user),
-  );
-}
-
-export function userActionNotifsEnabled_push(
-  user: Pick<User, "turnedOffAllNotifs" | "pushNotifsForActions">,
-): boolean {
-  return !user.turnedOffAllNotifs && user.pushNotifsForActions;
 }
 
 export function referralLabel(
