@@ -1,10 +1,5 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { addMilliseconds } from "date-fns";
 import { chunk } from "es-toolkit";
 import { actionUpdateEntrySendTime } from "src/actions/action-update-visibility";
 import { ActionUpdate } from "src/actions/entities/action-update.entity";
@@ -17,24 +12,9 @@ import type {
   Repository as TypedRepository,
   WithRelations,
 } from "src/utils/Repository";
-import {
-  DeepPartial,
-  EntityManager,
-  In,
-  IsNull,
-  LessThan,
-  Not,
-  Raw,
-} from "typeorm";
+import { DeepPartial, EntityManager, In, IsNull, Raw } from "typeorm";
 import { NotifClickDto } from "./dto/notifclick.dto";
-import {
-  NotificationDto,
-  NotificationSourceType,
-} from "./dto/notification.dto";
-import {
-  MarkUnreadContentReadDto,
-  ReadAllNotificationsQueryDto,
-} from "./dto/unread-content.dto";
+import { NotificationDto } from "./dto/notification.dto";
 import { ActionEventNotif } from "./entities/action-event-notif.entity";
 import {
   Notification,
@@ -108,15 +88,14 @@ function unreadContentFor(source: UnreadContentSource): NotificationContent {
 // somewhere around 5k recipients.
 const UNREAD_CONTENT_INSERT_CHUNK = 1000;
 
-type UnreadContentWithUser = WithRelations<UnreadContent, { user: true }>;
+export type UnreadContentWithUser = WithRelations<
+  UnreadContent,
+  { user: true }
+>;
 export type NotificationWithUser = WithRelations<Notification, { user: true }>;
 
 const byRecipient = <T extends { user: User }>(rows: T[]) =>
   Map.groupBy(rows, (row) => row.user.id);
-
-// Timestamps are stored to the microsecond but serialized to the
-// millisecond, so a bound covers its whole millisecond.
-const throughMillisecond = (date: Date): Date => addMilliseconds(date, 1);
 
 @Injectable()
 export class NotifsService {
@@ -133,164 +112,10 @@ export class NotifsService {
     private readonly messageTracking: MessageTrackingService,
   ) {}
 
-  async findAll(
-    userId: number,
-    limit?: number,
-  ): Promise<{ loadedAt: Date; notifications: NotificationDto[] }> {
-    // The database's clock, which createdAt uses; read-all bounds both
-    // sendTime and createdAt by it.
-    const [{ loadedAt }] = await this.notifsRepository.query<
-      { loadedAt: Date }[]
-    >('SELECT now() AS "loadedAt"');
-    const due = LessThan(throughMillisecond(loadedAt));
-    const [notifs, unreadContents] = await Promise.all([
-      this.notifsRepository.find({
-        where: { user: { id: userId }, sendTime: due },
-        relations: { associatedUsers: true, actionUpdate: true, comment: true },
-      }),
-      this.unreadContentRepository.find({
-        where: { user: { id: userId }, sendTime: due },
-        order: { sendTime: "DESC", createdAt: "DESC" },
-      }),
-    ]);
-
-    const merged = [
-      ...(await this.renderService.renderNotifications(
-        new Map([[userId, notifs]]),
-      )),
-      ...(await this.renderService.renderUnreadContents(
-        new Map([[userId, unreadContents]]),
-      )),
-    ].sort(
-      (a, b) =>
-        new Date(b.sendTime || b.createdAt).getTime() -
-        new Date(a.sendTime || a.createdAt).getTime(),
-    );
-
-    return {
-      loadedAt,
-      notifications: limit !== undefined ? merged.slice(0, limit) : merged,
-    };
-  }
-
-  async getUnreadCount(userId: number): Promise<number> {
-    const unread = {
-      user: { id: userId },
-      sendTime: LessThan(new Date()),
-      readAt: IsNull(),
-    };
-    const [legacyNotifCount, referencedNotifs, unreadContents] =
-      await Promise.all([
-        this.notifsRepository.count({
-          where: {
-            ...unread,
-            format: Not(In(FORMATS_RENDERING_FROM_CONTENT)),
-          },
-        }),
-        this.notifsRepository.find({
-          where: { ...unread, format: In(FORMATS_RENDERING_FROM_CONTENT) },
-          select: {
-            id: true,
-            format: true,
-            content: true,
-            groupingCount: true,
-          },
-        }),
-        this.unreadContentRepository.find({ where: unread }),
-      ]);
-    // Counts only what findAll can show: rows the recipient can no longer open never render.
-    const [shownNotifs, shownContents] = await Promise.all([
-      this.renderService.renderNotifications(
-        new Map([[userId, referencedNotifs]]),
-      ),
-      this.renderService.renderUnreadContents(
-        new Map([[userId, unreadContents]]),
-      ),
-    ]);
-    return legacyNotifCount + shownNotifs.length + shownContents.length;
-  }
-
   findOne(id: number) {
     return this.notifsRepository.findOne({
       where: { id },
     });
-  }
-
-  async setRead(
-    id: number,
-    userId: number,
-    sourceType?: NotificationSourceType,
-  ) {
-    if (sourceType !== NotificationSourceType.UnreadContent) {
-      const notif: NotificationWithUser | null =
-        await this.notifsRepository.findOne({
-          where: { id, user: { id: userId } },
-          relations: { user: true },
-        });
-      if (notif) {
-        if (notif.user.id !== userId) {
-          throw new BadRequestException();
-        }
-        return this.notifsRepository.update(
-          { id, readAt: IsNull() },
-          { readAt: new Date() },
-        );
-      }
-    }
-
-    if (sourceType === NotificationSourceType.Notification) {
-      throw new NotFoundException("Notif not found");
-    }
-
-    const unreadContent: UnreadContentWithUser | null =
-      await this.unreadContentRepository.findOne({
-        where: { id, user: { id: userId } },
-        relations: { user: true },
-      });
-    if (!unreadContent) {
-      throw new NotFoundException("Notif not found");
-    }
-    if (unreadContent.user.id !== userId) {
-      throw new BadRequestException();
-    }
-    return this.unreadContentRepository.update(
-      { id, readAt: IsNull() },
-      { readAt: new Date() },
-    );
-  }
-
-  async setReadAll(userId: number, query: ReadAllNotificationsQueryDto) {
-    const now = new Date();
-    const through = query.loadedAt && throughMillisecond(query.loadedAt);
-    const where = {
-      user: { id: userId },
-      readAt: IsNull(),
-      sendTime: LessThan(through && through < now ? through : now),
-      ...(through && { createdAt: LessThan(through) }),
-    };
-    await Promise.all([
-      this.notifsRepository.update(where, { readAt: now }),
-      this.unreadContentRepository.update(where, { readAt: now }),
-    ]);
-  }
-
-  async setUnreadContentReadByContent(
-    userId: number,
-    dto: MarkUnreadContentReadDto,
-  ) {
-    if (!dto.contentIds.length) {
-      return;
-    }
-
-    await this.unreadContentRepository.update(
-      {
-        user: { id: userId },
-        contentType: dto.contentType,
-        contentId: In(dto.contentIds),
-        readAt: IsNull(),
-      },
-      { readAt: new Date() },
-    );
   }
 
   async notifsForUser(id: number) {

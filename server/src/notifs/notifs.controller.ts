@@ -25,11 +25,15 @@ import {
 } from "./dto/unread-content.dto";
 import { UnreadCountDto } from "./dto/unread-count.dto";
 import { ActionEventNotifDto } from "./entities/action-event-notif.dto";
+import { NotificationInboxService } from "./notification-inbox.service";
 import { NotifsService } from "./notifs.service";
 
 @Controller("notifs")
 export class NotifsController {
-  constructor(private readonly notifsService: NotifsService) {}
+  constructor(
+    private readonly notifsService: NotifsService,
+    private readonly inbox: NotificationInboxService,
+  ) {}
 
   @Get()
   @UseGuards(AuthGuard)
@@ -48,7 +52,7 @@ export class NotifsController {
     @Res({ passthrough: true }) res: Response,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<NotificationDto[]> {
-    const { loadedAt, notifications } = await this.notifsService.findAll(
+    const { loadedAt, notifications } = await this.inbox.findAll(
       req.user.sub,
       limit,
     );
@@ -60,9 +64,7 @@ export class NotifsController {
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: UnreadCountDto })
   async getUnreadCount(@Request() req: JwtRequest): Promise<UnreadCountDto> {
-    return new UnreadCountDto(
-      await this.notifsService.getUnreadCount(req.user.sub),
-    );
+    return new UnreadCountDto(await this.inbox.getUnreadCount(req.user.sub));
   }
 
   @Post("read/:id")
@@ -73,7 +75,7 @@ export class NotifsController {
     @Query() query: ReadNotificationQueryDto,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    await this.notifsService.setRead(id, req.user.sub, query.sourceType);
+    await this.inbox.setRead(id, req.user.sub, query.sourceType);
   }
 
   @Post("read-all")
@@ -83,7 +85,7 @@ export class NotifsController {
     @Query() query: ReadAllNotificationsQueryDto,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    return this.notifsService.setReadAll(req.user.sub, query);
+    return this.inbox.setReadAll(req.user.sub, query);
   }
 
   @Post("read-content")
@@ -93,7 +95,7 @@ export class NotifsController {
     @Body() body: MarkUnreadContentReadDto,
     @Request() req: JwtRequest,
   ): Promise<void> {
-    return this.notifsService.setUnreadContentReadByContent(req.user.sub, body);
+    return this.inbox.setUnreadContentReadByContent(req.user.sub, body);
   }
 
   @UseGuards(AdminGuard)

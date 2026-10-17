@@ -5,6 +5,7 @@ import { CommunityConversationService } from "src/messaging/community-conversati
 import { MmsService } from "src/mms/mms.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import { notifMessage, SegmentType } from "src/notifs/notification-content";
+import { NotificationInboxService } from "src/notifs/notification-inbox.service";
 import {
   NotifsService,
   type CreateNotifParams,
@@ -159,6 +160,7 @@ describe("CommunityService", () => {
       {} as ImagesService,
       notifsService,
       groupJoinNotifsService,
+      {} as NotificationInboxService,
     );
   });
 

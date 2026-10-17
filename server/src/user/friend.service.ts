@@ -14,6 +14,7 @@ import {
   notifMessage,
   userDestination,
 } from "src/notifs/notification-content";
+import { NotificationInboxService } from "src/notifs/notification-inbox.service";
 import {
   type CreateNotifParams,
   NotifsService,
@@ -45,6 +46,7 @@ export class FriendService {
     private readonly friendRepository: Repository<Friend>,
     private readonly userService: UserService,
     private readonly notifsService: NotifsService,
+    private readonly inbox: NotificationInboxService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -200,7 +202,7 @@ export class FriendService {
     }
     if (rel.sentNotif) {
       try {
-        await this.notifsService.setRead(rel.sentNotif.id, addresseeId);
+        await this.inbox.setRead(rel.sentNotif.id, addresseeId);
       } catch (error) {
         this.logger.error(
           "Error setting read status for friend request:",
@@ -250,10 +252,10 @@ export class FriendService {
       return;
     }
     if (rel.addressee && rel.sentNotif) {
-      await this.notifsService.setRead(rel.sentNotif.id, rel.addressee.id);
+      await this.inbox.setRead(rel.sentNotif.id, rel.addressee.id);
     }
     if (rel.requester && rel.acceptedNotif) {
-      await this.notifsService.setRead(rel.acceptedNotif.id, rel.requester.id);
+      await this.inbox.setRead(rel.acceptedNotif.id, rel.requester.id);
     }
 
     await softDeleteCascade(this.friendRepository.manager, {
