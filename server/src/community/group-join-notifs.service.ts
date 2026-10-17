@@ -3,7 +3,10 @@ import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { MessageSource } from "src/link-tracking/message-tracking.entity";
 import { MmsService } from "src/mms/mms.service";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import {
   communityDestination,
   group,
@@ -17,17 +20,10 @@ import {
 } from "src/notifs/notifs.service";
 import { groupUrl, siteBaseUrl } from "src/search/approutes";
 import type { User } from "src/user/entities/user.entity";
-import { newGroupMemberTextsEnabled } from "src/user/user.utils";
+import { textReachable } from "src/user/user.utils";
 import type { Community } from "./entities/community.entity";
 
-type Recipient = Pick<
-  User,
-  | "id"
-  | "textsForNewGroupMembers"
-  | "turnedOffAllNotifs"
-  | "phoneNumber"
-  | "phoneNumberUnsubscribed"
->;
+type Recipient = Pick<User, "id" | "phoneNumber" | "phoneNumberUnsubscribed">;
 
 type GroupJoinNotice = {
   community: Pick<Community, "id" | "name">;
@@ -43,6 +39,7 @@ export class GroupJoinNotifsService {
   constructor(
     private readonly notifsService: NotifsService,
     private readonly mmsService: MmsService,
+    private readonly preferences: NotificationPreferencesService,
   ) {}
 
   /** Never rejects, so a failure here leaves the join it reports standing. */
@@ -78,11 +75,32 @@ export class GroupJoinNotifsService {
       return;
     }
 
-    const link = `${siteBaseUrl()}${location}`;
-    const texts = sends.flatMap(({ recipient }, i) =>
-      newGroupMemberTextsEnabled(recipient)
+    const reachable = sends.flatMap(({ recipient }, i) =>
+      textReachable(recipient)
         ? [{ recipient, notification: saved.value[i] }]
         : [],
+    );
+    if (!reachable.length) return;
+    const preferences = await R.fromPromise(
+      this.preferences.load({
+        userIds: reachable.map(({ recipient }) => recipient.id),
+        kinds: [NotificationKind.GroupMemberJoined],
+      }),
+    );
+    if (!preferences.ok) {
+      this.logger.error(
+        `Failed to load group join text settings for community ${community.id}: ${thrownMessage(preferences.error)}`,
+        thrownStack(preferences.error),
+      );
+      return;
+    }
+    const link = `${siteBaseUrl()}${location}`;
+    const texts = reachable.filter(({ recipient }) =>
+      preferences.value.wants({
+        userId: recipient.id,
+        kind: NotificationKind.GroupMemberJoined,
+        channel: NotificationChannel.Text,
+      }),
     );
     const results = await Promise.allSettled(
       texts.map(({ recipient, notification }) =>
