@@ -69,7 +69,7 @@ export class UnreadContent {
   @Type(() => Date)
   readAt: Date | null;
 
-  /** Set when the row is written, from the member's in-app setting for its kind. */
+  /** The member's in-app setting for its kind, rechecked on a settings change until `sendTime`. */
   @Column({ default: true })
   visible: boolean;
 

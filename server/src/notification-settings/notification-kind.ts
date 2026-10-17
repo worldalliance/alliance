@@ -34,82 +34,185 @@ export enum NotificationKind {
   OnetimeInviteRequestRejected = "onetime_invite_request_rejected",
 }
 
+export enum NotificationSection {
+  Actions = "actions",
+  Groups = "groups",
+  ForumAndMessages = "forum_and_messages",
+  FriendsAndLikes = "friends_and_likes",
+}
+
 export type KindPolicy = {
+  label: string;
+  section: NotificationSection;
   channels: readonly NotificationChannel[];
   /** Follows the channel defaults and takes no override. */
   required: boolean;
+  leaderOnly: boolean;
 };
 
 const { InApp, Push, Text, Email } = NotificationChannel;
 
-const GROUP_NOTICE: KindPolicy = { channels: [InApp, Push], required: false };
+const groupNotice = (
+  label: string,
+  { leaderOnly }: { leaderOnly: boolean },
+): KindPolicy => ({
+  label,
+  section: NotificationSection.Groups,
+  channels: [InApp, Push],
+  required: false,
+  leaderOnly,
+});
 
 export const KIND_POLICY: Record<NotificationKind, KindPolicy> = {
   [NotificationKind.ActionAnnounced]: {
+    label: "New action announced",
+    section: NotificationSection.Actions,
     channels: [Push, Text, Email],
     required: false,
+    leaderOnly: false,
   },
   [NotificationKind.ActionReminders]: {
+    label: "Action reminders",
+    section: NotificationSection.Actions,
     channels: [Push, Text, Email],
     required: false,
+    leaderOnly: false,
   },
   [NotificationKind.MissedDeadline]: {
+    label: "Missed deadline",
+    section: NotificationSection.Actions,
     channels: [InApp, Push, Text, Email],
     required: false,
+    leaderOnly: false,
   },
   [NotificationKind.ActionUpdates]: {
+    label: "Action updates",
+    section: NotificationSection.Actions,
     channels: [InApp, Push, Text, Email],
     required: false,
+    leaderOnly: false,
   },
   [NotificationKind.GroupMembersWithUncompletedTasks]: {
+    label: "Group members with uncompleted tasks",
+    section: NotificationSection.Actions,
     channels: [Push, Text, Email],
     required: false,
+    leaderOnly: true,
   },
   [NotificationKind.ContractSuspended]: {
+    label: "Contract suspended",
+    section: NotificationSection.Actions,
     channels: [Push, Text, Email],
     required: true,
+    leaderOnly: false,
   },
   [NotificationKind.CommentsAndReplies]: {
+    label: "Comments and replies",
+    section: NotificationSection.ForumAndMessages,
     channels: [InApp, Push, Text, Email],
     required: false,
+    leaderOnly: false,
   },
   [NotificationKind.Messages]: {
+    label: "Messages",
+    section: NotificationSection.ForumAndMessages,
     channels: [Push],
     required: false,
+    leaderOnly: false,
   },
   [NotificationKind.FriendRequests]: {
+    label: "Friend requests",
+    section: NotificationSection.FriendsAndLikes,
     channels: [InApp, Push],
     required: false,
+    leaderOnly: false,
   },
   [NotificationKind.FriendRequestAccepted]: {
+    label: "Accepted friend requests",
+    section: NotificationSection.FriendsAndLikes,
     channels: [InApp, Push],
     required: false,
+    leaderOnly: false,
   },
   [NotificationKind.Likes]: {
+    label: "Likes",
+    section: NotificationSection.FriendsAndLikes,
     channels: [InApp, Push],
     required: false,
+    leaderOnly: false,
   },
   [NotificationKind.GroupMemberJoined]: {
+    label: "Someone joined your group",
+    section: NotificationSection.Groups,
     channels: [InApp, Push, Text],
     required: false,
+    leaderOnly: false,
   },
-  [NotificationKind.MemberJoinedCommunity]: GROUP_NOTICE,
-  [NotificationKind.CommunityAssigned]: GROUP_NOTICE,
-  [NotificationKind.RemovedFromCommunity]: GROUP_NOTICE,
-  [NotificationKind.RemovedFromCommunityForLeader]: GROUP_NOTICE,
-  [NotificationKind.MemberLeftCommunity]: GROUP_NOTICE,
-  [NotificationKind.MemberSuspendedRemovedFromCommunity]: GROUP_NOTICE,
-  [NotificationKind.NewMemberReferred]: GROUP_NOTICE,
-  [NotificationKind.RecruitingGoals]: GROUP_NOTICE,
-  [NotificationKind.CommunityInviteCreated]: GROUP_NOTICE,
-  [NotificationKind.CommunityInviteAccepted]: GROUP_NOTICE,
-  [NotificationKind.CommunityInviteRejected]: GROUP_NOTICE,
-  [NotificationKind.CommunityInviteRequestCreated]: GROUP_NOTICE,
-  [NotificationKind.CommunityInviteRequestApproved]: GROUP_NOTICE,
-  [NotificationKind.CommunityInviteRequestRejected]: GROUP_NOTICE,
-  [NotificationKind.OnetimeInviteRequestCreated]: GROUP_NOTICE,
-  [NotificationKind.OnetimeInviteRequestApproved]: GROUP_NOTICE,
-  [NotificationKind.OnetimeInviteRequestRejected]: GROUP_NOTICE,
+  [NotificationKind.MemberJoinedCommunity]: groupNotice(
+    "A member joined a group you lead",
+    { leaderOnly: true },
+  ),
+  [NotificationKind.CommunityAssigned]: groupNotice("Assigned to a group", {
+    leaderOnly: false,
+  }),
+  [NotificationKind.RemovedFromCommunity]: groupNotice("Removed from a group", {
+    leaderOnly: false,
+  }),
+  [NotificationKind.RemovedFromCommunityForLeader]: groupNotice(
+    "A member was removed from a group you lead",
+    { leaderOnly: true },
+  ),
+  [NotificationKind.MemberLeftCommunity]: groupNotice(
+    "A member left a group you lead",
+    { leaderOnly: true },
+  ),
+  [NotificationKind.MemberSuspendedRemovedFromCommunity]: groupNotice(
+    "A member of a group you lead was suspended",
+    { leaderOnly: true },
+  ),
+  [NotificationKind.NewMemberReferred]: groupNotice(
+    "Someone you invited joined",
+    { leaderOnly: false },
+  ),
+  [NotificationKind.RecruitingGoals]: groupNotice("Recruiting goal updates", {
+    leaderOnly: false,
+  }),
+  [NotificationKind.CommunityInviteCreated]: groupNotice(
+    "Invited to join a group",
+    { leaderOnly: false },
+  ),
+  [NotificationKind.CommunityInviteAccepted]: groupNotice(
+    "Your invitation was accepted",
+    { leaderOnly: false },
+  ),
+  [NotificationKind.CommunityInviteRejected]: groupNotice(
+    "Your invitation was declined",
+    { leaderOnly: false },
+  ),
+  [NotificationKind.CommunityInviteRequestCreated]: groupNotice(
+    "Requests to invite someone to a group you lead",
+    { leaderOnly: true },
+  ),
+  [NotificationKind.CommunityInviteRequestApproved]: groupNotice(
+    "Your request to invite someone was approved",
+    { leaderOnly: false },
+  ),
+  [NotificationKind.CommunityInviteRequestRejected]: groupNotice(
+    "Your request to invite someone was rejected",
+    { leaderOnly: false },
+  ),
+  [NotificationKind.OnetimeInviteRequestCreated]: groupNotice(
+    "Requests for a one-time invite to a group you lead",
+    { leaderOnly: true },
+  ),
+  [NotificationKind.OnetimeInviteRequestApproved]: groupNotice(
+    "Your one-time invite request was approved",
+    { leaderOnly: false },
+  ),
+  [NotificationKind.OnetimeInviteRequestRejected]: groupNotice(
+    "Your one-time invite request was rejected",
+    { leaderOnly: false },
+  ),
 };
 
 export const CATEGORY_KIND: Record<NotificationCategory, NotificationKind> = {

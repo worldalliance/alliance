@@ -7,12 +7,15 @@ import { externalChannels, type ExternalRecipient } from "./external-channels";
 import { KIND_POLICY, NotificationKind } from "./notification-kind";
 import { NotificationPreference } from "./notification-preference.entity";
 
-type ChannelDefaults = Pick<
+export type ChannelDefaults = Pick<
   User,
   "inAppByDefault" | "pushByDefault" | "textByDefault" | "emailByDefault"
 >;
 
-const DEFAULT_COLUMN: Record<NotificationChannel, keyof ChannelDefaults> = {
+export const CHANNEL_DEFAULT_COLUMN: Record<
+  NotificationChannel,
+  keyof ChannelDefaults
+> = {
   [NotificationChannel.InApp]: "inAppByDefault",
   [NotificationChannel.Push]: "pushByDefault",
   [NotificationChannel.Text]: "textByDefault",
@@ -29,7 +32,7 @@ export function wantsKind(params: {
   const { kind, channel, defaults, override } = params;
   const policy = KIND_POLICY[kind];
   if (!policy.channels.includes(channel)) return false;
-  const fallback = defaults[DEFAULT_COLUMN[channel]];
+  const fallback = defaults[CHANNEL_DEFAULT_COLUMN[channel]];
   return policy.required ? fallback : (override ?? fallback);
 }
 

@@ -1896,6 +1896,78 @@ export type CreateMessageDto = {
     replyToId?: string;
 };
 
+export type ChannelDefaultsDto = {
+    inApp: boolean;
+    push: boolean;
+    text: boolean;
+    email: boolean;
+};
+
+export type NotificationKind = 'action_announced' | 'action_reminders' | 'missed_deadline' | 'action_updates' | 'group_members_with_uncompleted_tasks' | 'contract_suspended' | 'comments_and_replies' | 'messages' | 'friend_requests' | 'friend_request_accepted' | 'likes' | 'group_member_joined' | 'member_joined_community' | 'community_assigned' | 'removed_from_community' | 'removed_from_community_for_leader' | 'member_left_community' | 'member_suspended_removed_from_community' | 'new_member_referred' | 'recruiting_goals' | 'community_invite_created' | 'community_invite_accepted' | 'community_invite_rejected' | 'community_invite_request_created' | 'community_invite_request_approved' | 'community_invite_request_rejected' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
+
+export type NotificationSection = 'actions' | 'groups' | 'forum_and_messages' | 'friends_and_likes';
+
+export type NotificationChannel = 'in_app' | 'text' | 'email' | 'push';
+
+export type NotificationCellDto = {
+    channel: NotificationChannel;
+    /**
+     * null follows the channel default
+     */
+    override: boolean | null;
+    /**
+     * Whether the member wants this cell now
+     */
+    enabled: boolean;
+    editable: boolean;
+};
+
+export type KindSettingsDto = {
+    kind: NotificationKind;
+    label: string;
+    section: NotificationSection;
+    required: boolean;
+    cells: Array<NotificationCellDto>;
+};
+
+export type ChannelReachabilityDto = {
+    /**
+     * A valid phone number is on file
+     */
+    textablePhoneNumber: boolean;
+    /**
+     * The number replied STOP
+     */
+    textStopped: boolean;
+};
+
+export type NotificationSettingsDto = {
+    defaults: ChannelDefaultsDto;
+    kinds: Array<KindSettingsDto>;
+    reachability: ChannelReachabilityDto;
+};
+
+export type UpdateChannelDefaultsDto = {
+    inApp?: boolean;
+    push?: boolean;
+    text?: boolean;
+    email?: boolean;
+};
+
+export type UpdateNotificationCellDto = {
+    kind: NotificationKind;
+    channel: NotificationChannel;
+    /**
+     * null removes the override so the cell follows the default
+     */
+    override: boolean | null;
+};
+
+export type UpdateNotificationSettingsDto = {
+    defaults?: UpdateChannelDefaultsDto;
+    cells?: Array<UpdateNotificationCellDto>;
+};
+
 export type ContractDescriptionItem = {
     point: string;
     subtext: string;
@@ -3304,8 +3376,6 @@ export type ReminderGroupDto = {
      */
     isMissedSuite: boolean;
 };
-
-export type NotificationChannel = 'in_app' | 'text' | 'email' | 'push';
 
 export type PreviewNotificationPlanDto = {
     scheduledFor: string;
@@ -9352,6 +9422,50 @@ export type MessageGetMessagesResponses = {
 };
 
 export type MessageGetMessagesResponse = MessageGetMessagesResponses[keyof MessageGetMessagesResponses];
+
+export type NotificationSettingsGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/notification-settings';
+};
+
+export type NotificationSettingsGetErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type NotificationSettingsGetError = NotificationSettingsGetErrors[keyof NotificationSettingsGetErrors];
+
+export type NotificationSettingsGetResponses = {
+    200: NotificationSettingsDto;
+};
+
+export type NotificationSettingsGetResponse = NotificationSettingsGetResponses[keyof NotificationSettingsGetResponses];
+
+export type NotificationSettingsUpdateData = {
+    body: UpdateNotificationSettingsDto;
+    path?: never;
+    query?: never;
+    url: '/user/notification-settings';
+};
+
+export type NotificationSettingsUpdateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type NotificationSettingsUpdateError = NotificationSettingsUpdateErrors[keyof NotificationSettingsUpdateErrors];
+
+export type NotificationSettingsUpdateResponses = {
+    200: NotificationSettingsDto;
+};
+
+export type NotificationSettingsUpdateResponse = NotificationSettingsUpdateResponses[keyof NotificationSettingsUpdateResponses];
 
 export type ContractGetCurrentData = {
     body?: never;

@@ -49,20 +49,20 @@ Kinds whose current gating ignores a general toggle get an On override wherever 
 
 ## In-app visibility
 
-The `Notification` or `UnreadContent` row is still written for every recipient, because push dispatch, link tracking, and action update delivery read it. `NotifsService` sets a `visible` flag on each row it writes from the recipient's in-app preference for the row's kind, and the inbox list and unread count read only visible rows. Push and action update delivery ignore the flag: action update delivery keeps requiring a renderable entry for access, and each other channel answers to its own preference. A like joins an unread like entry only when that entry's visibility matches the owner's current in-app preference, and otherwise starts a new one, so a change of setting neither hides an entry already shown nor reveals one already hidden.
+The `Notification` or `UnreadContent` row is still written for every recipient, because push dispatch, link tracking, and action update delivery read it. `NotifsService` sets a `visible` flag on each row it writes from the recipient's in-app preference for the row's kind, and the inbox list and unread count read only visible rows. Push and action update delivery ignore the flag: action update delivery keeps requiring a renderable entry for access, and each other channel answers to its own preference. A like joins an unread like entry only when that entry's visibility matches the owner's current in-app preference, and otherwise starts a new one, so a change of setting neither hides an entry already shown nor reveals one already hidden. An entry scheduled to arrive later, such as an action update entry waiting on its date, has not been shown yet, so a change to the member's in-app settings recomputes `visible` on their unread content whose `sendTime` is still ahead. A fan-out still writing when the setting changes can save entries computed from the previous setting just after the recompute; that window of a few seconds is accepted (user-approved) rather than serializing fan-outs against settings saves.
 
 ## API
 
-Dedicated endpoints replace the notification fields on `UpdateProfileDto`:
+Dedicated endpoints replace the notification fields on `UpdateProfileDto`. They sit under `/user`, beside the profile endpoints, and take the session's member:
 
-- `GET /me/notification-settings` returns the four defaults and, per offered kind and channel, the override (or `null`), the effective value, and whether the cell is editable. Channel reachability is reported separately: phone present, SMS STOP, email present.
-- `PATCH /me/notification-settings` takes defaults and cells. A boolean upserts an override, `null` deletes it, an omitted field is unchanged. Overrides on required kinds or unoffered channels are rejected with a 400.
+- `GET /user/notification-settings` returns the four defaults and, per kind the member can see, its label, section, whether it is required, and per offered channel the override (or `null`), the effective value, and whether the cell is editable. Leader-only kinds are left out for members who lead no group. Channel reachability is reported separately: whether a valid phone number is on file, and whether it replied STOP. Email needs no flag, since every account has one.
+- `PATCH /user/notification-settings` takes defaults and cells, applies them in one transaction, and returns the settings as `GET` does. A boolean override upserts the cell with `source = member`, `null` deletes it, and an omitted field is unchanged. A cell on a required kind, an unoffered channel, or a leader-only kind from a member who leads no group, or a cell listed twice, is rejected with a 400 that saves nothing, as is a `null` default.
 
 Push permission on the device is client-side state, so each app reads it locally for the blocked-channel notice.
 
 ## Example text
 
-Each kind renders its example through the producer's own copy function with fixed sample input (`Maya Rowan`, `Climate Hawks`, …) declared in the kind policy. The server returns the rendered examples with the settings, so web and mobile show identical text that changes whenever the real copy does.
+Each kind renders its example through the producer's own copy function with fixed sample input (`Maya Rowan`, `Climate Hawks`, …) declared in the kind policy. The server returns the rendered examples with the settings, so web and mobile show identical text that changes whenever the real copy does. The examples land with the screens PR, the only consumer, so the core's settings response carries none yet.
 
 ## Contract reminder
 
