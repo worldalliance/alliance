@@ -25,7 +25,7 @@ Batch senders load overrides for all recipient IDs in one query and resolve in m
 
 ## Storage
 
-- `user` gains `inAppByDefault`, and `emailNotifsForActions`, `textNotifsForActions`, and `pushNotifsForActions` become `emailByDefault`, `textByDefault`, and `pushByDefault`. All four are `NOT NULL DEFAULT true`, which gives new accounts the all-On start.
+- `user` gains `inAppByDefault`, `pushByDefault`, `textByDefault`, and `emailByDefault`, all `NOT NULL DEFAULT true`, which gives new accounts the all-On start. The migration copies the last three from `pushNotifsForActions`, `textNotifsForActions`, and `emailNotifsForActions`, which are retired with the other old columns instead of renamed: the release a deploy replaces still selects them by name.
 - `notification_preference (userId, kind, channel, enabled, source)`, primary key `(userId, kind, channel)`, `ON DELETE CASCADE` from `user`. `kind` and `channel` are Postgres enums. `source` is `member` or `migrated` and feeds the admin page's labels.
 - A table over a JSONB document: each cell is upserted or deleted on its own row, so two screens saving at once never overwrite each other's cells, and SQL recipient filters join it directly.
 
@@ -66,7 +66,7 @@ Each kind renders its example through the producer's own copy function with fixe
 
 ## Contract reminder
 
-`user.contractReminderSentAt timestamptz NULL`, set just before the send, so no failed write can mail an account twice. Only a `MailNotSentError`, a failure before any mail row exists, clears it again for the next run to retry, matching the old rule that any `contract_reminder` mail row counted. The hourly worker selects accounts at least 24 hours old with no contract events and a null `contractReminderSentAt`. The backfill sets it on every account whose current email matches a past `contract_reminder` mail, using that mail's send time. `mail` records only the recipient address, so the current email is the only link to an account; members can't change their email in the app. The previous release keeps sending by the old rule while a deploy migrates, and again if a failed deploy restores it, so the core migration reruns the backfill on accounts still null.
+`user.contractReminderSentAt timestamptz NULL`, set just before the send, so no failed write can mail an account twice. Only a `MailNotSentError`, a failure before any mail row exists, clears it again for the next run to retry, matching the old rule that any `contract_reminder` mail row counted. The hourly worker selects accounts at least 24 hours old with no contract events and a null `contractReminderSentAt`. The backfill sets it on every account whose current email matches a past `contract_reminder` mail, using that mail's send time. `mail` records only the recipient address, so the current email is the only link to an account; members can't change their email in the app. The backfill runs once: the per-account rule reached production well before the core, so no release still sends by the old rule, and a rerun would only mark never-reminded accounts that share an email with a reminded one, such as a re-registration after a soft delete.
 
 ## Group join audience
 

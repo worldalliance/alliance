@@ -3335,7 +3335,7 @@ export type ReminderGroupDto = {
     isMissedSuite: boolean;
 };
 
-export type NotificationChannel = 'text' | 'email' | 'push';
+export type NotificationChannel = 'in_app' | 'text' | 'email' | 'push';
 
 export type PreviewNotificationPlanDto = {
     scheduledFor: string;

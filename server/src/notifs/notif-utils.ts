@@ -9,6 +9,7 @@ export function generateCIDForExternalTarget() {
 }
 
 export enum NotificationChannel {
+  InApp = "in_app",
   Text = "text",
   Email = "email",
   Push = "push",
