@@ -21,7 +21,7 @@ Reachability stays outside it: each sender keeps its current checks (active agre
 
 Contract suspension notices drop the active-agreement check. Today they pass it only because the worker checks a member loaded before the suspension committed; reloading the member would silently stop every suspension notice.
 
-Batch senders load overrides for all recipient IDs in one query and resolve in memory. Senders that filter recipients in SQL left-join `notification_preference` on the kind and channel and use `COALESCE(enabled, <channel default column>)`.
+`NotificationPreferencesService.load` reads the recipients' channel defaults and their overrides for the kinds at hand in two queries, and senders resolve each recipient in memory. It loads defaults itself rather than reading them off a caller's `User`, so a sender holding a member loaded earlier, or only an ID, still resolves against current settings, and a deleted account resolves to nothing. No sender filters recipients by preference in SQL.
 
 ## Storage
 
@@ -49,7 +49,7 @@ Kinds whose current gating ignores a general toggle get an On override wherever 
 
 ## In-app visibility
 
-The `Notification` or `UnreadContent` row is still written whenever any channel will deliver, because push dispatch, link tracking, and action update delivery read it. A visibility flag on the row, set at creation from the in-app preference, keeps hidden rows out of the inbox list and the unread count. Action update delivery keeps requiring a renderable entry for access, and checks visibility separately.
+The `Notification` or `UnreadContent` row is still written for every recipient, because push dispatch, link tracking, and action update delivery read it. `NotifsService` sets a `visible` flag on each row it writes from the recipient's in-app preference for the row's kind, and the inbox list and unread count read only visible rows. Push and action update delivery ignore the flag: action update delivery keeps requiring a renderable entry for access, and each other channel answers to its own preference. A like joins an unread like entry only when that entry's visibility matches the owner's current in-app preference, and otherwise starts a new one, so a change of setting neither hides an entry already shown nor reveals one already hidden.
 
 ## API
 

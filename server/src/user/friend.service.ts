@@ -134,7 +134,10 @@ export class FriendService {
         case FriendStatus.Declined:
         case FriendStatus.None:
           rel.status = FriendStatus.Pending;
-          rel.sentNotif = this.createFriendRequestNotif(requester, addressee);
+          rel.sentNotif = await this.createFriendRequestNotif(
+            requester,
+            addressee,
+          );
           break;
         default:
           throw new Error(
@@ -148,7 +151,7 @@ export class FriendService {
         requester,
         addressee,
         status: FriendStatus.Pending,
-        sentNotif: this.createFriendRequestNotif(requester, addressee),
+        sentNotif: await this.createFriendRequestNotif(requester, addressee),
       });
     }
     return saveFriendOfLiveUsers(this.dataSource.manager, {
@@ -191,7 +194,7 @@ export class FriendService {
     rel.status = status;
     if (status === FriendStatus.Accepted) {
       rel.acceptedAt = new Date();
-      rel.acceptedNotif = this.notifsService.createNotif({
+      rel.acceptedNotif = await this.notifsService.createNotif({
         user: rel.requester,
         category: NotificationCategory.FriendRequestAccepted,
         message: notifMessage`${member(rel.addressee)} accepted your friend request`,

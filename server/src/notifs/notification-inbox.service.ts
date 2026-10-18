@@ -50,11 +50,11 @@ export class NotificationInboxService {
     const due = LessThan(throughMillisecond(loadedAt));
     const [notifs, unreadContents] = await Promise.all([
       this.notifsRepository.find({
-        where: { user: { id: userId }, sendTime: due },
+        where: { user: { id: userId }, sendTime: due, visible: true },
         relations: { associatedUsers: true, actionUpdate: true, comment: true },
       }),
       this.unreadContentRepository.find({
-        where: { user: { id: userId }, sendTime: due },
+        where: { user: { id: userId }, sendTime: due, visible: true },
         order: { sendTime: "DESC", createdAt: "DESC" },
       }),
     ]);
@@ -83,6 +83,7 @@ export class NotificationInboxService {
       user: { id: userId },
       sendTime: LessThan(new Date()),
       readAt: IsNull(),
+      visible: true,
     };
     const [legacyNotifCount, referencedNotifs, unreadContents] =
       await Promise.all([

@@ -10,6 +10,7 @@ import { Post } from "src/forum/entities/post.entity";
 import { LinkTrackingModule } from "src/link-tracking/link-tracking.module";
 import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
+import { NotificationSettingsModule } from "src/notification-settings/notification-settings.module";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
 import { ActionEventNotif } from "./entities/action-event-notif.entity";
@@ -41,6 +42,7 @@ import { NotifsService } from "./notifs.service";
     forwardRef(() => MmsModule),
     forwardRef(() => UserModule),
     ActionVisibilityModule,
+    NotificationSettingsModule,
   ],
   controllers: [NotifsController],
   providers: [

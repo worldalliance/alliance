@@ -7,6 +7,12 @@ import { Comment } from "src/forum/entities/comment.entity";
 import { MessageTrackingService } from "src/link-tracking/message-tracking.service";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
+import {
+  CATEGORY_KIND,
+  NotificationKind,
+  UNREAD_CONTENT_KIND,
+} from "src/notification-settings/notification-kind";
+import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
 import { User } from "src/user/entities/user.entity";
 import type {
   Repository as TypedRepository,
@@ -24,6 +30,7 @@ import {
   UnreadContent,
   UnreadContentType,
 } from "./entities/unread-content.entity";
+import { NotificationChannel } from "./notif-utils";
 import {
   type ContentTarget,
   type Destination,
@@ -97,6 +104,13 @@ export type NotificationWithUser = WithRelations<Notification, { user: true }>;
 const byRecipient = <T extends { user: User }>(rows: T[]) =>
   Map.groupBy(rows, (row) => row.user.id);
 
+function recipientId(user: DeepPartial<User>): number {
+  if (user.id === undefined) {
+    throw new Error("a notification needs its recipient's id");
+  }
+  return user.id;
+}
+
 @Injectable()
 export class NotifsService {
   constructor(
@@ -110,6 +124,7 @@ export class NotifsService {
     private readonly mmsService: MmsService,
     private readonly renderService: NotificationRenderService,
     private readonly messageTracking: MessageTrackingService,
+    private readonly preferences: NotificationPreferencesService,
   ) {}
 
   findOne(id: number) {
@@ -246,15 +261,33 @@ export class NotifsService {
     });
   }
 
-  createNotif({
-    message,
-    destination,
-    pluralMessage,
-    target,
-    ...notif
-  }: CreateNotifParams) {
+  async createNotif(notif: CreateNotifParams) {
+    return (await this.createNotifs([notif]))[0];
+  }
+
+  async createNotifs(notifs: CreateNotifParams[]) {
+    const inInbox = await this.inInbox(
+      notifs.map(({ user, category }) => ({
+        userId: recipientId(user),
+        kind: CATEGORY_KIND[category],
+      })),
+    );
+    return notifs.map((notif, index) => this.buildNotif(notif, inInbox[index]));
+  }
+
+  buildNotif(
+    {
+      message,
+      destination,
+      pluralMessage,
+      target,
+      ...notif
+    }: CreateNotifParams,
+    visible: boolean,
+  ) {
     return this.notifsRepository.create({
       ...notif,
+      visible,
       priority:
         notif.priority ?? NOTIFICATION_CATEGORY_PRIORITIES[notif.category],
       format: NotificationFormat.Referenced,
@@ -269,11 +302,26 @@ export class NotifsService {
   }
 
   async sendNotif(notif: CreateNotifParams) {
-    return this.notifsRepository.save(this.createNotif(notif));
+    return this.notifsRepository.save(await this.createNotif(notif));
   }
 
   async sendNotifs(notifs: CreateNotifParams[]) {
-    return this.notifsRepository.save(notifs.map((n) => this.createNotif(n)));
+    return this.notifsRepository.save(await this.createNotifs(notifs));
+  }
+
+  /** Each recipient's in-app setting for a row's kind, in order. */
+  async inInbox(
+    rows: { userId: number; kind: NotificationKind }[],
+    em?: EntityManager,
+  ): Promise<boolean[]> {
+    const preferences = await this.preferences.load({
+      userIds: rows.map((row) => row.userId),
+      kinds: rows.map((row) => row.kind),
+      em,
+    });
+    return rows.map((row) =>
+      preferences.wants({ ...row, channel: NotificationChannel.InApp }),
+    );
   }
 
   async hasNotifWithGroupingKey(
@@ -287,9 +335,13 @@ export class NotifsService {
     );
   }
 
-  createUnreadContent(unreadContent: CreateUnreadContentParams) {
+  private buildUnreadContent(
+    unreadContent: CreateUnreadContentParams,
+    visible: boolean,
+  ) {
     return this.unreadContentRepository.create({
       ...unreadContent,
+      visible,
       format: NotificationFormat.Referenced,
       content: unreadContentFor(unreadContent),
       sendTime: unreadContent.sendTime ?? new Date(),
@@ -297,9 +349,7 @@ export class NotifsService {
   }
 
   async sendUnreadContent(unreadContent: CreateUnreadContentParams) {
-    return this.unreadContentRepository.save(
-      this.createUnreadContent(unreadContent),
-    );
+    return (await this.sendUnreadContents([unreadContent]))[0];
   }
 
   async sendUnreadContents(
@@ -307,9 +357,18 @@ export class NotifsService {
     em?: EntityManager,
   ) {
     const manager = em ?? this.unreadContentRepository.manager;
+    const inInbox = await this.inInbox(
+      unreadContents.map(({ user, contentType }) => ({
+        userId: recipientId(user),
+        kind: UNREAD_CONTENT_KIND[contentType],
+      })),
+      em,
+    );
     return manager.save(
       UnreadContent,
-      unreadContents.map((content) => this.createUnreadContent(content)),
+      unreadContents.map((content, index) =>
+        this.buildUnreadContent(content, inInbox[index]),
+      ),
       { chunk: UNREAD_CONTENT_INSERT_CHUNK },
     );
   }

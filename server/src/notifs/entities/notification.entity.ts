@@ -162,6 +162,10 @@ export class Notification {
   @ApiProperty({ type: Number, nullable: true })
   groupingCount: number | null;
 
+  /** Set when the row is written, from the member's in-app setting for its kind. */
+  @Column({ default: true })
+  visible: boolean;
+
   @Column({ default: true })
   @ApiProperty()
   shouldPush: boolean;

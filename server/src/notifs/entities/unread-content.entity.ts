@@ -69,6 +69,10 @@ export class UnreadContent {
   @Type(() => Date)
   readAt: Date | null;
 
+  /** Set when the row is written, from the member's in-app setting for its kind. */
+  @Column({ default: true })
+  visible: boolean;
+
   @Column({ default: true })
   @ApiProperty()
   shouldPush: boolean;
