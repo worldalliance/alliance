@@ -29,6 +29,7 @@ import {
   member,
   notifMessage,
 } from "src/notifs/notification-content";
+import { NotificationInboxService } from "src/notifs/notification-inbox.service";
 import {
   type CreateNotifParams,
   NotifsService,
@@ -124,6 +125,7 @@ export class CommunityService {
     private readonly imagesService: ImagesService,
     private readonly notifsService: NotifsService,
     private readonly groupJoinNotifsService: GroupJoinNotifsService,
+    private readonly inbox: NotificationInboxService,
   ) {}
 
   async findOneOrFail(
@@ -1372,7 +1374,7 @@ export class CommunityService {
         ? [
             {
               user: invite.invitingUser,
-              category: NotificationCategory.CommunityInviteCreated,
+              category: NotificationCategory.CommunityInviteRequestApproved,
               message: notifMessage`Your request to invite ${member(invitedUser)} was approved`,
               destination: communityDestination(community.id),
               webAppLocation: groupUrl({
@@ -1504,9 +1506,7 @@ export class CommunityService {
         },
       }),
       this.leaveOtherCommunitiesOnJoin(invitedUser),
-      ...invite.notifs!.map((notif) =>
-        this.notifsService.setRead(notif.id, userId),
-      ),
+      ...invite.notifs!.map((notif) => this.inbox.setRead(notif.id, userId)),
       this.notifsService.sendNotif({
         user: invite.invitingUser!,
         category: NotificationCategory.CommunityInviteAccepted,
@@ -1545,9 +1545,7 @@ export class CommunityService {
     invite.status = CommunityInviteStatus.InviteeRejected;
     await setLiveInviteStatus(this.communityInviteRepository.manager, invite);
     await Promise.all([
-      ...invite.notifs!.map((notif) =>
-        this.notifsService.setRead(notif.id, userId),
-      ),
+      ...invite.notifs!.map((notif) => this.inbox.setRead(notif.id, userId)),
     ]);
 
     await this.notifsService.sendNotif({

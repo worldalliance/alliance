@@ -13,6 +13,12 @@ import { JWTTokenType, sessionTokenPayload } from "src/auth/tokens";
 import { Contract } from "src/contract/entities/contract.entity";
 import { testConnectionOptions } from "src/datasources/dataSourceTest";
 import { ForumModule } from "src/forum/forum.module";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import {
+  NotificationPreference,
+  PreferenceSource,
+} from "src/notification-settings/notification-preference.entity";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { NotifsModule } from "src/notifs/notifs.module";
 import { PosthogModule } from "src/posthog/posthog.module";
 import { EXPO_CLIENT } from "src/push/push.service";
@@ -344,6 +350,20 @@ export async function createFormWithSnapshot(
   );
   await attachFormSnapshot(dataSource, form.id, snapshot.id);
   return { form, snapshot };
+}
+
+export async function setPreference(
+  ctx: Pick<TestContext, "dataSource">,
+  params: {
+    userId: number;
+    kind: NotificationKind;
+    channel: NotificationChannel;
+    enabled: boolean;
+  },
+): Promise<void> {
+  await ctx.dataSource
+    .getRepository(NotificationPreference)
+    .save({ ...params, source: PreferenceSource.Member });
 }
 
 /**

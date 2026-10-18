@@ -206,7 +206,6 @@ const SettingsPage: React.FC = () => {
         <NotificationSettings
           editableUser={editableUser}
           updateEditableUser={updateEditableUser}
-          isLeader={user.leaderOfIds.length > 0}
           impersonating={isImpersonation}
         />
 

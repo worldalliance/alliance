@@ -10,12 +10,14 @@ import { Post } from "src/forum/entities/post.entity";
 import { LinkTrackingModule } from "src/link-tracking/link-tracking.module";
 import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
+import { NotificationSettingsModule } from "src/notification-settings/notification-settings.module";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
 import { ActionEventNotif } from "./entities/action-event-notif.entity";
 import { Notification } from "./entities/notification.entity";
 import { UnreadContent } from "./entities/unread-content.entity";
 import { LikeNotificationService } from "./like-notification.service";
+import { NotificationInboxService } from "./notification-inbox.service";
 import { NotificationReferencesService } from "./notification-references.service";
 import { NotificationRenderService } from "./notification-render.service";
 import { NotifsController } from "./notifs.controller";
@@ -40,14 +42,16 @@ import { NotifsService } from "./notifs.service";
     forwardRef(() => MmsModule),
     forwardRef(() => UserModule),
     ActionVisibilityModule,
+    NotificationSettingsModule,
   ],
   controllers: [NotifsController],
   providers: [
     NotifsService,
+    NotificationInboxService,
     LikeNotificationService,
     NotificationReferencesService,
     NotificationRenderService,
   ],
-  exports: [NotifsService, LikeNotificationService],
+  exports: [NotifsService, NotificationInboxService, LikeNotificationService],
 })
 export class NotifsModule {}

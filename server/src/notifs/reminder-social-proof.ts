@@ -10,10 +10,6 @@ import {
 } from "src/actions/entities/reminder-group.entity";
 import type { User } from "src/user/entities/user.entity";
 import { acceptedFriendshipSql } from "src/user/friendship";
-import {
-  userActionNotifsEnabled_push,
-  userActionNotifsEnabled_text,
-} from "src/user/user.utils";
 import type { EntityManager } from "typeorm";
 import {
   ReminderSocialProofOutcome,
@@ -25,6 +21,7 @@ import {
 } from "./entities/experiment-assignment.entity";
 import { assignExperimentArm } from "./experiment-assignment";
 import type { ChannelTemplates } from "./missed-suite-notice";
+import { NotificationChannel } from "./notif-utils";
 
 export type SocialProofCandidate = {
   id: number;
@@ -65,12 +62,19 @@ export function isSocialProofReminderGroup(
  */
 export async function assignSocialProofArm(
   em: EntityManager,
-  params: { group: ReminderGroup; user: User },
+  params: {
+    group: ReminderGroup;
+    user: User;
+    channels: readonly NotificationChannel[];
+  },
 ): Promise<ExperimentArm | null> {
-  const { group, user } = params;
+  const { group, user, channels } = params;
   if (
     !isSocialProofReminderGroup(group) ||
-    !(userActionNotifsEnabled_push(user) || userActionNotifsEnabled_text(user))
+    !(
+      channels.includes(NotificationChannel.Push) ||
+      channels.includes(NotificationChannel.Text)
+    )
   ) {
     return null;
   }

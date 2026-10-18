@@ -16,6 +16,7 @@ import {
 import { EditableContent } from "src/forum/entities/editablecontent.entity";
 import { Post } from "src/forum/entities/post.entity";
 import { MessagingModule } from "src/messaging/messaging.module";
+import { NotificationKind } from "src/notification-settings/notification-kind";
 import {
   Notification,
   NotificationCategory,
@@ -25,6 +26,7 @@ import {
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
 import { LikeNotificationService } from "src/notifs/like-notification.service";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import {
   action,
   member,
@@ -39,7 +41,7 @@ import { EXPO_CLIENT, PushService } from "src/push/push.service";
 import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
 import type { Repository } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, setPreference, TestContext } from "./e2e-test-utils";
 
 describe("NotifPushDispatcher – new device filtering (e2e)", () => {
   let ctx: TestContext;
@@ -64,6 +66,14 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
     });
     return userRepo.save(user);
   };
+
+  const setPush = (user: User, kind: NotificationKind, enabled: boolean) =>
+    setPreference(ctx, {
+      userId: user.id,
+      kind,
+      channel: NotificationChannel.Push,
+      enabled,
+    });
 
   const createDevice = async (
     user: User,
@@ -328,7 +338,7 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
     });
 
     it("can send a second push when a grouped like notification is updated", async () => {
-      const user = await createUser({ pushesForLikes: true });
+      const user = await createUser();
       const now = new Date();
       const oneHourAgo = new Date(now.getTime() - milliseconds({ hours: 1 }));
 
@@ -463,8 +473,9 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       expect(messages).toHaveLength(1);
     });
 
-    it("pushes no category to a member who turned off all notifications", async () => {
-      const optedOut = await createUser({ turnedOffAllNotifs: true });
+    it("pushes a member with push off by default only the kinds they turned on", async () => {
+      const optedOut = await createUser({ pushByDefault: false });
+      await setPush(optedOut, NotificationKind.Likes, true);
       const optedIn = await createUser();
       const oneHourAgo = new Date(Date.now() - milliseconds({ hours: 1 }));
       const fiveMinutesAgo = new Date(
@@ -480,7 +491,9 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
           const notif = await createNotification(user, fiveMinutesAgo, {
             category,
           });
-          if (user === optedOut) optedOutNotifs.push(notif);
+          if (user === optedOut && category !== NotificationCategory.Likes) {
+            optedOutNotifs.push(notif);
+          }
         }
       }
 
@@ -488,10 +501,9 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
         "test-dispatch-all-notifs-off",
       );
 
-      expect(messages.map((message) => message.userId)).toEqual([
-        optedIn.id,
-        optedIn.id,
-      ]);
+      expect(messages.map((message) => message.userId).sort()).toEqual(
+        [optedOut.id, optedIn.id, optedIn.id].sort(),
+      );
       for (const notif of optedOutNotifs) {
         expect(
           (await notifRepo.findOneByOrFail({ id: notif.id })).shouldPush,
@@ -499,8 +511,8 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
       }
     });
 
-    it("pushes no unread content to a member who turned off all notifications", async () => {
-      const user = await createUser({ turnedOffAllNotifs: true });
+    it("pushes no unread content to a member with push off by default", async () => {
+      const user = await createUser({ pushByDefault: false });
       const oneHourAgo = new Date(Date.now() - milliseconds({ hours: 1 }));
       await createDevice(user, oneHourAgo);
       const row = await createForumReplyUnreadContent(
@@ -520,7 +532,7 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
     });
 
     it("pushes a like with its sole liker's current name", async () => {
-      const owner = await createUser({ pushesForLikes: true });
+      const owner = await createUser();
       const liker = await createUser({ name: "Lane Before" });
       await createDevice(
         owner,
@@ -673,7 +685,8 @@ describe("NotifPushDispatcher – new device filtering (e2e)", () => {
     });
 
     it("drops the push of a reply to a member with comment pushes off", async () => {
-      const user = await createUser({ pushesForComments: false });
+      const user = await createUser();
+      await setPush(user, NotificationKind.CommentsAndReplies, false);
       const oneHourAgo = new Date(Date.now() - milliseconds({ hours: 1 }));
       await createDevice(user, oneHourAgo);
       const row = await createForumReplyUnreadContent(

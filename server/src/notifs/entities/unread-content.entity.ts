@@ -69,6 +69,10 @@ export class UnreadContent {
   @Type(() => Date)
   readAt: Date | null;
 
+  /** The member's in-app setting for its kind, rechecked on a settings change until `sendTime`. */
+  @Column({ default: true })
+  visible: boolean;
+
   @Column({ default: true })
   @ApiProperty()
   shouldPush: boolean;

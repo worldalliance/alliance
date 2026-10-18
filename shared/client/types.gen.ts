@@ -53,13 +53,11 @@ export type PublicFormResponseDefault = 'public' | 'private';
 
 export type ReferralSource = 'referral_link' | 'onetime_invite' | 'action_share_link' | 'external_share_link' | 'invite_share_link' | 'campaign' | 'none';
 
-export type NotificationPreference = 'all' | 'digest' | 'none';
-
 export type OnetimeInviteStatus = 'request_pending' | 'request_rejected' | 'link_unused' | 'link_used';
 
 export type CommunityInviteStatus = 'request_pending' | 'request_rejected' | 'invitee_pending' | 'invitee_accepted' | 'invitee_rejected' | 'cancelled';
 
-export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'removed_from_community' | 'removed_from_community_for_leader' | 'member_left_community' | 'member_suspended_removed_from_community' | 'member_joined_community' | 'community_assigned' | 'new_member_referred' | 'group_member_joined' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected' | 'community_invite_request_created' | 'community_invite_request_rejected';
+export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'removed_from_community' | 'removed_from_community_for_leader' | 'member_left_community' | 'member_suspended_removed_from_community' | 'member_joined_community' | 'community_assigned' | 'new_member_referred' | 'group_member_joined' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected' | 'community_invite_request_created' | 'community_invite_request_approved' | 'community_invite_request_rejected' | 'ambassador_invite_goal';
 
 export type NotifPriority = 'low' | 'high';
 
@@ -715,13 +713,12 @@ export type User = {
     emailVerified: boolean;
     preferredReminderTime: string | null;
     timeZone: string | null;
-    emailNotifsForActions: boolean;
-    textNotifsForActions: boolean;
-    pushNotifsForActions: boolean;
+    inAppByDefault: boolean;
+    pushByDefault: boolean;
+    textByDefault: boolean;
+    emailByDefault: boolean;
     shareEmailWithCommunityLead: boolean;
     sharePhoneNumberWithCommunityLead: boolean;
-    socialNotifsPreference: NotificationPreference;
-    turnedOffAllNotifs: boolean;
     switchedDomainAt: string | null;
     admin: boolean;
     staff: boolean;
@@ -737,16 +734,7 @@ export type User = {
     anonymous: boolean;
     shareInfoPublicly: boolean;
     formDataPreference: PublicFormResponseDefault;
-    pushesForLikes: boolean;
-    pushesForComments: boolean;
-    pushesForFriendRequests: boolean;
-    pushesForMessages: boolean;
-    pushesForActionUpdates: boolean;
-    pushesForNewGroupMembers: boolean;
-    textsForNewGroupMembers: boolean;
     undergoingGroupAssignment: boolean;
-    remindAboutUncompletedGroupMembers: boolean;
-    receiveReplyNotifications: boolean;
     referredById: number | null;
     referredByInvite?: OnetimeInvite | null;
     referralSource: ReferralSource;
@@ -800,12 +788,12 @@ export type UserDto = {
     phoneNumber: string | null;
     preferredReminderTime: string | null;
     timeZone: string | null;
-    emailNotifsForActions: boolean;
-    textNotifsForActions: boolean;
-    pushNotifsForActions: boolean;
+    inAppByDefault: boolean;
+    pushByDefault: boolean;
+    textByDefault: boolean;
+    emailByDefault: boolean;
     shareEmailWithCommunityLead: boolean;
     sharePhoneNumberWithCommunityLead: boolean;
-    turnedOffAllNotifs: boolean;
     switchedDomainAt: string | null;
     admin: boolean;
     staff: boolean;
@@ -817,16 +805,7 @@ export type UserDto = {
     anonymous: boolean;
     shareInfoPublicly: boolean;
     formDataPreference: PublicFormResponseDefault;
-    pushesForLikes: boolean;
-    pushesForComments: boolean;
-    pushesForFriendRequests: boolean;
-    pushesForMessages: boolean;
-    pushesForActionUpdates: boolean;
-    pushesForNewGroupMembers: boolean;
-    textsForNewGroupMembers: boolean;
     undergoingGroupAssignment: boolean;
-    remindAboutUncompletedGroupMembers: boolean;
-    receiveReplyNotifications: boolean;
     referredById: number | null;
     referralSource: ReferralSource;
     referredByCampaignId: number | null;
@@ -951,23 +930,11 @@ export type ProfileDto = {
 };
 
 export type UpdateProfileDto = {
-    emailNotifsForActions?: boolean;
-    textNotifsForActions?: boolean;
-    pushNotifsForActions?: boolean;
     shareEmailWithCommunityLead?: boolean;
     sharePhoneNumberWithCommunityLead?: boolean;
     anonymous?: boolean;
     shareInfoPublicly?: boolean;
     formDataPreference?: PublicFormResponseDefault;
-    pushesForLikes?: boolean;
-    pushesForComments?: boolean;
-    pushesForFriendRequests?: boolean;
-    pushesForMessages?: boolean;
-    pushesForActionUpdates?: boolean;
-    pushesForNewGroupMembers?: boolean;
-    textsForNewGroupMembers?: boolean;
-    remindAboutUncompletedGroupMembers?: boolean;
-    receiveReplyNotifications?: boolean;
     name?: string;
     cityId?: number | null;
     phoneNumber?: string | null;
@@ -1057,12 +1024,12 @@ export type UserAdminDetailDto = {
     phoneNumber: string | null;
     preferredReminderTime: string | null;
     timeZone: string | null;
-    emailNotifsForActions: boolean;
-    textNotifsForActions: boolean;
-    pushNotifsForActions: boolean;
+    inAppByDefault: boolean;
+    pushByDefault: boolean;
+    textByDefault: boolean;
+    emailByDefault: boolean;
     shareEmailWithCommunityLead: boolean;
     sharePhoneNumberWithCommunityLead: boolean;
-    turnedOffAllNotifs: boolean;
     switchedDomainAt: string | null;
     admin: boolean;
     staff: boolean;
@@ -1074,16 +1041,7 @@ export type UserAdminDetailDto = {
     anonymous: boolean;
     shareInfoPublicly: boolean;
     formDataPreference: PublicFormResponseDefault;
-    pushesForLikes: boolean;
-    pushesForComments: boolean;
-    pushesForFriendRequests: boolean;
-    pushesForMessages: boolean;
-    pushesForActionUpdates: boolean;
-    pushesForNewGroupMembers: boolean;
-    textsForNewGroupMembers: boolean;
     undergoingGroupAssignment: boolean;
-    remindAboutUncompletedGroupMembers: boolean;
-    receiveReplyNotifications: boolean;
     referredById: number | null;
     referralSource: ReferralSource;
     referredByCampaignId: number | null;
@@ -1936,6 +1894,78 @@ export type CreateMessageDto = {
      */
     attachments?: Array<string>;
     replyToId?: string;
+};
+
+export type ChannelDefaultsDto = {
+    inApp: boolean;
+    push: boolean;
+    text: boolean;
+    email: boolean;
+};
+
+export type NotificationKind = 'action_announced' | 'action_reminders' | 'missed_deadline' | 'action_updates' | 'group_members_with_uncompleted_tasks' | 'contract_suspended' | 'comments_and_replies' | 'messages' | 'friend_requests' | 'friend_request_accepted' | 'likes' | 'group_member_joined' | 'member_joined_community' | 'community_assigned' | 'removed_from_community' | 'removed_from_community_for_leader' | 'member_left_community' | 'member_suspended_removed_from_community' | 'new_member_referred' | 'recruiting_goals' | 'community_invite_created' | 'community_invite_accepted' | 'community_invite_rejected' | 'community_invite_request_created' | 'community_invite_request_approved' | 'community_invite_request_rejected' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
+
+export type NotificationSection = 'actions' | 'groups' | 'forum_and_messages' | 'friends_and_likes';
+
+export type NotificationChannel = 'in_app' | 'text' | 'email' | 'push';
+
+export type NotificationCellDto = {
+    channel: NotificationChannel;
+    /**
+     * null follows the channel default
+     */
+    override: boolean | null;
+    /**
+     * Whether the member wants this cell now
+     */
+    enabled: boolean;
+    editable: boolean;
+};
+
+export type KindSettingsDto = {
+    kind: NotificationKind;
+    label: string;
+    section: NotificationSection;
+    required: boolean;
+    cells: Array<NotificationCellDto>;
+};
+
+export type ChannelReachabilityDto = {
+    /**
+     * A valid phone number is on file
+     */
+    textablePhoneNumber: boolean;
+    /**
+     * The number replied STOP
+     */
+    textStopped: boolean;
+};
+
+export type NotificationSettingsDto = {
+    defaults: ChannelDefaultsDto;
+    kinds: Array<KindSettingsDto>;
+    reachability: ChannelReachabilityDto;
+};
+
+export type UpdateChannelDefaultsDto = {
+    inApp?: boolean;
+    push?: boolean;
+    text?: boolean;
+    email?: boolean;
+};
+
+export type UpdateNotificationCellDto = {
+    kind: NotificationKind;
+    channel: NotificationChannel;
+    /**
+     * null removes the override so the cell follows the default
+     */
+    override: boolean | null;
+};
+
+export type UpdateNotificationSettingsDto = {
+    defaults?: UpdateChannelDefaultsDto;
+    cells?: Array<UpdateNotificationCellDto>;
 };
 
 export type ContractDescriptionItem = {
@@ -3346,8 +3376,6 @@ export type ReminderGroupDto = {
      */
     isMissedSuite: boolean;
 };
-
-export type NotificationChannel = 'text' | 'email' | 'push';
 
 export type PreviewNotificationPlanDto = {
     scheduledFor: string;
@@ -9394,6 +9422,50 @@ export type MessageGetMessagesResponses = {
 };
 
 export type MessageGetMessagesResponse = MessageGetMessagesResponses[keyof MessageGetMessagesResponses];
+
+export type NotificationSettingsGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/notification-settings';
+};
+
+export type NotificationSettingsGetErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type NotificationSettingsGetError = NotificationSettingsGetErrors[keyof NotificationSettingsGetErrors];
+
+export type NotificationSettingsGetResponses = {
+    200: NotificationSettingsDto;
+};
+
+export type NotificationSettingsGetResponse = NotificationSettingsGetResponses[keyof NotificationSettingsGetResponses];
+
+export type NotificationSettingsUpdateData = {
+    body: UpdateNotificationSettingsDto;
+    path?: never;
+    query?: never;
+    url: '/user/notification-settings';
+};
+
+export type NotificationSettingsUpdateErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type NotificationSettingsUpdateError = NotificationSettingsUpdateErrors[keyof NotificationSettingsUpdateErrors];
+
+export type NotificationSettingsUpdateResponses = {
+    200: NotificationSettingsDto;
+};
+
+export type NotificationSettingsUpdateResponse = NotificationSettingsUpdateResponses[keyof NotificationSettingsUpdateResponses];
 
 export type ContractGetCurrentData = {
     body?: never;

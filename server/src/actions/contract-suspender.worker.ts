@@ -7,13 +7,12 @@ import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { MailService } from "src/mail/mail.service";
 import { MmsService } from "src/mms/mms.service";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { suspensionMessage } from "src/notifs/textnotifcontents";
 import { PushService } from "src/push/push.service";
-import {
-  userActionNotifsEnabled_email,
-  userActionNotifsEnabled_push,
-  userActionNotifsEnabled_text,
-} from "src/user/user.utils";
+import { textReachable } from "src/user/user.utils";
 import { notifDeliveryEnabled } from "src/utils/notif-delivery";
 import { DataSource } from "typeorm";
 import { LOCK_KEYS } from "../notifs/lock-keys";
@@ -33,6 +32,7 @@ export class ContractSuspenderWorker {
     private readonly contractService: ContractService,
     private readonly eventLogService: EventLogService,
     private readonly pushService: PushService,
+    private readonly preferences: NotificationPreferencesService,
   ) {}
 
   @Cron("*/10 * * * *")
@@ -55,6 +55,10 @@ export class ContractSuspenderWorker {
             `Suspending contracts for user(s) ${candidates.map(({ user }) => user.id).join(", ")}`,
           );
         }
+        const preferences = await this.preferences.load({
+          userIds: candidates.map(({ user }) => user.id),
+          kinds: [NotificationKind.ContractSuspended],
+        });
 
         for (const { user, reasonKey } of candidates) {
           const suspension = await R.fromPromiseFn(() =>
@@ -85,12 +89,18 @@ export class ContractSuspenderWorker {
                 },
               }),
           );
-          if (userActionNotifsEnabled_text(user)) {
+          const wants = (channel: NotificationChannel) =>
+            preferences.wants({
+              userId: user.id,
+              kind: NotificationKind.ContractSuspended,
+              channel,
+            });
+          if (wants(NotificationChannel.Text) && textReachable(user)) {
             await this.sendBestEffort(
               `suspension text to user ${user.id}`,
               () =>
                 this.mmsService.sendMms({
-                  to: user.phoneNumber!,
+                  to: user.phoneNumber,
                   userId: user.id,
                   body: suspensionMessage,
                   mediaUrls: [],
@@ -98,7 +108,7 @@ export class ContractSuspenderWorker {
                 }),
             );
           }
-          if (userActionNotifsEnabled_push(user)) {
+          if (wants(NotificationChannel.Push)) {
             await this.sendBestEffort(
               `suspension push to user ${user.id}`,
               async () =>
@@ -112,7 +122,7 @@ export class ContractSuspenderWorker {
                 ),
             );
           }
-          if (userActionNotifsEnabled_email(user)) {
+          if (wants(NotificationChannel.Email)) {
             await this.sendBestEffort(
               `suspension email to user ${user.id}`,
               () =>

@@ -6,6 +6,7 @@ import { EventLogModule } from "src/eventlog/eventlog.module";
 import { FacepileModule } from "src/likes/facepile.module";
 import { MailModule } from "src/mail/mail.module";
 import { MmsModule } from "src/mms/mms.module";
+import { NotificationSettingsModule } from "src/notification-settings/notification-settings.module";
 import { NotifsModule } from "src/notifs/notifs.module";
 import { S3Module } from "src/s3/s3.module";
 import { UserModule } from "src/user/user.module";
@@ -38,6 +39,7 @@ import { LegacyDeletedFlagService } from "./legacy-deleted-flag.service";
     MailModule,
     MmsModule,
     forwardRef(() => NotifsModule),
+    NotificationSettingsModule,
     forwardRef(() => EventLogModule),
     forwardRef(() => UserModule),
     AiDetectionModule,

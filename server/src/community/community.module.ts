@@ -3,6 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { ImagesModule } from "src/images/images.module";
 import { MessagingModule } from "src/messaging/messaging.module";
 import { MmsModule } from "src/mms/mms.module";
+import { NotificationSettingsModule } from "src/notification-settings/notification-settings.module";
 import { NotifsModule } from "src/notifs/notifs.module";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
@@ -19,6 +20,7 @@ import { GroupJoinNotifsService } from "./group-join-notifs.service";
     forwardRef(() => MessagingModule),
     forwardRef(() => MmsModule),
     forwardRef(() => NotifsModule),
+    NotificationSettingsModule,
     forwardRef(() => UserModule),
   ],
   controllers: [CommunityController],

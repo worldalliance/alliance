@@ -23,10 +23,12 @@ import { Mail } from "src/mail/mail.entity";
 import { MailService } from "src/mail/mail.service";
 import { Mms } from "src/mms/mms.entity";
 import { MmsService } from "src/mms/mms.service";
+import { NotificationKind } from "src/notification-settings/notification-kind";
 import {
   UnreadContent,
   UnreadContentType,
 } from "src/notifs/entities/unread-content.entity";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { Push } from "src/push/push.entity";
 import { ContractEvent } from "src/user/entities/contract-event.entity";
 import { Tag } from "src/user/entities/tag.entity";
@@ -37,6 +39,7 @@ import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
   createTestApp,
   giveActiveContract,
+  setPreference,
   stubExpoClient,
   type TestContext,
 } from "./e2e-test-utils";
@@ -421,19 +424,40 @@ describe("action update recognition (e2e)", () => {
     expect(exposure.mms?.body).toMatch(/^Update: a hearing on the bill /);
   });
 
+  const turnOff = (userId: number, channels: NotificationChannel[]) =>
+    Promise.all(
+      channels.map((channel) =>
+        setPreference(ctx, {
+          userId,
+          kind: NotificationKind.ActionUpdates,
+          channel,
+          enabled: false,
+        }),
+      ),
+    );
+
   it.each([
     [
-      "with every channel off",
-      {
-        emailNotifsForActions: false,
-        textNotifsForActions: false,
-        pushesForActionUpdates: false,
-      },
+      "with every channel off by default",
+      (userId: number) =>
+        ctx.dataSource.getRepository(User).update(userId, {
+          emailByDefault: false,
+          textByDefault: false,
+          pushByDefault: false,
+        }),
     ],
-    ["who turned off all notifications", { turnedOffAllNotifs: true }],
-  ] as const)("reaches a member %s on no channel", async (_, settings) => {
+    [
+      "with every channel off for action updates",
+      (userId: number) =>
+        turnOff(userId, [
+          NotificationChannel.Push,
+          NotificationChannel.Text,
+          NotificationChannel.Email,
+        ]),
+    ],
+  ] as const)("reaches a member %s on no channel", async (_, setUp) => {
     const member = await createMember();
-    await ctx.dataSource.getRepository(User).update(member.id, settings);
+    await setUp(member.id);
     const id = await createUpdate();
     await notify(id).expect(200);
     await deliverAll();
@@ -449,6 +473,54 @@ describe("action update recognition (e2e)", () => {
         .countBy({ unreadContent: { id: exposure.unreadContentId ?? -1 } }),
     ).toBe(0);
     expect(exposure.unreadContent).not.toBeNull();
+  });
+
+  it.each([
+    NotificationChannel.Push,
+    NotificationChannel.Text,
+    NotificationChannel.Email,
+  ])(
+    "skips only %p when the member turned it off for action updates",
+    async (off) => {
+      const member = await createMember();
+      await turnOff(member.id, [off]);
+      const id = await createUpdate();
+      await notify(id).expect(200);
+      await deliverAll();
+
+      const exposure = await exposureOf(id, member.id);
+      const pushes = await ctx.dataSource
+        .getRepository(Push)
+        .countBy({ unreadContent: { id: exposure.unreadContentId ?? -1 } });
+      expect({
+        [NotificationChannel.Push]: pushes > 0,
+        [NotificationChannel.Text]: exposure.mms !== null,
+        [NotificationChannel.Email]: exposure.mail !== null,
+      }).toEqual({
+        [NotificationChannel.Push]: off !== NotificationChannel.Push,
+        [NotificationChannel.Text]: off !== NotificationChannel.Text,
+        [NotificationChannel.Email]: off !== NotificationChannel.Email,
+      });
+    },
+  );
+
+  it("reaches a member whose in-app entry is hidden by their setting", async () => {
+    const member = await createMember();
+    await turnOff(member.id, [NotificationChannel.InApp]);
+    const id = await createUpdate();
+    await notify(id).expect(200);
+    await deliverAll();
+
+    const exposure = await exposureOf(id, member.id);
+    expect(exposure.unreadContent?.visible).toBe(false);
+    expect(exposure.hiddenAt).toBeNull();
+    expect(exposure.mms).not.toBeNull();
+    expect(exposure.mail).not.toBeNull();
+    expect(
+      await ctx.dataSource
+        .getRepository(Push)
+        .countBy({ unreadContent: { id: exposure.unreadContentId ?? -1 } }),
+    ).toBeGreaterThan(0);
   });
 
   it("records a recipient who can't see the entry at delivery as hidden, and reaches them on no channel", async () => {

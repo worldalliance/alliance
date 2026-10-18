@@ -28,6 +28,7 @@ import {
 const PHYSICALLY_DELETED = [
   "AiDetectionResult",
   "Cluster",
+  "NotificationPreference",
   "RecentSearch",
   "SpentToken",
   "WaitlistBrowser",

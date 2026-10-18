@@ -6,12 +6,16 @@ import {
 } from "src/link-tracking/message-tracking.entity";
 import { MessagingModule } from "src/messaging/messaging.module";
 import { MmsService } from "src/mms/mms.service";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { NotifsService } from "src/notifs/notifs.service";
 import { NotifPushDispatcherWorker } from "src/push/notif-push-dispatcher.worker";
 import { UserDevice } from "src/user/entities/user-device.entity";
+import type { User } from "src/user/entities/user.entity";
 import { Not } from "typeorm";
-import { createTestApp, TestContext } from "./e2e-test-utils";
+import { createTestApp, setPreference, TestContext } from "./e2e-test-utils";
 import { GroupJoinFixtures } from "./group-join-fixtures";
 
 describe("Group join notifications: delivery (e2e)", () => {
@@ -25,6 +29,18 @@ describe("Group join notifications: delivery (e2e)", () => {
     communityService = ctx.app.get(CommunityService);
   }, 50000);
 
+  const setJoinNotice = (
+    user: User,
+    channel: NotificationChannel,
+    enabled: boolean,
+  ) =>
+    setPreference(ctx, {
+      userId: user.id,
+      kind: NotificationKind.GroupMemberJoined,
+      channel,
+      enabled,
+    });
+
   afterEach(async () => {
     jest.restoreAllMocks();
     await fx.cleanUp();
@@ -35,10 +51,7 @@ describe("Group join notifications: delivery (e2e)", () => {
   });
 
   it("names an anonymous joiner by their public name in the entry and the text", async () => {
-    const member = await fx.createUser({
-      textsForNewGroupMembers: true,
-      phoneNumber: "+14155550106",
-    });
+    const member = await fx.createUser({ phoneNumber: "+14155550106" });
     const group = await fx.createGroup({ leaders: [], members: [member] });
     const joiner = await fx.createUser({
       name: "Secret Realname",
@@ -53,35 +66,31 @@ describe("Group join notifications: delivery (e2e)", () => {
     expect(text.body).toMatch(new RegExp(`^Someone joined ${group.name}! `));
   });
 
-  it("texts only recipients who opted in with a usable, subscribed number, and keeps every in-app entry", async () => {
-    const texted = await fx.createUser({
-      textsForNewGroupMembers: true,
-      phoneNumber: "+14155550101",
-    });
+  it("texts only recipients who want it with a usable, subscribed number, and keeps every in-app entry", async () => {
+    const texted = await fx.createUser({ phoneNumber: "+14155550101" });
     const unsubscribed = await fx.createUser({
-      textsForNewGroupMembers: true,
       phoneNumber: "+14155550102",
       phoneNumberUnsubscribed: true,
     });
-    const optedOut = await fx.createUser({
-      textsForNewGroupMembers: true,
+    const defaultOff = await fx.createUser({
       phoneNumber: "+14155550103",
-      turnedOffAllNotifs: true,
+      textByDefault: false,
     });
-    const noPhone = await fx.createUser({ textsForNewGroupMembers: true });
-    const defaulted = await fx.createUser({ phoneNumber: "+14155550104" });
-    const actionTexts = await fx.createUser({
-      textsForNewGroupMembers: false,
-      textNotifsForActions: true,
-      phoneNumber: "+14155550105",
+    const noPhone = await fx.createUser();
+    const turnedOn = await fx.createUser({
+      phoneNumber: "+14155550104",
+      textByDefault: false,
     });
+    await setJoinNotice(turnedOn, NotificationChannel.Text, true);
+    const turnedOff = await fx.createUser({ phoneNumber: "+14155550105" });
+    await setJoinNotice(turnedOff, NotificationChannel.Text, false);
     const members = [
       texted,
       unsubscribed,
-      optedOut,
+      defaultOff,
       noPhone,
-      defaulted,
-      actionTexts,
+      turnedOn,
+      turnedOff,
     ];
     const group = await fx.createGroup({ leaders: [], members });
     const joiner = await fx.createUser({ name: "Tex Joiner" });
@@ -89,8 +98,11 @@ describe("Group join notifications: delivery (e2e)", () => {
     await communityService.joinPublicCommunity(joiner.id, group.id);
 
     expect((await fx.joinNotifs()).length).toBe(members.length);
-    const texts = await fx.mmsRepo.find();
-    expect(texts.map((mms) => mms.to)).toEqual([texted.phoneNumber]);
+    const texts = await fx.mmsRepo.find({ order: { to: "ASC" } });
+    expect(texts.map((mms) => mms.to)).toEqual([
+      texted.phoneNumber,
+      turnedOn.phoneNumber,
+    ]);
     expect(texts[0].body).toMatch(
       new RegExp(
         `^Tex Joiner joined ${group.name}! \\S*/groups\\?tab=members&communityId=${group.id}`,
@@ -112,12 +124,14 @@ describe("Group join notifications: delivery (e2e)", () => {
     });
   });
 
-  it("pushes per the new push setting and the overall opt-out, regardless of action-reminder push", async () => {
+  it("pushes per the kind's push setting, falling back to the push default", async () => {
     const pushed = await fx.createUser();
-    const pushOff = await fx.createUser({ pushesForNewGroupMembers: false });
-    const optedOut = await fx.createUser({ turnedOffAllNotifs: true });
-    const actionPushOff = await fx.createUser({ pushNotifsForActions: false });
-    const members = [pushed, pushOff, optedOut, actionPushOff];
+    const pushOff = await fx.createUser();
+    await setJoinNotice(pushOff, NotificationChannel.Push, false);
+    const defaultOff = await fx.createUser({ pushByDefault: false });
+    const pushOn = await fx.createUser({ pushByDefault: false });
+    await setJoinNotice(pushOn, NotificationChannel.Push, true);
+    const members = [pushed, pushOff, defaultOff, pushOn];
     const deviceRepo = ctx.dataSource.getRepository(UserDevice);
     const past = new Date(Date.now() - 60_000);
     for (const user of members) {
@@ -142,7 +156,7 @@ describe("Group join notifications: delivery (e2e)", () => {
       .findNotificationPushes("group-join-test");
 
     expect(messages.map((message) => message.userId).sort()).toEqual(
-      [pushed.id, actionPushOff.id].sort(),
+      [pushed.id, pushOn.id].sort(),
     );
   });
 
@@ -207,10 +221,7 @@ describe("Group join notifications: delivery (e2e)", () => {
   });
 
   it("keeps the join and its in-app entries when a text fails to send", async () => {
-    const member = await fx.createUser({
-      textsForNewGroupMembers: true,
-      phoneNumber: "+14155550106",
-    });
+    const member = await fx.createUser({ phoneNumber: "+14155550106" });
     const group = await fx.createGroup({ leaders: [], members: [member] });
     const joiner = await fx.createUser();
     jest
@@ -220,5 +231,33 @@ describe("Group join notifications: delivery (e2e)", () => {
     await communityService.joinPublicCommunity(joiner.id, group.id);
 
     expect((await fx.announcements()).get(member.id)).toEqual([joiner.id]);
+  });
+
+  it("keeps the join and its in-app entries and texts no one when the text settings fail to load", async () => {
+    const member = await fx.createUser({ phoneNumber: "+14155550108" });
+    const group = await fx.createGroup({ leaders: [], members: [member] });
+    const joiner = await fx.createUser();
+    const preferences = ctx.app.get(NotificationPreferencesService);
+    const notifs = ctx.app.get(NotifsService);
+    const load = preferences.load.bind(preferences);
+    const sendNotifs = notifs.sendNotifs.bind(notifs);
+    let saved = false;
+    jest.spyOn(preferences, "load").mockImplementation(async (params) => {
+      if (saved) throw new Error("db is down");
+      return load(params);
+    });
+    jest.spyOn(notifs, "sendNotifs").mockImplementation(async (rows) => {
+      const result = await sendNotifs(rows);
+      saved ||= rows.some(
+        (row) => row.category === NotificationCategory.GroupMemberJoined,
+      );
+      return result;
+    });
+    const sendMms = jest.spyOn(ctx.app.get(MmsService), "sendMms");
+
+    await communityService.joinPublicCommunity(joiner.id, group.id);
+
+    expect((await fx.announcements()).get(member.id)).toEqual([joiner.id]);
+    expect(sendMms).not.toHaveBeenCalled();
   });
 });

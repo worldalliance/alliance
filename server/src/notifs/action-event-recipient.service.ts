@@ -595,14 +595,7 @@ export class ActionEventRecipientService {
       )
     ).map((user) => user.id);
 
-    const leaders =
-      await this.communityService.findLeadersOfCommunitiesWithUsers(
-        uncompleted,
-      );
-
-    return leaders.filter(
-      (leader) => leader.remindAboutUncompletedGroupMembers,
-    );
+    return this.communityService.findLeadersOfCommunitiesWithUsers(uncompleted);
   }
 
   async findFilteredUsersForEvent(

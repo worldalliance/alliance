@@ -2,6 +2,7 @@ import type { FeedActionActivity } from "@alliance/common/actionActivity";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { lockForSave, softDeleteCascade } from "src/datasources/soft-delete";
+import { NotificationKind } from "src/notification-settings/notification-kind";
 import { ProfileDto } from "src/user/dto/user.dto";
 import { User } from "src/user/entities/user.entity";
 import {
@@ -99,9 +100,15 @@ export class LikeNotificationService {
     await this.notifRepository.manager.transaction(async (manager) => {
       await this.acquireGroupingKeyLocks(manager, compatibleGroupingKeys);
       const notifRepo = manager.getRepository(Notification);
+      const [visible] = await this.notifsService.inInbox(
+        [{ userId: owner.id, kind: NotificationKind.Likes }],
+        manager,
+      );
+      // `visible` is fixed when an entry is written, so a like joining an entry of the other visibility would show or hide it against the owner's current setting.
       const existingNotif = await this.findUnreadLocked(manager, {
         ownerId: owner.id,
         groupingKeys: compatibleGroupingKeys,
+        visible,
       });
 
       if (existingNotif) {
@@ -141,28 +148,31 @@ export class LikeNotificationService {
         targetContent,
         targetAction,
       });
-      const newNotif = this.notifsService.createNotif({
-        user: owner,
-        associatedUsers: [liker],
-        category: NotificationCategory.Likes,
-        message: likedBy(
-          {
-            segment: { type: SegmentType.Participant },
-            label: new ProfileDto(liker).displayName,
-          },
-          label,
-        ),
-        pluralMessage: likedByCount(
-          { segment: { type: SegmentType.Count }, label: "1" },
-          label,
-        ),
-        target: { type: likeContentTargetType[targetType], id: targetId },
-        destination: null,
-        targetContent,
-        webAppLocation,
-        groupingKey,
-        groupingCount: 1,
-      });
+      const newNotif = this.notifsService.buildNotif(
+        {
+          user: owner,
+          associatedUsers: [liker],
+          category: NotificationCategory.Likes,
+          message: likedBy(
+            {
+              segment: { type: SegmentType.Participant },
+              label: new ProfileDto(liker).displayName,
+            },
+            label,
+          ),
+          pluralMessage: likedByCount(
+            { segment: { type: SegmentType.Count }, label: "1" },
+            label,
+          ),
+          target: { type: likeContentTargetType[targetType], id: targetId },
+          destination: null,
+          targetContent,
+          webAppLocation,
+          groupingKey,
+          groupingCount: 1,
+        },
+        visible,
+      );
       await notifRepo.save(newNotif);
     });
   }
@@ -198,6 +208,7 @@ export class LikeNotificationService {
       const notif = await this.findUnreadLocked(manager, {
         ownerId,
         groupingKeys: compatibleGroupingKeys,
+        likerId: unlikerId,
       });
 
       if (!notif) {
@@ -232,7 +243,12 @@ export class LikeNotificationService {
   /** Re-read under {@link lockForSave}, which the caller's save needs. */
   private async findUnreadLocked(
     manager: EntityManager,
-    params: { ownerId: number; groupingKeys: string[] },
+    params: {
+      ownerId: number;
+      groupingKeys: string[];
+      visible?: boolean;
+      likerId?: number;
+    },
   ): Promise<Notification | null> {
     const notifRepo = manager.getRepository(Notification);
     const where: FindOptionsWhere<Notification> = {
@@ -240,10 +256,16 @@ export class LikeNotificationService {
       groupingKey: In(params.groupingKeys),
       category: NotificationCategory.Likes,
       readAt: IsNull(),
+      visible: params.visible,
     };
+    // Entries can split by visibility, so an unlike targets the one its liker joined.
     const found = await notifRepo.findOne({
       select: { id: true, createdAt: true },
-      where,
+      where: {
+        ...where,
+        associatedUsers:
+          params.likerId === undefined ? undefined : { id: params.likerId },
+      },
       order: { createdAt: "ASC", id: "ASC" },
     });
     if (!found) return null;

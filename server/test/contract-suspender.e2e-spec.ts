@@ -10,6 +10,10 @@ import { ActionSuite } from "src/actions/entities/action-suite.entity";
 import { Action } from "src/actions/entities/action.entity";
 import { ContractService } from "src/contract/contract.service";
 import { EventLogService } from "src/eventlog/eventlog.service";
+import { EmailType, Mail } from "src/mail/mail.entity";
+import { Mms } from "src/mms/mms.entity";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { suspensionMessage } from "src/notifs/textnotifcontents";
 import { Push } from "src/push/push.entity";
 import {
@@ -20,7 +24,12 @@ import { UserDevice } from "src/user/entities/user-device.entity";
 import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
-import { createTestApp, stubExpoClient, TestContext } from "./e2e-test-utils";
+import {
+  createTestApp,
+  setPreference,
+  stubExpoClient,
+  TestContext,
+} from "./e2e-test-utils";
 
 describe("ContractSuspenderWorker (e2e)", () => {
   let ctx: TestContext;
@@ -28,8 +37,9 @@ describe("ContractSuspenderWorker (e2e)", () => {
   beforeAll(async () => {
     process.env.SEND_DEV_NOTIFS = "1";
     ctx = await createTestApp([]);
-    stubExpoClient(ctx);
   });
+
+  beforeEach(() => stubExpoClient(ctx));
 
   afterAll(async () => {
     await ctx.app.close();
@@ -54,9 +64,9 @@ describe("ContractSuspenderWorker (e2e)", () => {
       ],
     });
     await ctx.dataSource.getRepository(User).update(member.id, {
-      emailNotifsForActions: false,
-      textNotifsForActions: false,
-      pushNotifsForActions: pushOn,
+      emailByDefault: false,
+      textByDefault: false,
+      pushByDefault: pushOn,
     });
     const deviceRepo = ctx.dataSource.getRepository(UserDevice);
     const expoPushToken = `ExponentPushToken[suspension_${label}]`;
@@ -109,12 +119,18 @@ describe("ContractSuspenderWorker (e2e)", () => {
     },
     { pushOn: false, pushed: [] },
   ])(
-    "pushes the suspension notice only with push on: $pushOn",
+    "pushes the suspension notice by the push default past an Off override: $pushOn",
     async ({ pushOn, pushed }) => {
       const { member, expoPushToken } = await suspendable(
         `push-${pushOn}`,
         pushOn,
       );
+      await setPreference(ctx, {
+        userId: member.id,
+        kind: NotificationKind.ContractSuspended,
+        channel: NotificationChannel.Push,
+        enabled: false,
+      });
 
       await ctx.app.get(ContractSuspenderWorker).processSuspensions();
 
@@ -130,6 +146,64 @@ describe("ContractSuspenderWorker (e2e)", () => {
       expect(pushes.map(({ body, screen }) => ({ body, screen }))).toEqual(
         pushed,
       );
+    },
+  );
+
+  it.each([
+    { textOn: true, unsubscribed: false, texted: 1, phone: "+14155550190" },
+    { textOn: false, unsubscribed: false, texted: 0, phone: "+14155550191" },
+    { textOn: true, unsubscribed: true, texted: 0, phone: "+14155550192" },
+  ])(
+    "texts the notice by the text default past an Off override, and never a stopped number: $textOn, stopped $unsubscribed",
+    async ({ textOn, unsubscribed, texted, phone }) => {
+      const { member } = await suspendable(`text-${phone}`, false);
+      await ctx.dataSource.getRepository(User).update(member.id, {
+        textByDefault: textOn,
+        phoneNumber: phone,
+        phoneNumberUnsubscribed: unsubscribed,
+      });
+      await setPreference(ctx, {
+        userId: member.id,
+        kind: NotificationKind.ContractSuspended,
+        channel: NotificationChannel.Text,
+        enabled: false,
+      });
+
+      await ctx.app.get(ContractSuspenderWorker).processSuspensions();
+
+      expect(
+        await ctx.dataSource
+          .getRepository(Mms)
+          .countBy({ to: phone, body: suspensionMessage }),
+      ).toBe(texted);
+    },
+  );
+
+  it.each([
+    { emailOn: true, mailed: 1 },
+    { emailOn: false, mailed: 0 },
+  ])(
+    "emails the notice by the email default past an Off override: $emailOn",
+    async ({ emailOn, mailed }) => {
+      const { member } = await suspendable(`email-${emailOn}`, false);
+      await ctx.dataSource
+        .getRepository(User)
+        .update(member.id, { emailByDefault: emailOn });
+      await setPreference(ctx, {
+        userId: member.id,
+        kind: NotificationKind.ContractSuspended,
+        channel: NotificationChannel.Email,
+        enabled: false,
+      });
+
+      await ctx.app.get(ContractSuspenderWorker).processSuspensions();
+
+      expect(
+        await ctx.dataSource.getRepository(Mail).countBy({
+          to: member.email,
+          emailType: EmailType.ContractSuspended,
+        }),
+      ).toBe(mailed);
     },
   );
 

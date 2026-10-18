@@ -31,7 +31,7 @@ describe("Admin reminder readers name the member event's action (e2e)", () => {
     ctx = await createTestApp([AnalyticsModule]);
     const now = Date.now();
     await ctx.dataSource.getRepository(User).update(ctx.testUserId, {
-      textNotifsForActions: true,
+      textByDefault: true,
       phoneNumber: "+14155550100",
     });
     await ctx.dataSource.getRepository(ContractEvent).save({

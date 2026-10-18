@@ -3,8 +3,10 @@ import * as softDelete from "src/datasources/soft-delete";
 import { ImagesService } from "src/images/images.service";
 import { CommunityConversationService } from "src/messaging/community-conversation.service";
 import { MmsService } from "src/mms/mms.service";
+import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import { notifMessage, SegmentType } from "src/notifs/notification-content";
+import { NotificationInboxService } from "src/notifs/notification-inbox.service";
 import {
   NotifsService,
   type CreateNotifParams,
@@ -148,6 +150,7 @@ describe("CommunityService", () => {
     groupJoinNotifsService = new GroupJoinNotifsService(
       {} as NotifsService,
       {} as MmsService,
+      {} as NotificationPreferencesService,
     );
     jest.spyOn(groupJoinNotifsService, "notify").mockResolvedValue();
 
@@ -159,6 +162,7 @@ describe("CommunityService", () => {
       {} as ImagesService,
       notifsService,
       groupJoinNotifsService,
+      {} as NotificationInboxService,
     );
   });
 

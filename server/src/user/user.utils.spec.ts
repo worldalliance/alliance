@@ -1,237 +1,31 @@
 import { Campaign } from "src/campaign/entities/campaign.entity";
-import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import { User } from "./entities/user.entity";
-import {
-  newGroupMemberTextsEnabled,
-  notificationPushesEnabled,
-  referralLabel,
-  userActionNotifsEnabled_email,
-  userActionNotifsEnabled_push,
-  userActionNotifsEnabled_text,
-} from "./user.utils";
+import { referralLabel, textReachable } from "./user.utils";
 
-type EmailUser = Parameters<typeof userActionNotifsEnabled_email>[0];
-type TextUser = Parameters<typeof userActionNotifsEnabled_text>[0];
-type PushUser = Parameters<typeof userActionNotifsEnabled_push>[0];
-type CategoryPushUser = Parameters<typeof notificationPushesEnabled>[0];
-type GroupJoinTextUser = Parameters<typeof newGroupMemberTextsEnabled>[0];
-
-function emailUser(overrides: Partial<EmailUser> = {}): EmailUser {
-  return {
-    emailNotifsForActions: true,
-    turnedOffAllNotifs: false,
-    hasActiveContract: true,
-    ...overrides,
-  };
-}
-
-function textUser(overrides: Partial<TextUser> = {}): TextUser {
-  return {
-    textNotifsForActions: true,
-    turnedOffAllNotifs: false,
-    phoneNumber: "+14155552671",
-    hasActiveContract: true,
-    phoneNumberUnsubscribed: false,
-    ...overrides,
-  };
-}
-
-function pushUser(overrides: Partial<PushUser> = {}): PushUser {
-  return {
-    turnedOffAllNotifs: false,
-    pushNotifsForActions: true,
-    ...overrides,
-  };
-}
-
-function categoryPushUser(
-  overrides: Partial<CategoryPushUser> = {},
-): CategoryPushUser {
-  return {
-    turnedOffAllNotifs: false,
-    pushesForActionUpdates: true,
-    pushesForComments: true,
-    pushesForFriendRequests: true,
-    pushesForLikes: true,
-    pushesForNewGroupMembers: true,
-    ...overrides,
-  };
-}
-
-function groupJoinTextUser(
-  overrides: Partial<GroupJoinTextUser> = {},
-): GroupJoinTextUser {
-  return {
-    textsForNewGroupMembers: true,
-    turnedOffAllNotifs: false,
+describe("textReachable", () => {
+  const reachable = {
     phoneNumber: "+14155552671",
     phoneNumberUnsubscribed: false,
-    ...overrides,
   };
-}
 
-describe("userActionNotifsEnabled_email", () => {
-  it("is enabled when opted in with an active contract", () => {
-    expect(userActionNotifsEnabled_email(emailUser())).toBe(true);
+  it("reaches a canonical, subscribed phone number", () => {
+    expect(textReachable(reachable)).toBe(true);
   });
 
-  it("is disabled when email notifs for actions are off", () => {
-    expect(
-      userActionNotifsEnabled_email(
-        emailUser({ emailNotifsForActions: false }),
-      ),
-    ).toBe(false);
+  it("can't reach a member without a phone number", () => {
+    expect(textReachable({ ...reachable, phoneNumber: null })).toBe(false);
   });
 
-  it("is disabled when all notifs are turned off", () => {
-    expect(
-      userActionNotifsEnabled_email(emailUser({ turnedOffAllNotifs: true })),
-    ).toBe(false);
+  it("can't reach an invalid or non-canonical phone number", () => {
+    for (const phoneNumber of ["not-a-phone", "15550100", "(415) 555-2671"]) {
+      expect(textReachable({ ...reachable, phoneNumber })).toBe(false);
+    }
   });
 
-  it("is disabled without an active contract", () => {
-    expect(
-      userActionNotifsEnabled_email(emailUser({ hasActiveContract: false })),
-    ).toBe(false);
-  });
-});
-
-describe("userActionNotifsEnabled_text", () => {
-  it("is enabled when opted in with a canonical, subscribed phone and active contract", () => {
-    expect(userActionNotifsEnabled_text(textUser())).toBe(true);
-  });
-
-  it("is disabled when text notifs for actions are off", () => {
-    expect(
-      userActionNotifsEnabled_text(textUser({ textNotifsForActions: false })),
-    ).toBe(false);
-  });
-
-  it("is disabled when all notifs are turned off", () => {
-    expect(
-      userActionNotifsEnabled_text(textUser({ turnedOffAllNotifs: true })),
-    ).toBe(false);
-  });
-
-  it("is disabled without a phone number", () => {
-    expect(userActionNotifsEnabled_text(textUser({ phoneNumber: null }))).toBe(
+  it("can't reach a number that replied STOP", () => {
+    expect(textReachable({ ...reachable, phoneNumberUnsubscribed: true })).toBe(
       false,
     );
-  });
-
-  it("is disabled without an active contract", () => {
-    expect(
-      userActionNotifsEnabled_text(textUser({ hasActiveContract: false })),
-    ).toBe(false);
-  });
-
-  it("is disabled when the phone number is invalid or not canonical", () => {
-    for (const phoneNumber of ["not-a-phone", "15550100", "(415) 555-2671"]) {
-      expect(userActionNotifsEnabled_text(textUser({ phoneNumber }))).toBe(
-        false,
-      );
-    }
-  });
-
-  it("is disabled when the phone number is unsubscribed", () => {
-    expect(
-      userActionNotifsEnabled_text(textUser({ phoneNumberUnsubscribed: true })),
-    ).toBe(false);
-  });
-});
-
-describe("userActionNotifsEnabled_push", () => {
-  it("is enabled when opted in", () => {
-    expect(userActionNotifsEnabled_push(pushUser())).toBe(true);
-  });
-
-  it("is disabled when push notifs for actions are off", () => {
-    expect(
-      userActionNotifsEnabled_push(pushUser({ pushNotifsForActions: false })),
-    ).toBe(false);
-  });
-
-  it("is disabled when all notifs are turned off", () => {
-    expect(
-      userActionNotifsEnabled_push(pushUser({ turnedOffAllNotifs: true })),
-    ).toBe(false);
-  });
-});
-
-describe("notificationPushesEnabled", () => {
-  it.each(Object.values(NotificationCategory))(
-    "pushes %s when every preference is on",
-    (category) => {
-      expect(notificationPushesEnabled(categoryPushUser(), category)).toBe(
-        true,
-      );
-    },
-  );
-
-  it.each([
-    [NotificationCategory.ActionUpdate, "pushesForActionUpdates"],
-    [NotificationCategory.ForumReply, "pushesForComments"],
-    [NotificationCategory.FriendRequest, "pushesForFriendRequests"],
-    [NotificationCategory.FriendRequestAccepted, "pushesForFriendRequests"],
-    [NotificationCategory.Likes, "pushesForLikes"],
-    [NotificationCategory.GroupMemberJoined, "pushesForNewGroupMembers"],
-  ] as const)("doesn't push %s with %s off", (category, preference) => {
-    expect(
-      notificationPushesEnabled(
-        categoryPushUser({ [preference]: false }),
-        category,
-      ),
-    ).toBe(false);
-  });
-
-  it.each(Object.values(NotificationCategory))(
-    "doesn't push %s when all notifs are turned off",
-    (category) => {
-      expect(
-        notificationPushesEnabled(
-          categoryPushUser({ turnedOffAllNotifs: true }),
-          category,
-        ),
-      ).toBe(false);
-    },
-  );
-});
-
-describe("newGroupMemberTextsEnabled", () => {
-  it("is enabled when opted in with a canonical, subscribed phone", () => {
-    expect(newGroupMemberTextsEnabled(groupJoinTextUser())).toBe(true);
-  });
-
-  it("is disabled when texts for new group members are off", () => {
-    expect(
-      newGroupMemberTextsEnabled(
-        groupJoinTextUser({ textsForNewGroupMembers: false }),
-      ),
-    ).toBe(false);
-  });
-
-  it("is disabled when all notifs are turned off", () => {
-    expect(
-      newGroupMemberTextsEnabled(
-        groupJoinTextUser({ turnedOffAllNotifs: true }),
-      ),
-    ).toBe(false);
-  });
-
-  it("is disabled without a usable phone number", () => {
-    for (const phoneNumber of [null, "not-a-phone", "(415) 555-2671"]) {
-      expect(
-        newGroupMemberTextsEnabled(groupJoinTextUser({ phoneNumber })),
-      ).toBe(false);
-    }
-  });
-
-  it("is disabled when the phone number is unsubscribed", () => {
-    expect(
-      newGroupMemberTextsEnabled(
-        groupJoinTextUser({ phoneNumberUnsubscribed: true }),
-      ),
-    ).toBe(false);
   });
 });
 

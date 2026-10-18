@@ -234,24 +234,17 @@ export class UserDto extends PickType(User, [
   "staff",
   "ambassador",
   "id",
-  "emailNotifsForActions",
-  "pushNotifsForActions",
-  "textNotifsForActions",
+  "inAppByDefault",
+  "pushByDefault",
+  "textByDefault",
+  "emailByDefault",
   "profileDescription",
   "switchedDomainAt",
-  "turnedOffAllNotifs",
   "referralCode",
   "referralSource",
   "referredById",
   "referredByCampaignId",
   "anonymous",
-  "pushesForLikes",
-  "pushesForComments",
-  "pushesForFriendRequests",
-  "pushesForMessages",
-  "pushesForActionUpdates",
-  "pushesForNewGroupMembers",
-  "textsForNewGroupMembers",
   "phoneNumber",
   "communities",
   "profilePicture",
@@ -260,13 +253,11 @@ export class UserDto extends PickType(User, [
   "shareEmailWithCommunityLead",
   "sharePhoneNumberWithCommunityLead",
   "preferredReminderTime",
-  "remindAboutUncompletedGroupMembers",
   "timeZone",
   "formDataPreference",
   "shareInfoPublicly",
   "customCityString",
   "undergoingGroupAssignment",
-  "receiveReplyNotifications",
   "tags",
   "clusterId",
 ]) {
@@ -309,13 +300,13 @@ export class UserDto extends PickType(User, [
     this.phoneNumber = user.phoneNumber;
     this.preferredReminderTime = user.preferredReminderTime;
     this.timeZone = user.timeZone;
-    this.emailNotifsForActions = user.emailNotifsForActions;
-    this.textNotifsForActions = user.textNotifsForActions;
-    this.pushNotifsForActions = user.pushNotifsForActions;
+    this.inAppByDefault = user.inAppByDefault;
+    this.pushByDefault = user.pushByDefault;
+    this.textByDefault = user.textByDefault;
+    this.emailByDefault = user.emailByDefault;
     this.shareEmailWithCommunityLead = user.shareEmailWithCommunityLead;
     this.sharePhoneNumberWithCommunityLead =
       user.sharePhoneNumberWithCommunityLead;
-    this.turnedOffAllNotifs = user.turnedOffAllNotifs;
     this.switchedDomainAt = user.switchedDomainAt;
     this.admin = user.admin;
     this.staff = user.staff;
@@ -327,17 +318,7 @@ export class UserDto extends PickType(User, [
     this.anonymous = user.anonymous;
     this.shareInfoPublicly = user.shareInfoPublicly;
     this.formDataPreference = user.formDataPreference;
-    this.pushesForLikes = user.pushesForLikes;
-    this.pushesForComments = user.pushesForComments;
-    this.pushesForFriendRequests = user.pushesForFriendRequests;
-    this.pushesForMessages = user.pushesForMessages;
-    this.pushesForActionUpdates = user.pushesForActionUpdates;
-    this.pushesForNewGroupMembers = user.pushesForNewGroupMembers;
-    this.textsForNewGroupMembers = user.textsForNewGroupMembers;
     this.undergoingGroupAssignment = user.undergoingGroupAssignment;
-    this.remindAboutUncompletedGroupMembers =
-      user.remindAboutUncompletedGroupMembers;
-    this.receiveReplyNotifications = user.receiveReplyNotifications;
     this.contractEvents = user.contractEvents?.map(
       (event) => new ContractEventDto(event),
     );
@@ -532,22 +513,10 @@ function humanizeReferralSource(source: ReferralSource) {
 export class UpdateProfileDto extends PartialType(
   PickType(User, [
     "anonymous",
-    "emailNotifsForActions",
-    "pushNotifsForActions",
-    "textNotifsForActions",
     "shareEmailWithCommunityLead",
-    "remindAboutUncompletedGroupMembers",
-    "receiveReplyNotifications",
     "sharePhoneNumberWithCommunityLead",
     "formDataPreference",
     "shareInfoPublicly",
-    "pushesForLikes",
-    "pushesForComments",
-    "pushesForFriendRequests",
-    "pushesForMessages",
-    "pushesForActionUpdates",
-    "pushesForNewGroupMembers",
-    "textsForNewGroupMembers",
   ]),
 ) {
   @IsOptional()

@@ -26,9 +26,12 @@ import {
   MessageTracking,
 } from "src/link-tracking/message-tracking.entity";
 import { MmsService } from "src/mms/mms.service";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import { NotificationPreference } from "src/notification-settings/notification-preference.entity";
 import { ActionEventNotifWorker } from "src/notifs/action-event-notif.worker";
 import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
 import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { ReminderGroupService } from "src/notifs/reminder-group.service";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
@@ -51,6 +54,7 @@ import { saveLiveCohortDecisions } from "./cohort-decision-fixtures";
 import {
   createFormWithSnapshot,
   createTestApp,
+  setPreference,
   TestContext,
 } from "./e2e-test-utils";
 
@@ -152,9 +156,8 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
   const resetPrimaryUser = async () => {
     await userRepo.update(ctx.testUserId, {
-      turnedOffAllNotifs: false,
-      emailNotifsForActions: false,
-      textNotifsForActions: true,
+      emailByDefault: false,
+      textByDefault: true,
       phoneNumber: "+14155550100",
       name: "Reminder Tester",
     });
@@ -268,6 +271,9 @@ describe("ActionEventNotifWorker (e2e)", () => {
     await actionSuiteRepo.query("DELETE FROM action_suite");
     await formResponseRepo.query("DELETE FROM form_response");
     await formRepo.query("DELETE FROM form");
+    await ctx.dataSource
+      .getRepository(NotificationPreference)
+      .delete({ userId: ctx.testUserId });
     await resetPrimaryUser();
   });
 
@@ -302,9 +308,40 @@ describe("ActionEventNotifWorker (e2e)", () => {
     expect(notifs[0].mms).toBeTruthy();
   });
 
+  it.each([
+    { off: NotificationKind.ActionReminders, texted: false },
+    { off: NotificationKind.MissedDeadline, texted: true },
+  ])(
+    "texts a reminder by its Action reminders setting, with $off text off",
+    async ({ off, texted }) => {
+      const now = Date.now();
+      await setPreference(ctx, {
+        userId: ctx.testUserId,
+        kind: off,
+        channel: NotificationChannel.Text,
+        enabled: false,
+      });
+      const { memberEvent } = await createActionWithMemberEvent({
+        name: uniqueName("reminder-kind-action"),
+        eventDate: new Date(now - milliseconds({ hours: 1 })),
+      });
+      const reminderGroup = await createReminderGroup(
+        memberEvent,
+        ReminderGroupTimingMode.Absolute,
+        ReminderCohortType.AllUncompleted,
+        { sendAtAbsolute: new Date(now - milliseconds({ minutes: 5 })) },
+      );
+
+      await dispatch();
+
+      const [notif] = await fetchNotifsForGroup(reminderGroup);
+      expect(Boolean(notif?.mms)).toBe(texted);
+    },
+  );
+
   it("tracks a reminder's email and text apart, with its context", async () => {
     const now = Date.now();
-    await userRepo.update(ctx.testUserId, { emailNotifsForActions: true });
+    await userRepo.update(ctx.testUserId, { emailByDefault: true });
     const { action, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName("tracked-action"),
       eventDate: new Date(now - milliseconds({ hours: 1 })),
@@ -786,9 +823,9 @@ describe("ActionEventNotifWorker (e2e)", () => {
             automatic: false,
           } as ContractEvent,
         ],
-        textNotifsForActions: true,
+        textByDefault: true,
         phoneNumber: "+14155550201",
-        emailNotifsForActions: false,
+        emailByDefault: false,
       }),
     );
     const suspendedUserWithTags = await userRepo.findOneOrFail({
@@ -853,9 +890,9 @@ describe("ActionEventNotifWorker (e2e)", () => {
             contractId: ctx.defaultContractId,
           } as ContractEvent,
         ],
-        textNotifsForActions: true,
+        textByDefault: true,
         phoneNumber: "+14155550202",
-        emailNotifsForActions: false,
+        emailByDefault: false,
       }),
     );
     await awayRangeRepo.save(
@@ -924,9 +961,9 @@ describe("ActionEventNotifWorker (e2e)", () => {
             contractId: ctx.defaultContractId,
           } as ContractEvent,
         ],
-        textNotifsForActions: true,
+        textByDefault: true,
         phoneNumber: "+14155550203",
-        emailNotifsForActions: false,
+        emailByDefault: false,
       }),
     );
     await awayRangeRepo.save(
@@ -998,9 +1035,9 @@ describe("ActionEventNotifWorker (e2e)", () => {
             contractId: ctx.defaultContractId,
           } as ContractEvent,
         ],
-        textNotifsForActions: true,
+        textByDefault: true,
         phoneNumber: "+14155550200",
-        emailNotifsForActions: false,
+        emailByDefault: false,
       }),
     );
     const customUserWithTags = await userRepo.findOneOrFail({
@@ -1055,9 +1092,9 @@ describe("ActionEventNotifWorker (e2e)", () => {
             contractId: ctx.defaultContractId,
           } as ContractEvent,
         ],
-        textNotifsForActions: true,
+        textByDefault: true,
         phoneNumber: "+14155550300",
-        emailNotifsForActions: false,
+        emailByDefault: false,
       }),
     );
     const cohortUserWithTags = await userRepo.findOneOrFail({
@@ -1606,19 +1643,16 @@ describe("ActionEventNotifWorker (e2e)", () => {
               contractId: ctx.defaultContractId,
             } as ContractEvent,
           ],
-          textNotifsForActions: true,
+          textByDefault: true,
           phoneNumber: `+1415555${phoneSuffix}`,
-          emailNotifsForActions: false,
-          turnedOffAllNotifs: false,
+          emailByDefault: false,
           ...overrides,
         }),
       );
 
-    const leader = await createSignedUser("Leader Also Member", "6301", {
-      remindAboutUncompletedGroupMembers: true,
-    });
+    const leader = await createSignedUser("Leader Also Member", "6301", {});
     const member = await createSignedUser("Member Behind", "6302", {
-      textNotifsForActions: false,
+      textByDefault: false,
     });
     const community = await communityRepo.save(
       communityRepo.create({
@@ -2367,10 +2401,9 @@ describe("ActionEventNotifWorker (e2e)", () => {
               contractId: ctx.defaultContractId,
             } as ContractEvent,
           ],
-          textNotifsForActions: true,
+          textByDefault: true,
           phoneNumber: `+1415555${phoneSuffix}`,
-          emailNotifsForActions: false,
-          turnedOffAllNotifs: false,
+          emailByDefault: false,
         }),
       );
 
@@ -2468,10 +2501,9 @@ describe("ActionEventNotifWorker (e2e)", () => {
             contractId: ctx.defaultContractId,
           } as ContractEvent,
         ],
-        textNotifsForActions: true,
+        textByDefault: true,
         phoneNumber: "+14155552005",
-        emailNotifsForActions: false,
-        turnedOffAllNotifs: false,
+        emailByDefault: false,
       }),
     );
 
@@ -2548,20 +2580,15 @@ describe("ActionEventNotifWorker (e2e)", () => {
               contractId: ctx.defaultContractId,
             } as ContractEvent,
           ],
-          textNotifsForActions: true,
+          textByDefault: true,
           phoneNumber: `+1415555${phoneSuffix}`,
-          emailNotifsForActions: false,
-          turnedOffAllNotifs: false,
+          emailByDefault: false,
           ...overrides,
         }),
       );
 
-    const leaderWithGaps = await createSignedUser("Lead With Gaps", "6101", {
-      remindAboutUncompletedGroupMembers: true,
-    });
-    const leaderComplete = await createSignedUser("Lead Complete", "6102", {
-      remindAboutUncompletedGroupMembers: true,
-    });
+    const leaderWithGaps = await createSignedUser("Lead With Gaps", "6101", {});
+    const leaderComplete = await createSignedUser("Lead Complete", "6102", {});
 
     const communityWithGaps = await communityRepo.save(
       communityRepo.create({
@@ -2586,7 +2613,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       "6103",
       {
         communities: [communityWithGaps],
-        textNotifsForActions: false,
+        textByDefault: false,
       },
     );
 
@@ -2595,7 +2622,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       "6104",
       {
         communities: [communityWithGaps],
-        textNotifsForActions: false,
+        textByDefault: false,
       },
     );
 
@@ -2604,7 +2631,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       "6105",
       {
         communities: [communityComplete],
-        textNotifsForActions: false,
+        textByDefault: false,
       },
     );
 
@@ -2613,7 +2640,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
       "6106",
       {
         communities: [communityComplete],
-        textNotifsForActions: false,
+        textByDefault: false,
       },
     );
 
@@ -2735,19 +2762,16 @@ describe("ActionEventNotifWorker (e2e)", () => {
               contractId: ctx.defaultContractId,
             } as ContractEvent,
           ],
-          textNotifsForActions: true,
+          textByDefault: true,
           phoneNumber: `+1415555${phoneSuffix}`,
-          emailNotifsForActions: false,
-          turnedOffAllNotifs: false,
+          emailByDefault: false,
           ...overrides,
         }),
       );
 
-    const leader = await createSignedUser("Leader Count", "6201", {
-      remindAboutUncompletedGroupMembers: true,
-    });
+    const leader = await createSignedUser("Leader Count", "6201", {});
     const member = await createSignedUser("Member Count", "6202", {
-      textNotifsForActions: false,
+      textByDefault: false,
     });
 
     const community = await communityRepo.save(
@@ -2797,9 +2821,18 @@ describe("ActionEventNotifWorker (e2e)", () => {
 
     expect(leaderText).toBe("Leaders need to help 1 members.");
 
-    await userRepo.update(leader.id, {
-      remindAboutUncompletedGroupMembers: false,
-    });
+    for (const channel of [
+      NotificationChannel.Push,
+      NotificationChannel.Text,
+      NotificationChannel.Email,
+    ]) {
+      await setPreference(ctx, {
+        userId: leader.id,
+        kind: NotificationKind.GroupMembersWithUncompletedTasks,
+        channel,
+        enabled: false,
+      });
+    }
 
     const reminderGroupNoLeader = await createReminderGroup(
       memberEvent,
@@ -2817,7 +2850,8 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const notifsWithoutLeader = await fetchNotifsForGroup(
       reminderGroupNoLeader,
     );
-    expect(notifsWithoutLeader).toHaveLength(0);
+    expect(notifsWithoutLeader.map((notif) => notif.sent)).toEqual([false]);
+    expect(notifsWithoutLeader[0].mms).toBeNull();
 
     await userRepo.delete([leader.id, member.id]);
     await communityRepo.delete({ id: community.id });
@@ -3030,7 +3064,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
         password: "pass",
         name: "Non Completer",
         tags: [ctx.defaultTag],
-        textNotifsForActions: true,
+        textByDefault: true,
         phoneNumber: "+14155550200",
       }),
     );
@@ -3089,7 +3123,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
         password: "pass",
         name: "Non Leader",
         tags: [ctx.defaultTag],
-        textNotifsForActions: true,
+        textByDefault: true,
         phoneNumber: "+14155550201",
       }),
     );
@@ -3167,7 +3201,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
         password: "pass",
         name: "Non Responder",
         tags: [ctx.defaultTag],
-        textNotifsForActions: true,
+        textByDefault: true,
         phoneNumber: "+14155550202",
       }),
     );
@@ -3247,10 +3281,9 @@ describe("ActionEventNotifWorker (e2e)", () => {
             contractId: ctx.defaultContractId,
           } as ContractEvent,
         ],
-        textNotifsForActions: true,
+        textByDefault: true,
         phoneNumber: "+14155553001",
-        emailNotifsForActions: false,
-        turnedOffAllNotifs: false,
+        emailByDefault: false,
       }),
     );
 
@@ -3328,10 +3361,9 @@ describe("ActionEventNotifWorker (e2e)", () => {
               contractId: ctx.defaultContractId,
             } as ContractEvent,
           ],
-          textNotifsForActions: true,
+          textByDefault: true,
           phoneNumber: `+1415555${phoneSuffix}`,
-          emailNotifsForActions: false,
-          turnedOffAllNotifs: false,
+          emailByDefault: false,
         }),
       );
 
@@ -3425,10 +3457,9 @@ describe("ActionEventNotifWorker (e2e)", () => {
               contractId: ctx.defaultContractId,
             } as ContractEvent,
           ],
-          textNotifsForActions: true,
+          textByDefault: true,
           phoneNumber: `+1415555${phoneSuffix}`,
-          emailNotifsForActions: false,
-          turnedOffAllNotifs: false,
+          emailByDefault: false,
           ...overrides,
         }),
       );
@@ -3437,13 +3468,15 @@ describe("ActionEventNotifWorker (e2e)", () => {
     const leaderAllRequiredDone = await createSignedUser(
       "Leader All Req Done",
       "4101",
-      { remindAboutUncompletedGroupMembers: true },
+      {},
     );
 
     // Leader of a community where members haven't completed required
-    const leaderWithGaps = await createSignedUser("Leader With Gaps", "4102", {
-      remindAboutUncompletedGroupMembers: true,
-    });
+    const leaderWithGaps = await createSignedUser(
+      "Leader With Gaps",
+      "4102",
+      {},
+    );
 
     const communityAllReqDone = await communityRepo.save(
       communityRepo.create({
@@ -3466,7 +3499,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     // Member who completed required but NOT optional
     const memberReqDone = await createSignedUser("Member Req Done", "4103", {
       communities: [communityAllReqDone],
-      textNotifsForActions: false,
+      textByDefault: false,
     });
     await recordCompletion(memberReqDone, requiredAction);
     // Deliberately not completing optionalAction
@@ -3476,7 +3509,7 @@ describe("ActionEventNotifWorker (e2e)", () => {
     // Member who hasn't completed required
     const memberNoReq = await createSignedUser("Member No Req", "4104", {
       communities: [communityWithGaps],
-      textNotifsForActions: false,
+      textByDefault: false,
     });
     await recordCompletion(leaderWithGaps, requiredAction);
     await recordCompletion(leaderWithGaps, optionalAction);

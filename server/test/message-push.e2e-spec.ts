@@ -1,5 +1,7 @@
 import { Expo } from "expo-server-sdk";
 import { MessagingModule } from "src/messaging/messaging.module";
+import { NotificationKind } from "src/notification-settings/notification-kind";
+import { NotificationChannel } from "src/notifs/notif-utils";
 import { Push } from "src/push/push.entity";
 import { EXPO_CLIENT } from "src/push/push.service";
 import { UserDevice } from "src/user/entities/user-device.entity";
@@ -9,6 +11,7 @@ import type { Repository } from "typeorm";
 import {
   createTestApp,
   eventually,
+  setPreference,
   signAccessToken,
   TestContext,
 } from "./e2e-test-utils";
@@ -168,10 +171,14 @@ describe("Message Push Notifications (e2e)", () => {
   });
 
   describe("user preferences", () => {
-    it("does not push when pushesForMessages is false", async () => {
+    it("does not push when message pushes are off", async () => {
       const { token: senderToken } = await createUserWithDevice();
-      const { user: recipient, expoPushToken } = await createUserWithDevice({
-        pushesForMessages: false,
+      const { user: recipient, expoPushToken } = await createUserWithDevice();
+      await setPreference(ctx, {
+        userId: recipient.id,
+        kind: NotificationKind.Messages,
+        channel: NotificationChannel.Push,
+        enabled: false,
       });
 
       const conversationId = await createDirectConversation(
@@ -185,10 +192,10 @@ describe("Message Push Notifications (e2e)", () => {
       expect(pushes).toHaveLength(0);
     });
 
-    it("does not push when turnedOffAllNotifs is true", async () => {
+    it("does not push when push is off by default", async () => {
       const { token: senderToken } = await createUserWithDevice();
       const { user: recipient, expoPushToken } = await createUserWithDevice({
-        turnedOffAllNotifs: true,
+        pushByDefault: false,
       });
 
       const conversationId = await createDirectConversation(
@@ -200,6 +207,28 @@ describe("Message Push Notifications (e2e)", () => {
 
       const pushes = await pushRepo.find({ where: { expoPushToken } });
       expect(pushes).toHaveLength(0);
+    });
+
+    it("pushes when message pushes are on and push is off by default", async () => {
+      const { token: senderToken } = await createUserWithDevice();
+      const { user: recipient, expoPushToken } = await createUserWithDevice({
+        pushByDefault: false,
+      });
+      await setPreference(ctx, {
+        userId: recipient.id,
+        kind: NotificationKind.Messages,
+        channel: NotificationChannel.Push,
+        enabled: true,
+      });
+
+      const conversationId = await createDirectConversation(
+        senderToken,
+        recipient.id,
+      );
+
+      await sendMessage(senderToken, conversationId, "Override on");
+
+      expect(await pushesFor(expoPushToken)).toHaveLength(1);
     });
   });
 

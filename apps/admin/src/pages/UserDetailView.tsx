@@ -8,6 +8,7 @@ import {
   userTagGetTagSummariesAdmin,
 } from "@alliance/shared/client";
 import {
+  NotificationChannel,
   ProfileDto,
   UserActionRelationDetailDto,
   UserActionRelationsResponseDto,
@@ -98,6 +99,23 @@ const UserDetailView: React.FC = () => {
       )}
     </div>
   );
+};
+
+const CHANNEL_DEFAULTS: Record<
+  NotificationChannel,
+  {
+    label: string;
+    field:
+      | "inAppByDefault"
+      | "pushByDefault"
+      | "textByDefault"
+      | "emailByDefault";
+  }
+> = {
+  in_app: { label: "In-app", field: "inAppByDefault" },
+  push: { label: "Push", field: "pushByDefault" },
+  text: { label: "Text", field: "textByDefault" },
+  email: { label: "Email", field: "emailByDefault" },
 };
 
 const UserDetail = ({
@@ -241,30 +259,14 @@ const UserDetail = ({
             <span className="text-zinc-400">ID: {user.id}</span>
           </div>
           <div className="flex items-center gap-3 mt-3 text-sm">
-            <span
-              className={
-                user.emailNotifsForActions ? "text-green-600" : "text-zinc-400"
-              }
-            >
-              Email {user.emailNotifsForActions ? "on" : "off"}
-            </span>
-            <span
-              className={
-                user.textNotifsForActions ? "text-green-600" : "text-zinc-400"
-              }
-            >
-              Text {user.textNotifsForActions ? "on" : "off"}
-            </span>
-            <span
-              className={
-                user.pushNotifsForActions ? "text-green-600" : "text-zinc-400"
-              }
-            >
-              Push {user.pushNotifsForActions ? "on" : "off"}
-            </span>
-            {user.turnedOffAllNotifs && (
-              <span className="text-red-500 font-medium">All notifs off</span>
-            )}
+            {Object.values(CHANNEL_DEFAULTS).map(({ label, field }) => (
+              <span
+                key={field}
+                className={user[field] ? "text-green-600" : "text-zinc-400"}
+              >
+                {label} default {user[field] ? "on" : "off"}
+              </span>
+            ))}
           </div>
         </div>
       </div>

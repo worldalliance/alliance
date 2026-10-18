@@ -48,7 +48,9 @@ export enum NotificationCategory {
   OnetimeInviteRequestApproved = "onetime_invite_request_approved",
   OnetimeInviteRequestRejected = "onetime_invite_request_rejected",
   CommunityInviteRequestCreated = "community_invite_request_created",
+  CommunityInviteRequestApproved = "community_invite_request_approved",
   CommunityInviteRequestRejected = "community_invite_request_rejected",
+  AmbassadorInviteGoal = "ambassador_invite_goal",
 }
 
 export enum NotifPriority {
@@ -81,7 +83,9 @@ export const NOTIFICATION_CATEGORY_PRIORITIES = {
   [NotificationCategory.OnetimeInviteRequestApproved]: NotifPriority.High,
   [NotificationCategory.OnetimeInviteRequestRejected]: NotifPriority.High,
   [NotificationCategory.CommunityInviteRequestCreated]: NotifPriority.Low,
+  [NotificationCategory.CommunityInviteRequestApproved]: NotifPriority.High,
   [NotificationCategory.CommunityInviteRequestRejected]: NotifPriority.High,
+  [NotificationCategory.AmbassadorInviteGoal]: NotifPriority.High,
 } satisfies Record<NotificationCategory, NotifPriority>;
 
 @Entity()
@@ -157,6 +161,10 @@ export class Notification {
   @Column({ type: "int", nullable: true })
   @ApiProperty({ type: Number, nullable: true })
   groupingCount: number | null;
+
+  /** Set when the row is written, from the member's in-app setting for its kind. */
+  @Column({ default: true })
+  visible: boolean;
 
   @Column({ default: true })
   @ApiProperty()

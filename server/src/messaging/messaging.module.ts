@@ -2,6 +2,7 @@ import { Module, forwardRef } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
 import { ImagesModule } from "src/images/images.module";
+import { NotificationSettingsModule } from "src/notification-settings/notification-settings.module";
 import { PushModule } from "src/push/push.module";
 import { Friend } from "src/user/entities/friend.entity";
 import { User } from "src/user/entities/user.entity";
@@ -34,6 +35,7 @@ import { MessagingOverviewGateway } from "./messaging.overview.gateway";
     forwardRef(() => UserModule),
     ImagesModule,
     PushModule,
+    NotificationSettingsModule,
   ],
   controllers: [ConversationController, MessageController],
   providers: [
