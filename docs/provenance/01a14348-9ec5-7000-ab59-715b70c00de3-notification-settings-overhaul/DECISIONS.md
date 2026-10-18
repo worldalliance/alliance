@@ -90,6 +90,7 @@ A column the running release maps is retired in one deploy and dropped in a late
 
 - A per-kind "Reset to defaults" deletes that kind's overrides. There is no global reset.
 - The web screen lives in `apps/frontend/src/components/settings/`, the mobile one in `apps/mobile/app/(app)/settings.tsx` plus a section screen. Shared types and save logic go in `shared/`.
+- Mobile registers for push when the app returns to the foreground with permission newly granted, so permission granted in the device's settings takes effect without a restart.
 
 ## Delivery
 
