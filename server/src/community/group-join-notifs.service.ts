@@ -6,14 +6,9 @@ import { MmsService } from "src/mms/mms.service";
 import { NotificationKind } from "src/notification-settings/notification-kind";
 import { NotificationPreferencesService } from "src/notification-settings/notification-preferences.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import { groupMemberJoinedMessage } from "src/notifs/notif-copy";
 import { NotificationChannel } from "src/notifs/notif-utils";
-import {
-  communityDestination,
-  group,
-  member,
-  notifMessage,
-  UserNameForm,
-} from "src/notifs/notification-content";
+import { communityDestination } from "src/notifs/notification-content";
 import {
   type CreateNotifParams,
   NotifsService,
@@ -55,7 +50,7 @@ export class GroupJoinNotifsService {
         notif: {
           user: { id: recipient.id },
           category: NotificationCategory.GroupMemberJoined,
-          message: notifMessage`${member(joiner, UserNameForm.Public)} joined ${group(community)}!`,
+          message: groupMemberJoinedMessage(joiner, community),
           destination: communityDestination(community.id),
           webAppLocation: location,
           associatedUsers: [{ id: joiner.id }],

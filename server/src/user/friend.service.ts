@@ -10,10 +10,10 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { softDeleteCascade } from "src/datasources/soft-delete";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
-  member,
-  notifMessage,
-  userDestination,
-} from "src/notifs/notification-content";
+  friendRequestAcceptedMessage,
+  friendRequestMessage,
+} from "src/notifs/notif-copy";
+import { userDestination } from "src/notifs/notification-content";
 import { NotificationInboxService } from "src/notifs/notification-inbox.service";
 import {
   type CreateNotifParams,
@@ -165,7 +165,7 @@ export class FriendService {
     return this.notifsService.createNotif({
       user: addressee,
       category: NotificationCategory.FriendRequest,
-      message: notifMessage`${member(requester)} wants to be friends`,
+      message: friendRequestMessage(requester),
       destination: userDestination(requester.id),
       webAppLocation: profileUrl(requester.id),
       associatedUsers: [requester],
@@ -197,7 +197,7 @@ export class FriendService {
       rel.acceptedNotif = await this.notifsService.createNotif({
         user: rel.requester,
         category: NotificationCategory.FriendRequestAccepted,
-        message: notifMessage`${member(rel.addressee)} accepted your friend request`,
+        message: friendRequestAcceptedMessage(rel.addressee),
         destination: userDestination(rel.addressee.id),
         webAppLocation: profileUrl(rel.addressee.id),
         associatedUsers: [rel.addressee],

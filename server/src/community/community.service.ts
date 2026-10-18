@@ -24,6 +24,17 @@ import { ImagesService } from "src/images/images.service";
 import { CommunityConversationService } from "src/messaging/community-conversation.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
+  groupInviteAcceptedMessage,
+  groupInviteDeclinedMessage,
+  groupInviteMessage,
+  groupInviteRequestApprovedMessage,
+  groupInviteRequestMessage,
+  groupInviteRequestRejectedMessage,
+  memberJoinedYourGroupMessage,
+  memberRemovedFromYourGroupMessage,
+  removedFromGroupMessage,
+} from "src/notifs/notif-copy";
+import {
   communityDestination,
   group,
   member,
@@ -604,7 +615,11 @@ export class CommunityService {
           return {
             user: leader,
             category: NotificationCategory.RemovedFromCommunityForLeader,
-            message: notifMessage`${member(user)} removed ${member(removee)} from your group (${group(community)})`,
+            message: memberRemovedFromYourGroupMessage({
+              remover: user,
+              removee,
+              community,
+            }),
             destination: communityDestination(community.id),
             webAppLocation: groupUrl({
               tab: "members",
@@ -619,7 +634,7 @@ export class CommunityService {
     const notif: CreateNotifParams = {
       user: removee,
       category: NotificationCategory.RemovedFromCommunity,
-      message: notifMessage`${member(user)} removed you from their group (${group(community)})`,
+      message: removedFromGroupMessage(user, community),
       destination: null,
       webAppLocation: groupUrl({
         tab: "groups",
@@ -1184,7 +1199,7 @@ export class CommunityService {
     const notif: CreateNotifParams = {
       user: invitedUser,
       category: NotificationCategory.CommunityInviteCreated,
-      message: notifMessage`${member(invitingUser)} invited you to join their group (${group(community)})`,
+      message: groupInviteMessage(invitingUser, community),
       destination: null,
       webAppLocation: groupUrl({
         tab: "groups",
@@ -1301,7 +1316,11 @@ export class CommunityService {
             ({
               user: leader,
               category: NotificationCategory.CommunityInviteRequestCreated,
-              message: notifMessage`${member(invitingUser)} requested an invite for ${member(invitedUser)} (${group(community)})`,
+              message: groupInviteRequestMessage({
+                requester: invitingUser,
+                invitee: invitedUser,
+                community,
+              }),
               destination: communityDestination(community.id),
               webAppLocation: groupUrl({
                 tab: "invites",
@@ -1362,7 +1381,7 @@ export class CommunityService {
       {
         user: invitedUser,
         category: NotificationCategory.CommunityInviteCreated,
-        message: notifMessage`${member(invite.invitingUser ?? user)} invited you to join their group (${group(community)})`,
+        message: groupInviteMessage(invite.invitingUser ?? user, community),
         destination: null,
         webAppLocation: groupUrl({
           tab: "groups",
@@ -1375,7 +1394,7 @@ export class CommunityService {
             {
               user: invite.invitingUser,
               category: NotificationCategory.CommunityInviteRequestApproved,
-              message: notifMessage`Your request to invite ${member(invitedUser)} was approved`,
+              message: groupInviteRequestApprovedMessage(invitedUser),
               destination: communityDestination(community.id),
               webAppLocation: groupUrl({
                 tab: "groups",
@@ -1408,7 +1427,7 @@ export class CommunityService {
       await this.notifsService.sendNotif({
         user: invite.invitingUser,
         category: NotificationCategory.CommunityInviteRequestRejected,
-        message: notifMessage`Your request to invite ${member(invitedUser)} was rejected`,
+        message: groupInviteRequestRejectedMessage(invitedUser),
         destination: null,
         webAppLocation: groupUrl({
           tab: "groups",
@@ -1501,7 +1520,7 @@ export class CommunityService {
             leader,
             joiner: invitedUser,
             community,
-            message: notifMessage`${member(invitedUser)} joined your group (${group(community)})`,
+            message: memberJoinedYourGroupMessage(invitedUser, community),
           });
         },
       }),
@@ -1510,7 +1529,7 @@ export class CommunityService {
       this.notifsService.sendNotif({
         user: invite.invitingUser!,
         category: NotificationCategory.CommunityInviteAccepted,
-        message: notifMessage`${member(invitedUser)} accepted your invitation to join your group (${group(community)})`,
+        message: groupInviteAcceptedMessage(invitedUser, community),
         destination: communityDestination(community.id),
         webAppLocation: groupUrl({
           tab: "members",
@@ -1551,7 +1570,7 @@ export class CommunityService {
     await this.notifsService.sendNotif({
       user: invite.invitingUser!,
       category: NotificationCategory.CommunityInviteRejected,
-      message: notifMessage`${member(invitedUser)} declined your invitation to join your group (${group(community)})`,
+      message: groupInviteDeclinedMessage(invitedUser, community),
       destination: communityDestination(community.id),
       webAppLocation: groupUrl({
         tab: "invites",

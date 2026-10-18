@@ -306,7 +306,6 @@ describe("Account and group updates to a row deleted after its load (e2e)", () =
         userId: leader.id,
         inviteId: request.id,
         newStatus: "approve",
-        message: "Approved [USER]",
       }),
     ).rejects.toThrow(NotFoundException);
     const stored = await invites.findOneOrFail({

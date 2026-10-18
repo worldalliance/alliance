@@ -10,10 +10,13 @@ import { updateLive, writeUnderLive } from "src/datasources/soft-delete";
 import { InviteFeedEvents } from "src/invite-feed.events";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
+  onetimeInviteRequestApprovedMessage,
+  onetimeInviteRequestMessage,
+  onetimeInviteRequestRejectedMessage,
+} from "src/notifs/notif-copy";
+import {
   communityDestination,
-  group,
-  member,
-  notifMessage,
+  type NotifMessage,
 } from "src/notifs/notification-content";
 import { NotifsService } from "src/notifs/notifs.service";
 import { groupUrl } from "src/search/approutes";
@@ -245,7 +248,11 @@ export class OnetimeInviteService {
         communityWithLeaders.leaders.map((leader) => ({
           user: leader,
           category: NotificationCategory.OnetimeInviteRequestCreated,
-          message: notifMessage`${member(user)} requested an invite for ${rest.invitee} (${group(community)})`,
+          message: onetimeInviteRequestMessage({
+            requester: user,
+            invitee: rest.invitee,
+            community,
+          }),
           destination: communityDestination(community.id),
           webAppLocation: groupUrl({
             tab: "invites",
@@ -268,7 +275,6 @@ export class OnetimeInviteService {
       inviteId,
       userId,
       newStatus: "approve",
-      message: `Your request to invite [USER] was approved`,
     });
   }
 
@@ -280,7 +286,6 @@ export class OnetimeInviteService {
       inviteId,
       userId,
       newStatus: "reject",
-      message: "Your request to invite [USER] was rejected",
     });
   }
 
@@ -288,9 +293,8 @@ export class OnetimeInviteService {
     userId: number;
     inviteId: number;
     newStatus: "approve" | "reject";
-    message: `${string}[USER]${string}`;
   }): Promise<OnetimeInvite> {
-    const { userId, inviteId, newStatus, message } = params;
+    const { userId, inviteId, newStatus } = params;
 
     const user = await this.userService.findOneOrFail(userId);
 
@@ -312,14 +316,17 @@ export class OnetimeInviteService {
     assertCanManageCommunity(user, communityId);
 
     let category: NotificationCategory;
+    let message: (invitee: string) => NotifMessage;
     switch (newStatus) {
       case "approve":
         request.status = OnetimeInviteStatus.LINK_UNUSED;
         category = NotificationCategory.OnetimeInviteRequestApproved;
+        message = onetimeInviteRequestApprovedMessage;
         break;
       case "reject":
         request.status = OnetimeInviteStatus.REQUEST_REJECTED;
         category = NotificationCategory.OnetimeInviteRequestRejected;
+        message = onetimeInviteRequestRejectedMessage;
         break;
       default:
         throw new InternalServerErrorException(
@@ -340,7 +347,7 @@ export class OnetimeInviteService {
       await this.notifsService.sendNotif({
         user: invitingUser,
         category,
-        message: notifMessage`${message.replace("[USER]", savedInvite.invitee)}`,
+        message: message(savedInvite.invitee),
         destination: communityDestination(communityId),
         webAppLocation: groupUrl({
           tab: "invites",

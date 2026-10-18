@@ -13,6 +13,7 @@ import {
 import { Community } from "src/community/entities/community.entity";
 import { updateLive } from "src/datasources/soft-delete";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import { assignedToGroupMessage } from "src/notifs/notif-copy";
 import {
   communityDestination,
   group,
@@ -192,7 +193,7 @@ export class GroupAssignmentService {
       userNotifs.push({
         user,
         category: NotificationCategory.CommunityAssigned,
-        message: notifMessage`You were assigned to a new group (${group(freshCommunity)})`,
+        message: assignedToGroupMessage(freshCommunity),
         destination: communityDestination(freshCommunity.id),
         webAppLocation: groupUrl({
           communityId: freshCommunity.id,
