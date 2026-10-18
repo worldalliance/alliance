@@ -48,6 +48,8 @@ export type KindPolicy = {
   /** Follows the channel defaults and takes no override. */
   required: boolean;
   leaderOnly: boolean;
+  /** Something sends this kind. A kind nothing sends is left off the settings screens. */
+  sent: boolean;
 };
 
 const { InApp, Push, Text, Email } = NotificationChannel;
@@ -61,6 +63,7 @@ const groupNotice = (
   channels: [InApp, Push],
   required: false,
   leaderOnly,
+  sent: true,
 });
 
 export const KIND_POLICY: Record<NotificationKind, KindPolicy> = {
@@ -70,6 +73,7 @@ export const KIND_POLICY: Record<NotificationKind, KindPolicy> = {
     channels: [Push, Text, Email],
     required: false,
     leaderOnly: false,
+    sent: false,
   },
   [NotificationKind.ActionReminders]: {
     label: "Action reminders",
@@ -77,6 +81,7 @@ export const KIND_POLICY: Record<NotificationKind, KindPolicy> = {
     channels: [Push, Text, Email],
     required: false,
     leaderOnly: false,
+    sent: true,
   },
   [NotificationKind.MissedDeadline]: {
     label: "Missed deadline",
@@ -84,6 +89,7 @@ export const KIND_POLICY: Record<NotificationKind, KindPolicy> = {
     channels: [InApp, Push, Text, Email],
     required: false,
     leaderOnly: false,
+    sent: true,
   },
   [NotificationKind.ActionUpdates]: {
     label: "Action updates",
@@ -91,6 +97,7 @@ export const KIND_POLICY: Record<NotificationKind, KindPolicy> = {
     channels: [InApp, Push, Text, Email],
     required: false,
     leaderOnly: false,
+    sent: true,
   },
   [NotificationKind.GroupMembersWithUncompletedTasks]: {
     label: "Group members with uncompleted tasks",
@@ -98,6 +105,7 @@ export const KIND_POLICY: Record<NotificationKind, KindPolicy> = {
     channels: [Push, Text, Email],
     required: false,
     leaderOnly: true,
+    sent: true,
   },
   [NotificationKind.ContractSuspended]: {
     label: "Contract suspended",
@@ -105,6 +113,7 @@ export const KIND_POLICY: Record<NotificationKind, KindPolicy> = {
     channels: [Push, Text, Email],
     required: true,
     leaderOnly: false,
+    sent: true,
   },
   [NotificationKind.CommentsAndReplies]: {
     label: "Comments and replies",
@@ -112,6 +121,7 @@ export const KIND_POLICY: Record<NotificationKind, KindPolicy> = {
     channels: [InApp, Push, Text, Email],
     required: false,
     leaderOnly: false,
+    sent: true,
   },
   [NotificationKind.Messages]: {
     label: "Messages",
@@ -119,6 +129,7 @@ export const KIND_POLICY: Record<NotificationKind, KindPolicy> = {
     channels: [Push],
     required: false,
     leaderOnly: false,
+    sent: true,
   },
   [NotificationKind.FriendRequests]: {
     label: "Friend requests",
@@ -126,6 +137,7 @@ export const KIND_POLICY: Record<NotificationKind, KindPolicy> = {
     channels: [InApp, Push],
     required: false,
     leaderOnly: false,
+    sent: true,
   },
   [NotificationKind.FriendRequestAccepted]: {
     label: "Accepted friend requests",
@@ -133,6 +145,7 @@ export const KIND_POLICY: Record<NotificationKind, KindPolicy> = {
     channels: [InApp, Push],
     required: false,
     leaderOnly: false,
+    sent: true,
   },
   [NotificationKind.Likes]: {
     label: "Likes",
@@ -140,6 +153,7 @@ export const KIND_POLICY: Record<NotificationKind, KindPolicy> = {
     channels: [InApp, Push],
     required: false,
     leaderOnly: false,
+    sent: true,
   },
   [NotificationKind.GroupMemberJoined]: {
     label: "Someone joined your group",
@@ -147,6 +161,7 @@ export const KIND_POLICY: Record<NotificationKind, KindPolicy> = {
     channels: [InApp, Push, Text],
     required: false,
     leaderOnly: false,
+    sent: true,
   },
   [NotificationKind.MemberJoinedCommunity]: groupNotice(
     "A member joined a group you lead",

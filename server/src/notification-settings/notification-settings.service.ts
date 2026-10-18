@@ -35,15 +35,17 @@ export function cellProblems(params: {
   return cells.flatMap(({ kind, channel }) => {
     const key = `${kind}:${channel}`;
     const policy = KIND_POLICY[kind];
-    const problem = !policy.channels.includes(channel)
-      ? `${kind} isn't offered on ${channel}`
-      : policy.required
-        ? `${kind} is required and follows the channel defaults`
-        : policy.leaderOnly && !isLeader
-          ? `${kind} is only for group leaders`
-          : seen.has(key)
-            ? `${kind} on ${channel} is listed twice`
-            : null;
+    const problem = !policy.sent
+      ? `${kind} isn't sent`
+      : !policy.channels.includes(channel)
+        ? `${kind} isn't offered on ${channel}`
+        : policy.required
+          ? `${kind} is required and follows the channel defaults`
+          : policy.leaderOnly && !isLeader
+            ? `${kind} is only for group leaders`
+            : seen.has(key)
+              ? `${kind} on ${channel} is listed twice`
+              : null;
     seen.add(key);
     return problem === null ? [] : [problem];
   });
@@ -58,7 +60,9 @@ export function settingsFor(params: {
     overrides.map((row) => [`${row.kind}:${row.channel}`, row.enabled]),
   );
   const kinds = Object.values(NotificationKind).filter(
-    (kind) => user.isCommunityLeader || !KIND_POLICY[kind].leaderOnly,
+    (kind) =>
+      KIND_POLICY[kind].sent &&
+      (user.isCommunityLeader || !KIND_POLICY[kind].leaderOnly),
   );
   return {
     defaults: user,
