@@ -1,3 +1,4 @@
+import { resolveSetting } from "@alliance/common/notificationSetting";
 import { Injectable } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { NotificationChannel } from "src/notifs/notif-utils";
@@ -32,8 +33,11 @@ export function wantsKind(params: {
   const { kind, channel, defaults, override } = params;
   const policy = KIND_POLICY[kind];
   if (!policy.channels.includes(channel)) return false;
-  const fallback = defaults[CHANNEL_DEFAULT_COLUMN[channel]];
-  return policy.required ? fallback : (override ?? fallback);
+  return resolveSetting({
+    required: policy.required,
+    override,
+    fallback: defaults[CHANNEL_DEFAULT_COLUMN[channel]],
+  });
 }
 
 type Cell = Pick<NotificationPreference, "userId" | "kind" | "channel">;
