@@ -1,4 +1,5 @@
 import { City } from "@alliance/shared/client";
+import { useNotificationSettings } from "@alliance/shared/lib/useNotificationSettings";
 import { useSeedSettingsForm } from "@alliance/shared/lib/useSeedSettingsForm";
 import { useSettingsAutosave } from "@alliance/shared/lib/useSettingsAutosave";
 import { cn } from "@alliance/shared/styles/util";
@@ -19,6 +20,7 @@ import TimeZoneSelect from "../../components/forms/TimeZoneSelect";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import AccountSection from "../../components/settings/AccountSection";
 import DeviceTimeZoneOffer from "../../components/settings/DeviceTimeZoneOffer";
+import NotificationDefaults from "../../components/settings/NotificationDefaults";
 import Button, {
   ButtonColor,
   ButtonSize,
@@ -88,6 +90,7 @@ export default function SettingsPage() {
     retrySave,
   } = useSettingsAutosave(user?.id, location?.countryCode);
 
+  const notificationSettings = useNotificationSettings();
   const [statusTaps, setStatusTaps] = useState(0);
   const scrollViewRef = useRef<KeyboardAwareScrollViewRef>(null);
 
@@ -138,7 +141,14 @@ export default function SettingsPage() {
     "border border-zinc-200 rounded-lg bg-white px-3 py-3 text-base";
 
   return (
-    <View className="flex-1" testID="vr-settings-ready">
+    <View
+      className="flex-1"
+      testID={
+        notificationSettings.settings || notificationSettings.loadFailed
+          ? "vr-settings-ready"
+          : undefined
+      }
+    >
       <SimplePageTitle title="Settings">
         <Pressable onPress={() => setStatusTaps((taps) => taps + 1)}>
           <Text
@@ -242,6 +252,10 @@ export default function SettingsPage() {
             <Text className="text-2xl mb-4" weight={FontWeight.Semibold}>
               Notifications
             </Text>
+
+            <View className="mb-6">
+              <NotificationDefaults />
+            </View>
 
             <View className="mb-4">
               <Text className="mb-2" weight={FontWeight.Medium}>

@@ -254,6 +254,12 @@ export function kindsIn(
   return settings.kinds.filter((kind) => kind.section === section);
 }
 
+export function sectionsWithKinds(
+  settings: NotificationSettingsDto,
+): NotificationSection[] {
+  return SECTIONS.filter((section) => kindsIn(settings, section).length);
+}
+
 export function resetChanges(kind: KindSettingsDto): SettingChange[] {
   return kind.cells.flatMap((cell) =>
     cell.override === null

@@ -4,13 +4,12 @@ import {
   defaultLabel,
   DEFAULTS_HEADING,
   KINDS_HEADING,
-  kindsIn,
   overrideCount,
   overrideCountNote,
   RECEIVES_NOTHING_WARNING,
   receivesNothing,
   SECTION_TITLE,
-  SECTIONS,
+  sectionsWithKinds,
   TEXT_NOTICE_COPY,
   textNotice,
 } from "@alliance/shared/lib/notificationSettings";
@@ -103,23 +102,17 @@ export default function NotificationDefaults() {
       <nav aria-label="Notification types">
         <h3 className="font-medium mb-1">{KINDS_HEADING}</h3>
         <ul className="flex flex-col divide-y divide-zinc-200 border-y border-zinc-200">
-          {SECTIONS.filter((section) => kindsIn(settings, section).length).map(
-            (section) => (
-              <li key={section}>
-                <Link
-                  to={href("/settings/notifications/:section", { section })}
-                  className="flex items-center justify-between py-3 hover:bg-zinc-50"
-                >
-                  <span>{SECTION_TITLE[section]}</span>
-                  <ChevronRight
-                    size={18}
-                    className="text-zinc-400"
-                    aria-hidden
-                  />
-                </Link>
-              </li>
-            ),
-          )}
+          {sectionsWithKinds(settings).map((section) => (
+            <li key={section}>
+              <Link
+                to={href("/settings/notifications/:section", { section })}
+                className="flex items-center justify-between py-3 hover:bg-zinc-50"
+              >
+                <span>{SECTION_TITLE[section]}</span>
+                <ChevronRight size={18} className="text-zinc-400" aria-hidden />
+              </Link>
+            </li>
+          ))}
         </ul>
       </nav>
     </div>

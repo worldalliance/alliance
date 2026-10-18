@@ -7,6 +7,7 @@ export type SegmentedTabsProps<T extends string> = {
   selectedTab: T;
   onSelect: (tab: T) => void;
   labels: Record<T, string>;
+  accessibilityLabel?: string;
   className?: string;
 };
 
@@ -15,6 +16,7 @@ export function SegmentedTabs<T extends string>({
   selectedTab,
   onSelect,
   labels,
+  accessibilityLabel,
   className,
 }: SegmentedTabsProps<T>) {
   return (
@@ -24,6 +26,11 @@ export function SegmentedTabs<T extends string>({
         return (
           <TouchableOpacity
             key={tab}
+            accessibilityRole="button"
+            accessibilityLabel={
+              accessibilityLabel && `${labels[tab]}, ${accessibilityLabel}`
+            }
+            accessibilityState={{ selected: isSelected }}
             onPress={() => onSelect(tab)}
             activeOpacity={0.7}
             className={cn(
@@ -33,7 +40,7 @@ export function SegmentedTabs<T extends string>({
           >
             <Text
               className={cn(
-                "text-sm",
+                "text-center text-sm",
                 isSelected ? "text-zinc-900" : "text-zinc-500",
               )}
               weight={FontWeight.Medium}

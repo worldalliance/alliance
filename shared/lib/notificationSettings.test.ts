@@ -10,6 +10,7 @@ import {
   parseSection,
   receivesNothing,
   resetChanges,
+  sectionsWithKinds,
   textNotice,
   TextNotice,
   updateBody,
@@ -172,4 +173,8 @@ it("maps each override choice to its value and back", () => {
   for (const choice of OVERRIDE_CHOICES) {
     expect(choiceOf(OVERRIDE_CHOICE_VALUE[choice])).toBe(choice);
   }
+});
+
+it("lists only the sections the member has kinds in, in order", () => {
+  expect(sectionsWithKinds(settings)).toEqual(["actions", "friends_and_likes"]);
 });
