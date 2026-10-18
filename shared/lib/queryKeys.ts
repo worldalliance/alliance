@@ -114,6 +114,7 @@ export const queryKeys = {
   notifications: () => ["notifications"] as const,
   notificationsLoadedAt: () => ["notifications", "loadedAt"] as const,
   notificationsUnreadCount: () => ["notifications", "unreadCount"] as const,
+  notificationSettings: () => ["notificationSettingsGet"] as const,
   onetimeInvite: (code: string | null) =>
     ["userOnetimeInviteOnetimeInvite", code] as const,
   onetimeInvitesOverview: () =>

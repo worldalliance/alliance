@@ -418,3 +418,21 @@ it("a profile update invalidates the visibility context", async () => {
     client.getQueryState(queryKeys.myVisibilityContext())?.isInvalidated,
   ).toBe(true);
 });
+
+it("a saved phone number refreshes the notification settings", async () => {
+  api.alsoServing({
+    "POST /user/update": () => Response.json({ id: ALLOWED_USER }),
+  });
+  const { client, wrapper } = queryWrapper();
+  const settingsState = () =>
+    client.getQueryState(queryKeys.notificationSettings())?.isInvalidated;
+  client.setQueryData(queryKeys.notificationSettings(), {});
+  const mutation = renderHook(() => useUpdateProfileMutation(ALLOWED_USER), {
+    wrapper,
+  });
+
+  await mutation.result.current.mutateAsync({ name: "Maya Rowan" });
+  expect(settingsState()).toBe(false);
+  await mutation.result.current.mutateAsync({ phoneNumber: "+14155552671" });
+  expect(settingsState()).toBe(true);
+});

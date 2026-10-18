@@ -89,7 +89,11 @@ A column the running release maps is retired in one deploy and dropped in a late
 ## Settings screens
 
 - A per-kind "Reset to defaults" deletes that kind's overrides. There is no global reset.
-- The web screen lives in `apps/frontend/src/components/settings/`, the mobile one in `apps/mobile/app/(app)/settings.tsx` plus a section screen. Shared types and save logic go in `shared/`.
+- The channel defaults sit in the settings page's Notifications card, above reminder time and time zone; each section opens at `/settings/notifications/:section` on web. Sections with no kind the member can see are not listed. Shared types and save logic live in `shared/lib/notificationSettings.ts` and `shared/lib/useNotificationSettings.ts`.
+- Every control on every screen saves through one mutation scope, one request at a time, and reads its save state from the mutation cache, so a save that fails after its screen closes still shows on the next. Each response carries every setting, so applying responses in order leaves the newest last; concurrent saves could otherwise land out of order and show an older setting. A settings fetch still in flight when a save lands read the settings before the save, so it is cancelled and a fresh one started.
+- A choice still saving shows by re-resolving the settings on the client (`withChanges`): override, else the channel default, and the default alone for a required kind. It resolves through `resolveSetting` in `@alliance/common/notificationSetting`, the rule the server's `wantsKind` uses, for display only; the server's response replaces it once a save lands. A failed choice shows on its own control only: the "Currently …" lines, the own-setting counts, and the receives-nothing warning describe the settings still in effect, and "Reset to defaults" resets it with the kind's saved overrides. The shared hook owns which value a control shows (`shownDefault`, `shownOverride`, `resetOf`), so web and mobile follow one rule.
+- A saved phone number refreshes the settings, so the text notice follows the number on file. With no textable number the notice asks for a valid one; with STOP on file it says to reply START, the keyword the SMS webhook honours.
+- The web app can't read a phone's push permission, so web shows no push notice.
 - Mobile registers for push when the app returns to the foreground with permission newly granted, so permission granted in the device's settings takes effect without a restart.
 
 ## Delivery

@@ -4,6 +4,7 @@ import { CardStyle } from "@alliance/shared/styles/card";
 import TimeZoneSelect from "@alliance/sharedweb/forms/TimeZoneSelect";
 import Card from "@alliance/sharedweb/ui/Card";
 import DeviceTimeZoneOffer from "./DeviceTimeZoneOffer";
+import NotificationDefaults from "./NotificationDefaults";
 
 type Props = {
   editableUser: UpdateProfileDto;
@@ -24,7 +25,9 @@ export default function NotificationSettings({
     >
       <h2 className="!font-semibold !text-2xl mb-4">Notifications</h2>
 
-      <div className="flex flex-col md:flex-row gap-y-2 gap-x-12 font-medium">
+      <NotificationDefaults />
+
+      <div className="flex flex-col md:flex-row gap-y-2 gap-x-12 font-medium mt-6">
         <div>
           <p className=" mb-1">Preferred reminder time:</p>
           <input
