@@ -45,9 +45,9 @@ function interpretEscapes(s: string): string {
 export function processKeywordReplacements(
   text: string,
   context: {
-    user: User;
-    action: Action;
-    deadlineEvent?: ActionEvent;
+    user: Pick<User, "id" | "name">;
+    action: Pick<Action, "name">;
+    deadlineEvent?: Pick<ActionEvent, "date">;
     uncompletedTasksCount: number;
     uncompletedTasksTime: string;
     uncompletedTasksNames: string[];

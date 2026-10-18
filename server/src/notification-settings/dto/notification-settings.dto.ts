@@ -70,6 +70,7 @@ export type KindSettings = {
   label: string;
   section: NotificationSection;
   required: boolean;
+  example: string;
   cells: NotificationCell[];
 };
 
@@ -86,6 +87,9 @@ export class KindSettingsDto {
   @ApiProperty()
   required: boolean;
 
+  @ApiProperty({ description: "What the kind says, with sample names" })
+  example: string;
+
   @ApiProperty({ type: NotificationCellDto, isArray: true })
   cells: NotificationCellDto[];
 
@@ -94,6 +98,7 @@ export class KindSettingsDto {
     this.label = input.label;
     this.section = input.section;
     this.required = input.required;
+    this.example = input.example;
     this.cells = input.cells.map((cell) => new NotificationCellDto(cell));
   }
 }

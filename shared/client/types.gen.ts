@@ -1927,6 +1927,10 @@ export type KindSettingsDto = {
     label: string;
     section: NotificationSection;
     required: boolean;
+    /**
+     * What the kind says, with sample names
+     */
+    example: string;
     cells: Array<NotificationCellDto>;
 };
 

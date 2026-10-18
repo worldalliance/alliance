@@ -64,7 +64,11 @@ Push permission on the device is client-side state, so each app reads it locally
 
 ## Example text
 
-Each kind renders its example through the producer's own copy function with fixed sample input (`Maya Rowan`, `Climate Hawks`, …) declared in the kind policy. The server returns the rendered examples with the settings, so web and mobile show identical text that changes whenever the real copy does. The examples land with the screens PR, the only consumer, so the core's settings response carries none yet.
+Each kind renders one example through the producer's own copy function with fixed sample input (`Maya Rowan`, `Jordan Ellis`, `Climate Hawks`, a sample action two days from its deadline). `KIND_EXAMPLE` in `notification-examples.ts` is a `Record<NotificationKind, …>` beside the kind policy rather than a policy field: it imports the senders' copy, and the senders import the policy. The server returns the rendered examples with the settings, so web and mobile show identical text that changes whenever the real copy does.
+
+- One example per kind, in its most common wording, as it reads in-app or in push; a kind sent only by text or email would show that channel's text. Where a kind has several wordings, the copy for the one shown lives in `notifs/notif-copy.ts`, and the senders of that wording call it; other wordings stay where they are sent. (user-approved)
+- Admins write each action kind's copy per reminder group, so its example renders the admin preset that group starts from, through the same `processKeywordReplacements` the reminder worker uses. The presets live in `@alliance/common/reminderPresetCopy`, shared by the server and the admin form. (user-approved)
+- Messages and comments carry text members write, so their examples use sample text.
 
 ## Contract reminder
 

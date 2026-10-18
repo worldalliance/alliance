@@ -9,6 +9,7 @@ import type {
   NotificationSettings,
   UpdateNotificationSettingsDto,
 } from "./dto/notification-settings.dto";
+import { KIND_EXAMPLE } from "./notification-examples";
 import {
   KIND_POLICY,
   NotificationKind,
@@ -73,6 +74,7 @@ export function settingsFor(params: {
         label,
         section,
         required,
+        example: KIND_EXAMPLE[kind](),
         cells: channels.map((channel) => {
           const set = required ? undefined : override.get(`${kind}:${channel}`);
           return {

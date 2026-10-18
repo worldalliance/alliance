@@ -4,7 +4,7 @@ import { millisecondsInDay, millisecondsInHour } from "date-fns/constants";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
 
 export function getTimeLeftString(
-  deadlineEvent: ActionEvent,
+  deadlineEvent: Pick<ActionEvent, "date">,
   dateNow: Date,
   mode: "both" | "days" | "hours" = "both",
 ): string {
