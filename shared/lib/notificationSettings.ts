@@ -67,6 +67,49 @@ export function targetKey(target: SettingTarget): string {
   }
 }
 
+export enum OverrideChoice {
+  FollowDefault = "follow_default",
+  On = "on",
+  Off = "off",
+}
+
+export const OVERRIDE_CHOICES = Object.values(OverrideChoice);
+
+export const OVERRIDE_CHOICE_LABEL: Record<OverrideChoice, string> = {
+  [OverrideChoice.FollowDefault]: "Follow default",
+  [OverrideChoice.On]: "On",
+  [OverrideChoice.Off]: "Off",
+};
+
+export const OVERRIDE_CHOICE_VALUE: Record<OverrideChoice, boolean | null> = {
+  [OverrideChoice.FollowDefault]: null,
+  [OverrideChoice.On]: true,
+  [OverrideChoice.Off]: false,
+};
+
+export const choiceOf = (override: boolean | null): OverrideChoice =>
+  override === null
+    ? OverrideChoice.FollowDefault
+    : override
+      ? OverrideChoice.On
+      : OverrideChoice.Off;
+
+export const DEFAULTS_HEADING = "Send me notifications by";
+
+export const KINDS_HEADING = "Choose for each notification";
+
+export const defaultLabel = (channel: NotificationChannel) =>
+  `${CHANNEL_LABEL[channel]} by default`;
+
+export const kindChannelLabel = (
+  kind: KindSettingsDto,
+  channel: NotificationChannel,
+) => `${kind.label} by ${CHANNEL_LABEL[channel]}`;
+
+export const REQUIRED_KIND_NOTE = "Always follows your defaults";
+
+export const RESET_KIND = "Reset to defaults";
+
 export function defaultOf(
   settings: NotificationSettingsDto,
   channel: NotificationChannel,
@@ -168,6 +211,9 @@ export function overrideCountNote(count: number, channel: NotificationChannel) {
 }
 
 export const SETTINGS_LOADING = "Loading notification settings…";
+
+export const sectionTitle = (section: NotificationSection | null) =>
+  section ? SECTION_TITLE[section] : "Notifications";
 
 export const UNKNOWN_SECTION = "There's no such group of notifications.";
 

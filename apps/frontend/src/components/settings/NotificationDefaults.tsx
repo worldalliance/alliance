@@ -1,6 +1,9 @@
 import {
   CHANNEL_LABEL,
   CHANNELS,
+  defaultLabel,
+  DEFAULTS_HEADING,
+  KINDS_HEADING,
   kindsIn,
   overrideCount,
   overrideCountNote,
@@ -55,7 +58,7 @@ export default function NotificationDefaults() {
         </div>
       )}
       <div>
-        <h3 className="font-medium mb-1">Send me notifications by</h3>
+        <h3 className="font-medium mb-1">{DEFAULTS_HEADING}</h3>
         <div className="flex flex-col divide-y divide-zinc-200">
           {CHANNELS.map((channel) => {
             const target = { type: "default" as const, channel };
@@ -79,7 +82,7 @@ export default function NotificationDefaults() {
                         choice !== value &&
                         save([{ type: "default", channel, value: choice }])
                       }
-                      ariaLabel={`${CHANNEL_LABEL[channel]} by default`}
+                      ariaLabel={defaultLabel(channel)}
                       yesLabel="On"
                       noLabel="Off"
                       yesColor={ButtonColor.Green}
@@ -98,7 +101,7 @@ export default function NotificationDefaults() {
         </div>
       </div>
       <nav aria-label="Notification types">
-        <h3 className="font-medium mb-1">Choose for each notification</h3>
+        <h3 className="font-medium mb-1">{KINDS_HEADING}</h3>
         <ul className="flex flex-col divide-y divide-zinc-200 border-y border-zinc-200">
           {SECTIONS.filter((section) => kindsIn(settings, section).length).map(
             (section) => (

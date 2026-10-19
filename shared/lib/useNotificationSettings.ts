@@ -34,6 +34,14 @@ export enum SaveStatus {
   Failed = "failed",
 }
 
+export const SAVE_STATUS_COPY: Record<SaveStatus, string> = {
+  [SaveStatus.Saving]: "Saving…",
+  [SaveStatus.Saved]: "Saved",
+  [SaveStatus.Failed]: "Couldn't save.",
+};
+
+export const RETRY_SAVE = "Try again";
+
 export type SettingsControls = Pick<
   ReturnType<typeof useNotificationSettings>,
   "save" | "retry" | "statusOf" | "shownOverride" | "resetOf"

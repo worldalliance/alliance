@@ -1,7 +1,10 @@
 import type { NotificationSettingsDto } from "../client";
 import {
   cellStatus,
+  choiceOf,
   kindSummary,
+  OVERRIDE_CHOICE_VALUE,
+  OVERRIDE_CHOICES,
   overrideCount,
   overrideCountNote,
   parseSection,
@@ -163,4 +166,10 @@ it("parses only a known section", () => {
   expect(parseSection("groups")).toBe("groups");
   expect(parseSection("nope")).toBeNull();
   expect(parseSection(undefined)).toBeNull();
+});
+
+it("maps each override choice to its value and back", () => {
+  for (const choice of OVERRIDE_CHOICES) {
+    expect(choiceOf(OVERRIDE_CHOICE_VALUE[choice])).toBe(choice);
+  }
 });

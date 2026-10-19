@@ -2,7 +2,7 @@ import {
   EMPTY_SECTION,
   kindsIn,
   parseSection,
-  SECTION_TITLE,
+  sectionTitle,
   UNKNOWN_SECTION,
 } from "@alliance/shared/lib/notificationSettings";
 import { useNotificationSettings } from "@alliance/shared/lib/useNotificationSettings";
@@ -73,9 +73,7 @@ export default function NotificationSectionPage() {
           >
             <ArrowLeft size={24} />
           </Link>
-          <h1 className="text-title">
-            {section ? SECTION_TITLE[section] : "Notifications"}
-          </h1>
+          <h1 className="text-title">{sectionTitle(section)}</h1>
         </div>
         <Card style={CardStyle.White} className="p-6">
           {body()}

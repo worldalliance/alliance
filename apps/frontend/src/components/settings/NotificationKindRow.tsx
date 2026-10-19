@@ -1,8 +1,15 @@
 import type { KindSettingsDto } from "@alliance/shared/client";
 import {
-  CHANNEL_LABEL,
   cellStatus,
+  CHANNEL_LABEL,
+  choiceOf,
+  kindChannelLabel,
   kindSummary,
+  OVERRIDE_CHOICE_LABEL,
+  OVERRIDE_CHOICE_VALUE,
+  OVERRIDE_CHOICES,
+  REQUIRED_KIND_NOTE,
+  RESET_KIND,
 } from "@alliance/shared/lib/notificationSettings";
 import type { SettingsControls } from "@alliance/shared/lib/useNotificationSettings";
 import { cn } from "@alliance/shared/styles/util";
@@ -10,12 +17,6 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { ChevronDown, Lock } from "lucide-react";
 import { useState } from "react";
 import SaveState from "./SaveState";
-
-const CHOICES: { label: string; value: boolean | null }[] = [
-  { label: "Follow default", value: null },
-  { label: "On", value: true },
-  { label: "Off", value: false },
-];
 
 type Props = SettingsControls & { kind: KindSettingsDto };
 
@@ -60,7 +61,7 @@ export default function NotificationKindRow({
           {kind.required && (
             <p className="flex items-center gap-1 text-sm text-zinc-500">
               <Lock size={14} aria-hidden />
-              Always follows your defaults
+              {REQUIRED_KIND_NOTE}
             </p>
           )}
           {kind.cells.map((cell) => {
@@ -69,7 +70,7 @@ export default function NotificationKindRow({
               kind: kind.kind,
               channel: cell.channel,
             };
-            const override = shownOverride(kind.kind, cell);
+            const selected = choiceOf(shownOverride(kind.kind, cell));
             return (
               <div
                 key={cell.channel}
@@ -91,30 +92,35 @@ export default function NotificationKindRow({
                     />
                     <div
                       role="group"
-                      aria-label={`${kind.label} by ${CHANNEL_LABEL[cell.channel]}`}
+                      aria-label={kindChannelLabel(kind, cell.channel)}
                       className="flex"
                     >
-                      {CHOICES.map((choice, i) => (
+                      {OVERRIDE_CHOICES.map((choice, i) => (
                         <Button
-                          key={choice.label}
+                          key={choice}
                           type="button"
                           size="small"
                           color={
-                            override === choice.value
+                            selected === choice
                               ? ButtonColor.Black
                               : ButtonColor.White
                           }
-                          aria-pressed={override === choice.value}
+                          aria-pressed={selected === choice}
                           onClick={() =>
-                            override !== choice.value &&
-                            save([{ ...target, value: choice.value }])
+                            selected !== choice &&
+                            save([
+                              {
+                                ...target,
+                                value: OVERRIDE_CHOICE_VALUE[choice],
+                              },
+                            ])
                           }
                           className={cn(
                             i > 0 && "-ml-px rounded-l-none",
-                            i < CHOICES.length - 1 && "rounded-r-none",
+                            i < OVERRIDE_CHOICES.length - 1 && "rounded-r-none",
                           )}
                         >
-                          {choice.label}
+                          {OVERRIDE_CHOICE_LABEL[choice]}
                         </Button>
                       ))}
                     </div>
@@ -129,7 +135,7 @@ export default function NotificationKindRow({
               onClick={() => save(reset)}
               className="self-start text-sm underline text-zinc-600"
             >
-              Reset to defaults
+              {RESET_KIND}
             </button>
           )}
         </div>
