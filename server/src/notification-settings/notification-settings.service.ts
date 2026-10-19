@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { UnreadContent } from "src/notifs/entities/unread-content.entity";
 import { NotificationChannel } from "src/notifs/notif-utils";
@@ -6,7 +10,9 @@ import { User } from "src/user/entities/user.entity";
 import { textReachable } from "src/user/user.utils";
 import { DataSource, In, Raw, type EntityManager } from "typeorm";
 import type {
+  NotificationOverrideAdmin,
   NotificationSettings,
+  NotificationSettingsAdmin,
   UpdateNotificationSettingsDto,
 } from "./dto/notification-settings.dto";
 import { KIND_EXAMPLE } from "./notification-examples";
@@ -101,6 +107,29 @@ export function settingsFor(params: {
   };
 }
 
+export function overridesAdmin(params: {
+  rows: readonly NotificationPreference[];
+  isLeader: boolean;
+}): NotificationOverrideAdmin[] {
+  const { rows, isLeader } = params;
+  const kinds = Object.values(NotificationKind);
+  const channels = Object.values(NotificationChannel);
+  return rows
+    .toSorted(
+      (a, b) =>
+        kinds.indexOf(a.kind) - kinds.indexOf(b.kind) ||
+        channels.indexOf(a.channel) - channels.indexOf(b.channel),
+    )
+    .map(({ kind, channel, enabled, source }) => ({
+      kind,
+      label: KIND_POLICY[kind].label,
+      channel,
+      enabled,
+      source,
+      inEffect: !cellProblems({ cells: [{ kind, channel }], isLeader }).length,
+    }));
+}
+
 @Injectable()
 export class NotificationSettingsService {
   constructor(
@@ -113,6 +142,19 @@ export class NotificationSettingsService {
     const user = await em.findOneByOrFail(User, { id: userId });
     const overrides = await em.findBy(NotificationPreference, { userId });
     return settingsFor({ user, overrides });
+  }
+
+  async getAdmin(userId: number): Promise<NotificationSettingsAdmin> {
+    const em = this.dataSource.manager;
+    const user = await em.findOneBy(User, { id: userId });
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+    const rows = await em.findBy(NotificationPreference, { userId });
+    return {
+      defaults: user,
+      overrides: overridesAdmin({ rows, isLeader: user.isCommunityLeader }),
+    };
   }
 
   async update(

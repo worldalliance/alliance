@@ -10,6 +10,7 @@ import {
 } from "class-validator";
 import { NotificationChannel } from "src/notifs/notif-utils";
 import { NotificationKind, NotificationSection } from "../notification-kind";
+import { PreferenceSource } from "../notification-preference.entity";
 import type { ChannelDefaults } from "../notification-preferences.service";
 
 export class ChannelDefaultsDto {
@@ -141,6 +142,72 @@ export class NotificationSettingsDto {
     this.defaults = new ChannelDefaultsDto(input.defaults);
     this.kinds = input.kinds.map((kind) => new KindSettingsDto(kind));
     this.reachability = new ChannelReachabilityDto(input.reachability);
+  }
+}
+
+export type NotificationOverrideAdmin = {
+  kind: NotificationKind;
+  label: string;
+  channel: NotificationChannel;
+  enabled: boolean;
+  source: PreferenceSource;
+  inEffect: boolean;
+};
+
+export class NotificationOverrideAdminDto {
+  @ApiProperty({ enum: NotificationKind, enumName: "NotificationKind" })
+  kind: NotificationKind;
+
+  @ApiProperty()
+  label: string;
+
+  @ApiProperty({ enum: NotificationChannel, enumName: "NotificationChannel" })
+  channel: NotificationChannel;
+
+  @ApiProperty()
+  enabled: boolean;
+
+  @ApiProperty({ enum: PreferenceSource, enumName: "PreferenceSource" })
+  source: PreferenceSource;
+
+  @ApiProperty({
+    description:
+      "Whether the override decides a send; false on a kind the member can't set now, such as a leader-only kind for a member who leads no group",
+  })
+  inEffect: boolean;
+
+  constructor(input: NotificationOverrideAdmin) {
+    this.kind = input.kind;
+    this.label = input.label;
+    this.channel = input.channel;
+    this.enabled = input.enabled;
+    this.source = input.source;
+    this.inEffect = input.inEffect;
+  }
+}
+
+export type NotificationSettingsAdmin = {
+  defaults: ChannelDefaults;
+  overrides: NotificationOverrideAdmin[];
+};
+
+export class NotificationSettingsAdminDto {
+  @ApiProperty({ type: ChannelDefaultsDto })
+  defaults: ChannelDefaultsDto;
+
+  @ApiProperty({
+    type: NotificationOverrideAdminDto,
+    isArray: true,
+    description:
+      "Every stored override, including ones on kinds the member can't see now",
+  })
+  overrides: NotificationOverrideAdminDto[];
+
+  constructor(input: NotificationSettingsAdmin) {
+    this.defaults = new ChannelDefaultsDto(input.defaults);
+    this.overrides = input.overrides.map(
+      (override) => new NotificationOverrideAdminDto(override),
+    );
   }
 }
 

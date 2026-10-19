@@ -1,11 +1,15 @@
 import { NotificationChannel } from "src/notifs/notif-utils";
 import { User } from "src/user/entities/user.entity";
-import { NotificationKind } from "./notification-kind";
+import { KIND_POLICY, NotificationKind } from "./notification-kind";
 import {
   NotificationPreference,
   PreferenceSource,
 } from "./notification-preference.entity";
-import { cellProblems, settingsFor } from "./notification-settings.service";
+import {
+  cellProblems,
+  overridesAdmin,
+  settingsFor,
+} from "./notification-settings.service";
 
 describe("cellProblems", () => {
   it("accepts offered cells of optional kinds", () => {
@@ -160,5 +164,79 @@ describe("settingsFor", () => {
     expect(
       settingsFor({ user: member([]), overrides: [] }).reachability,
     ).toEqual({ textablePhoneNumber: true, textStopped: true });
+  });
+});
+
+describe("overridesAdmin", () => {
+  const row = (
+    kind: NotificationKind,
+    channel: NotificationChannel,
+    source: PreferenceSource,
+  ) =>
+    Object.assign(new NotificationPreference(), {
+      userId: 1,
+      kind,
+      channel,
+      enabled: false,
+      source,
+    });
+
+  it("labels every stored override and orders it by kind, then channel", () => {
+    const overrides = overridesAdmin({
+      isLeader: true,
+      rows: [
+        row(
+          NotificationKind.Likes,
+          NotificationChannel.Push,
+          PreferenceSource.Member,
+        ),
+        row(
+          NotificationKind.MemberLeftCommunity,
+          NotificationChannel.Push,
+          PreferenceSource.Migrated,
+        ),
+        row(
+          NotificationKind.Likes,
+          NotificationChannel.InApp,
+          PreferenceSource.Migrated,
+        ),
+      ],
+    });
+    expect(
+      overrides.map(({ kind, channel, source }) => [kind, channel, source]),
+    ).toEqual([
+      [
+        NotificationKind.Likes,
+        NotificationChannel.InApp,
+        PreferenceSource.Migrated,
+      ],
+      [
+        NotificationKind.Likes,
+        NotificationChannel.Push,
+        PreferenceSource.Member,
+      ],
+      [
+        NotificationKind.MemberLeftCommunity,
+        NotificationChannel.Push,
+        PreferenceSource.Migrated,
+      ],
+    ]);
+    expect(overrides[0]).toMatchObject({
+      label: KIND_POLICY[NotificationKind.Likes].label,
+      enabled: false,
+      inEffect: true,
+    });
+  });
+
+  it("marks an override that decides no send as not in effect", () => {
+    const inEffect = (kind: NotificationKind, isLeader: boolean) =>
+      overridesAdmin({
+        rows: [row(kind, NotificationChannel.Push, PreferenceSource.Migrated)],
+        isLeader,
+      })[0]?.inEffect;
+    expect(inEffect(NotificationKind.MemberLeftCommunity, true)).toBe(true);
+    expect(inEffect(NotificationKind.MemberLeftCommunity, false)).toBe(false);
+    expect(inEffect(NotificationKind.ContractSuspended, true)).toBe(false);
+    expect(inEffect(NotificationKind.ActionAnnounced, true)).toBe(false);
   });
 });

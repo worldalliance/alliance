@@ -2,14 +2,18 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  ParseIntPipe,
   Patch,
   Request,
   UseGuards,
 } from "@nestjs/common";
 import { ApiOkResponse } from "@nestjs/swagger";
+import { AdminGuard } from "src/auth/guards/admin.guard";
 import { AuthGuard } from "src/auth/guards/auth.guard";
 import type { JwtRequest } from "src/auth/tokens";
 import {
+  NotificationSettingsAdminDto,
   NotificationSettingsDto,
   UpdateNotificationSettingsDto,
 } from "./dto/notification-settings.dto";
@@ -36,5 +40,14 @@ export class NotificationSettingsController {
     return new NotificationSettingsDto(
       await this.settings.update(req.user.sub, body),
     );
+  }
+
+  @Get("userdetail/:id/notification-settings")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: NotificationSettingsAdminDto })
+  async getAdmin(
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<NotificationSettingsAdminDto> {
+    return new NotificationSettingsAdminDto(await this.settings.getAdmin(id));
   }
 }

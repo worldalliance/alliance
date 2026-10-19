@@ -234,10 +234,6 @@ export class UserDto extends PickType(User, [
   "staff",
   "ambassador",
   "id",
-  "inAppByDefault",
-  "pushByDefault",
-  "textByDefault",
-  "emailByDefault",
   "profileDescription",
   "switchedDomainAt",
   "referralCode",
@@ -300,10 +296,6 @@ export class UserDto extends PickType(User, [
     this.phoneNumber = user.phoneNumber;
     this.preferredReminderTime = user.preferredReminderTime;
     this.timeZone = user.timeZone;
-    this.inAppByDefault = user.inAppByDefault;
-    this.pushByDefault = user.pushByDefault;
-    this.textByDefault = user.textByDefault;
-    this.emailByDefault = user.emailByDefault;
     this.shareEmailWithCommunityLead = user.shareEmailWithCommunityLead;
     this.sharePhoneNumberWithCommunityLead =
       user.sharePhoneNumberWithCommunityLead;

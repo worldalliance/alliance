@@ -47,7 +47,7 @@ Defaults copy from the three general toggles; in-app starts On for everyone. For
 | `textsForNewGroupMembers`            | Someone joined your group · SMS                              |
 | `remindAboutUncompletedGroupMembers` | Group members with uncompleted tasks · every offered channel |
 
-Kinds whose current gating ignores a general toggle get an On override wherever the member's default for that channel is Off. Overrides on leader-only kinds are written for every member, leader or not, so an opt-out survives becoming a leader. The core retires every column the migration read, plus `socialNotifsPreference` and `turnedOffAllNotifs`, and a PR deployed after it drops them with `forumDigestPreference` (see Retiring a column). `UserDto` swaps the three action toggles and every per-kind field for the four channel defaults, so the admin user detail page shows the push, text, and email defaults until the admin view replaces them, and stops showing `turnedOffAllNotifs`. The old `NotificationPreference` enum goes with `socialNotifsPreference`, whose retired field lists the enum's values inline. Overrides it writes have `source = migrated`.
+Kinds whose current gating ignores a general toggle get an On override wherever the member's default for that channel is Off. Overrides on leader-only kinds are written for every member, leader or not, so an opt-out survives becoming a leader. The core retires every column the migration read, plus `socialNotifsPreference` and `turnedOffAllNotifs`, and a PR deployed after it drops them with `forumDigestPreference` (see Retiring a column). `UserDto` drops the three action toggles, every per-kind field, and `turnedOffAllNotifs`, and carries no channel default: the admin page reads those from the admin view. The old `NotificationPreference` enum goes with `socialNotifsPreference`, whose retired field lists the enum's values inline. Overrides it writes have `source = migrated`.
 
 ## In-app visibility
 
@@ -95,6 +95,10 @@ A column the running release maps is retired in one deploy and dropped in a late
 - A saved phone number refreshes the settings, so the text notice follows the number on file. With no textable number the notice asks for a valid one; with STOP on file it says to reply START, the keyword the SMS webhook honours.
 - Mobile reads the device's push permission when the screen mounts and whenever the app returns to the foreground, so coming back from the device's settings updates the notice, which links there. The web app can't read a phone's push permission, so web shows no push notice.
 - Mobile registers for push when the app returns to the foreground with permission newly granted, so permission granted in the device's settings takes effect without a restart.
+
+## Admin view
+
+`GET /user/userdetail/:id/notification-settings`, behind `AdminGuard`, returns the member's four channel defaults and every stored override with its kind's label, its channel, its value, its `source`, and whether it is in effect. It lists stored rows rather than resolved cells, so an override on a kind the member can't set now, such as a leader-only kind for a member who leads no group, still shows, marked not in effect. In effect means `cellProblems` would accept the cell from this member, the rule the settings `PATCH` applies, so the admin view and the member's screens agree on which overrides count. The user detail page shows it in its own section, which loads apart from the member so a failure there leaves the rest of the page up.
 
 ## Delivery
 

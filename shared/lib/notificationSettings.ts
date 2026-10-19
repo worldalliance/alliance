@@ -111,7 +111,7 @@ export const REQUIRED_KIND_NOTE = "Always follows your defaults";
 export const RESET_KIND = "Reset to defaults";
 
 export function defaultOf(
-  settings: NotificationSettingsDto,
+  settings: Pick<NotificationSettingsDto, "defaults">,
   channel: NotificationChannel,
 ): boolean {
   return settings.defaults[DEFAULT_KEY[channel]];

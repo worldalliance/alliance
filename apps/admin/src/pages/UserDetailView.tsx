@@ -8,7 +8,6 @@ import {
   userTagGetTagSummariesAdmin,
 } from "@alliance/shared/client";
 import {
-  NotificationChannel,
   ProfileDto,
   UserActionRelationDetailDto,
   UserActionRelationsResponseDto,
@@ -29,6 +28,7 @@ import MemberGroupMoveSection from "../components/MemberGroupMoveSection";
 import UserAwayPeriodsSection from "../components/UserAwayPeriodsSection";
 import UserActionsSection from "../components/user-detail/UserActionsSection";
 import UserMemberInfoSection from "../components/user-detail/UserMemberInfoSection";
+import UserNotificationSettingsSection from "../components/user-detail/UserNotificationSettingsSection";
 import UserNotificationsSection from "../components/user-detail/UserNotificationsSection";
 import UserRolesSection from "../components/user-detail/UserRolesSection";
 import UserTagsSection from "../components/user-detail/UserTagsSection";
@@ -99,23 +99,6 @@ const UserDetailView: React.FC = () => {
       )}
     </div>
   );
-};
-
-const CHANNEL_DEFAULTS: Record<
-  NotificationChannel,
-  {
-    label: string;
-    field:
-      | "inAppByDefault"
-      | "pushByDefault"
-      | "textByDefault"
-      | "emailByDefault";
-  }
-> = {
-  in_app: { label: "In-app", field: "inAppByDefault" },
-  push: { label: "Push", field: "pushByDefault" },
-  text: { label: "Text", field: "textByDefault" },
-  email: { label: "Email", field: "emailByDefault" },
 };
 
 const UserDetail = ({
@@ -258,16 +241,6 @@ const UserDetail = ({
             )}
             <span className="text-zinc-400">ID: {user.id}</span>
           </div>
-          <div className="flex items-center gap-3 mt-3 text-sm">
-            {Object.values(CHANNEL_DEFAULTS).map(({ label, field }) => (
-              <span
-                key={field}
-                className={user[field] ? "text-green-600" : "text-zinc-400"}
-              >
-                {label} default {user[field] ? "on" : "off"}
-              </span>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -284,6 +257,8 @@ const UserDetail = ({
         {/* Right Column */}
         <div className="space-y-4">
           <UserMemberInfoSection user={user} />
+
+          <UserNotificationSettingsSection userId={user.id} />
 
           {/* Groups */}
           <MemberGroupMoveSection user={user} refreshUser={refresh} />
