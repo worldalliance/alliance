@@ -788,10 +788,6 @@ export type UserDto = {
     phoneNumber: string | null;
     preferredReminderTime: string | null;
     timeZone: string | null;
-    inAppByDefault: boolean;
-    pushByDefault: boolean;
-    textByDefault: boolean;
-    emailByDefault: boolean;
     shareEmailWithCommunityLead: boolean;
     sharePhoneNumberWithCommunityLead: boolean;
     switchedDomainAt: string | null;
@@ -1024,10 +1020,6 @@ export type UserAdminDetailDto = {
     phoneNumber: string | null;
     preferredReminderTime: string | null;
     timeZone: string | null;
-    inAppByDefault: boolean;
-    pushByDefault: boolean;
-    textByDefault: boolean;
-    emailByDefault: boolean;
     shareEmailWithCommunityLead: boolean;
     sharePhoneNumberWithCommunityLead: boolean;
     switchedDomainAt: string | null;
