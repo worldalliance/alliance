@@ -1,4 +1,7 @@
-import type { UserAdminDetailDto } from "@alliance/shared/client/types.gen";
+import type {
+  NotificationSettingsAdminDto,
+  UserAdminDetailDto,
+} from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { makeTag, makeUser } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
@@ -10,6 +13,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { omit } from "es-toolkit";
 import { createMemoryRouter, RouterProvider } from "react-router";
@@ -29,6 +33,7 @@ const tagDto = makeTag();
 const volunteers = omit(tagDto, ["users"]);
 
 let stored: UserAdminDetailDto;
+let notificationSettings: NotificationSettingsAdminDto | null;
 let detailStatus: number;
 let addTagStatus: number;
 let memberRequested: () => void;
@@ -46,6 +51,10 @@ serveApi(
               { status: detailStatus },
             );
       },
+      "GET /user/userdetail/:id/notification-settings": () =>
+        notificationSettings
+          ? Response.json(notificationSettings)
+          : Response.json({}, { status: 500 }),
       "PATCH /user/userdetail/:id/roles": () =>
         Response.json({ message: "Forbidden" }, { status: 400 }),
       "POST /contract/admin/suspend/:userId": () =>
@@ -81,6 +90,7 @@ beforeAll(() => queryClient.setDefaultOptions({ queries: { retry: false } }));
 
 beforeEach(() => {
   stored = sam;
+  notificationSettings = null;
   detailStatus = 404;
   addTagStatus = 200;
   memberRequest = new Promise((resolve) => {
@@ -132,25 +142,88 @@ it("loads the member alongside the rest of the page", async () => {
   expect(await screen.findByRole("heading", { name: "Sam" })).toBeTruthy();
 });
 
-it("shows each channel default under its own channel", async () => {
+it("shows each channel default and each override with its source and whether it is in effect", async () => {
   detailStatus = 200;
-  stored = {
-    ...sam,
-    inAppByDefault: false,
-    pushByDefault: false,
-    textByDefault: true,
-    emailByDefault: true,
+  notificationSettings = {
+    defaults: { inApp: false, push: false, text: true, email: true },
+    overrides: [
+      {
+        kind: "likes",
+        label: "Likes",
+        channel: "push",
+        enabled: true,
+        source: "member",
+        inEffect: true,
+      },
+      {
+        kind: "member_left_community",
+        label: "A member left a group you lead",
+        channel: "push",
+        enabled: false,
+        source: "migrated",
+        inEffect: false,
+      },
+    ],
   };
   renderPage();
 
-  for (const text of [
-    "In-app default off",
-    "Push default off",
-    "Text default on",
-    "Email default on",
-  ]) {
-    expect(await screen.findByText(text)).toBeTruthy();
-  }
+  const section = within(
+    await screen.findByRole("region", { name: "Notification settings" }),
+  );
+  await section.findByText("Overrides (2)");
+  expect(
+    ["In-app", "Push", "Text", "Email"].map(
+      (label) => section.getByText(`${label} default`).nextSibling?.textContent,
+    ),
+  ).toEqual(["Off", "Off", "On", "On"]);
+  expect(
+    section.getAllByRole("listitem").map((row) => row.textContent),
+  ).toEqual([
+    "Likes · PushOnSet by member",
+    "A member left a group you lead · PushOffCarried over by migrationNot in effect",
+  ]);
+});
+
+it("says when every notification follows the defaults", async () => {
+  detailStatus = 200;
+  notificationSettings = {
+    defaults: { inApp: true, push: true, text: true, email: true },
+    overrides: [],
+  };
+  renderPage();
+
+  const section = within(
+    await screen.findByRole("region", { name: "Notification settings" }),
+  );
+  expect(await section.findByText("Overrides (0)")).toBeTruthy();
+  expect(
+    section.getByText("Every notification follows the defaults."),
+  ).toBeTruthy();
+});
+
+it("keeps cached notification settings it could not refresh and says so", async () => {
+  detailStatus = 200;
+  queryClient.setQueryData(queryKeys.userNotificationSettingsAdmin(7), {
+    defaults: { inApp: true, push: true, text: true, email: true },
+    overrides: [],
+  });
+  renderPage();
+
+  expect(
+    await screen.findByText(
+      "Could not refresh notification settings. Reload to see the latest.",
+    ),
+  ).toBeTruthy();
+  expect(screen.getByText("Overrides (0)")).toBeTruthy();
+});
+
+it("says when the member's notification settings fail to load", async () => {
+  detailStatus = 200;
+  renderPage();
+
+  expect(
+    await screen.findByText("Failed to load notification settings."),
+  ).toBeTruthy();
 });
 
 it("loads the member afresh over one cached moments ago", async () => {
