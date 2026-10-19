@@ -37,6 +37,8 @@ export type ResolveOutputParams = {
   validatorResults?: VisibilityValidatorResults;
   deviceType?: DeviceVisibilityTarget;
   publicAnswers?: Record<string, boolean>;
+  /** The submitter's, so a `random` input shows the pick the submitter saw. */
+  randomizationKey?: string;
 };
 
 const visibilityContext = (
@@ -190,6 +192,7 @@ export const resolveOutputBlocks = ({
   validatorResults,
   deviceType,
   publicAnswers,
+  randomizationKey,
 }: ResolveOutputParams): {
   selectedView: OutputViewSchema;
   fieldLookup: Map<string, AnyField>;
@@ -307,6 +310,7 @@ export const resolveOutputBlocks = ({
   const variableContext = {
     answers: visibleAnswers,
     fields: variableInputFieldsById(collectVariableResolutionFields(schema)),
+    randomizationKey,
   };
   // A variable that fails stays out, so its `#{name}` shows as written.
   const variableValues = new Map<string, string>();

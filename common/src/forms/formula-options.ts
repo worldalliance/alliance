@@ -112,6 +112,7 @@ function dependencies(
       case "sourceField":
       case "sourceList":
       case "aggregate":
+      case "random":
         return [];
       case "list":
         return entries
@@ -241,7 +242,7 @@ export function evaluateOptionsFormula(
   formula: OptionsFormula,
   context: VariableResolutionContext,
 ): Result<ChoiceOption[], string> {
-  return R.flatMap(prepareFormula(formula, context), ({ node, inputs }) =>
+  return R.flatMap(prepareFormula({ formula, context }), ({ node, inputs }) =>
     evaluateOptionsExpression(node, inputs),
   );
 }

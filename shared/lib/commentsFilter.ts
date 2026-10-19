@@ -1,5 +1,5 @@
+import { hashStringToSeed } from "@alliance/common/random";
 import { CommentDto, PostTagDto, UserDto } from "@alliance/shared/client";
-import { hashStringToSeed } from "@alliance/shared/forms/randomutils";
 import {
   countCommentsByTag,
   matchesTagFilter,

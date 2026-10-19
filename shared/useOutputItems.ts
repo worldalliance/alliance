@@ -7,6 +7,7 @@ import type { VisibilityValidatorResults } from "@alliance/common/forms/visibili
 import { R } from "@alliance/common/result";
 import { useMemo } from "react";
 import type { FormResponseDto, FormResponseOutputDto } from "./client";
+import { formRandomizationKey } from "./formrenderer";
 import { resolveOutputItems, type ResolvedOutputItem } from "./outputrenderer";
 import { parseVisibilityValidatorResults } from "./parsed-dtos";
 
@@ -18,6 +19,8 @@ export type OutputSource = {
   viewId?: string;
   validatorResults?: VisibilityValidatorResults;
   deviceType?: DeviceVisibilityTarget;
+  /** The member who submitted `submission`, whose pick a `random` input shows. */
+  submitterId?: number;
 };
 
 type SubmissionWithPublicAnswers =
@@ -32,6 +35,7 @@ export function useOutputItems({
   viewId,
   validatorResults,
   deviceType,
+  submitterId,
 }: OutputSource): ResolvedOutputItem[] {
   const effectiveSchema =
     schema ?? (submission?.schemaSnapshot as unknown as FormSchema | undefined);
@@ -63,6 +67,13 @@ export function useOutputItems({
   const resolvedPublicAnswers = (
     submission as SubmissionWithPublicAnswers | undefined
   )?.publicAnswers;
+  const randomizationKey =
+    submission && submitterId !== undefined
+      ? formRandomizationKey({
+          formId: submission.formId,
+          activeUserKey: String(submitterId),
+        })
+      : undefined;
 
   return useMemo(
     () =>
@@ -74,6 +85,7 @@ export function useOutputItems({
             validatorResults: resolvedValidatorResults,
             deviceType: resolvedDeviceType,
             publicAnswers: resolvedPublicAnswers,
+            randomizationKey,
           }).items
         : [],
     [
@@ -83,6 +95,7 @@ export function useOutputItems({
       resolvedValidatorResults,
       resolvedDeviceType,
       resolvedPublicAnswers,
+      randomizationKey,
     ],
   );
 }

@@ -51,14 +51,20 @@ const variableAggregateInputSchema = z.strictObject({
   fieldId: z.string(),
 });
 
+const variableRandomInputSchema = z.strictObject({
+  kind: z.literal("random"),
+});
+
 export const variableInputSchema = z.discriminatedUnion("kind", [
   variableFieldInputSchema,
   variableListInputSchema,
   variableSourceFieldInputSchema,
   variableSourceListInputSchema,
   variableAggregateInputSchema,
+  variableRandomInputSchema,
 ]);
 export type VariableInput = z.infer<typeof variableInputSchema>;
+export type FieldReadingInput = Exclude<VariableInput, { kind: "random" }>;
 export type VariableFieldInput = Extract<
   VariableInput,
   { kind: "field" | "sourceField" }
@@ -82,6 +88,7 @@ const LIST_INPUT_KINDS: Record<VariableInput["kind"], boolean> = {
   sourceField: false,
   sourceList: true,
   aggregate: false,
+  random: false,
 };
 
 export function isListInput(input: VariableInput): input is VariableListInput {
@@ -94,6 +101,7 @@ const SOURCE_INPUT_KINDS: Record<VariableInput["kind"], boolean> = {
   sourceField: true,
   sourceList: true,
   aggregate: false,
+  random: false,
 };
 
 /** Reads the member's own submissions to another form. */
@@ -109,6 +117,7 @@ export function inputSourceFormId(input: VariableInput): number | undefined {
   switch (kind) {
     case "field":
     case "list":
+    case "random":
       return undefined;
     case "sourceField":
     case "sourceList":

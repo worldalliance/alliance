@@ -145,7 +145,10 @@ const ActionActivityDetail = () => {
             )}
             {activity.formResponseOutput && (
               <div className="my-3">
-                <OutputRenderer submission={activity.formResponseOutput} />
+                <OutputRenderer
+                  submission={activity.formResponseOutput}
+                  submitterId={activity.user.id}
+                />
               </div>
             )}
             <LikeFooter

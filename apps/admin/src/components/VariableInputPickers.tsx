@@ -1,6 +1,7 @@
 import type { AnyField } from "@alliance/common/forms/form-schema";
 import {
   inputSourceFormId,
+  type FieldReadingInput,
   type VariableInput,
 } from "@alliance/common/forms/variable-inputs";
 import type { VariableFieldScope } from "@alliance/common/forms/variables";
@@ -23,7 +24,10 @@ export type InputSources = {
   scope: VariableFieldScope;
 };
 
-export const fieldChoices = (input: VariableInput, sources: InputSources) => {
+export const fieldChoices = (
+  input: FieldReadingInput,
+  sources: InputSources,
+) => {
   const fields = sources.fieldsFor(inputSourceFormId(input));
   return input.kind === "aggregate"
     ? fields.filter((field) => field.kind === "multiselect")
@@ -33,6 +37,7 @@ export const fieldChoices = (input: VariableInput, sources: InputSources) => {
 export enum InputMode {
   Answers = "answers",
   Counts = "counts",
+  Random = "random",
 }
 
 const KIND_INPUT_MODE: Record<VariableInput["kind"], InputMode> = {
@@ -41,6 +46,7 @@ const KIND_INPUT_MODE: Record<VariableInput["kind"], InputMode> = {
   sourceField: InputMode.Answers,
   sourceList: InputMode.Answers,
   aggregate: InputMode.Counts,
+  random: InputMode.Random,
 };
 
 export const inputModeOfInput = (input: VariableInput): InputMode =>
@@ -50,11 +56,13 @@ export function InputModePicker({
   inputName,
   mode,
   countsAvailable,
+  randomAvailable,
   onChange,
 }: {
   inputName: string;
   mode: InputMode;
   countsAvailable: boolean;
+  randomAvailable: boolean;
   onChange: (mode: InputMode) => void;
 }) {
   return (
@@ -63,9 +71,9 @@ export function InputModePicker({
       aria-label={`What ${inputName} reads`}
       onChange={(event) =>
         onChange(
-          event.target.value === InputMode.Counts
-            ? InputMode.Counts
-            : InputMode.Answers,
+          Object.values(InputMode).find(
+            (mode) => mode === event.target.value,
+          ) ?? InputMode.Answers,
         )
       }
       className={cn(inputText, "bg-white w-36 shrink-0")}
@@ -73,6 +81,9 @@ export function InputModePicker({
       <option value={InputMode.Answers}>Answers</option>
       <option value={InputMode.Counts} disabled={!countsAvailable}>
         Aggregate counts
+      </option>
+      <option value={InputMode.Random} disabled={!randomAvailable}>
+        Random number (stable per member)
       </option>
     </select>
   );
@@ -134,7 +145,7 @@ export function SourceFormPicker({
 }
 
 const sourceStatus = (
-  input: VariableInput,
+  input: FieldReadingInput,
   sources: InputSources,
 ): FormFieldsStatus => {
   const sourceFormId = inputSourceFormId(input);
@@ -144,7 +155,7 @@ const sourceStatus = (
 };
 
 const unreadFieldLabel = (params: {
-  input: VariableInput;
+  input: FieldReadingInput;
   sources: InputSources;
   choices: AnyField[];
 }): string => {
@@ -184,7 +195,7 @@ export function SourceFormLoadError({
 
 type FieldPickerProps = {
   inputName: string;
-  input: VariableInput;
+  input: FieldReadingInput;
   field: AnyField | undefined;
   choices: AnyField[];
   sources: InputSources;

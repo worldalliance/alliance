@@ -8,6 +8,7 @@ import {
   type VariableInput,
 } from "@alliance/common/forms/variable-inputs";
 import { VariableInputMode } from "@alliance/common/forms/variables";
+import { RANDOM_INPUT_HELP } from "./RandomInput";
 import {
   AGGREGATE_INPUT_HELP,
   INPUT_MODE_HELP,
@@ -65,6 +66,8 @@ export const answerHelp = (
         example: (name) => AGGREGATE_INPUT_HELP.example(name, value),
       };
     }
+    case "random":
+      return RANDOM_INPUT_HELP;
     default:
       throw new Error(`unknown input kind: ${input satisfies never}`);
   }

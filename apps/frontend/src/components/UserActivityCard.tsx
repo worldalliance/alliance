@@ -94,7 +94,10 @@ const UserActivityCard = ({ activity, handleLike }: UserActivityCardProps) => {
                 .schemaSnapshot as unknown as FormSchema
             ).outputViews?.length && (
               <div className="my-3">
-                <OutputRenderer submission={activity.formResponseOutput} />
+                <OutputRenderer
+                  submission={activity.formResponseOutput}
+                  submitterId={activity.user.id}
+                />
               </div>
             )}
           <p className="text-zinc-500 mt-1">{timeSinceCompleted}</p>

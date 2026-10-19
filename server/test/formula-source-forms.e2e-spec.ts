@@ -155,7 +155,11 @@ describe("Formulas reading another form (e2e)", () => {
         destinationSchema({
           ...variable,
           inputs: {
-            input1: { ...variable.inputs.input1, fieldId: "missing" },
+            input1: {
+              kind: "sourceField",
+              sourceFormId: form.id,
+              fieldId: "missing",
+            },
           },
         }),
       ).expect(400);
