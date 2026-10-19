@@ -5,13 +5,15 @@ import {
   type FormValue,
 } from "@alliance/common/forms/form-schema";
 import {
+  selectedFormulaChoices,
+  selectsFormulaChoice,
+  type FormulaChoices,
+} from "@alliance/common/forms/formula-choices";
+import {
   collectOptionsFormulaFields,
   FORMULA_SOURCES_CHANGED,
   optionsFormulaSourceFormIds,
   resolveFormulaOptions,
-  selectedFormulaChoices,
-  selectsFormulaChoice,
-  type FormulaChoices,
   type FormulaFieldEntry,
 } from "@alliance/common/forms/formula-options";
 import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";

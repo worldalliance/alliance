@@ -3,7 +3,7 @@ import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import {
   readFormulaChoices,
   type FormulaChoices,
-} from "@alliance/common/forms/formula-options";
+} from "@alliance/common/forms/formula-choices";
 import {
   readVisibilityValidatorResults,
   type VisibilityValidatorResults,
