@@ -1,4 +1,5 @@
 import { thrownMessage } from "../errorMessage";
+import { uniformHash } from "../random";
 import { R, type Result } from "../result";
 import type { FormValue } from "./form-schema";
 import { withStepBudget } from "./formula-step-budget";
@@ -61,6 +62,11 @@ export type VariableResolutionContext = {
    * fails, so a caller that never loaded them cannot pass them off as zeros.
    */
   aggregates?: ReadonlyMap<string, VariableAggregateCounts>;
+  /**
+   * Seeds `random` inputs: the member's key, so each member keeps one pick.
+   * A `random` input fails without it rather than giving everyone the same pick.
+   */
+  randomizationKey?: string;
 };
 
 type LocalAnswers = Pick<VariableResolutionContext, "answers" | "fields">;
@@ -187,10 +193,24 @@ function resolveAggregateInput(
     : R.success(counts);
 }
 
-function resolveInput(
-  input: VariableInput,
-  context: VariableResolutionContext,
+function resolveRandomInput(
+  randomizationKey: string | undefined,
+  seedScope: string | undefined,
 ): Result<ExprValue, string> {
+  if (seedScope === undefined) {
+    return R.failure("A random input works only in a variable");
+  }
+  return randomizationKey === undefined
+    ? R.failure("No randomization key to pick a random number with")
+    : R.success(uniformHash(`${randomizationKey}:${seedScope}`));
+}
+
+function resolveInput(params: {
+  input: VariableInput;
+  context: VariableResolutionContext;
+  seedScope: string | undefined;
+}): Result<ExprValue, string> {
+  const { input, context } = params;
   const { kind } = input;
   switch (kind) {
     case "field":
@@ -202,6 +222,8 @@ function resolveInput(
       return resolveSourceInput(input, context.sources);
     case "aggregate":
       return resolveAggregateInput(input, context.aggregates);
+    case "random":
+      return resolveRandomInput(context.randomizationKey, params.seedScope);
     default:
       // A newer admin can save an input kind this build predates.
       return R.failure(`Unknown input kind: ${kind satisfies never}`);
@@ -222,10 +244,13 @@ export function evaluateVariableText(
   );
 }
 
-export function prepareFormula(
-  formula: Formula,
-  context: VariableResolutionContext,
-): Result<{ node: ExprNode; inputs: Map<string, ExprValue> }, string> {
+export function prepareFormula(params: {
+  formula: Formula;
+  context: VariableResolutionContext;
+  /** Names the variable, so each variable's `random` inputs pick independently. */
+  variableName?: string;
+}): Result<{ node: ExprNode; inputs: Map<string, ExprValue> }, string> {
+  const { formula, context, variableName } = params;
   const compiled = compileVariableExpression(
     formula.formula,
     new Set(Object.keys(formula.inputs)),
@@ -234,7 +259,12 @@ export function prepareFormula(
 
   const inputs = new Map<string, ExprValue>();
   for (const [name, input] of Object.entries(formula.inputs)) {
-    const value = resolveInput(input, context);
+    const value = resolveInput({
+      input,
+      context,
+      seedScope:
+        variableName === undefined ? undefined : `${variableName}:${name}`,
+    });
     if (!value.ok) return value;
     inputs.set(name, value.value);
   }
@@ -245,8 +275,9 @@ export function evaluateVariable(
   variable: FormVariable,
   context: VariableResolutionContext,
 ): Result<string, string> {
-  return R.flatMap(prepareFormula(variable, context), ({ node, inputs }) =>
-    evaluateVariableText(node, inputs),
+  return R.flatMap(
+    prepareFormula({ formula: variable, context, variableName: variable.name }),
+    ({ node, inputs }) => evaluateVariableText(node, inputs),
   );
 }
 

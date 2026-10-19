@@ -8,6 +8,7 @@ const RENDER_PATH_ENTRIES = [
   "./variables.ts",
   "./variable-evaluation.ts",
   "./formula-options.ts",
+  "./formula-choices.ts",
   "./variable-source-history.ts",
   "./form-schema.ts",
   "./form-conditions.ts",

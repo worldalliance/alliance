@@ -8,7 +8,7 @@ import {
   type FormAnswers,
 } from "@alliance/common/forms/form-responses";
 import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
-import type { FormulaChoices } from "@alliance/common/forms/formula-options";
+import type { FormulaChoices } from "@alliance/common/forms/formula-choices";
 import { MIGRATE_RESPONSE_SNAPSHOTS_MAX_BATCH } from "@alliance/common/forms/snapshot-migration";
 import type { VisibilityValidatorResults } from "@alliance/common/forms/visibility";
 import {

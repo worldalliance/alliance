@@ -202,6 +202,29 @@ export function schemaNeedsVisibilityContext(schema: FormSchema): boolean {
   );
 }
 
+export type RandomizationKeyArgs = {
+  formId: number;
+  activeUserKey: string | null | undefined;
+  persistKey?: string | number | null;
+};
+
+/**
+ * Seed for per-user randomization. Keyed on the acting user where there is one
+ * so a member sees a stable order across devices, and on the persist key
+ * otherwise so an anonymous draft stays stable across a reload.
+ */
+export function formRandomizationKey(args: RandomizationKeyArgs): string {
+  const { formId, activeUserKey, persistKey } = args;
+  const base = `form:${formId}`;
+  if (activeUserKey) {
+    return `${base}:user:${activeUserKey}`;
+  }
+  if (persistKey !== undefined && persistKey !== null && persistKey !== "") {
+    return `${base}:persist:${String(persistKey)}`;
+  }
+  return base;
+}
+
 /**
  * Normalize a user id (or fallback id) into the string key used by
  * `DisplayBlock.manualUserContent`. Returns undefined when neither id resolves

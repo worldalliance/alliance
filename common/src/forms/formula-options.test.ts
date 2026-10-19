@@ -12,15 +12,17 @@ import {
 } from "./form-schema";
 import { validateFormSchema } from "./form-schema-validate";
 import {
-  formulaSourceFormIds,
-  keepAvailableChoices,
   readFormulaChoices,
-  readOptionsResult,
-  resolveFormulaOptions,
-  schemaWithResolvedOptions,
   schemaWithSavedChoices,
   selectedFormulaChoices,
   selectsFormulaChoice,
+} from "./formula-choices";
+import {
+  formulaSourceFormIds,
+  keepAvailableChoices,
+  readOptionsResult,
+  resolveFormulaOptions,
+  schemaWithResolvedOptions,
 } from "./formula-options";
 import type {
   VariableSourceHistory,

@@ -4,6 +4,7 @@ import {
   type FormValue,
   type ListSubField,
 } from "@alliance/common/forms/form-schema";
+import { schemaWithSavedChoices } from "@alliance/common/forms/formula-choices";
 import {
   collectOptionsFormulaFields,
   FORMULA_SOURCES_CHANGED,
@@ -11,7 +12,6 @@ import {
   keepAvailableChoices,
   optionsFormulaSourceFormIds,
   resolveFormulaOptions,
-  schemaWithSavedChoices,
   type ResolvedFormulaOptions,
   type ResolvedOptions,
 } from "@alliance/common/forms/formula-options";

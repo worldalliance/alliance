@@ -1,4 +1,4 @@
-import type { FormulaChoices } from "@alliance/common/forms/formula-options";
+import type { FormulaChoices } from "@alliance/common/forms/formula-choices";
 import type { FormResponseDto } from "@alliance/shared/client";
 import { parseFormulaChoices } from "@alliance/shared/parsed-dtos";
 import { uniqBy } from "es-toolkit";

@@ -1,7 +1,7 @@
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import type { AnyField } from "@alliance/common/forms/form-schema";
 import { isQuestionField } from "@alliance/common/forms/form-schema";
-import { fieldWithSavedChoices } from "@alliance/common/forms/formula-options";
+import { fieldWithSavedChoices } from "@alliance/common/forms/formula-choices";
 import { FormResponseDto } from "@alliance/shared/client";
 import Card from "@alliance/sharedweb/ui/Card";
 import FormMarkdownWrapper from "@alliance/sharedweb/ui/FormMarkdownWrapper";

@@ -63,10 +63,12 @@ import {
   collectManualSourceFormIds,
   findUnknownConditionKind,
   findUnknownFormElementKind,
+  formRandomizationKey,
   getFallbackVisiblePageIndex,
   getNextVisiblePageIndex,
   getPreviousVisiblePageIndex,
   getVisiblePageIndices,
+  type RandomizationKeyArgs,
 } from "./formrenderer";
 import {
   getListSubFieldErrors,
@@ -158,27 +160,12 @@ export function useFieldErrors(): {
   return { fieldErrors, clearFieldErrors, applyFieldErrorUpdates };
 }
 
-/**
- * Seed for per-user answer randomization. Keyed on the acting user where there
- * is one so a member sees a stable order across devices, and on the persist key
- * otherwise so an anonymous draft stays stable across a reload.
- */
-export function useRandomizationKey(args: {
-  formId: number;
-  activeUserKey: string | null | undefined;
-  persistKey?: string | number | null;
-}): string {
+export function useRandomizationKey(args: RandomizationKeyArgs): string {
   const { formId, activeUserKey, persistKey } = args;
-  return useMemo(() => {
-    const base = `form:${formId}`;
-    if (activeUserKey) {
-      return `${base}:user:${activeUserKey}`;
-    }
-    if (persistKey !== undefined && persistKey !== null && persistKey !== "") {
-      return `${base}:persist:${String(persistKey)}`;
-    }
-    return base;
-  }, [formId, activeUserKey, persistKey]);
+  return useMemo(
+    () => formRandomizationKey({ formId, activeUserKey, persistKey }),
+    [formId, activeUserKey, persistKey],
+  );
 }
 
 export function useFormSchemaMaps(args: {
@@ -721,6 +708,8 @@ export function useFormVisibility(args: {
   previousAnswerData: ConditionExtras["previousAnswerData"];
   sourceHistories: SourceHistories;
   variableAggregates: VariableAggregates;
+  /** From `useRandomizationKey`; seeds the variables' `random` inputs. */
+  randomizationKey: string;
   userHasCity: boolean;
   userPropertyHasValue?: UserPropertyPresence;
   firstContractSignedAt: string | null;
@@ -744,6 +733,7 @@ export function useFormVisibility(args: {
     previousAnswerData,
     sourceHistories,
     variableAggregates,
+    randomizationKey,
     userHasCity,
     userPropertyHasValue,
     firstContractSignedAt,
@@ -866,6 +856,7 @@ export function useFormVisibility(args: {
       fields: variableInputFields,
       sources,
       aggregates,
+      randomizationKey,
     });
   }, [
     schema.variables,
@@ -873,6 +864,7 @@ export function useFormVisibility(args: {
     variableInputFields,
     sourceHistories,
     variableAggregates,
+    randomizationKey,
   ]);
 
   const isElementCurrentlyVisible = useCallback(

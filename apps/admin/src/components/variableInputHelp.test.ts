@@ -8,7 +8,10 @@ import {
   checkOptionsFormulaType,
   checkVariableFormulaType,
 } from "@alliance/common/forms/variable-formula-check";
-import type { VariableInput } from "@alliance/common/forms/variable-inputs";
+import type {
+  FieldReadingInput,
+  VariableInput,
+} from "@alliance/common/forms/variable-inputs";
 import { variableFieldScope } from "@alliance/common/forms/variable-scope";
 import { variableTypeEnv } from "@alliance/common/forms/variables";
 import { inputHelp, optionsRecipes } from "./variableInputHelp";
@@ -121,7 +124,7 @@ for (const { label, inputs } of [
   });
 }
 
-const runExample = (input: VariableInput, answers: ExprValue[]) => {
+const runExample = (input: FieldReadingInput, answers: ExprValue[]) => {
   const field = fields.find((each) => each.id === input.fieldId);
   const formula = inputHelp(input, field).example("input1");
   const compiled = compileVariableExpression(formula, new Set(["input1"]));

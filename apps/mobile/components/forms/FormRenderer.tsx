@@ -912,6 +912,7 @@ const FormRenderer = ({
     previousAnswerData,
     sourceHistories,
     variableAggregates,
+    randomizationKey,
     userHasCity,
     userPropertyHasValue,
     firstContractSignedAt,

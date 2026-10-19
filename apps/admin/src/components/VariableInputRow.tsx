@@ -12,6 +12,7 @@ import {
 } from "@alliance/common/forms/variable-inputs";
 import { X } from "lucide-react";
 import { CountSamples, type CountSample } from "./CountSamples";
+import { RandomSample } from "./RandomInput";
 import {
   fieldChoices,
   FieldPicker,
@@ -43,6 +44,7 @@ type VariableInputRowProps = {
   submissions: SubmissionSample[];
   counts: CountSample;
   countsAvailable: boolean;
+  randomAvailable: boolean;
   onModeChange: (mode: InputMode) => void;
   onInputChange: (next: VariableInput) => void;
   onFieldPick: (picked: AnyField) => void;
@@ -64,6 +66,7 @@ export function VariableInputRow({
   submissions,
   counts,
   countsAvailable,
+  randomAvailable,
   onModeChange,
   onInputChange,
   onFieldPick,
@@ -85,23 +88,34 @@ export function VariableInputRow({
           inputName={name}
           mode={inputModeOfInput(input)}
           countsAvailable={countsAvailable}
+          randomAvailable={randomAvailable}
           onChange={onModeChange}
         />
-        <SourceFormPicker
-          inputName={name}
-          sourceFormId={sourceFormId}
-          counting={input.kind === "aggregate"}
-          sources={sources}
-          onChange={onSourceChange}
-        />
-        <FieldPicker
-          inputName={name}
-          input={input}
-          field={field}
-          choices={fieldChoices(input, sources)}
-          sources={sources}
-          onPick={onFieldPick}
-        />
+        {input.kind === "random" ? (
+          <RandomSample
+            inputName={name}
+            value={sample}
+            onChange={onSampleChange}
+          />
+        ) : (
+          <>
+            <SourceFormPicker
+              inputName={name}
+              sourceFormId={sourceFormId}
+              counting={input.kind === "aggregate"}
+              sources={sources}
+              onChange={onSourceChange}
+            />
+            <FieldPicker
+              inputName={name}
+              input={input}
+              field={field}
+              choices={fieldChoices(input, sources)}
+              sources={sources}
+              onPick={onFieldPick}
+            />
+          </>
+        )}
         {input.kind === "field" && (
           <SampleAnswer
             inputName={name}
@@ -122,7 +136,7 @@ export function VariableInputRow({
         </button>
       </div>
       <SourceFormLoadError sourceFormId={sourceFormId} sources={sources} />
-      {field && (
+      {(field || input.kind === "random") && (
         <p
           className="pl-16 font-mono text-[10px] text-gray-500"
           title={help.notes}

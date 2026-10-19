@@ -1,7 +1,7 @@
 import { R, type Result } from "../result";
 import { readStoredFormAnswers } from "./form-responses";
 import { variableInputFieldsById } from "./form-schema";
-import { fieldsWithSavedChoices, readFormulaChoices } from "./formula-options";
+import { fieldsWithSavedChoices, readFormulaChoices } from "./formula-choices";
 import { storedQuestionFields, submittedQuestionFields } from "./stored-schema";
 import type { VariableSourceHistory } from "./variable-evaluation";
 
