@@ -3323,9 +3323,18 @@ describe("Users (e2e)", () => {
         });
       });
 
+      const outcomeMessages = async (category: NotificationCategory) =>
+        (
+          await ctx.dataSource
+            .getRepository(Notification)
+            .findBy({ user: { id: communityMemberId }, category })
+        ).map(({ message }) => message);
+
       describe("approveOnetimeInvite", () => {
         it("allows community leaders to approve pending requests", async () => {
-          const pendingInvite = await createPendingInviteRequest();
+          const pendingInvite = await createPendingInviteRequest({
+            invitee: "approved$&@example.com",
+          });
 
           const res = await request(ctx.app.getHttpServer())
             .post(`/user/onetimeInvite/${pendingInvite.id}/approve`)
@@ -3337,6 +3346,13 @@ describe("Users (e2e)", () => {
           expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
           expect(res.body.invitingUser.id).toBe(communityMemberId);
           expect(res.body.invitedUserId).toBeNull();
+          expect(
+            await outcomeMessages(
+              NotificationCategory.OnetimeInviteRequestApproved,
+            ),
+          ).toContain(
+            "Your request to invite approved$&@example.com was approved",
+          );
         });
 
         it("approves a request whose requester is gone", async () => {
@@ -3406,7 +3422,9 @@ describe("Users (e2e)", () => {
 
       describe("rejectOnetimeInvite", () => {
         it("allows community leaders to reject pending requests", async () => {
-          const pendingInvite = await createPendingInviteRequest();
+          const pendingInvite = await createPendingInviteRequest({
+            invitee: "rejected$&@example.com",
+          });
 
           const res = await request(ctx.app.getHttpServer())
             .post(`/user/onetimeInvite/${pendingInvite.id}/reject`)
@@ -3418,6 +3436,13 @@ describe("Users (e2e)", () => {
             where: { id: pendingInvite.id },
           });
           expect(refreshed?.status).toBe(OnetimeInviteStatus.REQUEST_REJECTED);
+          expect(
+            await outcomeMessages(
+              NotificationCategory.OnetimeInviteRequestRejected,
+            ),
+          ).toContain(
+            "Your request to invite rejected$&@example.com was rejected",
+          );
         });
 
         it("allows an admin who leads no community to reject pending requests", async () => {

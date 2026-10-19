@@ -1,5 +1,11 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import { errorMessage } from "@alliance/common/errorMessage";
+import {
+  defaultEmailContents,
+  defaultEmailSubject,
+  defaultPushMessage,
+  defaultTextMessage,
+} from "@alliance/common/reminderPresetCopy";
 import { R } from "@alliance/common/result";
 // eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
@@ -31,12 +37,6 @@ import {
 } from "../../lib/useReminderPreviewsAdmin";
 import TextareaWithHighlights from "../TextareaWithHighlights";
 import ReminderPreviewError from "./ReminderPreviewError";
-import {
-  defaultEmailContents,
-  defaultEmailSubject,
-  defaultPushMessage,
-  defaultTextMessage,
-} from "./defaultReminderContents";
 
 type ReminderGroupContentFields = Pick<
   ReminderGroupDto,

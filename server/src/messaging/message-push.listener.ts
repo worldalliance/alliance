@@ -98,7 +98,12 @@ export class MessagePushListener implements OnModuleDestroy {
 
       if (!eligibleParticipants.length) return;
 
-      const body = this.buildPushBody(message, conversation);
+      const body = messagePushBody({
+        senderName: message.author.displayName,
+        body: message.body,
+        hasAttachments: !!message.attachments?.length,
+        conversation,
+      });
       const screen = conversationUrl(conversationId);
 
       const allMessages: CreatePushMessage[] = [];
@@ -127,32 +132,32 @@ export class MessagePushListener implements OnModuleDestroy {
       );
     }
   }
+}
 
-  private buildPushBody(
-    message: MessageDto,
-    conversation: Conversation,
-  ): string {
-    const senderName = message.author.displayName;
-    const hasAttachments =
-      message.attachments && message.attachments.length > 0;
-    const messagePreview = message.body?.trim()
-      ? message.body.trim()
-      : hasAttachments
-        ? "Sent an image"
-        : "";
+export function messagePushBody(params: {
+  senderName: string;
+  body: string | null | undefined;
+  hasAttachments: boolean;
+  conversation: Pick<Conversation, "type" | "title">;
+}): string {
+  const { senderName, body, hasAttachments, conversation } = params;
+  const messagePreview = body?.trim()
+    ? body.trim()
+    : hasAttachments
+      ? "Sent an image"
+      : "";
 
-    if (conversation.type === ConversationType.Direct) {
-      return this.truncate(`${senderName}: ${messagePreview}`, 100);
-    }
-
-    return this.truncate(
-      `${senderName} in ${conversation.title}: ${messagePreview}`,
-      100,
-    );
+  if (conversation.type === ConversationType.Direct) {
+    return truncate(`${senderName}: ${messagePreview}`, 100);
   }
 
-  private truncate(text: string, maxLength: number): string {
-    if (text.length <= maxLength) return text;
-    return text.slice(0, maxLength - 1) + "…";
-  }
+  return truncate(
+    `${senderName} in ${conversation.title}: ${messagePreview}`,
+    100,
+  );
+}
+
+function truncate(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength - 1) + "…";
 }

@@ -136,7 +136,7 @@ export type Labeled = { segment: Segment; label: string };
 
 export type NotifMessage = { segments: Segment[]; text: string };
 
-type NamedUser = { id: number; name: string; anonymous: boolean };
+export type NamedUser = { id: number; name: string; anonymous: boolean };
 
 function userLabel(user: NamedUser, form: UserNameForm): string {
   switch (form) {
@@ -163,10 +163,11 @@ export function member(
   };
 }
 
-export function group(community: {
-  id: number;
-  name: string;
-}): Labeled & { segment: CommunityRef } {
+export type NamedGroup = { id: number; name: string };
+
+export function group(
+  community: NamedGroup,
+): Labeled & { segment: CommunityRef } {
   return {
     segment: { type: SegmentType.Community, id: community.id },
     label: community.name,

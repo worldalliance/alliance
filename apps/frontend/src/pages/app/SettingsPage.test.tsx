@@ -1,6 +1,7 @@
 import { OAuthProvider } from "@alliance/common/oauth";
 import type { City, UserDto } from "@alliance/shared/client";
 import { meQuery } from "@alliance/shared/lib/meQuery";
+import { makeNotificationSettings } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -11,6 +12,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext, type AuthContextType } from "../../lib/AuthContext";
@@ -27,6 +29,9 @@ let meFails = false;
 let city: City | null = null;
 let updates: unknown[] = [];
 let savedZone = me.timeZone;
+let notificationSettings = makeNotificationSettings();
+let settingsUpdates: unknown[] = [];
+let settingsSaveFails = false;
 
 serveApi(
   routes({
@@ -38,6 +43,16 @@ serveApi(
       return Response.json({ user: { ...me, timeZone: savedZone } });
     },
     "GET /user/mylocation": () => Response.json({ city }),
+    "GET /user/notification-settings": () =>
+      Response.json(notificationSettings),
+    "PATCH /user/notification-settings": async ({ request }) => {
+      settingsUpdates.push(await request.json());
+      if (settingsSaveFails) {
+        settingsSaveFails = false;
+        return Response.json({ message: "down" }, { status: 500 });
+      }
+      return Response.json(notificationSettings);
+    },
     "POST /user/update": async ({ request }) => {
       updates.push(await request.json());
       return Response.json({ user: me });
@@ -52,6 +67,9 @@ afterEach(() => {
   city = null;
   updates = [];
   savedZone = me.timeZone;
+  notificationSettings = makeNotificationSettings();
+  settingsUpdates = [];
+  settingsSaveFails = false;
 });
 
 const noop = () => Promise.resolve();
@@ -200,5 +218,75 @@ describe("the device timezone", () => {
     await screen.findByPlaceholderText("Enter phone number");
 
     expect(screen.queryByText(/^Device timezone: /)).toBeNull();
+  });
+});
+
+describe("notification defaults", () => {
+  it("saves a channel default as it changes", async () => {
+    render(settings(me));
+
+    const push = await screen.findByRole("group", { name: "Push by default" });
+    fireEvent.click(within(push).getByRole("button", { name: "Off" }));
+
+    await waitFor(() =>
+      expect(settingsUpdates).toEqual([{ defaults: { push: false } }]),
+    );
+    expect(await screen.findByText("Saved")).toBeTruthy();
+  });
+
+  it("offers to try a failed save again", async () => {
+    settingsSaveFails = true;
+    render(settings(me));
+
+    const push = await screen.findByRole("group", { name: "Push by default" });
+    fireEvent.click(within(push).getByRole("button", { name: "Off" }));
+    const tryAgain = await screen.findByRole("button", { name: "Try again" });
+    expect(
+      within(push).getByRole("button", { name: "Off", pressed: true }),
+    ).toBeTruthy();
+    fireEvent.click(tryAgain);
+
+    expect(await screen.findByText("Saved")).toBeTruthy();
+    expect(settingsUpdates).toEqual([
+      { defaults: { push: false } },
+      { defaults: { push: false } },
+    ]);
+  });
+
+  it("warns when no channel sends anything, and counts own settings", async () => {
+    notificationSettings = makeNotificationSettings({
+      defaults: { inApp: false, push: false, text: false, email: false },
+    });
+    notificationSettings.kinds[0].cells[1].override = false;
+    render(settings(me));
+
+    expect(
+      await screen.findByText(/You will not receive any notifications/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("1 notification has its own setting for Push"),
+    ).toBeTruthy();
+  });
+
+  it("says when texts can't reach the member, apart from the setting", async () => {
+    notificationSettings = makeNotificationSettings({
+      reachability: { textablePhoneNumber: true, textStopped: true },
+    });
+    render(settings(me));
+
+    expect(
+      await screen.findByText(
+        "You replied STOP to our texts. Reply START to get them again.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("links only to sections the member has kinds in", async () => {
+    render(settings(me));
+
+    expect(
+      await screen.findByRole("link", { name: "Friends & likes" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Groups" })).toBeNull();
   });
 });

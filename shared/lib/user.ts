@@ -31,6 +31,7 @@ import {
 } from "../client";
 import { failedToLoad } from "./failedToLoad";
 import { thrownRefusalMessage } from "./hey-api";
+import { queryKeys } from "./queryKeys";
 import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
 export const userQueryKeys = {
@@ -433,6 +434,11 @@ export const useUpdateProfileMutation = (
         queryClient.setQueryData(userQueryKeys.profile(targetId), data);
       }
       invalidateVisibilityContext();
+      if (variables.phoneNumber !== undefined) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.notificationSettings(),
+        });
+      }
       options?.onSuccess?.(data, variables, onMutateResult, context);
     },
     onError: (error, variables, onMutateResult, context) => {

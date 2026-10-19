@@ -51,6 +51,20 @@ describe("cellProblems", () => {
       "likes on push is listed twice",
     ]);
   });
+
+  it("rejects a kind nothing sends", () => {
+    expect(
+      cellProblems({
+        cells: [
+          {
+            kind: NotificationKind.ActionAnnounced,
+            channel: NotificationChannel.Push,
+          },
+        ],
+        isLeader: true,
+      }),
+    ).toEqual(["action_announced isn't sent"]);
+  });
 });
 
 describe("settingsFor", () => {
@@ -132,6 +146,14 @@ describe("settingsFor", () => {
       );
     expect(kindsFor([])).not.toContain(NotificationKind.MemberLeftCommunity);
     expect(kindsFor([7])).toContain(NotificationKind.MemberLeftCommunity);
+  });
+
+  it("leaves out a kind nothing sends", () => {
+    expect(
+      settingsFor({ user: member([7]), overrides: [] }).kinds.map(
+        (kind) => kind.kind,
+      ),
+    ).not.toContain(NotificationKind.ActionAnnounced);
   });
 
   it("reports a number that replied STOP apart from the setting", () => {

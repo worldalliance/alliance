@@ -83,6 +83,10 @@ export default [
       route("/notifications", "pages/app/NotificationsPage.tsx"),
       route("/search", "pages/app/SearchPage.tsx"),
       route("/settings", "pages/app/SettingsPage.tsx"),
+      route(
+        "/settings/notifications/:section",
+        "pages/app/NotificationSectionPage.tsx",
+      ),
       route("/membership", "pages/app/MembershipPage.tsx"),
       route("/contract", "pages/app/ContractPage.tsx"),
       route("/deleteaccount", "pages/app/DeleteAccountPage.tsx"),

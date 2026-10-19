@@ -127,6 +127,10 @@ function AppContent() {
               options={{ contentStyle: notchContentStyle(colors.grey[0]) }}
             />
             <Stack.Screen
+              name="notification-settings/[section]"
+              options={{ contentStyle: notchContentStyle(colors.grey[0]) }}
+            />
+            <Stack.Screen
               name="groups/manage"
               options={{ contentStyle: notchContentStyle(colors.grey[0]) }}
             />

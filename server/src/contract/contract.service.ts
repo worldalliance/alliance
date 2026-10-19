@@ -15,6 +15,7 @@ import { updateLive, writeUnderLive } from "src/datasources/soft-delete";
 import { EventType } from "src/eventlog/event-log.entity";
 import { EventLogService } from "src/eventlog/eventlog.service";
 import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import { memberSuspendedMessage } from "src/notifs/notif-copy";
 import {
   group,
   member,
@@ -397,7 +398,11 @@ export class ContractService {
           notifForLeader: ({ leader }) => ({
             user: leader,
             category: NotificationCategory.MemberSuspendedRemovedFromCommunity,
-            message: notifMessage`${member(user)} ${automatic ? "was automatically suspended" : "suspended their contract"} and has been removed from your group (${group(community)})`,
+            message: memberSuspendedMessage({
+              suspended: user,
+              automatic,
+              community,
+            }),
             destination: userDestination(user.id),
             webAppLocation: profileUrl(user.id),
             associatedUsers: [user],

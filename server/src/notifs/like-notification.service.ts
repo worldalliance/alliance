@@ -143,7 +143,7 @@ export class LikeNotificationService {
         return;
       }
 
-      const label = this.targetLabel({
+      const label = targetLabel({
         targetType,
         targetContent,
         targetAction,
@@ -323,7 +323,7 @@ export class LikeNotificationService {
     const users = notif.associatedUsers ?? [];
     switch (notif.format) {
       case NotificationFormat.Legacy:
-        return this.buildMessage({
+        return likeMessage({
           targetType,
           count: users.length,
           targetContent: notif.targetContent,
@@ -353,61 +353,61 @@ export class LikeNotificationService {
         return notif.message;
     }
   }
+}
 
-  private targetLabel(params: {
-    targetType: LikeNotificationTarget;
-    targetContent: string | null;
-    targetAction?: { id: number; name: string };
-  }): (string | Labeled)[] {
-    const { targetType, targetContent, targetAction } = params;
-    const label = (parts: {
-      prefix: string;
-      fallback: string;
-      name: string | Labeled | null;
-    }) => (parts.name ? [parts.prefix, parts.name] : [parts.fallback]);
-    const activityName = targetAction ? action(targetAction) : targetContent;
-    switch (targetType) {
-      case "post":
-        return label({
-          prefix: "post: ",
-          fallback: "post",
-          name: targetContent,
-        });
-      case "comment":
-        return label({
-          prefix: "comment: ",
-          fallback: "comment",
-          name: targetContent,
-        });
-      case "activity:user_completed":
-        return label({
-          prefix: "completion of: ",
-          fallback: "action activity",
-          name: activityName,
-        });
-      case "activity:user_submitted_follow_up_form":
-        return label({
-          prefix: "follow-up to: ",
-          fallback: "follow-up response",
-          name: activityName,
-        });
-      default:
-        throw new Error(
-          `Unknown like notification target: ${targetType satisfies never}`,
-        );
-    }
+function targetLabel(params: {
+  targetType: LikeNotificationTarget;
+  targetContent: string | null;
+  targetAction?: { id: number; name: string };
+}): (string | Labeled)[] {
+  const { targetType, targetContent, targetAction } = params;
+  const label = (parts: {
+    prefix: string;
+    fallback: string;
+    name: string | Labeled | null;
+  }) => (parts.name ? [parts.prefix, parts.name] : [parts.fallback]);
+  const activityName = targetAction ? action(targetAction) : targetContent;
+  switch (targetType) {
+    case "post":
+      return label({
+        prefix: "post: ",
+        fallback: "post",
+        name: targetContent,
+      });
+    case "comment":
+      return label({
+        prefix: "comment: ",
+        fallback: "comment",
+        name: targetContent,
+      });
+    case "activity:user_completed":
+      return label({
+        prefix: "completion of: ",
+        fallback: "action activity",
+        name: activityName,
+      });
+    case "activity:user_submitted_follow_up_form":
+      return label({
+        prefix: "follow-up to: ",
+        fallback: "follow-up response",
+        name: activityName,
+      });
+    default:
+      throw new Error(
+        `Unknown like notification target: ${targetType satisfies never}`,
+      );
   }
+}
 
-  private buildMessage(params: {
-    targetType: LikeNotificationTarget;
-    count: number;
-    targetContent: string | null;
-    likerName?: string;
-  }): string {
-    const { targetType, count, targetContent, likerName } = params;
-    const target = this.targetLabel({ targetType, targetContent });
-    return count === 1 && likerName
-      ? likedBy(likerName, target).text
-      : likedByCount(String(count), target).text;
-  }
+export function likeMessage(params: {
+  targetType: LikeNotificationTarget;
+  count: number;
+  targetContent: string | null;
+  likerName?: string;
+}): string {
+  const { targetType, count, targetContent, likerName } = params;
+  const target = targetLabel({ targetType, targetContent });
+  return count === 1 && likerName
+    ? likedBy(likerName, target).text
+    : likedByCount(String(count), target).text;
 }

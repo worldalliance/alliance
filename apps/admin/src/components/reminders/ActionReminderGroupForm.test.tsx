@@ -1,3 +1,7 @@
+import {
+  defaultPushMessage,
+  defaultTextMessage,
+} from "@alliance/common/reminderPresetCopy";
 import { client } from "@alliance/shared/client/client.gen";
 import { makeEvent } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
@@ -10,10 +14,6 @@ import {
 } from "@testing-library/react";
 import type { ReactElement } from "react";
 import ActionReminderGroupForm from "./ActionReminderGroupForm";
-import {
-  defaultPushMessage,
-  defaultTextMessage,
-} from "./defaultReminderContents";
 
 const { baseUrl, fetch } = client.getConfig();
 

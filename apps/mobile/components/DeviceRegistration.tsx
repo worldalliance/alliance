@@ -13,6 +13,7 @@ import { keepsAppIconBadgeClear } from "../lib/appIconBadge";
 import { useAuth } from "../lib/AuthContext";
 import { onAppActive } from "../lib/onAppActive";
 import { registerDevice, retryPending } from "../lib/registeredDevice";
+import { registerWhenGranted } from "../lib/registerWhenGranted";
 import { currentSession } from "../lib/session";
 import { useClearAppIconBadgeWhileSignedOut } from "../lib/taskBadge";
 import { isVisualTestMode } from "../lib/visualTest";
@@ -21,7 +22,7 @@ function handleRegistrationError(errorMessage: string) {
   console.error(errorMessage);
 }
 
-async function registerForPushNotificationsAsync() {
+async function registerForPushNotificationsAsync(params: { prompt: boolean }) {
   if (Platform.OS === "android") {
     await setNotificationChannelAsync("default", {
       name: "default",
@@ -34,7 +35,7 @@ async function registerForPushNotificationsAsync() {
   if (isDevice) {
     const { status: existingStatus } = await getPermissionsAsync();
     let finalStatus = existingStatus;
-    if (existingStatus !== "granted") {
+    if (existingStatus !== "granted" && params.prompt) {
       const { status } = await requestPermissionsAsync();
       finalStatus = status;
     }
@@ -82,17 +83,29 @@ export default function DeviceRegistration() {
       return;
     }
 
-    const session = currentSession();
-    registerForPushNotificationsAsync()
-      .then((token) => {
-        if (token) {
-          return registerDevice({
-            params: { deviceType: modelId ?? modelName, expoPushToken: token },
-            session,
-          });
-        }
-      })
-      .catch((error: any) => console.error(error));
+    const register = (params: { prompt: boolean }) => {
+      const session = currentSession();
+      return registerForPushNotificationsAsync(params)
+        .then((token) => {
+          if (token) {
+            return registerDevice({
+              params: {
+                deviceType: modelId ?? modelName,
+                expoPushToken: token,
+              },
+              session,
+            });
+          }
+        })
+        .catch((error: any) => console.error(error));
+    };
+    return registerWhenGranted({
+      appState: AppState,
+      first: register({ prompt: true }),
+      readGranted: async () =>
+        (await getPermissionsAsync()).status === "granted",
+      register: () => void register({ prompt: false }),
+    });
   }, [isAuthenticated]);
 
   return null;

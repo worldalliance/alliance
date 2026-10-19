@@ -20,7 +20,11 @@ type Cell = {
   enabled: boolean;
   editable: boolean;
 };
-type KindSettings = { kind: NotificationKind; cells: Cell[] };
+type KindSettings = {
+  kind: NotificationKind;
+  example: string;
+  cells: Cell[];
+};
 
 describe("Notification settings (e2e)", () => {
   let ctx: TestContext;
@@ -92,6 +96,11 @@ describe("Notification settings (e2e)", () => {
       textablePhoneNumber: false,
       textStopped: false,
     });
+    expect(
+      (res.body.kinds as KindSettings[]).find(
+        (kind) => kind.kind === NotificationKind.FriendRequests,
+      )?.example,
+    ).toBe("Jordan Ellis wants to be friends");
   });
 
   it("hides leader-only kinds from members who lead no group", async () => {

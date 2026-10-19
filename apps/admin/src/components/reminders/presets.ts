@@ -1,5 +1,3 @@
-import { CreateReminderGroupDto } from "@alliance/shared/client";
-import { secondsInDay, secondsInHour } from "date-fns/constants";
 import {
   defaultAnnouncementEmailContents,
   defaultAnnouncementEmailSubject,
@@ -15,7 +13,9 @@ import {
   defaultMissedDeadlineTextMessage,
   defaultPushMessage,
   defaultTextMessage,
-} from "./defaultReminderContents";
+} from "@alliance/common/reminderPresetCopy";
+import { CreateReminderGroupDto } from "@alliance/shared/client";
+import { secondsInDay, secondsInHour } from "date-fns/constants";
 
 export const presetNames = [
   "Announcement",

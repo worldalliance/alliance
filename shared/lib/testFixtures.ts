@@ -6,7 +6,9 @@ import type {
   ConversationDto,
   ConversationType,
   FormResponseDto,
+  KindSettingsDto,
   MessageDto,
+  NotificationSettingsDto,
   OnetimeInviteDto,
   ParticipantDto,
   ParticipantRole,
@@ -319,6 +321,34 @@ export function makeShareUrlMine(
     assignmentKind: "automatic",
     communityId: null,
     communityName: null,
+    ...overrides,
+  };
+}
+
+export function makeKindSettings(
+  overrides: Partial<KindSettingsDto> = {},
+): KindSettingsDto {
+  return {
+    kind: "likes",
+    label: "Likes",
+    section: "friends_and_likes",
+    required: false,
+    example: "Jordan Ellis liked your post",
+    cells: [
+      { channel: "in_app", override: null, enabled: true, editable: true },
+      { channel: "push", override: null, enabled: true, editable: true },
+    ],
+    ...overrides,
+  };
+}
+
+export function makeNotificationSettings(
+  overrides: Partial<NotificationSettingsDto> = {},
+): NotificationSettingsDto {
+  return {
+    defaults: { inApp: true, push: true, text: true, email: true },
+    kinds: [makeKindSettings()],
+    reachability: { textablePhoneNumber: true, textStopped: false },
     ...overrides,
   };
 }
