@@ -1,14 +1,15 @@
 import { cn } from "@alliance/shared/styles/util";
 import React from "react";
 
-type ButtonProps = React.PropsWithChildren & {
-  className?: string;
-  color?: ButtonColor;
-  hoverText?: string;
-  title?: string;
-  disabled?: boolean;
-  size?: "small" | "medium" | "large" | "mediumDynamic";
-} & (
+type ButtonProps = React.PropsWithChildren &
+  React.AriaAttributes & {
+    className?: string;
+    color?: ButtonColor;
+    hoverText?: string;
+    title?: string;
+    disabled?: boolean;
+    size?: "small" | "medium" | "large" | "mediumDynamic";
+  } & (
     | ({
         asDiv?: false;
         ref?: React.RefObject<HTMLButtonElement | null>;
@@ -72,6 +73,7 @@ const Button: React.FC<ButtonProps> = ({
   onPointerDown,
   size = "medium",
   asDiv,
+  ...rest
 }) => {
   const color = colorProp ?? ButtonColor.White;
 
@@ -100,6 +102,7 @@ const Button: React.FC<ButtonProps> = ({
   if (asDiv) {
     return (
       <div
+        {...rest}
         ref={ref}
         title={title}
         className={cn(baseClassName, !disabled && "cursor-pointer")}
@@ -118,6 +121,7 @@ const Button: React.FC<ButtonProps> = ({
 
   return (
     <button
+      {...rest}
       ref={ref}
       type={type}
       title={title}
