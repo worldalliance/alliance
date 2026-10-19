@@ -96,6 +96,10 @@ A column the running release maps is retired in one deploy and dropped in a late
 - Mobile reads the device's push permission when the screen mounts and whenever the app returns to the foreground, so coming back from the device's settings updates the notice, which links there. The web app can't read a phone's push permission, so web shows no push notice.
 - Mobile registers for push when the app returns to the foreground with permission newly granted, so permission granted in the device's settings takes effect without a restart.
 
+## Admin view
+
+`GET /user/userdetail/:id/notification-settings`, behind `AdminGuard`, returns the member's four channel defaults and every stored override with its kind's label, its channel, its value, its `source`, and whether it is in effect. It lists stored rows rather than resolved cells, so an override on a kind the member can't set now, such as a leader-only kind for a member who leads no group, still shows, marked not in effect. In effect means `cellProblems` would accept the cell from this member, the rule the settings `PATCH` applies, so the admin view and the member's screens agree on which overrides count. The user detail page shows it in its own section, which loads apart from the member so a failure there leaves the rest of the page up.
+
 ## Delivery
 
 Stacked PRs. The independent ones land first in any order: the contract reminder, the group join audience, and the forum digest removal. Then the server core: kinds, policy, `notification_preference`, the override-writing migration, the resolver, sender rewiring, in-app visibility, and the new endpoints. Then the web and mobile screens, then the admin view. The core and screens PRs deploy together: the migration reads the old columns once, so a change saved through the old screens after it would be lost. The core's first change stops `UpdateProfileDto` accepting the old notification fields and takes their controls off both screens, leaving reminder time and time zone; from then until the new endpoint, no member can change a notification setting, so each step in between reads settings no one is changing.

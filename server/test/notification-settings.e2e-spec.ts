@@ -318,6 +318,66 @@ describe("Notification settings (e2e)", () => {
     expect(await visibility()).toEqual([true, false]);
   });
 
+  describe("admin view", () => {
+    const getAdmin = (userId: number, as = ctx.adminAccessToken) =>
+      request(ctx.app.getHttpServer())
+        .get(`/user/userdetail/${userId}/notification-settings`)
+        .set("Authorization", `Bearer ${as}`);
+
+    it("shows a member's defaults and every stored override with its source", async () => {
+      await userRepo.update(member.id, { textByDefault: false });
+      await preferenceRepo.save([
+        {
+          userId: member.id,
+          kind: NotificationKind.Likes,
+          channel: NotificationChannel.Push,
+          enabled: false,
+          source: PreferenceSource.Member,
+        },
+        {
+          userId: member.id,
+          kind: NotificationKind.MemberLeftCommunity,
+          channel: NotificationChannel.Push,
+          enabled: true,
+          source: PreferenceSource.Migrated,
+        },
+      ]);
+
+      const res = await getAdmin(member.id).expect(200);
+
+      expect(res.body.defaults).toEqual({
+        inApp: true,
+        push: true,
+        text: false,
+        email: true,
+      });
+      expect(res.body.overrides).toEqual([
+        {
+          kind: NotificationKind.Likes,
+          label: "Likes",
+          channel: NotificationChannel.Push,
+          enabled: false,
+          source: PreferenceSource.Member,
+          inEffect: true,
+        },
+        expect.objectContaining({
+          kind: NotificationKind.MemberLeftCommunity,
+          enabled: true,
+          source: PreferenceSource.Migrated,
+          inEffect: false,
+        }),
+      ]);
+    });
+
+    it("says a member that does not exist was not found", async () => {
+      await getAdmin(0).expect(404);
+    });
+
+    it("refuses a member who isn't an admin", async () => {
+      await getAdmin(member.id, token).expect(401);
+    });
+  });
+
   it("requires a session", async () => {
     await request(ctx.app.getHttpServer())
       .get("/user/notification-settings")

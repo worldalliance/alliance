@@ -1972,6 +1972,28 @@ export type UpdateNotificationSettingsDto = {
     cells?: Array<UpdateNotificationCellDto>;
 };
 
+export type PreferenceSource = 'member' | 'migrated';
+
+export type NotificationOverrideAdminDto = {
+    kind: NotificationKind;
+    label: string;
+    channel: NotificationChannel;
+    enabled: boolean;
+    source: PreferenceSource;
+    /**
+     * Whether the override decides a send; false on a kind the member can't set now, such as a leader-only kind for a member who leads no group
+     */
+    inEffect: boolean;
+};
+
+export type NotificationSettingsAdminDto = {
+    defaults: ChannelDefaultsDto;
+    /**
+     * Every stored override, including ones on kinds the member can't see now
+     */
+    overrides: Array<NotificationOverrideAdminDto>;
+};
+
 export type ContractDescriptionItem = {
     point: string;
     subtext: string;
@@ -9470,6 +9492,30 @@ export type NotificationSettingsUpdateResponses = {
 };
 
 export type NotificationSettingsUpdateResponse = NotificationSettingsUpdateResponses[keyof NotificationSettingsUpdateResponses];
+
+export type NotificationSettingsGetAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/userdetail/{id}/notification-settings';
+};
+
+export type NotificationSettingsGetAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type NotificationSettingsGetAdminError = NotificationSettingsGetAdminErrors[keyof NotificationSettingsGetAdminErrors];
+
+export type NotificationSettingsGetAdminResponses = {
+    200: NotificationSettingsAdminDto;
+};
+
+export type NotificationSettingsGetAdminResponse = NotificationSettingsGetAdminResponses[keyof NotificationSettingsGetAdminResponses];
 
 export type ContractGetCurrentData = {
     body?: never;
