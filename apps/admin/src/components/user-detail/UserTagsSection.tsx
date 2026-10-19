@@ -5,6 +5,7 @@ import {
 } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { adminRefusalMessage } from "../../lib/adminRefusal";
 
 export default function UserTagsSection({
   user,
@@ -79,7 +80,12 @@ export default function UserTagsSection({
         );
       } catch (error) {
         console.error("Failed to update tag membership", error);
-        setTagMutationError("Failed to update tag membership. Try again.");
+        setTagMutationError(
+          adminRefusalMessage(
+            error,
+            "Failed to update tag membership. Try again.",
+          ),
+        );
       } finally {
         setPendingTagOps((prev) => {
           const next = new Set(prev);

@@ -70,7 +70,10 @@ serveApi(
       },
       "POST /user/tags/:tagId/addUser": () => {
         if (addTagStatus !== 200) {
-          return Response.json({}, { status: addTagStatus });
+          return Response.json(
+            { message: "Tag is archived" },
+            { status: addTagStatus },
+          );
         }
         stored = { ...stored, tags: [volunteers] };
         return Response.json(tagDto);
@@ -267,21 +270,19 @@ it("keeps a cached member it could not refresh and says so", async () => {
   expect(screen.getByRole("heading", { name: "Sam" })).toBeTruthy();
 });
 
-it("says when a role change is refused", async () => {
+it("says why a role change was refused", async () => {
   detailStatus = 200;
   renderPage();
 
   fireEvent.click(await screen.findByRole("checkbox", { name: "Staff" }));
 
-  expect(
-    await screen.findByText("Failed to update role. Try again."),
-  ).toBeTruthy();
+  expect(await screen.findByText("Forbidden")).toBeTruthy();
   expect(
     screen.getByRole<HTMLInputElement>("checkbox", { name: "Staff" }).checked,
   ).toBe(false);
 });
 
-it("says when a suspension is refused instead of confirming it", async () => {
+it("says why a suspension was refused instead of confirming it", async () => {
   detailStatus = 200;
   renderPage();
 
@@ -291,7 +292,7 @@ it("says when a suspension is refused instead of confirming it", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Confirm" }));
 
   expect(
-    await screen.findByText("Failed to suspend contract. Try again."),
+    await screen.findByText("Member does not have an active contract."),
   ).toBeTruthy();
   expect(screen.queryByText("Contract suspended")).toBeNull();
 });
@@ -323,6 +324,17 @@ it("says when a tag change is refused", async () => {
   expect(
     await screen.findByText("Failed to update tag membership. Try again."),
   ).toBeTruthy();
+  expect(volunteersBox().checked).toBe(false);
+});
+
+it("says why a tag change was refused", async () => {
+  detailStatus = 200;
+  addTagStatus = 400;
+  renderPage();
+
+  await toggleVolunteers();
+
+  expect(await screen.findByText("Tag is archived")).toBeTruthy();
   expect(volunteersBox().checked).toBe(false);
 });
 

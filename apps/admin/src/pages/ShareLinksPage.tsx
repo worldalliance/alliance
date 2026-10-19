@@ -80,22 +80,20 @@ const ShareLinksPage: React.FC = () => {
         const dataUrl = reader.result as string;
         setNewCampaignPicturePreview(dataUrl);
         try {
-          const uploadResp = await imagesUploadImage({
+          const { data } = await imagesUploadImage({
             body: { file: dataUrl },
+            throwOnError: true,
           });
-          if (uploadResp.data) {
-            setNewCampaignPicture(uploadResp.data.key);
-            setNewCampaignPicturePreview(uploadResp.data.url);
-          }
+          setNewCampaignPicture(data.key);
+          setNewCampaignPicturePreview(data.url);
         } catch (err) {
-          console.error("Failed to upload campaign image", err);
-          error("Failed to upload image.");
+          refusalToast(err, "Failed to upload image.");
           setNewCampaignPicturePreview(null);
         }
       };
       reader.readAsDataURL(file);
     },
-    [error],
+    [refusalToast],
   );
 
   const createCampaign = useCreateCampaignAdmin({

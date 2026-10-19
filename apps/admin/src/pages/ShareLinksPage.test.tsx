@@ -43,6 +43,7 @@ let createCampaignStatus = 200;
 let actionsGate = Promise.resolve();
 let targetsGate = Promise.resolve();
 let membersStatus = 200;
+let uploadStatus = 200;
 
 const shareLink = (id: string, label: string | null) =>
   ({
@@ -128,6 +129,13 @@ serveApi(
       return Response.json(shareLink("dup", label ?? null));
     },
     "GET /share-urls/for-campaign/:campaignId": () => Response.json([]),
+    "POST /images/uploadImage": () =>
+      uploadStatus === 200
+        ? Response.json({ key: "img-1", url: "https://example.com/img-1" })
+        : Response.json(
+            { message: "Image is too large" },
+            { status: uploadStatus },
+          ),
     "GET /user/members": () =>
       membersStatus !== 200
         ? Response.json({}, { status: membersStatus })
@@ -157,6 +165,7 @@ beforeEach(() => {
   actionsGate = Promise.resolve();
   targetsGate = Promise.resolve();
   membersStatus = 200;
+  uploadStatus = 200;
   userLinks = [];
   userLinksStatus = 200;
   labelStatus = 200;
@@ -344,6 +353,31 @@ it("says the session expired when a campaign create is refused for it", async ()
   fireEvent.click(screen.getByRole("button", { name: "Create" }));
 
   expect(await screen.findByText(sessionExpiredMessage)).toBeTruthy();
+});
+
+it("says why a campaign image upload was refused", async () => {
+  uploadStatus = 400;
+  jest.spyOn(console, "error").mockImplementation(() => {});
+  const { container } = render(
+    <ToastProvider>
+      <ShareLinksPage />
+    </ToastProvider>,
+    queryWrapper(),
+  );
+  fireEvent.change(await screen.findByDisplayValue("User"), {
+    target: { value: "campaign" },
+  });
+  const input = await waitFor(() => {
+    const found = container.querySelector('input[type="file"]');
+    if (!found) throw new Error("no file input");
+    return found;
+  });
+  fireEvent.change(input, {
+    target: { files: [new File(["x"], "pic.png", { type: "image/png" })] },
+  });
+
+  expect(await screen.findByText("Image is too large")).toBeTruthy();
+  expect(screen.queryByAltText("Campaign avatar preview")).toBeNull();
 });
 
 it("says the campaigns failed to load", async () => {

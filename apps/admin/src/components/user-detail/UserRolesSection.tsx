@@ -1,10 +1,10 @@
-import { errorMessage } from "@alliance/common/errorMessage";
 import {
   UpdateUserRolesAdminDto,
   UserAdminDetailDto,
 } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
 import { useCallback, useState } from "react";
+import { adminRefusalMessage } from "../../lib/adminRefusal";
 import { useAuth } from "../../lib/AuthContext";
 
 export default function UserRolesSection({
@@ -31,7 +31,9 @@ export default function UserRolesSection({
         await updateRoles({ ambassador: nextChecked });
       } catch (error) {
         console.error("Failed to update user role", error);
-        setRoleMutationError("Failed to update role. Try again.");
+        setRoleMutationError(
+          adminRefusalMessage(error, "Failed to update role. Try again."),
+        );
       } finally {
         setIsAmbassadorPending(false);
       }
@@ -47,7 +49,9 @@ export default function UserRolesSection({
         await updateRoles({ staff: nextChecked });
       } catch (error) {
         console.error("Failed to update user role", error);
-        setRoleMutationError("Failed to update role. Try again.");
+        setRoleMutationError(
+          adminRefusalMessage(error, "Failed to update role. Try again."),
+        );
       } finally {
         setIsStaffPending(false);
       }
@@ -63,7 +67,7 @@ export default function UserRolesSection({
         await updateRoles({ admin: nextChecked });
       } catch (error) {
         setRoleMutationError(
-          errorMessage({ error, fallback: "Could not update admin status." }),
+          adminRefusalMessage(error, "Could not update admin status."),
         );
       } finally {
         setIsAdminPending(false);

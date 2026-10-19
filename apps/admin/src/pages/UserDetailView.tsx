@@ -32,6 +32,7 @@ import UserNotificationSettingsSection from "../components/user-detail/UserNotif
 import UserNotificationsSection from "../components/user-detail/UserNotificationsSection";
 import UserRolesSection from "../components/user-detail/UserRolesSection";
 import UserTagsSection from "../components/user-detail/UserTagsSection";
+import { adminRefusalMessage } from "../lib/adminRefusal";
 import { getApiUrl } from "../lib/config";
 import { queryClient } from "../lib/queryClient";
 import { useUserAwayRangesAdmin } from "../lib/useUserAwayRangesAdmin";
@@ -165,7 +166,9 @@ const UserDetail = ({
       success("Contract suspended", user.name);
     } catch (error) {
       console.error("Failed to suspend contract", error);
-      setSuspendMutationError("Failed to suspend contract. Try again.");
+      setSuspendMutationError(
+        adminRefusalMessage(error, "Failed to suspend contract. Try again."),
+      );
     } finally {
       setIsSuspendPending(false);
     }

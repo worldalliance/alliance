@@ -1,25 +1,11 @@
-import type { CreateActionDto } from "@alliance/shared/client";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ActionFieldDef } from "../lib/actionFieldDefs";
+import { createActionForm } from "../lib/testing/createActionForm";
 import ActionFormFields from "./ActionFormFields";
 
 afterEach(cleanup);
 
-const form: CreateActionDto = {
-  name: "Call your rep",
-  category: [],
-  image: "cover.png",
-  body: "",
-  shortDescription: "",
-  isContractSigningAction: false,
-  visibilityMode: "all_members",
-  onboarding: false,
-  optional: true,
-  preventCompletion: false,
-  publicOnly: false,
-  shouldCompleteAfterDeadline: false,
-  isForumParticipationAction: false,
-};
+const form = createActionForm({ image: "cover.png", optional: true });
 
 const renderFields = (params: {
   fields: ActionFieldDef[];
