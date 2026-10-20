@@ -4,7 +4,6 @@ import {
   readDisplayOnlySchema,
 } from "@alliance/common/forms/display-only-schema";
 import { R } from "@alliance/common/result";
-import { run } from "@alliance/common/run";
 // eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   actionsFindOneAdmin,
@@ -18,13 +17,16 @@ import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { Eye, EyeOff } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
   COLLECTIVE_RESULT_DESCRIPTION,
   NotificationHeldBanner,
 } from "../components/ActionUpdateRecognition";
+import {
+  HiddenFromMembersBanner,
+  VisibilityControls,
+} from "../components/ActionUpdateVisibility";
 import { CollectiveResultSplitFields } from "../components/CollectiveResultSplitFields";
 import { FormBuilder } from "../components/FormBuilder";
 import FormSection from "../components/FormSection";
@@ -51,29 +53,6 @@ import { useRecognitionPreviewCounts } from "../lib/useRecognitionPreviewCounts"
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 
 const tabs = ["details", "content"] as const;
-
-enum VisibilityState {
-  Unpublished = "unpublished",
-  Scheduled = "scheduled",
-  Published = "published",
-}
-
-type Visibility =
-  | { state: VisibilityState.Unpublished }
-  | { state: VisibilityState.Scheduled; visibleAt: Date }
-  | { state: VisibilityState.Published; visibleAt: Date };
-
-const visibilityOf = (
-  update: AdminActionUpdateDto,
-  now: number,
-): Visibility => {
-  if (!update.visibleAt) return { state: VisibilityState.Unpublished };
-
-  const visibleAt = new Date(update.visibleAt);
-  return visibleAt.getTime() > now
-    ? { state: VisibilityState.Scheduled, visibleAt }
-    : { state: VisibilityState.Published, visibleAt };
-};
 
 const TEXT_INPUT_CLASS =
   "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm";
@@ -288,101 +267,10 @@ const ActionUpdatePage: React.FC = () => {
   const recognition = usesRecognition(form.notificationMode);
   const hasUnsavedDetails = JSON.stringify(form) !== JSON.stringify(savedForm);
 
-  const now = Date.now();
-  const visibility = visibilityOf(update, now);
-  const displayDate = new Date(update.date);
-
   const notifyBlockedReason = notifyBlockedReasonOf({
     notifyType: update.notifyType,
     hasUnsavedDetails,
     hasBody: !!storedSchema && storedSchema.blocks.length > 0,
-  });
-
-  // Unpublishing moves `visibleAt` to the saved date, so an unsaved edit to the
-  // picker would schedule the update for a different time than the one shown.
-  const unpublishBlockedReason = run(() => {
-    if (hasUnsavedDetails) {
-      return "Save your changes first.";
-    }
-    if (displayDate.getTime() <= now) {
-      return "The displayed date has already passed, so there's nothing to wait for.";
-    }
-    return null;
-  });
-
-  const hiddenBanner = run(() => {
-    switch (visibility.state) {
-      case VisibilityState.Unpublished:
-        return "Not visible to members yet — this update publishes the first time you save content on the Content tab.";
-      case VisibilityState.Scheduled:
-        return `Not visible to members yet — this update publishes ${visibility.visibleAt.toLocaleString()}.`;
-      case VisibilityState.Published:
-        return null;
-      default:
-        throw new Error(`unknown visibility: ${visibility satisfies never}`);
-    }
-  });
-
-  const visibilitySection = run(() => {
-    switch (visibility.state) {
-      case VisibilityState.Unpublished:
-        return (
-          <p className="text-sm text-gray-700">
-            Not published yet — this update publishes the first time you save
-            content on the Content tab.
-          </p>
-        );
-      case VisibilityState.Scheduled:
-        return (
-          <>
-            <p className="text-sm text-gray-700">
-              Hidden from members until {visibility.visibleAt.toLocaleString()},
-              when it publishes on its own.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handlePublishNow}
-                disabled={changingVisibility}
-                className="flex items-center gap-2 px-4 py-2 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:hover:scale-100"
-              >
-                <Eye className="w-4 h-4" aria-hidden />
-                {changingVisibility ? "Publishing..." : "Publish now"}
-              </button>
-              <p className="text-xs text-gray-500">
-                Makes the update visible to members immediately.
-              </p>
-            </div>
-          </>
-        );
-      case VisibilityState.Published:
-        return (
-          <>
-            <p className="text-sm text-gray-700">
-              Visible to members since {visibility.visibleAt.toLocaleString()}.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handleUnpublish}
-                disabled={changingVisibility || unpublishBlockedReason !== null}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-sm font-medium disabled:opacity-50 disabled:hover:bg-white"
-              >
-                <EyeOff className="w-4 h-4" aria-hidden />
-                {changingVisibility
-                  ? "Unpublishing..."
-                  : "Unpublish until displayed date"}
-              </button>
-              <p className="text-xs text-gray-500">
-                {unpublishBlockedReason ??
-                  `Hides it from members until ${displayDate.toLocaleString()}.`}
-              </p>
-            </div>
-          </>
-        );
-      default:
-        throw new Error(`unknown visibility: ${visibility satisfies never}`);
-    }
   });
 
   const detailsTab = (
@@ -521,7 +409,15 @@ const ActionUpdatePage: React.FC = () => {
         />
       </FormSection>
 
-      <FormSection title="Member visibility">{visibilitySection}</FormSection>
+      <FormSection title="Member visibility">
+        <VisibilityControls
+          update={update}
+          hasUnsavedDetails={hasUnsavedDetails}
+          changing={changingVisibility}
+          onPublishNow={handlePublishNow}
+          onUnpublish={handleUnpublish}
+        />
+      </FormSection>
 
       {events.length > 0 && (
         <FormSection
@@ -606,12 +502,7 @@ const ActionUpdatePage: React.FC = () => {
         </button>
       </div>
 
-      {hiddenBanner && (
-        <div className="mx-5 mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
-          <EyeOff className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
-          <p className="text-sm">{hiddenBanner}</p>
-        </div>
-      )}
+      <HiddenFromMembersBanner update={update} />
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 mx-5 mt-4">
