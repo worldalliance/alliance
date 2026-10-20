@@ -77,6 +77,7 @@ import {
 } from "./entities/community-invite.entity";
 import { Community, loadedCommunityUsers } from "./entities/community.entity";
 import { GroupJoinNotifsService } from "./group-join-notifs.service";
+import { canModifyInvite } from "./invite-permissions";
 import { saveInviteOfLiveParents, setLiveInviteStatus } from "./invite-writes";
 
 /**
@@ -1222,10 +1223,10 @@ export class CommunityService {
     });
 
     if (
-      !(
-        invite.invitingUser?.id === userId ||
-        canManageCommunity(user, loadedCommunityInviteCommunity(invite).id)
-      )
+      !canModifyInvite(user, {
+        invitingUserId: invite.invitingUser?.id ?? null,
+        communityId: loadedCommunityInviteCommunity(invite).id,
+      })
     ) {
       throw new BadRequestException();
     }
