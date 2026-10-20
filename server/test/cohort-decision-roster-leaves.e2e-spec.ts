@@ -1,10 +1,10 @@
 import type { Repository } from "typeorm";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
+import { CohortResolverService } from "../src/actions/cohort-resolver.service";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
 import { Action, parseAction } from "../src/actions/entities/action.entity";
 import { CohortDecisionReason } from "../src/actions/entities/cohort-decision-reason";
 import { SingleMemberCohortService } from "../src/actions/single-member-cohort.service";
-import { ActionEventRecipientService } from "../src/notifs/action-event-recipient.service";
 import { TasksModule } from "../src/tasks/tasks.module";
 import { User } from "../src/user/entities/user.entity";
 import { UserService } from "../src/user/user.service";
@@ -80,9 +80,7 @@ describe("Cohort leaves reading another action's saved decisions (e2e)", () => {
       const inLeaf = async (actionId: number) => {
         const expression = { type, actionId };
         const [population, single] = await Promise.all([
-          ctx.app
-            .get(ActionEventRecipientService)
-            .resolveCohortMemberIds(expression),
+          ctx.app.get(CohortResolverService).resolveCohortMemberIds(expression),
           ctx.app.get(SingleMemberCohortService).computeIsInCohortExpression({
             user,
             cohortExpression: expression,

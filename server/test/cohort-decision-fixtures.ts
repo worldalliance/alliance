@@ -2,6 +2,7 @@ import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { millisecondsInDay } from "date-fns/constants";
 import { In } from "typeorm";
 import { readsSavedDecisions } from "../src/actions/cohort-decision";
+import { CohortResolverService } from "../src/actions/cohort-resolver.service";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
 import {
@@ -14,7 +15,6 @@ import {
   VisibilityMode,
 } from "../src/actions/entities/action.entity";
 import { CohortDecisionReason } from "../src/actions/entities/cohort-decision-reason";
-import { ActionEventRecipientService } from "../src/notifs/action-event-recipient.service";
 import { CohortResolutionSession } from "../src/notifs/cohort-resolution-session";
 import {
   ContractEvent,
@@ -47,7 +47,7 @@ export async function saveLiveCohortDecisions(
     }),
     ctx.app.get(UserService).findActiveUserIds(),
   ]);
-  const recipientService = ctx.app.get(ActionEventRecipientService);
+  const cohortResolverService = ctx.app.get(CohortResolverService);
   const session = new CohortResolutionSession();
   const rows: Pick<
     ActionCohortDecision,
@@ -55,7 +55,7 @@ export async function saveLiveCohortDecisions(
   >[] = [];
   for (const action of actions.map(parseAction)) {
     if (!readsSavedDecisions(action, now)) continue;
-    const cohort = await recipientService.resolveActionCohortMemberIds({
+    const cohort = await cohortResolverService.resolveActionCohortMemberIds({
       action,
       session,
     });
@@ -179,11 +179,12 @@ export function cohortDecisionFixtures(ctx: TestContext) {
     );
 
   const failManualCohorts = () => {
-    const recipientService = ctx.app.get(ActionEventRecipientService);
-    const resolve =
-      recipientService.resolveCohortMemberIds.bind(recipientService);
+    const cohortResolverService = ctx.app.get(CohortResolverService);
+    const resolve = cohortResolverService.resolveCohortMemberIds.bind(
+      cohortResolverService,
+    );
     return jest
-      .spyOn(recipientService, "resolveCohortMemberIds")
+      .spyOn(cohortResolverService, "resolveCohortMemberIds")
       .mockImplementation((expression, ...rest) =>
         expression?.type === "Manual"
           ? Promise.reject(new Error("cohort failed"))

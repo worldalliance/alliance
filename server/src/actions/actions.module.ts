@@ -55,6 +55,7 @@ import { CohortDecisionService } from "./cohort-decision.service";
 import { CohortDecisionWorker } from "./cohort-decision.worker";
 import { CohortDecisionsController } from "./cohort-decisions.controller";
 import { CohortDivergenceService } from "./cohort-divergence.service";
+import { CohortResolverService } from "./cohort-resolver.service";
 import { ContractReminderWorker } from "./contract-reminder.worker";
 import { ContractSuspenderWorker } from "./contract-suspender.worker";
 import { ActionActivity } from "./entities/action-activity.entity";
@@ -167,12 +168,14 @@ import { TaskBadgeService } from "./task-badge.service";
     CohortDecisionWorker,
     TaskBadgeService,
     CohortDivergenceService,
+    CohortResolverService,
   ],
   exports: [
     ActionsService,
     ActionVisibilityModule,
     ActionFormVariantService,
     ActionEventRecipientService,
+    CohortResolverService,
   ],
 })
 export class ActionsModule {}

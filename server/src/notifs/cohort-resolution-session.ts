@@ -20,7 +20,7 @@ export type FormResponseAnswerRow = {
  *
  * The action-roster and expression memos are keyed by the chain of
  * `MissedActionDeadline` leaf ids currently being resolved (see
- * `ActionEventRecipientService.resolveCohortMemberIds`), so a cyclic
+ * `CohortResolverService.resolveCohortMemberIds`), so a cyclic
  * expression terminates instead of deadlocking on its own pending promise.
  */
 export class CohortResolutionSession {

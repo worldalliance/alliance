@@ -1,6 +1,7 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { ActionParticipantsService } from "../src/actions/action-participants.service";
 import { ActionsService } from "../src/actions/actions.service";
+import { CohortResolverService } from "../src/actions/cohort-resolver.service";
 import { Action } from "../src/actions/entities/action.entity";
 import { SingleMemberCohortService } from "../src/actions/single-member-cohort.service";
 import { ActionStatsAnalyticsService } from "../src/analytics/action-stats-analytics.service";
@@ -11,7 +12,6 @@ import { DailyStatsRecord } from "../src/analytics/dailystats.entity";
 import { MemberRetentionAnalyticsService } from "../src/analytics/member-retention-analytics.service";
 import { PlatformTenureAnalyticsService } from "../src/analytics/platform-tenure-analytics.service";
 import { Community } from "../src/community/entities/community.entity";
-import { ActionEventRecipientService } from "../src/notifs/action-event-recipient.service";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
   OnetimeInvite,
@@ -103,9 +103,7 @@ describe("A member's latest completion or withdrawal decides completion (e2e)", 
       });
 
       const [population, single, stored] = await Promise.all([
-        ctx.app
-          .get(ActionEventRecipientService)
-          .resolveCohortMemberIds(expression),
+        ctx.app.get(CohortResolverService).resolveCohortMemberIds(expression),
         ctx.app.get(SingleMemberCohortService).computeIsInCohortExpression({
           user,
           cohortExpression: expression,
