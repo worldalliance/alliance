@@ -8,12 +8,6 @@ import {
   UnreadContentType,
 } from "@alliance/shared/client";
 import {
-  getNotificationIdentityKey,
-  getNotificationReadRequest,
-  isClearedByContentRead,
-} from "@alliance/shared/lib/notificationIdentity";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import {
   QueryClient,
   queryOptions,
   skipToken,
@@ -21,6 +15,12 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useMemo } from "react";
+import {
+  getNotificationIdentityKey,
+  getNotificationReadRequest,
+  isClearedByContentRead,
+} from "./notificationIdentity";
+import { queryKeys } from "./queryKeys";
 
 const LIST_KEY = queryKeys.notifications();
 const LOADED_AT_KEY = queryKeys.notificationsLoadedAt();

@@ -1,4 +1,5 @@
 import { formatBadgeCount } from "@alliance/shared/lib/badgeCount";
+import { useUnreadNotificationCount } from "@alliance/shared/lib/useNotificationsCache";
 import { cn } from "@alliance/shared/styles/util";
 import { impactAsync, ImpactFeedbackStyle } from "expo-haptics";
 import { usePathname, useRouter } from "expo-router";
@@ -15,7 +16,6 @@ import {
 } from "../lib/onboarding/walkthrough";
 import { colors } from "../lib/style/colors";
 import { useTaskBadgeSync } from "../lib/taskBadge";
-import { useUnreadNotificationCount } from "../lib/useNotificationsCache";
 import Text, { FontWeight } from "./system/Text";
 
 const tabs = [

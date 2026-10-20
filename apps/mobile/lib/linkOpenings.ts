@@ -9,12 +9,12 @@ import {
   type LinkOpeningQueue,
   type OpeningStorage,
 } from "@alliance/shared/lib/linkOpeningQueue";
+import { notificationsCache } from "@alliance/shared/lib/useNotificationsCache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { milliseconds } from "date-fns";
 import type { PostHog } from "posthog-react-native";
 import type { AppStateStatic } from "react-native";
 import { queryClient } from "./queryClient";
-import { notificationsCache } from "./useNotificationsCache";
 
 const STORAGE_KEY = "alliance.linkOpenings";
 const LAST_INITIAL_KEY = "alliance.lastInitialLink";

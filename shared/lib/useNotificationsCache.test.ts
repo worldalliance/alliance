@@ -1,12 +1,8 @@
 import { NOTIFS_LOADED_AT_HEADER } from "@alliance/common/notifs";
 import { NotificationDto } from "@alliance/shared/client";
-import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import {
-  routes,
-  serveApi,
-  type RouteTable,
-} from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient } from "@tanstack/react-query";
+import { queryKeys } from "./queryKeys";
+import { routes, serveApi, type RouteTable } from "./testing/serveApi";
 import { notificationsCache } from "./useNotificationsCache";
 
 const LOADED_AT = "2026-09-23T12:00:00.123Z";
