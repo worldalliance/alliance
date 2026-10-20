@@ -1,74 +1,25 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import type {
-  DisplayBlock,
-  DisplayKind,
-} from "@alliance/common/forms/display-blocks";
 import {
   DISPLAY_KIND_NAMES,
   elementInternalDescriptor,
-  outputBlockInternalDescriptor,
 } from "@alliance/common/forms/element-descriptors";
 import type {
   AnyField,
   FormSchema,
-  FormValue,
   OutputBlock,
-  OutputFieldBlock,
   OutputViewSchema,
 } from "@alliance/common/forms/form-schema";
-import { getRankingSlotCount } from "@alliance/common/forms/ranking";
 import { cn } from "@alliance/shared/styles/util";
-import OutputRenderer from "@alliance/sharedweb/forms/OutputRenderer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { X } from "lucide-react";
-import { Fragment, useEffect, useMemo } from "react";
-import { addressedWrite, type BlockWriteById } from "../lib/displayBlockById";
-import { DropPosition, useDragReorder } from "../lib/useDragReorder";
+import { useEffect, useMemo } from "react";
+import type { BlockWriteById } from "../lib/displayBlockById";
 import { createDisplayBlock } from "./display-blocks";
-import { renderBlockEditor } from "./display-blocks/blockEditors";
+import { OutputBlockList } from "./output-builder/OutputBlockList";
 import {
-  ElementExpressionScope,
-  expressionKeys,
-} from "./form-fields/conditions/expressionBuffers";
-import { EditableOutputFieldBlock } from "./output-builder/EditableOutputFieldBlock";
-
-const outputBlockKey = (block: OutputBlock, index: number) =>
-  "kind" in block ? (block.id ?? `${block.kind}-${index}`) : block.id;
-
-const OUTPUT_BY_KIND = {
-  header: true,
-  text: true,
-  label: true,
-  divider: true,
-  spacer: true,
-  html: true,
-  images: true,
-  quote: true,
-  userLocation: true,
-  video: false,
-  biglink: false,
-  copytext: false,
-  previousAnswer: false,
-  chatTranscript: false,
-  accordion: false,
-} as const satisfies Record<DisplayKind, boolean>;
-
-type OutputDisplayBlockKind = {
-  [K in keyof typeof OUTPUT_BY_KIND]: (typeof OUTPUT_BY_KIND)[K] extends true
-    ? K
-    : never;
-}[keyof typeof OUTPUT_BY_KIND];
-
-const isOutputDisplayBlockKind = (
-  kind: string,
-): kind is OutputDisplayBlockKind =>
-  Object.entries(OUTPUT_BY_KIND).some(
-    ([allowedKind, allowed]) => allowed && allowedKind === kind,
-  );
-
-const DISPLAY_BLOCK_KINDS = Object.keys(OUTPUT_BY_KIND).filter(
-  isOutputDisplayBlockKind,
-);
+  DISPLAY_BLOCK_KINDS,
+  type OutputDisplayBlockKind,
+} from "./output-builder/outputDisplayKinds";
+import { OutputPreview } from "./output-builder/OutputPreview";
 
 const collectOutputFields = (schema: FormSchema): AnyField[] => {
   const result: AnyField[] = [];
@@ -82,68 +33,6 @@ const collectOutputFields = (schema: FormSchema): AnyField[] => {
     });
   });
   return result;
-};
-
-const buildPreviewAnswers = (fields: AnyField[]): Record<string, FormValue> => {
-  const answers: Record<string, FormValue> = {};
-  fields.forEach((field) => {
-    switch (field.kind) {
-      case "checkbox":
-        answers[field.id] = true;
-        break;
-      case "radio":
-      case "select":
-        answers[field.id] = field.options?.[0]?.value ?? field.label;
-        break;
-      case "multiselect":
-        answers[field.id] = field.options
-          ?.slice(0, 2)
-          .map((option) => option.value) ?? [field.label];
-        break;
-      case "ranking":
-        answers[field.id] = field.options
-          .slice(0, getRankingSlotCount(field))
-          .map((option) => option.value);
-        break;
-      case "number":
-        answers[field.id] = 42;
-        break;
-      case "date":
-        answers[field.id] = "2024-01-01";
-        break;
-      case "time":
-        answers[field.id] = "09:00";
-        break;
-      case "timezone":
-        answers[field.id] = "America/Los_Angeles";
-        break;
-      case "city":
-        answers[field.id] = {
-          id: 1,
-          name: "San Francisco",
-          admin1: "California",
-          countryCode: "US",
-          countryName: "United States",
-        };
-        break;
-      case "file":
-        answers[field.id] = "uploaded/file.pdf";
-        break;
-      case "email":
-        answers[field.id] = "user@example.com";
-        break;
-      case "phone":
-        answers[field.id] = "+14155552671";
-        break;
-      case "list":
-        answers[field.id] = [buildPreviewAnswers(field.fields)];
-        break;
-      default:
-        answers[field.id] = `${elementInternalDescriptor(field)} response`;
-        break;
-    }
-  });
-  return answers;
 };
 
 const buildNewView = (schema: FormSchema): OutputViewSchema => ({
@@ -175,10 +64,6 @@ export function OutputBuilder({
   onSelectView: setSelectedViewId,
 }: OutputBuilderProps) {
   const outputFields = useMemo(() => collectOutputFields(schema), [schema]);
-  const previewAnswers = useMemo(
-    () => buildPreviewAnswers(outputFields),
-    [outputFields],
-  );
 
   useEffect(() => {
     if (!schema.outputViews || schema.outputViews.length === 0) {
@@ -203,21 +88,6 @@ export function OutputBuilder({
     );
   }, [schema.outputViews, selectedViewId]);
 
-  const outputBlocks = useMemo(() => {
-    if (!selectedView) return [];
-    const fieldLookup = new Map(outputFields.map((f) => [f.id, f]));
-    return selectedView.blocks
-      .filter((b): b is OutputBlock & { id: string } => Boolean(b.id))
-      .map((b) => ({
-        id: b.id,
-        label: outputBlockInternalDescriptor({
-          block: b,
-          fieldLookup,
-          maxTextLength: 30,
-        }),
-      }));
-  }, [selectedView, outputFields]);
-
   const updateViews = (views: OutputViewSchema[]) => {
     onSchemaChange({
       ...schema,
@@ -231,20 +101,6 @@ export function OutputBuilder({
       view.id === selectedView.id ? { ...view, ...updates } : view,
     );
     updateViews(nextViews);
-  };
-
-  const updateBlockAtIndex = (index: number, updates: Partial<OutputBlock>) => {
-    if (!selectedView) return;
-    const nextBlocks = selectedView.blocks.map((block, idx) =>
-      idx === index ? ({ ...block, ...updates } as OutputBlock) : block,
-    );
-    updateSelectedView({ blocks: nextBlocks });
-  };
-
-  const removeBlockAtIndex = (index: number) => {
-    if (!selectedView) return;
-    const nextBlocks = selectedView.blocks.filter((_, idx) => idx !== index);
-    updateSelectedView({ blocks: nextBlocks });
   };
 
   const appendBlock = (block: OutputBlock) => {
@@ -289,80 +145,6 @@ export function OutputBuilder({
     if (selectedViewId === viewId) {
       setSelectedViewId(nextViews[0]?.id ?? null);
     }
-  };
-
-  const {
-    draggedIndex,
-    dragOverIndex,
-    dropPosition,
-    handleDragStart,
-    handleDragEnd,
-    handleDragOver,
-    handleDrop,
-  } = useDragReorder(selectedView?.blocks ?? [], (blocks) =>
-    updateSelectedView({ blocks }),
-  );
-
-  const renderBlock = (block: OutputBlock, index: number) => {
-    const showInsertionBar =
-      dragOverIndex === index && dropPosition && draggedIndex !== null;
-    const isDisplayBlock = (block as DisplayBlock).kind !== undefined;
-    const dragProps = {
-      onDragStart: handleDragStart(index),
-      onDragEnd: handleDragEnd,
-      isDragging: draggedIndex === index,
-    };
-    const handleDisplayUpdate = (updates: Partial<DisplayBlock>) =>
-      updateBlockAtIndex(index, updates);
-    const updateCurrent = addressedWrite(block, onUpdateBlockById);
-
-    return (
-      <div className="relative">
-        {showInsertionBar && dropPosition === DropPosition.Before && (
-          <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
-            <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-          </div>
-        )}
-        <div
-          className="transition-all"
-          onDragOver={handleDragOver(index)}
-          onDrop={handleDrop(index)}
-        >
-          {isDisplayBlock ? (
-            (() => {
-              const displayBlock = block as DisplayBlock;
-              if (!OUTPUT_BY_KIND[displayBlock.kind])
-                throw new Error(
-                  `output views can't show ${displayBlock.kind} blocks`,
-                );
-              return renderBlockEditor({
-                block: displayBlock,
-                onUpdate: handleDisplayUpdate,
-                updateCurrent,
-                onRemove: () => removeBlockAtIndex(index),
-                previousFields: outputFields,
-                outputBlocks,
-                ...dragProps,
-              });
-            })()
-          ) : (
-            <EditableOutputFieldBlock
-              block={block as OutputFieldBlock}
-              availableFields={outputFields}
-              outputBlocks={outputBlocks}
-              onUpdate={(updates) => updateBlockAtIndex(index, updates)}
-              onRemove={() => removeBlockAtIndex(index)}
-              {...dragProps}
-            />
-          )}
-        </div>
-        {showInsertionBar && dropPosition === DropPosition.After && (
-          <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
-            <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-          </div>
-        )}
-      </div>
-    );
   };
 
   return (
@@ -514,69 +296,18 @@ export function OutputBuilder({
                   )}
                 </div>
 
-                <div className="space-y-4">
-                  {selectedView.blocks.length === 0 && (
-                    <div className="text-sm text-gray-500 border border-dashed border-gray-300 rounded-lg p-6 text-center">
-                      No blocks added yet. Use the controls above to add display
-                      or output blocks.
-                    </div>
-                  )}
-                  <Fragment key={editorsKey}>
-                    {selectedView.blocks.map((block, index) => (
-                      <ElementExpressionScope
-                        key={outputBlockKey(block, index)}
-                        parent={expressionKeys.outputView(selectedView.id)}
-                        id={block.id}
-                      >
-                        {renderBlock(block, index)}
-                      </ElementExpressionScope>
-                    ))}
-                  </Fragment>
-                  {draggedIndex !== null &&
-                    selectedView &&
-                    selectedView.blocks.length > 0 && (
-                      <div
-                        className="relative h-4 -mt-2"
-                        onDragOver={handleDragOver(
-                          selectedView.blocks.length - 1,
-                          DropPosition.After,
-                        )}
-                        onDrop={handleDrop(selectedView.blocks.length - 1)}
-                      ></div>
-                    )}
-                </div>
-                <div className="border-t border-gray-200 pt-6 mt-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium text-gray-900">
-                      Output preview
-                    </h3>
-                  </div>
-                  {selectedView.blocks.length > 0 ? (
-                    <div className="border-t border-gray-200 pt-2">
-                      <OutputRenderer
-                        submission={{
-                          id: 0,
-                          formId: 0,
-                          deviceType: null,
-                          answers: previewAnswers,
-                          visibilityValidatorResults: {},
-                          publicAnswers: Object.fromEntries(
-                            outputFields.map((field) => [field.id, true]),
-                          ),
-                          schemaSnapshot: schema as unknown as Record<
-                            string,
-                            unknown
-                          >,
-                        }}
-                        viewId={selectedView.id}
-                      />
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-500">
-                      Add at least one block to see a preview.
-                    </p>
-                  )}
-                </div>
+                <OutputBlockList
+                  key={editorsKey}
+                  view={selectedView}
+                  outputFields={outputFields}
+                  onBlocksChange={(blocks) => updateSelectedView({ blocks })}
+                  onUpdateBlockById={onUpdateBlockById}
+                />
+                <OutputPreview
+                  schema={schema}
+                  view={selectedView}
+                  outputFields={outputFields}
+                />
               </div>
             ) : null}
           </>
