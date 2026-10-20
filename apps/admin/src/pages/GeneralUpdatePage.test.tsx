@@ -1,5 +1,10 @@
-import type { UpdateGeneralUpdateDto } from "@alliance/shared/client";
+import type {
+  ActionSuiteDto,
+  CreateGeneralUpdateDto,
+  UpdateGeneralUpdateDto,
+} from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { makeProfile, makeTag } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
@@ -18,21 +23,42 @@ afterEach(cleanup);
 const startDate = "2026-03-10T15:00:00.000Z";
 const endDate = "2026-03-20T22:30:00.000Z";
 let saved: UpdateGeneralUpdateDto | null = null;
+let created: CreateGeneralUpdateDto | null = null;
 let servedName = "Weekly note";
 let findStatus = 200;
 let updateStatus = 200;
 let suitesStatus = 200;
+const deferred = () => Promise.withResolvers<void>();
+type Deferred = ReturnType<typeof deferred>;
+let pickersRequested: Record<"tags" | "suites" | "members", Deferred> | null =
+  null;
+const suite = {
+  id: 7,
+  name: "Spring",
+  actions: [],
+  events: [],
+  reminderGroups: [],
+  generalUpdates: [],
+} satisfies ActionSuiteDto;
+const tag = makeTag({ id: "t1", name: "Volunteers" });
 
 serveApi(
   routes({
-    "GET /actions/generalUpdates/admin/:id": () =>
-      findStatus === 200
+    "GET /actions/generalUpdates/admin/:id": async () => {
+      if (pickersRequested)
+        await Promise.all(
+          Object.values(pickersRequested).map(({ promise }) => promise),
+        );
+      return findStatus === 200
         ? Response.json(
             generalUpdateAdmin(1, servedName, { startDate, endDate }),
           )
-        : Response.json({}, { status: findStatus }),
-    "POST /actions/generalUpdates/create": () =>
-      Response.json(generalUpdateAdmin(2, "New")),
+        : Response.json({}, { status: findStatus });
+    },
+    "POST /actions/generalUpdates/create": async ({ request }) => {
+      created = await request.json();
+      return Response.json(generalUpdateAdmin(2, "New"));
+    },
     "PATCH /actions/generalUpdates/:id": async ({ request }) => {
       if (updateStatus !== 200)
         return Response.json({}, { status: updateStatus });
@@ -44,20 +70,32 @@ serveApi(
         }),
       );
     },
-    "GET /actions/suites": () =>
-      Response.json(suitesStatus === 200 ? [] : {}, { status: suitesStatus }),
-    "GET /user/members": () => Response.json([]),
-    "GET /user/tags": () => Response.json([]),
+    "GET /actions/suites": () => {
+      pickersRequested?.suites.resolve();
+      return Response.json(suitesStatus === 200 ? [suite] : {}, {
+        status: suitesStatus,
+      });
+    },
+    "GET /user/members": () => {
+      pickersRequested?.members.resolve();
+      return Response.json([{ ...makeProfile(5), displayName: "Ana" }]);
+    },
+    "GET /user/tags": () => {
+      pickersRequested?.tags.resolve();
+      return Response.json([tag]);
+    },
   }),
 );
 
 const hostZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 beforeEach(() => {
   saved = null;
+  created = null;
   servedName = "Weekly note";
   findStatus = 200;
   updateStatus = 200;
   suitesStatus = 200;
+  pickersRequested = null;
   process.env.TZ = "America/New_York";
 });
 afterEach(() => {
@@ -116,6 +154,27 @@ it("refreshes the general updates list after creating one", async () => {
     expect(router.state.location.pathname).toBe("/general-updates/2"),
   );
   expect(listInvalidated(client)).toBe(true);
+});
+
+it("creates a general update with the entered details", async () => {
+  renderPage("/general-updates/new");
+  fireEvent.change(screen.getByLabelText("Title"), {
+    target: { value: "New" },
+  });
+  fireEvent.change(screen.getByLabelText("Start Date"), {
+    target: { value: "2026-03-10T11:00" },
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Create General Update" }),
+  );
+
+  await waitFor(() => expect(created).not.toBeNull());
+  expect(created).toMatchObject({
+    name: "New",
+    startDate,
+    useManualCohort: false,
+    manualCohortUserIds: [],
+  });
 });
 
 it("refreshes the general updates list after saving", async () => {
@@ -190,6 +249,73 @@ it("reports a failed load", async () => {
   expect(
     await screen.findByText("Failed to load general update"),
   ).toBeDefined();
+});
+
+it("assigns the suite named in the link to a new general update", async () => {
+  renderPage("/general-updates/new?suiteId=3");
+
+  expect(
+    await screen.findByRole("button", { name: "Remove Suite #3" }),
+  ).toBeDefined();
+  expect(screen.queryByLabelText("Start Date")).toBeNull();
+});
+
+it("saves the picked suite, tags, and manual cohort", async () => {
+  renderPage();
+  await screen.findByLabelText("Title");
+
+  fireEvent.click(await screen.findByLabelText(/Volunteers/));
+  fireEvent.click(screen.getByLabelText("Enable"));
+  fireEvent.change(await screen.findByPlaceholderText("Search by name"), {
+    target: { value: "Ana" },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: "Ana" }));
+  fireEvent.change(await screen.findByLabelText("Add suite"), {
+    target: { value: "7" },
+  });
+  expect(screen.queryByLabelText("Start Date")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+
+  await waitFor(() => expect(saved).not.toBeNull());
+  expect(saved).toMatchObject({
+    suiteIds: [7],
+    tagIds: ["t1"],
+    useManualCohort: true,
+    manualCohortUserIds: [5],
+  });
+  expect(saved).not.toHaveProperty("startDate");
+  expect(saved).not.toHaveProperty("endDate");
+});
+
+it("saves without a tag that was unticked", async () => {
+  renderPage();
+  await screen.findByLabelText("Title");
+  const volunteers = await screen.findByLabelText(/Volunteers/);
+
+  fireEvent.click(volunteers);
+  fireEvent.click(volunteers);
+  fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+
+  await waitFor(() => expect(saved).not.toBeNull());
+  expect(saved?.tagIds).toEqual([]);
+});
+
+it("removes a suite and brings back the schedule", async () => {
+  renderPage("/general-updates/new?suiteId=7");
+  fireEvent.click(await screen.findByRole("button", { name: "Remove Spring" }));
+
+  expect(await screen.findByLabelText("Start Date")).toBeDefined();
+});
+
+it("loads the pickers alongside the general update", async () => {
+  pickersRequested = {
+    tags: deferred(),
+    suites: deferred(),
+    members: deferred(),
+  };
+  renderPage();
+
+  expect(await screen.findByLabelText(/Volunteers/)).toBeDefined();
 });
 
 it("reports suites that failed to load", async () => {
