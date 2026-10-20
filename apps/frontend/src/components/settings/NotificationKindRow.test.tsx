@@ -9,17 +9,9 @@ import {
   type SettingChange,
 } from "@alliance/shared/lib/notificationSettings";
 import { makeKindSettings } from "@alliance/shared/lib/testFixtures";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from "@testing-library/react";
-import { afterEach, expect, it } from "bun:test";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { expect, it } from "bun:test";
 import NotificationKindRow from "./NotificationKindRow";
-
-afterEach(cleanup);
 
 const likes = makeKindSettings({
   cells: [

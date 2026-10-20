@@ -3,8 +3,6 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type React from "react";
 import FormResponsesHeader from "./FormResponsesHeader";
 
-afterEach(cleanup);
-
 const renderHeader = (
   overrides: Partial<React.ComponentProps<typeof FormResponsesHeader>> = {},
 ) => {

@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { useSeedSettingsForm } from "./useSeedSettingsForm";
@@ -23,11 +23,6 @@ const api = serveApi(routes(table));
 beforeEach(() => {
   seedings = 0;
   refusals = 0;
-});
-
-afterEach(() => {
-  cleanup();
-  jest.restoreAllMocks();
 });
 
 const seed = (user: { id: number }) => {

@@ -1,7 +1,5 @@
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { useInvitePlacement } from "./useInvitePlacement";
-
-afterEach(cleanup);
 
 const ME = 1;
 const led = { id: 10, leaders: [{ id: ME }] };

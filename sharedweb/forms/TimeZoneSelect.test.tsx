@@ -1,7 +1,6 @@
 import { resetTimeZoneCaches } from "@alliance/shared/forms/timeZoneSelect";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -10,7 +9,6 @@ import {
 import TimeZoneSelect from "./TimeZoneSelect";
 
 beforeEach(resetTimeZoneCaches);
-afterEach(cleanup);
 
 const zoneLabel = (text: string) =>
   screen.getByText(

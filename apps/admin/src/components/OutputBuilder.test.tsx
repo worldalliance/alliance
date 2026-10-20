@@ -2,16 +2,8 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  cleanup,
-  createEvent,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { createEvent, fireEvent, render, screen } from "@testing-library/react";
 import { OutputBuilder } from "./OutputBuilder";
-
-afterEach(cleanup);
 
 const renderBuilder = (
   schema: FormSchema,

@@ -1,9 +1,7 @@
 import type { ActionFormVariantStatsDto } from "@alliance/shared/client/types.gen";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import ActionFormVariantCoverage from "./ActionFormVariantCoverage";
-
-afterEach(cleanup);
 
 const stats: ActionFormVariantStatsDto[] = [
   {

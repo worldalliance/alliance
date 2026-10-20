@@ -5,20 +5,13 @@ import {
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { MemoryRouter } from "react-router";
 import { EditorSidebar } from "../../lib/testing/EditorSidebar";
 import { CustomValidatorDraftsContext } from "./customValidatorDrafts";
 import { EditableChoiceField } from "./EditableChoiceField";
 
-afterEach(cleanup);
 serveApi(routes({}));
 
 const initial: MultiSelectField = {

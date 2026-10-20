@@ -1,7 +1,7 @@
 import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
 import { makeAction } from "@alliance/shared/lib/testFixtures";
 import * as activitiesModule from "@alliance/shared/lib/useActivities";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { MemoryRouter } from "react-router";
 import * as actionTaskPanelModule from "../../components/ActionTaskPanel";
@@ -29,8 +29,6 @@ beforeEach(() => {
       <button onClick={onDeadlinePassed}>Submit late</button>
     ));
 });
-
-afterEach(cleanup);
 
 const card = (
   action: ActionWithAwayStatus,

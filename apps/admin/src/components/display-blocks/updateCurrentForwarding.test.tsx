@@ -1,7 +1,7 @@
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { createDisplayBlock } from "./createDisplayBlock";
 import { EditableBigLinkBlock } from "./EditableBigLinkBlock";
@@ -83,8 +83,6 @@ const editors: {
     },
   },
 ];
-
-afterEach(cleanup);
 
 describe("a block editor forwards the addressed write", () => {
   for (const { name, placeholder, mount } of editors) {

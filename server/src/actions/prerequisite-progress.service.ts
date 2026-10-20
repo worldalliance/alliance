@@ -174,7 +174,6 @@ export class PrerequisiteProgressService {
   ): Promise<Pick<ActionActivity, "userId" | "actionId">[]> {
     const terminal = await this.actionActivityRepository.find({
       where: { ...scope, type: In(TERMINAL_ACTIVITY_TYPES) },
-      select: { userId: true, actionId: true, type: true, createdAt: true },
     });
     return findLatestCompletions(terminal);
   }

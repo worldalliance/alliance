@@ -1,8 +1,8 @@
 import type { ActionUpdateDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, expect, it } from "bun:test";
+import { render, screen } from "@testing-library/react";
+import { expect, it } from "bun:test";
 import { MemoryRouter } from "react-router";
 import HomeUpdatesRow from "./HomeUpdatesRow";
 
@@ -30,8 +30,6 @@ serveApi(
     "GET /notifs/unread-count": () => Response.json({ unreadCount: 0 }),
   }),
 );
-
-afterEach(cleanup);
 
 const renderRow = () =>
   render(

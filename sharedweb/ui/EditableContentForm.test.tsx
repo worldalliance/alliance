@@ -1,8 +1,6 @@
 import { CreateEditableContentDto } from "@alliance/shared/client";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import EditableContentForm from "./EditableContentForm";
-
-afterEach(cleanup);
 
 const value: CreateEditableContentDto = {
   body: "a draft worth keeping",

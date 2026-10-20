@@ -15,7 +15,6 @@ import { SiteAppProvider } from "../ui/SiteAppProvider";
 import { RenderField } from "./RenderField";
 import * as textareaMinRowsModule from "./textareaMinRows";
 
-afterEach(cleanup);
 serveApi(routes({}));
 
 it.each([false, true])(

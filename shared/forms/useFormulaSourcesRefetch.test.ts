@@ -1,10 +1,8 @@
 import { FORMULA_SOURCES_CHANGED } from "@alliance/common/forms/formula-options";
-import { act, cleanup, renderHook } from "@testing-library/react";
-import { afterEach, expect, it, mock } from "bun:test";
+import { act, renderHook } from "@testing-library/react";
+import { expect, it, mock } from "bun:test";
 import { formulaSourcesChangedRefreshed } from "../lib/copy";
 import { useFormulaSourcesRefetch } from "./useFormulaSourcesRefetch";
-
-afterEach(cleanup);
 
 const refusal = (status: number, message: string) => ({
   response: new Response(null, { status }),

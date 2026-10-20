@@ -1,10 +1,8 @@
 import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { useUsersAdmin } from "./useUsersAdmin";
-
-afterEach(cleanup);
 
 const users = [makeUser({ id: 3, name: "Sam" })];
 

@@ -1,14 +1,12 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { client } from "@alliance/shared/client/client.gen";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { openSection, selectElement } from "../lib/testing/formCanvas";
 import {
   renderFormBuilder,
   renderSavedFormBuilder,
 } from "../lib/testing/renderFormBuilder";
-
-afterEach(cleanup);
 
 const readsTown = {
   inputs: { input1: { kind: "field", fieldId: "town" } },

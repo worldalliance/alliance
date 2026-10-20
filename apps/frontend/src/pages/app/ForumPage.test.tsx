@@ -1,12 +1,6 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { testForumPosts } from "../../stories/testData";
 import ForumPage from "./ForumPage";
@@ -15,8 +9,6 @@ let posts = async () =>
   Response.json({ message: "Internal server error" }, { status: 500 });
 
 serveApi(routes({ "GET /forum/posts": () => posts() }));
-
-afterEach(cleanup);
 
 it("offers a retry when forum posts fail to load", async () => {
   const { wrapper } = queryWrapper();

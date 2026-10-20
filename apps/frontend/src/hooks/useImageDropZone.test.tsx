@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useImageDropZone } from "./useImageDropZone";
 
 function DropZone({ onFiles }: { onFiles: (files: File[]) => void }) {
@@ -9,8 +9,6 @@ function DropZone({ onFiles }: { onFiles: (files: File[]) => void }) {
     </div>
   );
 }
-
-afterEach(cleanup);
 
 const image = new File(["a"], "a.png", { type: "image/png" });
 const imageDrag = {

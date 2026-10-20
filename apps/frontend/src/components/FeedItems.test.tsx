@@ -1,17 +1,9 @@
 import type { ProfileDto } from "@alliance/shared/client";
 import type { ParsedHomeFeedItemDto } from "@alliance/shared/lib/feedHelpers";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import FeedItems from "./FeedItems";
-
-afterEach(cleanup);
 
 const author: ProfileDto = {
   id: 7,

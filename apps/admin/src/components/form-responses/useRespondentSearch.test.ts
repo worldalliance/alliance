@@ -1,9 +1,7 @@
 import type { FormResponseDto } from "@alliance/shared/client";
 import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { useRespondentSearch } from "./useRespondentSearch";
-
-afterEach(cleanup);
 
 const responses = ["Maria Alba", "Alba Reyes", "Ben Stone"].map((name, id) =>
   makeFormResponse({ id, answers: { name } }),

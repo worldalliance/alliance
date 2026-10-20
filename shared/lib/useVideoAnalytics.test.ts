@@ -1,5 +1,5 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import {
   registerAnalytics,
   type AnalyticsBackend,
@@ -36,7 +36,6 @@ describe("useVideoAnalytics", () => {
     captured = [];
     registerAnalytics(recordingBackend);
   });
-  afterEach(cleanup);
 
   it("reports the video as seen once per source, and not when there is none", () => {
     const { rerender } = mountAnalytics({ src: "videos/abc", videoId: 1 });

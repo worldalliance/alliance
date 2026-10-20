@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { UpdateProfileDto } from "../client";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
@@ -23,8 +23,6 @@ beforeEach(() => {
   payloads = [];
   refused = false;
 });
-
-afterEach(cleanup);
 
 const settle = () => act(async () => {});
 

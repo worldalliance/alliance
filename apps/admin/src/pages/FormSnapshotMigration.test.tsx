@@ -1,10 +1,8 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import FormSnapshotMigration from "./FormSnapshotMigration";
-
-afterEach(cleanup);
 
 const snapshot = (id: number) => ({
   id,

@@ -6,8 +6,8 @@ import type {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import { renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import {
   useAssignActionProjectAdmin,
   useCreateActionProjectAdmin,
@@ -16,8 +16,6 @@ import {
   useProjectsAdmin,
   useUpdateProjectAdmin,
 } from "./useProjectsAdmin";
-
-afterEach(cleanup);
 
 const project = (id: number, name: string) =>
   ({ id, name, category: [] }) satisfies ProjectDto;

@@ -1,12 +1,10 @@
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import {
   useResponseSnapshotMigrationAdmin,
   useResponseSnapshotMigrationsAdmin,
 } from "./useResponseSnapshotMigrationAdmin";
-
-afterEach(cleanup);
 
 const snapshot = (id: number) => ({
   id,

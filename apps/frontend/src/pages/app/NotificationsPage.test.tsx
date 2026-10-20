@@ -1,7 +1,7 @@
 import type { NotificationDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "bun:test";
 import { MemoryRouter } from "react-router";
 import NotificationsPage from "./NotificationsPage";
@@ -35,7 +35,6 @@ serveApi(
 );
 
 afterEach(() => {
-  cleanup();
   listServed = Promise.resolve();
 });
 

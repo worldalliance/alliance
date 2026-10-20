@@ -1,7 +1,7 @@
 import type { WaitlistUnsubscribeDto } from "@alliance/shared/client";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../../lib/AuthContext";
 import { InviteSessionProvider } from "../../site/invite/InviteSession";
@@ -24,8 +24,6 @@ beforeEach(() => {
   requested = [];
   reply = () => new Response(null, { status: 204 });
 });
-
-afterEach(cleanup);
 
 const renderPage = (url: string) =>
   render(

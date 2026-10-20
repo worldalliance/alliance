@@ -6,7 +6,6 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -15,11 +14,6 @@ import {
 } from "@testing-library/react";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import ExternalShareTargetsPage from "./ExternalShareTargetsPage";
-
-afterEach(() => {
-  cleanup();
-  jest.restoreAllMocks();
-});
 
 const target = (id: number, name: string) =>
   ({

@@ -2,14 +2,8 @@ import type { InviteLinkPageDto } from "@alliance/shared/client/types.gen";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
-import { afterEach, beforeEach, expect, it } from "bun:test";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, expect, it } from "bun:test";
 import InviteLinksPage from "./InviteLinksPage";
 
 let requests: URLSearchParams[];
@@ -65,7 +59,6 @@ beforeEach(() => {
   status = 200;
   empty = false;
 });
-afterEach(cleanup);
 const renderPage = () =>
   render(
     <ToastProvider>

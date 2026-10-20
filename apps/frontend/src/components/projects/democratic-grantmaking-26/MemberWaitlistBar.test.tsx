@@ -1,7 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemberWaitlistBar } from "./MemberWaitlistBar";
-
-afterEach(cleanup);
 
 const widths = (members: number, waitlist: number) => {
   render(<MemberWaitlistBar members={members} waitlist={waitlist} />);

@@ -4,7 +4,6 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   renderHook,
@@ -49,7 +48,6 @@ serveApi(
 );
 
 afterEach(() => {
-  cleanup();
   reads.length = 0;
   readAlls = 0;
 });

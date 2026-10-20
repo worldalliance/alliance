@@ -1,5 +1,5 @@
 import type { NotificationDto } from "@alliance/shared/client";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { afterEach, expect, setSystemTime, test } from "bun:test";
 import NotificationText from "./NotificationText";
 
@@ -19,7 +19,6 @@ const notification: NotificationDto = {
 };
 
 afterEach(() => {
-  cleanup();
   setSystemTime();
 });
 

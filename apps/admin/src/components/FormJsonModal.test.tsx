@@ -2,19 +2,11 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { StrictMode, useState, type ReactElement } from "react";
 import { JsonScopeKind } from "../lib/formJson";
 import { FormJsonModal } from "./FormJsonModal";
 import { CustomValidatorDraftsContext } from "./form-fields/customValidatorDrafts";
-
-afterEach(cleanup);
 
 // StrictMode, as the admin app runs in dev, mounts effects twice.
 const renderIn = (element: ReactElement) =>

@@ -8,7 +8,7 @@ import {
 } from "@alliance/common/forms/form-schema";
 import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";
 import { uniformHash } from "@alliance/common/random";
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import {
   VariableAggregatesStatus,
   type VariableAggregates,
@@ -31,8 +31,6 @@ import {
   type FormVisibility,
   type VisibilityInputsPending,
 } from "./useFormRenderer";
-
-afterEach(cleanup);
 
 const textField = (id: string): TextField => ({
   id,

@@ -1,16 +1,8 @@
 import { makeProfile } from "@alliance/shared/lib/testFixtures";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import CommunityMemberTableRow from "./CommunityMemberTableRow";
 import { ToastProvider } from "./ToastProvider";
-
-afterEach(cleanup);
 
 const removeMember = async (onRemoveMember: () => Promise<unknown>) => {
   render(

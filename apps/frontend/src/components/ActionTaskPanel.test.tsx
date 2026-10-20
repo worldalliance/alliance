@@ -6,20 +6,12 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../lib/AuthContext";
 import { testAuthUser } from "../stories/testData";
 import { authValue } from "../testing/authValue";
 import ActionTaskPanel, { type ActionTaskPanelProps } from "./ActionTaskPanel";
-
-afterEach(cleanup);
 
 // Only the form fetch is routed, so a submit or guest-draft request fails the test.
 const api = serveApi(

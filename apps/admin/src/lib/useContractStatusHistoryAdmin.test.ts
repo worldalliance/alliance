@@ -2,10 +2,8 @@ import type { ContractStatusPointDto } from "@alliance/shared/client";
 import { type Pending, pending } from "@alliance/shared/lib/testing/pending";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { useContractStatusHistoryAdmin } from "./useContractStatusHistoryAdmin";
-
-afterEach(cleanup);
 
 const history = (activeCount: number): ContractStatusPointDto[] => [
   { date: "2026-01-01", activeCount, churnedCount: 0, totalEverSigned: 0 },

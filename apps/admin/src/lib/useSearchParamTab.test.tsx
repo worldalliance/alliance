@@ -1,9 +1,7 @@
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, useSearchParams } from "react-router";
 import { useSearchParamTab } from "./useSearchParamTab";
-
-afterEach(cleanup);
 
 const tabs = ["details", "content"] as const;
 

@@ -1,10 +1,8 @@
 import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import TestPushNotification from "./TestPushNotification";
-
-afterEach(cleanup);
 
 const failure = () => Response.json({}, { status: 500 });
 let userList = failure;

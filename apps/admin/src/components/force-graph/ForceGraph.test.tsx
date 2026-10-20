@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import {
   type DrawnGraph,
   ForceGraph,
@@ -6,8 +6,6 @@ import {
   type ForceGraphNode,
   type NodeStyle,
 } from "./ForceGraph";
-
-afterEach(cleanup);
 
 const NODE_STYLE: NodeStyle = {
   radius: 20,

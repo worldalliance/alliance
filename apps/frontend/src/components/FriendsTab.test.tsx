@@ -49,7 +49,6 @@ afterEach(() => {
   received = [GRACE];
   sent = [];
   friendsFail = false;
-  cleanup();
 });
 
 const renderFriendsTab = (query = queryWrapper()) => {

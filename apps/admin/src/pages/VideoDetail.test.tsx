@@ -2,18 +2,10 @@ import type { VideoDetailResponseDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import VideoDetail from "./VideoDetail";
-
-afterEach(cleanup);
 
 let video: VideoDetailResponseDto = {
   id: 7,

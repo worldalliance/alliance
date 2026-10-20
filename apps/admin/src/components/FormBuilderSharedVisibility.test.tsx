@@ -1,6 +1,6 @@
 import type { FormSchema, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
-import { cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import {
   canvas,
   canvasGroups,
@@ -16,8 +16,6 @@ import {
   renderFormBuilder,
 } from "../lib/testing/renderFormBuilder";
 import { addRule, rule } from "./form-fields/conditions/conditionEditorTesting";
-
-afterEach(cleanup);
 
 const shownWhen = (when: string): VisibleIfFormula => ({
   conditions: { c1: { kind: "hasValue", when, hasValue: true } },

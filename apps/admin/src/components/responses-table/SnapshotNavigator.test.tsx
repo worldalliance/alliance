@@ -1,10 +1,8 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import SnapshotNavigator from "./SnapshotNavigator";
-
-afterEach(cleanup);
 
 let requested: string[] = [];
 let status = 200;

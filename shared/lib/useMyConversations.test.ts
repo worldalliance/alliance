@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { milliseconds } from "date-fns";
 import type { ConversationDto } from "../client";
 import { queryKeys } from "./queryKeys";
@@ -6,8 +6,6 @@ import { makeConversation, makeParticipant } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { useMyConversations } from "./useMyConversations";
-
-afterEach(cleanup);
 
 const conversation = (
   id: number,

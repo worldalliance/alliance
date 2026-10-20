@@ -3,13 +3,7 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { renderBlockEditor } from "../display-blocks/blockEditors";
 import { LocalExpressionBuffers } from "../form-fields/conditions/expressionBuffers";
@@ -24,7 +18,6 @@ import {
   SidebarSections,
 } from "./sidebarSections";
 
-afterEach(cleanup);
 const api = serveApi(routes({}, () => Response.json([])));
 
 function Sidebar({ initial }: { initial: PageItem }) {

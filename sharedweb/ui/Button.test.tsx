@@ -1,7 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import Button from "./Button";
-
-afterEach(cleanup);
 
 it("forwards aria attributes to the button", () => {
   render(

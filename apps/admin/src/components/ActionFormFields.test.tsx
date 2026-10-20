@@ -3,8 +3,6 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ActionFieldDef } from "../lib/actionFieldDefs";
 import ActionFormFields from "./ActionFormFields";
 
-afterEach(cleanup);
-
 const form: CreateActionDto = {
   name: "Call your rep",
   category: [],

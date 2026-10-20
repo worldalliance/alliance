@@ -1,6 +1,6 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import SearchBar from "./SearchBar";
 
@@ -19,7 +19,6 @@ serveApi(
 
 afterEach(() => {
   searchFails = true;
-  cleanup();
 });
 
 it("offers a retry when a search fails", async () => {

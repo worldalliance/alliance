@@ -1,5 +1,5 @@
 import type { ActionEventDto, ActionStatus } from "@alliance/shared/client";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import {
   getDayOfYear,
   isTuesday,
@@ -10,8 +10,6 @@ import {
 import { MemoryRouter } from "react-router";
 import type { TimelineReminder } from "../lib/actionTimelineData";
 import ActionTimeline from "./ActionTimeline";
-
-afterEach(cleanup);
 
 const daysFromNow = (days: number) =>
   new Date(Date.now() + milliseconds({ days })).toISOString();

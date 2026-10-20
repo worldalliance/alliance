@@ -2,10 +2,8 @@ import type { CreateReminderGroupDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { focusManager } from "@tanstack/react-query";
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { useActionReminderGroupsAdmin } from "./useActionReminderGroupsAdmin";
-
-afterEach(cleanup);
 
 type StoredGroup = { id: number; name: string };
 

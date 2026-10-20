@@ -1,11 +1,9 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { actionUpdateAdmin } from "../lib/testing/actionUpdateAdmin";
 import {
   HiddenFromMembersBanner,
   VisibilityControls,
 } from "./ActionUpdateVisibility";
-
-afterEach(cleanup);
 
 const HOUR_MS = 60 * 60 * 1000;
 const past = new Date(Date.now() - HOUR_MS).toISOString();

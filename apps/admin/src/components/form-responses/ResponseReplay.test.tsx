@@ -1,7 +1,5 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import ResponseReplay from "./ResponseReplay";
-
-afterEach(cleanup);
 
 const renderEmpty = (filterActive: boolean) => {
   const onClearFilter = jest.fn();

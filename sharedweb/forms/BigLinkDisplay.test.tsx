@@ -1,15 +1,13 @@
 import type { BigLinkBlock } from "@alliance/common/forms/display-blocks";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
 import BigLinkDisplay, {
   ShareLinkViewer,
   ShareLinkViewerProvider,
 } from "./BigLinkDisplay";
-
-afterEach(cleanup);
 
 const BASE_URL = "https://example.com/survey";
 const CODED_URL = "https://example.com/survey?Alliance_ID=abc123";

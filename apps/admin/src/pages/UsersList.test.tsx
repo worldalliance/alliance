@@ -12,7 +12,6 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -21,8 +20,6 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import UsersList from "./UsersList";
-
-afterEach(cleanup);
 
 const ada = makeUser({
   id: 1,

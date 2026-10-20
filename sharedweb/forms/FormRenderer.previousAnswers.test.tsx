@@ -2,13 +2,7 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { makeFormResponse, makeUser } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
 import FormRenderer from "./FormRenderer";
@@ -72,7 +66,6 @@ serveApi(
 );
 
 beforeEach(() => window.localStorage.clear());
-afterEach(cleanup);
 
 const renderForm = () =>
   render(

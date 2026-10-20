@@ -2,13 +2,7 @@ import type { NotificationDto } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it } from "bun:test";
 import NotificationList from "./NotificationList";
 
@@ -41,7 +35,6 @@ serveApi(
 );
 
 afterEach(() => {
-  cleanup();
   reads.length = 0;
 });
 

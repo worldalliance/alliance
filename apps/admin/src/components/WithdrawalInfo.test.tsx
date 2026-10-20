@@ -1,7 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { WithdrawalDetails } from "./WithdrawalInfo";
-
-afterEach(cleanup);
 
 test("shows the chosen option's label, then the typed reason", () => {
   const { container } = render(

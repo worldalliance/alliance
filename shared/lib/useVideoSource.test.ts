@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import {
   useVideoSource,
   VideoLoadState,
@@ -16,8 +16,6 @@ function mountSource(props: { src: string; videoId?: number }) {
 }
 
 describe("useVideoSource", () => {
-  afterEach(cleanup);
-
   it("resolves the manifest from the video id, preferring an external absolute src", () => {
     const { result: byId } = mountSource({ src: "videos/abc", videoId: 7 });
     expect(byId.current.manifestUrl).toBe(`${API_URL}/videos/7/playlist.m3u8`);

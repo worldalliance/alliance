@@ -1,5 +1,14 @@
+import { renderHook } from "@testing-library/react/pure";
+import { useEffect } from "react";
+
 import { client } from "../../client/client.gen";
-import { endServedTest, routes, serveApi, UnroutedRequest } from "./serveApi";
+import {
+  endServedTest,
+  routes,
+  serveApi,
+  UnroutedRequest,
+  UnservedRequest,
+} from "./serveApi";
 
 const untouched = client.getConfig();
 
@@ -75,6 +84,24 @@ it("serves the base handler again after a throwing test", async () => {
   expect(error).toEqual({ message: "no", statusCode: 403 });
 });
 
+let answeredOnUnmount: unknown;
+
+it("renders a hook that sends a request as it unmounts", () => {
+  renderHook(() =>
+    useEffect(
+      () => () =>
+        void client
+          .get({ url: "/probe/unmount" })
+          .then(({ data }) => (answeredOnUnmount = data)),
+      [],
+    ),
+  );
+});
+
+it("served the request it sent as it unmounted", () => {
+  expect(answeredOnUnmount).toEqual({ name: "unmount" });
+});
+
 // Has to stay last: ending on the base handler leaves throwOnError already
 // false, and afterAll below passes with the line restoring it deleted.
 it("leaves the throwing config for the restore to take off", async () => {
@@ -88,10 +115,12 @@ it("leaves the throwing config for the restore to take off", async () => {
   });
 });
 
-afterAll(() => {
+afterAll(async () => {
   const config = client.getConfig();
 
-  expect(config.fetch).toBe(untouched.fetch);
   expect(config.baseUrl).toBe(untouched.baseUrl);
   expect(config.throwOnError).toBe(untouched.throwOnError);
+  await expect(
+    client.get({ baseUrl: "http://localhost", url: "/probe/one" }),
+  ).rejects.toThrow(UnservedRequest);
 });

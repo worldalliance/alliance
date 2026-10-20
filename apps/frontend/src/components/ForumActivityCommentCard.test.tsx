@@ -1,17 +1,9 @@
 import type { UserCommentDto } from "@alliance/shared/client";
 import { makeProfile } from "@alliance/shared/lib/testFixtures";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import ForumActivityCommentCard from "./ForumActivityCommentCard";
-
-afterEach(cleanup);
 
 const date = new Date().toISOString();
 

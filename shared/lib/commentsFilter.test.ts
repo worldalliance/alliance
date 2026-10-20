@@ -1,5 +1,5 @@
 import { CommentDto, UserDto } from "@alliance/shared/client";
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import {
   CommentFilter,
   CommentSort,
@@ -39,7 +39,6 @@ serveApi(
 
 afterEach(() => {
   friends = ALL_FRIENDS;
-  cleanup();
 });
 
 describe("sortComments by newest", () => {

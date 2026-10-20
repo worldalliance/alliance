@@ -2,7 +2,7 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { makeCommunity, makeProfile } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import {
   MembershipChange,
   useChangeCommunityMembershipAdmin,
@@ -11,8 +11,6 @@ import {
   useDeleteCommunityAdmin,
   useUpdateCommunityAdmin,
 } from "./useCommunitiesAdmin";
-
-afterEach(cleanup);
 
 const north = makeCommunity({ id: 4, name: "North" });
 const south = makeCommunity({ id: 5, name: "South" });

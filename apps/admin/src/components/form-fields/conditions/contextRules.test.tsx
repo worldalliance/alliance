@@ -1,10 +1,9 @@
 import { UserValueProperty } from "@alliance/common/forms/user-properties";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, fireEvent } from "@testing-library/react";
+import { fireEvent } from "@testing-library/react";
 import { latest, renderEditor, rule } from "./conditionEditorTesting";
 
-afterEach(cleanup);
 serveApi(
   routes({
     "GET /tasks/listForms": () => Response.json([]),

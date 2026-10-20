@@ -2,13 +2,7 @@ import type { ContractDto, UserDto } from "@alliance/shared/client";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as configModule from "@alliance/sharedweb/lib/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router";
 import * as ytEmbedModule from "../components/AllianceIntroYouTubeEmbed";
 import { AuthContext, type AuthContextType } from "../lib/AuthContext";
@@ -54,9 +48,6 @@ beforeEach(() => {
     .spyOn(configModule, "getBaseUrl")
     .mockReturnValue("https://test.alliance");
 });
-
-// Auto-cleanup registers once, in whichever file imports the library first.
-afterEach(cleanup);
 
 declare global {
   interface Window {

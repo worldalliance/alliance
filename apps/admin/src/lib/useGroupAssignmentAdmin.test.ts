@@ -2,14 +2,12 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { makeCommunity, makeUser } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { useCommunitiesAdmin } from "./useCommunitiesAdmin";
 import {
   useAssignGroupsAdmin,
   useGroupAssignmentMembersAdmin,
 } from "./useGroupAssignmentAdmin";
-
-afterEach(cleanup);
 
 const sam = makeUser({ id: 7, name: "Sam" });
 const kim = makeUser({ id: 8, name: "Kim" });

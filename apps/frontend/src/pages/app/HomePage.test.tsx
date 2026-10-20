@@ -10,7 +10,7 @@ import {
 import * as globalFeedModule from "@alliance/shared/lib/useGlobalFeed";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { addDays } from "date-fns";
 import { MemoryRouter } from "react-router";
 import * as followUpFormPanelModule from "../../components/FollowUpFormPanel";
@@ -62,7 +62,6 @@ afterEach(() => {
   generalUpdatesFailure = null;
   actionsFailure = null;
   handleDismissAction = async () => {};
-  cleanup();
 });
 
 const deadlineInDays = (days: number) => [

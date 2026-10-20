@@ -5,7 +5,7 @@ import {
   FEED_EMPTY_MESSAGE,
   FeedMode,
 } from "@alliance/shared/lib/useActivityFeeds";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { AuthContext } from "../../lib/AuthContext";
 import { testAuthUser } from "../../stories/testData";
@@ -21,8 +21,6 @@ serveApi(
     "GET /user/listfriends/:id": () => Response.json([]),
   }),
 );
-
-afterEach(cleanup);
 
 const renderPage = () => {
   const { wrapper: QueryWrapper } = queryWrapper();

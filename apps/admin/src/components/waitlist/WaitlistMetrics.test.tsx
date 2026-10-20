@@ -2,7 +2,7 @@ import type { WaitlistMetricsDto } from "@alliance/shared/client/types.gen";
 import { formatMediumDateEnUS } from "@alliance/shared/lib/dateFormatters";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import WaitlistMetrics, { formatElapsed } from "./WaitlistMetrics";
 
 const organization = { id: 7, name: "Acme" };
@@ -61,8 +61,6 @@ beforeEach(() => {
   requests = [];
   response = null;
 });
-
-afterEach(cleanup);
 
 const renderMetrics = () =>
   render(<WaitlistMetrics filter={{ organizationIds: [7] }} />, queryWrapper());

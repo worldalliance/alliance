@@ -3,15 +3,12 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
 } from "@testing-library/react";
 import ActionCompletionCurveChart from "./ActionCompletionCurveChart";
-
-afterEach(cleanup);
 
 const curve = (actionId: number, actionName: string) =>
   ({

@@ -9,15 +9,12 @@ import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
 } from "@testing-library/react";
 import { EditableCopyTextBlock } from "./EditableCopyTextBlock";
-
-afterEach(cleanup);
 
 let userList: () => Response | Promise<Response> = () => Response.json([]);
 

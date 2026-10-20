@@ -5,7 +5,6 @@ import * as UserDisplayNameModule from "@alliance/sharedweb/ui/UserDisplayName";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -22,10 +21,6 @@ let loadedThread: CommentDto[] = [];
 // While set, a load parks its resolver here instead of answering, so a test can
 // read the row while the request is out.
 let inFlight: (() => void)[] | null = null;
-
-// Auto-cleanup registers once, in whichever file imports the library first, so
-// a file that renders has to ask for its own.
-afterEach(cleanup);
 
 afterEach(() => {
   loadAttempts = 0;

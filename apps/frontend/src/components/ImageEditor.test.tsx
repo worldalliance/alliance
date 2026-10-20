@@ -1,6 +1,5 @@
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -87,7 +86,6 @@ afterEach(() => {
   globalThis.Image = realImage;
   HTMLCanvasElement.prototype.getContext = realGetContext;
   HTMLCanvasElement.prototype.toDataURL = realToDataURL;
-  cleanup();
 });
 
 const editor = (initialImageUrl: string | null, canRemove = false) => {

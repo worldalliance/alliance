@@ -1,7 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import OpenReferenceWarning from "./OpenReferenceWarning";
-
-afterEach(cleanup);
 
 const LAUNCH = new Date("2026-01-10T00:00:00Z");
 const OPEN = new Date("2026-01-12T00:00:00Z");

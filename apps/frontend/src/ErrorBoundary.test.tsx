@@ -1,6 +1,6 @@
 import * as analyticsModule from "@alliance/shared/lib/analytics";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { AuthContext } from "./lib/AuthContext";
@@ -36,8 +36,6 @@ function setProd(prod: boolean) {
 }
 
 afterEach(() => {
-  cleanup();
-  jest.restoreAllMocks();
   if (initialProd === undefined) delete process.env.PROD;
   else process.env.PROD = initialProd;
 });

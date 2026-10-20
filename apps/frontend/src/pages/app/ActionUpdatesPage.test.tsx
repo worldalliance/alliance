@@ -1,7 +1,7 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, expect, it } from "bun:test";
+import { render, screen } from "@testing-library/react";
+import { expect, it } from "bun:test";
 import { MemoryRouter } from "react-router";
 import ActionUpdatesPage from "./ActionUpdatesPage";
 
@@ -12,8 +12,6 @@ serveApi(
     },
   }),
 );
-
-afterEach(cleanup);
 
 it("reports an unreachable server", async () => {
   render(

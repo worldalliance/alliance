@@ -1,7 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { NotificationHeldBanner } from "./ActionUpdateRecognition";
-
-afterEach(cleanup);
 
 describe("NotificationHeldBanner", () => {
   it("says the notifications are on hold, and why", () => {

@@ -1,10 +1,8 @@
 import type { WelcomeQueueDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { useWelcomeQueueAdmin } from "./useWelcomeQueueAdmin";
-
-afterEach(cleanup);
 
 const queue: WelcomeQueueDto = { requiredActionCount: 2, members: [] };
 

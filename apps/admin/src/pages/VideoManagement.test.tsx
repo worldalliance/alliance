@@ -5,7 +5,6 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -14,8 +13,6 @@ import {
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import VideoManagement from "./VideoManagement";
-
-afterEach(cleanup);
 
 const video = (id: number, originalFilename: string) =>
   ({

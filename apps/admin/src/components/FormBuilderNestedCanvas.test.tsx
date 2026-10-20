@@ -11,7 +11,6 @@ import {
 import { nestedSchema, subFieldOrder } from "../lib/testing/nestedForm";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 
-afterEach(cleanup);
 serveApi(routes({}, () => Response.json([])));
 
 describe("nested elements on the canvas", () => {

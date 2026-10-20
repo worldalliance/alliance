@@ -1,5 +1,5 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { CommentDto, CommentParentObject } from "../client";
 import { recordExceptions } from "./testing/recordExceptions";
 import { routes, serveApi, type RouteHandler } from "./testing/serveApi";
@@ -83,7 +83,6 @@ afterEach(() => {
   refusal = DEFAULT_REFUSAL;
   unreachable = false;
   inFlight = null;
-  cleanup();
 });
 
 for (const type of Object.keys(THREAD_ROUTE) as CommentParentObject[]) {
