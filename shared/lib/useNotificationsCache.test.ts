@@ -7,8 +7,10 @@ import { notificationsCache } from "./useNotificationsCache";
 
 const LOADED_AT = "2026-09-23T12:00:00.123Z";
 const SENT = "2026-09-23T12:00:00.000Z";
+const LATER = "2026-09-23T12:05:00.000Z";
 
-const LIST_KEY = queryKeys.notifications();
+const LIST_KEY = queryKeys.notificationsList();
+const PAGE_KEY = queryKeys.notificationsList(20);
 const LOADED_AT_KEY = queryKeys.notificationsLoadedAt();
 const UNREAD_COUNT_KEY = queryKeys.notificationsUnreadCount();
 
@@ -39,7 +41,7 @@ const listed = (headers: Record<string, string>) => ({
 it("keeps the list's load time beside the list", async () => {
   api.throwingOnRefusal(listed({ [NOTIFS_LOADED_AT_HEADER]: LOADED_AT }));
   const queryClient = new QueryClient();
-  await queryClient.fetchQuery(notificationsCache(queryClient).list);
+  await queryClient.fetchQuery(notificationsCache(queryClient).list());
   expect(queryClient.getQueryData(LOADED_AT_KEY)).toBe(LOADED_AT);
 });
 
@@ -47,7 +49,7 @@ it("keeps no load time when the list came without one", async () => {
   api.throwingOnRefusal(listed({}));
   const queryClient = new QueryClient();
   queryClient.setQueryData(LOADED_AT_KEY, LOADED_AT);
-  await queryClient.fetchQuery(notificationsCache(queryClient).list);
+  await queryClient.fetchQuery(notificationsCache(queryClient).list());
   expect(queryClient.getQueryData(LOADED_AT_KEY)).toBeNull();
 });
 
@@ -91,6 +93,32 @@ it("marks all read up to the kept load time", async () => {
   expect(readAllQueries[0]?.get("loadedAt")).toBe(LOADED_AT);
 });
 
+it("marks all read up to the load time of the list it was asked for", async () => {
+  api.throwingOnRefusal({
+    ...readAll,
+    "GET /notifs": ({ request }) =>
+      Response.json([], {
+        headers: {
+          [NOTIFS_LOADED_AT_HEADER]: new URL(request.url).searchParams.has(
+            "limit",
+          )
+            ? LATER
+            : LOADED_AT,
+        },
+      }),
+  });
+  const queryClient = new QueryClient();
+  const cache = notificationsCache(queryClient);
+  await queryClient.fetchQuery(cache.list());
+  await queryClient.fetchQuery(cache.list(20));
+  await cache.markAllRead();
+  await cache.markAllRead(20);
+  expect(readAllQueries.map((query) => query.get("loadedAt"))).toEqual([
+    LOADED_AT,
+    LATER,
+  ]);
+});
+
 it("marks all read with no bound when no load time was kept", async () => {
   api.throwingOnRefusal(readAll);
   await notificationsCache(new QueryClient()).markAllRead();
@@ -111,16 +139,18 @@ it("marks the cached list read and refetches it and the unread count", async () 
   expect(queryClient.getQueryState(UNREAD_COUNT_KEY)?.isInvalidated).toBe(true);
 });
 
-it("restores the list and unread count when marking all read fails", async () => {
-  api.throwingOnRefusal({
+it("restores the lists and unread count when marking all read fails", async () => {
+  api.alsoServing({
     "POST /notifs/read-all": () => new Response(null, { status: 500 }),
   });
   const queryClient = new QueryClient();
-  const list = [notification({ id: 1 })];
+  const list = [notification({ id: 1 }), notification({ id: 2 })];
   queryClient.setQueryData(LIST_KEY, list);
+  queryClient.setQueryData(PAGE_KEY, list.slice(0, 1));
   queryClient.setQueryData(UNREAD_COUNT_KEY, 1);
   await notificationsCache(queryClient).markAllRead();
   expect(queryClient.getQueryData(LIST_KEY)).toEqual(list);
+  expect(queryClient.getQueryData(PAGE_KEY)).toEqual(list.slice(0, 1));
   expect(queryClient.getQueryData(UNREAD_COUNT_KEY)).toBe(1);
 });
 
@@ -193,7 +223,7 @@ it("sends a read for each notification with its source type", async () => {
 });
 
 it("refetches the list and unread count and rejects when a read is refused", async () => {
-  api.throwingOnRefusal({
+  api.alsoServing({
     "POST /notifs/read/:id": () => new Response(null, { status: 500 }),
   });
   const queryClient = new QueryClient();
@@ -272,7 +302,7 @@ it("marks the given notifications read and counts down only those that were unre
   expect(queryClient.getQueryData(UNREAD_COUNT_KEY)).toBe(4);
 });
 
-it("counts the unread left in the list when no count is cached", async () => {
+it("leaves an uncached unread count uncached", async () => {
   api.throwingOnRefusal(read);
   const queryClient = new QueryClient();
   queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
@@ -284,7 +314,45 @@ it("counts the unread left in the list when no count is cached", async () => {
     { id: 1, sourceType: "unread_content" },
   ]);
 
+  expect(queryClient.getQueryData(UNREAD_COUNT_KEY)).toBeUndefined();
+});
+
+it("marks a notification read in every cached list and counts it down once", async () => {
+  api.throwingOnRefusal(read);
+  const queryClient = new QueryClient();
+  queryClient.setQueryData<NotificationDto[]>(LIST_KEY, [
+    notification({ id: 1 }),
+    notification({ id: 2 }),
+  ]);
+  queryClient.setQueryData<NotificationDto[]>(PAGE_KEY, [
+    notification({ id: 1 }),
+  ]);
+  queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 2);
+
+  await notificationsCache(queryClient).markRead([
+    { id: 1, sourceType: "unread_content" },
+  ]);
+
+  for (const key of [LIST_KEY, PAGE_KEY]) {
+    expect(
+      queryClient.getQueryData<NotificationDto[]>(key)?.[0]?.readAt,
+    ).not.toBeNull();
+  }
   expect(queryClient.getQueryData(UNREAD_COUNT_KEY)).toBe(1);
+});
+
+it("loads only the asked-for number of notifications", async () => {
+  const limits: (string | null)[] = [];
+  api.throwingOnRefusal({
+    "GET /notifs": ({ request }) => {
+      limits.push(new URL(request.url).searchParams.get("limit"));
+      return Response.json([]);
+    },
+  });
+  const queryClient = new QueryClient();
+  await queryClient.fetchQuery(notificationsCache(queryClient).list(20));
+  await queryClient.fetchQuery(notificationsCache(queryClient).list());
+  expect(limits).toEqual(["20", null]);
 });
 
 it("refetches the list and unread count when the list is not cached", async () => {

@@ -22,8 +22,8 @@ import {
 } from "./notificationIdentity";
 import { queryKeys } from "./queryKeys";
 
-const LIST_KEY = queryKeys.notifications();
-const LOADED_AT_KEY = queryKeys.notificationsLoadedAt();
+const ROOT_KEY = queryKeys.notifications();
+const LISTS_KEY = queryKeys.notificationsLists();
 const UNREAD_COUNT_KEY = queryKeys.notificationsUnreadCount();
 
 function markCachedRead(
@@ -34,55 +34,58 @@ function markCachedRead(
 
   const keys = new Set(notificationsToMark.map(getNotificationIdentityKey));
   const readAt = new Date().toISOString();
-  let found = 0;
-  let markedUnread = 0;
-  const nextData = queryClient
-    .getQueryData<NotificationDto[]>(LIST_KEY)
-    ?.map((notification) => {
-      if (!keys.has(getNotificationIdentityKey(notification))) {
-        return notification;
-      }
-      found += 1;
-      if (!notification.readAt) markedUnread += 1;
-      return { ...notification, readAt };
-    });
+  let found = false;
+  const markedUnread = new Set<string>();
+  queryClient.setQueriesData<NotificationDto[]>(
+    { queryKey: LISTS_KEY },
+    (list) =>
+      list?.map((notification) => {
+        const key = getNotificationIdentityKey(notification);
+        if (!keys.has(key)) return notification;
+        found = true;
+        if (!notification.readAt) markedUnread.add(key);
+        return { ...notification, readAt };
+      }),
+  );
 
-  if (!nextData || found === 0) {
-    void queryClient.invalidateQueries({ queryKey: LIST_KEY });
+  if (!found) {
+    void queryClient.invalidateQueries({ queryKey: ROOT_KEY });
     return;
   }
 
-  queryClient.setQueryData(LIST_KEY, nextData);
   queryClient.setQueryData<number>(UNREAD_COUNT_KEY, (prev) =>
-    prev === undefined
-      ? nextData.filter((notification) => !notification.readAt).length
-      : Math.max(prev - markedUnread, 0),
+    prev === undefined ? undefined : Math.max(prev - markedUnread.size, 0),
   );
 }
 
 export function notificationsCache(queryClient: QueryClient) {
   return {
-    list: queryOptions({
-      queryKey: LIST_KEY,
-      queryFn: async ({ signal }) => {
-        const res = await notifsFindAll({ signal });
-        queryClient.setQueryData(
-          LOADED_AT_KEY,
-          res.response.headers.get(NOTIFS_LOADED_AT_HEADER),
-        );
-        return res.data;
-      },
-    }),
+    list: (limit?: number) =>
+      queryOptions({
+        queryKey: queryKeys.notificationsList(limit),
+        queryFn: async ({ signal }) => {
+          const res = await notifsFindAll({
+            query: { limit },
+            signal,
+            throwOnError: true,
+          });
+          queryClient.setQueryData(
+            queryKeys.notificationsLoadedAt(limit),
+            res.response.headers.get(NOTIFS_LOADED_AT_HEADER),
+          );
+          return res.data;
+        },
+      }),
 
     unreadCount: queryOptions({
       queryKey: UNREAD_COUNT_KEY,
       queryFn: () =>
-        notifsGetUnreadCount().then(
-          (response) => response.data?.unreadCount ?? 0,
+        notifsGetUnreadCount({ throwOnError: true }).then(
+          (response) => response.data.unreadCount,
         ),
     }),
 
-    refresh: () => queryClient.invalidateQueries({ queryKey: LIST_KEY }),
+    refresh: () => queryClient.invalidateQueries({ queryKey: ROOT_KEY }),
 
     markRead: async (
       notificationsToMark: Pick<NotificationDto, "id" | "sourceType">[],
@@ -91,12 +94,15 @@ export function notificationsCache(queryClient: QueryClient) {
       const refused = (
         await Promise.allSettled(
           notificationsToMark.map((notification) =>
-            notifsSetRead(getNotificationReadRequest(notification)),
+            notifsSetRead({
+              ...getNotificationReadRequest(notification),
+              throwOnError: true,
+            }),
           ),
         )
       ).find((result) => result.status === "rejected");
       if (refused) {
-        void queryClient.invalidateQueries({ queryKey: LIST_KEY });
+        void queryClient.invalidateQueries({ queryKey: ROOT_KEY });
         throw refused.reason;
       }
     },
@@ -107,12 +113,18 @@ export function notificationsCache(queryClient: QueryClient) {
     ) => {
       const ids = new Set(contentIds);
       const readAt = new Date().toISOString();
-      queryClient.setQueryData<NotificationDto[]>(LIST_KEY, (oldData) =>
-        oldData?.map((notification) =>
-          isClearedByContentRead({ notification, contentType, contentIds: ids })
-            ? { ...notification, readAt }
-            : notification,
-        ),
+      queryClient.setQueriesData<NotificationDto[]>(
+        { queryKey: LISTS_KEY },
+        (list) =>
+          list?.map((notification) =>
+            isClearedByContentRead({
+              notification,
+              contentType,
+              contentIds: ids,
+            })
+              ? { ...notification, readAt }
+              : notification,
+          ),
       );
       void queryClient.invalidateQueries({
         queryKey: UNREAD_COUNT_KEY,
@@ -120,31 +132,41 @@ export function notificationsCache(queryClient: QueryClient) {
       });
     },
 
-    markAllRead: async () => {
-      await queryClient.cancelQueries({ queryKey: LIST_KEY });
+    /** Bounded by the load time of the list with this limit. */
+    markAllRead: async (limit?: number) => {
+      await queryClient.cancelQueries({ queryKey: ROOT_KEY });
 
-      const prevNotifications =
-        queryClient.getQueryData<NotificationDto[]>(LIST_KEY);
+      const prevLists = queryClient.getQueriesData<NotificationDto[]>({
+        queryKey: LISTS_KEY,
+      });
       const prevUnreadCount =
         queryClient.getQueryData<number>(UNREAD_COUNT_KEY);
 
       const readAt = new Date().toISOString();
-      queryClient.setQueryData<NotificationDto[]>(LIST_KEY, (oldData) =>
-        oldData?.map((notification) => ({ ...notification, readAt })),
+      queryClient.setQueriesData<NotificationDto[]>(
+        { queryKey: LISTS_KEY },
+        (list) => list?.map((notification) => ({ ...notification, readAt })),
       );
       queryClient.setQueryData<number>(UNREAD_COUNT_KEY, 0);
 
       try {
-        const loadedAt = queryClient.getQueryData<string | null>(LOADED_AT_KEY);
-        await notifsSetReadAll({ query: { loadedAt: loadedAt ?? undefined } });
+        const loadedAt = queryClient.getQueryData<string | null>(
+          queryKeys.notificationsLoadedAt(limit),
+        );
+        await notifsSetReadAll({
+          query: { loadedAt: loadedAt ?? undefined },
+          throwOnError: true,
+        });
         // Rows that came due after the load stay unread, so the list and
         // count refetch to show them.
-        void queryClient.invalidateQueries({ queryKey: LIST_KEY });
+        void queryClient.invalidateQueries({ queryKey: ROOT_KEY });
       } catch {
-        if (prevNotifications !== undefined) {
-          queryClient.setQueryData(LIST_KEY, prevNotifications);
-        } else {
-          void queryClient.invalidateQueries({ queryKey: LIST_KEY });
+        for (const [queryKey, list] of prevLists) {
+          if (list !== undefined) {
+            queryClient.setQueryData(queryKey, list);
+          } else {
+            void queryClient.invalidateQueries({ queryKey, exact: true });
+          }
         }
 
         if (prevUnreadCount !== undefined) {
@@ -162,11 +184,14 @@ export function useNotificationsCache() {
   return useMemo(() => notificationsCache(queryClient), [queryClient]);
 }
 
-export function useNotificationsList() {
-  const query = useQuery(useNotificationsCache().list);
+export function useNotificationsList(limit?: number) {
+  const query = useQuery(useNotificationsCache().list(limit));
 
   // Observed so the cache keeps it as long as the list it came with.
-  useQuery<string | null>({ queryKey: LOADED_AT_KEY, queryFn: skipToken });
+  useQuery<string | null>({
+    queryKey: queryKeys.notificationsLoadedAt(limit),
+    queryFn: skipToken,
+  });
 
   return query;
 }

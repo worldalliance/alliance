@@ -1,4 +1,3 @@
-import { NotificationsProvider } from "@alliance/shared/lib/useNotifications";
 import { useTaskBadgeCount } from "@alliance/shared/lib/useTaskBadgeCount";
 import { cn } from "@alliance/shared/styles/util";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -39,31 +38,29 @@ function Navbar() {
 
   return (
     <NavbarOptionsProvider>
-      <NotificationsProvider>
-        <RefreshNotificationsOnOpening />
-        <NavbarVertical
-          todoActions={nTasks}
-          mobileNavOpen={mobileNavOpen}
-          onMobileNavOpenChange={setMobileNavOpen}
-        />
-        <NavbarTopBar onMenuClick={() => setMobileNavOpen((o) => !o)} />
+      <RefreshNotificationsOnOpening />
+      <NavbarVertical
+        todoActions={nTasks}
+        mobileNavOpen={mobileNavOpen}
+        onMobileNavOpenChange={setMobileNavOpen}
+      />
+      <NavbarTopBar onMenuClick={() => setMobileNavOpen((o) => !o)} />
 
-        <main
-          className={cn(
-            "md:ml-[var(--nav-width)] min-h-[calc(100dvh-var(--navbar-top-bar-height))] mt-[var(--navbar-top-bar-height)] relative flex flex-col bg-page",
-          )}
-        >
-          <div className="flex-1 relative">
-            <Outlet />
+      <main
+        className={cn(
+          "md:ml-[var(--nav-width)] min-h-[calc(100dvh-var(--navbar-top-bar-height))] mt-[var(--navbar-top-bar-height)] relative flex flex-col bg-page",
+        )}
+      >
+        <div className="flex-1 relative">
+          <Outlet />
+        </div>
+        {isNavigating && (
+          <div className="fixed top-[var(--navbar-top-bar-height)] right-0 bottom-0 left-0 md:left-[var(--nav-width)] flex items-center justify-center">
+            <Spinner size="large" />
           </div>
-          {isNavigating && (
-            <div className="fixed top-[var(--navbar-top-bar-height)] right-0 bottom-0 left-0 md:left-[var(--nav-width)] flex items-center justify-center">
-              <Spinner size="large" />
-            </div>
-          )}
-        </main>
-        <Walkthrough />
-      </NotificationsProvider>
+        )}
+      </main>
+      <Walkthrough />
     </NavbarOptionsProvider>
   );
 }
