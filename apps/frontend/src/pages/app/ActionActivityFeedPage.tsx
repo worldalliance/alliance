@@ -26,7 +26,7 @@ const ActionActivityFeedPage = () => {
 
   const { data: action, isPending: actionLoading } = useAction(
     parseInt(actionId!),
-  );
+  ).query;
 
   const {
     activities,
