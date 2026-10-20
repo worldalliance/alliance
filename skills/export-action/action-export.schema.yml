@@ -1,0 +1,578 @@
+# action-export.schema.yml
+#
+# JSON Schema (draft 2020-12) for the collective-action export files in
+# `action-exports/*.yml`. Each of those files is a single YAML document
+# describing one action on the Alliance platform, plus a flattened plain-text
+# rendering of its task form.
+#
+# It is a JSON Schema written in YAML — there is no separate "YAML Schema"
+# standard. Every mainstream validator (ajv, python-jsonschema, yajsv,
+# check-jsonschema, the YAML Language Server) will load a YAML-encoded schema
+# and validate YAML documents against it, because YAML 1.2 is a superset of
+# JSON and both files parse to the same data model.
+#
+# Validate the whole directory:
+#   pipx run check-jsonschema --schemafile action-export.schema.yml action-exports/*.yml
+#
+# Editor autocomplete (VS Code + YAML Language Server) — add to a file's top:
+#   # yaml-language-server: $schema=../action-export.schema.yml
+#
+# The shapes below were derived from the 19 exports present as of 2026-09-17,
+# then reconciled against the `Action` and `ActionReviewer` entities, the
+# `action` table, and `common/src/cohort-expression.ts`. Where those disagreed,
+# the entity won. The corpus is a sample, and several of its uniform values
+# (an icon on every reviewer, a cohort expression on every action) are nullable
+# columns that simply happened not to be null in it.
+#
+# Where a field's observed values are a small set that the platform is likely
+# to extend (category, type, icon), the values are recorded as `examples`
+# rather than as an `enum`, so a new value does not fail validation. Where the
+# set is genuinely closed (visibilityMode, cohort node types), `enum` is used
+# and is taken from the enum declaration rather than from observed values.
+
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://worldalliance.org/schemas/action-export.schema.yml
+title: Alliance action export
+description: >-
+  One exported collective action, as written by the platform's action exporter
+  into action-exports/<id>-<slugified-name>.yml.
+type: object
+additionalProperties:
+  false # strict on purpose: catches typos and silently
+  # renamed fields. If the exporter starts emitting
+  # new keys, add them here rather than relaxing it.
+required:
+  - id
+  - name
+  - shortDescription
+  - body
+  - category
+  - image
+  - squareThumbnailImage
+  - squareThumbnailImageAlt
+  - timeEstimate
+  - visibilityMode
+  - suiteId
+  - taskFormId
+  - isContractSigningAction
+  - onboarding
+  - optional
+  - preventCompletion
+  - publicOnly
+  - shouldCompleteAfterDeadline
+  - isForumParticipationAction
+  - forumParticipationPostId
+  - forumParticipationIncludeChildren
+  - customStatType
+  - customStatLabel
+  - customStatValue
+  - customStatGoal
+  - computedAutocompleteAt
+  - cohortExpression
+  - authorIds
+  - reviewers
+  - form
+
+properties:
+  # ---- identity -----------------------------------------------------------
+
+  id:
+    description: >-
+      Platform action id. Matches the numeric prefix of the filename.
+    type: integer
+    minimum: 1
+    examples: [12, 139, 153]
+
+  name:
+    description: Action title, shown as the page heading.
+    type: string
+    minLength: 1
+
+  shortDescription:
+    description: One-line summary shown in action lists and task cards.
+    type: string
+
+  body:
+    description: >-
+      Full action description. Markdown — headings, bold, ordered and unordered
+      lists, and links all appear in the corpus.
+    type: string
+
+  category:
+    description: >-
+      Free-text topic tag(s). Multiple tags appear comma-separated in a single
+      string, and the empty string means uncategorised — this is not a
+      normalised field.
+    type: string
+    examples: ["", meta, environment, tech, technology, "tech, democracy"]
+
+  type:
+    description: >-
+      Legacy action kind, dropped from the `action` table by
+      1789493355709-removeFundingActionType along with the "Funding" kind that
+      was its only alternative. Exports written before that migration carry
+      "Activity" here and `importAction` ignores the key, so it stays
+      permitted; exports written after it omit the field.
+    type: string
+    examples: [Activity]
+
+  # ---- presentation -------------------------------------------------------
+
+  image:
+    description: >-
+      Hero image reference, or null when unset. Present as an empty string in
+      at least one export, so empty string and null both mean "no image".
+    type: [string, "null"]
+
+  squareThumbnailImage:
+    description: Square thumbnail reference, or null/empty when unset.
+    type: [string, "null"]
+
+  squareThumbnailImageAlt:
+    description: Alt text for the square thumbnail, or null when unset.
+    type: [string, "null"]
+
+  # ---- economics and effort ----------------------------------------------
+
+  donationAmount:
+    description: >-
+      Legacy donation made on the member's behalf on completion, in the
+      platform's minor currency unit (uniformly 500, i.e. $5.00). Dropped from
+      the `action` table by the same migration as `type`, and optional here for
+      the same reason.
+    type: integer
+    minimum: 0
+
+  timeEstimate:
+    description: Estimated time to complete, in minutes.
+    type: integer
+    minimum: 0
+    examples: [1, 2, 3, 5, 8, 10, 15]
+
+  # ---- placement ----------------------------------------------------------
+
+  visibilityMode:
+    description: >-
+      Who can see the action. "public" is visible to non-members;
+      "all_members" is visible to signed-in members only;
+      "participating_groups" is visible only to members of a group joined to
+      the action. The three are the whole `VisibilityMode` enum.
+    type: string
+    enum: [public, all_members, participating_groups]
+
+  suiteId:
+    description: >-
+      Id of the suite (campaign grouping) this action belongs to, or null when
+      the action is standalone.
+    type: [integer, "null"]
+    minimum: 1
+
+  taskFormId:
+    description: >-
+      Id of the task form members fill in. This is the form rendered in `form`,
+      and it is the id quoted in that field's `form #N` header. Null for an
+      action with no form, which the action page renders as "Couldn't load
+      action contents". `form` is null on exactly those actions.
+    type: [integer, "null"]
+    minimum: 1
+
+  # ---- behaviour flags ----------------------------------------------------
+  # All boolean, all always present. Only `optional`, `preventCompletion` and
+  # `shouldCompleteAfterDeadline` vary in the current corpus; the rest are
+  # uniformly false but are still modelled as plain booleans.
+
+  isContractSigningAction:
+    description: Action's form includes a contract the member signs.
+    type: boolean
+
+  onboarding:
+    description: Action is part of the new-member onboarding sequence.
+    type: boolean
+
+  optional:
+    description: >-
+      Members may skip the action without it counting as missed.
+    type: boolean
+
+  preventCompletion:
+    description: >-
+      Members cannot mark the action complete themselves — completion is
+      driven by the office or by an automated rule.
+    type: boolean
+
+  publicOnly:
+    description: Action is shown only on public (logged-out) surfaces.
+    type: boolean
+
+  shouldCompleteAfterDeadline:
+    description: >-
+      Action auto-completes for participants once its deadline passes.
+    type: boolean
+
+  # ---- forum participation ------------------------------------------------
+  # These three travel together: the two below are only meaningful when
+  # isForumParticipationAction is true (which no current export sets).
+
+  isForumParticipationAction:
+    description: >-
+      Completion is satisfied by posting in the forum rather than by
+      submitting the task form.
+    type: boolean
+
+  forumParticipationPostId:
+    description: Forum post whose replies count as participation, else null.
+    type: [integer, "null"]
+    minimum: 1
+
+  forumParticipationIncludeChildren:
+    description: >-
+      Count replies to child posts of forumParticipationPostId as well.
+    type: boolean
+
+  # ---- custom stat --------------------------------------------------------
+  # A single optional headline statistic displayed on the action page. Null
+  # throughout the current corpus, so the value types below are the permissive
+  # reading: a label/goal pair with a value of whatever shape the type implies.
+
+  customStatType:
+    description: Which custom statistic to display, or null for none.
+    type: [string, "null"]
+
+  customStatLabel:
+    description: Human-readable label for the custom statistic, or null.
+    type: [string, "null"]
+
+  customStatValue:
+    description: Current value of the custom statistic, or null.
+    type: [number, string, "null"]
+
+  customStatGoal:
+    description: Target value of the custom statistic, or null.
+    type: [number, string, "null"]
+
+  computedAutocompleteAt:
+    description: >-
+      ISO 8601 timestamp at which the platform auto-completed the action, or
+      null if it has not.
+    type: [string, "null"]
+    format: date-time
+
+  # ---- audience -----------------------------------------------------------
+
+  cohortExpression:
+    description: >-
+      Boolean expression tree deciding which members are assigned the action,
+      or null when the action has no cohort set. See $defs.cohortNode.
+    oneOf:
+      - $ref: "#/$defs/cohortNode"
+      - type: "null"
+
+  # ---- credits ------------------------------------------------------------
+
+  authorIds:
+    description: >-
+      Platform user ids of the action's authors, in display order. May be
+      empty.
+    type: array
+    items:
+      type: integer
+      minimum: 1
+    uniqueItems: true
+
+  reviewers:
+    description: >-
+      External subject-matter reviewers credited on the action page. Usually
+      empty.
+    type: array
+    items:
+      $ref: "#/$defs/reviewer"
+
+  # ---- the form itself ----------------------------------------------------
+
+  form:
+    description: >-
+      Plain-text rendering of the task form (see $defs notes below). This is a
+      flattened, human-readable export, not the form's structured definition:
+      it is a lossy view intended for reading and for rebuilding the form as an
+      AllianceForm package, and it is validated here only as a string with the
+      expected header line. Null when `taskFormId` is null.
+    type: [string, "null"]
+    pattern: '^=== task form — form #[0-9]+: .* ===\n'
+    # Grammar of the rendered form, one construct per line, blank-line
+    # separated, with two-space indentation for nested parts:
+    #
+    #   === task form — form #<taskFormId>: <form name> ===
+    #   --- Page <n>: <page title> ---     one per page, in order
+    #   [<type>] <label>                   a field
+    #   [<type>, required] <label>         a field that must be answered
+    #     - <option>                       choice, under radio/select/multiselect
+    #     <left> … <right>                 endpoint labels, under range
+    #     [<type>, ...] <label>            nested field, under list (repeatable row)
+    #   [submit] <button label>            terminates a page/form
+    #
+    # Any other line is prose displayed between fields (Markdown, and it can
+    # itself contain square brackets — a line starting with "[" is only a field
+    # when the bracketed token is one of the known types below).
+    #
+    # Field types seen in the corpus:
+    #   radio, select, multiselect, checkbox, textarea, number, range,
+    #   file, list, contract, custom, submit
+    #
+    # `custom` marks a bespoke component the platform renders itself; its
+    # payload is not represented in this text rendering.
+
+$defs:
+  reviewer:
+    description: >-
+      An external reviewer credited on the action, rendered as a name, linked
+      and icon-prefixed when `url` and `icon` are set.
+    type: object
+    additionalProperties: false
+    required: [name, url, icon, position]
+    properties:
+      name:
+        description: Reviewer's display name.
+        type: string
+        minLength: 1
+      url:
+        description: Link to the reviewer's profile or homepage, or null.
+        type: [string, "null"]
+        format: uri
+      icon:
+        description: >-
+          Icon key for the link target, or null for a plain link. Most
+          reviewers have no icon, since the set currently holds only
+          "linkedin". Not constrained to an enum, because the icon set is
+          expected to grow.
+        type: [string, "null"]
+        examples: [linkedin]
+      position:
+        description: Sort order within the reviewer list, zero-based.
+        type: integer
+        minimum: 0
+
+  # cohortExpression node. A tagged union on `type`, mirroring the zod union in
+  # common/src/cohort-expression.ts: the leaf nodes select members directly,
+  # the three operator nodes combine other nodes. Written as `type` enum + one
+  # if/then per tag rather than a bare `oneOf`, so a failure reports only the
+  # branch that actually applies instead of all fourteen.
+  cohortNode:
+    description: A node in an action's cohort (audience) expression tree.
+    type: object
+    required: [type]
+    properties:
+      type:
+        enum:
+          - AND
+          - OR
+          - NOT
+          - Tag
+          - Manual
+          - GroupLead
+          - USMember
+          - NonUSMember
+          - AllMembers
+          - Staff
+          - CompletedAction
+          - InProgressAction
+          - MissedActionDeadline
+          - FormFieldValue
+    allOf:
+      - if: { properties: { type: { const: AND } }, required: [type] }
+        then: { $ref: "#/$defs/cohortAnd" }
+      - if: { properties: { type: { const: OR } }, required: [type] }
+        then: { $ref: "#/$defs/cohortOr" }
+      - if: { properties: { type: { const: NOT } }, required: [type] }
+        then: { $ref: "#/$defs/cohortNot" }
+      - if: { properties: { type: { const: Tag } }, required: [type] }
+        then: { $ref: "#/$defs/cohortTag" }
+      - if: { properties: { type: { const: Manual } }, required: [type] }
+        then: { $ref: "#/$defs/cohortManual" }
+      - if: { properties: { type: { const: GroupLead } }, required: [type] }
+        then: { $ref: "#/$defs/cohortGroupLead" }
+      - if: { properties: { type: { const: USMember } }, required: [type] }
+        then: { $ref: "#/$defs/cohortUSMember" }
+      - if: { properties: { type: { const: NonUSMember } }, required: [type] }
+        then: { $ref: "#/$defs/cohortNonUSMember" }
+      - if: { properties: { type: { const: AllMembers } }, required: [type] }
+        then: { $ref: "#/$defs/cohortAllMembers" }
+      - if: { properties: { type: { const: Staff } }, required: [type] }
+        then: { $ref: "#/$defs/cohortStaff" }
+      - if:
+          { properties: { type: { const: CompletedAction } }, required: [type] }
+        then: { $ref: "#/$defs/cohortCompletedAction" }
+      - if:
+          {
+            properties: { type: { const: InProgressAction } },
+            required: [type],
+          }
+        then: { $ref: "#/$defs/cohortInProgressAction" }
+      - if:
+          {
+            properties: { type: { const: MissedActionDeadline } },
+            required: [type],
+          }
+        then: { $ref: "#/$defs/cohortMissedActionDeadline" }
+      - if:
+          { properties: { type: { const: FormFieldValue } }, required: [type] }
+        then: { $ref: "#/$defs/cohortFormFieldValue" }
+
+  cohortAnd:
+    description: Members matching every child node.
+    type: object
+    additionalProperties: false
+    required: [type, children]
+    properties:
+      type: { const: AND }
+      children:
+        type: array
+        minItems: 1
+        items: { $ref: "#/$defs/cohortNode" }
+
+  cohortOr:
+    description: Members matching at least one child node.
+    type: object
+    additionalProperties: false
+    required: [type, children]
+    properties:
+      type: { const: OR }
+      children:
+        type: array
+        minItems: 1
+        items: { $ref: "#/$defs/cohortNode" }
+
+  cohortNot:
+    description: Members not matching the single child node.
+    type: object
+    additionalProperties: false
+    required: [type, child]
+    properties:
+      type: { const: NOT }
+      child: { $ref: "#/$defs/cohortNode" }
+
+  cohortTag:
+    description: Members carrying a given platform tag.
+    type: object
+    additionalProperties: false
+    required: [type, tagId]
+    properties:
+      type: { const: Tag }
+      tagId:
+        description: Tag UUID.
+        type: string
+        format: uuid
+        pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+
+  cohortManual:
+    description: An explicit list of members, picked one by one in the admin.
+    type: object
+    additionalProperties: false
+    required: [type, userIds]
+    properties:
+      type: { const: Manual }
+      userIds:
+        type: array
+        items: { type: integer, minimum: 1 }
+        uniqueItems: true
+
+  cohortGroupLead:
+    description: Members who lead a group.
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type: { const: GroupLead }
+
+  cohortUSMember:
+    description: Members located in the United States.
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type: { const: USMember }
+
+  cohortNonUSMember:
+    description: Members located outside the United States.
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type: { const: NonUSMember }
+
+  cohortAllMembers:
+    description: Every member.
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type: { const: AllMembers }
+
+  cohortStaff:
+    description: Members with the staff flag.
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type: { const: Staff }
+
+  cohortCompletedAction:
+    description: Members who completed another action.
+    type: object
+    additionalProperties: false
+    required: [type, actionId]
+    properties:
+      type: { const: CompletedAction }
+      actionId: { type: integer, minimum: 1 }
+
+  cohortInProgressAction:
+    description: Members currently assigned another action and not yet done.
+    type: object
+    additionalProperties: false
+    required: [type, actionId]
+    properties:
+      type: { const: InProgressAction }
+      actionId: { type: integer, minimum: 1 }
+
+  cohortMissedActionDeadline:
+    description: Members who let another action's deadline pass unfinished.
+    type: object
+    additionalProperties: false
+    required: [type, actionId]
+    properties:
+      type: { const: MissedActionDeadline }
+      actionId: { type: integer, minimum: 1 }
+
+  cohortFormFieldValue:
+    description: >-
+      Members whose answer to a specific field of a specific form equals a
+      given value, or is merely non-empty. Used to branch follow-up actions off
+      an earlier answer. With neither `responseEqualTo` nor `responseAny` set,
+      any non-empty answer matches. That is the cohort builder's initial
+      state.
+    type: object
+    additionalProperties: false
+    required: [type, formId, fieldId]
+    # `responseAny: true` alongside `responseEqualTo` is rejected rather than
+    # resolved, since the evaluator would let the former silently shadow the
+    # latter.
+    not:
+      required: [responseEqualTo, responseAny]
+      properties:
+        responseAny: { const: true }
+    properties:
+      type: { const: FormFieldValue }
+      formId:
+        description: Task form id the field belongs to.
+        type: integer
+        minimum: 1
+      fieldId:
+        description: >-
+          Field identifier within the form, e.g. "field-1784076209430".
+        type: string
+        minLength: 1
+      responseEqualTo:
+        description: Value the member's response must equal.
+        type: string
+      responseAny:
+        description: Match any non-empty answer, whatever its value.
+        type: boolean
