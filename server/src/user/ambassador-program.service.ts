@@ -15,6 +15,8 @@ import {
 import {
   AmbassadorInviteGoalWithStats,
   AmbassadorInviteStats,
+} from "./dto/ambassador-invite.dto";
+import {
   AmbassadorProgramDashboard,
   AmbassadorProgramInviteStats,
   type AmbassadorProgramMemberWithInviteStats,
@@ -22,7 +24,7 @@ import {
   CreateAmbassadorProgramInteractionDto,
   UpdateAmbassadorProgramMemberDto,
   UpsertAmbassadorProgramMemberDto,
-} from "./dto/invite.dto";
+} from "./dto/ambassador-program.dto";
 import { AmbassadorInviteGoal } from "./entities/ambassador-invite-goal.entity";
 import { AmbassadorProgramInteraction } from "./entities/ambassador-program-interaction.entity";
 import { AmbassadorProgramMember } from "./entities/ambassador-program-member.entity";

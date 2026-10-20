@@ -35,7 +35,7 @@ import {
   type OnetimeInviteList,
   type OnetimeInviteMemberStats,
   RequestOnetimeInviteDto,
-} from "./dto/invite.dto";
+} from "./dto/onetime-invite.dto";
 import {
   canModifyOnetimeInvite,
   loadedOnetimeInviteInvitingUser,

@@ -29,7 +29,7 @@ import {
   OnetimeInviteMemberStatsDto,
   RequestOnetimeInviteDto,
   UpdateOnetimeInviteDto,
-} from "./dto/invite.dto";
+} from "./dto/onetime-invite.dto";
 import { OnetimeInviteService } from "./onetime-invite.service";
 
 @Controller("user")

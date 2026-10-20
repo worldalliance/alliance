@@ -11,7 +11,7 @@ import {
   AmbassadorInviteGoalWithStats,
   AmbassadorInviteProjection,
   AmbassadorInviteStats,
-} from "./dto/invite.dto";
+} from "./dto/ambassador-invite.dto";
 import { AmbassadorInviteGoal } from "./entities/ambassador-invite-goal.entity";
 import { ContractEventType } from "./entities/contract-event.entity";
 import { OnetimeInvite } from "./entities/onetime-invite.entity";
