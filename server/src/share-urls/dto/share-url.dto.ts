@@ -2,6 +2,7 @@ import {
   INVITE_LINK_TOKEN,
   INVITE_MESSAGE_TEMPLATE_MAX_LENGTH,
 } from "@alliance/common/inviteMessage";
+import { SHARE_URL_LABEL_MAX_LENGTH } from "@alliance/common/shareUrlLabel";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
@@ -176,7 +177,7 @@ export class CreateDuplicateShareLinkDto {
   })
   @IsOptional()
   @IsString()
-  @MaxLength(120)
+  @MaxLength(SHARE_URL_LABEL_MAX_LENGTH)
   label?: string;
 }
 
@@ -187,6 +188,7 @@ export class UpdateShareLinkLabelDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(SHARE_URL_LABEL_MAX_LENGTH)
   label?: string;
 }
 
@@ -196,7 +198,7 @@ export class CreateInviteDuplicateDto {
   })
   @IsOptional()
   @IsString()
-  @MaxLength(120)
+  @MaxLength(SHARE_URL_LABEL_MAX_LENGTH)
   label?: string;
 
   @ApiProperty({ type: Number, nullable: true })
@@ -215,7 +217,7 @@ export class UpdateInviteDto {
   // the declared `string` lying to everything downstream.
   @ValidateIf((_object, value) => value !== undefined)
   @IsString()
-  @MaxLength(120)
+  @MaxLength(SHARE_URL_LABEL_MAX_LENGTH)
   label?: string;
 
   @ApiPropertyOptional({
