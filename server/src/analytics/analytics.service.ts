@@ -41,6 +41,7 @@ import { Between, In, IsNull, type Repository } from "typeorm";
 import { DailyStatsRecord } from "./dailystats.entity";
 import { formatDateKey } from "./date-key";
 import { InviteFunnel } from "./invite-funnel.dto";
+import { countsTowardMemberAnalytics } from "./member-analytics-action";
 import { MissedActions } from "./missed-actions.dto";
 import { ReminderGroupClickRatePoint } from "./reminder-group-click-rates.dto";
 
@@ -253,8 +254,7 @@ export class AnalyticsService {
       .flatMap((action) => {
         const memberActionEvent = action.memberActionPhase.event;
         return memberActionEvent &&
-          !action.onboarding &&
-          !action.publicOnly &&
+          countsTowardMemberAnalytics(action) &&
           canMissActionDeadline(action, now)
           ? [{ action, memberActionEvent }]
           : [];

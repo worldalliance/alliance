@@ -16,6 +16,7 @@ import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { ContractEventType } from "src/user/entities/contract-event.entity";
 import { yieldToEventLoop } from "src/utils/event-loop";
 import { type Repository } from "typeorm";
+import { countsTowardMemberAnalytics } from "./member-analytics-action";
 import { PlatformTenureCohortStats } from "./platform-tenure-cohort.dto";
 
 @Injectable()
@@ -106,7 +107,7 @@ export class PlatformTenureAnalyticsService {
       memberActionEndEvent: ActionEvent | undefined;
     }[] = [];
     for (const action of actions) {
-      if (action.publicOnly || action.onboarding || action.optional) {
+      if (!countsTowardMemberAnalytics(action) || action.optional) {
         continue;
       }
 
