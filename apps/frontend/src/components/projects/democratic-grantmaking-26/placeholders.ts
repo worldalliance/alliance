@@ -6,12 +6,12 @@ export interface ProjectPerson {
 }
 
 export const FEATURED_PEOPLE: ProjectPerson[] = [
-  {
-    name: "Jan Maly",
-    imageSrc: "/assets/democratic-grantmaking-26/jan-maly.jpg",
-    role: "Online Decision-Making, WU Wien",
-    href: "https://janmaly.de/",
-  },
+  // {
+  //   name: "Jan Maly",
+  //   imageSrc: "/assets/democratic-grantmaking-26/jan-maly.jpg",
+  //   role: "Online Decision-Making, WU Wien",
+  //   href: "https://janmaly.de/",
+  // },
   {
     name: "Healy Hamilton",
     imageSrc: "/assets/democratic-grantmaking-26/healy-hamilton.jpg",

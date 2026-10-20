@@ -71,19 +71,17 @@ export default function DemocraticGrantmaking26() {
                 </p>
                 <DisplayHeading
                   as="h1"
-                  leading={1.2}
-                  className="text-5xl sm:text-6xl lg:text-[clamp(3rem,min(5vw,8vh),6rem)]"
+                  leading={1.1}
+                  className="text-5xl sm:text-6xl lg:text-8xl"
                 >
                   Decide where to donate{" "}
                   <span className="site-display">$100,000</span>
                 </DisplayHeading>
-                {/* <SiteSubtitle size={SubtitleSize.Page}>
-                  Once the Alliance reaches 1,000 members, we will nominate and
-                  vote on non-profits together.
-                </SiteSubtitle> */}
                 <p className="text-left text-2xl sm:text-3xl">
-                  Once the Alliance reaches 1,000 members, we will nominate and
-                  vote on non-profits together.
+                  We&apos;re an online group that completes 15-minute weekly
+                  projects to improve the world. When we reach 1,000 members,
+                  outside funders will give $100,000 to a nonprofit we choose
+                  together.
                 </p>
               </div>
               <WaitlistSignupForm className="w-full" />
@@ -98,11 +96,19 @@ export default function DemocraticGrantmaking26() {
             </div>
           </div>
           <div className={cn(PROJECT_COL, "mt-12 lg:mt-24 lg:pb-24")}>
-            <div className="flex flex-col items-center gap-8 rounded-lg bg-zinc-100 px-8 py-10 sm:px-12 sm:py-12">
-              <p className="text-center text-lg text-[var(--site-ink)]/70 sm:text-xl">
-                Experts will provide comments that help you vote.
-              </p>
-              <ExpertGrid />
+            <div className="flex flex-col items-center gap-8 rounded-lg bg-zinc-100 px-8 py-10 sm:px-20 sm:py-14">
+              <div className="flex flex-col items-center gap-1">
+                <p className="text-center text-xl sm:text-2xl font-medium">
+                  A model for public-expert collaboration
+                </p>
+                <p className="text-center text-lg text-[var(--site-ink)]/70 sm:text-xl">
+                  Experts will comment on candidate nonprofits to help you make
+                  an informed vote.
+                </p>
+              </div>
+              <div className="mx-auto sm:max-w-3/4">
+                <ExpertGrid />
+              </div>
             </div>
             <ProjectTimeline currentIdx={0} className="mt-14 lg:mt-20" />
           </div>
