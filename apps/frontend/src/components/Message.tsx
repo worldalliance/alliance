@@ -1,5 +1,5 @@
 import type { MessageDto } from "@alliance/shared/client";
-import { formatTime } from "@alliance/shared/lib/utils";
+import { formatMessageTime } from "@alliance/shared/lib/messageTime";
 import { cn } from "@alliance/shared/styles/util";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -93,9 +93,7 @@ const Message = ({
                 </Link>
                 {message.createdAt && (
                   <span className="text-zinc-500 text-sm ml-2 mt-px">
-                    {formatTime(new Date(message.createdAt), {
-                      addSuffix: true,
-                    }).replace("less than a minute ago", "now")}
+                    {formatMessageTime(new Date(message.createdAt))}
                   </span>
                 )}
               </div>

@@ -1,5 +1,5 @@
 import { MessageDto } from "@alliance/shared/client";
-import { formatTime } from "@alliance/shared/lib/utils";
+import { formatMessageTime } from "@alliance/shared/lib/messageTime";
 import { cn } from "@alliance/shared/styles/util";
 import { Reply } from "lucide-react-native";
 import { useMemo } from "react";
@@ -55,12 +55,10 @@ export default function MessageBubble({
   );
   const translateX = useSharedValue(0);
 
-  const timeLabel = useMemo(() => {
-    return formatTime(new Date(message.createdAt), { addSuffix: true }).replace(
-      "less than a minute ago",
-      "now",
-    );
-  }, [message.createdAt]);
+  const timeLabel = useMemo(
+    () => formatMessageTime(new Date(message.createdAt)),
+    [message.createdAt],
+  );
 
   const panGesture = Gesture.Pan()
     .enabled(!!onReply)

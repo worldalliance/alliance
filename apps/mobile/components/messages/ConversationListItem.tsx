@@ -1,5 +1,5 @@
 import { ConversationDto } from "@alliance/shared/client";
-import { formatTime } from "@alliance/shared/lib/utils";
+import { formatMessageTime } from "@alliance/shared/lib/messageTime";
 import { cn } from "@alliance/shared/styles/util";
 import { TouchableOpacity, View } from "react-native";
 import { getConversationTimestamp } from "../../lib/messages";
@@ -22,10 +22,7 @@ export default function ConversationListItem({
   showDivider = true,
 }: ConversationListItemProps) {
   const timestamp = getConversationTimestamp(conversation);
-  const timeLabel = formatTime(timestamp, { addSuffix: true }).replace(
-    "less than a minute ago",
-    "now",
-  );
+  const timeLabel = formatMessageTime(timestamp);
 
   return (
     <TouchableOpacity
