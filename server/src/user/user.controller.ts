@@ -31,14 +31,16 @@ import { AmbassadorProgramService } from "./ambassador-program.service";
 import {
   AmbassadorInviteDashboardDto,
   AmbassadorInviteGoalDto,
+  CreateAmbassadorInviteGoalDto,
+  UpdateAmbassadorInviteGoalDto,
+} from "./dto/ambassador-invite.dto";
+import {
   AmbassadorProgramDashboardDto,
   AmbassadorProgramMemberDto,
-  CreateAmbassadorInviteGoalDto,
   CreateAmbassadorProgramInteractionDto,
-  UpdateAmbassadorInviteGoalDto,
   UpdateAmbassadorProgramMemberDto,
   UpsertAmbassadorProgramMemberDto,
-} from "./dto/invite.dto";
+} from "./dto/ambassador-program.dto";
 import {
   DeleteUserAdminDto,
   MyVisibilityContextDto,

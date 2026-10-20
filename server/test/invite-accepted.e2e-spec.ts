@@ -12,7 +12,7 @@ import { AnalyticsModule } from "../src/analytics/analytics.module";
 import { AnalyticsService } from "../src/analytics/analytics.service";
 import { DailyStatsRecord } from "../src/analytics/dailystats.entity";
 import { AmbassadorInviteGoalService } from "../src/user/ambassador-invite-goal.service";
-import { OnetimeInviteDto } from "../src/user/dto/invite.dto";
+import { OnetimeInviteDto } from "../src/user/dto/onetime-invite.dto";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,

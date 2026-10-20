@@ -27,7 +27,7 @@ import {
   AmbassadorInviteStats,
   CreateAmbassadorInviteGoalDto,
   UpdateAmbassadorInviteGoalDto,
-} from "./dto/invite.dto";
+} from "./dto/ambassador-invite.dto";
 import { AmbassadorInviteGoal } from "./entities/ambassador-invite-goal.entity";
 import { User } from "./entities/user.entity";
 import { UserService } from "./user.service";

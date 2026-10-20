@@ -46,10 +46,6 @@ import {
   NotifsService,
 } from "src/notifs/notifs.service";
 import { groupUrl } from "src/search/approutes";
-import {
-  CreateCommunityInviteDto,
-  RequestCommunityInviteDto,
-} from "src/user/dto/invite.dto";
 import { CommunityMemberContactInfo } from "src/user/dto/user-action-relations.dto";
 import {
   assertCanManageCommunity,
@@ -68,6 +64,10 @@ import {
   memberLeftCommunityNotif,
   staffAddedMemberNotif,
 } from "./community.utils";
+import {
+  CreateCommunityInviteDto,
+  RequestCommunityInviteDto,
+} from "./dto/community-invite.dto";
 import { CreateCommunityDto, UpdateCommunityDto } from "./dto/community.dto";
 import {
   CommunityInvite,
