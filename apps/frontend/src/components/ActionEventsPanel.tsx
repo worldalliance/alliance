@@ -3,8 +3,8 @@ import {
   isActionEvent,
   processActionTimeline,
 } from "@alliance/shared/lib/actionEventsPanel";
+import { formatTime } from "@alliance/shared/lib/utils";
 import ActionUpdateCard from "@alliance/sharedweb/ui/ActionUpdateCard";
-import { formatDistance } from "date-fns";
 import { Fragment } from "react";
 import Timeline from "./system/Timeline";
 import TimelineItem from "./system/TimelineItem";
@@ -33,9 +33,7 @@ const ActionEventsPanel = ({ action }: ActionEventsPanelProps) => {
                 action={action}
                 description={item.description}
                 highlighted={item.id === highlightedId}
-                time={formatDistance(item.date, new Date(), {
-                  addSuffix: true,
-                })}
+                time={formatTime(new Date(item.date), { addSuffix: true })}
                 updates={item.updates}
               />
             ) : (
