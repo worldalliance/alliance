@@ -130,44 +130,27 @@ const GeneralUpdatePage: React.FC = () => {
       e.preventDefault();
       setError(null);
       try {
+        const body: CreateGeneralUpdateDto = {
+          name: form.name,
+          startDate:
+            !hasSuites && form.startDate
+              ? new Date(form.startDate).toISOString()
+              : undefined,
+          endDate:
+            !hasSuites && form.endDate
+              ? new Date(form.endDate).toISOString()
+              : undefined,
+          useManualCohort: form.useManualCohort,
+          manualCohortUserIds: form.useManualCohort
+            ? form.manualCohortUserIds
+            : [],
+          tagIds: form.tagIds,
+          suiteIds: form.suiteIds,
+        } satisfies UpdateGeneralUpdateDto;
         if (isNew) {
-          const body: CreateGeneralUpdateDto = {
-            name: form.name,
-            startDate:
-              !hasSuites && form.startDate
-                ? new Date(form.startDate).toISOString()
-                : undefined,
-            endDate:
-              !hasSuites && form.endDate
-                ? new Date(form.endDate).toISOString()
-                : undefined,
-            useManualCohort: form.useManualCohort,
-            manualCohortUserIds: form.useManualCohort
-              ? form.manualCohortUserIds
-              : [],
-            tagIds: form.tagIds,
-            suiteIds: form.suiteIds,
-          };
           const created = await createUpdate(body);
           navigate(`/general-updates/${created.id}`);
         } else if (update) {
-          const body: UpdateGeneralUpdateDto = {
-            name: form.name,
-            startDate:
-              !hasSuites && form.startDate
-                ? new Date(form.startDate).toISOString()
-                : undefined,
-            endDate:
-              !hasSuites && form.endDate
-                ? new Date(form.endDate).toISOString()
-                : undefined,
-            useManualCohort: form.useManualCohort,
-            manualCohortUserIds: form.useManualCohort
-              ? form.manualCohortUserIds
-              : [],
-            tagIds: form.tagIds,
-            suiteIds: form.suiteIds,
-          };
           await saveUpdate(body);
         }
       } catch (err) {

@@ -1,4 +1,7 @@
-import type { UpdateGeneralUpdateDto } from "@alliance/shared/client";
+import type {
+  CreateGeneralUpdateDto,
+  UpdateGeneralUpdateDto,
+} from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
@@ -18,6 +21,7 @@ afterEach(cleanup);
 const startDate = "2026-03-10T15:00:00.000Z";
 const endDate = "2026-03-20T22:30:00.000Z";
 let saved: UpdateGeneralUpdateDto | null = null;
+let created: CreateGeneralUpdateDto | null = null;
 let servedName = "Weekly note";
 let findStatus = 200;
 let updateStatus = 200;
@@ -31,8 +35,10 @@ serveApi(
             generalUpdateAdmin(1, servedName, { startDate, endDate }),
           )
         : Response.json({}, { status: findStatus }),
-    "POST /actions/generalUpdates/create": () =>
-      Response.json(generalUpdateAdmin(2, "New")),
+    "POST /actions/generalUpdates/create": async ({ request }) => {
+      created = await request.json();
+      return Response.json(generalUpdateAdmin(2, "New"));
+    },
     "PATCH /actions/generalUpdates/:id": async ({ request }) => {
       if (updateStatus !== 200)
         return Response.json({}, { status: updateStatus });
@@ -54,6 +60,7 @@ serveApi(
 const hostZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 beforeEach(() => {
   saved = null;
+  created = null;
   servedName = "Weekly note";
   findStatus = 200;
   updateStatus = 200;
@@ -116,6 +123,27 @@ it("refreshes the general updates list after creating one", async () => {
     expect(router.state.location.pathname).toBe("/general-updates/2"),
   );
   expect(listInvalidated(client)).toBe(true);
+});
+
+it("creates a general update with the entered details", async () => {
+  renderPage("/general-updates/new");
+  fireEvent.change(screen.getByLabelText("Title"), {
+    target: { value: "New" },
+  });
+  fireEvent.change(screen.getByLabelText("Start Date"), {
+    target: { value: "2026-03-10T11:00" },
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Create General Update" }),
+  );
+
+  await waitFor(() => expect(created).not.toBeNull());
+  expect(created).toMatchObject({
+    name: "New",
+    startDate,
+    useManualCohort: false,
+    manualCohortUserIds: [],
+  });
 });
 
 it("refreshes the general updates list after saving", async () => {
