@@ -165,4 +165,82 @@ describe("a per-user copy text block's user list", () => {
     expect(screen.getByText("1 set / 2 total")).toBeTruthy();
     expect(screen.queryByText("Unable to load users")).toBeNull();
   });
+
+  it("pages through the users, naming the one being edited", async () => {
+    userList = listsAnaAndBen;
+    renderEditor(perUser);
+    await screen.findByText("1 set / 2 total");
+    expect(screen.getByText("0/2")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("1/2")).toBeTruthy();
+    expect(screen.getByText("Editing content for Ana")).toBeTruthy();
+    expect(
+      screen.getByText("Custom content saved for this user."),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Editing content for Ben")).toBeTruthy();
+    expect(
+      screen.getByText("Currently using the default block content."),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("1/2")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Prev" }));
+    expect(screen.getByText("2/2")).toBeTruthy();
+  });
+
+  it("lists the users by name and finds one by name or id", async () => {
+    userList = () =>
+      Response.json([
+        { id: 8, name: "ben", hasActiveContract: true },
+        { id: 7, name: "Ana", hasActiveContract: true },
+      ]);
+    renderEditor(perUser);
+    fireEvent.click(await screen.findByText("1 set / 2 total"));
+    const rows = () =>
+      screen
+        .getAllByRole("button", { name: /(Set|Unset)$/ })
+        .map((row) => row.textContent);
+    expect(rows()).toEqual(["AnaSet", "benUnset"]);
+
+    const search = screen.getByPlaceholderText("Search users");
+    fireEvent.change(search, { target: { value: "nobody" } });
+    expect(screen.getByText("No users match your search.")).toBeTruthy();
+    fireEvent.change(search, { target: { value: "BE" } });
+    expect(rows()).toEqual(["benUnset"]);
+    fireEvent.change(search, { target: { value: "7" } });
+    expect(rows()).toEqual(["AnaSet"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Ana Set" }));
+    expect(screen.getByText("Editing content for Ana")).toBeTruthy();
+  });
+
+  it("clears the content of a user picked from those with content", async () => {
+    userList = listsAnaAndBen;
+    const { onUpdate } = renderEditor({
+      ...perUser,
+      manualUserContent: {
+        "7": { text: "Dear Ana" },
+        "9": { text: "Dear Cy" },
+      },
+    });
+    openOptions();
+    await screen.findByText("Users with content (1)");
+    expect(screen.getByText("Missing (1)")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ben" }));
+    expect(screen.getByText("Using default")).toBeTruthy();
+    expect(screen.queryByText("Clear content for this user")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ana" }));
+    expect(screen.getByText("Custom content")).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Clear content for this user" }),
+    );
+    expect(onUpdate).toHaveBeenCalledWith({
+      manualUserContent: { "9": { text: "Dear Cy" } },
+    });
+  });
 });
