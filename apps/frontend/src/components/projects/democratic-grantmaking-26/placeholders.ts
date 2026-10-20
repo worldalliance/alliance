@@ -54,6 +54,12 @@ export const FEATURED_PEOPLE: ProjectPerson[] = [
     role: "AI Strategy Program Leader, Rethink Priorities",
     href: "https://www.linkedin.com/in/kylegracey/",
   },
+  {
+    name: "Megan Tompkins-Stange",
+    imageSrc: "/assets/democratic-grantmaking-26/megan.jpg",
+    role: "Associate Professor of Public Policy, University of Michigan",
+    href: "https://www.linkedin.com/in/megan-tompkins-stange-b71b709/",
+  },
 ];
 
 export const ABOUT_SECTIONS = [
