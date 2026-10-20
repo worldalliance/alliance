@@ -4,7 +4,7 @@ import { R, type Result } from "@alliance/common/result";
 import { run } from "@alliance/common/run";
 import { captureEvent, captureException } from "@alliance/shared/lib/analytics";
 import { useBackfillTimeZone } from "@alliance/shared/lib/useBackfillTimeZone";
-import type { QueryClient } from "@tanstack/react-query";
+import { useMe } from "@alliance/shared/lib/useMe";
 import { useRouter } from "expo-router";
 import { usePostHog } from "posthog-react-native";
 import React, {
@@ -20,7 +20,6 @@ import { getBinaryApiUrl, setReviewSession } from "./config";
 import { clearGuestToken, getStoredGuestToken } from "./guestSession";
 import { signInWithProvider } from "./oauth";
 import { thrownFailure, type OAuthFailure } from "./oauthResult";
-import { refreshUser as refreshMe } from "./refreshUser";
 import { unregisterDevice } from "./registeredDevice";
 import { requestSession, type RequestedSession } from "./reviewSignIn";
 import {
@@ -87,12 +86,11 @@ const askToRetryLogout = () =>
     ),
   );
 
-export const AuthProvider: React.FC<
-  React.PropsWithChildren<{
-    queryClient: QueryClient;
-  }>
-> = ({ children, queryClient }) => {
-  const [user, setUser] = useState<UserDto | undefined>(undefined);
+export const AuthProvider: React.FC<React.PropsWithChildren> = ({
+  children,
+}) => {
+  const { me, set: setMe, refresh: refreshUser, clear: clearCache } = useMe();
+  const user = me?.user;
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [sessionUnavailable, setSessionUnavailable] = useState(false);
   const router = useRouter();
@@ -114,11 +112,10 @@ export const AuthProvider: React.FC<
       clearTokens: clearTokensAndReport,
       leaveDeployment: () => setReviewSession(false),
     });
-    queryClient.clear();
-    setUser(undefined);
+    clearCache();
     setSessionUnavailable(false);
     return closed;
-  }, [clearTokensAndReport, queryClient]);
+  }, [clearTokensAndReport, clearCache]);
 
   const logout = useCallback(() => {
     run(async () => {
@@ -152,8 +149,6 @@ export const AuthProvider: React.FC<
     [user, dropRefusedSession],
   );
 
-  const refreshUser = useCallback(() => refreshMe(setUser), []);
-
   const posthog = usePostHog();
 
   const restoreStoredSession = useCallback(async () => {
@@ -182,11 +177,13 @@ export const AuthProvider: React.FC<
         }
         return;
       }
-      setUser(restored.value);
+      if (restored.value) {
+        setMe(restored.value);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [dropRefusedSession]);
+  }, [dropRefusedSession, setMe]);
 
   useEffect(() => {
     run(restoreStoredSession);
@@ -194,7 +191,7 @@ export const AuthProvider: React.FC<
 
   const startSession = useCallback(
     async (params: RequestedSession) => {
-      queryClient.clear();
+      clearCache();
 
       const opened = await openMarkedSession({
         storage: SecureStorage,
@@ -212,14 +209,14 @@ export const AuthProvider: React.FC<
       }
 
       const user = opened.value;
-      setUser(user);
+      setMe(user);
       setSessionUnavailable(false);
       posthog?.identify(user.id.toString(), {
         email: user.email,
         name: user.name,
       });
     },
-    [clearTokensAndReport, posthog, queryClient],
+    [clearTokensAndReport, clearCache, posthog, setMe],
   );
 
   const login = useCallback(

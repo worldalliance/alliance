@@ -60,6 +60,30 @@ describe("useSeedSettingsForm", () => {
     expect(seedings).toBe(2);
   });
 
+  it("seeds a member who replaces another mid-load with their own profile", async () => {
+    const released = Promise.withResolvers<void>();
+    let signedInId = 7;
+    api.alsoServing({
+      "GET /auth/me": async () => {
+        seedings += 1;
+        const id = signedInId;
+        if (seedings === 1) await released.promise;
+        return Response.json({ user: { id } });
+      },
+    });
+    const { setSavedProfile, view } = seed({ id: 7 });
+    await waitFor(() => expect(seedings).toBe(1));
+
+    signedInId = 8;
+    view.rerender({ user: { id: 8 } });
+    released.resolve();
+
+    await waitFor(() => expect(view.result.current).toBe(false));
+    await waitFor(() =>
+      expect(setSavedProfile).toHaveBeenLastCalledWith({ id: 8 }),
+    );
+  });
+
   it.each([
     ["returns the refusal", () => {}],
     ["throws the refusal", () => api.throwingOnRefusal(table)],

@@ -82,7 +82,7 @@ export default function RootLayout() {
           <KeyboardProvider>
             <PostHogProvider>
               <OtaUpdateGate>
-                <AuthProvider queryClient={queryClient}>
+                <AuthProvider>
                   <KeyboardExtenderPortalProvider>
                     <DeviceRegistration />
                     <PushNotificationResponseHandler />

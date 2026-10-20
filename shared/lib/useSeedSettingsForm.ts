@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { userMyLocation, type City, type UpdateProfileDto } from "../client";
-import { fetchMe, meQuery } from "./meQuery";
+import { meCache } from "./useMe";
 import type { SettingsAutosaveState } from "./useSettingsAutosave";
 
 /**
@@ -26,13 +26,14 @@ export function useSeedSettingsForm(params: {
     }
     seededForUserId.current = user.id;
 
-    const seeded = fetchMe()
+    const load = () => meCache(queryClient).fetch();
+    const seeded = load()
+      // A load already in flight for the previous member answers for them.
+      .then((me) => (me.user.id === user.id ? me : load()))
       .then((me) => {
-        queryClient.setQueryData(meQuery.queryKey, me);
-        setSavedProfile(me);
+        setSavedProfile(me.user);
       })
       .catch((error: unknown) => {
-        queryClient.removeQueries({ queryKey: meQuery.queryKey });
         console.error("failed to load the settings form", error);
       });
 

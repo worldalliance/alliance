@@ -2,15 +2,12 @@ import { AnalyticsEvent } from "@alliance/common/analytics";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { R } from "@alliance/common/result";
 // eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  authMe,
-  authRegister,
-  contractSignContract,
-} from "@alliance/shared/client";
+import { authRegister, contractSignContract } from "@alliance/shared/client";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import { deviceTimeZone, signupTimeZone } from "@alliance/shared/lib/timeZone";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { useInvite } from "@alliance/shared/lib/useInvite";
+import { useMe } from "@alliance/shared/lib/useMe";
 import { useSignupFaces } from "@alliance/shared/lib/useSignupFaces";
 import { cn } from "@alliance/shared/styles/util";
 import {
@@ -94,6 +91,7 @@ const OnboardingPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { onLogin, isAuthenticated, user, loading: authLoading } = useAuth();
+  const { fetch: fetchMe } = useMe();
   const { latestContract } = useContract();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -282,8 +280,8 @@ const OnboardingPage = () => {
       clearDraft();
       clearInvite();
 
-      const me = await authMe();
-      const user = me.data?.user;
+      const me = await R.fromPromise(fetchMe());
+      const user = me.ok ? me.value.user : undefined;
       if (user) {
         posthog.identify(user.id.toString(), {
           email: user.email,
@@ -325,6 +323,7 @@ const OnboardingPage = () => {
     latestContract,
     enterPlatform,
     clearInvite,
+    fetchMe,
   ]);
 
   const filled = FILLED_SEGMENTS[step];
