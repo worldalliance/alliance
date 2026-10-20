@@ -63,4 +63,24 @@ describe("groupInvitesListItems", () => {
       "communityInvite-3",
     ]);
   });
+
+  it("tags each one-time invite with its bucket, which picks its actions", () => {
+    const request = makeOnetimeInvite({
+      id: 1,
+      status: "request_pending",
+      community: makeCommunity({ id: 1 }),
+      invitingUser: member,
+    });
+    const theirLink = makeOnetimeInvite({ id: 2, invitingUser: member });
+    expect(
+      groupInvitesListItems({
+        onetimeInvites: [request, theirLink],
+        communityInvites: [],
+        communityId: 1,
+        userId: leader.id,
+      }).flatMap((item) =>
+        item.type === "onetimeInvite" ? [item.bucket] : [],
+      ),
+    ).toEqual(["actionable", "waitingForResponse"]);
+  });
 });

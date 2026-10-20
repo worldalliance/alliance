@@ -8,10 +8,19 @@ import {
   bucketOnetimeInvitesByActionability,
 } from "@alliance/shared/lib/inviteUtils";
 
+export type OnetimeInviteBucket = Exclude<
+  keyof ReturnType<typeof bucketOnetimeInvitesByActionability>,
+  "settled"
+>;
+
 export type GroupInvitesListItem =
   | { type: "section"; id: string; label: string }
   | { type: "communityInvite"; invite: CommunityInviteDto }
-  | { type: "onetimeInvite"; invite: OnetimeInviteDto };
+  | {
+      type: "onetimeInvite";
+      invite: OnetimeInviteDto;
+      bucket: OnetimeInviteBucket;
+    };
 
 /** The group's outstanding invites, under a header per bucket that has any. */
 export function groupInvitesListItems(params: {
@@ -56,6 +65,7 @@ export function groupInvitesListItems(params: {
               (invite): GroupInvitesListItem => ({
                 type: "onetimeInvite",
                 invite,
+                bucket,
               }),
             ),
             ...community.map(

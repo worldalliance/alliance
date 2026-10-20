@@ -111,6 +111,7 @@ export type OnetimeInviteActions = {
   onReject?: (inviteId: number) => void;
   onDelete?: (inviteId: number, event: unknown) => void;
   onDeleteWithConfirm?: (inviteId: number, event: unknown) => void;
+  /** Given for invites whose link the viewer may share; shows the Share button. */
   onShared?: (inviteId: number) => void;
   /** Given for invites that can still be edited; makes the whole row open settings. */
   onOpenSettings?: (inviteId: number) => void;
