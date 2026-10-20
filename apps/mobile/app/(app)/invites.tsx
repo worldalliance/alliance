@@ -12,8 +12,7 @@ import { useAmbassadorInviteDashboard } from "@alliance/shared/lib/useAmbassador
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
-import { milliseconds } from "date-fns";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Alert, RefreshControl, View } from "react-native";
 import AmbassadorInviteGoalCard from "../../components/AmbassadorInviteGoalCard";
 import InviteForm from "../../components/InviteForm";
@@ -29,7 +28,9 @@ import Text from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
 import { getSiteUrl } from "../../lib/config";
 import { colors } from "../../lib/style/colors";
+import { useOnetimeInviteAlerts } from "../../lib/useOnetimeInviteAlerts";
 import { useReferralLink } from "../../lib/useReferralLink";
+import { useSharedInviteFeedback } from "../../lib/useSharedInviteFeedback";
 
 enum InvitesTab {
   ReferralQr = "referral_qr",
@@ -68,12 +69,11 @@ export default function InvitesScreen() {
   } = useOnetimeInvitesOverview({ enabled: Boolean(user) });
   const { communities } = useMyCommunities({});
   const [refreshing, setRefreshing] = useState(false);
-  const [sharedInviteId, setSharedInviteId] = useState<number | null>(null);
+  const { sharedInviteId, handleShared } = useSharedInviteFeedback();
   const [settingsInviteId, setSettingsInviteId] = useState<number | null>(null);
   const [selectedTab, setSelectedTab] = useState<InvitesTab>(
     InvitesTab.ReferralQr,
   );
-  const sharedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { refetch: refetchAmbassadorDashboard } = useAmbassadorInviteDashboard({
     enabled: Boolean(user?.ambassador),
   });
@@ -104,46 +104,11 @@ export default function InvitesScreen() {
       [invites, leaderCommunityIds, user?.id],
     );
 
-  const handleShared = useCallback((inviteId: number) => {
-    if (sharedTimeoutRef.current) {
-      clearTimeout(sharedTimeoutRef.current);
-    }
-    setSharedInviteId(inviteId);
-    sharedTimeoutRef.current = setTimeout(
-      () => {
-        setSharedInviteId(null);
-        sharedTimeoutRef.current = null;
-      },
-      milliseconds({ seconds: 2 }),
-    );
-  }, []);
-
-  const handleApproveInvite = useCallback(
-    (inviteId: number) => {
-      void approveInvite(inviteId).catch(() => {
-        Alert.alert("Error", "Failed to approve invite");
-      });
-    },
-    [approveInvite],
-  );
-
-  const handleRejectInvite = useCallback(
-    (inviteId: number) => {
-      void rejectInvite(inviteId).catch(() => {
-        Alert.alert("Error", "Failed to reject invite");
-      });
-    },
-    [rejectInvite],
-  );
-
-  const handleDeleteInvite = useCallback(
-    (inviteId: number, _event: unknown) => {
-      void deleteInvite(inviteId).catch(() => {
-        Alert.alert("Error", "Failed to delete invite");
-      });
-    },
-    [deleteInvite],
-  );
+  const {
+    handleApprove: handleApproveInvite,
+    handleReject: handleRejectInvite,
+    handleDelete: handleDeleteInvite,
+  } = useOnetimeInviteAlerts({ approveInvite, rejectInvite, deleteInvite });
 
   const leaderCommunities = useMemo(
     () =>
@@ -168,7 +133,7 @@ export default function InvitesScreen() {
         {
           text: deleteInviteConfirmation.confirmLabel,
           style: "destructive",
-          onPress: () => handleDeleteInvite(settingsInvite.id, null),
+          onPress: () => handleDeleteInvite(settingsInvite.id),
         },
       ]);
     },

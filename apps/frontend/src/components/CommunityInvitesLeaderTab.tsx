@@ -120,19 +120,14 @@ const CommunityInvitesLeaderTab = ({
     actionable: communityActionable,
     waitingForResponse: communityWaitingForResponse,
     settled: communitySettled,
-  } = useMemo(() => {
-    if (!user) {
-      return {
-        actionable: [],
-        waitingForResponse: [],
-        settled: [],
-      };
-    }
-    return bucketCommunityInvitesByActionability({
-      invites: communityInvites,
-      userId: user.id,
-    });
-  }, [communityInvites, user]);
+  } = useMemo(
+    () =>
+      bucketCommunityInvitesByActionability({
+        invites: communityInvites,
+        userId: user?.id,
+      }),
+    [communityInvites, user?.id],
+  );
 
   useEffect(() => {
     setInviteNotifCount(onetimeActionable.length);

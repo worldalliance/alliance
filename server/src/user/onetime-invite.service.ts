@@ -454,7 +454,7 @@ export class OnetimeInviteService {
     assertCanManageCommunity(user, communityId);
     return this.onetimeInviteRepository.find({
       where: { community: { id: communityId }, deletedAt: IsNull() },
-      relations: { invitingUser: true },
+      relations: { invitingUser: true, community: true },
     });
   }
 

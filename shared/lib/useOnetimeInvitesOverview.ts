@@ -52,7 +52,7 @@ export function useOnetimeInvitesOverview(params?: { enabled?: boolean }) {
         throwOnError: true,
       }).then((r) => r.data);
     },
-    onSuccess: (invite) => cache.upsertInvite(invite),
+    onSuccess: (invite) => cache.applyInvite(invite),
   });
 
   return {
