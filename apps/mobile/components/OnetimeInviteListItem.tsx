@@ -186,13 +186,15 @@ export default function OnetimeInviteListItem({
             )}
             {invite.status === "link_unused" && (
               <>
-                <Button
-                  onPress={handleShare}
-                  color={shared ? ButtonColor.Green : ButtonColor.Outline}
-                  size={ButtonSize.Small}
-                  title={shared ? "Shared!" : "Share link"}
-                  disabled={shared}
-                />
+                {actions.onShared && (
+                  <Button
+                    onPress={handleShare}
+                    color={shared ? ButtonColor.Green : ButtonColor.Outline}
+                    size={ButtonSize.Small}
+                    title={shared ? "Shared!" : "Share link"}
+                    disabled={shared}
+                  />
+                )}
                 {(actions.onDelete || actions.onDeleteWithConfirm) &&
                   !actions.onOpenSettings && (
                     <Button

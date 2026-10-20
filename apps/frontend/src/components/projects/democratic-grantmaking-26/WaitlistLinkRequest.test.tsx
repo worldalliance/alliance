@@ -1,7 +1,7 @@
 import type { WaitlistLinkRequestDto } from "@alliance/shared/client";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { WaitlistLinkRequest } from "./WaitlistLinkRequest";
 
 let requested: WaitlistLinkRequestDto[];
@@ -20,8 +20,6 @@ beforeEach(() => {
   requested = [];
   reply = () => new Response(null, { status: 204 });
 });
-
-afterEach(cleanup);
 
 const renderRequest = () =>
   render(

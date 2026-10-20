@@ -2,8 +2,8 @@ import type { AdminWaitlistEntryDto } from "@alliance/shared/client/types.gen";
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, expect, it } from "bun:test";
+import { render, screen, within } from "@testing-library/react";
+import { expect, it } from "bun:test";
 import WaitlistTable from "./WaitlistTable";
 
 const entry: AdminWaitlistEntryDto = {
@@ -25,8 +25,6 @@ const entry: AdminWaitlistEntryDto = {
   tags: [],
   contractEvents: [],
 };
-
-afterEach(cleanup);
 
 it("shows account creation and every dated signing and suspension", () => {
   const events: AdminWaitlistEntryDto["contractEvents"] = [

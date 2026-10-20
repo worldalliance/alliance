@@ -1,7 +1,6 @@
 import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
 // eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
-  actionsActionRelationsForUserAdmin,
   notifsNotifsForUserAdmin,
   tasksGetFormsForUserSidAdmin,
   userFriendListFriends,
@@ -9,9 +8,6 @@ import {
 } from "@alliance/shared/client";
 import {
   ProfileDto,
-  UserActionRelationDetailDto,
-  UserActionRelationsResponseDto,
-  UserActionSummaryDto,
   UserAdminDetailDto,
 } from "@alliance/shared/client/types.gen";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
@@ -34,7 +30,8 @@ import UserRolesSection from "../components/user-detail/UserRolesSection";
 import UserTagsSection from "../components/user-detail/UserTagsSection";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { getApiUrl } from "../lib/config";
-import { queryClient } from "../lib/queryClient";
+import { prefetchFromLoader } from "../lib/queryClient";
+import { userActionRelationsQuery } from "../lib/useUserActionRelationsAdmin";
 import { useUserAwayRangesAdmin } from "../lib/useUserAwayRangesAdmin";
 import { useUserDetailAdmin, userDetailQuery } from "../lib/useUserDetailAdmin";
 
@@ -48,30 +45,20 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
     throw new Error("Not found");
   }
 
-  void queryClient.prefetchQuery({ ...userDetailQuery(userId), staleTime: 0 });
-  const [tagsRes, actionRelationsRes, notifRes, formResponsesRes, friendsRes] =
-    await Promise.all([
-      userTagGetTagSummariesAdmin(),
-      actionsActionRelationsForUserAdmin({ path: { userId } }),
-      notifsNotifsForUserAdmin({ path: { id: userId } }),
-      tasksGetFormsForUserSidAdmin({ path: { userId } }).catch(() => ({
-        data: [],
-      })),
-      userFriendListFriends({ path: { id: userId } }),
-    ]);
-
-  const actionData: UserActionRelationsResponseDto | undefined =
-    actionRelationsRes.data;
-  const actionSummaries: UserActionSummaryDto[] = actionData?.actions ?? [];
-  const actionRelations: UserActionRelationDetailDto[] =
-    actionData?.users?.find((entry) => entry.userId === userId)?.relations ??
-    [];
+  prefetchFromLoader(userDetailQuery(userId));
+  prefetchFromLoader(userActionRelationsQuery(userId));
+  const [tagsRes, notifRes, formResponsesRes, friendsRes] = await Promise.all([
+    userTagGetTagSummariesAdmin(),
+    notifsNotifsForUserAdmin({ path: { id: userId } }),
+    tasksGetFormsForUserSidAdmin({ path: { userId } }).catch(() => ({
+      data: [],
+    })),
+    userFriendListFriends({ path: { id: userId } }),
+  ]);
 
   return {
     userId,
     allTags: tagsRes.data ?? [],
-    actionSummaries,
-    actionRelations,
     notifs: notifRes.data ?? [],
     formResponses: formResponsesRes.data ?? [],
     friends: friendsRes.data ?? [],
@@ -116,8 +103,7 @@ const UserDetail = ({
   userDetail: ReturnType<typeof useUserDetailAdmin>;
 }) => {
   const loaderData = useLoaderData<typeof clientLoader>();
-  const { actionSummaries, actionRelations, notifs, formResponses, friends } =
-    loaderData;
+  const { notifs, formResponses, friends } = loaderData;
 
   const [isSuspendPending, setIsSuspendPending] = useState(false);
   const [suspendMutationError, setSuspendMutationError] = useState<
@@ -249,11 +235,7 @@ const UserDetail = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3 space-y-4">
-          <UserActionsSection
-            userId={user.id}
-            actionSummaries={actionSummaries}
-            actionRelations={actionRelations}
-          />
+          <UserActionsSection userId={user.id} />
           <UserNotificationsSection notifs={notifs} />
         </div>
 

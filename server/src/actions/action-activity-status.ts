@@ -69,19 +69,24 @@ export function isTerminalActivity<T extends Pick<ActionActivity, "type">>(
  * Assumes `activities` are pre-filtered to one user + one action.
  */
 export function findLatestTerminalActivity<
-  T extends Pick<ActionActivity, "type" | "createdAt">,
+  T extends Pick<ActionActivity, "id" | "type" | "createdAt">,
 >(activities: T[]): (T & { type: TerminalActivityType }) | null {
   return findLeast(
     activities,
-    // most-recent-first, so "least" terminal is most recent.
-    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+    // most-recent-first, so "least" terminal is most recent. Date drops the
+    // microseconds Postgres keeps, so a same-millisecond tie falls to the
+    // higher id, sqlIsLatestTerminalActivity's own tiebreak.
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id - a.id,
     isTerminalActivity,
   );
 }
 
 /** Each (user, action) pair's latest terminal activity. */
 export function findLatestTerminalActivities<
-  T extends Pick<ActionActivity, "type" | "createdAt" | "userId" | "actionId">,
+  T extends Pick<
+    ActionActivity,
+    "id" | "type" | "createdAt" | "userId" | "actionId"
+  >,
 >(activities: T[]): (T & { type: TerminalActivityType })[] {
   return [
     ...Map.groupBy(activities, (a) => `${a.userId}:${a.actionId}`).values(),
@@ -93,7 +98,10 @@ export function findLatestTerminalActivities<
  * completion.
  */
 export function findLatestCompletions<
-  T extends Pick<ActionActivity, "type" | "createdAt" | "userId" | "actionId">,
+  T extends Pick<
+    ActionActivity,
+    "id" | "type" | "createdAt" | "userId" | "actionId"
+  >,
 >(activities: T[]): T[] {
   return findLatestTerminalActivities(activities).filter(
     (latest) => latest.type === ActionActivityType.USER_COMPLETED,
@@ -143,7 +151,7 @@ function sqlIsLatestTerminalActivity(
  */
 export function resolveUserActionRelation(params: {
   activities: CachedFilter<
-    Pick<ActionActivity, "type" | "createdAt" | "userId" | "actionId">
+    Pick<ActionActivity, "id" | "type" | "createdAt" | "userId" | "actionId">
   >;
   userId: number;
   actionId: number;

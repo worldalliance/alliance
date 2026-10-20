@@ -1,3 +1,5 @@
+import { formatBadgeCount } from "@alliance/shared/lib/badgeCount";
+import { useUnreadNotificationCount } from "@alliance/shared/lib/useNotificationsCache";
 import { cn } from "@alliance/shared/styles/util";
 import { impactAsync, ImpactFeedbackStyle } from "expo-haptics";
 import { usePathname, useRouter } from "expo-router";
@@ -14,7 +16,6 @@ import {
 } from "../lib/onboarding/walkthrough";
 import { colors } from "../lib/style/colors";
 import { useTaskBadgeSync } from "../lib/taskBadge";
-import { useUnreadNotificationCount } from "../lib/useNotificationsCache";
 import Text, { FontWeight } from "./system/Text";
 
 const tabs = [
@@ -123,13 +124,6 @@ export default function TabBar() {
     "/groups": 0,
   };
 
-  const getBadgeLabel = (count: number) => {
-    if (!count) {
-      return null;
-    }
-    return Math.min(count, 99).toString();
-  };
-
   return (
     <View
       className="flex-row bg-white border-t border-zinc-100 px-2"
@@ -145,7 +139,7 @@ export default function TabBar() {
         const badgeCount = tabBadgeCounts[tab.href];
         const badgeBackgroundColor =
           tab.href === "/" ? colors.error : colors.text.icon;
-        const badgeLabel = getBadgeLabel(badgeCount);
+        const badgeLabel = formatBadgeCount(badgeCount);
         const button = (
           <AnimatedTabButton
             onPress={() => router.dismissTo(tab.href)}

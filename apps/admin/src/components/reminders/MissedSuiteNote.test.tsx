@@ -1,7 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import MissedSuiteNote from "./MissedSuiteNote";
-
-afterEach(cleanup);
 
 it("explains the routing for a group with a suite", () => {
   render(<MissedSuiteNote hasSuite />);

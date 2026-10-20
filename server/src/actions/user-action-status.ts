@@ -242,7 +242,7 @@ export function resolveUserActionStatus(params: {
   cohort: ViewerCohort;
   activities: Pick<
     ActionActivity,
-    "type" | "createdAt" | "declineReason" | "isMoral" | "outOfTime"
+    "id" | "type" | "createdAt" | "declineReason" | "isMoral" | "outOfTime"
   >[];
   now: Date;
 }): UserActionStatus {

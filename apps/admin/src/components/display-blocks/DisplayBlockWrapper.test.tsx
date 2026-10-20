@@ -1,7 +1,7 @@
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import {
   canvas,
   canvasButton,
@@ -10,8 +10,6 @@ import {
   selectElement,
 } from "../../lib/testing/formCanvas";
 import { renderFormBuilder } from "../../lib/testing/renderFormBuilder";
-
-afterEach(cleanup);
 
 serveApi(
   routes(

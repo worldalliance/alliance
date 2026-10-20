@@ -1,11 +1,5 @@
 import type { FormSchema, PageItem } from "@alliance/common/forms/form-schema";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  screen,
-  within,
-} from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import {
   canvas,
   canvasButton,
@@ -21,8 +15,6 @@ import {
 import * as nestedBlocks from "./display-blocks/EditableNestedBlock";
 import * as canvasContent from "./form-canvas/CanvasContent";
 import * as fieldEditors from "./form-fields/fieldEditors";
-
-afterEach(cleanup);
 
 const withLabelA = (...fields: PageItem[]): FormSchema => ({
   pages: [

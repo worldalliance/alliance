@@ -109,9 +109,10 @@ function activity(
   overrides: Partial<ResolveParams["activities"][number]> = {},
 ): ResolveParams["activities"][number] {
   return {
+    id: ++activitySeq,
     type,
     createdAt: new Date(
-      PHASE_START.getTime() + ++activitySeq * milliseconds({ minutes: 1 }),
+      PHASE_START.getTime() + activitySeq * milliseconds({ minutes: 1 }),
     ),
     declineReason: null,
     isMoral: null,

@@ -29,6 +29,7 @@ import { renameKeys } from "../lib/renameKeys";
 import { readCountSample, type CountSample } from "./CountSamples";
 import { FormulaResult } from "./formulaResult";
 import { ResultPreview, type Preview } from "./FormulaResultPreview";
+import { readRandomSample } from "./RandomInput";
 import { VariableHelpModal, type FormulaHelpInput } from "./VariableHelpModal";
 import { inputHelp, optionsRecipes } from "./variableInputHelp";
 import {
@@ -76,6 +77,7 @@ const RESULT_FORMULA: Record<
     offersRecipes: boolean;
     /** Nothing loads member counts for an options formula. */
     readsCounts: boolean;
+    readsRandom: boolean;
   }
 > = {
   [FormulaResult.Text]: {
@@ -86,6 +88,7 @@ const RESULT_FORMULA: Record<
     }),
     offersRecipes: false,
     readsCounts: true,
+    readsRandom: true,
   },
   [FormulaResult.Options]: {
     typeCheck: checkOptionsFormulaType,
@@ -95,15 +98,18 @@ const RESULT_FORMULA: Record<
     }),
     offersRecipes: true,
     readsCounts: false,
+    readsRandom: false,
   },
 };
 
 const fieldReadBy = (input: VariableInput, sources: InputSources) =>
-  fieldChoices(input, sources).find(
-    (candidate) =>
-      candidate.id === input.fieldId &&
-      (candidate.kind === "list") === isListInput(input),
-  );
+  input.kind === "random"
+    ? undefined
+    : fieldChoices(input, sources).find(
+        (candidate) =>
+          candidate.id === input.fieldId &&
+          (candidate.kind === "list") === isListInput(input),
+      );
 
 type FormulaEditorProps = {
   formula: FormulaParts;
@@ -164,15 +170,17 @@ export function FormulaEditor({
           const input = formula.inputs[name];
           const field = fieldOf(input);
           const reading =
-            input.kind === "aggregate"
-              ? readCountSample(field, countSamples[name] ?? {})
-              : isSourceInput(input)
-                ? readSubmissionSamples(
-                    input,
-                    field,
-                    submissionSamples[name] ?? [],
-                  )
-                : readInputSample(input, field, samples[name]);
+            input.kind === "random"
+              ? readRandomSample(samples[name])
+              : input.kind === "aggregate"
+                ? readCountSample(field, countSamples[name] ?? {})
+                : isSourceInput(input)
+                  ? readSubmissionSamples(
+                      input,
+                      field,
+                      submissionSamples[name] ?? [],
+                    )
+                  : readInputSample(input, field, samples[name]);
           return [name, reading] as const;
         }),
       ),
@@ -212,7 +220,9 @@ export function FormulaEditor({
           name,
           type: inputTypes.get(name) ?? "any",
           example:
-            !RESULT_FORMULA[result].offersRecipes && field && example !== ""
+            !RESULT_FORMULA[result].offersRecipes &&
+            (field || input.kind === "random") &&
+            example !== ""
               ? example
               : null,
         };
@@ -296,12 +306,19 @@ export function FormulaEditor({
     const sourceFormId = inputSourceFormId(current) ?? countedForm?.id;
     switch (mode) {
       case InputMode.Answers:
-        if (current.kind === "aggregate") setInputSource(name, undefined);
+        if (current.kind === "aggregate" || current.kind === "random") {
+          setInputSource(name, undefined);
+        }
         return;
       case InputMode.Counts:
         if (current.kind === "aggregate" || sourceFormId === undefined) return;
         clearSamples(name);
         setInput(name, { kind: "aggregate", sourceFormId, fieldId: "" });
+        return;
+      case InputMode.Random:
+        if (current.kind === "random") return;
+        clearSamples(name);
+        setInput(name, { kind: "random" });
         return;
       default:
         throw new Error(`unknown input mode: ${mode satisfies never}`);
@@ -387,6 +404,7 @@ export function FormulaEditor({
                   RESULT_FORMULA[result].readsCounts &&
                   countedForm !== undefined
                 }
+                randomAvailable={RESULT_FORMULA[result].readsRandom}
                 onModeChange={(mode) => setInputMode(name, mode)}
                 onInputChange={(next) => setInput(name, next)}
                 onFieldPick={(picked) =>

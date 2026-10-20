@@ -1,5 +1,5 @@
 import type { CountryCode } from "@alliance/common/phone";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { useState } from "react";
 import {
   usePhoneFieldCountry,
@@ -44,8 +44,6 @@ function mountField(stored: string, storedCountry: CountryCode = "US") {
       act(() => run(view.result.current)),
   };
 }
-
-afterEach(cleanup);
 
 describe("usePhoneNumberField", () => {
   it("shows digits while focused and the readable form once blurred", () => {

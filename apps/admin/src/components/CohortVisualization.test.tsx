@@ -2,10 +2,8 @@ import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { pending, type Pending } from "@alliance/shared/lib/testing/pending";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import CohortVisualization from "./CohortVisualization";
-
-afterEach(cleanup);
 
 const users = [1, 2, 3].map((id) => ({
   id,

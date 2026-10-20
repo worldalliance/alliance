@@ -1,13 +1,11 @@
 import { PlaceKind } from "@alliance/common/forms/form-conditions";
 import type { Page } from "@alliance/common/forms/form-schema";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { indexIssues, IssueTargetKind } from "../../lib/formIssues";
 import { nestedSchema } from "../../lib/testing/nestedForm";
 import { deriveVisibilityGroups } from "../../lib/visibilityGroups";
 import { CanvasTargetKind, ChildKind } from "./canvasSelection";
 import { FormOutline } from "./FormOutline";
-
-afterEach(cleanup);
 
 it("shows a child selected before it mounts", () => {
   render(

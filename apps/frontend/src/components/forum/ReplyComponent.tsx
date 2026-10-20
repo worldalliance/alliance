@@ -5,6 +5,7 @@ import {
   isCommentShown,
 } from "@alliance/shared/lib/commentsFilter";
 import { canReplyAtDepth } from "@alliance/shared/lib/commentTree";
+import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import ClusterTag from "@alliance/sharedweb/ui/ClusterTag";
@@ -12,7 +13,6 @@ import EditableContentForm from "@alliance/sharedweb/ui/EditableContentForm";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
 import InlineError from "@alliance/sharedweb/ui/InlineError";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
-import { formatDistanceToNow } from "date-fns";
 import { ChevronDown, Pin, X } from "lucide-react";
 import { memo, useState } from "react";
 import { Link, href } from "react-router";
@@ -106,9 +106,7 @@ const ReplyContent = ({
                 )}
               </Link>
               <span className="text-zinc-500 text-sm">
-                {formatDistanceToNow(new Date(reply.createdAt), {
-                  addSuffix: true,
-                })}
+                {formatTime(new Date(reply.createdAt), { addSuffix: true })}
               </span>
               {tag && (
                 <span className="text-xs bg-zinc-200 text-zinc-700 rounded-full px-2 py-0.5">

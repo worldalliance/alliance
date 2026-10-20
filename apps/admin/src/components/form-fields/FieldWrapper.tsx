@@ -6,7 +6,6 @@ import { CustomValidatorType } from "@alliance/shared/client";
 import { useEffect, useState } from "react";
 import { SectionPanels } from "../form-canvas/sidebarSections";
 import {
-  CustomValidatorSelect,
   OutputFieldToggle,
   OutputPrivateByDefaultToggle,
 } from "./CommonControls";
@@ -15,6 +14,7 @@ import {
   isDraftValidatorId,
   useCustomValidatorDrafts,
 } from "./customValidatorDrafts";
+import { CustomValidatorSelect } from "./CustomValidatorSelect";
 import {
   getExtractionLabel,
   hasExtractionEnabled,

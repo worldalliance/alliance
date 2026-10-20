@@ -1,6 +1,6 @@
 import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import type { AnyField, FieldKind } from "@alliance/common/forms/form-schema";
-import { fieldWithSavedChoices } from "@alliance/common/forms/formula-options";
+import { fieldWithSavedChoices } from "@alliance/common/forms/formula-choices";
 import type { FormResponseDto } from "@alliance/shared/client";
 import { isEmptyAnswer, normalizeBoolean } from "./answerValues";
 import { getOptionLabel, getSelections } from "./questionAnswer";

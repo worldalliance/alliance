@@ -38,7 +38,7 @@ import {
   type FormSchemaValidationError,
   validateFormSchema,
 } from "@alliance/common/forms/form-schema-validate";
-import { type FormulaChoices } from "@alliance/common/forms/formula-options";
+import { type FormulaChoices } from "@alliance/common/forms/formula-choices";
 import { getMaxSelections } from "@alliance/common/forms/multiselect";
 import {
   isEmptyRangeAnswer,

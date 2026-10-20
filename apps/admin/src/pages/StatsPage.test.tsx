@@ -2,7 +2,6 @@ import { type Pending, pending } from "@alliance/shared/lib/testing/pending";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -10,8 +9,6 @@ import {
   within,
 } from "@testing-library/react";
 import StatsPage from "./StatsPage";
-
-afterEach(cleanup);
 
 let clickRatesStatus = 200;
 let contractStatusHistoryStatus = 200;

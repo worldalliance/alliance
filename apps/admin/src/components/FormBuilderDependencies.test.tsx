@@ -1,7 +1,7 @@
 import type { FormSchema, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import {
   canvas,
   canvasButton,
@@ -16,8 +16,6 @@ import {
   renderFormBuilder,
   renderSavedFormBuilder,
 } from "../lib/testing/renderFormBuilder";
-
-afterEach(cleanup);
 
 const reads = (when: string, sourceFormId?: number): VisibleIfFormula => ({
   conditions: {

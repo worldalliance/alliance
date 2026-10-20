@@ -15,7 +15,6 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -28,8 +27,6 @@ import { authValue } from "../testing/authValue";
 import ConversationInfoPanel, {
   ConversationInfoPanelProps,
 } from "./ConversationInfoPanel";
-
-afterEach(cleanup);
 
 let updateResponse: () => Response;
 let leaveResponse: () => Response | Promise<Response>;

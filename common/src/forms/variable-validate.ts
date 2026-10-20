@@ -117,6 +117,7 @@ export function collectVariableErrors(
         {},
       ]),
     ),
+    randomizationKey: "validation",
   };
   const scope: FormulaCheckScope = {
     fieldKinds,
@@ -163,10 +164,15 @@ export function collectVariableErrors(
       scope,
       pushInputError: push,
       pushFormulaError: push,
-      rejectInput: (inputName, input) =>
-        input.kind === "aggregate"
-          ? `Input "${inputName}" counts members' answers, which an options formula can't read`
-          : undefined,
+      rejectInput: (inputName, input) => {
+        if (input.kind === "aggregate") {
+          return `Input "${inputName}" counts members' answers, which an options formula can't read`;
+        }
+        if (input.kind === "random") {
+          return `Input "${inputName}" picks a random number, which only a variable can use`;
+        }
+        return undefined;
+      },
       typeCheck: checkOptionsFormulaType,
       // Nothing answered yet, and no submissions to read, is how every member
       // first meets the field.
@@ -268,6 +274,7 @@ function checkFormulaInputs(
   push: (message: string) => void,
 ): void {
   for (const [inputName, input] of Object.entries(formula.inputs)) {
+    if (input.kind === "random") continue;
     const sourceFormId = inputSourceFormId(input);
     // An aggregate may count this form's own submissions.
     if (isSourceInput(input) && sourceFormId === scope.formId) {

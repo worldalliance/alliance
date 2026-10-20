@@ -9,13 +9,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../lib/AuthContext";
 import { testAuthUser } from "../stories/testData";
@@ -133,7 +127,6 @@ export const serveInviteForm = () => {
   });
 
   afterEach(() => {
-    cleanup();
     delete process.env.VITE_ALT_APP_URL;
   });
 

@@ -2,7 +2,7 @@ import type { AnyField } from "@alliance/common/forms/form-schema";
 import {
   fieldWithSavedChoices,
   type FormulaChoices,
-} from "@alliance/common/forms/formula-options";
+} from "@alliance/common/forms/formula-choices";
 import type {
   ActionWithdrawalDto,
   FormResponseDto,

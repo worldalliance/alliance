@@ -5,11 +5,9 @@ import {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { generalUpdateAdmin } from "./testing/generalUpdateAdmin";
 import { useGeneralUpdateAdmin } from "./useGeneralUpdateAdmin";
-
-afterEach(cleanup);
 
 let findStatus = 200;
 let updateStatus = 200;

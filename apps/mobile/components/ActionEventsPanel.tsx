@@ -1,10 +1,10 @@
-import { formatDistance } from "date-fns";
 import { View } from "react-native";
 import { ActionDto } from "../../../shared/client";
 import {
   isActionEvent,
   processActionTimeline,
 } from "../../../shared/lib/actionEventsPanel";
+import { formatTime } from "../../../shared/lib/utils";
 import ActionUpdateCard from "./ActionUpdateCard";
 import Timeline from "./system/Timeline";
 import TimelineItem from "./system/TimelineItem";
@@ -31,9 +31,7 @@ export default function ActionEventsPanel({ action }: ActionEventsPanelProps) {
               title={item.title}
               description={item.description}
               highlighted={item.id === highlightedId}
-              time={formatDistance(new Date(item.date), new Date(), {
-                addSuffix: true,
-              })}
+              time={formatTime(new Date(item.date), { addSuffix: true })}
               updates={item.updates}
             />
           ) : (

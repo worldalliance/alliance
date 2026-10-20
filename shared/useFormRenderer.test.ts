@@ -7,7 +7,8 @@ import {
   type TextField,
 } from "@alliance/common/forms/form-schema";
 import type { VariableSourceHistory } from "@alliance/common/forms/variable-evaluation";
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { uniformHash } from "@alliance/common/random";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import {
   VariableAggregatesStatus,
   type VariableAggregates,
@@ -30,8 +31,6 @@ import {
   type FormVisibility,
   type VisibilityInputsPending,
 } from "./useFormRenderer";
-
-afterEach(cleanup);
 
 const textField = (id: string): TextField => ({
   id,
@@ -402,6 +401,7 @@ function renderVisibility(args: {
   setFormData?: Parameters<typeof useFormVisibility>[0]["setFormData"];
   sourceHistories?: SourceHistories;
   variableAggregates?: VariableAggregates;
+  randomizationKey?: string;
   visibilityValidatorResults?: Record<number, boolean>;
   visibilityInputsLoading?: boolean;
 }) {
@@ -420,6 +420,7 @@ function renderVisibility(args: {
       previousAnswerData: undefined,
       sourceHistories: args.sourceHistories ?? NO_SOURCES_READY,
       variableAggregates: args.variableAggregates ?? NO_AGGREGATES_READY,
+      randomizationKey: args.randomizationKey ?? "form:1:user:1",
       userHasCity: false,
       firstContractSignedAt: null,
       completedActionCount: 0,
@@ -520,6 +521,7 @@ describe("useFormVisibility", () => {
           previousAnswerData: undefined,
           sourceHistories: { status: SourceHistoriesStatus.Ready, sources },
           variableAggregates: NO_AGGREGATES_READY,
+          randomizationKey: "form:1:user:1",
           userHasCity: false,
           firstContractSignedAt: null,
           completedActionCount: 0,
@@ -653,6 +655,29 @@ describe("useFormVisibility", () => {
     );
   });
 
+  it("seeds a random input with the member's randomization key", () => {
+    const pick = (randomizationKey: string) =>
+      renderVisibility({
+        schema: {
+          ...schemaWith([textField("bonus")]),
+          variables: [
+            {
+              name: "pick",
+              inputs: { input1: { kind: "random" } },
+              formula: "input1",
+            },
+          ],
+        },
+        formData: {},
+        randomizationKey,
+      }).result.current.variableValues.get("pick");
+
+    expect(pick("form:1:user:1")).toBe(
+      String(uniformHash("form:1:user:1:pick:input1")),
+    );
+    expect(pick("form:1:user:2")).not.toBe(pick("form:1:user:1"));
+  });
+
   it("leaves a variable reading a deleted form unresolved, and resolves the rest", () => {
     const { result } = renderVisibility({
       schema: {
@@ -734,6 +759,7 @@ describe("useFormVisibility", () => {
           previousAnswerData: undefined,
           sourceHistories: NO_SOURCES_READY,
           variableAggregates,
+          randomizationKey: "form:1:user:1",
           userHasCity: false,
           firstContractSignedAt: null,
           completedActionCount: 0,
@@ -813,6 +839,7 @@ describe("useFormVisibility", () => {
           previousAnswerData: undefined,
           sourceHistories: NO_SOURCES_READY,
           variableAggregates: NO_AGGREGATES_READY,
+          randomizationKey: "form:1:user:1",
           userHasCity: false,
           firstContractSignedAt: null,
           completedActionCount: 0,
@@ -951,6 +978,7 @@ function renderValidation(args: {
         previousAnswerData: undefined,
         sourceHistories: NO_SOURCES_READY,
         variableAggregates: NO_AGGREGATES_READY,
+        randomizationKey: "form:1:user:1",
         userHasCity: false,
         firstContractSignedAt: null,
         completedActionCount: 0,

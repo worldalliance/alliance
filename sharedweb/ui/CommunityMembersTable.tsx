@@ -33,7 +33,7 @@ type CommunityMembersTableProps = {
   members: ProfileDto[];
   amLeader: boolean;
   communityId?: number;
-  onRemoveMember?: (memberId: number) => void;
+  onRemoveMember?: (memberId: number) => Promise<unknown>;
   memberContactInfo?: Record<number, CommunityMemberContactInfoDto>;
   userActionRelations?: Record<number, UserActionRelationDetailDto[]>;
   actions: UserActionSummaryDto[];

@@ -1,8 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { TimeSeriesChart, type DataPoint } from "./TimeSeriesChart";
 
-afterEach(cleanup);
-
 beforeEach(() => {
   jest
     .spyOn(Element.prototype, "getBoundingClientRect")

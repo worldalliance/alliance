@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { userOnetimeInviteGetOnetimeInvitesByCommunity } from "../client";
+import { failedToLoad } from "./failedToLoad";
 import { queryKeys } from "./queryKeys";
 import { useOnetimeInviteCache } from "./useOnetimeInviteCache";
 
@@ -18,13 +19,7 @@ export function useCommunityOnetimeInvites(
   const { enabled = true } = params ?? {};
   const queryKey = queryKeys.communityOnetimeInvites(communityId);
 
-  const {
-    data: invites = [],
-    isLoading,
-    isFetching,
-    isError,
-    refetch,
-  } = useQuery({
+  const query = useQuery({
     queryKey,
     queryFn: () =>
       userOnetimeInviteGetOnetimeInvitesByCommunity({
@@ -37,11 +32,12 @@ export function useCommunityOnetimeInvites(
   const cache = useOnetimeInviteCache(queryKey);
 
   return {
-    invites,
-    isLoading,
-    isFetching,
-    isError,
-    refetch,
+    invites: query.data ?? [],
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    didFail: failedToLoad(query),
+    refetch: query.refetch,
     ...cache,
   };
 }

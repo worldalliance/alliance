@@ -18,6 +18,7 @@ import {
   isSourceInput,
   VARIABLE_INPUT_NAME_REGEX,
   variableInputSchema,
+  type FieldReadingInput,
   type VariableInput,
   type VariableListInput,
 } from "./variable-inputs";
@@ -304,10 +305,9 @@ export function syncFormulaListInputs<F extends Formula>(
   let changed = false;
   const inputs = Object.fromEntries(
     Object.entries(formula.inputs).map(([name, input]) => {
+      if (!isListInput(input)) return [name, input];
       const field = inputFields(input, scope)?.get(input.fieldId);
-      if (!isListInput(input) || field?.kind !== "list") {
-        return [name, input];
-      }
+      if (field?.kind !== "list") return [name, input];
       const properties = syncListInputProperties(
         input.properties,
         field.fields ?? [],
@@ -379,7 +379,7 @@ function listInputType(
 }
 
 function inputType(
-  input: VariableInput,
+  input: FieldReadingInput,
   field: VariableInputField | undefined,
 ): string {
   switch (input.kind) {
@@ -408,6 +408,7 @@ export function variableTypeEnv(
 ): ReadonlyMap<string, string> {
   return new Map(
     Object.entries(formula.inputs).map(([name, input]) => {
+      if (input.kind === "random") return [name, "number"];
       const fields = inputFields(input, scope);
       if (fields === undefined) return [name, variableInputType(undefined)];
       const type = inputType(input, fields.get(input.fieldId));

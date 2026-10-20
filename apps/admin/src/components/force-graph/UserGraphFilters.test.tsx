@@ -1,11 +1,9 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { community, tag, user } from "./graphTesting";
 import {
   UserGraphFilterControls,
   useUserGraphFilters,
 } from "./UserGraphFilters";
-
-afterEach(cleanup);
 
 const oakland = community(7, "Oakland");
 const donor = tag("tag-donor", "Donor");

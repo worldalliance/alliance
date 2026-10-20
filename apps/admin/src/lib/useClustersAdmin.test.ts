@@ -2,11 +2,9 @@ import type { ClusterAdminDto } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, mock } from "bun:test";
 import { useClustersAdmin, useRenameClusterAdmin } from "./useClustersAdmin";
-
-afterEach(cleanup);
 
 const cluster = (id: number, displayName: string) =>
   ({

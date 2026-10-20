@@ -2,7 +2,7 @@ import {
   type AnyField,
   fieldHasOptions,
 } from "@alliance/common/forms/form-schema";
-import { fieldWithSavedChoices } from "@alliance/common/forms/formula-options";
+import { fieldWithSavedChoices } from "@alliance/common/forms/formula-choices";
 import type { FormResponseDto } from "@alliance/shared/client";
 import { parseFormulaChoices } from "@alliance/shared/parsed-dtos";
 

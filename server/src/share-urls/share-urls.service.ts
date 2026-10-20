@@ -13,6 +13,7 @@ import { EntityManager, IsNull, Not, Repository } from "typeorm";
 import { ExternalShareTarget } from "./entities/external-share-target.entity";
 import { ShareUrl, ShareUrlKind } from "./entities/share-url.entity";
 import type { StoredInviteAssignment } from "./invite-assignment";
+import { normalizeShareUrlLabel } from "./share-url-label";
 import { updateLiveShareUrl } from "./share-url-locks";
 import { ownerWhere, type ShareUrlOwner } from "./share-url-owner";
 import { shareUrlPublicUrl } from "./share-url-public-url";
@@ -110,8 +111,7 @@ export class ShareUrlsService {
   }): Promise<ShareUrl> {
     const { owner, actionId, externalTargetId, invite, label } = params;
     const target = resolveTarget({ actionId, externalTargetId, invite });
-    const trimmedLabel = label?.trim();
-    const labelValue = trimmedLabel ? trimmedLabel : null;
+    const labelValue = normalizeShareUrlLabel(label);
     switch (target.kind) {
       case ShareUrlKind.Action:
         return this.createDuplicateForAction(
@@ -247,11 +247,9 @@ export class ShareUrlsService {
     id: string,
     rawLabel: string | undefined,
   ): Promise<ShareUrl> {
-    const trimmed = rawLabel?.trim();
-    const nextLabel = trimmed ? trimmed : null;
     return updateLiveShareUrl(this.shareUrlRepository.manager, {
       id,
-      changes: { label: nextLabel },
+      changes: { label: normalizeShareUrlLabel(rawLabel) },
       relations: { action: true, externalTarget: true },
     });
   }

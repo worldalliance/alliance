@@ -8,19 +8,10 @@ import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as uploadModule from "@alliance/shared/lib/uploadImageDataUri";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
 import FormRenderer from "./FormRenderer";
-
-afterEach(cleanup);
 
 const api = serveApi(routes({}));
 

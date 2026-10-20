@@ -3,8 +3,6 @@ import ActionReviewersEditor, {
   type ReviewerRow,
 } from "./ActionReviewersEditor";
 
-afterEach(cleanup);
-
 const renderEditor = (reviewers: ReviewerRow[]) => {
   const onReviewersChange = jest.fn();
   render(

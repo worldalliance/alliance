@@ -13,7 +13,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, beforeEach, expect, it, jest } from "bun:test";
+import { beforeEach, expect, it, jest } from "bun:test";
 import EntryContactActions, { InvitationDialog } from "./EntryContactActions";
 
 const phoneEntry: AdminWaitlistEntryDto = {
@@ -59,11 +59,6 @@ beforeEach(() => {
   posts = [];
   invite = { code: "inv123", issued: true, placement: "no_organization" };
   jest.spyOn(config, "getInviteBaseUrl").mockReturnValue("https://site.test");
-});
-
-afterEach(() => {
-  cleanup();
-  jest.restoreAllMocks();
 });
 
 const renderActions = (

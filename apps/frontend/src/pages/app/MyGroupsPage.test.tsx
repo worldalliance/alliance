@@ -2,13 +2,7 @@ import type { CommunityDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../../lib/AuthContext";
 import { testAuthUser, testUser } from "../../stories/testData";
@@ -52,8 +46,6 @@ beforeEach(() => {
   invites = defaultInvites;
   groupAssignment = async () => Response.json({});
 });
-
-afterEach(cleanup);
 
 const group = (id: number, name: string): CommunityDto => ({
   id,

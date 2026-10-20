@@ -1,7 +1,5 @@
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { useOneAtATime } from "./useOneAtATime";
-
-afterEach(cleanup);
 
 const pending = () => {
   let finish = () => {};

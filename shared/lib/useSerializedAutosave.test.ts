@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { useMemo, useState } from "react";
 import {
   useSerializedAutosave,
@@ -75,8 +75,6 @@ const letAutosaveRun = () =>
   });
 
 describe("useSerializedAutosave", () => {
-  afterEach(cleanup);
-
   it("serializes requests and re-derives the queued edit after acknowledgement", async () => {
     const requests: Array<{ plan: SavePlan; result: Deferred }> = [];
     let activeRequests = 0;

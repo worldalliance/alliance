@@ -1,7 +1,5 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import InlineTextInput from "./InlineTextInput";
-
-afterEach(cleanup);
 
 const renderInput = () => {
   const onSave = jest.fn();

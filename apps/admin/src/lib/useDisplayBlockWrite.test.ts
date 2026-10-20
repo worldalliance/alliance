@@ -1,6 +1,6 @@
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import { cleanup, renderHook } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 import { useDisplayBlockWrite } from "./useDisplayBlockWrite";
 
 const images = (id: string, ...srcs: string[]): DisplayBlock => ({
@@ -42,8 +42,6 @@ const mount = (initial: FormSchema) => {
 
 const blockIn = (schema: FormSchema, index = 0) =>
   schema.pages[1]?.fields[index];
-
-afterEach(cleanup);
 
 describe("useDisplayBlockWrite", () => {
   it("lands on the form the builder holds now", () => {

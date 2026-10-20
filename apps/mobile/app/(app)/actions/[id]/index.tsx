@@ -139,7 +139,7 @@ export default function ActionDetailScreen() {
     if (!action) return;
     setRefreshing(true);
     try {
-      await refetchAction({ silent: true });
+      await refetchAction();
       if (activeTab === "activity") {
         await refreshActivities(actionActivities(action.id));
       }
@@ -149,7 +149,7 @@ export default function ActionDetailScreen() {
   }, [action, refetchAction, refreshActivities, activeTab]);
 
   const onAlreadySubmitted = useCallback(() => {
-    void refetchAction({ silent: true });
+    void refetchAction();
     reloadTasks();
   }, [refetchAction, reloadTasks]);
 

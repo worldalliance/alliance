@@ -1,8 +1,6 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import { ToastPlacement, ToastProvider, useToast } from "./ToastProvider";
-
-afterEach(cleanup);
 
 let toast: ReturnType<typeof useToast>;
 

@@ -1,5 +1,9 @@
 import { isPostAuthor, postBylineAuthors } from "@alliance/common/postAuthors";
 import { PostDto } from "@alliance/shared/client";
+import {
+  isScheduledPost,
+  scheduledPostNotice,
+} from "@alliance/shared/lib/scheduledPost";
 import { useForumPost } from "@alliance/shared/lib/useForumPost";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { router, useLocalSearchParams } from "expo-router";
@@ -89,8 +93,7 @@ export default function PostDetailScreen() {
 
   const likedByMe = post.likedByMe ?? false;
   const likeCount = post.likeCount ?? 0;
-  const isPrivateFuturePost =
-    post.visibleAt && new Date(post.visibleAt) > new Date();
+  const isPrivateFuturePost = isScheduledPost(post);
   const action = post.action;
 
   return (
@@ -106,8 +109,7 @@ export default function PostDetailScreen() {
         {isPrivateFuturePost && (
           <View className="bg-sky-100 border border-sky-300 rounded p-3 mb-3">
             <Text className="text-zinc-700 text-sm">
-              Not visible to members yet. This post is scheduled for{" "}
-              {new Date(post.visibleAt!).toLocaleString()}.
+              {scheduledPostNotice.detail(post.visibleAt)}
             </Text>
           </View>
         )}

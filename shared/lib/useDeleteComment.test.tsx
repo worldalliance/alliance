@@ -1,6 +1,6 @@
 import { ExceptionEvent } from "@alliance/common/analytics";
 import { CommentDto } from "@alliance/shared/client";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { recordExceptions } from "./testing/recordExceptions";
 import { routes, serveApi } from "./testing/serveApi";
 import { useDeleteComment } from "./useDeleteComment";
@@ -28,7 +28,6 @@ afterEach(() => {
   unreachable = false;
   refused = null;
   deleted.length = 0;
-  cleanup();
 });
 
 const author: CommentDto["author"] = {

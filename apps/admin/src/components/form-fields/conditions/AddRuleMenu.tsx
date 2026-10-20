@@ -9,8 +9,8 @@ import {
 } from "@alliance/sharedweb/ui/DropdownMenu";
 import { Menu } from "@base-ui/react/menu";
 import { Plus } from "lucide-react";
-import { useCustomValidators } from "../CommonControls";
 import { useCustomValidatorDrafts } from "../customValidatorDrafts";
+import { useCustomValidators } from "../useCustomValidators";
 import type { RuleSources } from "./ConditionRule";
 import { defaultFieldRule } from "./fieldConditions";
 import { crossFormRule } from "./FieldRule";

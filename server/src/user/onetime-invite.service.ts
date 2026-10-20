@@ -35,7 +35,7 @@ import {
   type OnetimeInviteList,
   type OnetimeInviteMemberStats,
   RequestOnetimeInviteDto,
-} from "./dto/invite.dto";
+} from "./dto/onetime-invite.dto";
 import {
   canModifyOnetimeInvite,
   loadedOnetimeInviteInvitingUser,
@@ -454,7 +454,7 @@ export class OnetimeInviteService {
     assertCanManageCommunity(user, communityId);
     return this.onetimeInviteRepository.find({
       where: { community: { id: communityId }, deletedAt: IsNull() },
-      relations: { invitingUser: true },
+      relations: { invitingUser: true, community: true },
     });
   }
 

@@ -25,9 +25,11 @@ import {
 import { type FormSchema } from "@alliance/common/forms/form-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
 import {
-  schemaWithResolvedOptions,
   schemaWithSavedChoices,
   selectedFormulaChoices,
+} from "@alliance/common/forms/formula-choices";
+import {
+  schemaWithResolvedOptions,
   type ResolvedOptions,
 } from "@alliance/common/forms/formula-options";
 import {
@@ -86,12 +88,10 @@ import {
 } from "src/forum/hidden-comments";
 import { renderedImageKey } from "src/images/images.service";
 import { FacepileService } from "src/likes/facepile.service";
-import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import {
   ActionEventReminderService,
   NOTIFICATION_LOOKBACK_WINDOW_MS,
 } from "src/notifs/action-event-reminder.service";
-import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { NotificationPlan } from "src/notifs/dto/notification-plan.dto";
 import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { NotifsService } from "src/notifs/notifs.service";
@@ -194,6 +194,8 @@ import {
   assertNotInACohort,
   assertTagsExist,
 } from "./cohort-reference-validation";
+import { CohortResolutionSession } from "./cohort-resolution-session";
+import { CohortResolverService } from "./cohort-resolver.service";
 import {
   ActionActivityDto,
   ActionDto,
@@ -428,7 +430,7 @@ export class ActionsService {
     private readonly communityService: CommunityService,
     private readonly notifsService: NotifsService,
     private readonly recognitionService: ActionUpdateRecognitionService,
-    private readonly actionEventRecipientService: ActionEventRecipientService,
+    private readonly cohortResolverService: CohortResolverService,
     private readonly actionEventReminderService: ActionEventReminderService,
     private readonly reminderGroupService: ReminderGroupService,
     private readonly likeNotificationService: LikeNotificationService,
@@ -868,7 +870,7 @@ export class ActionsService {
     );
     const cohorts = await Promise.all(
       requiredActions.map((action) =>
-        this.actionEventRecipientService.resolveDecidedCohort({
+        this.cohortResolverService.resolveDecidedCohort({
           action,
           session,
         }),
@@ -4083,11 +4085,10 @@ export class ActionsService {
       // Set-based membership from the shared session (already resolved for
       // this action by findParticipantIdsForActions) instead of the
       // per-user expression walk, whose action leaves each hit the DB.
-      const cohortMemberIds =
-        await this.actionEventRecipientService.resolveCohort({
-          action,
-          session,
-        });
+      const cohortMemberIds = await this.cohortResolverService.resolveCohort({
+        action,
+        session,
+      });
       for (const userId of userIds) {
         const detail = getDetail({ userId, actionId: action.id });
         if (
@@ -4205,7 +4206,7 @@ export class ActionsService {
     // findParticipantIdsForActions reuses it instead of re-hydrating every
     // user. The relations matrix only reads what the projection carries.
     const session = new CohortResolutionSession();
-    const usersPromise = this.actionEventRecipientService.primeActiveUsers(
+    const usersPromise = this.cohortResolverService.primeActiveUsers(
       session,
       () => this.userService.findActiveUsersForRoster(),
     );
@@ -4304,7 +4305,7 @@ export class ActionsService {
     // action in the batch (see CohortResolutionSession).
     const session = new CohortResolutionSession();
     const activeUsers =
-      await this.actionEventRecipientService.getActiveUsers(session);
+      await this.cohortResolverService.getActiveUsers(session);
     const cohortByAction = new Map(
       await Promise.all(
         closedSuites.flatMap((suite) =>
@@ -4312,7 +4313,7 @@ export class ActionsService {
             async (action) =>
               [
                 action.id,
-                await this.actionEventRecipientService.resolveCohort({
+                await this.cohortResolverService.resolveCohort({
                   action,
                   session,
                 }),
@@ -5155,7 +5156,7 @@ export class ActionsService {
   async evaluateCohortExpressionBatch(expression: unknown): Promise<number[]> {
     const parsed = this.parseCohortExpressionOrThrow(expression);
     const result =
-      await this.actionEventRecipientService.resolveCohortMemberIds(parsed);
+      await this.cohortResolverService.resolveCohortMemberIds(parsed);
     return Array.from(result);
   }
 

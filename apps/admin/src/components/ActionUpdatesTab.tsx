@@ -313,6 +313,7 @@ const ActionUpdatesTab = ({
           <ActionUpdateCard
             key={update.id}
             update={update}
+            marksNotificationsRead={false}
             onDelete={
               deletingIds.has(update.id)
                 ? undefined

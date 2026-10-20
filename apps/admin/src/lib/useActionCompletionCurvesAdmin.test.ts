@@ -2,13 +2,11 @@ import type { ActionCompletionCurveDto } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import {
   invalidateActionCompletionCurvesAdmin,
   useActionCompletionCurvesAdmin,
 } from "./useActionCompletionCurvesAdmin";
-
-afterEach(cleanup);
 
 const curves: ActionCompletionCurveDto[] = [
   {

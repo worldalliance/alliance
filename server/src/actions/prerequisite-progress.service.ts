@@ -1,11 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import type { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { In, LessThan, type Repository } from "typeorm";
 import {
   findLatestCompletions,
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
+import type { CohortResolutionSession } from "./cohort-resolution-session";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import { Action } from "./entities/action.entity";
@@ -174,7 +174,6 @@ export class PrerequisiteProgressService {
   ): Promise<Pick<ActionActivity, "userId" | "actionId">[]> {
     const terminal = await this.actionActivityRepository.find({
       where: { ...scope, type: In(TERMINAL_ACTIVITY_TYPES) },
-      select: { userId: true, actionId: true, type: true, createdAt: true },
     });
     return findLatestCompletions(terminal);
   }

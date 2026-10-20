@@ -84,17 +84,19 @@ export function useDragReorder<T>(items: T[], setItems: (items: T[]) => void) {
     setDropPosition(null);
   };
 
-  const handleDragOver = (index: number) => (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    if (draggedIndex === null) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const midpoint = rect.top + rect.height / 2;
-    setDragOverIndex(index);
-    setDropPosition(
-      e.clientY < midpoint ? DropPosition.Before : DropPosition.After,
-    );
-  };
+  const handleDragOver =
+    (index: number, position?: DropPosition) => (e: React.DragEvent) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (draggedIndex === null) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const midpoint = rect.top + rect.height / 2;
+      setDragOverIndex(index);
+      setDropPosition(
+        position ??
+          (e.clientY < midpoint ? DropPosition.Before : DropPosition.After),
+      );
+    };
 
   const performDrop = useCallback(
     (index: number, position: DropPosition) => {

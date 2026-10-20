@@ -2,19 +2,11 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { useInvalidateActionsAdmin } from "@alliance/shared/lib/useActionsAdmin";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import {
-  act,
-  cleanup,
-  render,
-  renderHook,
-  screen,
-} from "@testing-library/react";
+import { act, render, renderHook, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { adminActionListItem } from "../lib/testing/adminActionListItem";
 import ActionsList from "./Actions";
-
-afterEach(cleanup);
 
 const loaded = [
   adminActionListItem(1, "Call your rep"),

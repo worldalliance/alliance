@@ -11,7 +11,7 @@ import {
 } from "@alliance/shared/lib/commentsFilter";
 import { collectCommentIds } from "@alliance/shared/lib/commentTree";
 import { commentThreadLanding } from "@alliance/shared/lib/copy";
-import { useOptionalNotifications } from "@alliance/shared/lib/useNotifications";
+import { useNotificationsCache } from "@alliance/shared/lib/useNotificationsCache";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { cn } from "@alliance/shared/styles/util";
 import BaseButton, {
@@ -129,7 +129,7 @@ const Comments = ({
 }: CommentsProps) => {
   const { user } = useAuth();
   const tree = useCommentTree(objectId, type, initialComments);
-  const notifications = useOptionalNotifications();
+  const { markCachedReadByContent } = useNotificationsCache();
   const isPostComments = type === "post";
   const activeQaMode = isPostComments && qaMode;
 
@@ -141,10 +141,8 @@ const Comments = ({
   useMarkUnreadContentRead({
     contentType: "forum_reply",
     contentIds: commentIds,
-    enabled: !!user && !!notifications && commentIds.length > 0,
-    onMarked: (contentType, contentIds) => {
-      notifications?.applyNotificationsReadByContent(contentType, contentIds);
-    },
+    enabled: !!user && commentIds.length > 0,
+    onMarked: markCachedReadByContent,
   });
 
   const {

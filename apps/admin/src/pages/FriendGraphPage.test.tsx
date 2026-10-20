@@ -4,7 +4,6 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { focusManager, onlineManager } from "@tanstack/react-query";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -17,8 +16,6 @@ import {
   user,
 } from "../components/force-graph/graphTesting";
 import FriendGraphPage from "./FriendGraphPage";
-
-afterEach(cleanup);
 
 const api = serveApi(
   routes({

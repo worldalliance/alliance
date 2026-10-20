@@ -1,8 +1,7 @@
-import { act, cleanup, fireEvent, renderHook } from "@testing-library/react";
+import { act, fireEvent, renderHook } from "@testing-library/react";
 import { useDraftHistory } from "./useDraftHistory";
 
 afterEach(() => {
-  cleanup();
   document.body.innerHTML = "";
 });
 

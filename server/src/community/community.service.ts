@@ -46,10 +46,6 @@ import {
   NotifsService,
 } from "src/notifs/notifs.service";
 import { groupUrl } from "src/search/approutes";
-import {
-  CreateCommunityInviteDto,
-  RequestCommunityInviteDto,
-} from "src/user/dto/invite.dto";
 import { CommunityMemberContactInfo } from "src/user/dto/user-action-relations.dto";
 import {
   assertCanManageCommunity,
@@ -68,6 +64,10 @@ import {
   memberLeftCommunityNotif,
   staffAddedMemberNotif,
 } from "./community.utils";
+import {
+  CreateCommunityInviteDto,
+  RequestCommunityInviteDto,
+} from "./dto/community-invite.dto";
 import { CreateCommunityDto, UpdateCommunityDto } from "./dto/community.dto";
 import {
   CommunityInvite,
@@ -77,6 +77,7 @@ import {
 } from "./entities/community-invite.entity";
 import { Community, loadedCommunityUsers } from "./entities/community.entity";
 import { GroupJoinNotifsService } from "./group-join-notifs.service";
+import { canModifyInvite } from "./invite-permissions";
 import { saveInviteOfLiveParents, setLiveInviteStatus } from "./invite-writes";
 
 /**
@@ -1222,10 +1223,10 @@ export class CommunityService {
     });
 
     if (
-      !(
-        invite.invitingUser?.id === userId ||
-        canManageCommunity(user, loadedCommunityInviteCommunity(invite).id)
-      )
+      !canModifyInvite(user, {
+        invitingUserId: invite.invitingUser?.id ?? null,
+        communityId: loadedCommunityInviteCommunity(invite).id,
+      })
     ) {
       throw new BadRequestException();
     }

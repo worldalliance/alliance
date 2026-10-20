@@ -1,5 +1,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { evaluateVariable } from "@alliance/common/forms/variable-evaluation";
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
+import { R } from "@alliance/common/result";
 import { renderHook } from "@testing-library/react";
 import type { FormResponseOutputDto } from "./client";
 import { useOutputItems, type OutputSource } from "./useOutputItems";
@@ -109,5 +111,45 @@ describe("useOutputItems", () => {
     expect(
       values({ schema: { ...schema, outputViews: [] }, submission }),
     ).toEqual([]);
+  });
+
+  describe("with a random variable", () => {
+    const pick = {
+      name: "pick",
+      inputs: { input1: { kind: "random" } },
+      formula: "input1",
+    } as const;
+    const picking: FormSchema = {
+      ...schema,
+      outputViews: [
+        {
+          type: "default",
+          id: "v1",
+          blocks: [{ id: "t", type: "display", kind: "text", text: "#{pick}" }],
+        },
+      ],
+      variables: [pick],
+    };
+    const text = (source: OutputSource) => {
+      const [item] = renderHook(() => useOutputItems(source)).result.current;
+      return item.type === "display" && item.block.kind === "text"
+        ? item.block.text
+        : undefined;
+    };
+
+    it("shows the pick the submitter saw filling out the form", () => {
+      const seen = R.unwrap(
+        evaluateVariable(pick, {
+          answers: {},
+          fields: new Map(),
+          randomizationKey: "form:1:user:42",
+        }),
+      );
+      expect(text({ schema: picking, submission, submitterId: 42 })).toBe(seen);
+    });
+
+    it("leaves it unresolved without a submitter", () => {
+      expect(text({ schema: picking, submission })).toBe("#{pick}");
+    });
   });
 });

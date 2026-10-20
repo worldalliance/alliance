@@ -1,8 +1,4 @@
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  ActionActivityType,
-  actionsCreateActivityAdmin,
-} from "@alliance/shared/client";
+import { ActionActivityType } from "@alliance/shared/client";
 import { useCallback, useState } from "react";
 
 const ACTIVITY_TYPE_OPTIONS = Object.entries({
@@ -21,16 +17,10 @@ const ACTIVITY_TYPE_OPTIONS = Object.entries({
   );
 
 export interface CreateActivityControlsProps {
-  actionId: number;
-  userId: number;
-  onCreated: () => void;
+  create: (type: ActionActivityType) => Promise<unknown>;
 }
 
-const CreateActivityControls = ({
-  actionId,
-  userId,
-  onCreated,
-}: CreateActivityControlsProps) => {
+const CreateActivityControls = ({ create }: CreateActivityControlsProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCreate = useCallback(
@@ -41,27 +31,14 @@ const CreateActivityControls = ({
 
       setIsSubmitting(true);
       try {
-        const response = await actionsCreateActivityAdmin({
-          body: {
-            actionId,
-            userId,
-            type,
-          },
-        });
-
-        if (response.error) {
-          console.error("Failed to create activity", response.error);
-          return;
-        }
-
-        onCreated();
+        await create(type);
       } catch (err) {
         console.error("Failed to create activity", err);
       } finally {
         setIsSubmitting(false);
       }
     },
-    [actionId, isSubmitting, onCreated, userId],
+    [create, isSubmitting],
   );
 
   return (

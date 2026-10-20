@@ -11,13 +11,7 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { userQueryKeys } from "@alliance/shared/lib/user";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { AuthContext } from "../../lib/AuthContext";
 import { testAuthUser } from "../../stories/testData";
@@ -99,8 +93,6 @@ const api = serveApi(
       Response.json({ message: "Already friends" }, { status: 409 }),
   }),
 );
-
-afterEach(cleanup);
 
 const failStatus = () =>
   api.alsoServing({

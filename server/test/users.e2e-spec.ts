@@ -3241,6 +3241,21 @@ describe("Users (e2e)", () => {
           );
         });
 
+        it("names the group on each invite", async () => {
+          const pendingInvite = await createPendingInviteRequest();
+
+          const res = await list(userAToken).expect(200);
+
+          expect(res.body).toContainEqual(
+            expect.objectContaining({
+              id: pendingInvite.id,
+              community: expect.objectContaining({
+                id: communityLedByUserA.id,
+              }),
+            }),
+          );
+        });
+
         it("lists the group's invites for an admin who leads no community", async () => {
           const pendingInvite = await createPendingInviteRequest();
 

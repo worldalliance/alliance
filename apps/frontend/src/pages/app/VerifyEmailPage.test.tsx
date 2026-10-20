@@ -1,5 +1,5 @@
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import VerifyEmailPage from "./VerifyEmailPage";
 
@@ -16,7 +16,6 @@ serveApi(
 );
 
 afterEach(() => {
-  cleanup();
   verifyStatus = 201;
 });
 

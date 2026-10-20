@@ -14,7 +14,6 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -23,8 +22,6 @@ import {
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
 import FormRenderer from "./FormRenderer";
-
-afterEach(cleanup);
 
 const api = serveApi(routes({}));
 

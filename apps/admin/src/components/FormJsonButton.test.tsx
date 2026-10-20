@@ -1,14 +1,12 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import {
   openSection,
   selectElement,
   settings,
 } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
-
-afterEach(cleanup);
 
 describe("FormBuilder element JSON buttons", () => {
   serveApi(

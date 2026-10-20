@@ -1,3 +1,5 @@
+import { beforeEach, onTestFinished } from "bun:test";
+
 import { client } from "../../client/client.gen";
 import { registerErrorStatus } from "../hey-api";
 
@@ -89,17 +91,32 @@ const serve = (
   });
 };
 
+/** What the client's fetch rejects with between served tests. */
+export class UnservedRequest extends Error {
+  constructor(request: Request) {
+    super(
+      `request outside a served test: ${request.method} ${new URL(request.url).pathname}`,
+    );
+    this.name = "UnservedRequest";
+  }
+}
+
 // setConfig merges, so restore names every key serve overrides: one restore
-// leaves out would survive the file and answer every later one.
+// leaves out would survive the file and answer every later one. Its fetch
+// rejects at once instead of reaching happy-dom's, which tries a real
+// connection once a test has given the page an http URL.
 const restore = (): void => {
   client.setConfig({
     baseUrl: originalConfig.baseUrl,
     throwOnError: originalConfig.throwOnError,
-    fetch: originalConfig.fetch,
+    fetch: async (request) => {
+      throw new UnservedRequest(request);
+    },
   });
 };
 
-/** What serveApi runs after each test: puts the client back, then fails the
+/** What serveApi runs after each test: puts back the client's baseUrl and
+ * throwOnError, leaves a fetch that rejects with UnservedRequest, then fails the
  * test on a request no route answered, whatever the code under test made of
  * the rejection. */
 export const endServedTest = (): void => {
@@ -124,13 +141,17 @@ export interface ServedApi {
   alsoServing: (table: RouteTable) => void;
 }
 
-/** Answers every generated client call in this file from `handler`, and puts
- * the client back after each test. Call at file scope. The handler stands in
+/** Answers every generated client call in this file from `handler`, and
+ * stops answering after each test. Call at file scope. The handler stands in
  * for the client's fetch, so the 401 refresh createClientConfig wraps around it
  * never runs. */
 export function serveApi(handler: ApiHandler): ServedApi {
-  beforeEach(() => serve(handler, { throwOnError: false }));
-  afterEach(endServedTest);
+  // onTestFinished runs after every afterEach, the preload's unmount among
+  // them, so a request a tree sends as it unmounts is still served.
+  beforeEach(() => {
+    serve(handler, { throwOnError: false });
+    onTestFinished(endServedTest);
+  });
   return {
     throwingOnRefusal: (table) => serve(routes(table), { throwOnError: true }),
     alsoServing: (table) =>

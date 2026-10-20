@@ -103,7 +103,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const inner = (
     <SiteAppProvider>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider queryClient={queryClient}>
+        <AuthProvider>
           <InviteSessionProvider>
             <ShareLinkViewerFromAuth>
               <ToastProvider>

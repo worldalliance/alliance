@@ -3,6 +3,7 @@ import type {
   ActionActivityDto,
   ActionEventDto,
   CommunityDto,
+  CommunityInviteDto,
   ConversationDto,
   ConversationType,
   FormResponseDto,
@@ -299,6 +300,21 @@ export function makeOnetimeInvite(
     status: "link_unused",
     invitedUserId: null,
     accepted: false,
+    ...overrides,
+  };
+}
+
+export function makeCommunityInvite(
+  overrides: Partial<CommunityInviteDto> = {},
+): CommunityInviteDto {
+  return {
+    id: 1,
+    status: "invitee_pending",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    community: makeCommunity(),
+    invitedUser: makeProfile(2),
+    invitingUser: makeProfile(1),
     ...overrides,
   };
 }

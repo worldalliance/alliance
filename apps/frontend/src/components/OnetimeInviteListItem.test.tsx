@@ -1,15 +1,7 @@
 import { makeOnetimeInvite } from "@alliance/shared/lib/testFixtures";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import OnetimeInviteListItem from "./OnetimeInviteListItem";
-
-afterEach(cleanup);
 
 const invite = makeOnetimeInvite({ id: 7 });
 

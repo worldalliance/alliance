@@ -2,11 +2,9 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, expect, it } from "bun:test";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, expect, it } from "bun:test";
 import { useActionMergedResponsesAdmin } from "./useActionMergedResponsesAdmin";
-
-afterEach(cleanup);
 
 const stat = (variantId: number | null, formId: number | null) => ({
   variantId,

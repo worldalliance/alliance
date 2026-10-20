@@ -12,13 +12,7 @@ import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
 import { QueryClientProvider } from "@tanstack/react-query";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
 import { AuthContext } from "../lib/AuthContext";
 import { authValue } from "../testing/authValue";
@@ -26,8 +20,6 @@ import ActionActivityDetail, {
   type ActionActivityDetailContext,
 } from "./ActionActivityDetail";
 import * as CommentsModule from "./Comments";
-
-afterEach(cleanup);
 
 beforeEach(() => {
   jest.spyOn(CommentsModule, "default").mockImplementation(() => <></>);

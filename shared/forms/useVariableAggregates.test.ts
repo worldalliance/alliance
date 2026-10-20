@@ -1,6 +1,6 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { FormVariable } from "@alliance/common/forms/variables";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { routes, serveApi } from "../lib/testing/serveApi";
 import {
   AggregateReader,
@@ -10,8 +10,6 @@ import {
   type AggregateTarget,
   type VariableAggregates,
 } from "./useVariableAggregates";
-
-afterEach(cleanup);
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {

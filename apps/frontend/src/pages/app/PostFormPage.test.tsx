@@ -4,7 +4,6 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -35,8 +34,6 @@ declare const happyDOM: { setURL: (url: string) => void };
 const setUrl = (url: string) => happyDOM.setURL(url);
 
 const formUrl = "http://localhost/forum/edit/new";
-
-afterEach(cleanup);
 
 const savedPost = (title: string) =>
   ({

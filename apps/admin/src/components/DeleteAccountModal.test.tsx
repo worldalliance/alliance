@@ -1,9 +1,7 @@
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import DeleteAccountModal from "./DeleteAccountModal";
-
-afterEach(cleanup);
 
 let uploadRefusal: { status: number; message: string };
 beforeEach(() => {

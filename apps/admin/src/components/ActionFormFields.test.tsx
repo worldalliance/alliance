@@ -3,8 +3,6 @@ import type { ActionFieldDef } from "../lib/actionFieldDefs";
 import { createActionForm } from "../lib/testing/createActionForm";
 import ActionFormFields from "./ActionFormFields";
 
-afterEach(cleanup);
-
 const form = createActionForm({ image: "cover.png", optional: true });
 
 const renderFields = (params: {

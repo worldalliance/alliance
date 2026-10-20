@@ -3,7 +3,6 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
 import { resolveUsMembership, UsMembership } from "src/geo/us-membership";
-import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { loadedUserTags, User } from "src/user/entities/user.entity";
 import {
@@ -18,6 +17,7 @@ import {
   evaluateCohortExpression,
   singleUserCohortContext,
 } from "./cohort-expression.evaluator";
+import { CohortResolutionSession } from "./cohort-resolution-session";
 import {
   Action,
   parseAction,

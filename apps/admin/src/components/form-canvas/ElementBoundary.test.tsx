@@ -1,10 +1,8 @@
 import type { PageItem } from "@alliance/common/forms/form-schema";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { useContext } from "react";
 import { OverrideTargetContext } from "../display-blocks/perUserContent";
 import { ElementBoundary } from "./ElementBoundary";
-
-afterEach(cleanup);
 
 const header = (text: string): PageItem => ({
   id: "h",

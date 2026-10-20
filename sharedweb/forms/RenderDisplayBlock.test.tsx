@@ -5,12 +5,10 @@ import {
   type CopyTextBlock,
 } from "@alliance/common/forms/display-blocks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider, SiteOriginLinkProvider } from "../ui/SiteAppProvider";
 import RenderDisplayBlock from "./RenderDisplayBlock";
-
-afterEach(cleanup);
 
 const accordion = (singleOpen?: boolean): AccordionBlock => ({
   type: "display",

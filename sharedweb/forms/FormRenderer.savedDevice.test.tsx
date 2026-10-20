@@ -2,12 +2,10 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
 import FormRenderer from "./FormRenderer";
-
-afterEach(cleanup);
 
 serveApi(routes({}));
 

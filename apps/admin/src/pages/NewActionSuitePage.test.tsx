@@ -1,16 +1,8 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import NewActionSuitePage from "./NewActionSuitePage";
-
-afterEach(cleanup);
 
 let createStatus = 200;
 

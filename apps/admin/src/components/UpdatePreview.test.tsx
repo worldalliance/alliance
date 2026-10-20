@@ -1,8 +1,6 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import type { CollectiveResultTexts } from "../lib/updatePreview";
 import { PreviewCountsKind, UpdatePreview } from "./UpdatePreview";
-
-afterEach(cleanup);
 
 const split: CollectiveResultTexts = {
   shortNotifString: "a hearing",

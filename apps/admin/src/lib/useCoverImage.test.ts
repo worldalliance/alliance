@@ -3,7 +3,7 @@ import { pending, type Pending } from "@alliance/shared/lib/testing/pending";
 import * as uploadModule from "@alliance/shared/lib/uploadImageDataUri";
 import * as imageSrcModule from "@alliance/sharedweb/lib/imageSrc";
 import * as readFileDataUriModule from "@alliance/sharedweb/lib/readFileDataUri";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 
 let reads: Pending<Result<string, Error>>[] = [];
 let uploads: Pending<Result<string, string>>[] = [];
@@ -58,7 +58,6 @@ function mount(storedImage: string | null = "https://stored.test/old.webp") {
 afterEach(() => {
   reads = [];
   uploads = [];
-  cleanup();
 });
 
 describe("useCoverImage", () => {

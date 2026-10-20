@@ -1,10 +1,10 @@
 import { readDisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
 import { ActionUpdateDto } from "@alliance/shared/client";
+import { useNotificationsCache } from "@alliance/shared/lib/useNotificationsCache";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
-import { formatDistance } from "date-fns";
+import { formatTime } from "@alliance/shared/lib/utils";
 import { useMemo } from "react";
 import { View } from "react-native";
-import { useNotificationsCache } from "../lib/useNotificationsCache";
 import DisplayOnlyRenderer from "./DisplayOnlyRenderer";
 import Text, { FontWeight } from "./system/Text";
 
@@ -38,9 +38,7 @@ export default function ActionUpdateCard({ update }: ActionUpdateCardProps) {
               <Text weight={FontWeight.Medium}>{update.title}</Text>
             </Text>
             <Text className="text-zinc-500">
-              {formatDistance(new Date(update.date), new Date(), {
-                addSuffix: true,
-              })}
+              {formatTime(new Date(update.date), { addSuffix: true })}
             </Text>
           </View>
         </View>

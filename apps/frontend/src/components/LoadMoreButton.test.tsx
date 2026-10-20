@@ -1,7 +1,5 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import LoadMoreButton from "./LoadMoreButton";
-
-afterEach(cleanup);
 
 describe("LoadMoreButton", () => {
   it("asks for the next page when pressed", () => {

@@ -4,7 +4,7 @@ import {
   type TrackedArrival,
 } from "@alliance/common/linkOpening";
 import { createLinkOpeningQueue } from "@alliance/shared/lib/linkOpeningQueue";
-import { useNotifications } from "@alliance/shared/lib/useNotifications";
+import { useNotificationsCache } from "@alliance/shared/lib/useNotificationsCache";
 import type { PostHog } from "posthog-js";
 import { useEffect } from "react";
 
@@ -80,11 +80,11 @@ export function useLinkOpenings(params: { withPosthog: boolean }): void {
 
 /** Recording an opening marks its notification read, so the bell reloads. */
 export function RefreshNotificationsOnOpening(): null {
-  const { refreshNotifications } = useNotifications();
+  const { refresh } = useNotificationsCache();
   useEffect(() => {
-    const refresh = () => void refreshNotifications({ limit: 20 });
-    window.addEventListener(SETTLED_EVENT, refresh);
-    return () => window.removeEventListener(SETTLED_EVENT, refresh);
-  }, [refreshNotifications]);
+    const reload = () => void refresh();
+    window.addEventListener(SETTLED_EVENT, reload);
+    return () => window.removeEventListener(SETTLED_EVENT, reload);
+  }, [refresh]);
   return null;
 }

@@ -111,6 +111,7 @@ export type OnetimeInviteActions = {
   onReject?: (inviteId: number) => void;
   onDelete?: (inviteId: number, event: unknown) => void;
   onDeleteWithConfirm?: (inviteId: number, event: unknown) => void;
+  /** Given for invites whose link the viewer may share; shows the Share button. */
   onShared?: (inviteId: number) => void;
   /** Given for invites that can still be edited; makes the whole row open settings. */
   onOpenSettings?: (inviteId: number) => void;
@@ -197,7 +198,7 @@ export function bucketOnetimeInvitesByActionability(params: {
 
 export function bucketCommunityInvitesByActionability(params: {
   invites: CommunityInviteDto[];
-  userId: number;
+  userId: number | undefined;
 }): {
   actionable: CommunityInviteDto[];
   waitingForResponse: CommunityInviteDto[];
@@ -208,6 +209,10 @@ export function bucketCommunityInvitesByActionability(params: {
   const actionable: CommunityInviteDto[] = [];
   const waitingForResponse: CommunityInviteDto[] = [];
   const settled: CommunityInviteDto[] = [];
+
+  if (userId === undefined) {
+    return { actionable, waitingForResponse, settled };
+  }
 
   for (const invite of invites) {
     switch (invite.status) {

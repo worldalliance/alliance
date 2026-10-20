@@ -9,6 +9,7 @@ import {
   ActionsService,
   GLOBAL_FEED_FACEPILE_LIMIT,
 } from "src/actions/actions.service";
+import { CohortResolverService } from "src/actions/cohort-resolver.service";
 import type { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { SingleMemberCohortService } from "src/actions/single-member-cohort.service";
 import { ContractService } from "src/contract/contract.service";
@@ -871,7 +872,7 @@ describe("Actions (e2e)", () => {
     });
 
     it("resolves MissedActionDeadline the same on the single-user and population paths", async () => {
-      const recipientService = ctx.app.get(ActionEventRecipientService);
+      const cohortResolverService = ctx.app.get(CohortResolverService);
       const singleMemberCohortService = ctx.app.get(SingleMemberCohortService);
       const stamp = Date.now();
       const hoursFromNow = (hours: number) =>
@@ -969,8 +970,8 @@ describe("Actions (e2e)", () => {
       } satisfies CohortExpression;
 
       const [population, notPopulation] = await Promise.all([
-        recipientService.resolveCohortMemberIds(missed),
-        recipientService.resolveCohortMemberIds(notMissed),
+        cohortResolverService.resolveCohortMemberIds(missed),
+        cohortResolverService.resolveCohortMemberIds(notMissed),
       ]);
       for (const [userId, isMissed] of expected) {
         const user = await userRepo.findOneOrFail({
@@ -1080,7 +1081,7 @@ describe("Actions (e2e)", () => {
 
     it("splits members into US and non-US by city, falling back to time zone", async () => {
       const cityRepo = ctx.dataSource.getRepository(City);
-      const recipientService = ctx.app.get(ActionEventRecipientService);
+      const cohortResolverService = ctx.app.get(CohortResolverService);
       const singleMemberCohortService = ctx.app.get(SingleMemberCohortService);
       const stamp = Date.now();
 
@@ -1144,8 +1145,8 @@ describe("Actions (e2e)", () => {
       const unplaceableUser = await makeUser("unplaceable", {});
 
       const [inUs, outsideUs] = await Promise.all([
-        recipientService.resolveCohortMemberIds({ type: "USMember" }),
-        recipientService.resolveCohortMemberIds({ type: "NonUSMember" }),
+        cohortResolverService.resolveCohortMemberIds({ type: "USMember" }),
+        cohortResolverService.resolveCohortMemberIds({ type: "NonUSMember" }),
       ]);
 
       expect(inUs.has(usCityUser.id)).toBe(true);
@@ -1162,7 +1163,7 @@ describe("Actions (e2e)", () => {
 
       // NOT(USMember) keeps the members we can't place, so it is wider than
       // NonUSMember.
-      const notUs = await recipientService.resolveCohortMemberIds({
+      const notUs = await cohortResolverService.resolveCohortMemberIds({
         type: "NOT",
         child: { type: "USMember" },
       });
@@ -1200,7 +1201,7 @@ describe("Actions (e2e)", () => {
     });
 
     it("selects every user on AllMembers and staff users on Staff, on both paths", async () => {
-      const recipientService = ctx.app.get(ActionEventRecipientService);
+      const cohortResolverService = ctx.app.get(CohortResolverService);
       const singleMemberCohortService = ctx.app.get(SingleMemberCohortService);
       const stamp = Date.now();
       const member = await userService.create({
@@ -1220,8 +1221,8 @@ describe("Actions (e2e)", () => {
       ]);
 
       const [allMembers, staff] = await Promise.all([
-        recipientService.resolveCohortMemberIds({ type: "AllMembers" }),
-        recipientService.resolveCohortMemberIds({ type: "Staff" }),
+        cohortResolverService.resolveCohortMemberIds({ type: "AllMembers" }),
+        cohortResolverService.resolveCohortMemberIds({ type: "Staff" }),
       ]);
       expect(allMembers.has(memberUser.id)).toBe(true);
       expect(allMembers.has(staffUser.id)).toBe(true);

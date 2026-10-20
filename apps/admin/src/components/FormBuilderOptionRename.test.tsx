@@ -1,12 +1,10 @@
 import type { FormSchema, PageItem } from "@alliance/common/forms/form-schema";
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { client } from "@alliance/shared/client/client.gen";
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { z } from "zod";
 import { selectElement } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
-
-afterEach(cleanup);
 
 const equalsAlpha: VisibleIfFormula = {
   conditions: { c1: { kind: "equals", when: "ctrl", equals: "alpha" } },

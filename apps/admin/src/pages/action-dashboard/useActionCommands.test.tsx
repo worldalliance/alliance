@@ -2,13 +2,11 @@ import type { CreateActionDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { createActionForm } from "../../lib/testing/createActionForm";
 import { useActionCommands } from "./useActionCommands";
-
-afterEach(cleanup);
 
 let getFormStatus = 200;
 let createFormStatus = 200;

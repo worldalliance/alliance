@@ -8,7 +8,7 @@ import {
 // eslint-disable-next-line api-client/named-hooks-only -- the TanStack hooks in this file own these calls
 import { oAuthUnlink, type OAuthAccountDto, type UserDto } from "../client";
 import { thrownRefusalMessage } from "./hey-api";
-import { meQuery } from "./meQuery";
+import { meCache, meQuery } from "./useMe";
 
 export type SignInMethods = {
   hasPassword: boolean;
@@ -73,10 +73,11 @@ function settleSignInMethods(
   queryClient: QueryClient,
   user: UserDto | undefined,
 ): Promise<void> {
+  const cache = meCache(queryClient);
   if (user) {
-    queryClient.setQueryData(meQuery.queryKey, user);
+    cache.set(user);
   }
-  return queryClient.invalidateQueries({ queryKey: meQuery.queryKey });
+  return cache.invalidate();
 }
 
 export function useSignInMethods() {
@@ -84,7 +85,7 @@ export function useSignInMethods() {
 
   const query = useQuery({
     ...meQuery,
-    select: signInMethods,
+    select: (me) => signInMethods(me.user),
     // The settings form fetches this user fresh right before the list mounts.
     refetchOnMount: false,
   });

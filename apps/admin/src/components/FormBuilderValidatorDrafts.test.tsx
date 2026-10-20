@@ -3,19 +3,11 @@ import {
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import z from "zod";
 import { openSection, selectElement } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
-import { resetCustomValidatorsCache } from "./form-fields/CommonControls";
-
-afterEach(cleanup);
+import { resetCustomValidatorsCache } from "./form-fields/useCustomValidators";
 
 const withList: FormSchema = {
   pages: [

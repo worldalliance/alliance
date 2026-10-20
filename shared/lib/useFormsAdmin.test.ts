@@ -1,4 +1,4 @@
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { queryKeys } from "./queryKeys";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
@@ -66,8 +66,6 @@ beforeEach(() => {
   listCalls = 0;
   listed = [];
 });
-
-afterEach(cleanup);
 
 const settled = (state: () => FormResponseCounts, formId: number) => () =>
   expect(state().statusByForm[formId]).not.toBe(ResponseCountStatus.Pending);

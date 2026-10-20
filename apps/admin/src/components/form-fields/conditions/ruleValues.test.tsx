@@ -5,10 +5,9 @@ import type {
   RangeField,
 } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { addRule, latest, renderEditor } from "./conditionEditorTesting";
 
-afterEach(cleanup);
 serveApi(
   routes({
     "GET /tasks/listForms": () => Response.json([]),

@@ -2,13 +2,7 @@ import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { uploadSessionExpiredMessage } from "../lib/sessionExpired";
 import VideoReplaceForm from "./VideoReplaceForm";
 
@@ -25,7 +19,6 @@ serveApi(
 beforeEach(() => {
   requests = 0;
 });
-afterEach(cleanup);
 
 const renderForm = () => {
   const query = queryWrapper();

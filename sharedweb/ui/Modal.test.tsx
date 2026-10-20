@@ -16,8 +16,6 @@ import Modal, {
   ModalTitle,
 } from "./Modal";
 
-afterEach(cleanup);
-
 function outsideDialog(): HTMLElement {
   const dialog = screen.getByRole("dialog");
   const outside = dialog.parentElement;

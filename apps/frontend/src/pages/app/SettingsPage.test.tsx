@@ -1,13 +1,12 @@
 import { OAuthProvider } from "@alliance/common/oauth";
 import type { City, UserDto } from "@alliance/shared/client";
-import { meQuery } from "@alliance/shared/lib/meQuery";
 import { makeNotificationSettings } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
+import { meQuery } from "@alliance/shared/lib/useMe";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -61,7 +60,6 @@ serveApi(
 );
 
 afterEach(() => {
-  cleanup();
   seedings = 0;
   meFails = false;
   city = null;
@@ -158,10 +156,12 @@ it("doesn't show connections cached from an earlier visit when the profile load 
     defaultOptions: { queries: { retry: false } },
   });
   queryClient.setQueryData(meQuery.queryKey, {
-    ...me,
-    oauthAccounts: [
-      { provider: OAuthProvider.Google, email: "earlier@example.com" },
-    ],
+    user: {
+      ...me,
+      oauthAccounts: [
+        { provider: OAuthProvider.Google, email: "earlier@example.com" },
+      ],
+    },
   });
   meFails = true;
   city = {

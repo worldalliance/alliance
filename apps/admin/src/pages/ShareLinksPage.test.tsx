@@ -11,7 +11,6 @@ import * as config from "@alliance/sharedweb/lib/config";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -20,8 +19,6 @@ import {
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { adminActionListItem } from "../lib/testing/adminActionListItem";
 import ShareLinksPage from "./ShareLinksPage";
-
-afterEach(cleanup);
 
 const campaign = (id: number, name: string) =>
   ({

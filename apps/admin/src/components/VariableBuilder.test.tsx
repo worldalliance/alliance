@@ -1,15 +1,7 @@
 import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Harness, town } from "./VariableBuilder.testHarness";
-
-afterEach(cleanup);
 
 serveApi(
   routes({

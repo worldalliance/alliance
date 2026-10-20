@@ -1,15 +1,7 @@
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import ImageUpload from "./ImageUpload";
-
-afterEach(cleanup);
 
 let uploadRefusal: { status: number; message: string };
 beforeEach(() => {

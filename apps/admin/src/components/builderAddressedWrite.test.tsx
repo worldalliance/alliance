@@ -2,13 +2,7 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { findDisplayBlock } from "../lib/displayBlockById";
@@ -25,7 +19,6 @@ const renderIn = (element: ReactElement) =>
 
 // `updateCurrent` is optional, so a builder that stops handing it out
 // typechecks and puts the stale-form write back with nothing to say so.
-afterEach(cleanup);
 
 describe("OutputBuilder hands a display block the addressed write", () => {
   const schema: FormSchema = {

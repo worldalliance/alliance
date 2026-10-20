@@ -2,15 +2,12 @@ import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
 } from "@testing-library/react";
 import { Harness, town } from "./VariableBuilder.testHarness";
-
-afterEach(cleanup);
 
 const scoreField: AnyField = {
   id: "score",

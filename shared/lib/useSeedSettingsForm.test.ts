@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { useSeedSettingsForm } from "./useSeedSettingsForm";
@@ -23,11 +23,6 @@ const api = serveApi(routes(table));
 beforeEach(() => {
   seedings = 0;
   refusals = 0;
-});
-
-afterEach(() => {
-  cleanup();
-  jest.restoreAllMocks();
 });
 
 const seed = (user: { id: number }) => {
@@ -58,6 +53,30 @@ describe("useSeedSettingsForm", () => {
 
     await waitFor(() => expect(setSavedProfile).toHaveBeenCalledTimes(2));
     expect(seedings).toBe(2);
+  });
+
+  it("seeds a member who replaces another mid-load with their own profile", async () => {
+    const released = Promise.withResolvers<void>();
+    let signedInId = 7;
+    api.alsoServing({
+      "GET /auth/me": async () => {
+        seedings += 1;
+        const id = signedInId;
+        if (seedings === 1) await released.promise;
+        return Response.json({ user: { id } });
+      },
+    });
+    const { setSavedProfile, view } = seed({ id: 7 });
+    await waitFor(() => expect(seedings).toBe(1));
+
+    signedInId = 8;
+    view.rerender({ user: { id: 8 } });
+    released.resolve();
+
+    await waitFor(() => expect(view.result.current).toBe(false));
+    await waitFor(() =>
+      expect(setSavedProfile).toHaveBeenLastCalledWith({ id: 8 }),
+    );
   });
 
   it.each([

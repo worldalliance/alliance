@@ -1,5 +1,9 @@
+import { formatBadgeCount } from "@alliance/shared/lib/badgeCount";
 import { NAV_BAR_ICON_HEIGHT } from "@alliance/shared/lib/constants";
-import { useNotifications } from "@alliance/shared/lib/useNotifications";
+import {
+  useNotificationsList,
+  useUnreadNotificationCount,
+} from "@alliance/shared/lib/useNotificationsCache";
 import { cn } from "@alliance/shared/styles/util";
 import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -7,6 +11,10 @@ import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { Bell } from "lucide-react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { href, useNavigate } from "react-router";
+import {
+  NOTIFICATIONS_PREVIEW_LIMIT,
+  useNotificationActions,
+} from "../lib/useNotificationActions";
 import NotificationList from "./NotificationList";
 
 const VIEWPORT_EDGE_PX = 8;
@@ -16,15 +24,13 @@ const NotificationsIcon = () => {
   const [panelShiftX, setPanelShiftX] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
   const ref = useOutsideClick(() => setIsOpen(false));
-  const {
-    notifications,
-    unreadCount,
-    handleMarkAllAsRead,
-    handleMarkAsRead,
-    handleNotifClick,
-    refreshNotifications,
-  } = useNotifications();
+  const notifications =
+    useNotificationsList(NOTIFICATIONS_PREVIEW_LIMIT).data ?? [];
+  const unreadCount = useUnreadNotificationCount();
+  const { handleMarkAllAsRead, handleMarkAsRead, handleNotifClick } =
+    useNotificationActions();
   const navigate = useNavigate();
+  const unreadLabel = formatBadgeCount(unreadCount);
   const toggle = useCallback(() => {
     setIsOpen(!isOpen);
   }, [isOpen]);
@@ -73,9 +79,9 @@ const NotificationsIcon = () => {
       <div className="flex items-center gap-x-0.5">
         <Bell size={NAV_BAR_ICON_HEIGHT} fill="black" />
       </div>
-      {unreadCount > 0 && (
-        <span className="absolute -top-1 -right-1 w-5.5 h-5.5 px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-medium">
-          {unreadCount > 99 ? "99+" : unreadCount}
+      {unreadLabel && (
+        <span className="absolute -top-1 -right-1 min-w-5.5 h-5.5 px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-medium">
+          {unreadLabel}
         </span>
       )}
       {isOpen && (
@@ -108,7 +114,7 @@ const NotificationsIcon = () => {
               <Button
                 color={ButtonColor.Grey}
                 size="mediumDynamic"
-                onClick={handleMarkAllAsRead}
+                onClick={handleMarkAllAsRead(NOTIFICATIONS_PREVIEW_LIMIT)}
               >
                 Mark all as read
               </Button>
@@ -121,7 +127,6 @@ const NotificationsIcon = () => {
               notifications={notifications}
               handleNotifClick={handleNotifClick}
               handleMarkAsRead={handleMarkAsRead}
-              refreshNotifications={() => refreshNotifications({ limit: 20 })}
               listClassName="flex flex-col gap-y-8 divide-y divide-grey-2"
               inset={false}
             />

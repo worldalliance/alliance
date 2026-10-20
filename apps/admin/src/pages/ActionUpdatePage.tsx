@@ -1,39 +1,30 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
   displayOnlyToFormSchema,
   readDisplayOnlySchema,
 } from "@alliance/common/forms/display-only-schema";
 import { R } from "@alliance/common/result";
-import { run } from "@alliance/common/run";
 // eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   actionsFindOneAdmin,
-  ActionUpdateNotifyType,
   type ActionEventDto,
   type AdminActionUpdateDto,
-  type RecognitionPreviewCountsDto,
 } from "@alliance/shared/client";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
-import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
-import type { UseQueryResult } from "@tanstack/react-query";
-import { Eye, EyeOff } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
+import { NotificationAudienceFields } from "../components/ActionUpdateNotificationAudience";
+import { COLLECTIVE_RESULT_DESCRIPTION } from "../components/ActionUpdateRecognition";
 import {
-  COLLECTIVE_RESULT_DESCRIPTION,
-  NotificationHeldBanner,
-} from "../components/ActionUpdateRecognition";
+  HiddenFromMembersBanner,
+  VisibilityControls,
+} from "../components/ActionUpdateVisibility";
+import { AudienceUpdatePreview } from "../components/AudienceUpdatePreview";
 import { CollectiveResultSplitFields } from "../components/CollectiveResultSplitFields";
 import { FormBuilder } from "../components/FormBuilder";
 import FormSection from "../components/FormSection";
-import {
-  PreviewCountsKind,
-  UPDATE_PREVIEW_DESCRIPTION,
-  UpdatePreview,
-  type PreviewCounts,
-} from "../components/UpdatePreview";
+import { UPDATE_PREVIEW_DESCRIPTION } from "../components/UpdatePreview";
 import {
   detailsBody,
   formOf,
@@ -41,73 +32,14 @@ import {
   usesRecognition,
   type ActionUpdateForm,
 } from "../lib/actionUpdateDetails";
-import {
-  ACTION_UPDATE_NOTIFY_TYPE_LABELS,
-  ACTION_UPDATE_NOTIFY_TYPES,
-} from "../lib/actionUpdateNotifyTypes";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
-import { useRecognitionPreviewCounts } from "../lib/useRecognitionPreviewCounts";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 
 const tabs = ["details", "content"] as const;
 
-enum VisibilityState {
-  Unpublished = "unpublished",
-  Scheduled = "scheduled",
-  Published = "published",
-}
-
-type Visibility =
-  | { state: VisibilityState.Unpublished }
-  | { state: VisibilityState.Scheduled; visibleAt: Date }
-  | { state: VisibilityState.Published; visibleAt: Date };
-
-const visibilityOf = (
-  update: AdminActionUpdateDto,
-  now: number,
-): Visibility => {
-  if (!update.visibleAt) return { state: VisibilityState.Unpublished };
-
-  const visibleAt = new Date(update.visibleAt);
-  return visibleAt.getTime() > now
-    ? { state: VisibilityState.Scheduled, visibleAt }
-    : { state: VisibilityState.Published, visibleAt };
-};
-
 const TEXT_INPUT_CLASS =
   "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm";
-
-const previewCountsOf = (
-  form: ActionUpdateForm,
-  query: UseQueryResult<RecognitionPreviewCountsDto>,
-): PreviewCounts => {
-  if (form.notifyType === "none") {
-    return {
-      kind: PreviewCountsKind.Counted,
-      counts: {
-        completed: 0,
-        didNotComplete: 0,
-        uninvolved: 0,
-      },
-    };
-  }
-  if (form.notifyType === "tag" && !form.tagId) {
-    return {
-      kind: PreviewCountsKind.Unavailable,
-      reason: "Pick a tag to count recipients.",
-    };
-  }
-  if (query.data) {
-    return { kind: PreviewCountsKind.Counted, counts: query.data };
-  }
-  return query.isError
-    ? {
-        kind: PreviewCountsKind.Unavailable,
-        reason: "Couldn't count the recipients.",
-      }
-    : { kind: PreviewCountsKind.Pending };
-};
 
 const ActionUpdatePage: React.FC = () => {
   const { actionId: actionIdParam, updateId: updateIdParam } = useParams<{
@@ -160,20 +92,7 @@ const ActionUpdatePage: React.FC = () => {
     fillForm(update);
   }
 
-  const { tags: availableTags } = useTagsAdmin();
   const savedForm = useMemo(() => update && formOf(update), [update]);
-  const countsTagId = form?.notifyType === "tag" ? form.tagId || null : null;
-  const countsQuery = useRecognitionPreviewCounts({
-    updateId: updateId ?? 0,
-    notifyType: form?.notifyType ?? "none",
-    tagId: countsTagId,
-    enabled:
-      !!form &&
-      usesRecognition(form.notificationMode) &&
-      !update?.recognitionPreparedAt &&
-      form.notifyType !== "none" &&
-      (form.notifyType !== "tag" || countsTagId !== null),
-  });
 
   useEffect(() => {
     if (isNaN(actionId)) return;
@@ -288,101 +207,10 @@ const ActionUpdatePage: React.FC = () => {
   const recognition = usesRecognition(form.notificationMode);
   const hasUnsavedDetails = JSON.stringify(form) !== JSON.stringify(savedForm);
 
-  const now = Date.now();
-  const visibility = visibilityOf(update, now);
-  const displayDate = new Date(update.date);
-
   const notifyBlockedReason = notifyBlockedReasonOf({
     notifyType: update.notifyType,
     hasUnsavedDetails,
     hasBody: !!storedSchema && storedSchema.blocks.length > 0,
-  });
-
-  // Unpublishing moves `visibleAt` to the saved date, so an unsaved edit to the
-  // picker would schedule the update for a different time than the one shown.
-  const unpublishBlockedReason = run(() => {
-    if (hasUnsavedDetails) {
-      return "Save your changes first.";
-    }
-    if (displayDate.getTime() <= now) {
-      return "The displayed date has already passed, so there's nothing to wait for.";
-    }
-    return null;
-  });
-
-  const hiddenBanner = run(() => {
-    switch (visibility.state) {
-      case VisibilityState.Unpublished:
-        return "Not visible to members yet — this update publishes the first time you save content on the Content tab.";
-      case VisibilityState.Scheduled:
-        return `Not visible to members yet — this update publishes ${visibility.visibleAt.toLocaleString()}.`;
-      case VisibilityState.Published:
-        return null;
-      default:
-        throw new Error(`unknown visibility: ${visibility satisfies never}`);
-    }
-  });
-
-  const visibilitySection = run(() => {
-    switch (visibility.state) {
-      case VisibilityState.Unpublished:
-        return (
-          <p className="text-sm text-gray-700">
-            Not published yet — this update publishes the first time you save
-            content on the Content tab.
-          </p>
-        );
-      case VisibilityState.Scheduled:
-        return (
-          <>
-            <p className="text-sm text-gray-700">
-              Hidden from members until {visibility.visibleAt.toLocaleString()},
-              when it publishes on its own.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handlePublishNow}
-                disabled={changingVisibility}
-                className="flex items-center gap-2 px-4 py-2 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:hover:scale-100"
-              >
-                <Eye className="w-4 h-4" aria-hidden />
-                {changingVisibility ? "Publishing..." : "Publish now"}
-              </button>
-              <p className="text-xs text-gray-500">
-                Makes the update visible to members immediately.
-              </p>
-            </div>
-          </>
-        );
-      case VisibilityState.Published:
-        return (
-          <>
-            <p className="text-sm text-gray-700">
-              Visible to members since {visibility.visibleAt.toLocaleString()}.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handleUnpublish}
-                disabled={changingVisibility || unpublishBlockedReason !== null}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-sm font-medium disabled:opacity-50 disabled:hover:bg-white"
-              >
-                <EyeOff className="w-4 h-4" aria-hidden />
-                {changingVisibility
-                  ? "Unpublishing..."
-                  : "Unpublish until displayed date"}
-              </button>
-              <p className="text-xs text-gray-500">
-                {unpublishBlockedReason ??
-                  `Hides it from members until ${displayDate.toLocaleString()}.`}
-              </p>
-            </div>
-          </>
-        );
-      default:
-        throw new Error(`unknown visibility: ${visibility satisfies never}`);
-    }
   });
 
   const detailsTab = (
@@ -433,82 +261,14 @@ const ActionUpdatePage: React.FC = () => {
       </FormSection>
 
       <FormSection title="Notification audience">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-gray-700">Audience</span>
-            <select
-              value={form.notifyType}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  notifyType: e.target.value as ActionUpdateNotifyType,
-                })
-              }
-              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-            >
-              {ACTION_UPDATE_NOTIFY_TYPES.map((option) => (
-                <option key={option} value={option}>
-                  {ACTION_UPDATE_NOTIFY_TYPE_LABELS[option]}
-                </option>
-              ))}
-            </select>
-          </label>
-          {form.notifyType === "tag" && (
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium text-gray-700">Target tag</span>
-              <select
-                value={form.tagId}
-                onChange={(e) => setForm({ ...form, tagId: e.target.value })}
-                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-              >
-                <option value="">Select a tag</option>
-                {availableTags.map((tag) => (
-                  <option key={tag.id} value={tag.id}>
-                    {tag.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </div>
-        <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
-          {update.notificationHeldReason && (
-            <NotificationHeldBanner reason={update.notificationHeldReason} />
-          )}
-          {update.notifiedAt ? (
-            <p className="text-sm text-gray-700">
-              Sent {new Date(update.notifiedAt).toLocaleString()} to{" "}
-              {ACTION_UPDATE_NOTIFY_TYPE_LABELS[
-                update.notifyType
-              ].toLowerCase()}
-              . An update can only be notified about once.
-              {recognition &&
-                !update.recognitionPreparedAt &&
-                " Each member's copy is sent when the update comes due."}
-            </p>
-          ) : (
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  handleNotify(
-                    ACTION_UPDATE_NOTIFY_TYPE_LABELS[
-                      update.notifyType
-                    ].toLowerCase(),
-                  )
-                }
-                disabled={notifying || notifyBlockedReason !== null}
-                className="px-4 py-2 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:hover:scale-100"
-              >
-                {notifying ? "Sending..." : "Send notification"}
-              </button>
-              <p className="text-xs text-gray-500">
-                {notifyBlockedReason ??
-                  "Nothing has been sent yet. Members are notified when you send it."}
-              </p>
-            </div>
-          )}
-        </div>
+        <NotificationAudienceFields
+          form={form}
+          onChange={setForm}
+          update={update}
+          notifying={notifying}
+          notifyBlockedReason={notifyBlockedReason}
+          onNotify={handleNotify}
+        />
       </FormSection>
 
       <FormSection
@@ -521,7 +281,15 @@ const ActionUpdatePage: React.FC = () => {
         />
       </FormSection>
 
-      <FormSection title="Member visibility">{visibilitySection}</FormSection>
+      <FormSection title="Member visibility">
+        <VisibilityControls
+          update={update}
+          hasUnsavedDetails={hasUnsavedDetails}
+          changing={changingVisibility}
+          onPublishNow={handlePublishNow}
+          onUnpublish={handleUnpublish}
+        />
+      </FormSection>
 
       {events.length > 0 && (
         <FormSection
@@ -550,10 +318,7 @@ const ActionUpdatePage: React.FC = () => {
           title="Preview Update"
           description={UPDATE_PREVIEW_DESCRIPTION}
         >
-          <UpdatePreview
-            texts={form}
-            counts={previewCountsOf(form, countsQuery)}
-          />
+          <AudienceUpdatePreview updateId={update.id} form={form} />
         </FormSection>
       )}
 
@@ -606,12 +371,7 @@ const ActionUpdatePage: React.FC = () => {
         </button>
       </div>
 
-      {hiddenBanner && (
-        <div className="mx-5 mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
-          <EyeOff className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
-          <p className="text-sm">{hiddenBanner}</p>
-        </div>
-      )}
+      <HiddenFromMembersBanner update={update} />
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 mx-5 mt-4">

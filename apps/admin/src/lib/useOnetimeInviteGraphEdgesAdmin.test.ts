@@ -1,9 +1,7 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { useOnetimeInviteGraphEdgesAdmin } from "./useOnetimeInviteGraphEdgesAdmin";
-
-afterEach(cleanup);
 
 const edges = [{ invitingUserId: 1, invitedUserId: 2 }];
 

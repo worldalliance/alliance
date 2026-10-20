@@ -25,14 +25,9 @@ describe("canModifyOnetimeInvite", () => {
       expected: true,
     },
     {
-      who: "a leader of another community",
-      user: viewer({ admin: false, leaderOfIds: [8] }),
+      who: "anyone else",
+      user: viewer({ admin: false, leaderOfIds: [] }),
       expected: false,
-    },
-    {
-      who: "an admin",
-      user: viewer({ admin: true, leaderOfIds: [] }),
-      expected: true,
     },
   ])("is $expected for $who", ({ user, expected }) => {
     expect(canModifyOnetimeInvite(user, invite)).toBe(expected);

@@ -1,8 +1,8 @@
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { NotificationsProvider } from "@alliance/shared/lib/useNotifications";
-import { cleanup, render, renderHook, waitFor } from "@testing-library/react";
+import { useNotificationsList } from "@alliance/shared/lib/useNotificationsCache";
+import { render, renderHook, waitFor } from "@testing-library/react";
 import { createElement } from "react";
-import { MemoryRouter } from "react-router";
 import {
   captureArrival,
   hydrateAfterCapture,
@@ -22,7 +22,6 @@ const api = serveApi(
 afterEach(() => {
   window.localStorage.clear();
 });
-afterEach(cleanup);
 
 test("stores the opening, then takes the tracking ID out of the URL", async () => {
   happyDOM.setURL("https://thealliance.org/groups?tab=members&cid=track-1#top");
@@ -189,17 +188,13 @@ test("reloads the notifications once an opening is recorded", async () => {
     },
     "GET /notifs/unread-count": () => Response.json({ unreadCount: 0 }),
   });
-  const { unmount } = render(
-    createElement(
-      MemoryRouter,
-      null,
-      createElement(
-        NotificationsProvider,
-        null,
-        createElement(RefreshNotificationsOnOpening),
-      ),
-    ),
-  );
+  const Bell = () => {
+    useNotificationsList();
+    return createElement(RefreshNotificationsOnOpening);
+  };
+  const { unmount } = render(createElement(Bell), {
+    wrapper: queryWrapper().wrapper,
+  });
   await waitFor(() => expect(notifLoads).toBe(1));
 
   window.dispatchEvent(new Event("linkOpenings:settled"));

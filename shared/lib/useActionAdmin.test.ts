@@ -1,10 +1,8 @@
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { queryKeys } from "./queryKeys";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { useActionAdmin } from "./useActionAdmin";
-
-afterEach(cleanup);
 
 let memberActionStart: string;
 let fetches: number;

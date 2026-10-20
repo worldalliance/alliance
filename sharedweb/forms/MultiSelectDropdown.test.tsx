@@ -1,7 +1,6 @@
 import { optionSections } from "@alliance/shared/forms/optionSections";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -19,8 +18,6 @@ const options = [
   { label: "Côte d'Ivoire", value: "ci" },
   { label: "California", value: "ca" },
 ];
-
-afterEach(cleanup);
 
 const markdownOptions = [
   { label: "**Bold** choice", value: "b" },

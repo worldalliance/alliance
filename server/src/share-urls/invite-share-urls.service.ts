@@ -25,6 +25,7 @@ import {
   type StoredInviteAssignment,
   StoredInviteAssignmentKind,
 } from "./invite-assignment";
+import { normalizeShareUrlLabel } from "./share-url-label";
 import { updateLiveShareUrl } from "./share-url-locks";
 import type { ReusableInviteFeedItem, ShareUrlMine } from "./share-url-views";
 import { ShareUrlsService } from "./share-urls.service";
@@ -176,10 +177,9 @@ export class InviteShareUrlsService {
       await this.assertLeadsCommunity(userId, communityId);
     }
 
-    const trimmedLabel = label?.trim();
     return this.shareUrlsService.createDuplicateForInvite(
       { type: "user", userId },
-      trimmedLabel ? trimmedLabel : null,
+      normalizeShareUrlLabel(label),
       inviteAssignmentFor(communityId),
     );
   }
@@ -210,8 +210,7 @@ export class InviteShareUrlsService {
 
     const changes: QueryDeepPartialEntity<ShareUrl> = {};
     if (label !== undefined) {
-      const trimmed = label.trim();
-      changes.label = trimmed ? trimmed : null;
+      changes.label = normalizeShareUrlLabel(label);
     }
     if (communityId !== undefined) {
       Object.assign(

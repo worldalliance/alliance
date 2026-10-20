@@ -1,11 +1,9 @@
 import { makeTag } from "@alliance/shared/lib/testFixtures";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import CohortExpressionBuilder from "./CohortExpressionBuilder";
 import { ActionSelectEditor, TagEditor } from "./CohortLeafEditors";
-
-afterEach(cleanup);
 
 const availableTags = [makeTag({ id: "tag-1", name: "non-US" })];
 

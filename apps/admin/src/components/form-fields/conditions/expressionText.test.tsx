@@ -1,7 +1,7 @@
 import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { CustomValidatorDraftsContext } from "../customValidatorDrafts";
 import { ConditionalVisibility } from "./ConditionalVisibility";
 import {
@@ -17,7 +17,6 @@ import {
 } from "./conditionEditorTesting";
 import { LocalExpressionBuffers } from "./expressionBuffers";
 
-afterEach(cleanup);
 serveApi(
   routes({
     "GET /tasks/listForms": () => Response.json([]),

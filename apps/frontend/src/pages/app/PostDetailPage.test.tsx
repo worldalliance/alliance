@@ -2,13 +2,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { AuthContext } from "../../lib/AuthContext";
 import { testAuthUser, testForumPosts } from "../../stories/testData";
@@ -41,8 +35,6 @@ beforeEach(() => {
   forumLoaded = Promise.withResolvers<null>();
   window.confirm = () => true;
 });
-
-afterEach(cleanup);
 
 const renderPostPage = () => {
   const { wrapper: QueryWrapper } = queryWrapper();

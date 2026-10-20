@@ -4,7 +4,6 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -15,11 +14,6 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { actionUpdateAdmin as update } from "../lib/testing/actionUpdateAdmin";
 import { HELD_POLL_MS } from "../lib/useActionUpdateAdmin";
 import ActionUpdatePage from "./ActionUpdatePage";
-
-afterEach(() => {
-  cleanup();
-  jest.restoreAllMocks();
-});
 
 let served: AdminActionUpdateDto = update();
 let countedAudiences: unknown[] = [];

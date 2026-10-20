@@ -1,12 +1,10 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { generalUpdateAdmin } from "../lib/testing/generalUpdateAdmin";
 import GeneralUpdatesPage from "./GeneralUpdatesPage";
-
-afterEach(cleanup);
 
 let loadStatus = 200;
 

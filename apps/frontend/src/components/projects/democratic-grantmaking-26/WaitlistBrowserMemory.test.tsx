@@ -1,13 +1,7 @@
 import type { WaitlistBrowserDto } from "@alliance/shared/client";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { InviteSessionProvider } from "../../../site/invite/InviteSession";
 import { WaitlistSignupForm } from "./WaitlistSignupForm";
@@ -63,7 +57,6 @@ const saveInvite = (code: string) =>
   );
 
 afterEach(() => {
-  cleanup();
   sessionStorage.clear();
 });
 

@@ -13,6 +13,9 @@ import type { UseActivitiesProps } from "./useActivities";
 
 const activitiesAll = () => ["useActivities"] as const;
 
+const communityOnetimeInvitesAll = () =>
+  ["userOnetimeInviteGetOnetimeInvitesByCommunity"] as const;
+
 const onetimeInvitesAdminAll = () =>
   ["userOnetimeInviteGetOnetimeInvitesAdmin"] as const;
 
@@ -84,8 +87,9 @@ export const queryKeys = {
   ) => ["communityMemberInfo", communityId ?? null, userId ?? null] as const,
   communityMemberContactInfo: (communityId: number | null) =>
     ["communityGetMemberContactInfo", communityId] as const,
+  communityOnetimeInvitesAll,
   communityOnetimeInvites: (communityId: number) =>
-    ["userOnetimeInviteGetOnetimeInvitesByCommunity", communityId] as const,
+    [...communityOnetimeInvitesAll(), communityId] as const,
   contractById: (contractId: number | null) =>
     ["contractGetById", contractId] as const,
   conversationMessages: (conversationId: number | null) =>
@@ -109,10 +113,14 @@ export const queryKeys = {
   myReusableInvites: () => ["shareUrlsMyInvites"] as const,
   inviteMessageTemplate: () => ["shareUrlsInviteMessageTemplate"] as const,
   myVisibilityContext: () => ["userMyVisibilityContext"] as const,
-  /** Prefixes the unread count and load time, so invalidating it invalidates
-   * all three. */
+  /** Prefixes the lists, unread count and load time, so invalidating it
+   * invalidates them all. */
   notifications: () => ["notifications"] as const,
-  notificationsLoadedAt: () => ["notifications", "loadedAt"] as const,
+  notificationsLists: () => ["notifications", "list"] as const,
+  notificationsList: (limit?: number) =>
+    ["notifications", "list", { limit }] as const,
+  notificationsLoadedAt: (limit?: number) =>
+    ["notifications", "loadedAt", { limit }] as const,
   notificationsUnreadCount: () => ["notifications", "unreadCount"] as const,
   notificationSettings: () => ["notificationSettingsGet"] as const,
   onetimeInvite: (code: string | null) =>
@@ -124,6 +132,7 @@ export const queryKeys = {
   publicProfile: (userId: number) => ["userFindOne", userId] as const,
   referrerProfile: (code: string | null) =>
     ["userReferralReferrerProfile", code] as const,
+  search: (query: string) => ["searchAll", query] as const,
   signupSocialProof: (referralCode: string | null, count?: number) =>
     ["userReferralSignupSocialProof", referralCode, count] as const,
   staffDirectory: () => ["userStaffDirectory"] as const,
@@ -270,6 +279,8 @@ export const queryKeys = {
   tagsAdmin: () => ["userTagGetTagsAdmin"] as const,
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
+  userActionRelationsAdmin: (userId: number) =>
+    ["actionsActionRelationsForUserAdmin", userId] as const,
   userAwayRangesAdmin: (userId: number) =>
     ["userAwayRangeGetAwayRangeForUserAdmin", userId] as const,
   userCityCountsAdmin: () => ["userCityCountsAdmin"] as const,
