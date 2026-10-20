@@ -13,7 +13,7 @@ import {
 import z from "zod";
 import { openSection, selectElement } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
-import { resetCustomValidatorsCache } from "./form-fields/CommonControls";
+import { resetCustomValidatorsCache } from "./form-fields/useCustomValidators";
 
 afterEach(cleanup);
 

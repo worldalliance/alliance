@@ -1,5 +1,5 @@
 import type { Condition } from "@alliance/common/forms/visible-if-formula";
-import { CustomValidatorSelect } from "../CommonControls";
+import { CustomValidatorSelect } from "../CustomValidatorSelect";
 import { useCustomValidatorDrafts } from "../customValidatorDrafts";
 import { useValidatorConfig } from "../useValidatorConfig";
 import { RetryButton } from "./RetryButton";

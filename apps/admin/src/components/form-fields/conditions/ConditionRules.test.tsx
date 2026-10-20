@@ -4,7 +4,7 @@ import {
 } from "@alliance/common/forms/visible-if-formula";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
-import { resetCustomValidatorsCache } from "../CommonControls";
+import { resetCustomValidatorsCache } from "../useCustomValidators";
 import {
   addRule,
   color,

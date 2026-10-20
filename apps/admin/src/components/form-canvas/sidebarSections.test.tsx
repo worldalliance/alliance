@@ -12,10 +12,10 @@ import {
 } from "@testing-library/react";
 import { useState } from "react";
 import { renderBlockEditor } from "../display-blocks/blockEditors";
-import { resetCustomValidatorsCache } from "../form-fields/CommonControls";
 import { LocalExpressionBuffers } from "../form-fields/conditions/expressionBuffers";
 import { CustomValidatorDraftsContext } from "../form-fields/customValidatorDrafts";
 import { renderFieldEditor } from "../form-fields/fieldEditors";
+import { resetCustomValidatorsCache } from "../form-fields/useCustomValidators";
 import { VisibilityGroupContext } from "../VisibilityGroupContext";
 import { SelectChildProvider } from "./ChildRows";
 import {
