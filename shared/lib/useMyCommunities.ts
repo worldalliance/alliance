@@ -11,7 +11,9 @@ import {
   communityGetMyCommunities,
   communityJoinPublicCommunity,
   communityLeave,
+  communityUpdate,
   CreateCommunityDto,
+  UpdateCommunityDto,
 } from "../client";
 import { failedToLoad } from "./failedToLoad";
 import { queryKeys } from "./queryKeys";
@@ -20,6 +22,8 @@ const QUERY_KEY = queryKeys.myCommunities();
 
 export const CREATE_GROUP_SESSION_EXPIRED =
   "Your session has expired. Sign in again to create a group.";
+export const UPDATE_GROUP_SESSION_EXPIRED =
+  "Your session has expired. Sign in again to save the group's settings.";
 
 /** Refetches every list a change to the user's group membership alters: their
  * groups, and the public groups' member counts. */
@@ -42,12 +46,12 @@ function findCommunityById(
 /**
  * Single source of truth for the current user's communities. Wraps
  * `communityGetMyCommunities` in react-query and exposes cache-aware helpers
- * (refresh, remove, member removal, upsert) plus optional prop-driven selection.
+ * (refresh, remove, member removal) plus optional prop-driven selection.
  * Consume this instead of calling the generated client directly, so the request
  * is de-duplicated and cache mutations stay consistent across screens.
  *
- * Creating a group, leaving one, or joining a public one throws when refused.
- * Creating adds the group to the cache at once, and leaving drops it.
+ * Creating, saving, leaving, or joining a group throws when refused. Creating
+ * or saving puts the group in the cache at once, and leaving drops it.
  * Joining resolves only once the user's groups have been refetched, since the
  * server also removes the user from every group they don't lead.
  */
@@ -138,6 +142,21 @@ export function useMyCommunities(params?: {
     },
   });
 
+  const { mutateAsync: saveCommunity } = useMutation({
+    mutationFn: ({
+      communityId,
+      body,
+    }: {
+      communityId: number;
+      body: UpdateCommunityDto;
+    }) =>
+      communityUpdate({ path: { communityId }, body, throwOnError: true }).then(
+        (response) => response.data,
+      ),
+    networkMode: "always",
+    onSuccess: updateCommunity,
+  });
+
   const { mutateAsync: leaveCommunity, isPending: isLeaving } = useMutation({
     mutationFn: (communityId: number) =>
       communityLeave({ path: { communityId }, throwOnError: true }),
@@ -172,8 +191,8 @@ export function useMyCommunities(params?: {
     refreshCommunities,
     removeCommunity,
     removeMemberFromCommunity,
-    updateCommunity,
     createCommunity,
+    saveCommunity,
     leaveCommunity,
     isLeaving,
     joinPublicCommunity,

@@ -4,11 +4,12 @@ import {
 } from "@alliance/common/community";
 import { errorMessage } from "@alliance/common/errorMessage";
 import { changedPhoto } from "@alliance/common/image-src";
+import { CommunityDto, communityDelete } from "@alliance/shared/client";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import {
-  CommunityDto,
-  communityDelete,
-  communityUpdate,
-} from "@alliance/shared/client";
+  UPDATE_GROUP_SESSION_EXPIRED,
+  useMyCommunities,
+} from "@alliance/shared/lib/useMyCommunities";
 import { useCallback, useEffect, useState } from "react";
 
 export type CommunityEditor = ReturnType<typeof useCommunityEditor>;
@@ -16,10 +17,10 @@ export type CommunityEditor = ReturnType<typeof useCommunityEditor>;
 export function useCommunityEditor(params: {
   community: CommunityDto | null;
   memberCount: number;
-  onUpdated: (community: CommunityDto) => void;
   onDeleted: (communityId: number) => void;
 }) {
-  const { community, memberCount, onUpdated, onDeleted } = params;
+  const { community, memberCount, onDeleted } = params;
+  const { saveCommunity } = useMyCommunities();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState<string>("");
@@ -89,8 +90,8 @@ export function useCommunityEditor(params: {
     setIsSaving(true);
     setError(null);
     try {
-      const response = await communityUpdate({
-        path: { communityId: community.id },
+      await saveCommunity({
+        communityId: community.id,
         body: {
           name: editName,
           description: editDescription,
@@ -101,21 +102,16 @@ export function useCommunityEditor(params: {
           allowStaffAssignments: editAllowStaffAssignments,
         },
       });
-
-      if (response.data) {
-        onUpdated(response.data);
-        setIsEditing(false);
-      } else {
-        setError(
-          errorMessage({
-            error: response.error,
-            fallback: "Failed to update group",
-          }),
-        );
-      }
+      setIsEditing(false);
     } catch (err) {
       console.error("Failed to update group:", err);
-      setError("Failed to update group");
+      setError(
+        thrownRefusalMessage({
+          error: err,
+          fallback: "Failed to update group",
+          sessionExpired: UPDATE_GROUP_SESSION_EXPIRED,
+        }),
+      );
     } finally {
       setIsSaving(false);
     }
@@ -131,7 +127,7 @@ export function useCommunityEditor(params: {
     currentPhoto,
     isSaving,
     memberCount,
-    onUpdated,
+    saveCommunity,
   ]);
 
   const handleCancel = useCallback(() => {

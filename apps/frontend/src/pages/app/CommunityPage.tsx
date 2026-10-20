@@ -69,7 +69,6 @@ const CommunityPage = () => {
     removeCommunity,
     selectedCommunity: community,
     removeMemberFromCommunity,
-    updateCommunity,
   } = useMyCommunities({
     selectedCommunityId: communityId ? Number(communityId) : null,
   });
@@ -195,7 +194,6 @@ const CommunityPage = () => {
   const editor = useCommunityEditor({
     community,
     memberCount,
-    onUpdated: updateCommunity,
     onDeleted: handleDeleted,
   });
 

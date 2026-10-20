@@ -17,6 +17,7 @@ serveApi(
     "POST /community/1/leave": () => membershipWrite(),
     "POST /community/1/join": () => membershipWrite(),
     "POST /community/create": () => membershipWrite(),
+    "PATCH /community/1": () => membershipWrite(),
   }),
 );
 
@@ -161,16 +162,42 @@ it("creating a group adds it at once and refreshes the user's groups and the pub
   );
 });
 
-it("creating a group offline fails at once rather than waiting to reconnect", async () => {
+it("saving a group's settings puts the saved group in the cache", async () => {
+  const saved = { ...cached[0], name: "Renamed" };
+  membershipWrite = () => Response.json(saved);
+  const { hook, invalidated } = await renderLoaded();
+
+  await act(async () => {
+    expect(
+      await hook.result.current.saveCommunity({
+        communityId: 1,
+        body: { name: "Renamed" },
+      }),
+    ).toEqual(saved);
+  });
+
+  await waitFor(() => expect(hook.result.current.communities).toEqual([saved]));
+  expect(invalidated(queryKeys.myCommunities())).toBe(false);
+});
+
+it.each([
+  {
+    write: "createCommunity",
+    send: (hook: Hook) => hook.createCommunity(newGroup),
+  },
+  {
+    write: "saveCommunity",
+    send: (hook: Hook) =>
+      hook.saveCommunity({ communityId: 1, body: { name: "Renamed" } }),
+  },
+])("$write fails at once offline", async ({ send }) => {
   const { hook } = await renderLoaded();
   onlineManager.setOnline(false);
   membershipWrite = () => {
     throw new TypeError("Network request failed");
   };
 
-  const failure = hook.result.current
-    .createCommunity(newGroup)
-    .catch((e: unknown) => e);
+  const failure = send(hook.result.current).catch((e: unknown) => e);
 
   expect(await failure).toBeInstanceOf(TypeError);
 });
@@ -186,6 +213,11 @@ it.each([
   {
     write: "joinPublicCommunity",
     send: (hook: Hook) => hook.joinPublicCommunity(1),
+  },
+  {
+    write: "saveCommunity",
+    send: (hook: Hook) =>
+      hook.saveCommunity({ communityId: 1, body: { name: "Renamed" } }),
   },
 ])("$write throws and changes nothing when refused", async ({ send }) => {
   membershipWrite = () =>
