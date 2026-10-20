@@ -3,6 +3,7 @@ import { Type } from "class-transformer";
 import { Allow, IsEmpty, IsOptional } from "class-validator";
 import { Campaign } from "src/campaign/entities/campaign.entity";
 import { Community } from "src/community/entities/community.entity";
+import { canModifyInvite } from "src/community/invite-permissions";
 import {
   CreateDateColumnTz,
   DeleteDateColumnTz,
@@ -24,7 +25,7 @@ import {
   PrimaryGeneratedColumn,
   RelationId,
 } from "typeorm";
-import { canManageCommunity, User } from "./user.entity";
+import { User } from "./user.entity";
 
 export enum OnetimeInviteStatus {
   REQUEST_PENDING = "request_pending",
@@ -182,8 +183,8 @@ export function canModifyOnetimeInvite(
   user: Pick<User, "id" | "admin" | "leaderOfIdSet">,
   invite: OnetimeInvite,
 ): boolean {
-  return (
-    loadedOnetimeInviteInvitingUser(invite)?.id === user.id ||
-    canManageCommunity(user, invite.communityId)
-  );
+  return canModifyInvite(user, {
+    invitingUserId: loadedOnetimeInviteInvitingUser(invite)?.id ?? null,
+    communityId: invite.communityId,
+  });
 }
