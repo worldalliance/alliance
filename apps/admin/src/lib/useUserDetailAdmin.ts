@@ -7,7 +7,7 @@ import {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
-import { milliseconds } from "date-fns";
+import { loaderPrefetchStaleTime } from "./queryClient";
 import { useStoreQueryData } from "./usePatchQueryData";
 
 /** The member query, for a route loader to start before the page mounts. */
@@ -18,9 +18,7 @@ export const userDetailQuery = (userId: number) =>
       userUserDetailAdmin({ path: { id: userId }, throwOnError: true }).then(
         (r) => r.data,
       ),
-    // Long enough that the page mounting just after the loader's prefetch
-    // doesn't load the member again; the loader itself always fetches.
-    staleTime: milliseconds({ seconds: 10 }),
+    staleTime: loaderPrefetchStaleTime,
   });
 
 /** One member's admin detail and the writes that change it. `refresh`

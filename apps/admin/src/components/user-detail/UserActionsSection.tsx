@@ -1,45 +1,40 @@
-import {
-  UserActionRelationDetailDto,
-  UserActionSummaryDto,
-} from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
 import { PILL_STATUS_DATA } from "@alliance/sharedweb/ui/UserProgressPills";
 import { keyBy } from "es-toolkit";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useMemo } from "react";
+import { Link } from "react-router";
+import { useUserActionRelationsAdmin } from "../../lib/useUserActionRelationsAdmin";
 import CreateActivityControls from "../CreateActivityControls";
 import { WithdrawalInfo } from "../WithdrawalInfo";
 import { humanize } from "./humanize";
 
-export default function UserActionsSection({
-  userId,
-  actionSummaries,
-  actionRelations,
-}: {
-  userId: number;
-  actionSummaries: UserActionSummaryDto[];
-  actionRelations: UserActionRelationDetailDto[];
-}) {
-  const [actionRelationsState, setActionRelationsState] =
-    useState<UserActionRelationDetailDto[]>(actionRelations);
-
-  useEffect(() => {
-    setActionRelationsState(actionRelations);
-  }, [actionRelations]);
-
-  const navigate = useNavigate();
-
-  const upsertActionRelation = useCallback(() => {
-    navigate(window.location.pathname);
-  }, [navigate]);
+export default function UserActionsSection({ userId }: { userId: number }) {
+  const {
+    query: { data, isError, isRefetchError },
+    createActivity: { mutateAsync: createActivity },
+  } = useUserActionRelationsAdmin(userId);
 
   const relationByActionId = useMemo(
-    () => keyBy(actionRelationsState, (relation) => relation.actionId),
-    [actionRelationsState],
+    () => keyBy(data?.actionRelations ?? [], (relation) => relation.actionId),
+    [data?.actionRelations],
   );
+
+  if (!data) {
+    return (
+      <p className={cn("text-sm", isError ? "text-red-500" : "text-zinc-500")}>
+        {isError ? "Failed to load actions" : "Loading actions..."}
+      </p>
+    );
+  }
+  const { actionSummaries } = data;
 
   return (
     <section className="max-h-128 overflow-y-auto">
+      {isRefetchError && (
+        <p className="text-xs text-red-500 mb-2">
+          Could not refresh actions. Reload to see the latest.
+        </p>
+      )}
       {actionSummaries.length ? (
         <div className="border border-zinc-200 rounded overflow-hidden">
           <table className="w-full text-sm">
@@ -104,9 +99,9 @@ export default function UserActionsSection({
                     </td>
                     <td className="px-3 py-2">
                       <CreateActivityControls
-                        actionId={action.id}
-                        userId={userId}
-                        onCreated={upsertActionRelation}
+                        create={(type) =>
+                          createActivity({ actionId: action.id, type })
+                        }
                       />
                     </td>
                   </tr>

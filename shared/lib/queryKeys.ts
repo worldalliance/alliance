@@ -274,6 +274,8 @@ export const queryKeys = {
   tagsAdmin: () => ["userTagGetTagsAdmin"] as const,
   timeSpentPerUserTotalAdmin: () =>
     ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
+  userActionRelationsAdmin: (userId: number) =>
+    ["actionsActionRelationsForUserAdmin", userId] as const,
   userAwayRangesAdmin: (userId: number) =>
     ["userAwayRangeGetAwayRangeForUserAdmin", userId] as const,
   userCityCountsAdmin: () => ["userCityCountsAdmin"] as const,

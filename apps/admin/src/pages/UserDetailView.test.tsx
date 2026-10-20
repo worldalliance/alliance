@@ -1,5 +1,7 @@
 import type {
+  CreateActionActivityDto,
   NotificationSettingsAdminDto,
+  UserActionRelationsResponseDto,
   UserAdminDetailDto,
 } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
@@ -36,6 +38,9 @@ let stored: UserAdminDetailDto;
 let notificationSettings: NotificationSettingsAdminDto | null;
 let detailStatus: number;
 let addTagStatus: number;
+let relations: UserActionRelationsResponseDto;
+let relationsStatus: number;
+let createdActivities: CreateActionActivityDto[];
 let memberRequested: () => void;
 let memberRequest: Promise<void>;
 
@@ -76,7 +81,15 @@ serveApi(
         return Response.json(tagDto);
       },
       "GET /actions/action-relations/:userId": () =>
-        Response.json({ actions: [], users: [] }),
+        relationsStatus === 200
+          ? Response.json(relations)
+          : Response.json({}, { status: relationsStatus }),
+      "POST /actions/createActivity": async ({ request }) => {
+        const body: CreateActionActivityDto = await request.json();
+        createdActivities.push(body);
+        relations = relationsFor("completed");
+        return Response.json({});
+      },
       "GET /notifs/for-user/:id": () => Response.json([]),
       "POST /tasks/formsForUserSID/:userId": () => Response.json([]),
       "GET /user/listfriends/:id": () => Response.json([]),
@@ -93,6 +106,9 @@ beforeEach(() => {
   notificationSettings = null;
   detailStatus = 404;
   addTagStatus = 200;
+  relations = { actions: [], suites: [], users: [] };
+  relationsStatus = 200;
+  createdActivities = [];
   memberRequest = new Promise((resolve) => {
     memberRequested = resolve;
   });
@@ -128,6 +144,23 @@ const renderPage = () => {
     </QueryClientProvider>,
   );
 };
+
+const relationsFor = (
+  status: "todo" | "completed",
+): UserActionRelationsResponseDto => ({
+  actions: [
+    {
+      id: 5,
+      name: "Call your representative",
+      status: "member_action",
+      weekNumber: 1,
+      allMembersParticipating: false,
+      memberActionDeadline: null,
+    },
+  ],
+  suites: [],
+  users: [{ userId: 7, relations: [{ actionId: 5, status }] }],
+});
 
 const cacheSam = (overrides: Partial<UserAdminDetailDto> = {}) =>
   queryClient.setQueryData(queryKeys.userDetailAdmin(7), {
@@ -339,4 +372,53 @@ it("says it could not refresh the member after a tag change", async () => {
       "Could not refresh this member. Reload to see their latest details.",
     ),
   ).toBeTruthy();
+});
+
+it("says when the member's actions fail to load", async () => {
+  detailStatus = 200;
+  relationsStatus = 500;
+  renderPage();
+
+  expect(await screen.findByText("Failed to load actions")).toBeTruthy();
+});
+
+it("records an activity for the member and shows their new status", async () => {
+  detailStatus = 200;
+  relations = relationsFor("todo");
+  renderPage();
+
+  const row = (await screen.findByText("Call your representative")).closest(
+    "tr",
+  );
+  fireEvent.change(within(row!).getByRole("combobox"), {
+    target: { value: "user_completed" },
+  });
+
+  expect(
+    await screen.findByText("Completed", { selector: "span" }),
+  ).toBeTruthy();
+  expect(createdActivities).toEqual([
+    { actionId: 5, userId: 7, type: "user_completed" },
+  ]);
+});
+
+it("says it could not refresh the member's actions after recording one", async () => {
+  detailStatus = 200;
+  relations = relationsFor("todo");
+  renderPage();
+  const row = (await screen.findByText("Call your representative")).closest(
+    "tr",
+  );
+  relationsStatus = 500;
+
+  fireEvent.change(within(row!).getByRole("combobox"), {
+    target: { value: "user_completed" },
+  });
+
+  expect(
+    await screen.findByText(
+      "Could not refresh actions. Reload to see the latest.",
+    ),
+  ).toBeTruthy();
+  expect(screen.getByText("Not started", { selector: "span" })).toBeTruthy();
 });
