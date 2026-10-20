@@ -1,4 +1,5 @@
 import {
+  hashKey,
   type QueryKey,
   useMutation,
   useQueryClient,
@@ -12,14 +13,28 @@ import {
   userOnetimeInviteDeleteOnetimeInvite,
   userOnetimeInviteRejectOnetimeInvite,
 } from "../client";
+import { queryKeys } from "./queryKeys";
 
 /**
  * Cache helpers and the create/approve/reject/delete mutations shared by every
  * cached list of one-time invites, each writing its result into the list at
- * `queryKey`.
+ * `queryKey` and refetching the other cached lists.
  */
 export function useOnetimeInviteCache(queryKey: QueryKey) {
   const queryClient = useQueryClient();
+
+  const invalidateOtherLists = useCallback(() => {
+    const ownHash = hashKey(queryKey);
+    for (const listKey of [
+      queryKeys.onetimeInvitesOverview(),
+      queryKeys.communityOnetimeInvitesAll(),
+    ]) {
+      void queryClient.invalidateQueries({
+        queryKey: listKey,
+        predicate: (query) => query.queryHash !== ownHash,
+      });
+    }
+  }, [queryClient, queryKey]);
 
   const upsertInvite = useCallback(
     (invite: OnetimeInviteDto) => {
@@ -31,8 +46,9 @@ export function useOnetimeInviteCache(queryKey: QueryKey) {
         }
         return [invite, ...(old ?? [])];
       });
+      invalidateOtherLists();
     },
-    [queryClient, queryKey],
+    [queryClient, queryKey, invalidateOtherLists],
   );
 
   const removeInvite = useCallback(
@@ -40,8 +56,9 @@ export function useOnetimeInviteCache(queryKey: QueryKey) {
       queryClient.setQueryData<OnetimeInviteDto[]>(queryKey, (old) =>
         old ? old.filter((invite) => invite.id !== inviteId) : [],
       );
+      invalidateOtherLists();
     },
-    [queryClient, queryKey],
+    [queryClient, queryKey, invalidateOtherLists],
   );
 
   const createMutation = useMutation({

@@ -7,10 +7,7 @@ import {
 import { errorMessage } from "@alliance/common/errorMessage";
 import { changedPhoto } from "@alliance/common/image-src";
 // eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import {
-  communityUpdate,
-  userOnetimeInviteGetOnetimeInvitesByCommunity,
-} from "@alliance/shared/client";
+import { communityUpdate } from "@alliance/shared/client";
 import type {
   CommunityDto,
   CommunityMemberContactInfoDto,
@@ -29,6 +26,7 @@ import useActivities, {
 import { useCommunityInvites } from "@alliance/shared/lib/useCommunityInvites";
 import { useCommunityMemberContactInfo } from "@alliance/shared/lib/useCommunityMemberContactInfo";
 import { useCommunityMemberInfo } from "@alliance/shared/lib/useCommunityMemberInfo";
+import { useCommunityOnetimeInvites } from "@alliance/shared/lib/useCommunityOnetimeInvites";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnNextDeadline } from "@alliance/shared/lib/useOnNextDeadline";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
@@ -612,35 +610,19 @@ function GroupInvitesTab({
     didFail: communityInvitesDidFail,
     refetch: refetchCommunityInvites,
   } = useCommunityInvites(communityId);
-  const [onetimeInvites, setOnetimeInvites] = useState<
-    Awaited<
-      ReturnType<typeof userOnetimeInviteGetOnetimeInvitesByCommunity>
-    >["data"]
-  >([]);
-  const [loading, setLoading] = useState(true);
-
-  const loadInvites = useCallback(async () => {
-    try {
-      const oneRes = await userOnetimeInviteGetOnetimeInvitesByCommunity({
-        path: { communityId },
-      });
-      setOnetimeInvites(oneRes.data ?? []);
-    } catch (err) {
-      console.error("Failed to load invites", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [communityId]);
-
-  useEffect(() => {
-    void loadInvites();
-  }, [loadInvites]);
+  const {
+    invites: onetimeInvites,
+    isLoading: onetimeInvitesLoading,
+    isFetching: onetimeInvitesFetching,
+    didFail: onetimeInvitesDidFail,
+    refetch: refetchOnetimeInvites,
+  } = useCommunityOnetimeInvites(communityId);
 
   const handleRefresh = useCallback(() => {
     onRefresh();
-    void loadInvites();
+    void refetchOnetimeInvites();
     void refetchCommunityInvites();
-  }, [onRefresh, loadInvites, refetchCommunityInvites]);
+  }, [onRefresh, refetchOnetimeInvites, refetchCommunityInvites]);
 
   const pendingCommunity = useMemo(
     () => communityInvites.filter((i) => i.status === "invitee_pending"),
@@ -648,7 +630,7 @@ function GroupInvitesTab({
   );
   const pendingOnetime = useMemo(
     () =>
-      (onetimeInvites ?? []).filter(
+      onetimeInvites.filter(
         (i) => i.status === "link_unused" || i.status === "request_pending",
       ),
     [onetimeInvites],
@@ -697,17 +679,20 @@ function GroupInvitesTab({
     return items;
   }, [pendingCommunity, pendingOnetime]);
 
-  if (communityInvitesDidFail) {
+  if (communityInvitesDidFail || onetimeInvitesDidFail) {
     return (
       <LoadFailed
         message="Couldn't load this group's invites."
-        onRetry={() => void refetchCommunityInvites()}
-        retrying={communityInvitesFetching}
+        onRetry={() => {
+          if (communityInvitesDidFail) void refetchCommunityInvites();
+          if (onetimeInvitesDidFail) void refetchOnetimeInvites();
+        }}
+        retrying={communityInvitesFetching || onetimeInvitesFetching}
       />
     );
   }
 
-  if (loading || communityInvitesLoading) {
+  if (onetimeInvitesLoading || communityInvitesLoading) {
     return (
       <View className="flex-1 items-center justify-center py-12">
         <ActivityIndicator size="large" color={colors.green} />
