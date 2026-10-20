@@ -9,7 +9,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { ComponentProps } from "react";
-import { CustomValidatorSelect } from "./CommonControls";
+import { CustomValidatorSelect } from "./CustomValidatorSelect";
 
 afterEach(cleanup);
 

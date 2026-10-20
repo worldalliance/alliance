@@ -10,6 +10,7 @@ The orchestrating agent assigned this waiver so that parallel agents working the
 
 - `useCustomValidators.ts`: the validator list fetch, its module-level cache, `useCustomValidators`, and `resetCustomValidatorsCache`.
 - `CustomExpressionEditor.tsx`: the `CustomExpression` validator's textarea and its tester (test-user picker, test request, results). `CustomValidatorSelect` renders it only for that validator type and passes `expression` with an `onExpressionChange` callback.
+- `CustomValidatorSelect.tsx`: `CustomValidatorSelect`, the validator picker with its tag or ID argument input. `FieldWrapper` and `ValidatorRule` are its only callers, and its test file already carries its name.
 - `CommonControls.tsx`: the small field toggles, `RequiredAsterisk`, and the duplicate-option helpers, which most field editors import.
 
 Moved code is unchanged apart from imports and exports, and from what follows from the editor mounting only while the type is `CustomExpression`: it loads users unconditionally instead of behind `enabled: isCustomExpression`, drops its `isCustomExpression` guards, and no longer lists `type` among the effect deps that clear a stale test result, since a type change unmounts it. Switching the type away and back now re-picks the first active user rather than keeping the previous pick. Importers import from the new files directly; `CommonControls.tsx` does not re-export.
