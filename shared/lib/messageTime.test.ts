@@ -9,14 +9,21 @@ afterEach(() => {
   setSystemTime();
 });
 
-test("shows a message from the last few seconds as now", () => {
+test("shows a message under a minute old as now", () => {
   setSystemTime(NOW);
   expect(formatMessageTime(secondsAgo(0))).toBe("now");
   expect(formatMessageTime(secondsAgo(20))).toBe("now");
+  expect(formatMessageTime(secondsAgo(59))).toBe("now");
+});
+
+test("shows a message dated after the device clock as now", () => {
+  setSystemTime(NOW);
+  expect(formatMessageTime(secondsAgo(-120))).toBe("now");
 });
 
 test("shows an older message as a relative time", () => {
   setSystemTime(NOW);
+  expect(formatMessageTime(secondsAgo(60))).toBe("1 minute ago");
   expect(formatMessageTime(secondsAgo(90))).toBe("2 minutes ago");
   expect(formatMessageTime(secondsAgo(60 * 60))).toBe("1 hour ago");
 });
