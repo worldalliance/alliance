@@ -2,6 +2,7 @@ import {
   INVITE_LINK_TOKEN,
   INVITE_MESSAGE_TEMPLATE_MAX_LENGTH,
 } from "@alliance/common/inviteMessage";
+import { SHARE_URL_LABEL_MAX_LENGTH } from "@alliance/common/shareUrlLabel";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
@@ -21,7 +22,6 @@ import {
   type StoredInviteAssignment,
   StoredInviteAssignmentKind,
 } from "../invite-assignment";
-import { SHARE_URL_LABEL_MAX_LENGTH } from "../share-url-label";
 import { shareUrlPublicUrl } from "../share-url-public-url";
 import type {
   ReusableInviteFeedItem,
@@ -188,6 +188,7 @@ export class UpdateShareLinkLabelDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(SHARE_URL_LABEL_MAX_LENGTH)
   label?: string;
 }
 

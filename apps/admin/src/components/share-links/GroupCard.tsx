@@ -1,4 +1,5 @@
 import { withCount } from "@alliance/common/plural";
+import { SHARE_URL_LABEL_MAX_LENGTH } from "@alliance/common/shareUrlLabel";
 import type { ShareUrlAdminDto } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -116,6 +117,7 @@ const ShareUrlRow: React.FC<{
               type="text"
               className="flex-1 border border-zinc-300 rounded px-2 py-1 text-sm"
               placeholder="Label"
+              maxLength={SHARE_URL_LABEL_MAX_LENGTH}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               disabled={saving}
