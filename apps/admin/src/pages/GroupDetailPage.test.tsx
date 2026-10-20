@@ -35,21 +35,29 @@ const ada = { ...makeProfile(9), displayName: "Ada" };
 
 let listed = north;
 let listStatus = 200;
+let listHeld: Promise<void> | null = null;
+let releaseList = () => {};
 let updateStatus = 200;
 let deleteStatus = 200;
 let removeStatus = 200;
 let addLeaderDrops = false;
 let memberInfoStatus = 200;
 let memberInfoRequests = 0;
+let userListRequests = 0;
 let contactInfoStatus = 200;
 
 serveApi(
   routes({
-    "GET /community/list": () =>
-      listStatus === 200
+    "GET /community/list": async () => {
+      await listHeld;
+      return listStatus === 200
         ? Response.json([listed])
-        : Response.json({ message: "Admins only" }, { status: listStatus }),
-    "GET /user/list": () => Response.json([makeUser({ id: 9, name: "Ada" })]),
+        : Response.json({ message: "Admins only" }, { status: listStatus });
+    },
+    "GET /user/list": () => {
+      userListRequests += 1;
+      return Response.json([makeUser({ id: 9, name: "Ada" })]);
+    },
     "POST /community/:communityId/addMember/admin": () =>
       Response.json({ ...north, users: [sam, ada] }),
     "POST /community/:communityId/addLeader/admin": () => {
@@ -101,6 +109,8 @@ serveApi(
 afterEach(() => {
   listed = north;
   listStatus = 200;
+  releaseList();
+  listHeld = null;
   updateStatus = 200;
   deleteStatus = 200;
   onlineManager.setOnline(true);
@@ -108,6 +118,7 @@ afterEach(() => {
   addLeaderDrops = false;
   memberInfoStatus = 200;
   memberInfoRequests = 0;
+  userListRequests = 0;
   contactInfoStatus = 200;
 });
 
@@ -449,6 +460,16 @@ it("says why loading the members' contact info was refused", async () => {
   renderPage();
 
   expect(await screen.findByText("Contact info is private")).toBeTruthy();
+});
+
+it("loads the member details and users alongside the group", async () => {
+  listHeld = new Promise((resolve) => {
+    releaseList = resolve;
+  });
+  renderPage();
+
+  await waitFor(() => expect(memberInfoRequests).toBe(1));
+  await waitFor(() => expect(userListRequests).toBe(1));
 });
 
 it("reloads the member details after a membership change", async () => {

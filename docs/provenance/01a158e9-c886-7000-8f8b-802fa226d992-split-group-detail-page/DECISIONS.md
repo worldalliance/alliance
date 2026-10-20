@@ -13,6 +13,8 @@ The page splits along its features, the option `codex exec` recommended. New fil
 - `GroupMembership.tsx`: the members and leaders cards and the member info table, which share the sorted member and leader lists.
 - `GroupDetailPage.tsx`: route lookup, loading and not-found states, the header, the shared error banner, and deletion.
 
-The page passes `setError` and `reportError` down, so every feature still reports into the one banner under the header.
+The page passes `setError` and `reportError` down, typed once as `GroupErrorReporting` in `groupErrors.ts`, so every feature still reports into the one banner under the header.
 
-Moved code is unchanged apart from imports and exports, and from what follows from the features mounting only once the group has loaded: the settings draft starts from the group instead of blank defaults, the `!community` guards go, and member info is fetched for `community.id` rather than the URL id. Member info therefore starts loading once the group list resolves rather than alongside it.
+The page still starts the member info query from the URL id and the user list query, and hands both to `GroupMembership`, so they load alongside the group list rather than after it.
+
+Moved code is unchanged apart from imports and exports, and from what follows from the features mounting only once the group has loaded: the settings draft starts from the group instead of blank defaults, and the `!community` guards go.
