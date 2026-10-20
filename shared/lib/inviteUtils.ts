@@ -197,7 +197,7 @@ export function bucketOnetimeInvitesByActionability(params: {
 
 export function bucketCommunityInvitesByActionability(params: {
   invites: CommunityInviteDto[];
-  userId: number;
+  userId: number | undefined;
 }): {
   actionable: CommunityInviteDto[];
   waitingForResponse: CommunityInviteDto[];
@@ -208,6 +208,10 @@ export function bucketCommunityInvitesByActionability(params: {
   const actionable: CommunityInviteDto[] = [];
   const waitingForResponse: CommunityInviteDto[] = [];
   const settled: CommunityInviteDto[] = [];
+
+  if (userId === undefined) {
+    return { actionable, waitingForResponse, settled };
+  }
 
   for (const invite of invites) {
     switch (invite.status) {

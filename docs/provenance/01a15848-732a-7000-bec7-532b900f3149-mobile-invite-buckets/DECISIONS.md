@@ -1,0 +1,6 @@
+## Decisions
+
+- **Mobile drops `request_pending` group invites by accident, not design.** The hand filter came in with the first mobile group page (`11ede5329`, "basic group main page mobile") with no recorded requirement, and community invite requests already existed then (`017064827`). The shared rule puts a request someone else made under "needs approval" and the leader's own request under "no action needed"; mobile now shows both.
+- **Mobile shows the pending buckets only.** It lists needs-approval, to-be-sent and no-action-needed, and leaves out past invites as it did before, so the tab stays a to-do list on a small screen.
+- **Status labels come from `shared/styles/inviteStatus.ts`.** The invite-status-colors task requires every site that shows an invite status's label and color to read that record. Its decision to keep this tab's "Pending"/"Link sent" separate described a summary of two statuses; the tab now shows every non-settled status of both invite kinds, including community requests, which a local map would have to label anew. An unused link reads "Pending" and a request "Request pending", as everywhere else.
+- **`bucketCommunityInvitesByActionability` accepts an unknown user.** Like the one-time helper, it returns empty buckets while the user is loading, so neither caller writes that fallback.

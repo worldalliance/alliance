@@ -1,12 +1,19 @@
 import { useCommunityInvites } from "@alliance/shared/lib/useCommunityInvites";
 import { useCommunityOnetimeInvites } from "@alliance/shared/lib/useCommunityOnetimeInvites";
+import {
+  communityInviteStatusDisplay,
+  onetimeInviteStatusDisplay,
+} from "@alliance/shared/styles/inviteStatus";
+import { cn } from "@alliance/shared/styles/util";
 import { LegendList } from "@legendapp/list";
 import { useCallback, useMemo } from "react";
 import { ActivityIndicator, RefreshControl, View } from "react-native";
+import { useAuth } from "../../lib/AuthContext";
 import { colors } from "../../lib/style/colors";
 import LoadFailed from "../LoadFailed";
 import { SectionHeader } from "../system/SectionHeader";
 import Text, { FontWeight } from "../system/Text";
+import { groupInvitesListItems } from "./groupInvitesListItems";
 
 export function GroupInvitesTab({
   communityId,
@@ -38,60 +45,17 @@ export function GroupInvitesTab({
     void refetchCommunityInvites();
   }, [onRefresh, refetchOnetimeInvites, refetchCommunityInvites]);
 
-  const pendingCommunity = useMemo(
-    () => communityInvites.filter((i) => i.status === "invitee_pending"),
-    [communityInvites],
-  );
-  const pendingOnetime = useMemo(
+  const { user } = useAuth();
+  const invitesData = useMemo(
     () =>
-      onetimeInvites.filter(
-        (i) => i.status === "link_unused" || i.status === "request_pending",
-      ),
-    [onetimeInvites],
+      groupInvitesListItems({
+        onetimeInvites,
+        communityInvites,
+        communityId,
+        userId: user?.id,
+      }),
+    [onetimeInvites, communityInvites, communityId, user?.id],
   );
-
-  type InvitesListItem =
-    | { type: "section"; id: string; label: string }
-    | {
-        type: "communityInvite";
-        id: number;
-        displayName: string;
-      }
-    | {
-        type: "onetimeInvite";
-        id: number;
-        invitee: string | null;
-        status: string;
-      };
-
-  const invitesData = useMemo<InvitesListItem[]>(() => {
-    const items: InvitesListItem[] = [];
-    if (pendingCommunity.length > 0) {
-      items.push({
-        type: "section",
-        id: "community",
-        label: "Current members invited",
-      });
-      for (const inv of pendingCommunity) {
-        items.push({
-          type: "communityInvite",
-          id: inv.id,
-          displayName: inv.invitedUser?.displayName ?? "Unknown",
-        });
-      }
-    }
-    if (pendingOnetime.length > 0) {
-      for (const inv of pendingOnetime) {
-        items.push({
-          type: "onetimeInvite",
-          id: inv.id,
-          invitee: inv.invitee ?? null,
-          status: inv.status,
-        });
-      }
-    }
-    return items;
-  }, [pendingCommunity, pendingOnetime]);
 
   if (communityInvitesDidFail || onetimeInvitesDidFail) {
     return (
@@ -118,31 +82,21 @@ export function GroupInvitesTab({
     <LegendList
       data={invitesData}
       keyExtractor={(item) =>
-        item.type === "section" ? item.id : `${item.type}-${item.id}`
+        item.type === "section" ? item.id : `${item.type}-${item.invite.id}`
       }
       renderItem={({ item }) =>
         item.type === "section" ? (
           <SectionHeader label={item.label} />
         ) : item.type === "communityInvite" ? (
-          <View className="px-4 py-3 border-b border-zinc-200 flex-row items-center justify-between bg-white">
-            <Text className="text-zinc-900" weight={FontWeight.Medium}>
-              {item.displayName}
-            </Text>
-            <Text className="text-xs text-zinc-500">Pending</Text>
-          </View>
+          <InviteRow
+            name={item.invite.invitedUser?.displayName ?? "Unknown"}
+            status={communityInviteStatusDisplay[item.invite.status]}
+          />
         ) : (
-          <View className="px-4 py-3 border-b border-zinc-200 flex-row items-center justify-between bg-white">
-            <Text
-              className="text-zinc-900"
-              weight={FontWeight.Medium}
-              numberOfLines={1}
-            >
-              {item.invitee ?? "Unnamed"}
-            </Text>
-            <Text className="text-xs text-zinc-500">
-              {item.status === "request_pending" ? "Pending" : "Link sent"}
-            </Text>
-          </View>
+          <InviteRow
+            name={item.invite.invitee}
+            status={onetimeInviteStatusDisplay[item.invite.status]}
+          />
         )
       }
       ListEmptyComponent={
@@ -158,5 +112,31 @@ export function GroupInvitesTab({
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     />
+  );
+}
+
+function InviteRow({
+  name,
+  status,
+}: {
+  name: string;
+  status: { label: string; textClass: string };
+}) {
+  return (
+    <View className="px-4 py-3 border-b border-zinc-200 flex-row items-center justify-between bg-white">
+      <Text
+        className="text-zinc-900"
+        weight={FontWeight.Medium}
+        numberOfLines={1}
+      >
+        {name}
+      </Text>
+      <Text
+        className={cn("text-xs", status.textClass)}
+        weight={FontWeight.Semibold}
+      >
+        {status.label}
+      </Text>
+    </View>
   );
 }

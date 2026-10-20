@@ -3,12 +3,19 @@ import { automaticInviteNote, inviteDestination } from "./copy";
 import {
   acceptedInviteCountLabel,
   automaticInviteReason,
+  bucketCommunityInvitesByActionability,
   bucketOnetimeInvitesByActionability,
   inviteDestinationLabel,
   inviteDestinationSelection,
   reusableInviteNotes,
 } from "./inviteUtils";
-import { makeOnetimeInvite, makeShareUrlMine } from "./testFixtures";
+import {
+  makeCommunity,
+  makeCommunityInvite,
+  makeOnetimeInvite,
+  makeProfile,
+  makeShareUrlMine,
+} from "./testFixtures";
 
 describe("inviteDestinationLabel", () => {
   const link = (overrides: Partial<ShareUrlMineDto> = {}): ShareUrlMineDto => ({
@@ -236,6 +243,92 @@ describe("bucketOnetimeInvitesByActionability", () => {
         userId: 1,
       }).settled,
     ).toEqual([invite]);
+  });
+
+  it("asks a leader to approve a request to join the group they lead", () => {
+    const request = makeOnetimeInvite({
+      status: "request_pending",
+      community: makeCommunity({ id: 7 }),
+      invitingUser: makeProfile(2),
+    });
+    const buckets = (leaderCommunityIds: Set<number>) =>
+      bucketOnetimeInvitesByActionability({
+        invites: [request],
+        leaderCommunityIds,
+        userId: 1,
+      });
+    expect(buckets(new Set([7])).actionable).toEqual([request]);
+    expect(buckets(new Set([8])).waitingForResponse).toEqual([request]);
+  });
+
+  it("leaves the user's own unused links for them to send", () => {
+    const mine = makeOnetimeInvite({ id: 1, invitingUser: makeProfile(1) });
+    const theirs = makeOnetimeInvite({ id: 2, invitingUser: makeProfile(2) });
+    const buckets = bucketOnetimeInvitesByActionability({
+      invites: [mine, theirs],
+      leaderCommunityIds: new Set(),
+      userId: 1,
+    });
+    expect(buckets.unverifiableActionable).toEqual([mine]);
+    expect(buckets.waitingForResponse).toEqual([theirs]);
+  });
+});
+
+describe("bucketCommunityInvitesByActionability", () => {
+  it("buckets nothing without a user", () => {
+    expect(
+      bucketCommunityInvitesByActionability({
+        invites: [makeCommunityInvite()],
+        userId: undefined,
+      }),
+    ).toEqual({ actionable: [], waitingForResponse: [], settled: [] });
+  });
+
+  it("asks for approval only of requests someone else made", () => {
+    const theirs = makeCommunityInvite({
+      id: 1,
+      status: "request_pending",
+      invitingUser: makeProfile(2),
+    });
+    const mine = makeCommunityInvite({
+      id: 2,
+      status: "request_pending",
+      invitingUser: makeProfile(1),
+    });
+    const buckets = bucketCommunityInvitesByActionability({
+      invites: [theirs, mine],
+      userId: 1,
+    });
+    expect(buckets.actionable).toEqual([theirs]);
+    expect(buckets.waitingForResponse).toEqual([mine]);
+  });
+
+  it("waits on the invitee and settles answered invites, newest first", () => {
+    const older = makeCommunityInvite({
+      id: 1,
+      status: "invitee_pending",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    });
+    const newer = makeCommunityInvite({
+      id: 2,
+      status: "invitee_pending",
+      createdAt: "2026-02-01T00:00:00.000Z",
+    });
+    const settled = (
+      [
+        "cancelled",
+        "invitee_rejected",
+        "invitee_accepted",
+        "request_rejected",
+      ] as const
+    ).map((status, index) => makeCommunityInvite({ id: 10 + index, status }));
+    const buckets = bucketCommunityInvitesByActionability({
+      invites: [older, newer, ...settled],
+      userId: 1,
+    });
+    expect(buckets.waitingForResponse).toEqual([newer, older]);
+    expect(buckets.settled).toEqual(settled);
+    expect(buckets.actionable).toEqual([]);
   });
 });
 
