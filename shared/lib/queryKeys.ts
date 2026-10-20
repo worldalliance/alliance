@@ -13,6 +13,9 @@ import type { UseActivitiesProps } from "./useActivities";
 
 const activitiesAll = () => ["useActivities"] as const;
 
+const communityOnetimeInvitesAll = () =>
+  ["userOnetimeInviteGetOnetimeInvitesByCommunity"] as const;
+
 const onetimeInvitesAdminAll = () =>
   ["userOnetimeInviteGetOnetimeInvitesAdmin"] as const;
 
@@ -84,8 +87,9 @@ export const queryKeys = {
   ) => ["communityMemberInfo", communityId ?? null, userId ?? null] as const,
   communityMemberContactInfo: (communityId: number | null) =>
     ["communityGetMemberContactInfo", communityId] as const,
+  communityOnetimeInvitesAll,
   communityOnetimeInvites: (communityId: number) =>
-    ["userOnetimeInviteGetOnetimeInvitesByCommunity", communityId] as const,
+    [...communityOnetimeInvitesAll(), communityId] as const,
   contractById: (contractId: number | null) =>
     ["contractGetById", contractId] as const,
   conversationMessages: (conversationId: number | null) =>
