@@ -21,8 +21,9 @@ import { cn } from "@alliance/shared/styles/util";
 import OutputRenderer from "@alliance/sharedweb/forms/OutputRenderer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { X } from "lucide-react";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo } from "react";
 import { addressedWrite, type BlockWriteById } from "../lib/displayBlockById";
+import { DropPosition, useDragReorder } from "../lib/useDragReorder";
 import { createDisplayBlock } from "./display-blocks";
 import { renderBlockEditor } from "./display-blocks/blockEditors";
 import {
@@ -173,11 +174,6 @@ export function OutputBuilder({
   selectedViewId,
   onSelectView: setSelectedViewId,
 }: OutputBuilderProps) {
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [dropPosition, setDropPosition] = useState<"before" | "after" | null>(
-    null,
-  );
   const outputFields = useMemo(() => collectOutputFields(schema), [schema]);
   const previewAnswers = useMemo(
     () => buildPreviewAnswers(outputFields),
@@ -329,62 +325,17 @@ export function OutputBuilder({
     }
   };
 
-  const handleDragStart = (index: number) => (event: React.DragEvent) => {
-    setDraggedIndex(index);
-    event.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-    setDropPosition(null);
-  };
-
-  const handleDragOver = (index: number) => (event: React.DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-
-    if (draggedIndex === null) {
-      return;
-    }
-    const rect = event.currentTarget.getBoundingClientRect();
-    const midpoint = rect.top + rect.height / 2;
-    const position: "before" | "after" =
-      event.clientY < midpoint ? "before" : "after";
-    setDragOverIndex(index);
-    setDropPosition(position);
-  };
-
-  const handleDrop = (index: number) => (event: React.DragEvent) => {
-    event.preventDefault();
-    if (
-      draggedIndex === null ||
-      dropPosition === null ||
-      !selectedView ||
-      draggedIndex === index
-    ) {
-      handleDragEnd();
-      return;
-    }
-
-    let insertionIndex = index;
-    if (dropPosition === "after") {
-      insertionIndex = index + 1;
-    }
-    if (draggedIndex < insertionIndex) {
-      insertionIndex -= 1;
-    }
-    if (draggedIndex === insertionIndex) {
-      handleDragEnd();
-      return;
-    }
-
-    const nextBlocks = [...selectedView.blocks];
-    const [movingBlock] = nextBlocks.splice(draggedIndex, 1);
-    nextBlocks.splice(insertionIndex, 0, movingBlock);
-    updateSelectedView({ blocks: nextBlocks });
-    handleDragEnd();
-  };
+  const {
+    draggedIndex,
+    dragOverIndex,
+    dropPosition,
+    handleDragStart,
+    handleDragEnd,
+    handleDragOver,
+    handleDrop,
+  } = useDragReorder(selectedView?.blocks ?? [], (blocks) =>
+    updateSelectedView({ blocks }),
+  );
 
   const renderBlock = (block: OutputBlock, index: number) => {
     const showInsertionBar =
@@ -401,7 +352,7 @@ export function OutputBuilder({
 
     return (
       <div className="relative">
-        {showInsertionBar && dropPosition === "before" && (
+        {showInsertionBar && dropPosition === DropPosition.Before && (
           <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
             <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
           </div>
@@ -439,7 +390,7 @@ export function OutputBuilder({
             />
           )}
         </div>
-        {showInsertionBar && dropPosition === "after" && (
+        {showInsertionBar && dropPosition === DropPosition.After && (
           <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
             <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
           </div>
@@ -620,28 +571,11 @@ export function OutputBuilder({
                     selectedView.blocks.length > 0 && (
                       <div
                         className="relative h-4 -mt-2"
-                        onDragOver={(event) => {
-                          event.preventDefault();
-                          event.dataTransfer.dropEffect = "move";
-                          setDragOverIndex(selectedView.blocks.length - 1);
-                          setDropPosition("after");
-                        }}
-                        onDrop={(event) => {
-                          event.preventDefault();
-                          if (!selectedView) return;
-                          if (draggedIndex === null) {
-                            handleDragEnd();
-                            return;
-                          }
-                          const nextBlocks = [...selectedView.blocks];
-                          const [movingBlock] = nextBlocks.splice(
-                            draggedIndex,
-                            1,
-                          );
-                          nextBlocks.push(movingBlock);
-                          updateSelectedView({ blocks: nextBlocks });
-                          handleDragEnd();
-                        }}
+                        onDragOver={handleDragOver(
+                          selectedView.blocks.length - 1,
+                          DropPosition.After,
+                        )}
+                        onDrop={handleDrop(selectedView.blocks.length - 1)}
                       ></div>
                     )}
                 </div>
