@@ -38,14 +38,14 @@ const renderPage = () =>
     </QueryClientProvider>,
   );
 
-test("shows each expert once in an eight-column grid between the waitlist bar and the timeline", async () => {
+test("shows each expert once in a five-column grid between the waitlist bar and the timeline", async () => {
   renderPage();
 
   const bar = await screen.findByRole("img", {
     name: "213 members and 309 on the waitlist, toward 1,000",
   });
   const line = screen.getByText(
-    "Experts will provide comments that help you vote.",
+    "Experts will comment on candidate nonprofits to help you make an informed vote.",
   );
   const grid = screen.getByRole("list", { name: "Expert panel" });
   const timeline = screen.getByRole("region", { name: "Timeline" });
@@ -60,7 +60,7 @@ test("shows each expert once in an eight-column grid between the waitlist bar an
   ).not.toBe(0);
   expect(timeline.contains(grid)).toBe(false);
   expect(grid.className).toContain("grid-cols-4");
-  expect(grid.className).toContain("lg:grid-cols-8");
+  expect(grid.className).toContain("sm:grid-cols-5");
   const cards = [...grid.querySelectorAll(":scope > li")];
   expect(cards).toHaveLength(FEATURED_PEOPLE.length);
   FEATURED_PEOPLE.forEach((person, index) => {
