@@ -6,6 +6,8 @@ import { OverrideTargetContext, userLabel } from "./perUserContent";
 /** Names a write's target inside a sentence, null being the default content. */
 export type TargetLabel = (userId: string | null) => string;
 
+export type ManualTargets = ReturnType<typeof useManualTargets>;
+
 export function useManualTargets(block: DisplayBlock | undefined) {
   const manualUserContent = useMemo(
     () => block?.manualUserContent ?? {},

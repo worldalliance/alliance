@@ -29,19 +29,23 @@ afterEach(() => {
 
 const renderEditor = (block: CopyTextBlock, onUpdate = jest.fn()) => {
   const query = queryWrapper();
-  render(
+  const editor = (current: CopyTextBlock) => (
     <ToastProvider>
       <SiteOriginLinkProvider origin="https://thealliance.org">
         <EditableCopyTextBlock
-          block={block}
+          block={current}
           onUpdate={onUpdate}
           onRemove={() => {}}
         />
       </SiteOriginLinkProvider>
-    </ToastProvider>,
-    query,
+    </ToastProvider>
   );
-  return { onUpdate, client: query.client };
+  const { rerender } = render(editor(block), query);
+  return {
+    onUpdate,
+    client: query.client,
+    rerender: (next: CopyTextBlock) => rerender(editor(next)),
+  };
 };
 
 const toggleFrom = (block: CopyTextBlock) => {
@@ -215,6 +219,24 @@ describe("a per-user copy text block's user list", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Ana Set" }));
     expect(screen.getByText("Editing content for Ana")).toBeTruthy();
+  });
+
+  it("closes the list and clears its search once per-user content turns off", async () => {
+    userList = listsAnaAndBen;
+    const { rerender } = renderEditor(perUser);
+    fireEvent.click(await screen.findByText("1 set / 2 total"));
+    fireEvent.change(screen.getByPlaceholderText("Search users"), {
+      target: { value: "ana" },
+    });
+
+    rerender({ ...perUser, manualPerUser: false });
+    rerender(perUser);
+    expect(screen.queryByPlaceholderText("Search users")).toBeNull();
+
+    fireEvent.click(screen.getByText("1 set / 2 total"));
+    expect(
+      screen.getByPlaceholderText<HTMLInputElement>("Search users").value,
+    ).toBe("");
   });
 
   it("clears the content of a user picked from those with content", async () => {
