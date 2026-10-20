@@ -1,3 +1,4 @@
+import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
@@ -26,6 +27,7 @@ it("offers a retry when a search fails", async () => {
     <MemoryRouter>
       <SearchBar autofocus={false} />
     </MemoryRouter>,
+    { wrapper: queryWrapper().wrapper },
   );
   fireEvent.change(screen.getByPlaceholderText(/Search for members/), {
     target: { value: "ada" },

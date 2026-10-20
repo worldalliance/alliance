@@ -128,6 +128,7 @@ export const queryKeys = {
   publicProfile: (userId: number) => ["userFindOne", userId] as const,
   referrerProfile: (code: string | null) =>
     ["userReferralReferrerProfile", code] as const,
+  search: (query: string) => ["searchAll", query] as const,
   signupSocialProof: (referralCode: string | null, count?: number) =>
     ["userReferralSignupSocialProof", referralCode, count] as const,
   staffDirectory: () => ["userStaffDirectory"] as const,

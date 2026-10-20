@@ -4,8 +4,8 @@ import {
   getSearchCategoriesWithItems,
   getSearchSecondaryText,
   SEARCH_CATEGORY_NAMES,
-  useSearchResults,
 } from "@alliance/shared/lib/search";
+import { useSearchResults } from "@alliance/shared/lib/useSearchResults";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { useCallback, useEffect, useRef, useState } from "react";
