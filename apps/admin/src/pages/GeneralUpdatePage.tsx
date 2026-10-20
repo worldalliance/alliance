@@ -49,6 +49,14 @@ const emptyForm: GeneralUpdateForm = {
   suiteIds: [],
 };
 
+const withSuite = (
+  form: GeneralUpdateForm,
+  suiteId: number,
+): GeneralUpdateForm =>
+  form.suiteIds.includes(suiteId)
+    ? form
+    : { ...form, suiteIds: [...form.suiteIds, suiteId] };
+
 const GeneralUpdatePage: React.FC = () => {
   const { id: idParam } = useParams<{ id?: string }>();
   const navigate = useNavigate();
@@ -112,11 +120,7 @@ const GeneralUpdatePage: React.FC = () => {
     if (!suiteIdParam) return;
     const suiteId = parseInt(suiteIdParam, 10);
     if (isNaN(suiteId)) return;
-    setForm((prev) =>
-      prev.suiteIds.includes(suiteId)
-        ? prev
-        : { ...prev, suiteIds: [...prev.suiteIds, suiteId] },
-    );
+    setForm((prev) => withSuite(prev, suiteId));
   }, [isNew, searchParams]);
 
   const hasSuites = form.suiteIds.length > 0;
@@ -184,11 +188,7 @@ const GeneralUpdatePage: React.FC = () => {
   }, []);
 
   const handleAddSuite = useCallback((suiteId: number) => {
-    setForm((prev) =>
-      prev.suiteIds.includes(suiteId)
-        ? prev
-        : { ...prev, suiteIds: [...prev.suiteIds, suiteId] },
-    );
+    setForm((prev) => withSuite(prev, suiteId));
   }, []);
 
   const handleRemoveSuite = useCallback((suiteId: number) => {

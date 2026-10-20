@@ -192,6 +192,15 @@ it("reports a failed load", async () => {
   ).toBeDefined();
 });
 
+it("assigns the suite named in the link to a new general update", async () => {
+  renderPage("/general-updates/new?suiteId=3");
+
+  expect(
+    await screen.findByRole("button", { name: "Remove Suite #3" }),
+  ).toBeDefined();
+  expect(screen.queryByLabelText("Start Date")).toBeNull();
+});
+
 it("reports suites that failed to load", async () => {
   suitesStatus = 500;
   renderPage();
