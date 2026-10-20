@@ -64,7 +64,7 @@ describe("groupInvitesListItems", () => {
     ]);
   });
 
-  it("tags each one-time invite with its bucket, which picks its actions", () => {
+  it("tags each one-time invite with its bucket", () => {
     const request = makeOnetimeInvite({
       id: 1,
       status: "request_pending",

@@ -130,7 +130,7 @@ export function GroupInvitesTab({
         item.type === "section" ? (
           <SectionHeader label={item.label} />
         ) : item.type === "communityInvite" ? (
-          <View className="px-4 py-3 border-b border-zinc-200 flex-row items-center justify-between bg-white">
+          <View className="px-4 py-3 border-b border-zinc-100 flex-row items-center justify-between bg-white">
             <Text
               className="text-zinc-900"
               weight={FontWeight.Medium}
