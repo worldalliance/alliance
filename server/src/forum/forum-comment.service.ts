@@ -9,6 +9,7 @@ import {
   ActionActivity,
   loadedActionActivityUser,
 } from "src/actions/entities/action-activity.entity";
+import { Action } from "src/actions/entities/action.entity";
 import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
 import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
 import { findWithDeletedRoot } from "src/datasources/find-with-deleted-root";
@@ -44,6 +45,7 @@ import { Post } from "./entities/post.entity";
 import { lockCommentDiscussion, lockLiveAuthor } from "./forum-locks";
 import { ForumService } from "./forum.service";
 import { isCommentHidden } from "./hidden-comments";
+import { filterVisiblePosts } from "./post-visibility";
 
 @Injectable()
 export class ForumCommentService {
@@ -54,6 +56,8 @@ export class ForumCommentService {
     private commentRepository: Repository<Comment>,
     @InjectRepository(ActionActivity)
     private actionActivityRepository: Repository<ActionActivity>,
+    @InjectRepository(Action)
+    private actionRepository: Repository<Action>,
     @InjectRepository(EditableContent)
     private editableContentRepository: TypedRepository<EditableContent>,
     private readonly eventLogService: EventLogService,
@@ -152,7 +156,6 @@ export class ForumCommentService {
       },
     );
 
-    // TODO: notify action authors in app?
     if (
       createCommentDto.parentObjectType === CommentParentObject.Action &&
       process.env.NODE_ENV === "production"
@@ -181,6 +184,32 @@ export class ForumCommentService {
     await this.sendNotifsForNewComment(replyWithAuthor);
 
     return replyWithAuthor;
+  }
+
+  private async actionAndLinkedPostAuthors(actionId: number): Promise<User[]> {
+    const [action, posts] = await Promise.all([
+      this.actionRepository.findOne({
+        where: { id: actionId },
+        relations: { authors: true },
+      }),
+      filterVisiblePosts({
+        qb: this.postRepository
+          .createQueryBuilder("post")
+          .innerJoinAndSelect("post.author", "author")
+          .leftJoinAndSelect("post.authors", "authors")
+          .where("post.actionId = :actionId", { actionId }),
+        postAlias: "post",
+      }).getMany(),
+    ]);
+    return [
+      ...(action?.authors ?? []),
+      ...posts.flatMap((post) => {
+        if (!post.author || !post.authors) {
+          throw new Error(`Post ${post.id} was loaded without its authors`);
+        }
+        return [post.author, ...post.authors];
+      }),
+    ];
   }
 
   async sendNotifsForNewComment(comment: Comment): Promise<void> {
@@ -219,6 +248,12 @@ export class ForumCommentService {
         usersToNotify.push(loadedActionActivityUser(activity));
       }
     }
+    const onAction = comment.parentObjectType === CommentParentObject.Action;
+    if (onAction) {
+      usersToNotify.push(
+        ...(await this.actionAndLinkedPostAuthors(comment.parentObjectId)),
+      );
+    }
 
     const seenIds = new Set<number>();
     const uniqueUsersToNotify = usersToNotify.filter((user) => {
@@ -242,6 +277,7 @@ export class ForumCommentService {
             contentId: comment.id,
             sendTime: comment.createdAt,
             authorId: comment.authorId,
+            ...(onAction && { actionId: comment.parentObjectId }),
           };
         }),
     );
