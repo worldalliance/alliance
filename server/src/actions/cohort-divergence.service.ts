@@ -7,8 +7,6 @@ import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { groupBy, partition } from "es-toolkit";
-import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
-import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { UserService } from "src/user/user.service";
 import { In, Not, type Repository } from "typeorm";
 import {
@@ -17,6 +15,8 @@ import {
   isInCatchUp,
 } from "./cohort-decision";
 import { CohortDecisionService } from "./cohort-decision.service";
+import { CohortResolutionSession } from "./cohort-resolution-session";
+import { CohortResolverService } from "./cohort-resolver.service";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import { Action, loadedActionFormVariants } from "./entities/action.entity";
 import { CohortDecisionReason } from "./entities/cohort-decision-reason";
@@ -30,7 +30,7 @@ export class CohortDivergenceService {
     private readonly actionRepository: Repository<Action>,
     @InjectRepository(ActionCohortDecision)
     private readonly decisionRepository: Repository<ActionCohortDecision>,
-    private readonly actionEventRecipientService: ActionEventRecipientService,
+    private readonly cohortResolverService: CohortResolverService,
     private readonly userService: UserService,
     private readonly cohortDecisionService: CohortDecisionService,
   ) {}
@@ -59,14 +59,14 @@ export class CohortDivergenceService {
     if (rows.length === 0) return;
     const rowsByAction = groupBy(rows, (row) => row.actionId);
     const session = new CohortResolutionSession();
-    await this.actionEventRecipientService.primeActiveUsers(session, () =>
+    await this.cohortResolverService.primeActiveUsers(session, () =>
       this.userService.findActiveUsersForRoster(),
     );
     for (const { action } of actions) {
       const decisions = rowsByAction[action.id];
       if (!decisions) continue;
       const result = await R.fromPromiseFn(() =>
-        this.actionEventRecipientService.resolveCohortMemberIds(
+        this.cohortResolverService.resolveCohortMemberIds(
           action.cohortExpression,
           session,
         ),

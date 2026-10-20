@@ -2,11 +2,11 @@ import { Logger } from "@nestjs/common";
 import request from "supertest";
 import type { EntityManager, Repository } from "typeorm";
 import { CohortDecisionService } from "../src/actions/cohort-decision.service";
+import { CohortResolverService } from "../src/actions/cohort-resolver.service";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
 import { Action } from "../src/actions/entities/action.entity";
 import { CohortDecisionReason } from "../src/actions/entities/cohort-decision-reason";
 import { SingleMemberCohortService } from "../src/actions/single-member-cohort.service";
-import { ActionEventRecipientService } from "../src/notifs/action-event-recipient.service";
 import { TasksModule } from "../src/tasks/tasks.module";
 import {
   ContractEvent,
@@ -626,7 +626,7 @@ describe("CohortDecisionService (e2e)", () => {
         deadline: addDays(now, -15),
       });
       const resolveCohort = jest.spyOn(
-        ctx.app.get(ActionEventRecipientService),
+        ctx.app.get(CohortResolverService),
         "resolveCohortMemberIds",
       );
 

@@ -1,6 +1,8 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import type { Repository } from "typeorm";
+import { CohortResolutionSession } from "../src/actions/cohort-resolution-session";
+import { CohortResolverService } from "../src/actions/cohort-resolver.service";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
 import {
@@ -9,8 +11,6 @@ import {
   type ParsedAction,
 } from "../src/actions/entities/action.entity";
 import { SingleMemberCohortService } from "../src/actions/single-member-cohort.service";
-import { ActionEventRecipientService } from "../src/notifs/action-event-recipient.service";
-import { CohortResolutionSession } from "../src/notifs/cohort-resolution-session";
 import { TasksModule } from "../src/tasks/tasks.module";
 import { UserService } from "../src/user/user.service";
 import {
@@ -23,7 +23,7 @@ import { createTestApp, TestContext } from "./e2e-test-utils";
 describe("Live cohort with prerequisites (e2e)", () => {
   let ctx: TestContext;
   let singleMemberCohortService: SingleMemberCohortService;
-  let recipientService: ActionEventRecipientService;
+  let cohortResolverService: CohortResolverService;
   let userService: UserService;
   let actionRepo: Repository<Action>;
   let activityRepo: Repository<ActionActivity>;
@@ -37,7 +37,7 @@ describe("Live cohort with prerequisites (e2e)", () => {
   beforeAll(async () => {
     ctx = await createTestApp([TasksModule]);
     singleMemberCohortService = ctx.app.get(SingleMemberCohortService);
-    recipientService = ctx.app.get(ActionEventRecipientService);
+    cohortResolverService = ctx.app.get(CohortResolverService);
     userService = ctx.app.get(UserService);
     actionRepo = ctx.dataSource.getRepository(Action);
     activityRepo = ctx.dataSource.getRepository(ActionActivity);
@@ -64,7 +64,7 @@ describe("Live cohort with prerequisites (e2e)", () => {
   const inCohort = async (actionId: number, userId: number) => {
     const action = await load(actionId);
     const [population, single] = await Promise.all([
-      recipientService.resolveActionCohortMemberIds({
+      cohortResolverService.resolveActionCohortMemberIds({
         action,
         session: new CohortResolutionSession(),
       }),

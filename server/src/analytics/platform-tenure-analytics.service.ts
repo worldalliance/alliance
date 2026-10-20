@@ -3,6 +3,8 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { millisecondsInWeek } from "date-fns/constants";
 import { sqlIsLatestCompletion } from "src/actions/action-activity-status";
+import { CohortResolutionSession } from "src/actions/cohort-resolution-session";
+import { CohortResolverService } from "src/actions/cohort-resolver.service";
 import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
 import {
@@ -12,7 +14,6 @@ import {
   type ParsedAction,
 } from "src/actions/entities/action.entity";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
-import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { ContractEventType } from "src/user/entities/contract-event.entity";
 import { yieldToEventLoop } from "src/utils/event-loop";
 import { type Repository } from "typeorm";
@@ -27,6 +28,7 @@ export class PlatformTenureAnalyticsService {
     @InjectRepository(Action)
     private readonly actionRepository: Repository<Action>,
     private readonly actionEventRecipientService: ActionEventRecipientService,
+    private readonly cohortResolverService: CohortResolverService,
   ) {}
 
   async getPlatformTenureCohortStats(
@@ -39,8 +41,7 @@ export class PlatformTenureAnalyticsService {
     // profiles can't have, so the active-user set covers everyone relevant —
     // and the session shares this load with findBaseUsersForEvents below.
     const session = new CohortResolutionSession();
-    const users =
-      await this.actionEventRecipientService.getActiveUsers(session);
+    const users = await this.cohortResolverService.getActiveUsers(session);
 
     const cohortUserIds = new Set<number>();
     let activeCount = 0;

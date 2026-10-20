@@ -3,8 +3,6 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { countBy, partition } from "es-toolkit";
 import { lockLiveIds } from "src/datasources/soft-delete";
-import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
-import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { In, type Repository } from "typeorm";
@@ -24,6 +22,8 @@ import {
   type CohortEnrollment,
 } from "./cohort-decision";
 import { logCohortPathDisagreements } from "./cohort-path-disagreements";
+import { CohortResolutionSession } from "./cohort-resolution-session";
+import { CohortResolverService } from "./cohort-resolver.service";
 import { ActionCohortDecisionCorrection } from "./entities/action-cohort-decision-correction.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import {
@@ -53,7 +53,7 @@ export class CohortDecisionService {
     private readonly decisionRepository: Repository<ActionCohortDecision>,
     @InjectRepository(ActionCohortDecisionCorrection)
     private readonly correctionRepository: Repository<ActionCohortDecisionCorrection>,
-    private readonly actionEventRecipientService: ActionEventRecipientService,
+    private readonly cohortResolverService: CohortResolverService,
     private readonly userService: UserService,
     private readonly prerequisiteProgressService: PrerequisiteProgressService,
     private readonly singleMemberCohortService: SingleMemberCohortService,
@@ -97,7 +97,7 @@ export class CohortDecisionService {
       catchUp.map(({ action }) => action.id),
     );
     const session = new CohortResolutionSession();
-    const users = await this.actionEventRecipientService.primeActiveUsers(
+    const users = await this.cohortResolverService.primeActiveUsers(
       session,
       () => this.userService.findActiveUsersForRoster(),
     );
@@ -256,11 +256,10 @@ export class CohortDecisionService {
           now,
         });
         if (pending.length === 0) return [];
-        const cohort =
-          await this.actionEventRecipientService.resolveCohortMemberIds(
-            action.cohortExpression,
-            session,
-          );
+        const cohort = await this.cohortResolverService.resolveCohortMemberIds(
+          action.cohortExpression,
+          session,
+        );
         return this.decide({
           action,
           users: pending,
@@ -296,7 +295,7 @@ export class CohortDecisionService {
           deadline: enrollment.deadline,
         });
         const cohort = pending.some((user) => !obligated(user))
-          ? await this.actionEventRecipientService.resolveCohortMemberIds(
+          ? await this.cohortResolverService.resolveCohortMemberIds(
               action.cohortExpression,
               session,
             )
@@ -373,11 +372,10 @@ export class CohortDecisionService {
     // No pass revisits a backfilled action, so wait out a recent signer's
     // request rather than decide the others without them.
     if (pending.some((user) => !settled.has(user))) return [];
-    const cohort =
-      await this.actionEventRecipientService.resolveCohortMemberIds(
-        action.cohortExpression,
-        session,
-      );
+    const cohort = await this.cohortResolverService.resolveCohortMemberIds(
+      action.cohortExpression,
+      session,
+    );
     const rows = this.decide({
       action,
       users: pending,
@@ -438,7 +436,7 @@ export class CohortDecisionService {
     }
     const session = new CohortResolutionSession();
     const [users, decidedByAction] = await Promise.all([
-      this.actionEventRecipientService.primeActiveUsers(session, () =>
+      this.cohortResolverService.primeActiveUsers(session, () =>
         this.userService.findActiveUsersForRoster(),
       ),
       this.findDecidedUserIds([action.id]),
@@ -526,7 +524,7 @@ export class CohortDecisionService {
 
   private async sessionFor(users: User[]): Promise<CohortResolutionSession> {
     const session = new CohortResolutionSession();
-    await this.actionEventRecipientService.primeActiveUsers(session, () =>
+    await this.cohortResolverService.primeActiveUsers(session, () =>
       Promise.resolve(users),
     );
     return session;

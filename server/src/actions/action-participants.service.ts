@@ -2,13 +2,13 @@ import { ActionActivityType } from "@alliance/common/actionActivity";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
-import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { computeIsAwayDuringWindow } from "src/utils/action-user";
 import { In, Repository } from "typeorm";
 import {
   findLatestTerminalActivities,
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
+import { CohortResolutionSession } from "./cohort-resolution-session";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionEvent } from "./entities/action-event.entity";
 import {

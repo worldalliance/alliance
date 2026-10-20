@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { User } from "src/user/entities/user.entity";
 import { In, type Repository } from "typeorm";
 import { CohortAdmissionService } from "./cohort-admission.service";
+import { CohortResolutionSession } from "./cohort-resolution-session";
 import { ActionStatus } from "./entities/action-event.entity";
 import {
   Action,
