@@ -67,7 +67,7 @@ const CommunityPage = () => {
     didFail: didGroupsFail,
     refreshCommunities,
     selectedCommunity: community,
-    removeMemberFromCommunity,
+    removeMember,
   } = useMyCommunities({
     selectedCommunityId: communityId ? Number(communityId) : null,
   });
@@ -376,7 +376,7 @@ const CommunityPage = () => {
                     href("/member/:id", { id: id.toString() })
                   }
                   onRemoveMember={(memberId) =>
-                    removeMemberFromCommunity(community.id, memberId)
+                    removeMember({ communityId: community.id, memberId })
                   }
                   amLeader={amLeader ?? false}
                   memberContactInfo={memberContactInfo}

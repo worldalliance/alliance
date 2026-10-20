@@ -1,8 +1,6 @@
 import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
 import {
   CommunityMemberContactInfoDto,
-  communityRemoveMember,
   ProfileDto,
   UserActionRelationDetailDto,
   UserActionSummaryDto,
@@ -12,7 +10,9 @@ import {
   formatAwayReason,
 } from "@alliance/shared/lib/awayRangesFormatters";
 import { formatNextTaskDue } from "@alliance/shared/lib/formatNextTaskDue";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import { useAwayRanges } from "@alliance/shared/lib/useAwayRanges";
+import { REMOVE_MEMBER_SESSION_EXPIRED } from "@alliance/shared/lib/useMyCommunities";
 import { cn } from "@alliance/shared/styles/util";
 import { keyBy } from "es-toolkit";
 import { ChevronDown } from "lucide-react";
@@ -45,7 +45,7 @@ const CommunityMemberTableRow = ({
   amLeader?: boolean;
   canRemove?: boolean;
   communityId?: number;
-  onRemoveMember?: (memberId: number) => void;
+  onRemoveMember?: (memberId: number) => Promise<unknown>;
   contactInfo?: CommunityMemberContactInfoDto;
   actions: UserActionSummaryDto[];
   maxActionsPerWeek: Record<number, number> | null;
@@ -64,30 +64,37 @@ const CommunityMemberTableRow = ({
     contactInfo?.awayRanges,
   );
 
-  const { confirm } = useToast();
+  const { confirm, error } = useToast();
 
-  const handleRemoveMember = useCallback(async (anchor: HTMLElement | null) => {
-    if (!communityId) {
-      return;
-    }
-    const ok = await confirm({
-      title: "Remove member?",
-      message: `Are you sure you want to remove ${profile.displayName} from this group?`,
-      confirmLabel: "Yes, remove",
-      cancelLabel: "No",
-      anchorEl: anchor,
-      placement: ToastPlacement.TopLeft,
-    });
-    if (ok) {
-      await communityRemoveMember({
-        path: { communityId },
-        body: {
-          userId: profile.id,
-        },
+  const handleRemoveMember = useCallback(
+    async (anchor: HTMLElement | null) => {
+      if (!communityId) {
+        return;
+      }
+      const ok = await confirm({
+        title: "Remove member?",
+        message: `Are you sure you want to remove ${profile.displayName} from this group?`,
+        confirmLabel: "Yes, remove",
+        cancelLabel: "No",
+        anchorEl: anchor,
+        placement: ToastPlacement.TopLeft,
       });
-      onRemoveMember?.(profile.id);
-    }
-  }, []);
+      if (!ok) return;
+      try {
+        await onRemoveMember?.(profile.id);
+      } catch (err) {
+        console.error("Failed to remove member:", err);
+        error(
+          thrownRefusalMessage({
+            error: err,
+            fallback: `Couldn't remove ${profile.displayName}.`,
+            sessionExpired: REMOVE_MEMBER_SESSION_EXPIRED,
+          }),
+        );
+      }
+    },
+    [communityId, confirm, error, onRemoveMember, profile],
+  );
 
   return (
     <>

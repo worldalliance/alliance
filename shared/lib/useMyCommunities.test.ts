@@ -10,6 +10,7 @@ const failed = () =>
   Response.json({ message: "Internal server error" }, { status: 500 });
 let myGroups: () => Response | Promise<Response> = failed;
 let membershipWrite: () => Response = failed;
+let removed: unknown[] = [];
 
 serveApi(
   routes({
@@ -19,17 +20,23 @@ serveApi(
     "POST /community/create": () => membershipWrite(),
     "PATCH /community/1": () => membershipWrite(),
     "DELETE /community/1": () => membershipWrite(),
+    "POST /community/1/removeMember": async ({ request }) => {
+      removed.push(await request.json());
+      return membershipWrite();
+    },
   }),
 );
 
 beforeEach(() => {
   myGroups = failed;
   membershipWrite = failed;
+  removed = [];
 });
 
 afterEach(() => onlineManager.setOnline(true));
 
-const cached = [{ id: 1, name: "Group", users: [] }];
+const member = { id: 7 };
+const cached = [{ id: 1, name: "Group", users: [member] }];
 
 it("selects a community on the render its communities arrive", async () => {
   myGroups = () => Response.json(cached);
@@ -193,6 +200,22 @@ it("deleting a group drops it and refreshes the user's groups and the public gro
   expect(invalidated(queryKeys.publicCommunities())).toBe(true);
 });
 
+it("removing a member sends their id and drops them from the group", async () => {
+  membershipWrite = () => Response.json({ ...cached[0], users: [] });
+  const { hook } = await renderLoaded();
+
+  await act(() =>
+    hook.result.current.removeMember({ communityId: 1, memberId: member.id }),
+  );
+
+  await waitFor(() =>
+    expect(hook.result.current.communities).toEqual([
+      { ...cached[0], users: [] },
+    ]),
+  );
+  expect(removed).toEqual([{ userId: member.id }]);
+});
+
 it.each([
   {
     write: "createCommunity",
@@ -204,6 +227,11 @@ it.each([
       hook.saveCommunity({ communityId: 1, body: { name: "Renamed" } }),
   },
   { write: "deleteCommunity", send: (hook: Hook) => hook.deleteCommunity(1) },
+  {
+    write: "removeMember",
+    send: (hook: Hook) =>
+      hook.removeMember({ communityId: 1, memberId: member.id }),
+  },
 ])("$write fails at once offline", async ({ send }) => {
   const { hook } = await renderLoaded();
   onlineManager.setOnline(false);
@@ -234,6 +262,11 @@ it.each([
       hook.saveCommunity({ communityId: 1, body: { name: "Renamed" } }),
   },
   { write: "deleteCommunity", send: (hook: Hook) => hook.deleteCommunity(1) },
+  {
+    write: "removeMember",
+    send: (hook: Hook) =>
+      hook.removeMember({ communityId: 1, memberId: member.id }),
+  },
 ])("$write throws and changes nothing when refused", async ({ send }) => {
   membershipWrite = () =>
     Response.json({ message: "Refused", statusCode: 400 }, { status: 400 });
