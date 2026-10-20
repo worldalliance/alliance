@@ -8,6 +8,7 @@ import { TagFilter } from "@alliance/shared/lib/commentTags";
 import { collectCommentIds } from "@alliance/shared/lib/commentTree";
 import { commentThreadLanding } from "@alliance/shared/lib/copy";
 import { useCommentThread } from "@alliance/shared/lib/useCommentThread";
+import { useNotificationsCache } from "@alliance/shared/lib/useNotificationsCache";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { cn } from "@alliance/shared/styles/util";
 import { milliseconds } from "date-fns";
@@ -31,7 +32,6 @@ import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controlle
 import { useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/style/colors";
 import { useAnnounceOnIos } from "../lib/useAnnounceOnIos";
-import { useNotificationsCache } from "../lib/useNotificationsCache";
 import { FilterPicker, SortPicker } from "./comments/CommentPickers";
 import { NO_TAGS, type SubmitReplyInput } from "./comments/ReplyForm";
 import { ReplyItem } from "./comments/ReplyItem";

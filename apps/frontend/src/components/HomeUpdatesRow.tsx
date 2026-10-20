@@ -9,8 +9,12 @@ import {
 import { ChevronRight } from "lucide-react";
 import { useMemo } from "react";
 
-import { useNotifications } from "@alliance/shared/lib/useNotifications";
+import { useNotificationsList } from "@alliance/shared/lib/useNotificationsCache";
 import { href, Link, useNavigate } from "react-router";
+import {
+  NOTIFICATIONS_PREVIEW_LIMIT,
+  useNotificationActions,
+} from "../lib/useNotificationActions";
 import { WalkthroughAnchor } from "../onboarding/walkthrough/steps";
 
 const UPDATES_LIMIT = 3;
@@ -20,11 +24,14 @@ const HomeUpdatesRow = () => {
 
   const { data, isLoading, isError } = useRecentActionUpdates(UPDATES_LIMIT);
 
-  const { notifications, handleNotifClick } = useNotifications();
+  const { data: notifications } = useNotificationsList(
+    NOTIFICATIONS_PREVIEW_LIMIT,
+  );
+  const { handleNotifClick } = useNotificationActions();
 
   const actionUpdateNotifications = useMemo(
     () =>
-      notifications.filter(
+      (notifications ?? []).filter(
         (notification) => notification.contentType === "action_update",
       ),
     [notifications],

@@ -1,21 +1,16 @@
-import { useNotifications } from "@alliance/shared/lib/useNotifications";
+import { useNotificationsList } from "@alliance/shared/lib/useNotificationsCache";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import List from "@alliance/sharedweb/ui/List";
-import { useEffect } from "react";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import NotificationList from "../../components/NotificationList";
+import { useNotificationActions } from "../../lib/useNotificationActions";
 
 const NotificationsPage = () => {
-  const {
-    notifications,
-    handleMarkAllAsRead,
-    handleMarkAsRead,
-    handleNotifClick,
-    refreshNotifications,
-    showWholeList,
-  } = useNotifications();
-
-  useEffect(showWholeList, [showWholeList]);
+  const { data, isPending } = useNotificationsList();
+  const notifications = data ?? [];
+  const { handleMarkAllAsRead, handleMarkAsRead, handleNotifClick } =
+    useNotificationActions();
 
   const unreadCount = notifications.filter(
     (notification) => !notification.readAt,
@@ -27,20 +22,23 @@ const NotificationsPage = () => {
         <div className="w-full flex flex-row justify-between items-end">
           <h1 className="text-title">Notifications</h1>
           {unreadCount > 0 && (
-            <Button color={ButtonColor.Grey} onClick={handleMarkAllAsRead}>
+            <Button color={ButtonColor.Grey} onClick={handleMarkAllAsRead()}>
               Mark all as read
             </Button>
           )}
         </div>
-        <List className="w-full border-none">
-          <NotificationList
-            notifications={notifications}
-            handleNotifClick={handleNotifClick}
-            handleMarkAsRead={handleMarkAsRead}
-            refreshNotifications={() => refreshNotifications()}
-            listClassName="divide-y divide-grey-2"
-          />
-        </List>
+        {isPending ? (
+          <Spinner />
+        ) : (
+          <List className="w-full border-none">
+            <NotificationList
+              notifications={notifications}
+              handleNotifClick={handleNotifClick}
+              handleMarkAsRead={handleMarkAsRead}
+              listClassName="divide-y divide-grey-2"
+            />
+          </List>
+        )}
       </div>
     </CenterLayout>
   );

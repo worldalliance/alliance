@@ -4,6 +4,7 @@ import {
   NotificationSourceType,
   pushMarkOpened,
 } from "@alliance/shared/client";
+import { useNotificationsCache } from "@alliance/shared/lib/useNotificationsCache";
 import {
   addNotificationResponseReceivedListener,
   getLastNotificationResponse,
@@ -15,7 +16,6 @@ import { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import { useAuth } from "../lib/AuthContext";
 import { notificationRoute } from "../lib/notificationRoute";
-import { useNotificationsCache } from "../lib/useNotificationsCache";
 import { isVisualTestMode } from "../lib/visualTest";
 
 type PushData = {

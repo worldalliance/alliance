@@ -1,7 +1,6 @@
 import type { ActionUpdateDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { NotificationsProvider } from "@alliance/shared/lib/useNotifications";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "bun:test";
 import { MemoryRouter } from "react-router";
@@ -37,9 +36,7 @@ afterEach(cleanup);
 const renderRow = () =>
   render(
     <MemoryRouter>
-      <NotificationsProvider>
-        <HomeUpdatesRow />
-      </NotificationsProvider>
+      <HomeUpdatesRow />
     </MemoryRouter>,
     { wrapper: queryWrapper().wrapper },
   );

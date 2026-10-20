@@ -6,6 +6,10 @@ import {
   LikesBucket,
   NotificationRenderItem,
 } from "@alliance/shared/lib/notificationBucketing";
+import {
+  useNotificationsCache,
+  useNotificationsList,
+} from "@alliance/shared/lib/useNotificationsCache";
 import { LegendList } from "@legendapp/list";
 import { router } from "expo-router";
 import { Ellipsis } from "lucide-react-native";
@@ -26,10 +30,6 @@ import Text from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
 import { notificationRoute } from "../../lib/notificationRoute";
 import { colors } from "../../lib/style/colors";
-import {
-  useNotificationsCache,
-  useNotificationsList,
-} from "../../lib/useNotificationsCache";
 
 export default function NotificationsScreen() {
   const { user } = useAuth();
