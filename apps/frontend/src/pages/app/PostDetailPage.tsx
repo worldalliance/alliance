@@ -1,5 +1,8 @@
 import { isPostAuthor, postBylineAuthors } from "@alliance/common/postAuthors";
-import { formatFullDateTime } from "@alliance/shared/lib/dateFormatters";
+import {
+  isScheduledPost,
+  scheduledPostNotice,
+} from "@alliance/shared/lib/scheduledPost";
 import { useForumPost } from "@alliance/shared/lib/useForumPost";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -90,11 +93,10 @@ const PostDetailPage: React.FC = () => {
           >
             <ArrowLeft size={18} />
           </Link>
-          {post.visibleAt && new Date(post.visibleAt) > new Date() && (
+          {isScheduledPost(post) && (
             <Card style={CardStyle.Alert} className="mb-2 border-none">
               <span className="text-zinc-800">
-                Not visible to members yet. This post is scheduled for{" "}
-                {formatFullDateTime(new Date(post.visibleAt))}
+                {scheduledPostNotice.detail(post.visibleAt)}
               </span>
             </Card>
           )}
