@@ -19,6 +19,7 @@ import { hasMemberActionDeadlinePassed } from "src/utils/action-user";
 import { yieldToEventLoop } from "src/utils/event-loop";
 import { type Repository } from "typeorm";
 import { formatDateKey } from "./date-key";
+import { countsTowardMemberAnalytics } from "./member-analytics-action";
 import {
   MemberCompletionRetentionCohort,
   MemberCompletionRetentionPoint,
@@ -105,8 +106,7 @@ export class MemberRetentionAnalyticsService {
 
     for (const action of actions) {
       if (
-        action.publicOnly ||
-        action.onboarding ||
+        !countsTowardMemberAnalytics(action) ||
         (!includeOptional && action.optional)
       ) {
         continue;

@@ -20,6 +20,7 @@ import { In, type Repository } from "typeorm";
 import { ActionCompletionCurve } from "./action-completion-curve.dto";
 import { ActionStatsWithOnboarding } from "./actionstats-with-onboarding.dto";
 import { ActionStatsRecord } from "./actionstats.entity";
+import { countsTowardMemberAnalytics } from "./member-analytics-action";
 
 @Injectable()
 export class ActionStatsAnalyticsService {
@@ -130,11 +131,8 @@ export class ActionStatsAnalyticsService {
       const memberActionStartDate = memberActionEvent?.date ?? null;
       const memberActionEndDate = deadlineEvent?.date ?? null;
 
-      // Determine if action should show in chart:
-      // - not publicOnly
-      // - has a member_action event
       const showInChart =
-        !action.publicOnly && !!memberActionEvent && !action.onboarding;
+        countsTowardMemberAnalytics(action) && !!memberActionEvent;
 
       const existingRecord = await this.actionStatsRepository.findOne({
         where: { actionId: action.id },

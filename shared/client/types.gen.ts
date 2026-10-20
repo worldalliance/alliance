@@ -4342,7 +4342,7 @@ export type ActionStatsWithOnboardingDto = {
      */
     actionCompletedAt: string | null;
     /**
-     * Whether to show this action in the chart (false for publicOnly or actions without member_action event)
+     * Whether to show this action in the chart (false for actions that don't count toward member analytics or have no member_action event)
      */
     showInChart: boolean;
     /**
