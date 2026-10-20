@@ -28,6 +28,12 @@ Bun.plugin({
   },
 });
 
+// Testing Library's own auto-cleanup registers only in the first file to
+// import it, since bun shares one module cache across the run. Registered
+// before the spy restore so unmount effects still see the test's spies.
+const { cleanup } = await import("@testing-library/react/pure");
+afterEach(cleanup);
+
 // A spy left standing reaches every test file that runs after it, so it is
 // restored here rather than per file. Spy in `beforeEach`: one installed in
 // `beforeAll` or at file scope is gone after the file's first test.
