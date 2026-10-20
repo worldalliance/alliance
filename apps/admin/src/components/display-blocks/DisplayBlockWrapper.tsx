@@ -15,7 +15,6 @@ import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { CheckCircle2, Circle } from "lucide-react";
 import {
   useCallback,
-  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -25,7 +24,6 @@ import {
 } from "react";
 import { withBlockVisibility } from "../../lib/blockVisibility";
 import type { AddressedWrite } from "../../lib/displayBlockById";
-import { useUsersAdmin } from "../../lib/useUsersAdmin";
 import {
   SectionPanels,
   useSidebarSections,
@@ -38,18 +36,14 @@ import { BlockPreviewAllowed } from "./BlockPreview";
 import {
   importManualContent,
   landingIn,
-  OverrideTargetContext,
-  userLabel,
   writeBlockFor,
   type BlockWriteLanding,
   type LandingFor,
 } from "./perUserContent";
 import { usePerViewerOptionsAllowed } from "./PerViewerOptionsContext";
+import { useManualTargets, type TargetLabel } from "./useManualTargets";
 
 type ManualUserListEntry = Pick<UserDto, "id" | "name" | "hasActiveContract">;
-
-/** Names a write's target inside a sentence, null being the default content. */
-export type TargetLabel = (userId: string | null) => string;
 
 type DisplayBlockChildRenderProps<T extends DisplayBlock> = {
   block: T;
@@ -121,53 +115,25 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     return expression.typed || block.visibleIfFormula !== undefined;
   });
 
-  const manualUserContent = useMemo(
-    () => block?.manualUserContent ?? {},
-    [block?.manualUserContent],
-  );
-  const manualContentKeys = useMemo(
-    () => Object.keys(manualUserContent),
-    [manualUserContent],
-  );
-  const manualPerUserEnabled = Boolean(block?.manualPerUser);
-  const usersQuery = useUsersAdmin({ enabled: manualPerUserEnabled });
-  const manualUsers = useMemo(() => usersQuery.data ?? [], [usersQuery.data]);
-  const isLoadingUsers = usersQuery.isLoading;
-  const userLoadError = usersQuery.isLoadingError
-    ? "Unable to load users"
-    : null;
-  const refetchUsers = () => void usersQuery.refetch({ cancelRefetch: false });
-  const builderTarget = useContext(OverrideTargetContext);
-  const [localUserId, setLocalUserId] = useState<string | null>(null);
-  const selectedUserId = builderTarget ? builderTarget.userId : localUserId;
-  const selectManualTarget = builderTarget
-    ? builderTarget.select
-    : setLocalUserId;
-  const activeManualUserId = manualPerUserEnabled ? selectedUserId : null;
+  const {
+    manualUserContent,
+    manualContentKeys,
+    manualPerUserEnabled,
+    manualUsers,
+    isLoadingUsers,
+    userLoadError,
+    refetchUsers,
+    selectManualTarget,
+    activeManualUserId,
+    totalManualTargets,
+    paginationLabel,
+    hasContentForActiveUser,
+    activeUser,
+    targetLabel,
+    handleCycleUser,
+  } = useManualTargets(block);
   const [isUserListOpen, setIsUserListOpen] = useState(false);
   const [userSearch, setUserSearch] = useState("");
-  const manualTargetList = useMemo(
-    () =>
-      manualUsers.length > 0
-        ? manualUsers.map((candidate) => String(candidate.id))
-        : manualContentKeys,
-    [manualContentKeys, manualUsers],
-  );
-  const totalManualTargets = manualTargetList.length;
-  const activeManualIndex = useMemo(() => {
-    if (!activeManualUserId) return -1;
-    return manualTargetList.findIndex((id) => id === activeManualUserId);
-  }, [activeManualUserId, manualTargetList]);
-  const paginationLabel = useMemo(() => {
-    if (totalManualTargets === 0) {
-      return "0/0";
-    }
-    if (!activeManualUserId) {
-      return `0/${totalManualTargets}`;
-    }
-    const displayIndex = activeManualIndex >= 0 ? activeManualIndex + 1 : 1;
-    return `${displayIndex}/${totalManualTargets}`;
-  }, [activeManualIndex, activeManualUserId, totalManualTargets]);
   const totalUserCount =
     manualUsers.length > 0 ? manualUsers.length : manualContentKeys.length;
   const setCount = manualContentKeys.length;
@@ -233,23 +199,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     return block;
   }, [activeManualUserId, block, manualPerUserEnabled]);
 
-  const hasContentForActiveUser = Boolean(
-    activeManualUserId && manualUserContent[activeManualUserId],
-  );
-  const activeUser = useMemo(
-    () =>
-      manualPerUserEnabled && activeManualUserId
-        ? manualUsers.find(
-            (candidate) => String(candidate.id) === activeManualUserId,
-          )
-        : undefined,
-    [activeManualUserId, manualPerUserEnabled, manualUsers],
-  );
-  const targetLabel = useCallback<TargetLabel>(
-    (userId) =>
-      userId ? userLabel(manualUsers, userId) : "the default content",
-    [manualUsers],
-  );
   const usersWithContent = useMemo(
     () =>
       manualUsers.filter((candidate) =>
@@ -314,33 +263,10 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     }
   };
 
-  // Undo turns per-user content off without going through its toggle.
-  useEffect(() => {
-    if (!manualPerUserEnabled) selectManualTarget(null);
-  }, [manualPerUserEnabled, selectManualTarget]);
-
   const handleManualToggle = (checked: boolean) => {
     if (!onUpdate) return;
     if (!checked) setIsUserListOpen(false);
     onUpdate({ manualPerUser: checked } as Partial<T>);
-  };
-
-  const handleCycleUser = (direction: "prev" | "next") => {
-    if (totalManualTargets === 0) return;
-    if (!activeManualUserId) {
-      selectManualTarget(manualTargetList[0]);
-      return;
-    }
-
-    const currentIndex = manualTargetList.findIndex(
-      (id) => id === activeManualUserId,
-    );
-    const safeIndex = currentIndex >= 0 ? currentIndex : 0;
-    const nextIndex =
-      direction === "next"
-        ? (safeIndex + 1) % totalManualTargets
-        : (safeIndex - 1 + totalManualTargets) % totalManualTargets;
-    selectManualTarget(manualTargetList[nextIndex]);
   };
 
   const updateBlockFor = useCallback(
