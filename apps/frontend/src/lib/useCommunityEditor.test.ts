@@ -13,6 +13,7 @@ serveApi(
     "GET /community/list/my": () => Response.json([community]),
     "GET /community/list/public": () => Response.json([]),
     [`PATCH /community/${community.id}`]: () => write(),
+    [`DELETE /community/${community.id}`]: () => write(),
   }),
 );
 
@@ -49,5 +50,25 @@ it("a saved group closes the editor", async () => {
   await act(() => hook.result.current.handleSave());
 
   await waitFor(() => expect(hook.result.current.isEditing).toBe(false));
+  expect(hook.result.current.error).toBeNull();
+});
+
+it("a refused delete shows its message and stays on the group", async () => {
+  write = () => Response.json({ message: "Not your group" }, { status: 403 });
+  const { hook, onDeleted } = renderEditor();
+
+  await act(() => hook.result.current.handleDelete());
+
+  expect(hook.result.current.error).toBe("Not your group");
+  expect(onDeleted).not.toHaveBeenCalled();
+});
+
+it("a deleted group leaves the page", async () => {
+  write = () => new Response(null, { status: 200 });
+  const { hook, onDeleted } = renderEditor();
+
+  await act(() => hook.result.current.handleDelete());
+
+  expect(onDeleted).toHaveBeenCalled();
   expect(hook.result.current.error).toBeNull();
 });

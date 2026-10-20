@@ -18,6 +18,7 @@ serveApi(
     "POST /community/1/join": () => membershipWrite(),
     "POST /community/create": () => membershipWrite(),
     "PATCH /community/1": () => membershipWrite(),
+    "DELETE /community/1": () => membershipWrite(),
   }),
 );
 
@@ -180,6 +181,18 @@ it("saving a group's settings puts the saved group in the cache", async () => {
   expect(invalidated(queryKeys.myCommunities())).toBe(false);
 });
 
+it("deleting a group drops it and refreshes the user's groups and the public groups", async () => {
+  membershipWrite = () => new Response(null, { status: 200 });
+  const { hook, invalidated } = await renderLoaded();
+  myGroups = failed;
+
+  await act(() => hook.result.current.deleteCommunity(1));
+
+  await waitFor(() => expect(hook.result.current.communities).toEqual([]));
+  expect(invalidated(queryKeys.myCommunities())).toBe(true);
+  expect(invalidated(queryKeys.publicCommunities())).toBe(true);
+});
+
 it.each([
   {
     write: "createCommunity",
@@ -190,6 +203,7 @@ it.each([
     send: (hook: Hook) =>
       hook.saveCommunity({ communityId: 1, body: { name: "Renamed" } }),
   },
+  { write: "deleteCommunity", send: (hook: Hook) => hook.deleteCommunity(1) },
 ])("$write fails at once offline", async ({ send }) => {
   const { hook } = await renderLoaded();
   onlineManager.setOnline(false);
@@ -219,6 +233,7 @@ it.each([
     send: (hook: Hook) =>
       hook.saveCommunity({ communityId: 1, body: { name: "Renamed" } }),
   },
+  { write: "deleteCommunity", send: (hook: Hook) => hook.deleteCommunity(1) },
 ])("$write throws and changes nothing when refused", async ({ send }) => {
   membershipWrite = () =>
     Response.json({ message: "Refused", statusCode: 400 }, { status: 400 });

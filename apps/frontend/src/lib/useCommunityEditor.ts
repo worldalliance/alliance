@@ -2,11 +2,11 @@ import {
   isMaxCapacityRequired,
   validateCommunitySettings,
 } from "@alliance/common/community";
-import { errorMessage } from "@alliance/common/errorMessage";
 import { changedPhoto } from "@alliance/common/image-src";
-import { CommunityDto, communityDelete } from "@alliance/shared/client";
+import { CommunityDto } from "@alliance/shared/client";
 import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import {
+  DELETE_GROUP_SESSION_EXPIRED,
   UPDATE_GROUP_SESSION_EXPIRED,
   useMyCommunities,
 } from "@alliance/shared/lib/useMyCommunities";
@@ -17,10 +17,10 @@ export type CommunityEditor = ReturnType<typeof useCommunityEditor>;
 export function useCommunityEditor(params: {
   community: CommunityDto | null;
   memberCount: number;
-  onDeleted: (communityId: number) => void;
+  onDeleted: () => void;
 }) {
   const { community, memberCount, onDeleted } = params;
-  const { saveCommunity } = useMyCommunities();
+  const { saveCommunity, deleteCommunity } = useMyCommunities();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState<string>("");
@@ -145,26 +145,21 @@ export function useCommunityEditor(params: {
     setIsSaving(true);
     setError(null);
     try {
-      const response = await communityDelete({
-        path: { communityId: community.id },
-      });
-      if (response.error) {
-        setError(
-          errorMessage({
-            error: response.error,
-            fallback: "Failed to delete community",
-          }),
-        );
-      } else {
-        onDeleted(community.id);
-      }
+      await deleteCommunity(community.id);
+      onDeleted();
     } catch (err) {
       console.error("Failed to delete community:", err);
-      setError("Failed to delete community");
+      setError(
+        thrownRefusalMessage({
+          error: err,
+          fallback: "Failed to delete community",
+          sessionExpired: DELETE_GROUP_SESSION_EXPIRED,
+        }),
+      );
     } finally {
       setIsSaving(false);
     }
-  }, [community, isSaving, onDeleted]);
+  }, [community, isSaving, deleteCommunity, onDeleted]);
 
   return {
     isEditing,

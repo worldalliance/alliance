@@ -66,7 +66,6 @@ const CommunityPage = () => {
     isLoading: areGroupsLoading,
     didFail: didGroupsFail,
     refreshCommunities,
-    removeCommunity,
     selectedCommunity: community,
     removeMemberFromCommunity,
   } = useMyCommunities({
@@ -184,11 +183,8 @@ const CommunityPage = () => {
   );
 
   const handleDeleted = useCallback(
-    (deletedId: number) => {
-      removeCommunity(deletedId);
-      setParams({ communityId: null, tab: null });
-    },
-    [removeCommunity, setParams],
+    () => setParams({ communityId: null, tab: null }),
+    [setParams],
   );
 
   const editor = useCommunityEditor({
