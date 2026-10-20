@@ -266,3 +266,37 @@ describe("a per-user copy text block's user list", () => {
     });
   });
 });
+
+describe("importing per-user content from the options menu", () => {
+  it("asks before replacing text typed once the menu closes mid-import", async () => {
+    let paste: (text: string) => void = () => {};
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        readText: () =>
+          new Promise<string>((resolve) => {
+            paste = resolve;
+          }),
+      },
+    });
+    const perUser: CopyTextBlock = {
+      ...plain,
+      manualPerUser: true,
+      manualUserContent: {},
+    };
+    const { rerender } = renderEditor(perUser);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Display block options" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Import from clipboard…" }),
+    );
+    fireEvent.mouseDown(document.body);
+    rerender({ ...perUser, manualUserContent: { "7": { text: "Dear Ana" } } });
+    await act(async () => paste('{"7": "Hi Ana"}'));
+
+    expect(
+      screen.getByText("Overwrite existing per-user content?"),
+    ).toBeTruthy();
+  });
+});

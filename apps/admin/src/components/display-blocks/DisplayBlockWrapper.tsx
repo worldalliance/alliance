@@ -1,20 +1,14 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
-  MANUAL_IMPORT_FIELD_BY_KIND,
-  manualImportClipboardSchema,
   type DisplayBlock,
   type ManualDisplayBlockContent,
 } from "@alliance/common/forms/display-blocks";
 import { type AnyField } from "@alliance/common/forms/form-schema";
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
-import { pickForCount, withCount } from "@alliance/common/plural";
 import { resolveDisplayBlockForUser } from "@alliance/shared/formrenderer";
 import { cn } from "@alliance/shared/styles/util";
-import { ConfirmMode, useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -33,13 +27,14 @@ import { ElementConditions } from "../form-fields/conditions/VisibilityCondition
 import { BlockPreviewAllowed } from "./BlockPreview";
 import { ManualUserList } from "./ManualUserList";
 import {
-  importManualContent,
   landingIn,
   writeBlockFor,
   type BlockWriteLanding,
   type LandingFor,
 } from "./perUserContent";
+import { PerUserOptions } from "./PerUserOptions";
 import { usePerViewerOptionsAllowed } from "./PerViewerOptionsContext";
+import { useClipboardImport } from "./useClipboardImport";
 import { useManualTargets, type TargetLabel } from "./useManualTargets";
 
 type DisplayBlockChildRenderProps<T extends DisplayBlock> = {
@@ -94,10 +89,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
   outputBlocks,
   perUserContent = true,
 }: DisplayBlockWrapperProps<T>) {
-  const manualImportField = block
-    ? MANUAL_IMPORT_FIELD_BY_KIND[block.kind]
-    : null;
-  const { success, error: toastError, confirm } = useToast();
   const perViewerOptionsAllowed = usePerViewerOptionsAllowed();
   const sidebar = useSidebarSections();
   const showConditional = Boolean(block && onUpdate && perViewerOptionsAllowed);
@@ -114,19 +105,11 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
 
   const targets = useManualTargets(block);
   const {
-    manualUserContent,
-    manualContentKeys,
     manualPerUserEnabled,
-    manualUsers,
-    isLoadingUsers,
-    userLoadError,
-    refetchUsers,
-    selectManualTarget,
     activeManualUserId,
     totalManualTargets,
     paginationLabel,
     hasContentForActiveUser,
-    activeUser,
     targetLabel,
     handleCycleUser,
   } = targets;
@@ -169,24 +152,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     }
     return block;
   }, [activeManualUserId, block, manualPerUserEnabled]);
-
-  const usersWithContent = useMemo(
-    () =>
-      manualUsers.filter((candidate) =>
-        Object.prototype.hasOwnProperty.call(
-          manualUserContent,
-          String(candidate.id),
-        ),
-      ),
-    [manualUserContent, manualUsers],
-  );
-  const usersWithoutContent = useMemo(
-    () =>
-      manualUsers.filter(
-        (candidate) => !manualUserContent[String(candidate.id)],
-      ),
-    [manualUserContent, manualUsers],
-  );
 
   const updateBlockWide = (updates: Partial<T>) => {
     if (!onUpdate || !block) {
@@ -234,11 +199,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     }
   };
 
-  const handleManualToggle = (checked: boolean) => {
-    if (!onUpdate) return;
-    onUpdate({ manualPerUser: checked } as Partial<T>);
-  };
-
   const updateBlockFor = useCallback(
     (
       userId: string | null,
@@ -259,110 +219,6 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     (updates: Partial<T>) => updateBlockFor(activeManualUserId, () => updates),
     [activeManualUserId, updateBlockFor],
   );
-
-  // An import awaits the clipboard before counting what it would replace.
-  const latestBlock = useRef(block);
-  useLayoutEffect(() => {
-    latestBlock.current = block;
-  });
-
-  const handleImportFromClipboard = useCallback(async () => {
-    if (!onUpdate || !block || !manualImportField) return;
-    let clipboardText: string;
-    try {
-      clipboardText = await navigator.clipboard.readText();
-    } catch (err) {
-      console.error("Could not read from clipboard", err);
-      toastError("Could not read from clipboard.");
-      return;
-    }
-    let rawJson: unknown;
-    try {
-      rawJson = JSON.parse(clipboardText);
-    } catch (err) {
-      console.error("Could not parse clipboard JSON", err);
-      toastError("Clipboard does not contain valid JSON.");
-      return;
-    }
-    const parseResult = manualImportClipboardSchema.safeParse(rawJson);
-    if (!parseResult.success) {
-      toastError('Expected a JSON object like {"42": "text for user 42"}.');
-      return;
-    }
-    const entries = parseResult.data;
-
-    if (Object.keys(entries).length === 0) {
-      toastError("No string entries found in clipboard JSON.");
-      return;
-    }
-    const readBlock = latestBlock.current;
-    if (!readBlock) return;
-    const { imported, overwritten } = importManualContent({
-      block: readBlock,
-      field: manualImportField,
-      entries,
-    });
-    if (imported === 0) {
-      toastError("Clipboard content already matches existing per-user values.");
-      return;
-    }
-
-    if (overwritten > 0) {
-      const ok = await confirm({
-        title: "Overwrite existing per-user content?",
-        message: `${withCount(overwritten, "user")} already ${pickForCount(overwritten, "has", "have")} a different ${manualImportField} value. Continue and replace ${pickForCount(overwritten, "it", "them")}?`,
-        confirmLabel: "Overwrite",
-        cancelLabel: "Cancel",
-        mode: ConfirmMode.Fullscreen,
-      });
-      if (!ok) return;
-    }
-
-    // The form can change while the clipboard is read or the admin confirms.
-    const landing = writeBlockFor({
-      block,
-      userId: null,
-      update: (current) =>
-        ({
-          manualPerUser: true,
-          manualUserContent: importManualContent({
-            block: current,
-            field: manualImportField,
-            entries,
-          }).manualUserContent,
-        }) as Partial<T>,
-      updateCurrent,
-      onUpdate,
-    });
-
-    setIsMenuOpen(false);
-    if (!landing) {
-      toastError("The block was deleted before its content was imported.");
-      return;
-    }
-    success(`Imported content for ${withCount(imported, "user")}.`);
-  }, [
-    block,
-    confirm,
-    manualImportField,
-    onUpdate,
-    success,
-    toastError,
-    updateCurrent,
-  ]);
-
-  const clearContentForActiveUser = () => {
-    if (!onUpdate || !block || !activeManualUserId) {
-      return;
-    }
-    if (!manualUserContent[activeManualUserId]) {
-      return;
-    }
-    const { [activeManualUserId]: _removed, ...rest } = manualUserContent;
-    onUpdate({
-      manualUserContent: rest,
-    } as Partial<T>);
-  };
 
   const showConditionalControls =
     showConditionalVisibilityControl && showConditional;
@@ -387,190 +243,19 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     </BlockPreviewAllowed.Provider>
   );
 
-  const perUserOptions = perUserContent && (
-    <div>
-      <label className="flex cursor-pointer items-center px-3 py-1.5 text-gray-700">
-        <input
-          type="checkbox"
-          className="mr-2"
-          checked={manualPerUserEnabled}
-          onChange={(event) => handleManualToggle(event.target.checked)}
-        />
-        Manual content per user
-      </label>
-      {manualImportField && onUpdate && (
-        <div className="px-3 py-1.5">
-          <button
-            type="button"
-            className="block w-full rounded-md border border-blue-200 bg-blue-50 px-2 py-1.5 text-left text-sm font-medium text-blue-700 hover:bg-blue-100"
-            onClick={() => void handleImportFromClipboard()}
-            title={`Read a {userId: string} JSON object from the clipboard and apply each string to ${manualImportField} per user.`}
-          >
-            Import from clipboard…
-          </button>
-        </div>
-      )}
-      {manualPerUserEnabled && (
-        <div className="px-3 pb-1 pt-1 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              className="text-xs text-gray-600 border border-gray-200 rounded px-2 py-1 hover:border-gray-300"
-              onClick={() => selectManualTarget(null)}
-            >
-              Edit default
-            </button>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                className="text-xs text-gray-600 border border-gray-200 rounded px-2 py-1 hover:border-gray-300 disabled:opacity-50"
-                onClick={() => handleCycleUser("prev")}
-                disabled={manualUsers.length === 0}
-              >
-                Prev
-              </button>
-              <button
-                type="button"
-                className="text-xs text-gray-600 border border-gray-200 rounded px-2 py-1 hover:border-gray-300 disabled:opacity-50"
-                onClick={() => handleCycleUser("next")}
-                disabled={manualUsers.length === 0}
-              >
-                Next
-              </button>
-            </div>
-          </div>
-          <div className="text-xs text-gray-700">
-            {activeManualUserId ? (
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium">
-                  {activeUser
-                    ? `${activeUser.name ?? "User"} (#${activeUser.id})`
-                    : `User ${activeManualUserId}`}
-                </span>
-                <span
-                  className={cn(
-                    "rounded-full px-2 py-0.5 text-[11px]",
-                    hasContentForActiveUser
-                      ? "bg-green-100 text-green-800"
-                      : "bg-yellow-100 text-yellow-800",
-                  )}
-                >
-                  {hasContentForActiveUser ? "Custom content" : "Using default"}
-                </span>
-              </div>
-            ) : (
-              <span className="font-medium text-gray-700">
-                Editing default content
-              </span>
-            )}
-          </div>
-          <div className="rounded-md border border-gray-100 bg-gray-50 p-2 text-xs text-gray-700 space-y-1">
-            {userLoadError ? (
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-red-700">{userLoadError}</span>
-                <button
-                  type="button"
-                  className="text-blue-600 hover:text-blue-700"
-                  onClick={refetchUsers}
-                >
-                  Retry
-                </button>
-              </div>
-            ) : isLoadingUsers ? (
-              <span>Loading users…</span>
-            ) : manualUsers.length === 0 ? (
-              <>
-                <div className="font-medium text-gray-800">
-                  Users with content ({manualContentKeys.length})
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {manualContentKeys.length === 0 ? (
-                    <span className="text-gray-500">No overrides yet</span>
-                  ) : (
-                    manualContentKeys.slice(0, 6).map((userId) => (
-                      <span
-                        key={userId}
-                        className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] text-green-800"
-                      >
-                        User {userId}
-                      </span>
-                    ))
-                  )}
-                  {manualContentKeys.length > 6 && (
-                    <span className="text-[11px] text-gray-500">
-                      +{manualContentKeys.length - 6} more
-                    </span>
-                  )}
-                </div>
-                <span className="text-gray-500">
-                  Load users to see who is missing content.
-                </span>
-              </>
-            ) : (
-              <>
-                <div className="font-medium text-gray-800">
-                  Users with content ({usersWithContent.length})
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {usersWithContent.length === 0 ? (
-                    <span className="text-gray-500">None yet</span>
-                  ) : (
-                    usersWithContent.slice(0, 6).map((user) => (
-                      <button
-                        key={user.id}
-                        type="button"
-                        className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] text-green-800 hover:bg-green-200"
-                        onClick={() => selectManualTarget(String(user.id))}
-                      >
-                        {user.name ?? `User #${user.id}`}
-                      </button>
-                    ))
-                  )}
-                  {usersWithContent.length > 6 && (
-                    <span className="text-[11px] text-gray-500">
-                      +{usersWithContent.length - 6} more
-                    </span>
-                  )}
-                </div>
-                <div className="font-medium text-gray-800 pt-1">
-                  Missing ({usersWithoutContent.length})
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {usersWithoutContent.length === 0 ? (
-                    <span className="text-gray-500">Everyone set</span>
-                  ) : (
-                    usersWithoutContent.slice(0, 6).map((user) => (
-                      <button
-                        key={user.id}
-                        type="button"
-                        className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] text-gray-800 hover:bg-gray-300"
-                        onClick={() => selectManualTarget(String(user.id))}
-                      >
-                        {user.name ?? `User #${user.id}`}
-                      </button>
-                    ))
-                  )}
-                  {usersWithoutContent.length > 6 && (
-                    <span className="text-[11px] text-gray-500">
-                      +{usersWithoutContent.length - 6} more
-                    </span>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-          {activeManualUserId && hasContentForActiveUser && (
-            <button
-              type="button"
-              className="text-xs text-red-700 hover:text-red-800"
-              onClick={clearContentForActiveUser}
-            >
-              Clear content for this user
-            </button>
-          )}
-        </div>
-      )}
-    </div>
+  const importFromClipboard = useClipboardImport({
+    block,
+    onUpdate,
+    updateCurrent,
+    closeMenu: () => setIsMenuOpen(false),
+  });
+  const perUserOptions = perUserContent && block && onUpdate && (
+    <PerUserOptions
+      block={block}
+      onUpdate={onUpdate}
+      onImport={importFromClipboard}
+      targets={targets}
+    />
   );
   const contentBody = (
     <>
