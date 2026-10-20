@@ -4,6 +4,7 @@ import {
   CreatePostDto,
   imagesUploadImage,
 } from "@alliance/shared/client";
+import { isScheduledPost } from "@alliance/shared/lib/scheduledPost";
 import { useForumPost } from "@alliance/shared/lib/useForumPost";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -73,7 +74,7 @@ const PostFormPage: React.FC = () => {
     setTitle(post.title);
     setContent(post.editableContent);
     setActionId(post.actionId ?? undefined);
-    if (!!post.visibleAt && new Date(post.visibleAt) > new Date()) {
+    if (isScheduledPost(post)) {
       setScheduledVisibleAt(post.visibleAt);
       setUseSchedulePost(true);
     } else {

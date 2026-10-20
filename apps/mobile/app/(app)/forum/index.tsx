@@ -1,4 +1,8 @@
 import { postBylineAuthors } from "@alliance/common/postAuthors";
+import {
+  isScheduledPost,
+  scheduledPostNotice,
+} from "@alliance/shared/lib/scheduledPost";
 import { useForumPosts } from "@alliance/shared/lib/useForumPosts";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
@@ -74,8 +78,7 @@ export default function ForumScreen() {
           ) : (
             <View className="overflow-hidden bg-white">
               {posts.map((post, index) => {
-                const isPrivateFuturePost =
-                  post.visibleAt && new Date(post.visibleAt) > new Date();
+                const isPrivateFuturePost = isScheduledPost(post);
 
                 return (
                   <TouchableOpacity
@@ -99,12 +102,9 @@ export default function ForumScreen() {
                             {post.title}
                           </Text>
                         </View>
-                        {isPrivateFuturePost && post.visibleAt && (
+                        {isPrivateFuturePost && (
                           <Text className="text-sm text-blue-600 mt-1">
-                            Not visible to members yet - will be posted{" "}
-                            {formatTime(new Date(post.visibleAt), {
-                              addSuffix: true,
-                            })}
+                            {scheduledPostNotice.list(post.visibleAt)}
                           </Text>
                         )}
                       </View>
