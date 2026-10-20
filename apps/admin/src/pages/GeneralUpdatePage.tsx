@@ -1,4 +1,3 @@
-/* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
 import {
   displayOnlyToFormSchema,
   readDisplayOnlySchema,
@@ -15,29 +14,23 @@ import {
   formatLocalDateTime,
   resolveDateValue,
 } from "@alliance/sharedweb/ui/DateTimePicker";
-import UserSelect, {
-  useSelectableUsers,
-} from "@alliance/sharedweb/ui/UserSelect";
-import { X } from "lucide-react";
+import { useSelectableUsers } from "@alliance/sharedweb/ui/UserSelect";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { FormBuilder } from "../components/FormBuilder";
 import FormSection from "../components/FormSection";
+import GeneralUpdateAudienceFields from "../components/general-update/GeneralUpdateAudienceFields";
+import {
+  usesSuiteSchedule,
+  withSuite,
+  type GeneralUpdateForm,
+} from "../components/general-update/generalUpdateForm";
+import GeneralUpdateScheduleFields from "../components/general-update/GeneralUpdateScheduleFields";
 import { useActionSuitesAdmin } from "../lib/useActionSuitesAdmin";
 import { useGeneralUpdateAdmin } from "../lib/useGeneralUpdateAdmin";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 
 const tabs = ["details", "content"] as const;
-
-type GeneralUpdateForm = {
-  name: string;
-  startDate: string;
-  endDate: string;
-  useManualCohort: boolean;
-  manualCohortUserIds: number[];
-  tagIds: string[];
-  suiteIds: number[];
-};
 
 const emptyForm: GeneralUpdateForm = {
   name: "",
@@ -48,14 +41,6 @@ const emptyForm: GeneralUpdateForm = {
   tagIds: [],
   suiteIds: [],
 };
-
-const withSuite = (
-  form: GeneralUpdateForm,
-  suiteId: number,
-): GeneralUpdateForm =>
-  form.suiteIds.includes(suiteId)
-    ? form
-    : { ...form, suiteIds: [...form.suiteIds, suiteId] };
 
 const GeneralUpdatePage: React.FC = () => {
   const { id: idParam } = useParams<{ id?: string }>();
@@ -105,14 +90,9 @@ const GeneralUpdatePage: React.FC = () => {
     });
   }
 
-  const { tags: availableTags, isLoading: tagsLoading } = useTagsAdmin();
+  const tags = useTagsAdmin();
   const { suites } = useActionSuitesAdmin();
-  const availableSuites = suites.data ?? [];
-  const {
-    users: availableUsers,
-    isLoading: usersLoading,
-    isLoadingError: usersError,
-  } = useSelectableUsers();
+  const users = useSelectableUsers();
 
   useEffect(() => {
     if (!isNew) return;
@@ -123,7 +103,7 @@ const GeneralUpdatePage: React.FC = () => {
     setForm((prev) => withSuite(prev, suiteId));
   }, [isNew, searchParams]);
 
-  const hasSuites = form.suiteIds.length > 0;
+  const hasSuites = usesSuiteSchedule(form);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -161,33 +141,6 @@ const GeneralUpdatePage: React.FC = () => {
     [isNew, update, form, hasSuites, navigate, createUpdate, saveUpdate],
   );
 
-  const handleToggleTag = useCallback((tagId: string) => {
-    setForm((prev) => ({
-      ...prev,
-      tagIds: prev.tagIds.includes(tagId)
-        ? prev.tagIds.filter((t) => t !== tagId)
-        : [...prev.tagIds, tagId],
-    }));
-  }, []);
-
-  const handleAddSuite = useCallback((suiteId: number) => {
-    setForm((prev) => withSuite(prev, suiteId));
-  }, []);
-
-  const handleRemoveSuite = useCallback((suiteId: number) => {
-    setForm((prev) => ({
-      ...prev,
-      suiteIds: prev.suiteIds.filter((s) => s !== suiteId),
-    }));
-  }, []);
-
-  const handleManualCohortChange = useCallback((ids: number[]) => {
-    setForm((prev) => ({
-      ...prev,
-      manualCohortUserIds: ids,
-    }));
-  }, []);
-
   const formContent = (
     <>
       <FormSection
@@ -218,218 +171,18 @@ const GeneralUpdatePage: React.FC = () => {
         </a>
       </FormSection>
 
-      <FormSection
-        title="Suites"
-        description="Assign this general update to one or more suites. When assigned to a suite, the start and end dates are inherited from some action in the suite."
-      >
-        <div className="space-y-3">
-          {form.suiteIds.length > 0 && (
-            <ul className="flex flex-wrap gap-2">
-              {form.suiteIds.map((suiteId) => {
-                const suite = availableSuites.find((s) => s.id === suiteId);
-                const name = suite?.name ?? `Suite #${suiteId}`;
-                return (
-                  <li key={suiteId}>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSuite(suiteId)}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm font-medium text-gray-800 hover:bg-gray-100 hover:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 cursor-pointer"
-                      aria-label={`Remove ${name}`}
-                    >
-                      {name}
-                      <span aria-hidden className="text-gray-500">
-                        <X className="w-4 h-4" />
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {suites.isPending ? (
-            <p className="text-sm text-gray-500">Loading suites...</p>
-          ) : suites.isLoadingError ? (
-            <p className="text-sm text-red-600">Failed to load suites.</p>
-          ) : availableSuites.length ? (
-            <div className="flex items-center gap-2">
-              <label htmlFor="add-suite" className="sr-only">
-                Add suite
-              </label>
-              <select
-                id="add-suite"
-                value=""
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v) {
-                    handleAddSuite(Number(v));
-                  }
-                }}
-                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Add a suite...</option>
-                {availableSuites
-                  .filter((s) => !form.suiteIds.includes(s.id))
-                  .map((suite) => (
-                    <option key={suite.id} value={suite.id}>
-                      {suite.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">No suites available.</p>
-          )}
-        </div>
-      </FormSection>
+      <GeneralUpdateScheduleFields
+        form={form}
+        setForm={setForm}
+        suites={suites}
+      />
 
-      {!hasSuites && (
-        <FormSection
-          title="Schedule"
-          description="Set start and end dates manually when not using a suite."
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label
-                htmlFor="startDate"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Start Date
-              </label>
-              <input
-                type="datetime-local"
-                id="startDate"
-                value={form.startDate}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    startDate: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="endDate"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                End Date
-              </label>
-              <input
-                type="datetime-local"
-                id="endDate"
-                value={form.endDate}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    endDate: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
-              />
-            </div>
-          </div>
-        </FormSection>
-      )}
-
-      <FormSection title="Participating Users">
-        <div className="space-y-6">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-700">
-                Participating Tags
-              </label>
-            </div>
-            <p className="text-xs text-gray-500 mb-3">
-              Updates without tags will not be shown to any users, unless Manual
-              User Cohort is enabled.
-            </p>
-            {tagsLoading ? (
-              <p className="text-sm text-gray-500">Loading tags...</p>
-            ) : availableTags.length ? (
-              <div className="grid gap-2 sm:grid-cols-4">
-                {availableTags.map((tag) => {
-                  const checked = form.tagIds.includes(tag.id);
-                  return (
-                    <label
-                      key={tag.id}
-                      className={cn(
-                        "flex items-start gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors",
-                        checked
-                          ? "border-blue-400 bg-blue-50"
-                          : "border-gray-200 hover:border-gray-300",
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        checked={checked}
-                        onChange={() => handleToggleTag(tag.id)}
-                      />
-                      <span className="flex flex-col min-w-0">
-                        <span className="font-medium text-gray-800">
-                          {tag.name}
-                        </span>
-                        {tag.publicDisplayName && (
-                          <span className="text-xs text-gray-500">
-                            {tag.publicDisplayName}
-                          </span>
-                        )}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500">
-                No tags available. Create one in the tags dashboard.
-              </p>
-            )}
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-700">
-                Manual User Cohort{" "}
-                {form.useManualCohort
-                  ? `(${form.manualCohortUserIds.length})`
-                  : ""}
-              </label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.useManualCohort}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      useManualCohort: e.target.checked,
-                      manualCohortUserIds: e.target.checked
-                        ? prev.manualCohortUserIds
-                        : [],
-                    }))
-                  }
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="text-gray-700">Enable</span>
-              </label>
-            </div>
-            {form.useManualCohort ? (
-              <UserSelect
-                users={availableUsers}
-                selectedUserIds={form.manualCohortUserIds}
-                onChange={handleManualCohortChange}
-                loading={usersLoading}
-                loadFailed={usersError}
-                label="Select users"
-              />
-            ) : (
-              <p className="text-xs text-gray-500">
-                Enable to manually select specific users for this update.
-              </p>
-            )}
-          </div>
-        </div>
-      </FormSection>
+      <GeneralUpdateAudienceFields
+        form={form}
+        setForm={setForm}
+        tags={tags}
+        users={users}
+      />
 
       <div className="flex justify-end gap-3 pt-2">
         <button
