@@ -1,0 +1,5 @@
+# Decisions
+
+- The divergent call sites are drift, not intent. `formatTime` and its "about " strip arrived in 958be16c2 (2025-10-20), and the web `ActionUpdateCard` used it from then on. Web `ActionEventsPanel` (6bade23bb) and `ReplyComponent` (39192e2a3) predate `formatTime` and were never migrated. Mobile `ActionEventsPanel` and `ActionUpdateCard` (65c125179) were written the same day the web card moved to `sharedweb` (35f4da0a3) still using `formatTime`. No commit message or provenance entry gives a reason to keep "about".
+- `server/src/search/search.service.ts` also calls `formatDistanceToNow` for search-result secondary text. It stays separate: the server cannot import `shared`, and moving `formatTime` into `common` would be a larger change than this one.
+- Left alone because their contract differs: `shared/lib/formatNextTaskDue.ts` (a deadline countdown) and the admin reminder screens `ActionReminderCard` and `ActionRemindersTab` (send-time scheduling, admin-only, and `formatDistanceStrict` there gives exact units).
