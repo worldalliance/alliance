@@ -15,7 +15,13 @@ afterEach(cleanup);
 
 const renderBuilder = (
   schema: FormSchema,
-  onSchemaChange: (schema: FormSchema) => void = () => {},
+  {
+    onSchemaChange = () => {},
+    selectedViewId = null,
+  }: {
+    onSchemaChange?: (schema: FormSchema) => void;
+    selectedViewId?: string | null;
+  } = {},
 ) =>
   render(
     <SiteOriginLinkProvider origin="https://worldalliance.org">
@@ -26,7 +32,7 @@ const renderBuilder = (
             onSchemaChange={onSchemaChange}
             onUpdateBlockById={() => null}
             editorsKey={0}
-            selectedViewId={null}
+            selectedViewId={selectedViewId}
             onSelectView={() => {}}
           />
         </ToastProvider>
@@ -115,7 +121,7 @@ describe("OutputBuilder", () => {
       clientY: number,
     ) => {
       const emitted: FormSchema[] = [];
-      renderBuilder(schema, (next) => emitted.push(next));
+      renderBuilder(schema, { onSchemaChange: (next) => emitted.push(next) });
       const handles = screen.getAllByTitle("Drag to reorder");
       fireEvent.dragStart(handles[0], { dataTransfer: {} });
       const zone = target(handles);
@@ -149,6 +155,65 @@ describe("OutputBuilder", () => {
           return lastRow.nextElementSibling!;
         }, -1),
       ).toEqual(["B", "C", "A"]);
+    });
+  });
+
+  describe("adding a block", () => {
+    const schema: FormSchema = {
+      pages: [
+        {
+          id: "page-1",
+          fields: [
+            {
+              id: "name",
+              type: "input",
+              kind: "text",
+              label: "Name",
+              output: { output: true },
+            },
+          ],
+        },
+      ],
+      outputViews: ["view-1", "view-2"].map((id) => ({
+        type: "default" as const,
+        id,
+        blocks: [{ id: `${id}-block`, fieldId: "name" }],
+      })),
+    };
+
+    const addedBlock = (add: () => void) => {
+      const emitted: FormSchema[] = [];
+      renderBuilder(schema, {
+        onSchemaChange: (next) => emitted.push(next),
+        selectedViewId: "view-2",
+      });
+      add();
+      const [first, selected] = emitted.at(-1)?.outputViews ?? [];
+      expect(first).toEqual(schema.outputViews?.[0]);
+      expect(selected.blocks[0]).toEqual({
+        id: "view-2-block",
+        fieldId: "name",
+      });
+      expect(selected.blocks).toHaveLength(2);
+      return selected.blocks[1];
+    };
+
+    it("appends a display block to the selected view", () => {
+      const block = addedBlock(() =>
+        fireEvent.change(screen.getByDisplayValue("Add display block…"), {
+          target: { value: "header" },
+        }),
+      );
+      expect(block).toMatchObject({ type: "display", kind: "header" });
+    });
+
+    it("appends an output field block for the first output field", () => {
+      const block = addedBlock(() =>
+        fireEvent.click(
+          screen.getByRole("button", { name: "Add output field block" }),
+        ),
+      );
+      expect(block).toMatchObject({ fieldId: "name", format: "field" });
     });
   });
 });

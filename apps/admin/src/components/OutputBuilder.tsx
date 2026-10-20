@@ -247,65 +247,31 @@ export function OutputBuilder({
     updateSelectedView({ blocks: nextBlocks });
   };
 
-  const addDisplayBlock = (kind: OutputDisplayBlockKind) => {
-    const block = createDisplayBlock(
-      kind,
-      `block-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    );
-    if (
-      !schema.outputViews ||
-      schema.outputViews.length === 0 ||
-      !selectedView
-    ) {
-      const newView = {
-        ...buildNewView(schema),
-        blocks: [block],
-      };
-      const nextViews = [...(schema.outputViews ?? []), newView];
-      updateViews(nextViews);
-      setSelectedViewId(newView.id);
-      return;
-    }
-    const nextViews = (schema.outputViews ?? []).map((view) =>
-      view.id === selectedView.id
-        ? { ...view, blocks: [...view.blocks, block] }
-        : view,
-    );
-    updateViews(nextViews);
+  const appendBlock = (block: OutputBlock) => {
+    if (!selectedView) return;
+    updateSelectedView({ blocks: [...selectedView.blocks, block] });
   };
+
+  const addDisplayBlock = (kind: OutputDisplayBlockKind) =>
+    appendBlock(
+      createDisplayBlock(
+        kind,
+        `block-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      ),
+    );
 
   const addOutputBlock = () => {
     if (!outputFields.length) {
       return;
     }
-    const newBlock: OutputFieldBlock = {
+    appendBlock({
       id: `output-field-${Date.now()}-${Math.random()
         .toString(36)
         .slice(2, 6)}`,
       fieldId: outputFields[0].id,
       showLabel: true,
       format: "field",
-    };
-    if (
-      !schema.outputViews ||
-      schema.outputViews.length === 0 ||
-      !selectedView
-    ) {
-      const newView = {
-        ...buildNewView(schema),
-        blocks: [newBlock],
-      };
-      const nextViews = [...(schema.outputViews ?? []), newView];
-      updateViews(nextViews);
-      setSelectedViewId(newView.id);
-      return;
-    }
-    const nextViews = (schema.outputViews ?? []).map((view) =>
-      view.id === selectedView.id
-        ? { ...view, blocks: [...view.blocks, newBlock] }
-        : view,
-    );
-    updateViews(nextViews);
+    });
   };
 
   const addView = () => {
