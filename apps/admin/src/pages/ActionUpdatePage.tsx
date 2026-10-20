@@ -8,12 +8,10 @@ import {
   actionsFindOneAdmin,
   type ActionEventDto,
   type AdminActionUpdateDto,
-  type RecognitionPreviewCountsDto,
 } from "@alliance/shared/client";
 import { thrownStatus } from "@alliance/shared/lib/hey-api";
 import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
-import type { UseQueryResult } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { NotificationAudienceFields } from "../components/ActionUpdateNotificationAudience";
@@ -22,15 +20,11 @@ import {
   HiddenFromMembersBanner,
   VisibilityControls,
 } from "../components/ActionUpdateVisibility";
+import { AudienceUpdatePreview } from "../components/AudienceUpdatePreview";
 import { CollectiveResultSplitFields } from "../components/CollectiveResultSplitFields";
 import { FormBuilder } from "../components/FormBuilder";
 import FormSection from "../components/FormSection";
-import {
-  PreviewCountsKind,
-  UPDATE_PREVIEW_DESCRIPTION,
-  UpdatePreview,
-  type PreviewCounts,
-} from "../components/UpdatePreview";
+import { UPDATE_PREVIEW_DESCRIPTION } from "../components/UpdatePreview";
 import {
   detailsBody,
   formOf,
@@ -40,44 +34,12 @@ import {
 } from "../lib/actionUpdateDetails";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import { useActionUpdateAdmin } from "../lib/useActionUpdateAdmin";
-import { useRecognitionPreviewCounts } from "../lib/useRecognitionPreviewCounts";
 import { useSearchParamTab } from "../lib/useSearchParamTab";
 
 const tabs = ["details", "content"] as const;
 
 const TEXT_INPUT_CLASS =
   "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm";
-
-const previewCountsOf = (
-  form: ActionUpdateForm,
-  query: UseQueryResult<RecognitionPreviewCountsDto>,
-): PreviewCounts => {
-  if (form.notifyType === "none") {
-    return {
-      kind: PreviewCountsKind.Counted,
-      counts: {
-        completed: 0,
-        didNotComplete: 0,
-        uninvolved: 0,
-      },
-    };
-  }
-  if (form.notifyType === "tag" && !form.tagId) {
-    return {
-      kind: PreviewCountsKind.Unavailable,
-      reason: "Pick a tag to count recipients.",
-    };
-  }
-  if (query.data) {
-    return { kind: PreviewCountsKind.Counted, counts: query.data };
-  }
-  return query.isError
-    ? {
-        kind: PreviewCountsKind.Unavailable,
-        reason: "Couldn't count the recipients.",
-      }
-    : { kind: PreviewCountsKind.Pending };
-};
 
 const ActionUpdatePage: React.FC = () => {
   const { actionId: actionIdParam, updateId: updateIdParam } = useParams<{
@@ -131,18 +93,6 @@ const ActionUpdatePage: React.FC = () => {
   }
 
   const savedForm = useMemo(() => update && formOf(update), [update]);
-  const countsTagId = form?.notifyType === "tag" ? form.tagId || null : null;
-  const countsQuery = useRecognitionPreviewCounts({
-    updateId: updateId ?? 0,
-    notifyType: form?.notifyType ?? "none",
-    tagId: countsTagId,
-    enabled:
-      !!form &&
-      usesRecognition(form.notificationMode) &&
-      !update?.recognitionPreparedAt &&
-      form.notifyType !== "none" &&
-      (form.notifyType !== "tag" || countsTagId !== null),
-  });
 
   useEffect(() => {
     if (isNaN(actionId)) return;
@@ -368,10 +318,7 @@ const ActionUpdatePage: React.FC = () => {
           title="Preview Update"
           description={UPDATE_PREVIEW_DESCRIPTION}
         >
-          <UpdatePreview
-            texts={form}
-            counts={previewCountsOf(form, countsQuery)}
-          />
+          <AudienceUpdatePreview updateId={update.id} form={form} />
         </FormSection>
       )}
 
