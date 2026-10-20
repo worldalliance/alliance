@@ -7,7 +7,6 @@ import { R } from "@alliance/common/result";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { groupBy, partition } from "es-toolkit";
-import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { UserService } from "src/user/user.service";
 import { In, Not, type Repository } from "typeorm";
 import {
@@ -16,6 +15,7 @@ import {
   isInCatchUp,
 } from "./cohort-decision";
 import { CohortDecisionService } from "./cohort-decision.service";
+import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import { Action, loadedActionFormVariants } from "./entities/action.entity";

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { TERMINAL_ACTIVITY_TYPES } from "src/actions/action-activity-status";
+import { CohortResolutionSession } from "src/actions/cohort-resolution-session";
 import { CohortResolverService } from "src/actions/cohort-resolver.service";
 import {
   ActionSuite,
@@ -30,7 +31,6 @@ import {
 import { User } from "../user/entities/user.entity";
 import { TagService } from "../user/tag.service";
 import { UserService } from "../user/user.service";
-import { CohortResolutionSession } from "./cohort-resolution-session";
 import { ActionEventNotifType } from "./entities/action-event-notif.entity";
 
 @Injectable()

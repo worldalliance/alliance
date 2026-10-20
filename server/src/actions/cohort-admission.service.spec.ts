@@ -1,7 +1,7 @@
 import { Test } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { CohortAdmissionService } from "./cohort-admission.service";
+import { CohortResolutionSession } from "./cohort-resolution-session";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 
 describe("CohortAdmissionService.prefetchAdmittedActionIds", () => {

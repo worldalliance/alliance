@@ -92,7 +92,6 @@ import {
   ActionEventReminderService,
   NOTIFICATION_LOOKBACK_WINDOW_MS,
 } from "src/notifs/action-event-reminder.service";
-import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { NotificationPlan } from "src/notifs/dto/notification-plan.dto";
 import { LikeNotificationService } from "src/notifs/like-notification.service";
 import { NotifsService } from "src/notifs/notifs.service";
@@ -195,6 +194,7 @@ import {
   assertNotInACohort,
   assertTagsExist,
 } from "./cohort-reference-validation";
+import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
 import {
   ActionActivityDto,

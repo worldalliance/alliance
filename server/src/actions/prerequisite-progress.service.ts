@@ -1,11 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import type { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { In, LessThan, type Repository } from "typeorm";
 import {
   findLatestCompletions,
   TERMINAL_ACTIVITY_TYPES,
 } from "./action-activity-status";
+import type { CohortResolutionSession } from "./cohort-resolution-session";
 import { ActionActivity } from "./entities/action-activity.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import { Action } from "./entities/action.entity";

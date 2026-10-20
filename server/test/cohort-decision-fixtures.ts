@@ -2,6 +2,7 @@ import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { millisecondsInDay } from "date-fns/constants";
 import { In } from "typeorm";
 import { readsSavedDecisions } from "../src/actions/cohort-decision";
+import { CohortResolutionSession } from "../src/actions/cohort-resolution-session";
 import { CohortResolverService } from "../src/actions/cohort-resolver.service";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
@@ -15,7 +16,6 @@ import {
   VisibilityMode,
 } from "../src/actions/entities/action.entity";
 import { CohortDecisionReason } from "../src/actions/entities/cohort-decision-reason";
-import { CohortResolutionSession } from "../src/notifs/cohort-resolution-session";
 import {
   ContractEvent,
   ContractEventType,

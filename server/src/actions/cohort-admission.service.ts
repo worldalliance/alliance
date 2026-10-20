@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import type { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { In, type Repository } from "typeorm";
+import type { CohortResolutionSession } from "./cohort-resolution-session";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 
 /** Reads of who the saved cohort decisions admit. */

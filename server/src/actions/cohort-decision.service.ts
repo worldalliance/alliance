@@ -3,7 +3,6 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { countBy, partition } from "es-toolkit";
 import { lockLiveIds } from "src/datasources/soft-delete";
-import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import { User } from "src/user/entities/user.entity";
 import { UserService } from "src/user/user.service";
 import { In, type Repository } from "typeorm";
@@ -23,6 +22,7 @@ import {
   type CohortEnrollment,
 } from "./cohort-decision";
 import { logCohortPathDisagreements } from "./cohort-path-disagreements";
+import { CohortResolutionSession } from "./cohort-resolution-session";
 import { CohortResolverService } from "./cohort-resolver.service";
 import { ActionCohortDecisionCorrection } from "./entities/action-cohort-decision-correction.entity";
 import { ActionCohortDecision } from "./entities/action-cohort-decision.entity";

@@ -1,7 +1,7 @@
-import type { Action } from "src/actions/entities/action.entity";
-import type { PrerequisiteProgress } from "src/actions/prerequisites";
 import type { UsMembership } from "src/geo/us-membership";
 import type { User } from "src/user/entities/user.entity";
+import type { Action } from "./entities/action.entity";
+import type { PrerequisiteProgress } from "./prerequisites";
 
 /** Raw slice of a form response needed to evaluate FormFieldValue leaves. */
 export type FormResponseAnswerRow = {

@@ -3,10 +3,6 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Community } from "src/community/entities/community.entity";
 import { resolveUsMembership, UsMembership } from "src/geo/us-membership";
-import {
-  CohortResolutionSession,
-  type FormResponseAnswerRow,
-} from "src/notifs/cohort-resolution-session";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import { Tag } from "src/user/entities/tag.entity";
 import { User } from "src/user/entities/user.entity";
@@ -23,6 +19,10 @@ import {
   evaluateCohortExpression,
   type CohortEvaluationContext,
 } from "./cohort-expression.evaluator";
+import {
+  CohortResolutionSession,
+  type FormResponseAnswerRow,
+} from "./cohort-resolution-session";
 import {
   Action,
   parseAction,

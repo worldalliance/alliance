@@ -1,9 +1,9 @@
 import { R } from "@alliance/common/result";
 import type { Logger } from "@nestjs/common";
 import { chunk } from "es-toolkit";
-import type { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
 import type { UserService } from "src/user/user.service";
 import { formatIdSample } from "./cohort-decision";
+import type { CohortResolutionSession } from "./cohort-resolution-session";
 import type { ActionCohortDecision } from "./entities/action-cohort-decision.entity";
 import type { ParsedAction } from "./entities/action.entity";
 import type { SingleMemberCohortService } from "./single-member-cohort.service";

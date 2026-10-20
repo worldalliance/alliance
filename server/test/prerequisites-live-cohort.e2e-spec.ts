@@ -1,6 +1,7 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import type { Repository } from "typeorm";
+import { CohortResolutionSession } from "../src/actions/cohort-resolution-session";
 import { CohortResolverService } from "../src/actions/cohort-resolver.service";
 import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import { ActionCohortDecision } from "../src/actions/entities/action-cohort-decision.entity";
@@ -10,7 +11,6 @@ import {
   type ParsedAction,
 } from "../src/actions/entities/action.entity";
 import { SingleMemberCohortService } from "../src/actions/single-member-cohort.service";
-import { CohortResolutionSession } from "../src/notifs/cohort-resolution-session";
 import { TasksModule } from "../src/tasks/tasks.module";
 import { UserService } from "../src/user/user.service";
 import {
