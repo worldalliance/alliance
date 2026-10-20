@@ -1,3 +1,4 @@
+import { formatBadgeCount } from "@alliance/shared/lib/badgeCount";
 import { NAV_BAR_ICON_HEIGHT } from "@alliance/shared/lib/constants";
 import { useNotifications } from "@alliance/shared/lib/useNotifications";
 import { cn } from "@alliance/shared/styles/util";
@@ -25,6 +26,7 @@ const NotificationsIcon = () => {
     refreshNotifications,
   } = useNotifications();
   const navigate = useNavigate();
+  const unreadLabel = formatBadgeCount(unreadCount);
   const toggle = useCallback(() => {
     setIsOpen(!isOpen);
   }, [isOpen]);
@@ -73,9 +75,9 @@ const NotificationsIcon = () => {
       <div className="flex items-center gap-x-0.5">
         <Bell size={NAV_BAR_ICON_HEIGHT} fill="black" />
       </div>
-      {unreadCount > 0 && (
-        <span className="absolute -top-1 -right-1 w-5.5 h-5.5 px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-medium">
-          {unreadCount > 99 ? "99+" : unreadCount}
+      {unreadLabel && (
+        <span className="absolute -top-1 -right-1 min-w-5.5 h-5.5 px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-medium">
+          {unreadLabel}
         </span>
       )}
       {isOpen && (
