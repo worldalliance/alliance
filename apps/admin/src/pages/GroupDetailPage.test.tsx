@@ -215,6 +215,17 @@ it("shows the saved details", async () => {
   ).toBeTruthy();
 });
 
+it("says why the details are invalid", async () => {
+  renderPage();
+  fireEvent.change(await screen.findByLabelText("Name"), {
+    target: { value: "   " },
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+  expect(await screen.findByText("Name is required")).toBeTruthy();
+});
+
 it("saves the details with the description cleared", async () => {
   renderPage();
   fireEvent.change(await screen.findByLabelText("Description"), {

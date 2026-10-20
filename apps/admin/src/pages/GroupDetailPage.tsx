@@ -1,24 +1,10 @@
 /* eslint-disable alliance/max-lines -- TODO: legacy file over the 500-line limit; split it up */
-import {
-  COMMUNITY_DESCRIPTION_MAX_LENGTH,
-  COMMUNITY_NAME_MAX_LENGTH,
-  getMemberCount,
-  isMaxCapacityRequired,
-  validateCommunitySettings,
-} from "@alliance/common/community";
+import { getMemberCount } from "@alliance/common/community";
 import { withCount } from "@alliance/common/plural";
-import type {
-  CommunityDto,
-  CreateCommunityDto,
-  UpdateCommunityDto,
-  UserActionSummaryDto,
-} from "@alliance/shared/client/types.gen";
-import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
-import { groupSettings } from "@alliance/shared/lib/copy";
+import type { UserActionSummaryDto } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import CharacterLimitNotice from "@alliance/sharedweb/ui/CharacterLimitNotice";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
 import {
   ConfirmMode,
@@ -27,30 +13,20 @@ import {
 } from "@alliance/sharedweb/ui/ToastProvider";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
-import { isEqual } from "es-toolkit";
 import React, { useCallback, useMemo, useState } from "react";
 import { href, Link, useNavigate, useParams } from "react-router";
+import GroupSettingsForm from "../components/group-detail/GroupSettingsForm";
 import { adminRefusalMessage } from "../lib/adminRefusal";
 import {
   MembershipChange,
   useChangeCommunityMembershipAdmin,
   useCommunitiesAdmin,
   useDeleteCommunityAdmin,
-  useUpdateCommunityAdmin,
 } from "../lib/useCommunitiesAdmin";
 import { useCommunityMemberInfoAdmin } from "../lib/useCommunityMemberInfoAdmin";
 import { useCompletedAllActiveActions } from "../lib/useCompletedAllActiveActions";
 import { useRefusalToast } from "../lib/useRefusalToast";
 import { useUsersAdmin } from "../lib/useUsersAdmin";
-
-const detailsOf = (community: CommunityDto): CreateCommunityDto => ({
-  name: community.name,
-  description: community.description,
-  public: community.public,
-  maxCapacity: community.maxCapacity,
-  allowMemberInvites: community.allowMemberInvites,
-  allowStaffAssignments: community.allowStaffAssignments,
-});
 
 const noActions: UserActionSummaryDto[] = [];
 
@@ -75,14 +51,6 @@ const CommunityDetailPage: React.FC = () => {
         )
       : null;
   const [error, setError] = useState<string | null>(null);
-  const [formValues, setFormValues] = useState<CreateCommunityDto>({
-    name: "",
-    description: "",
-    public: false,
-    maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
-    allowMemberInvites: true,
-    allowStaffAssignments: true,
-  });
   const {
     data: users = [],
     isLoading: usersLoading,
@@ -99,7 +67,6 @@ const CommunityDetailPage: React.FC = () => {
     () => new Set<number>(),
   );
   const { confirm, success } = useToast();
-  const requiresMaxCapacity = isMaxCapacityRequired(formValues);
 
   const memberCount = community ? getMemberCount(community) : 0;
 
@@ -118,26 +85,6 @@ const CommunityDetailPage: React.FC = () => {
     userActionRelations,
   });
 
-  // A refetch reseeds the form only while it is untouched, so it brings in
-  // newer details without overwriting unsaved edits.
-  const [seeded, setSeeded] = useState<{
-    id: number;
-    details: CreateCommunityDto;
-  } | null>(null);
-  const seed = useCallback((group: CommunityDto) => {
-    const details = detailsOf(group);
-    setSeeded({ id: group.id, details });
-    setFormValues(details);
-  }, []);
-  if (
-    community &&
-    (community.id !== seeded?.id ||
-      (!isEqual(detailsOf(community), seeded.details) &&
-        isEqual(formValues, seeded.details)))
-  ) {
-    seed(community);
-  }
-
   const completedAllCurrentActions = useCompletedAllActiveActions({
     actionSummaries,
     userActionRelations,
@@ -152,15 +99,6 @@ const CommunityDetailPage: React.FC = () => {
     [refusalToast],
   );
 
-  const { mutate: updateCommunity, isPending: savingDetails } =
-    useUpdateCommunityAdmin({
-      onSuccess: (updated) => {
-        seed(updated);
-        success("Group updated", updated.name);
-      },
-      onError: (err) =>
-        reportError(err, "Unable to update group. Please try again."),
-    });
   const { mutateAsync: changeMembership } = useChangeCommunityMembershipAdmin();
   const {
     mutate: deleteCommunity,
@@ -174,36 +112,6 @@ const CommunityDetailPage: React.FC = () => {
     onError: (err) =>
       reportError(err, "Unable to delete community. Please try again."),
   });
-
-  const handleUpdateDetails = useCallback(
-    (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      if (!community) {
-        return;
-      }
-      const validated = validateCommunitySettings({
-        settings: formValues,
-        // Staff may cap a group below its size to stop automated placement;
-        // consensual placements already take groups past their capacity.
-        memberCount: null,
-      });
-      if (!validated.ok) {
-        setError(validated.error);
-        return;
-      }
-      const payload: UpdateCommunityDto = {
-        name: validated.value.name,
-        description: formValues.description.trim(),
-        public: formValues.public,
-        maxCapacity: validated.value.maxCapacity,
-        allowMemberInvites: formValues.allowMemberInvites,
-        allowStaffAssignments: formValues.allowStaffAssignments,
-      };
-      setError(null);
-      updateCommunity({ communityId, body: payload });
-    },
-    [community, communityId, formValues, updateCommunity, setError],
-  );
 
   const mutateMembers = useCallback(
     async (
@@ -457,169 +365,11 @@ const CommunityDetailPage: React.FC = () => {
           </p>
         )}
 
-        <Card style={CardStyle.White}>
-          <form className="flex flex-col gap-4" onSubmit={handleUpdateDetails}>
-            <div className="flex flex-col gap-1">
-              <label
-                className="text-sm font-medium text-zinc-700"
-                htmlFor="group-name"
-              >
-                Name
-              </label>
-              <input
-                id="group-name"
-                type="text"
-                className="border border-zinc-300 rounded px-3 py-2 text-sm"
-                value={formValues.name}
-                maxLength={COMMUNITY_NAME_MAX_LENGTH}
-                onChange={(event) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    name: event.target.value,
-                  }))
-                }
-              />
-              <CharacterLimitNotice
-                value={formValues.name}
-                max={COMMUNITY_NAME_MAX_LENGTH}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label
-                className="text-sm font-medium text-zinc-700"
-                htmlFor="group-description"
-              >
-                Description
-              </label>
-              <textarea
-                id="group-description"
-                className="border border-zinc-300 rounded px-3 py-2 text-sm min-h-[80px]"
-                value={formValues.description}
-                maxLength={COMMUNITY_DESCRIPTION_MAX_LENGTH}
-                onChange={(event) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    description: event.target.value,
-                  }))
-                }
-              />
-              <CharacterLimitNotice
-                value={formValues.description}
-                max={COMMUNITY_DESCRIPTION_MAX_LENGTH}
-              />
-            </div>
-            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-              <div className="flex flex-col gap-y-3">
-                <label className="flex items-start gap-x-2 text-sm font-medium text-zinc-700">
-                  <input
-                    type="checkbox"
-                    checked={formValues.public}
-                    onChange={(event) => {
-                      setFormValues((prev) => ({
-                        ...prev,
-                        public: event.target.checked,
-                        allowStaffAssignments: true,
-                        allowMemberInvites: true,
-                      }));
-                    }}
-                    className="mt-1"
-                  />
-                  <div>
-                    <p className="text-base font-medium">
-                      {groupSettings.public.name}
-                    </p>
-                    <p className="text-sm text-zinc-500 font-normal">
-                      {groupSettings.public.explanation}
-                    </p>
-                  </div>
-                </label>
-                <label className="flex items-start gap-x-2 text-sm font-medium text-zinc-700">
-                  <input
-                    type="checkbox"
-                    checked={formValues.allowMemberInvites}
-                    onChange={(event) =>
-                      setFormValues((prev) => ({
-                        ...prev,
-                        allowMemberInvites: event.target.checked,
-                      }))
-                    }
-                    disabled={formValues.public}
-                    className="mt-1"
-                  />
-                  <div>
-                    <p className="text-base font-medium">
-                      {groupSettings.allowMemberInvites.name}
-                    </p>
-                    <p className="text-sm text-zinc-500 font-normal">
-                      {groupSettings.allowMemberInvites.explanation}
-                    </p>
-                  </div>
-                </label>
-                <label className="flex items-start gap-x-2 text-sm font-medium text-zinc-700">
-                  <input
-                    type="checkbox"
-                    checked={formValues.allowStaffAssignments}
-                    onChange={(event) =>
-                      setFormValues((prev) => ({
-                        ...prev,
-                        allowStaffAssignments: event.target.checked,
-                      }))
-                    }
-                    disabled={formValues.public}
-                    className="mt-1"
-                  />
-                  <div>
-                    <p className="text-base font-medium">
-                      {groupSettings.allowStaffAssignments.name}
-                    </p>
-                    <p className="text-sm text-zinc-500 font-normal">
-                      {groupSettings.allowStaffAssignments.explanation}
-                    </p>
-                  </div>
-                </label>
-              </div>
-              {requiresMaxCapacity && (
-                <div className="mt-4">
-                  <label
-                    className="text-black font-medium"
-                    htmlFor="maxCapacity"
-                  >
-                    <p className="text-base font-medium">
-                      {groupSettings.maxCapacity.name}
-                    </p>
-                    <p className="text-sm text-zinc-500 font-normal">
-                      {groupSettings.maxCapacity.explanation}
-                    </p>
-                  </label>
-                  <input
-                    id="maxCapacity"
-                    type="number"
-                    min={1}
-                    className="mt-2 border border-zinc-300 rounded px-3 py-2 text-sm w-full bg-white"
-                    value={formValues.maxCapacity ?? ""}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      const parsed = Number(value);
-                      setFormValues((prev) => ({
-                        ...prev,
-                        maxCapacity:
-                          value === "" || Number.isNaN(parsed) ? null : parsed,
-                      }));
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-            <Button
-              type="submit"
-              color={ButtonColor.Blue}
-              className="self-start"
-              disabled={savingDetails}
-            >
-              {savingDetails ? "Saving…" : "Save changes"}
-            </Button>
-          </form>
-        </Card>
+        <GroupSettingsForm
+          community={community}
+          setError={setError}
+          reportError={reportError}
+        />
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Card style={CardStyle.White}>
