@@ -66,10 +66,8 @@ const CommunityPage = () => {
     isLoading: areGroupsLoading,
     didFail: didGroupsFail,
     refreshCommunities,
-    removeCommunity,
     selectedCommunity: community,
-    removeMemberFromCommunity,
-    updateCommunity,
+    removeMember,
   } = useMyCommunities({
     selectedCommunityId: communityId ? Number(communityId) : null,
   });
@@ -185,17 +183,13 @@ const CommunityPage = () => {
   );
 
   const handleDeleted = useCallback(
-    (deletedId: number) => {
-      removeCommunity(deletedId);
-      setParams({ communityId: null, tab: null });
-    },
-    [removeCommunity, setParams],
+    () => setParams({ communityId: null, tab: null }),
+    [setParams],
   );
 
   const editor = useCommunityEditor({
     community,
     memberCount,
-    onUpdated: updateCommunity,
     onDeleted: handleDeleted,
   });
 
@@ -382,7 +376,7 @@ const CommunityPage = () => {
                     href("/member/:id", { id: id.toString() })
                   }
                   onRemoveMember={(memberId) =>
-                    removeMemberFromCommunity(community.id, memberId)
+                    removeMember({ communityId: community.id, memberId })
                   }
                   amLeader={amLeader ?? false}
                   memberContactInfo={memberContactInfo}

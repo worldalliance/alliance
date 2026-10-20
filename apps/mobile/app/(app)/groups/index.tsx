@@ -4,10 +4,7 @@ import {
   isMaxCapacityRequired,
   validateCommunitySettings,
 } from "@alliance/common/community";
-import { errorMessage } from "@alliance/common/errorMessage";
 import { changedPhoto } from "@alliance/common/image-src";
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
-import { communityUpdate } from "@alliance/shared/client";
 import type {
   CommunityDto,
   CommunityMemberContactInfoDto,
@@ -20,6 +17,7 @@ import {
 } from "@alliance/shared/lib/communityMemberActions";
 import { isLedBy } from "@alliance/shared/lib/communityUtils";
 import { groupSettings } from "@alliance/shared/lib/copy";
+import { thrownRefusalMessage } from "@alliance/shared/lib/hey-api";
 import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
@@ -27,7 +25,10 @@ import { useCommunityInvites } from "@alliance/shared/lib/useCommunityInvites";
 import { useCommunityMemberContactInfo } from "@alliance/shared/lib/useCommunityMemberContactInfo";
 import { useCommunityMemberInfo } from "@alliance/shared/lib/useCommunityMemberInfo";
 import { useCommunityOnetimeInvites } from "@alliance/shared/lib/useCommunityOnetimeInvites";
-import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
+import {
+  UPDATE_GROUP_SESSION_EXPIRED,
+  useMyCommunities,
+} from "@alliance/shared/lib/useMyCommunities";
 import { useOnNextDeadline } from "@alliance/shared/lib/useOnNextDeadline";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
 import { LegendList } from "@legendapp/list";
@@ -80,14 +81,8 @@ const isTab = (value: string | undefined): value is Tab =>
 
 export default function GroupsScreen() {
   const { user } = useAuth();
-  const {
-    communities,
-    isLoading,
-    didFail,
-    isFetching,
-    refreshCommunities,
-    updateCommunity: onCommunityUpdated,
-  } = useMyCommunities({});
+  const { communities, isLoading, didFail, isFetching, refreshCommunities } =
+    useMyCommunities({});
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCommunityId, setSelectedCommunityId] = useState<number | null>(
     null,
@@ -320,7 +315,6 @@ export default function GroupsScreen() {
             <GroupSettingsTab
               community={selectedCommunity}
               amLeader={amLeader}
-              onCommunityUpdated={onCommunityUpdated}
             />
           )}
         </View>
@@ -763,12 +757,11 @@ function communityToCreateCommunityDto(c: CommunityDto): CreateCommunityDto {
 function GroupSettingsTab({
   community,
   amLeader,
-  onCommunityUpdated,
 }: {
   community: CommunityDto;
   amLeader: boolean;
-  onCommunityUpdated: (updated: CommunityDto) => void;
 }) {
+  const { saveCommunity } = useMyCommunities({});
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<CreateCommunityDto>(() =>
     communityToCreateCommunityDto(community),
@@ -833,8 +826,8 @@ function GroupSettingsTab({
 
     setIsSaving(true);
     try {
-      const response = await communityUpdate({
-        path: { communityId: community.id },
+      await saveCommunity({
+        communityId: community.id,
         body: {
           name: validated.value.name,
           description: editForm.description,
@@ -848,30 +841,20 @@ function GroupSettingsTab({
           allowStaffAssignments: editForm.allowStaffAssignments,
         },
       });
-      if (response.data) {
-        onCommunityUpdated(response.data);
-        setIsEditing(false);
-      } else {
-        setError(
-          errorMessage({
-            error: response.error,
-            fallback: "Failed to update group",
-          }),
-        );
-      }
+      setIsEditing(false);
     } catch (err) {
       console.error("Failed to update group", err);
-      setError("Failed to update group");
+      setError(
+        thrownRefusalMessage({
+          error: err,
+          fallback: "Failed to update group",
+          sessionExpired: UPDATE_GROUP_SESSION_EXPIRED,
+        }),
+      );
     } finally {
       setIsSaving(false);
     }
-  }, [
-    community.id,
-    community.photo,
-    editForm,
-    memberCount,
-    onCommunityUpdated,
-  ]);
+  }, [community.id, community.photo, editForm, memberCount, saveCommunity]);
 
   const requiresCapacityDisplay = isMaxCapacityRequired(community);
 
