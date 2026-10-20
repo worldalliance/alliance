@@ -74,7 +74,7 @@ const NotificationsIcon = () => {
         <Bell size={NAV_BAR_ICON_HEIGHT} fill="black" />
       </div>
       {unreadCount > 0 && (
-        <span className="absolute -top-1 -right-1 w-5.5 h-5.5 px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-medium">
+        <span className="absolute -top-1 -right-1 min-w-5.5 h-5.5 px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-medium">
           {unreadCount > 99 ? "99+" : unreadCount}
         </span>
       )}
