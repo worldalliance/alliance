@@ -1,8 +1,6 @@
 import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { BlockPreview } from "./BlockPreview";
-
-afterEach(cleanup);
 
 const header = { type: "display", kind: "header", text: "Hello" } as const;
 const renderPreview = (toggleable: boolean) =>

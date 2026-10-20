@@ -1,11 +1,9 @@
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { useActionHandlers } from "./actionPage";
 import { queryKeys } from "./queryKeys";
 import { makeAction } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
-
-afterEach(cleanup);
 
 let getResponse: () => Response | Promise<Response>;
 let requests = 0;

@@ -1,9 +1,7 @@
 import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
-
-afterEach(cleanup);
 
 const listsAna = () => Response.json([makeUser({ id: 7, name: "Ana" })]);
 let userList = listsAna;

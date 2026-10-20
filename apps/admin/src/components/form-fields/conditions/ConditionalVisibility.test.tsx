@@ -1,6 +1,6 @@
 import { UserValueProperty } from "@alliance/common/forms/user-properties";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import {
   addRule,
   expression,
@@ -12,7 +12,6 @@ import {
   rule,
 } from "./conditionEditorTesting";
 
-afterEach(cleanup);
 serveApi(
   routes({
     "GET /tasks/listForms": () => Response.json([{ id: 9, title: "Intake" }]),

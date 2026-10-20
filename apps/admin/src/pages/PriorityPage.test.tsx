@@ -10,7 +10,6 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -21,8 +20,6 @@ import { sessionExpiredMessage } from "../lib/sessionExpired";
 import { adminActionListItem } from "../lib/testing/adminActionListItem";
 import { generalUpdateAdmin } from "../lib/testing/generalUpdateAdmin";
 import PriorityPage from "./PriorityPage";
-
-afterEach(cleanup);
 
 const loaded = [
   adminActionListItem(1, "Call your rep", { priority: 2 }),

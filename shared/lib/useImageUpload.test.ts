@@ -1,5 +1,5 @@
 import { R, type Result } from "@alliance/common/result";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import {
   fileUploadSlotId,
   type FileUploadSlot,
@@ -74,7 +74,6 @@ function mountUpload() {
 
 afterEach(() => {
   pending = [];
-  cleanup();
 });
 
 describe("useImageUpload", () => {

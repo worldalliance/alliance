@@ -28,7 +28,7 @@ The fix went into `shared/lib/testing/preload.ts` rather than the one test, beca
 
 ## Timezone test: pickers from earlier tests stayed mounted
 
-`timeZoneSelect.test.ts` had no `afterEach(cleanup)`. Testing Library registers its automatic cleanup in only one test file per process, so each file that renders has to register it itself. Logging on the runners showed the extra build was `offset:Etc/GMT+8`, called from the `selected` memo in `shared/forms/timeZoneSelect.ts`. This test's picker uses the default zone, so the build came from a picker an earlier test left mounted, such as `renderOpen({ value: "Etc/GMT+8" })`. Now and then that picker re-rendered inside this test's `act()`, after `resetTimeZoneCaches()`, and rebuilt formatters that landed in this test's count. The fix is `afterEach(cleanup)` in that file.
+`timeZoneSelect.test.ts` had no `afterEach(cleanup)`. Testing Library registers its automatic cleanup in only one test file per process, which is why `shared/lib/testing/preload.ts` now registers `cleanup` for every file. Logging on the runners showed the extra build was `offset:Etc/GMT+8`, called from the `selected` memo in `shared/forms/timeZoneSelect.ts`. This test's picker uses the default zone, so the build came from a picker an earlier test left mounted, such as `renderOpen({ value: "Etc/GMT+8" })`. Now and then that picker re-rendered inside this test's `act()`, after `resetTimeZoneCaches()`, and rebuilt formatters that landed in this test's count. The shared preload's `cleanup` now unmounts it after each test.
 
 Whether the leftover picker re-renders inside the `act()` depends on scheduler timing on the runner. The exact trigger was never reproduced locally, so the fix was verified by looping on the runners.
 

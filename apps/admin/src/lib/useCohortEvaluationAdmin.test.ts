@@ -2,12 +2,10 @@ import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { pending, type Pending } from "@alliance/shared/lib/testing/pending";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { useState } from "react";
 import { useCohortEvaluationAdmin } from "./useCohortEvaluationAdmin";
-
-afterEach(cleanup);
 
 const allMembers: CohortExpression = { type: "AllMembers" };
 const staff: CohortExpression = { type: "Staff" };

@@ -1,10 +1,8 @@
 import type { FormVariable } from "@alliance/common/forms/variables";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { FormVariablesProvider } from "./FormVariablesContext";
 import { VariableTextField } from "./VariableTextField";
-
-afterEach(cleanup);
 
 const total: FormVariable = {
   name: "total",

@@ -1,5 +1,5 @@
 import { OAuthIntent, OAuthProvider } from "@alliance/common/oauth";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import {
   createMemoryRouter,
   RouterProvider,
@@ -13,8 +13,6 @@ const realScrollTo = window.scrollTo;
 window.scrollTo = () => {
   resetsAt.push(router.state.location.search);
 };
-
-afterEach(cleanup);
 
 afterAll(() => {
   window.scrollTo = realScrollTo;

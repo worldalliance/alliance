@@ -10,13 +10,7 @@ import {
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { useMyConversations } from "@alliance/shared/lib/useMyConversations";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../../lib/AuthContext";
 import { testAuthUser } from "../../stories/testData";
@@ -107,8 +101,6 @@ beforeEach(() => {
     sendMessage: async () => R.failure({ title: "", message: "" }),
   });
 });
-
-afterEach(cleanup);
 
 const renderPage = (
   queries: Parameters<typeof queryWrapper>[0],

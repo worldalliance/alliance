@@ -1,7 +1,5 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import ConfirmDialog from "./ConfirmDialog";
-
-afterEach(cleanup);
 
 const renderDialog = (
   overrides: Partial<React.ComponentProps<typeof ConfirmDialog>> = {},

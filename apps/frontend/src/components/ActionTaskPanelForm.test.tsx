@@ -19,20 +19,12 @@ import {
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext, type AuthContextType } from "../lib/AuthContext";
 import { testAuthUser } from "../stories/testData";
 import { authValue } from "../testing/authValue";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
-
-afterEach(cleanup);
 
 const reported = recordExceptions();
 

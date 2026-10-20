@@ -3,7 +3,6 @@ import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
   act,
-  cleanup,
   fireEvent,
   screen,
   waitFor,
@@ -21,8 +20,6 @@ import {
   renderFormBuilder,
   renderSavedFormBuilder,
 } from "../lib/testing/renderFormBuilder";
-
-afterEach(cleanup);
 
 const reads = (when: string): VisibleIfFormula => ({
   conditions: { c1: { kind: "hasValue", when, hasValue: true } },

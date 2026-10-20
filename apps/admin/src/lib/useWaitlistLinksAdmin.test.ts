@@ -1,14 +1,12 @@
 import type { AdminWaitlistLinkDto } from "@alliance/shared/client/types.gen";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import {
   useCreateWaitlistLinkAdmin,
   useUpdateWaitlistLinkAdmin,
   useWaitlistLinksAdmin,
 } from "./useWaitlistLinksAdmin";
-
-afterEach(cleanup);
 
 const link = {
   id: 7,

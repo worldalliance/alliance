@@ -7,7 +7,6 @@ import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -61,7 +60,6 @@ serveApi(
 );
 
 afterEach(() => {
-  cleanup();
   seedings = 0;
   meFails = false;
   city = null;

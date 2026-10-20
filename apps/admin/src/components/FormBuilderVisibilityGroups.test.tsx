@@ -27,8 +27,6 @@ import {
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 import { FormBuilder } from "./FormBuilder";
 
-afterEach(cleanup);
-
 const shownWhen = (when: string): VisibleIfFormula => ({
   conditions: { c1: { kind: "hasValue", when, hasValue: true } },
   formula: "c1",

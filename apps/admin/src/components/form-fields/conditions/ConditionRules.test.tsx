@@ -3,7 +3,7 @@ import {
   type Condition,
 } from "@alliance/common/forms/visible-if-formula";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { resetCustomValidatorsCache } from "../useCustomValidators";
 import {
   addRule,
@@ -19,7 +19,6 @@ import {
   staticMultiselect,
 } from "./conditionEditorTesting";
 
-afterEach(cleanup);
 const api = serveApi(
   routes({
     "GET /tasks/listForms": () => Response.json([{ id: 9, title: "Intake" }]),

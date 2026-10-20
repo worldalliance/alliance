@@ -3,13 +3,7 @@ import {
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import z from "zod";
 import {
   insertElement,
@@ -18,8 +12,6 @@ import {
 } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 import { resetCustomValidatorsCache } from "./form-fields/useCustomValidators";
-
-afterEach(cleanup);
 
 const twoPages: FormSchema = {
   pages: [

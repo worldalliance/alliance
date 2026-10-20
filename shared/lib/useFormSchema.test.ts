@@ -1,4 +1,4 @@
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { queryKeys } from "./queryKeys";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
@@ -60,8 +60,6 @@ beforeEach(() => {
   schemas = {};
   fetched = [];
 });
-
-afterEach(cleanup);
 
 test("flattens a form's question fields and leaves display blocks out", async () => {
   schemas[4] = {

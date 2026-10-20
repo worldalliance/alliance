@@ -1,13 +1,11 @@
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { GrantmakingMemberProgress } from "./GrantmakingMemberProgress";
 
 let reply: () => Response;
 
 serveApi(routes({ "POST /user/nmembers": () => reply() }));
-
-afterEach(cleanup);
 
 const renderProgress = () =>
   render(

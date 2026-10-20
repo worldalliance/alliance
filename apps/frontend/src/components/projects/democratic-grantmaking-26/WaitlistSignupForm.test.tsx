@@ -6,13 +6,7 @@ import type {
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { InviteSessionProvider } from "../../../site/invite/InviteSession";
 import { WaitlistSignupForm } from "./WaitlistSignupForm";
@@ -40,11 +34,6 @@ beforeEach(() => {
   mailEnabled = false;
   referral = () => new Response(null, { status: 500 });
   entry = () => Response.json({ shareCode: "abc123" });
-});
-
-afterEach(() => {
-  cleanup();
-  jest.restoreAllMocks();
 });
 
 const organizationReferral = (entryCount: number): WaitlistReferralDto => ({

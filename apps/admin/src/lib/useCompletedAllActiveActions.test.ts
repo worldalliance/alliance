@@ -2,10 +2,8 @@ import type {
   ActionStatus,
   UserActionSummaryDto,
 } from "@alliance/shared/client/types.gen";
-import { cleanup, renderHook } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 import { useCompletedAllActiveActions } from "./useCompletedAllActiveActions";
-
-afterEach(cleanup);
 
 function summary(id: number, status: ActionStatus): UserActionSummaryDto {
   return {

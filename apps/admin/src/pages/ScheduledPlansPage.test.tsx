@@ -1,12 +1,10 @@
 import type { ScheduledPlansOverviewDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { sessionExpiredMessage } from "../lib/sessionExpired";
 import ScheduledPlansPage from "./ScheduledPlansPage";
-
-afterEach(cleanup);
 
 const renderPage = (query = queryWrapper()) =>
   render(

@@ -3,11 +3,9 @@ import type {
   CheckboxField,
   PhoneField,
 } from "@alliance/common/forms/form-schema";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, mock } from "bun:test";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, mock } from "bun:test";
 import { FieldExtraOptions } from "./FieldExtraOptions";
-
-afterEach(cleanup);
 
 const phone: PhoneField = {
   id: "p",

@@ -1,7 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import FriendRequestButton from "./FriendRequestButton";
-
-afterEach(cleanup);
 
 it("disables Accept while an accept is pending", () => {
   render(

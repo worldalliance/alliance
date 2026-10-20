@@ -1,10 +1,8 @@
 import type { ScheduledPlansOverviewDto } from "@alliance/shared/client";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { useScheduledPlansAdmin } from "./useScheduledPlansAdmin";
-
-afterEach(cleanup);
 
 const plans: ScheduledPlansOverviewDto = {
   suspensionPlans: [],

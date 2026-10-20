@@ -1,5 +1,5 @@
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { act, cleanup, renderHook, screen } from "@testing-library/react";
+import { act, renderHook, screen } from "@testing-library/react";
 import { useCopyInviteLink } from "./useCopyInviteLink";
 
 beforeEach(() => {
@@ -7,8 +7,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  cleanup();
-  jest.restoreAllMocks();
   delete process.env.VITE_ALT_APP_URL;
 });
 

@@ -4,7 +4,6 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   renderHook,
@@ -12,8 +11,6 @@ import {
   waitFor,
 } from "@testing-library/react";
 import UserSelect, { useSelectableUsers } from "./UserSelect";
-
-afterEach(cleanup);
 
 const renderFailed = () =>
   render(

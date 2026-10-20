@@ -1,9 +1,7 @@
 import type { AnyField, SelectField } from "@alliance/common/forms/form-schema";
-import { cleanup, renderHook } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 import { shuffleWithSeed } from "./randomutils";
 import { useFieldOptionSections } from "./useFieldOptionSections";
-
-afterEach(cleanup);
 
 const options = Array.from({ length: 12 }, (_, i) => ({
   label: `Option ${i}`,

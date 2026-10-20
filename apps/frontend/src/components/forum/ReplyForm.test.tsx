@@ -1,12 +1,6 @@
 import { CreateEditableContentDto, PostTagDto } from "@alliance/shared/client";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 
 import {
@@ -22,8 +16,6 @@ declare const happyDOM: { setURL: (url: string) => void };
 const setUrl = (url: string) => happyDOM.setURL(url);
 
 serveUploads();
-
-afterEach(cleanup);
 
 beforeEach(() => {
   sessionStorage.clear();

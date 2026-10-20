@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { StrictMode } from "react";
 import PlantBasedStudyResults from "./PlantBasedStudyResults";
 
@@ -61,8 +61,6 @@ beforeEach(() => {
     .spyOn(Element.prototype, "getBoundingClientRect")
     .mockReturnValue(DOMRect.fromRect({ x: 0, y: 0, width: 920, height: 445 }));
 });
-
-afterEach(cleanup);
 
 describe("PlantBasedStudyResults", () => {
   it("draws each chart once, even when effects run twice", () => {

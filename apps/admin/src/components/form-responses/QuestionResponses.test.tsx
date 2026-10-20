@@ -7,8 +7,6 @@ import { makeFormResponse, makeUser } from "@alliance/shared/lib/testFixtures";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import QuestionResponses from "./QuestionResponses";
 
-afterEach(cleanup);
-
 const essay: AnyField = {
   id: "essay",
   type: "input",

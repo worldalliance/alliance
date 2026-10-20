@@ -4,7 +4,7 @@ import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { CommentsProvider } from "./CommentsContext";
 import ReplyComponent from "./ReplyComponent";
@@ -13,7 +13,6 @@ let user: UserDto | undefined;
 let replyingTo: number | null = null;
 
 afterEach(() => {
-  cleanup();
   user = undefined;
   replyingTo = null;
 });

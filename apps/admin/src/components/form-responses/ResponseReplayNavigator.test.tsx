@@ -1,12 +1,10 @@
 import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import ResponseReplayNavigator from "./ResponseReplayNavigator";
 import {
   useRespondentSearch,
   type RespondentSearch,
 } from "./useRespondentSearch";
-
-afterEach(cleanup);
 
 const response = makeFormResponse({
   id: 4,

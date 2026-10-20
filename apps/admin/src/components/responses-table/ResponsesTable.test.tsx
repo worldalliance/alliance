@@ -5,7 +5,6 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { SiteOriginLinkProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -16,7 +15,6 @@ import { MemoryRouter, useSearchParams } from "react-router";
 import ResponsesTable from "./ResponsesTable";
 
 afterEach(() => {
-  cleanup();
   localStorage.clear();
 });
 

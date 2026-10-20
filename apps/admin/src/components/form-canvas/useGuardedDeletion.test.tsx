@@ -1,16 +1,8 @@
 import { PlaceKind } from "@alliance/common/forms/form-conditions";
 import { type Page } from "@alliance/common/forms/form-schema";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { useGuardedDeletion } from "./useGuardedDeletion";
-
-afterEach(cleanup);
 
 const pages: Page[] = [
   {

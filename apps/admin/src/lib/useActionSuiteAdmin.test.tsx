@@ -6,17 +6,14 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   act,
-  cleanup,
   fireEvent,
   renderHook,
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import type { ReactNode } from "react";
 import { useActionSuiteAdmin } from "./useActionSuiteAdmin";
-
-afterEach(cleanup);
 
 const suite = (titles: string[]): ActionSuiteDto => ({
   id: 3,

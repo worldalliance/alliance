@@ -1,10 +1,5 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import CommentActionsMenu from "./CommentActionsMenu";
-
-afterEach(() => {
-  cleanup();
-  jest.restoreAllMocks();
-});
 
 it.each([
   ["Copied!", () => Promise.resolve()],

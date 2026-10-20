@@ -3,18 +3,10 @@ import { makeAction } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
-import { afterEach, beforeEach, expect, it, spyOn } from "bun:test";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, expect, it, spyOn } from "bun:test";
 import { MemoryRouter } from "react-router";
 import ActionFormVariantsTab from "./ActionFormVariantsTab";
-
-afterEach(cleanup);
 
 const variant: ActionFormVariantDto = {
   id: 1,

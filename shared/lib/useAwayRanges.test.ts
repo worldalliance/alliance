@@ -1,9 +1,7 @@
-import { cleanup, renderHook } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 import { millisecondsInDay } from "date-fns/constants";
 import type { UserAwayRangeDto } from "../client";
 import { useAwayRanges } from "./useAwayRanges";
-
-afterEach(cleanup);
 
 const awayRange = (id: number, startDays: number, endDays: number) =>
   ({

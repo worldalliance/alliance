@@ -1,15 +1,7 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { ShareableTextBuilder } from "./ShareableTextBuilder";
-
-afterEach(cleanup);
 
 const schema: FormSchema = {
   pages: [

@@ -4,14 +4,12 @@ import { recordExceptions } from "@alliance/shared/lib/testing/recordExceptions"
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../lib/AuthContext";
 import { testAuthUser } from "../stories/testData";
 import { authValue } from "../testing/authValue";
 import FollowUpFormPanel from "./FollowUpFormPanel";
-
-afterEach(cleanup);
 
 const reported = recordExceptions();
 

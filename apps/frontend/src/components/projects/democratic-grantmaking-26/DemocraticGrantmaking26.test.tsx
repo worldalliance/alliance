@@ -1,6 +1,6 @@
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../../../lib/AuthContext";
 import { InviteSessionProvider } from "../../../site/invite/InviteSession";
@@ -24,8 +24,6 @@ beforeEach(() => {
   membersReply = () => Response.json({ count: 213 });
   waitlistReply = () => Response.json({ waiting: 309 });
 });
-
-afterEach(cleanup);
 
 const renderPage = () =>
   render(

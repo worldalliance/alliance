@@ -1,7 +1,5 @@
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { useHeldOn } from "./useHeldOn";
-
-afterEach(cleanup);
 
 it("starts where the flag starts", () => {
   const { result } = renderHook(() => useHeldOn(true, 50));

@@ -1,7 +1,5 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import PrerequisitePicker from "./PrerequisitePicker";
-
-afterEach(cleanup);
 
 const availableActions = [
   { id: 1, name: "Call your rep" },

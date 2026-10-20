@@ -1,10 +1,8 @@
 import type { CustomComponentField } from "@alliance/common/forms/form-schema";
-import { act, cleanup, renderHook } from "@testing-library/react";
-import { afterEach, expect, it, mock } from "bun:test";
+import { act, renderHook } from "@testing-library/react";
+import { expect, it, mock } from "bun:test";
 import { shareInfoPubliclyToggle } from "../lib/copy";
 import { useShareInfoPubliclyToggle } from "./useShareInfoPubliclyToggle";
-
-afterEach(cleanup);
 
 const field: CustomComponentField = {
   id: "share-info",

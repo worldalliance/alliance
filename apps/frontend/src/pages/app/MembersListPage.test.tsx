@@ -1,7 +1,7 @@
 import { makeProfile } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext } from "../../lib/AuthContext";
 import { testAuthUser } from "../../stories/testData";
@@ -21,8 +21,6 @@ serveApi(
 beforeEach(() => {
   members = () => Response.json([{ ...makeProfile(2), friendIds: [] }]);
 });
-
-afterEach(cleanup);
 
 const renderPage = () => {
   const { wrapper: QueryWrapper } = queryWrapper();

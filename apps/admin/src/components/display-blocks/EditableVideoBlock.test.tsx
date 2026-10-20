@@ -2,20 +2,13 @@ import type { VideoBlock } from "@alliance/common/forms/display-blocks";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { uploadSessionExpiredMessage } from "../../lib/sessionExpired";
 import { EditableVideoBlock } from "./EditableVideoBlock";
 
 let answer: () => Response = () => Response.json({});
 serveApi(routes({ "POST /videos/upload": () => answer() }));
-afterEach(cleanup);
 
 const block: VideoBlock = {
   type: "display",

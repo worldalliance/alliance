@@ -1,10 +1,8 @@
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { makeAction } from "./testFixtures";
 import { queryWrapper } from "./testing/queryWrapper";
 import { routes, serveApi } from "./testing/serveApi";
 import { useAction } from "./useAction";
-
-afterEach(cleanup);
 
 let requested: string[] = [];
 let respond: (id: string) => Response;

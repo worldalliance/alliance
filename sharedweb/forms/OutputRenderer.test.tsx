@@ -1,11 +1,9 @@
 import type { FormSchema, FormValue } from "@alliance/common/forms/form-schema";
 import type { FormResponseOutputDto } from "@alliance/shared/client";
 import { captureErrors } from "@alliance/shared/lib/testing/captureErrors";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { SiteAppProvider } from "../ui/SiteAppProvider";
 import { OutputRenderer } from "./OutputRenderer";
-
-afterEach(cleanup);
 
 const schema: FormSchema = {
   pages: [

@@ -8,17 +8,9 @@ import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { onetimeInviteStatusDisplay } from "@alliance/shared/styles/inviteStatus";
 import * as config from "@alliance/sharedweb/lib/config";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import InvitesPage from "./InvitesPage";
-
-afterEach(cleanup);
 
 const created: unknown[] = [];
 let createReleased = Promise.resolve();

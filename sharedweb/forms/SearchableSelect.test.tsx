@@ -1,11 +1,5 @@
 import { optionSections } from "@alliance/shared/forms/optionSections";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import SearchableSelect from "./SearchableSelect";
 
@@ -14,8 +8,6 @@ const options = [
   { label: "New Jersey", value: "nj" },
   { label: "California", value: "ca" },
 ];
-
-afterEach(cleanup);
 
 function Select() {
   const [value, setValue] = useState("ca");

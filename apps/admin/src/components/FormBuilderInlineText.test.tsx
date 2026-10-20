@@ -1,6 +1,6 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import {
   canvas,
   canvasButton,
@@ -10,7 +10,6 @@ import {
 import { nestedSchema } from "../lib/testing/nestedForm";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 
-afterEach(cleanup);
 serveApi(routes({}, () => Response.json([])));
 
 const schema: FormSchema = {

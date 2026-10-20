@@ -1,14 +1,6 @@
 import { FeedMode } from "@alliance/shared/lib/useActivityFeeds";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import FeedModeColumns from "./FeedModeColumns";
-
-afterEach(cleanup);
 
 const COLUMN_HEIGHT: Record<FeedMode, number> = {
   [FeedMode.Friends]: 120,

@@ -3,7 +3,7 @@ import { makeUser } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { useMe } from "@alliance/shared/lib/useMe";
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
 
@@ -33,8 +33,6 @@ beforeEach(() => {
   refreshes = 0;
   meGate = Promise.resolve();
 });
-
-afterEach(cleanup);
 
 const render = () => {
   const { wrapper: withQueries } = queryWrapper();

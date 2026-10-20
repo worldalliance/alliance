@@ -5,13 +5,7 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import * as uploadModule from "@alliance/shared/lib/uploadImageDataUri";
 import * as readFileDataUriModule from "@alliance/sharedweb/lib/readFileDataUri";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useLayoutEffect, useRef, useState } from "react";
 
 let reads: Pending<Result<string, Error>>[] = [];
@@ -259,7 +253,6 @@ afterEach(() => {
   reads = [];
   uploads = [];
   users = [];
-  cleanup();
 });
 
 describe("EditableImagesBlock", () => {

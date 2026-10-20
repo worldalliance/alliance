@@ -1,11 +1,9 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import type { FormResponseDto } from "@alliance/shared/client";
 import { makeFormResponse, makeUser } from "@alliance/shared/lib/testFixtures";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import FormResponsesView, { type FormWithSchema } from "./FormResponsesView";
-
-afterEach(cleanup);
 
 const schema: FormSchema = {
   pages: [

@@ -1,13 +1,7 @@
 import { UserAwayRangeDto } from "@alliance/shared/client";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import {
   afterEach,
   beforeEach,
@@ -18,8 +12,6 @@ import {
   setSystemTime,
 } from "bun:test";
 import AwayRangesSection from "./AwayRangesSection";
-
-afterEach(cleanup);
 
 const range: UserAwayRangeDto = {
   id: 1,

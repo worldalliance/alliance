@@ -1,10 +1,8 @@
 import type { ContractEventDto } from "@alliance/shared/client";
 import { formatShortDate } from "@alliance/shared/lib/dateFormatters";
 import { makeUser } from "@alliance/shared/lib/testFixtures";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import ExampleContractComponent from "./ExampleContractComponent";
-
-afterEach(cleanup);
 
 const event = (
   type: ContractEventDto["type"],

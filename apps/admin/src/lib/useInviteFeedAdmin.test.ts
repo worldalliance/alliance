@@ -5,10 +5,8 @@ import type {
 } from "@alliance/shared/client/types.gen";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { InviteFeedKind, useInviteFeedAdmin } from "./useInviteFeedAdmin";
-
-afterEach(cleanup);
 
 const START_AT = "2026-10-01T00:00:00.000Z";
 

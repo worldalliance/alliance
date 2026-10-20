@@ -7,7 +7,6 @@ import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import {
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -16,8 +15,6 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import ActionRemindersTab from "./ActionRemindersTab";
-
-afterEach(cleanup);
 
 let groups: ({ id: number; name: string } & Record<string, unknown>)[] = [];
 let groupsStatus = 200;

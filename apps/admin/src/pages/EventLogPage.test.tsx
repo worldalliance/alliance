@@ -1,17 +1,9 @@
 import type { EventLogListDto } from "@alliance/shared/client/types.gen";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import EventLogPage from "./EventLogPage";
-
-afterEach(cleanup);
 
 const page = (eventType: string | null) =>
   ({

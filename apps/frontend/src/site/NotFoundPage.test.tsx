@@ -1,7 +1,7 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import * as analyticsModule from "@alliance/shared/lib/analytics";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AuthContext, type AuthContextType } from "../lib/AuthContext";
 import { testAuthUser } from "../stories/testData";
@@ -13,11 +13,6 @@ import {
   NotFoundPage,
   NotFoundSource,
 } from "./NotFoundPage";
-
-afterEach(() => {
-  cleanup();
-  jest.restoreAllMocks();
-});
 
 const renderPage = (
   auth: AuthContextType,

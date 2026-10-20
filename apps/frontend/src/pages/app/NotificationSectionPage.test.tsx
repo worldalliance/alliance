@@ -1,7 +1,7 @@
 import { makeNotificationSettings } from "@alliance/shared/lib/testFixtures";
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import NotificationSectionPage from "./NotificationSectionPage";
 
@@ -11,8 +11,6 @@ serveApi(
       Response.json(makeNotificationSettings()),
   }),
 );
-
-afterEach(cleanup);
 
 const renderAt = (section: string) => {
   const { wrapper } = queryWrapper();

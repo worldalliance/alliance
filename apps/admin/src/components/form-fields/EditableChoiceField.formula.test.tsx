@@ -8,7 +8,7 @@ import { variableFieldScope } from "@alliance/common/forms/variable-scope";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
 import { SiteAppProvider } from "@alliance/sharedweb/ui/SiteAppProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { MemoryRouter } from "react-router";
 import { EditorSidebar } from "../../lib/testing/EditorSidebar";
@@ -18,7 +18,6 @@ import type { InputSources } from "../VariableInputPickers";
 import { CustomValidatorDraftsContext } from "./customValidatorDrafts";
 import { EditableChoiceField } from "./EditableChoiceField";
 
-afterEach(cleanup);
 serveApi(routes({}));
 
 const SOURCE = 7;

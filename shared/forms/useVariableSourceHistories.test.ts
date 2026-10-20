@@ -1,5 +1,5 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { routes, serveApi } from "../lib/testing/serveApi";
 import {
   HistoryReader,
@@ -9,8 +9,6 @@ import {
   type HistorySubject,
   type SourceHistories,
 } from "./useVariableSourceHistories";
-
-afterEach(cleanup);
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {

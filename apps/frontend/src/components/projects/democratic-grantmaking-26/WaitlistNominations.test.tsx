@@ -1,12 +1,6 @@
 import { queryWrapper } from "@alliance/shared/lib/testing/queryWrapper";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { WaitlistNominations } from "./WaitlistNominations";
 
 let sent: unknown[];
@@ -31,7 +25,6 @@ beforeEach(() => {
   fail = false;
   browserLoads = 0;
 });
-afterEach(cleanup);
 
 const input = () => screen.getByRole<HTMLTextAreaElement>("textbox");
 const save = () =>

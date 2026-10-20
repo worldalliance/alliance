@@ -1,10 +1,9 @@
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import { routes, serveApi } from "@alliance/shared/lib/testing/serveApi";
-import { act, cleanup, fireEvent } from "@testing-library/react";
+import { act, fireEvent } from "@testing-library/react";
 import { selectElement, settings } from "../lib/testing/formCanvas";
 import { renderFormBuilder } from "../lib/testing/renderFormBuilder";
 
-afterEach(cleanup);
 let finishUpload = () => {};
 serveApi(
   routes(
