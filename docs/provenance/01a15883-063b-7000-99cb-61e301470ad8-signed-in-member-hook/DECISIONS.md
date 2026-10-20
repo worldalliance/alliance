@@ -16,6 +16,8 @@ Every write goes through `meCache(queryClient)` in the same file: `fetch` (alway
 
 The settings form loads the member through `fetch` instead of writing the cache itself. A failed load leaves the query in its error state rather than removing it, which still keeps sign-in methods from showing an earlier visit's connections, and keeps the member signed in.
 
+Onboarding loads the member after registering through `fetch`, so `useAuth` shows the new member as signed in from then on, as it already does after an OAuth sign-up, rather than only once `onLogin` runs after the agreement is signed.
+
 `refresh` backs `refreshUser` on both platforms. Its callers await it right after an action the server already accepted (joining a group, signing the agreement), so a failed reload must not surface as that action failing; it logs and keeps the current member. Reporting it to analytics is ALL-1722.
 
 `fetch` shares a load already in flight, so the settings form loads again when the answer belongs to a different member than the one it is seeding.

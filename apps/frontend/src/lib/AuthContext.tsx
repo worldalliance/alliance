@@ -1,9 +1,8 @@
 // AuthProvider.tsx
-// eslint-disable-next-line api-client/named-hooks-only -- TODO: legacy raw client call; move it into a named hook that owns its cache
+// eslint-disable-next-line api-client/named-hooks-only -- sign-in, sign-out and token refresh touch no cache
 import {
   authLogin,
   authLogout,
-  authMe,
   authRefreshTokens,
   UserDto,
 } from "@alliance/shared/client";
@@ -19,8 +18,8 @@ import React, {
 
 import { deviceTimeZone } from "@alliance/shared/lib/timeZone";
 import { useBackfillTimeZone } from "@alliance/shared/lib/useBackfillTimeZone";
+import { useMe } from "@alliance/shared/lib/useMe";
 import { ViewerAuthenticationProvider } from "@alliance/sharedweb/ui/ViewerAuthenticationProvider";
-import type { QueryClient } from "@tanstack/react-query";
 import posthog from "posthog-js";
 import { testAuthUser } from "../stories/testData";
 
@@ -39,30 +38,18 @@ export const AuthContext = createContext<AuthContextType | undefined>(
   undefined,
 );
 
-export const AuthProvider: React.FC<
-  React.PropsWithChildren<{ queryClient: QueryClient }>
-> = memo(
-  ({
-    children,
-    queryClient,
-  }: React.PropsWithChildren<{ queryClient: QueryClient }>) => {
-    const [user, setUser] = useState<UserDto | undefined>();
-    const [isImpersonation, setIsImpersonation] = useState(false);
+export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
+  ({ children }: React.PropsWithChildren) => {
+    const {
+      me,
+      fetch: fetchMe,
+      refresh: refreshUser,
+      startSession,
+      clear: clearCache,
+    } = useMe();
+    const user = me?.user;
+    const isImpersonation = me?.isImpersonation ?? false;
     const [loading, setLoading] = useState(true);
-
-    const loadAuthenticatedUser = useCallback(
-      async (isCancelled?: () => boolean) => {
-        const { data } = await authMe();
-        if (!data) {
-          throw new Error("No user data");
-        }
-        if (isCancelled?.()) return;
-
-        setUser(data.user);
-        setIsImpersonation(data.isImpersonation ?? false);
-      },
-      [],
-    );
 
     useBackfillTimeZone(user, {
       detect: deviceTimeZone,
@@ -85,11 +72,10 @@ export const AuthProvider: React.FC<
 
     useEffect(() => {
       let cancelled = false;
-      const isCancelled = () => cancelled;
 
       const bootstrap = async () => {
         try {
-          await loadAuthenticatedUser(isCancelled);
+          await fetchMe();
           if (cancelled) {
             return;
           }
@@ -97,7 +83,7 @@ export const AuthProvider: React.FC<
           try {
             await authRefreshTokens();
             if (cancelled) return;
-            await loadAuthenticatedUser(isCancelled);
+            await fetchMe();
             if (cancelled) {
               return;
             }
@@ -127,33 +113,22 @@ export const AuthProvider: React.FC<
           throw new Error("Login failed");
         }
 
-        queryClient.clear();
-        await loadAuthenticatedUser();
+        await startSession();
         setLoading(false);
       },
-      [loadAuthenticatedUser, queryClient],
+      [startSession],
     );
 
     const logout = useCallback(async () => {
       await authLogout();
-      queryClient.clear();
+      clearCache();
       posthog.reset();
-      setUser(undefined);
       window.location.href = "/login";
-    }, [queryClient]);
+    }, [clearCache]);
 
     const onLogin = useCallback(async () => {
-      queryClient.clear();
-      await loadAuthenticatedUser();
-    }, [loadAuthenticatedUser, queryClient]);
-
-    const refreshUser = useCallback(async () => {
-      const { data } = await authMe();
-      if (data) {
-        setUser(data.user);
-        setIsImpersonation(data.isImpersonation ?? false);
-      }
-    }, []);
+      await startSession();
+    }, [startSession]);
 
     const value = useMemo<AuthContextType>(
       () => ({
