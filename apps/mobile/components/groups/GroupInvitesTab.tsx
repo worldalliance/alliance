@@ -6,9 +6,16 @@ import {
 } from "@alliance/shared/styles/inviteStatus";
 import { cn } from "@alliance/shared/styles/util";
 import { LegendList } from "@legendapp/list";
-import { useCallback, useMemo } from "react";
-import { ActivityIndicator, RefreshControl, View } from "react-native";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useMemo } from "react";
+import {
+  ActivityIndicator,
+  AppState,
+  RefreshControl,
+  View,
+} from "react-native";
 import { useAuth } from "../../lib/AuthContext";
+import { onAppActive } from "../../lib/onAppActive";
 import { colors } from "../../lib/style/colors";
 import LoadFailed from "../LoadFailed";
 import { SectionHeader } from "../system/SectionHeader";
@@ -39,11 +46,21 @@ export function GroupInvitesTab({
     refetch: refetchOnetimeInvites,
   } = useCommunityOnetimeInvites(communityId);
 
+  const refetchInvites = useCallback(() => {
+    void refetchOnetimeInvites({ cancelRefetch: false });
+    void refetchCommunityInvites({ cancelRefetch: false });
+  }, [refetchOnetimeInvites, refetchCommunityInvites]);
+
+  // Mobile's query client neither refetches on focus nor treats a list under
+  // five minutes old as stale, so opening the tab or returning to the app asks
+  // for current invites.
+  useFocusEffect(refetchInvites);
+  useEffect(() => onAppActive(AppState, refetchInvites), [refetchInvites]);
+
   const handleRefresh = useCallback(() => {
     onRefresh();
-    void refetchOnetimeInvites();
-    void refetchCommunityInvites();
-  }, [onRefresh, refetchOnetimeInvites, refetchCommunityInvites]);
+    refetchInvites();
+  }, [onRefresh, refetchInvites]);
 
   const { user } = useAuth();
   const invitesData = useMemo(

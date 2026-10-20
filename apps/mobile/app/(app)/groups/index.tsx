@@ -259,6 +259,7 @@ export default function GroupsScreen() {
           )}
           {tab === "invites" && amLeader && (
             <GroupInvitesTab
+              key={selectedCommunity.id}
               communityId={selectedCommunity.id}
               onRefresh={onRefresh}
               refreshing={refreshing}
