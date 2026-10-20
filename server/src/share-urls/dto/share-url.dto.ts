@@ -21,6 +21,7 @@ import {
   type StoredInviteAssignment,
   StoredInviteAssignmentKind,
 } from "../invite-assignment";
+import { SHARE_URL_LABEL_MAX_LENGTH } from "../share-url-label";
 import { shareUrlPublicUrl } from "../share-url-public-url";
 import type {
   ReusableInviteFeedItem,
@@ -176,7 +177,7 @@ export class CreateDuplicateShareLinkDto {
   })
   @IsOptional()
   @IsString()
-  @MaxLength(120)
+  @MaxLength(SHARE_URL_LABEL_MAX_LENGTH)
   label?: string;
 }
 
@@ -196,7 +197,7 @@ export class CreateInviteDuplicateDto {
   })
   @IsOptional()
   @IsString()
-  @MaxLength(120)
+  @MaxLength(SHARE_URL_LABEL_MAX_LENGTH)
   label?: string;
 
   @ApiProperty({ type: Number, nullable: true })
@@ -215,7 +216,7 @@ export class UpdateInviteDto {
   // the declared `string` lying to everything downstream.
   @ValidateIf((_object, value) => value !== undefined)
   @IsString()
-  @MaxLength(120)
+  @MaxLength(SHARE_URL_LABEL_MAX_LENGTH)
   label?: string;
 
   @ApiPropertyOptional({
