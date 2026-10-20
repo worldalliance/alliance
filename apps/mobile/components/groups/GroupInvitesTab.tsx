@@ -1,9 +1,7 @@
+import type { OnetimeInviteActions } from "@alliance/shared/lib/inviteUtils";
 import { useCommunityInvites } from "@alliance/shared/lib/useCommunityInvites";
 import { useCommunityOnetimeInvites } from "@alliance/shared/lib/useCommunityOnetimeInvites";
-import {
-  communityInviteStatusDisplay,
-  onetimeInviteStatusDisplay,
-} from "@alliance/shared/styles/inviteStatus";
+import { communityInviteStatusDisplay } from "@alliance/shared/styles/inviteStatus";
 import { cn } from "@alliance/shared/styles/util";
 import { LegendList } from "@legendapp/list";
 import { useFocusEffect } from "expo-router";
@@ -17,10 +15,16 @@ import {
 import { useAuth } from "../../lib/AuthContext";
 import { onAppActive } from "../../lib/onAppActive";
 import { colors } from "../../lib/style/colors";
+import { useOnetimeInviteAlerts } from "../../lib/useOnetimeInviteAlerts";
+import { useSharedInviteFeedback } from "../../lib/useSharedInviteFeedback";
 import LoadFailed from "../LoadFailed";
+import OnetimeInviteListItem from "../OnetimeInviteListItem";
 import { SectionHeader } from "../system/SectionHeader";
 import Text, { FontWeight } from "../system/Text";
-import { groupInvitesListItems } from "./groupInvitesListItems";
+import {
+  groupInvitesListItems,
+  type OnetimeInviteBucket,
+} from "./groupInvitesListItems";
 
 export function GroupInvitesTab({
   communityId,
@@ -44,6 +48,9 @@ export function GroupInvitesTab({
     isFetching: onetimeInvitesFetching,
     didFail: onetimeInvitesDidFail,
     refetch: refetchOnetimeInvites,
+    approveInvite,
+    rejectInvite,
+    deleteInvite,
   } = useCommunityOnetimeInvites(communityId);
 
   const refetchInvites = useCallback(() => {
@@ -61,6 +68,23 @@ export function GroupInvitesTab({
     onRefresh();
     refetchInvites();
   }, [onRefresh, refetchInvites]);
+
+  const { handleApprove, handleReject, handleDelete } = useOnetimeInviteAlerts({
+    approveInvite,
+    rejectInvite,
+    deleteInvite,
+  });
+
+  const { sharedInviteId, handleShared } = useSharedInviteFeedback();
+
+  const onetimeActions: Record<OnetimeInviteBucket, OnetimeInviteActions> = {
+    actionable: { onApprove: handleApprove, onReject: handleReject },
+    unverifiableActionable: {
+      onDeleteWithConfirm: handleDelete,
+      onShared: handleShared,
+    },
+    waitingForResponse: { onDeleteWithConfirm: handleDelete },
+  };
 
   const { user } = useAuth();
   const invitesData = useMemo(
@@ -98,6 +122,7 @@ export function GroupInvitesTab({
   return (
     <LegendList
       data={invitesData}
+      extraData={sharedInviteId}
       keyExtractor={(item) =>
         item.type === "section" ? item.id : `${item.type}-${item.invite.id}`
       }
@@ -105,14 +130,30 @@ export function GroupInvitesTab({
         item.type === "section" ? (
           <SectionHeader label={item.label} />
         ) : item.type === "communityInvite" ? (
-          <InviteRow
-            name={item.invite.invitedUser?.displayName ?? "Unknown"}
-            status={communityInviteStatusDisplay[item.invite.status]}
-          />
+          <View className="px-4 py-3 border-b border-zinc-100 flex-row items-center justify-between bg-white">
+            <Text
+              className="text-zinc-900"
+              weight={FontWeight.Medium}
+              numberOfLines={1}
+            >
+              {item.invite.invitedUser?.displayName ?? "Unknown"}
+            </Text>
+            <Text
+              className={cn(
+                "text-xs",
+                communityInviteStatusDisplay[item.invite.status].textClass,
+              )}
+              weight={FontWeight.Semibold}
+            >
+              {communityInviteStatusDisplay[item.invite.status].label}
+            </Text>
+          </View>
         ) : (
-          <InviteRow
-            name={item.invite.invitee}
-            status={onetimeInviteStatusDisplay[item.invite.status]}
+          <OnetimeInviteListItem
+            invite={item.invite}
+            selfInvited={!!user && user.id === item.invite.invitingUser?.id}
+            shared={sharedInviteId === item.invite.id}
+            actions={onetimeActions[item.bucket]}
           />
         )
       }
@@ -129,31 +170,5 @@ export function GroupInvitesTab({
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     />
-  );
-}
-
-function InviteRow({
-  name,
-  status,
-}: {
-  name: string;
-  status: { label: string; textClass: string };
-}) {
-  return (
-    <View className="px-4 py-3 border-b border-zinc-200 flex-row items-center justify-between bg-white">
-      <Text
-        className="text-zinc-900"
-        weight={FontWeight.Medium}
-        numberOfLines={1}
-      >
-        {name}
-      </Text>
-      <Text
-        className={cn("text-xs", status.textClass)}
-        weight={FontWeight.Semibold}
-      >
-        {status.label}
-      </Text>
-    </View>
   );
 }
