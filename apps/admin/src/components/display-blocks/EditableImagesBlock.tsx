@@ -35,9 +35,10 @@ import { GripVertical, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { VariableTextField } from "../VariableTextField";
 import { BlockPreview } from "./BlockPreview";
-import { DisplayBlockWrapper, type TargetLabel } from "./DisplayBlockWrapper";
+import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BlockWriteLanding, LandingFor } from "./perUserContent";
 import type { BaseDisplayBlockProps } from "./types";
+import type { TargetLabel } from "./useManualTargets";
 
 function newItemId(): string {
   return `img-${crypto.randomUUID()}`;
