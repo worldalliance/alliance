@@ -56,7 +56,7 @@ describe("Cohort decision staff tooling (e2e)", () => {
       .send(body);
 
   describe("optionality", () => {
-    it("rejects changing optional once the action has decisions", async () => {
+    it("allows changing mandatory to optional once the action has decisions", async () => {
       await createUser({ signedAt });
       const action = await createAction({
         start: addDays(now, -1),
@@ -65,14 +65,30 @@ describe("Cohort decision staff tooling (e2e)", () => {
       await service.resolveAll(now);
 
       expect((await patchAction(action.id, { optional: true })).status).toBe(
+        200,
+      );
+      expect(
+        (await actionRepo.findOneByOrFail({ id: action.id })).optional,
+      ).toBe(true);
+    });
+
+    it("rejects changing optional to mandatory once the action has decisions", async () => {
+      await createUser({ signedAt });
+      const action = await createAction({
+        start: addDays(now, -1),
+        deadline: addDays(now, 3),
+      });
+      expect((await patchAction(action.id, { optional: true })).status).toBe(
+        200,
+      );
+      await service.resolveAll(now);
+
+      expect((await patchAction(action.id, { optional: false })).status).toBe(
         400,
       );
       expect(
         (await actionRepo.findOneByOrFail({ id: action.id })).optional,
-      ).toBe(false);
-      expect((await patchAction(action.id, { optional: false })).status).toBe(
-        200,
-      );
+      ).toBe(true);
     });
 
     it("allows changing optional before any decision", async () => {
