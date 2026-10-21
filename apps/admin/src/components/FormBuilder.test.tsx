@@ -279,7 +279,7 @@ describe("FormBuilder save conflict while a source form loads", () => {
           if (request.method !== "GET")
             return new Response(null, { status: 409 });
           if (pathname === "/tasks/listForms") return Response.json([]);
-          if (pathname === "/tasks/slug/9")
+          if (pathname === "/tasks/adminForm/9")
             return new Promise<Response>(() => {});
           return Response.json({ id: 1, schema: theirs, formSnapshotId: 2 });
         },
@@ -318,7 +318,7 @@ describe("FormBuilder save conflict while a source form loads", () => {
         if (request.method !== "GET")
           return new Response(null, { status: 409 });
         if (pathname === "/tasks/listForms") return Response.json([]);
-        if (pathname === "/tasks/slug/9")
+        if (pathname === "/tasks/adminForm/9")
           return new Response(null, { status: 404 });
         return Response.json({ id: 1, schema: theirs, formSnapshotId: 2 });
       },
@@ -462,7 +462,7 @@ describe("FormBuilder load", () => {
 
   it("says so when the server refuses the form", async () => {
     api.alsoServing({
-      "GET /tasks/slug/:id": () =>
+      "GET /tasks/adminForm/:id": () =>
         Response.json(
           { statusCode: 500, message: "Internal Server Error" },
           { status: 500 },
@@ -477,7 +477,7 @@ describe("FormBuilder load", () => {
 
   it("names why the server refused the form", async () => {
     api.alsoServing({
-      "GET /tasks/slug/:id": () =>
+      "GET /tasks/adminForm/:id": () =>
         Response.json(
           { statusCode: 404, message: "Form not found" },
           { status: 404 },

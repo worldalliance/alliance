@@ -97,18 +97,30 @@ const FIELD_KIND_SUPPORTS_INTERPOLATION: Record<FieldKind, boolean> = {
   ranking: true,
 };
 
+export type TextRewrite = (text: string) => string;
+
+export type InterpolatedPaths = {
+  displayFields: Record<DisplayKind, readonly string[]>;
+  fieldProps: readonly string[];
+};
+
+export const VARIABLE_TEXT_PATHS: InterpolatedPaths = {
+  displayFields: INTERPOLATED_DISPLAY_FIELDS,
+  fieldProps: INTERPOLATED_FIELD_PROPS,
+};
+
 // Preserve referential equality when interpolation changes nothing so renderers
 // retain their memoized subtrees in the common no-variables case.
 function interpolateStringProps<T extends object>(
   source: T,
   props: readonly string[],
-  values: ReadonlyMap<string, string>,
+  rewrite: TextRewrite,
 ): T {
   let result = source;
   for (const prop of props) {
     const current: unknown = Reflect.get(result, prop);
     if (typeof current !== "string") continue;
-    const next = interpolateVariables(current, values);
+    const next = rewrite(current);
     if (next === current) continue;
     if (result === source) result = { ...source };
     Reflect.set(result, prop, next);
@@ -121,27 +133,44 @@ function mapPreservingIdentity<T>(items: T[], map: (item: T) => T): T[] {
   return next.every((item, index) => item === items[index]) ? items : next;
 }
 
+const variableRewrite =
+  (values: ReadonlyMap<string, string>): TextRewrite =>
+  (text) =>
+    interpolateVariables(text, values);
+
 export function interpolateDisplayBlock<T extends DisplayBlock>(
   block: T,
   values: ReadonlyMap<string, string>,
 ): T {
   if (values.size === 0) return block;
+  return rewriteDisplayBlock(
+    block,
+    variableRewrite(values),
+    VARIABLE_TEXT_PATHS,
+  );
+}
+
+export function rewriteDisplayBlock<T extends DisplayBlock>(
+  block: T,
+  rewrite: TextRewrite,
+  paths: InterpolatedPaths,
+): T {
   const result = interpolateStringProps(
     block,
-    INTERPOLATED_DISPLAY_FIELDS[block.kind] ?? [],
-    values,
+    paths.displayFields[block.kind] ?? [],
+    rewrite,
   );
   if (result.kind === "images") {
     const images = mapPreservingIdentity(result.images, (image) =>
-      interpolateStringProps(image, IMAGES_ITEM_PROPS, values),
+      interpolateStringProps(image, IMAGES_ITEM_PROPS, rewrite),
     );
     return images === result.images ? result : { ...result, images };
   }
   if (result.kind === "accordion") {
     const sections = mapPreservingIdentity(result.sections, (section) => {
-      const titled = interpolateStringProps(section, ["title"], values);
+      const titled = interpolateStringProps(section, ["title"], rewrite);
       const blocks = mapPreservingIdentity(titled.blocks, (nested) =>
-        interpolateDisplayBlock(nested, values),
+        rewriteDisplayBlock(nested, rewrite, paths),
       );
       return blocks === titled.blocks ? titled : { ...titled, blocks };
     });
@@ -150,7 +179,7 @@ export function interpolateDisplayBlock<T extends DisplayBlock>(
   if (result.kind !== "chatTranscript") return result;
 
   const messages = mapPreservingIdentity(result.messages, (message) =>
-    interpolateStringProps(message, ["text"], values),
+    interpolateStringProps(message, ["text"], rewrite),
   );
   return messages === result.messages ? result : { ...result, messages };
 }
@@ -164,18 +193,21 @@ export function interpolateFieldText<T extends AnyField>(
   field: T,
   values: ReadonlyMap<string, string>,
 ): T {
-  if (values.size === 0 || !FIELD_KIND_SUPPORTS_INTERPOLATION[field.kind]) {
-    return field;
-  }
-  const result = interpolateStringProps(
-    field,
-    INTERPOLATED_FIELD_PROPS,
-    values,
-  );
+  if (values.size === 0) return field;
+  return rewriteFieldText(field, variableRewrite(values), VARIABLE_TEXT_PATHS);
+}
+
+export function rewriteFieldText<T extends AnyField>(
+  field: T,
+  rewrite: TextRewrite,
+  paths: InterpolatedPaths,
+): T {
+  if (!FIELD_KIND_SUPPORTS_INTERPOLATION[field.kind]) return field;
+  const result = interpolateStringProps(field, paths.fieldProps, rewrite);
 
   if (hasOptionLabels(result)) {
     const options = mapPreservingIdentity(result.options, (option) =>
-      interpolateStringProps(option, ["label"], values),
+      interpolateStringProps(option, ["label"], rewrite),
     );
     return options === result.options ? result : { ...result, options };
   }
@@ -183,7 +215,7 @@ export function interpolateFieldText<T extends AnyField>(
   if (result.kind !== "list") return result;
 
   const fields = mapPreservingIdentity(result.fields, (sub) =>
-    interpolateFieldText(sub, values),
+    rewriteFieldText(sub, rewrite, paths),
   );
   return fields === result.fields ? result : { ...result, fields };
 }
@@ -193,7 +225,18 @@ export function interpolateOutputFieldBlock<T extends OutputFieldBlock>(
   values: ReadonlyMap<string, string>,
 ): T {
   if (values.size === 0) return block;
-  return interpolateStringProps(block, INTERPOLATED_OUTPUT_FIELD_PROPS, values);
+  return rewriteOutputFieldBlock(block, variableRewrite(values));
+}
+
+export function rewriteOutputFieldBlock<T extends OutputFieldBlock>(
+  block: T,
+  rewrite: TextRewrite,
+): T {
+  return interpolateStringProps(
+    block,
+    INTERPOLATED_OUTPUT_FIELD_PROPS,
+    rewrite,
+  );
 }
 
 type TextVisitor = (text: string, location: string) => void;
@@ -210,26 +253,27 @@ function visitProps(
   }
 }
 
-function visitElementText(element: PageItem, visit: TextVisitor): void {
+function visitElementText(
+  element: PageItem,
+  visit: TextVisitor,
+  paths: InterpolatedPaths,
+): void {
   const location = element.id ?? `<${element.kind}>`;
   if (isQuestionField(element)) {
-    visitProps(element, INTERPOLATED_FIELD_PROPS, location, visit);
+    visitProps(element, paths.fieldProps, location, visit);
     if (hasOptionLabels(element)) {
       element.options.forEach((option, index) =>
         visit(option.label, `${location}.options[${index}].label`),
       );
     }
     if (element.kind === "list") {
-      for (const sub of element.fields ?? []) visitElementText(sub, visit);
+      for (const sub of element.fields ?? []) {
+        visitElementText(sub, visit, paths);
+      }
     }
     return;
   }
-  visitProps(
-    element,
-    INTERPOLATED_DISPLAY_FIELDS[element.kind] ?? [],
-    location,
-    visit,
-  );
+  visitProps(element, paths.displayFields[element.kind] ?? [], location, visit);
   if (element.kind === "images") {
     element.images.forEach((image, index) =>
       visitProps(
@@ -248,7 +292,9 @@ function visitElementText(element: PageItem, visit: TextVisitor): void {
   if (element.kind === "accordion") {
     element.sections.forEach((section, index) => {
       visit(section.title, `${location}.sections[${index}].title`);
-      for (const nested of section.blocks) visitElementText(nested, visit);
+      for (const nested of section.blocks) {
+        visitElementText(nested, visit, paths);
+      }
     });
   }
 }
@@ -265,14 +311,17 @@ function visitOutputFieldBlock(block: OutputFieldBlock, visit: TextVisitor) {
 export function forEachInterpolatableText(
   schema: FormSchema,
   visit: TextVisitor,
+  paths: InterpolatedPaths = VARIABLE_TEXT_PATHS,
 ): void {
   for (const page of schema.pages ?? []) {
-    for (const element of page.fields ?? []) visitElementText(element, visit);
+    for (const element of page.fields ?? []) {
+      visitElementText(element, visit, paths);
+    }
   }
   for (const view of schema.outputViews ?? []) {
     for (const block of view.blocks ?? []) {
       if ("fieldId" in block) visitOutputFieldBlock(block, visit);
-      else visitElementText(block, visit);
+      else visitElementText(block, visit, paths);
     }
   }
 }
@@ -291,12 +340,12 @@ function forEachSharedOutputText(
       visit(text, location, view.id);
     for (const block of view.blocks ?? []) {
       if (!("fieldId" in block)) {
-        visitElementText(block, visitInView);
+        visitElementText(block, visitInView, VARIABLE_TEXT_PATHS);
         continue;
       }
       visitOutputFieldBlock(block, visitInView);
       const field = fields.get(block.fieldId);
-      if (field) visitElementText(field, visitInView);
+      if (field) visitElementText(field, visitInView, VARIABLE_TEXT_PATHS);
     }
   }
 }

@@ -3,12 +3,16 @@ import {
   fieldWithSavedChoices,
   type FormulaChoices,
 } from "@alliance/common/forms/formula-choices";
+import { rowValueText } from "@alliance/common/forms/row-list";
 import type {
   ActionWithdrawalDto,
   FormResponseDto,
   ProfileDto,
 } from "@alliance/shared/client";
-import { parseFormulaChoices } from "@alliance/shared/parsed-dtos";
+import {
+  parseAssignedRow,
+  parseFormulaChoices,
+} from "@alliance/shared/parsed-dtos";
 import { respondentName } from "../../lib/respondent";
 import type { ResponseVariantOption } from "../FormResponsesView";
 import { IdentityChip } from "../IdentitySwatch";
@@ -44,6 +48,7 @@ export const formatSubmitted = (createdAt: string): string =>
 
 export function buildTableColumns(params: {
   questions: readonly QuestionColumn[];
+  rowFields: readonly string[];
   hasVariants: boolean;
 }): TableColumn[] {
   const metaIds = [
@@ -60,6 +65,12 @@ export function buildTableColumns(params: {
       kind: ColumnKind.Meta as const,
       id,
       label: META_COLUMN_LABELS[id],
+    })),
+    ...params.rowFields.map((field) => ({
+      kind: ColumnKind.Row as const,
+      id: `row.${field}`,
+      label: `row.${field}`,
+      field,
     })),
     ...params.questions.map((question) => ({
       kind: ColumnKind.Question as const,
@@ -154,8 +165,13 @@ export function buildRows(params: {
 
   return responses.map((response) => {
     const choices = parseFormulaChoices(response.formulaChoices);
+    const row = parseAssignedRow(response.assignedRow);
     const cells: Record<string, CellContent> = {};
     for (const column of columns) {
+      if (column.kind === ColumnKind.Row) {
+        cells[column.id] = { text: rowValueText(row?.values[column.field]) };
+        continue;
+      }
       if (column.kind === ColumnKind.Meta) {
         cells[column.id] = metaCell({
           id: column.id,

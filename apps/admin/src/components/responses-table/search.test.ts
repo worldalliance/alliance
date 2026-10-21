@@ -74,6 +74,7 @@ const buildTestRows = (responses: FormResponseDto[]) => {
   });
   const columns = buildTableColumns({
     questions: buildQuestionColumns({ fields, mode: SnapshotMode.Focused }),
+    rowFields: [],
     hasVariants: false,
   });
   const fieldsBySnapshot = new Map<number, Map<string, AnyField>>(

@@ -124,7 +124,7 @@ describe("answer rules", () => {
           ? Response.json({ message: "boom" }, { status: 500 })
           : Response.json([{ id: 9, title: "Intake" }]);
       },
-      "GET /tasks/slug/:id": () =>
+      "GET /tasks/adminForm/:id": () =>
         Response.json({ message: "Form not found" }, { status: 404 }),
     });
     renderEditor();
@@ -187,7 +187,7 @@ describe("answer rules", () => {
   it("keeps a cross-form rule while its form fails to load, and retries", async () => {
     let loads = 0;
     api.alsoServing({
-      "GET /tasks/slug/:id": () => {
+      "GET /tasks/adminForm/:id": () => {
         loads += 1;
         return loads === 1
           ? Response.json({ message: "boom" }, { status: 500 })
@@ -220,7 +220,7 @@ it("starts a cross-form rule over afresh when its source form changes", async ()
         { id: 9, title: "Intake" },
         { id: 12, title: "Follow-up" },
       ]),
-    "GET /tasks/slug/:id": ({ params }) =>
+    "GET /tasks/adminForm/:id": ({ params }) =>
       Response.json({
         id: Number(params.id),
         title: "Form",

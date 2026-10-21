@@ -37,7 +37,7 @@ function mount<T>(hook: () => T) {
 
 serveApi(
   routes({
-    "GET /tasks/slug/:id": ({ params }) => {
+    "GET /tasks/adminForm/:id": ({ params }) => {
       const id = Number(params.id);
       fetched.push(id);
       const schema = schemas[id];

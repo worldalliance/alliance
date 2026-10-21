@@ -132,6 +132,9 @@ export function compareRows(params: {
   if (column.kind === ColumnKind.Meta) {
     return META_COMPARATORS[column.id](a, b);
   }
+  if (column.kind === ColumnKind.Row) {
+    return compareText(cellText(a, column.id), cellText(b, column.id));
+  }
   const { fieldId, field } = column.question;
   return compareAnswers({
     field,

@@ -48,6 +48,8 @@ import {
   getRankingSlotCount,
   isValidRankingSelection,
 } from "@alliance/common/forms/ranking";
+import { memberSchema } from "@alliance/common/forms/row-list";
+import type { AssignedRow } from "@alliance/common/forms/row-list-schema";
 import {
   type VariableAggregateSource,
   variableAggregateSources,
@@ -153,6 +155,7 @@ import {
   SnapshotHistoryOwner,
 } from "./entities/formsnapshot.entity";
 import { type FormResponseHistory } from "./form-response-history.dto";
+import { FormRowAssignmentService } from "./form-row-assignment.service";
 import { formSchemaOf } from "./form-snapshot-schema";
 import {
   CreateFormDto,
@@ -283,6 +286,7 @@ type FormIndexRow = {
 export class TasksService {
   private readonly logger = new Logger(TasksService.name);
   constructor(
+    private readonly formRowAssignmentService: FormRowAssignmentService,
     @InjectRepository(Form)
     private formRepository: Repository<Form>,
     @InjectRepository(FormResponse)
@@ -411,6 +415,48 @@ export class TasksService {
     }
 
     return this.transformImageUrls(await this.transformContractFields(form));
+  }
+
+  /**
+   * The form as `userId` is served it: for a form with a row list, filled from
+   * their row, which is assigned on their first fetch. Members only.
+   */
+  async getMemberForm(formId: number, userId: number | null): Promise<Form> {
+    const form = await this.getForm(formId);
+    if (formSchemaOf(loadedFormSnapshot(form)).rowList === undefined) {
+      return form;
+    }
+    if (userId === null) {
+      throw new ForbiddenException("Sign in to open this form");
+    }
+    const row = await this.memberRow(form, userId);
+    form.formSnapshot = this.snapshotForRow(loadedFormSnapshot(form), row);
+    return form;
+  }
+
+  /** The member's row of the form's current list; null without a list. */
+  private async memberRow(
+    form: Form,
+    userId: number,
+  ): Promise<AssignedRow | null> {
+    const list = formSchemaOf(loadedFormSnapshot(form)).rowList;
+    return list === undefined
+      ? null
+      : this.formRowAssignmentService.rowFor({
+          formId: form.id,
+          userId,
+          list,
+        });
+  }
+
+  private snapshotForRow(
+    snapshot: FormSnapshot,
+    row: AssignedRow | null,
+  ): FormSnapshot {
+    return this.cloneFormSnapshotWithSchema(
+      snapshot,
+      memberSchema(formSchemaOf(snapshot), row),
+    );
   }
 
   private resolveAggregateValue(
@@ -945,9 +991,10 @@ export class TasksService {
       });
     }
 
-    const submittedSnapshot = await this.resolveSubmissionSnapshot(
-      form,
-      submitFormDto,
+    const assignedRow = await this.memberRow(form, userId);
+    const submittedSnapshot = this.snapshotForRow(
+      await this.resolveSubmissionSnapshot(form, submitFormDto),
+      assignedRow,
     );
     const submittedSchema = formSchemaOf(submittedSnapshot);
 
@@ -1079,6 +1126,7 @@ export class TasksService {
       snapshot: submittedSnapshot,
       validatorResults,
       formulaChoices,
+      assignedRow,
       user,
     });
 
@@ -1134,9 +1182,10 @@ export class TasksService {
     }
     const user = await this.userService.findOneOrFail(userId);
 
-    const submittedSnapshot = await this.resolveSubmissionSnapshot(
-      form,
-      submitFollowUpFormDto,
+    const assignedRow = await this.memberRow(form, userId);
+    const submittedSnapshot = this.snapshotForRow(
+      await this.resolveSubmissionSnapshot(form, submitFollowUpFormDto),
+      assignedRow,
     );
     const { validatorResults, effectiveAnswers, formulaChoices } =
       await this.validateFormSubmission({
@@ -1152,6 +1201,7 @@ export class TasksService {
       snapshot: submittedSnapshot,
       validatorResults,
       formulaChoices,
+      assignedRow,
       user,
     });
 
@@ -1175,6 +1225,9 @@ export class TasksService {
     guestId?: string;
   }): Promise<ParsedFormResponse> {
     const form = await this.getForm(formId);
+    if (formSchemaOf(loadedFormSnapshot(form)).rowList !== undefined) {
+      throw new ForbiddenException("Sign in to submit this form");
+    }
 
     if (guestId) {
       const existing = await this.formResponseRepository.findOne({
@@ -1209,6 +1262,7 @@ export class TasksService {
         answers,
         loadSources: async () => guestFormulaSources(schema),
       }),
+      assignedRow: null,
       guestId,
     });
   }
@@ -1233,9 +1287,10 @@ export class TasksService {
       assertNotInStaffPreview(action);
     }
 
-    const snapshot = await this.resolveSubmissionSnapshot(
-      form,
-      partialFormData,
+    const assignedRow = await this.memberRow(form, userId);
+    const snapshot = this.snapshotForRow(
+      await this.resolveSubmissionSnapshot(form, partialFormData),
+      assignedRow,
     );
     const schema = formSchemaOf(snapshot);
     const savedForm = await this.createAndSaveFormResponse({
@@ -1256,6 +1311,7 @@ export class TasksService {
             loadHistory: this.formulaSourceHistoryLoader(userId),
           }),
       }),
+      assignedRow,
       user,
     });
 
@@ -1292,6 +1348,7 @@ export class TasksService {
     snapshot,
     validatorResults,
     formulaChoices,
+    assignedRow,
     user,
     guestId,
   }: {
@@ -1313,6 +1370,7 @@ export class TasksService {
      */
     validatorResults: VisibilityValidatorResults;
     formulaChoices: FormulaChoices;
+    assignedRow: AssignedRow | null;
     user?: User;
     guestId?: string;
   }): Promise<ParsedFormResponse> {
@@ -1324,6 +1382,7 @@ export class TasksService {
       formSnapshot: snapshot,
       visibilityValidatorResults: validatorResults,
       formulaChoices,
+      assignedRow,
       deviceType: dto.deviceType,
       publicAnswers: dto.publicAnswers ?? {},
       phDistinctId: dto.phDistinctId,
@@ -1345,6 +1404,7 @@ export class TasksService {
     const savedForm: ParsedFormResponse = Object.assign(saved, {
       visibilityValidatorResults: validatorResults,
       formulaChoices,
+      assignedRow,
     });
     await this.aiDetectionQueueService.addDetectJob({
       entityType: DetectableEntity.FormResponse,

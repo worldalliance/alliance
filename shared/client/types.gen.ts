@@ -4017,6 +4017,9 @@ export type FormResponseDto = {
     formulaChoices: {
         [key: string]: unknown;
     };
+    assignedRow: {
+        [key: string]: unknown;
+    } | null;
     user?: UserDto;
     aiDetectionResults?: Array<AiDetectionResultDto>;
 };
@@ -13843,6 +13846,30 @@ export type TasksGetFormResponses = {
 };
 
 export type TasksGetFormResponse = TasksGetFormResponses[keyof TasksGetFormResponses];
+
+export type TasksGetFormAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/tasks/adminForm/{id}';
+};
+
+export type TasksGetFormAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type TasksGetFormAdminError = TasksGetFormAdminErrors[keyof TasksGetFormAdminErrors];
+
+export type TasksGetFormAdminResponses = {
+    200: FormDto;
+};
+
+export type TasksGetFormAdminResponse = TasksGetFormAdminResponses[keyof TasksGetFormAdminResponses];
 
 export type TasksGetFormAggregateViewsData = {
     body?: never;

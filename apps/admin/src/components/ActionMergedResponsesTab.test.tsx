@@ -58,8 +58,8 @@ serveApi(
         ? Response.json({ variants: [], stats: [stat(2, 5), stat(null, 4)] })
         : Response.json({}, { status: variantsStatus });
     },
-    "GET /tasks/slug/:id": ({ params }) =>
-      refusedOr("GET /tasks/slug/:id", () =>
+    "GET /tasks/adminForm/:id": ({ params }) =>
+      refusedOr("GET /tasks/adminForm/:id", () =>
         Response.json({
           id: Number(params.id),
           title: "Survey",
@@ -154,7 +154,7 @@ it("says so when the variants fail to load", async () => {
   expect(await screen.findByText("Failed to load form responses")).toBeTruthy();
 });
 
-it.each(["GET /tasks/slug/:id", "POST /tasks/responses/byForms"])(
+it.each(["GET /tasks/adminForm/:id", "POST /tasks/responses/byForms"])(
   "says so when %s fails",
   async (route) => {
     failingRoute = route;

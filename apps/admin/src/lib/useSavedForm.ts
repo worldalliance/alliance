@@ -1,6 +1,6 @@
 import type { FormPlace } from "@alliance/common/forms/form-conditions";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
-import { tasksGetForm } from "@alliance/shared/client";
+import { tasksGetFormAdmin } from "@alliance/shared/client";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBeforeUnload, useBlocker } from "react-router";
@@ -79,7 +79,7 @@ export function useSavedForm({
     setIsLoading(true);
     setLoadError(null);
 
-    tasksGetForm({ path: { id: formId }, throwOnError: true })
+    tasksGetFormAdmin({ path: { id: formId }, throwOnError: true })
       .then((response) => {
         const form = response.data;
         if (form?.schema) {

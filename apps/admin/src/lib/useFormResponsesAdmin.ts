@@ -3,7 +3,7 @@ import {
   type FormResponseDto,
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
+import { useAdminTaskForm } from "@alliance/shared/lib/useTaskForm";
 import {
   queryOptions,
   skipToken,
@@ -34,7 +34,7 @@ export const formResponsesAdminQuery = (formId: number | undefined) =>
 
 export function useFormResponsesAdmin(formId: number | undefined) {
   const queryClient = useQueryClient();
-  const form = useTaskForm(formId);
+  const form = useAdminTaskForm(formId);
 
   const responses = useQuery(formResponsesAdminQuery(formId));
 
@@ -44,7 +44,7 @@ export function useFormResponsesAdmin(formId: number | undefined) {
     mutationFn: () =>
       Promise.all([
         ...[
-          queryKeys.taskForm(formId ?? null),
+          queryKeys.taskFormAdmin(formId ?? null),
           queryKeys.formResponsesAdmin(formId ?? null),
         ].map((queryKey) =>
           queryClient.refetchQueries({ queryKey }, { throwOnError: true }),

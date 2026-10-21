@@ -76,7 +76,7 @@ const savedForms: Record<string, FormSchema> = {
 const api = serveApi(
   routes(
     {
-      "GET /tasks/slug/:id": ({ params }) =>
+      "GET /tasks/adminForm/:id": ({ params }) =>
         failing.has(params.id!)
           ? new Response(null, { status: 500 })
           : Response.json({
@@ -420,7 +420,7 @@ describe("FormBuilder issues", () => {
   it("blocks Save on a form that didn't load while a formula's source form loads", async () => {
     failing.add("5");
     api.alsoServing({
-      "GET /tasks/slug/:id": ({ params }) =>
+      "GET /tasks/adminForm/:id": ({ params }) =>
         params.id === "9"
           ? new Promise<Response>(() => {})
           : new Response(null, { status: 500 }),
@@ -462,7 +462,7 @@ describe("FormBuilder issues", () => {
 
   it("lets Preview open while the questions of a form a formula reads load", () => {
     api.alsoServing({
-      "GET /tasks/slug/:id": () => new Promise<Response>(() => {}),
+      "GET /tasks/adminForm/:id": () => new Promise<Response>(() => {}),
     });
     renderFormBuilder(readsForm9);
     expect(screen.getByRole("button", { name: "Checking" })).toBeTruthy();
@@ -477,7 +477,7 @@ describe("FormBuilder issues", () => {
       release = resolve;
     });
     api.alsoServing({
-      "GET /tasks/slug/:id": async () => {
+      "GET /tasks/adminForm/:id": async () => {
         await held;
         return Response.json({
           id: 9,
@@ -514,7 +514,7 @@ describe("FormBuilder issues", () => {
   it("keeps focus on Retry when the questions of a form a formula reads fail again", async () => {
     let loads = 0;
     api.alsoServing({
-      "GET /tasks/slug/:id": () => {
+      "GET /tasks/adminForm/:id": () => {
         loads += 1;
         return new Response(null, { status: 500 });
       },

@@ -14,6 +14,7 @@ export enum MetaColumnId {
 export enum ColumnKind {
   Meta = "meta",
   Question = "question",
+  Row = "row",
 }
 
 export type TableColumn =
@@ -23,7 +24,8 @@ export type TableColumn =
       id: string;
       label: string;
       question: QuestionColumn;
-    };
+    }
+  | { kind: ColumnKind.Row; id: string; label: string; field: string };
 
 export type ResponseRow = {
   response: FormResponseDto;

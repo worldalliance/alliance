@@ -1,5 +1,8 @@
+import { rowValueText } from "@alliance/common/forms/row-list";
 import type { FormResponseDto } from "@alliance/shared/client";
+import { parseAssignedRow } from "@alliance/shared/parsed-dtos";
 import { formatAnswerValue } from "./answerValues";
+import { assignedRowFields } from "./assignedRowFields";
 
 const csvEscape = (s: string): string => {
   const needsQuotes = /[",\n\r]/.test(s);
@@ -18,6 +21,8 @@ export function buildResponsesCsv(params: {
   const { responses, orderedFieldIds, fieldLabels, variantName } = params;
   const metaHeaders = ["Response ID", "User ID", "User Name", "SID"];
   if (variantName) metaHeaders.push("Variant");
+  const rowFields = assignedRowFields(responses);
+  metaHeaders.push(...rowFields.map((field) => `row.${field}`));
   const used = new Set<string>();
   const questionHeaders = orderedFieldIds.map((id) => {
     const base = fieldLabels.get(id) ?? id;
@@ -40,6 +45,9 @@ export function buildResponsesCsv(params: {
       userName,
       resp.sid ?? "",
       ...(variantName ? [variantName(resp) ?? ""] : []),
+      ...rowFields.map((field) =>
+        rowValueText(parseAssignedRow(resp.assignedRow)?.values[field]),
+      ),
       ...orderedFieldIds.map((id) => formatAnswerValue(resp.answers?.[id])),
     ];
     return values;

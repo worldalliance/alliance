@@ -14,9 +14,11 @@ import { ShareUrlsModule } from "src/share-urls/share-urls.module";
 import { User } from "src/user/entities/user.entity";
 import { UserModule } from "src/user/user.module";
 import { CustomValidator } from "./entities/customvalidator.entity";
+import { FormRowAssignment } from "./entities/form-row-assignment.entity";
 import { Form } from "./entities/form.entity";
 import { FormResponse } from "./entities/formresponse.entity";
 import { FormResponseDraft } from "./entities/formresponsedraft.entity";
+import { FormRowAssignmentService } from "./form-row-assignment.service";
 import { FormSnapshotModule } from "./formsnapshot.module";
 import { TasksController } from "./tasks.controller";
 import { TasksService } from "./tasks.service";
@@ -32,6 +34,7 @@ import { TasksService } from "./tasks.service";
       User,
       FollowUpForm,
       Guest,
+      FormRowAssignment,
     ]),
     UserModule,
     ForumModule,
@@ -45,6 +48,6 @@ import { TasksService } from "./tasks.service";
     ShareUrlsModule,
   ],
   controllers: [TasksController],
-  providers: [TasksService],
+  providers: [TasksService, FormRowAssignmentService],
 })
 export class TasksModule {}

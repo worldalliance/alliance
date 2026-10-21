@@ -18,7 +18,8 @@ export type FormEditorTab =
   | "shareable"
   | "outputs"
   | "aggregates"
-  | "variables";
+  | "variables"
+  | "rows";
 
 export type IssueListState = { gate: IssueGate | null } | null;
 
@@ -28,6 +29,7 @@ const EDITOR_TABS: { tab: FormEditorTab; label: string }[] = [
   { tab: "outputs", label: "Output View" },
   { tab: "aggregates", label: "Aggregate Views" },
   { tab: "variables", label: "Variables" },
+  { tab: "rows", label: "Rows" },
 ];
 
 export function FormBuilderHeader({
