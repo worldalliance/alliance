@@ -1947,12 +1947,12 @@ export class ActionsService {
     }
 
     if (
-      rest.optional !== undefined &&
-      rest.optional !== action.optional &&
+      rest.optional === false &&
+      action.optional === true &&
       (await this.cohortDecisionStaffService.hasDecisions(id))
     ) {
       throw new BadRequestException(
-        "Optional can't change once members have cohort decisions for this action.",
+        "Optional can't change to mandatory once members have cohort decisions for this action.",
       );
     }
 
