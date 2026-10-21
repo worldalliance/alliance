@@ -993,7 +993,11 @@ export class TasksService {
 
     const assignedRow = await this.memberRow(form, userId);
     const submittedSnapshot = this.snapshotForRow(
-      await this.resolveSubmissionSnapshot(form, submitFormDto),
+      await this.resolveSubmissionSnapshot({
+        form,
+        dto: submitFormDto,
+        assignedRow,
+      }),
       assignedRow,
     );
     const submittedSchema = formSchemaOf(submittedSnapshot);
@@ -1184,7 +1188,11 @@ export class TasksService {
 
     const assignedRow = await this.memberRow(form, userId);
     const submittedSnapshot = this.snapshotForRow(
-      await this.resolveSubmissionSnapshot(form, submitFollowUpFormDto),
+      await this.resolveSubmissionSnapshot({
+        form,
+        dto: submitFollowUpFormDto,
+        assignedRow,
+      }),
       assignedRow,
     );
     const { validatorResults, effectiveAnswers, formulaChoices } =
@@ -1238,7 +1246,11 @@ export class TasksService {
       }
     }
 
-    const snapshot = await this.resolveSubmissionSnapshot(form, submitFormDto);
+    const snapshot = await this.resolveSubmissionSnapshot({
+      form,
+      dto: submitFormDto,
+      assignedRow: null,
+    });
     const schema = formSchemaOf(snapshot);
     const validatorResults = parseSubmittedValidatorResults(
       submitFormDto.visibilityValidatorResults ?? {},
@@ -1289,7 +1301,11 @@ export class TasksService {
 
     const assignedRow = await this.memberRow(form, userId);
     const snapshot = this.snapshotForRow(
-      await this.resolveSubmissionSnapshot(form, partialFormData),
+      await this.resolveSubmissionSnapshot({
+        form,
+        dto: partialFormData,
+        assignedRow,
+      }),
       assignedRow,
     );
     const schema = formSchemaOf(snapshot);
@@ -1419,10 +1435,16 @@ export class TasksService {
   // bytes as authoritative, since the resolved schema feeds validation,
   // contract-signing extraction, and auto-extract. Once the minimum mobile
   // version is past the cutover, delete the schemaSnapshot branch.
-  private async resolveSubmissionSnapshot(
-    form: Form,
-    dto: { formSnapshotId?: number; schemaSnapshot?: Record<string, unknown> },
-  ) {
+  private async resolveSubmissionSnapshot({
+    form,
+    dto,
+    assignedRow,
+  }: {
+    form: Form;
+    dto: { formSnapshotId?: number; schemaSnapshot?: Record<string, unknown> };
+    /** The member's row; they were served the schema filled from it. */
+    assignedRow: AssignedRow | null;
+  }) {
     if (dto.formSnapshotId !== undefined) {
       return dto.formSnapshotId === form.formSnapshotId
         ? loadedFormSnapshot(form)
@@ -1439,7 +1461,13 @@ export class TasksService {
     const echoed = withServedVideoSources(dto.schemaSnapshot);
     const served = loadedFormSnapshot(form);
     // getForm fills in contracts as well, which the history fallback does not rebuild.
-    if (hashFormSchema(echoed) === hashFormSchema(served.schema)) {
+    const echoedHash = hashFormSchema(echoed);
+    if (
+      echoedHash === hashFormSchema(served.schema) ||
+      (assignedRow !== null &&
+        echoedHash ===
+          hashFormSchema(this.snapshotForRow(served, assignedRow).schema))
+    ) {
       return served;
     }
     return this.formSnapshotService.findHistoricalBySchemaOrThrow(
@@ -1830,7 +1858,11 @@ export class TasksService {
 
     await this.assertActionNotSubmitted({ actionId: dto.actionId, userId });
 
-    const snapshot = await this.resolveSubmissionSnapshot(form, dto);
+    const snapshot = await this.resolveSubmissionSnapshot({
+      form,
+      dto,
+      assignedRow: await this.memberRow(form, userId),
+    });
     const answers = readFormAnswers(dto.answers);
     if (R.isFailure(answers)) {
       throw new BadRequestException("Draft answers are not a valid answer map");
