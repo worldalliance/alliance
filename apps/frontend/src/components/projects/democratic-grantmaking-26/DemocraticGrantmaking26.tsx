@@ -96,7 +96,7 @@ export default function DemocraticGrantmaking26() {
             </div>
           </div>
           <div className={cn(PROJECT_COL, "mt-12 lg:mt-24 lg:pb-24")}>
-            <div className="flex flex-col items-center gap-8 rounded-lg bg-zinc-100 px-8 py-10 sm:px-20 sm:py-14">
+            <div className="flex flex-col items-center gap-8 rounded-lg bg-zinc-100 px-7 py-8 sm:px-14 sm:py-10">
               <div className="flex flex-col items-center gap-1">
                 <p className="text-center text-xl sm:text-2xl font-medium">
                   A model for public-expert collaboration
@@ -106,7 +106,7 @@ export default function DemocraticGrantmaking26() {
                   an informed vote.
                 </p>
               </div>
-              <div className="mx-auto sm:max-w-3/4">
+              <div className="w-full">
                 <ExpertGrid />
               </div>
             </div>

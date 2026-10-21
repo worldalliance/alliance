@@ -6,12 +6,6 @@ export interface ProjectPerson {
 }
 
 export const FEATURED_PEOPLE: ProjectPerson[] = [
-  // {
-  //   name: "Jan Maly",
-  //   imageSrc: "/assets/democratic-grantmaking-26/jan-maly.jpg",
-  //   role: "Online Decision-Making, WU Wien",
-  //   href: "https://janmaly.de/",
-  // },
   {
     name: "Healy Hamilton",
     imageSrc: "/assets/democratic-grantmaking-26/healy-hamilton.jpg",
@@ -49,10 +43,10 @@ export const FEATURED_PEOPLE: ProjectPerson[] = [
     href: "https://www.linkedin.com/in/sepllveda/",
   },
   {
-    name: "Kyle Gracey",
-    imageSrc: "/assets/democratic-grantmaking-26/kyle-gracey.png",
-    role: "AI Strategy Program Leader, Rethink Priorities",
-    href: "https://www.linkedin.com/in/kylegracey/",
+    name: "Lindsey McDougle",
+    imageSrc: "/assets/democratic-grantmaking-26/lindsey-mcdougle.jpg",
+    role: "Director, Rutgers Center for Nonprofit Leadership & Development; President-Elect, ARNOVA",
+    href: "https://spaa.newark.rutgers.edu/lindsey-mcdougle",
   },
   {
     name: "Megan Tompkins-Stange",
@@ -67,10 +61,22 @@ export const FEATURED_PEOPLE: ProjectPerson[] = [
     href: "https://www.linkedin.com/in/luke-kemp-689b8271/",
   },
   {
+    name: "Kyle Gracey",
+    imageSrc: "/assets/democratic-grantmaking-26/kyle-gracey.png",
+    role: "AI Strategy Program Leader, Rethink Priorities",
+    href: "https://www.linkedin.com/in/kylegracey/",
+  },
+  {
     name: "Samuel Dupret",
     imageSrc: "/assets/democratic-grantmaking-26/samuel-dupret.jpg",
     role: "Research manager, Happier Lives Institute",
     href: "https://www.samueldupret.com/",
+  },
+  {
+    name: "Jan Maly",
+    imageSrc: "/assets/democratic-grantmaking-26/jan-maly.jpg",
+    role: "Online Decision-Making, WU Wien",
+    href: "https://janmaly.de/",
   },
 ];
 
