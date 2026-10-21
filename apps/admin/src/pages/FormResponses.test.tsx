@@ -25,7 +25,7 @@ const schema: FormSchema = {
 
 serveApi(
   routes({
-    "GET /tasks/slug/:id": () =>
+    "GET /tasks/adminForm/:id": () =>
       Response.json({ id: 4, title: "Survey", formSnapshotId: 7, schema }),
     "GET /tasks/responses/:id": () =>
       responsesStatus !== 200

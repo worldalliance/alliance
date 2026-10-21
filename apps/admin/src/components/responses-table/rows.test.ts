@@ -1,5 +1,6 @@
 import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
 import { makeFormResponse } from "@alliance/shared/lib/testFixtures";
+import { assignedRowFields } from "../../lib/assignedRowFields";
 import {
   buildQuestionColumns,
   collectSnapshotFields,
@@ -47,6 +48,7 @@ it("labels a formula field's answer with the choices its response saved", () => 
   });
   const columns = buildTableColumns({
     questions: buildQuestionColumns({ fields, mode: SnapshotMode.Focused }),
+    rowFields: [],
     hasVariants: false,
   });
   const [row] = buildRows({
@@ -65,4 +67,33 @@ it("labels a formula field's answer with the choices its response saved", () => 
   const pickColumn = columns.find((column) => column.label === "Pick");
 
   expect(pickColumn && row.cells[pickColumn.id]?.text).toBe("Beta, Alpha");
+});
+
+it("shows each response's row values in their own columns", () => {
+  const withRow = makeFormResponse({
+    id: 2,
+    assignedRow: {
+      key: '["Springfield"]',
+      values: { jurisdiction: "Springfield" },
+    },
+  });
+  const columns = buildTableColumns({
+    questions: [],
+    rowFields: assignedRowFields([withRow, response]),
+    hasVariants: false,
+  });
+  const rows = buildRows({
+    responses: [withRow, response],
+    columns,
+    fieldsBySnapshot: new Map(),
+    sidsToUserMap: {},
+    withdrawnUserMap: new Map(),
+    variantByFormId: new Map(),
+  });
+
+  expect(columns.map(({ label }) => label)).toContain("row.jurisdiction");
+  expect(rows.map((row) => row.cells["row.jurisdiction"].text)).toEqual([
+    "Springfield",
+    "",
+  ]);
 });

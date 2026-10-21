@@ -92,7 +92,7 @@ const savedForms: Record<string, FormSchema> = {
 serveApi(
   routes(
     {
-      "GET /tasks/slug/:id": ({ params }) =>
+      "GET /tasks/adminForm/:id": ({ params }) =>
         Response.json({
           id: Number(params.id),
           schema: savedForms[params.id],

@@ -16,7 +16,7 @@ let responsesHeld: Promise<void> = Promise.resolve();
 
 serveApi(
   routes({
-    "GET /tasks/slug/:id": ({ params }) => {
+    "GET /tasks/adminForm/:id": ({ params }) => {
       requested.push(`form ${params.id}`);
       return formStatus === 200
         ? Response.json({

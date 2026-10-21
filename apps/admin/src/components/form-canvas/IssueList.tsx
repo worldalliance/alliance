@@ -64,6 +64,8 @@ export function issueLocation(schema: FormSchema, target: IssueTarget): string {
     }
     case IssueTargetKind.Variables:
       return "Variables";
+    case IssueTargetKind.Rows:
+      return "Rows";
     case IssueTargetKind.Form:
       return "Form";
     default:
@@ -81,6 +83,7 @@ export function openIssue(
     select,
     showOutputView,
     showVariables,
+    showRows,
   }: {
     pages: readonly Page[];
     select: (
@@ -90,6 +93,7 @@ export function openIssue(
     ) => void;
     showOutputView: (viewId: string) => void;
     showVariables: () => void;
+    showRows: () => void;
   },
 ): void {
   switch (target.kind) {
@@ -109,6 +113,8 @@ export function openIssue(
       return showOutputView(target.viewId);
     case IssueTargetKind.Variables:
       return showVariables();
+    case IssueTargetKind.Rows:
+      return showRows();
     case IssueTargetKind.Form:
       return;
     default:

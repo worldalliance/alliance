@@ -9,6 +9,7 @@ import {
 } from "@alliance/common/forms/form-responses";
 import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
 import type { FormulaChoices } from "@alliance/common/forms/formula-choices";
+import type { AssignedRow } from "@alliance/common/forms/row-list-schema";
 import { MIGRATE_RESPONSE_SNAPSHOTS_MAX_BATCH } from "@alliance/common/forms/snapshot-migration";
 import type { VisibilityValidatorResults } from "@alliance/common/forms/visibility";
 import {
@@ -45,6 +46,7 @@ import {
   type ParsedFormResponseDraft,
 } from "./entities/formresponsedraft.entity";
 import { FormSnapshot } from "./entities/formsnapshot.entity";
+import { memberSnapshotSchema } from "./form-snapshot-schema";
 
 export class CreateFormDto extends PickType(Form, ["title"]) {
   @ApiProperty()
@@ -273,6 +275,12 @@ export class FormResponseDto extends PickType(FormResponse, [
   @Type(() => Object)
   formulaChoices: FormulaChoices;
 
+  /** The row of the form's row list the response was submitted with. */
+  @ApiProperty({ type: Object, nullable: true })
+  @IsOptional()
+  @Type(() => Object)
+  assignedRow: AssignedRow | null;
+
   @ApiPropertyOptional({ type: () => UserDto })
   @IsOptional()
   @Type(() => UserDto)
@@ -290,9 +298,13 @@ export class FormResponseDto extends PickType(FormResponse, [
     this.formId = response.formId;
     this.formSnapshotId = response.formSnapshotId;
     this.answers = response.answers;
-    this.schemaSnapshot = loadedFormResponseSnapshot(response).schema;
+    this.schemaSnapshot = memberSnapshotSchema(
+      loadedFormResponseSnapshot(response),
+      response.assignedRow,
+    );
     this.visibilityValidatorResults = response.visibilityValidatorResults;
     this.formulaChoices = response.formulaChoices;
+    this.assignedRow = response.assignedRow;
     this.publicAnswers = response.publicAnswers;
     this.deviceType = response.deviceType;
     this.sessionReplayUrl = response.sessionReplayUrl;

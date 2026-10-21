@@ -39,6 +39,7 @@ import { FormJsonModal } from "./FormJsonModal";
 import { FormulaSourcesProvider } from "./FormulaSourcesContext";
 import { FormVariablesProvider } from "./FormVariablesContext";
 import { OutputBuilder } from "./OutputBuilder";
+import { RowListBuilder } from "./row-list/RowListBuilder";
 import { ShareableTextBuilder } from "./ShareableTextBuilder";
 import { useSaveGate } from "./useSaveGate";
 import { VariableBuilder } from "./VariableBuilder";
@@ -314,6 +315,7 @@ export function FormBuilder(props: FormBuilderProps) {
         setActiveEditor("outputs");
       },
       showVariables: () => setActiveEditor("variables"),
+      showRows: () => setActiveEditor("rows"),
     });
 
   return (
@@ -418,6 +420,12 @@ export function FormBuilder(props: FormBuilderProps) {
                   />
                 ) : activeEditor === "variables" ? (
                   <VariableBuilder
+                    key={schemaLoads}
+                    schema={schema}
+                    onSchemaChange={updateSchema}
+                  />
+                ) : activeEditor === "rows" ? (
+                  <RowListBuilder
                     key={schemaLoads}
                     schema={schema}
                     onSchemaChange={updateSchema}

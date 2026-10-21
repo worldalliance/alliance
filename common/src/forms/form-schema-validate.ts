@@ -12,6 +12,7 @@ import {
   type PageItem,
 } from "./form-schema";
 import { getRangeOptionCount, isValidRangeSelection } from "./range";
+import { rowListErrors } from "./row-list";
 import { sourceVariablesInSharedOutput } from "./variable-interpolation";
 import type { SourceFormFields } from "./variable-scope";
 import { collectVariableErrors } from "./variable-validate";
@@ -87,6 +88,7 @@ export function validateFormSchema(
   collectVisibilityCycleErrors(schema, errors);
 
   collectVariableErrors(schema, context, errors);
+  errors.push(...rowListErrors(schema));
   for (const { name, location, viewId } of sourceVariablesInSharedOutput(
     schema,
   )) {

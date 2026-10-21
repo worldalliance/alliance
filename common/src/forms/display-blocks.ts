@@ -1,5 +1,6 @@
 import z from "zod";
 import type { Assert, Equal } from "../types";
+import { rowConditionSchema } from "./row-list-schema";
 import { visibleIfFormulaSchema } from "./visible-if-formula";
 
 const baseContentFields = {
@@ -200,6 +201,7 @@ const baseBlockFields = {
   manualUserContent: z
     .record(z.string(), manualDisplayBlockContentSchema)
     .optional(),
+  rowCondition: rowConditionSchema.optional(),
 };
 
 export const headerBlockSchema = z.strictObject({
@@ -306,6 +308,7 @@ const NESTED_OMITTED_FIELDS = {
   visibleIfFormula: true,
   manualPerUser: true,
   manualUserContent: true,
+  rowCondition: true,
 } as const;
 
 export const nestedDisplayBlockSchema = z.discriminatedUnion("kind", [

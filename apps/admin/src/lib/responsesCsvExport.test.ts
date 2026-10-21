@@ -62,3 +62,26 @@ it("names an unlabeled column by its field id and formats each answer", () => {
     "3,,3,,Paris,NULL",
   ]);
 });
+
+it("adds a column per field of the rows responses were submitted with", () => {
+  const csv = buildResponsesCsv({
+    responses: [
+      makeFormResponse({
+        id: 3,
+        assignedRow: {
+          key: '["Springfield"]',
+          values: { jurisdiction: "Springfield", email: null },
+        },
+      }),
+      makeFormResponse({ id: 4 }),
+    ],
+    orderedFieldIds: [],
+    fieldLabels: new Map(),
+  });
+
+  expect(csv.split("\n")).toEqual([
+    "Response ID,User ID,User Name,SID,row.jurisdiction,row.email",
+    "3,,3,,Springfield,",
+    "4,,4,,,",
+  ]);
+});

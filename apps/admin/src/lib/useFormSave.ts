@@ -7,7 +7,7 @@ import { syncSchemaListInputs } from "@alliance/common/forms/variable-scope";
 import { R, type Result } from "@alliance/common/result";
 import {
   tasksCreateFormAdmin,
-  tasksGetForm,
+  tasksGetFormAdmin,
   tasksUpdateFormAdmin,
 } from "@alliance/shared/client";
 import { useInvalidateFormsAdmin } from "@alliance/shared/lib/useFormsAdmin";
@@ -43,7 +43,7 @@ export type DisplayOnlySave = (params: {
 const fetchTheirs = async (
   formId: number,
 ): Promise<Result<DisplayOnlySaveConflict, unknown>> => {
-  const { data, error } = await tasksGetForm({ path: { id: formId } });
+  const { data, error } = await tasksGetFormAdmin({ path: { id: formId } });
   if (!data) {
     console.error("Failed to load their version of the form:", error);
     return R.failure(error);

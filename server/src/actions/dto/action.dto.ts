@@ -51,6 +51,7 @@ import {
   loadedFormResponseSnapshot,
   type ParsedFormResponse,
 } from "src/tasks/entities/formresponse.entity";
+import { memberSnapshotSchema } from "src/tasks/form-snapshot-schema";
 import { SubmitFormDto } from "src/tasks/form.dto";
 import { UserActionRelationPillStatus } from "src/user/dto/user-action-relations.dto";
 import { ProfileDto } from "src/user/dto/user.dto";
@@ -809,7 +810,10 @@ export class FormResponseOutputDto extends PickType(FormResponse, [
     this.visibilityValidatorResults = formResponse.visibilityValidatorResults;
     this.deviceType = formResponse.deviceType;
     this.publicAnswers = formResponse.publicAnswers;
-    this.schemaSnapshot = loadedFormResponseSnapshot(formResponse).schema;
+    this.schemaSnapshot = memberSnapshotSchema(
+      loadedFormResponseSnapshot(formResponse),
+      formResponse.assignedRow,
+    );
   }
 }
 

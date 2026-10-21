@@ -6,7 +6,7 @@ import {
 } from "@alliance/shared/client";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useFormWithdrawalsAdmin } from "@alliance/shared/lib/useFormWithdrawalsAdmin";
-import { taskFormQuery } from "@alliance/shared/lib/useTaskForm";
+import { adminTaskFormQuery } from "@alliance/shared/lib/useTaskForm";
 import {
   skipToken,
   useMutation,
@@ -126,7 +126,7 @@ export function useActionMergedResponsesAdmin(actionId: number) {
   const defaultFormId = defaultOptionOf(variantOptions ?? [])?.formId;
 
   const forms = useQueries({
-    queries: (formIds ?? []).map((formId) => taskFormQuery(formId)),
+    queries: (formIds ?? []).map((formId) => adminTaskFormQuery(formId)),
     combine: combineForms,
   });
 

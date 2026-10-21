@@ -347,7 +347,23 @@ export class TasksController {
 
   @Get("slug/:id")
   @ApiOkResponse({ type: FormDto })
-  async getForm(@Param("id", ParseIntPipe) id: number): Promise<FormDto> {
+  async getForm(
+    @Param("id", ParseIntPipe) id: number,
+    @Request() req: ExpressRequest,
+  ): Promise<FormDto> {
+    return new FormDto(
+      await this.tasksService.getMemberForm(
+        id,
+        await this.authService.getAuthenticatedUserId(req),
+      ),
+    );
+  }
+
+  /** The stored form, unfilled: what the builder edits and clones. */
+  @Get("adminForm/:id")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: FormDto })
+  async getFormAdmin(@Param("id", ParseIntPipe) id: number): Promise<FormDto> {
     return new FormDto(await this.tasksService.getForm(id));
   }
 

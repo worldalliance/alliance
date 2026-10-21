@@ -2,6 +2,8 @@ import {
   formSchema,
   type FormSchema,
 } from "@alliance/common/forms/form-schema";
+import { memberSchema } from "@alliance/common/forms/row-list";
+import type { AssignedRow } from "@alliance/common/forms/row-list-schema";
 import { Logger } from "@nestjs/common";
 import type { FormSnapshot } from "./entities/formsnapshot.entity";
 
@@ -23,4 +25,12 @@ export function formSchemaOf(snapshot: FormSnapshot): FormSchema {
     }
   }
   return snapshot.schema as FormSchema;
+}
+
+/** A snapshot's schema as a member is sent it; see `memberSchema`. */
+export function memberSnapshotSchema(
+  snapshot: FormSnapshot,
+  assignedRow: AssignedRow | null,
+): FormSchema {
+  return memberSchema(formSchemaOf(snapshot), assignedRow);
 }

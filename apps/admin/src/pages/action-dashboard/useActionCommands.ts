@@ -3,7 +3,7 @@ import {
   ActionDto,
   CreateActionDto,
   tasksCreateFormAdmin,
-  tasksGetForm,
+  tasksGetFormAdmin,
 } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
@@ -66,7 +66,7 @@ export function useActionCommands(params: {
 
     let taskFormId = form.taskFormId;
     if (taskFormId) {
-      const taskForm = await tasksGetForm({
+      const taskForm = await tasksGetFormAdmin({
         path: { id: taskFormId },
       });
       if (taskForm.data) {

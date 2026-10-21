@@ -12,6 +12,7 @@ import {
   checkOptionsFormula,
   optionListSchema,
 } from "./options-schema";
+import { rowConditionSchema, rowListSchema } from "./row-list-schema";
 import {
   formVariableSchema,
   isFieldKindReadableByFieldInput,
@@ -77,6 +78,7 @@ const baseFieldSchema = z.object({
   requiredIfFormula: visibleIfFormulaSchema.optional(),
   width: widthSchema.optional(),
   output: fieldOutputConfigSchema.optional(),
+  rowCondition: rowConditionSchema.optional(),
 });
 
 const textFieldSchema = z.strictObject({
@@ -425,6 +427,7 @@ export const formSchema = z.strictObject({
   aggregateViews: z.array(aggregateViewSchemaSchema).optional(),
   /** Computed values referenced as `#{name}` in display text and labels. */
   variables: z.array(formVariableSchema).optional(),
+  rowList: rowListSchema.optional(),
 });
 export type FormSchema = z.infer<typeof formSchema>;
 

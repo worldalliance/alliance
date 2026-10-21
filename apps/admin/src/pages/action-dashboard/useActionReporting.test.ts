@@ -34,7 +34,7 @@ const api = serveApi(
       loads.push(new URL(request.url).pathname);
       return Response.json([makeProfile(5)]);
     },
-    "GET /tasks/slug/:id": ({ params }) =>
+    "GET /tasks/adminForm/:id": ({ params }) =>
       Response.json({ id: Number(params.id), title: "Form", schema: {} }),
     "GET /tasks/responses/:id": () => Response.json([makeFormResponse()]),
   }),
@@ -212,7 +212,7 @@ describe("useActionReporting", () => {
       named: "withdrawn and dismissed counts",
     },
     {
-      route: "GET /tasks/slug/:id",
+      route: "GET /tasks/adminForm/:id",
       action: { ...started, taskFormId: 7 },
       named: "form responses",
     },
