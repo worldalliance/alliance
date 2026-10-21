@@ -5,6 +5,10 @@ import {
   type FormulaChoices,
 } from "@alliance/common/forms/formula-choices";
 import {
+  assignedRowSchema,
+  type AssignedRow,
+} from "@alliance/common/forms/row-list-schema";
+import {
   readVisibilityValidatorResults,
   type VisibilityValidatorResults,
 } from "@alliance/common/forms/visibility";
@@ -129,6 +133,11 @@ export class FormResponse {
   @Type(() => String)
   sid: string | null;
 
+  /** The member's row, for a form with a row list; set by the server on submit. */
+  @Column({ type: "jsonb", nullable: true })
+  @IsOptional()
+  assignedRow: unknown | null;
+
   @DeleteDateColumnTz()
   @IsOptional()
   @IsEmpty()
@@ -143,6 +152,7 @@ export class FormResponse {
 export interface ParsedFormResponse extends FormResponse {
   visibilityValidatorResults: VisibilityValidatorResults;
   formulaChoices: FormulaChoices;
+  assignedRow: AssignedRow | null;
 }
 
 export function loadedFormResponseSnapshot(
@@ -186,6 +196,11 @@ export function parseFormResponse(response: FormResponse): ParsedFormResponse {
       return {};
     },
   );
+  // Undefined where a query selected only some columns.
+  response.assignedRow =
+    response.assignedRow === null || response.assignedRow === undefined
+      ? null
+      : assignedRowSchema.parse(response.assignedRow);
   // Mutate-and-cast (rather than spread) to keep the entity's prototype; the
   // assignments above set the only fields the cast narrows.
   return response as ParsedFormResponse;

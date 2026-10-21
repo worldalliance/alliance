@@ -13,7 +13,7 @@ let createFormStatus = 200;
 
 serveApi(
   routes({
-    "GET /tasks/slug/:id": () =>
+    "GET /tasks/adminForm/:id": () =>
       getFormStatus === 200
         ? Response.json({ id: 4, title: "Survey", schema: {} })
         : Response.json(

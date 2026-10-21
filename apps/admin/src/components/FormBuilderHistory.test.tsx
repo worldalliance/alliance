@@ -80,7 +80,7 @@ serveApi(
         Response.json({ id: 7, name: "Pledge", markdown: "I pledge" }),
       "GET /contract/admin": () =>
         Response.json([{ id: 7, name: "Pledge", markdown: "I pledge" }]),
-      "GET /tasks/slug/:id": () =>
+      "GET /tasks/adminForm/:id": () =>
         Response.json({
           id: 1,
           schema: { ...twoPages, description: "Theirs" },

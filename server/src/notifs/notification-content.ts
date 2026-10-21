@@ -128,6 +128,19 @@ export const forumReplyContent = (authorId: number): NotificationContent => ({
   ],
 });
 
+export const actionCommentContent = (params: {
+  authorId: number;
+  actionId: number;
+}): NotificationContent => ({
+  message: [
+    { type: SegmentType.User, id: params.authorId, name: UserNameForm.Public },
+    " commented on ",
+    { type: SegmentType.Action, id: params.actionId },
+    ": ",
+    { type: SegmentType.CommentExcerpt },
+  ],
+});
+
 export function parseNotificationContent(raw: unknown): NotificationContent {
   return notificationContentSchema.parse(raw);
 }

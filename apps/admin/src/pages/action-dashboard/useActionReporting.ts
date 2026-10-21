@@ -9,7 +9,7 @@ import {
 } from "@alliance/shared/client";
 import type { ActionStatus } from "@alliance/shared/client/types.gen";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
-import { useTaskForm } from "@alliance/shared/lib/useTaskForm";
+import { useAdminTaskForm } from "@alliance/shared/lib/useTaskForm";
 import type { ParsedActionDto } from "@alliance/shared/parsed-dtos";
 import { skipToken, useQuery } from "@tanstack/react-query";
 import type { FormWithSchema } from "../../components/FormResponsesView";
@@ -67,7 +67,7 @@ export function useActionReporting(
             }).then((res) => res.data),
   });
 
-  const taskForm = useTaskForm(action?.taskFormId);
+  const taskForm = useAdminTaskForm(action?.taskFormId);
   const formResponses = useQuery(
     formResponsesAdminQuery(
       memberActionStarted ? action?.taskFormId : undefined,

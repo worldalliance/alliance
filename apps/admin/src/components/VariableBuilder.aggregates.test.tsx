@@ -45,7 +45,7 @@ const api = serveApi(
         { id: 1, title: "This one" },
         { id: 9, title: "Survey" },
       ]),
-    "GET /tasks/slug/:id": ({ params }) =>
+    "GET /tasks/adminForm/:id": ({ params }) =>
       Response.json({
         id: Number(params.id),
         title: "Survey",

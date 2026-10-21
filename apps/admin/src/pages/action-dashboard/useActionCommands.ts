@@ -3,7 +3,7 @@ import {
   ActionDto,
   CreateActionDto,
   tasksCreateFormAdmin,
-  tasksGetForm,
+  tasksGetFormAdmin,
 } from "@alliance/shared/client";
 import type { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
@@ -26,7 +26,7 @@ export const useNavigateToCreatedAction = () => {
 type ActionAdmin = ReturnType<typeof useActionAdmin>;
 
 const copyTaskForm = async (id: number): Promise<number> => {
-  const { data: taskForm } = await tasksGetForm({
+  const { data: taskForm } = await tasksGetFormAdmin({
     path: { id },
     throwOnError: true,
   });

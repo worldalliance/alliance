@@ -6,7 +6,7 @@ export function ExpertGrid({ className }: { className?: string }) {
     <ul
       aria-label="Expert panel"
       className={cn(
-        "grid w-fit grid-cols-4 gap-x-3 gap-y-5 text-center lg:grid-cols-8 sm:gap-x-4 sm:gap-y-6",
+        "grid w-fit grid-cols-4 sm:grid-cols-5 gap-x-3 gap-y-5 text-center sm:gap-x-4 sm:gap-y-6",
         className,
       )}
     >

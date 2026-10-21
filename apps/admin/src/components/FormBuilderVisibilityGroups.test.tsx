@@ -309,7 +309,7 @@ describe("FormBuilder visibility groups across loads", () => {
       {
         "POST /tasks/createForm": () =>
           Response.json({ id: 5, schema: grouped, formSnapshotId: 1 }),
-        "GET /tasks/slug/:id": () =>
+        "GET /tasks/adminForm/:id": () =>
           Response.json({ id: 5, schema: grouped, formSnapshotId: 1 }),
       },
       () => Response.json([]),

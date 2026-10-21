@@ -14,6 +14,7 @@ import {
   type FormSchemaValidationContext,
   type FormSchemaValidationError,
 } from "@alliance/common/forms/form-schema-validate";
+import { ROW_LIST_BLOCK_ID } from "@alliance/common/forms/row-list";
 import {
   conditionFieldReference,
   type VisibleIfFormula,
@@ -32,6 +33,7 @@ export enum IssueTargetKind {
   Group = "group",
   OutputView = "outputView",
   Variables = "variables",
+  Rows = "rows",
   Form = "form",
 }
 
@@ -41,6 +43,7 @@ export type IssueTarget =
   | { kind: IssueTargetKind.Group; pageIndex: number; key: string }
   | { kind: IssueTargetKind.OutputView; viewId: string }
   | { kind: IssueTargetKind.Variables }
+  | { kind: IssueTargetKind.Rows }
   | { kind: IssueTargetKind.Form };
 
 export type FormIssue = {
@@ -96,6 +99,9 @@ function locate({
   }
   if (error.variable !== undefined) {
     return { kind: IssueTargetKind.Variables };
+  }
+  if (error.blockId === ROW_LIST_BLOCK_ID) {
+    return { kind: IssueTargetKind.Rows };
   }
   const place = places.get(error.blockId);
   if (!place) return { kind: IssueTargetKind.Form };
@@ -354,6 +360,8 @@ const targetKey = (target: IssueTarget): string => {
       return `outputView:${target.viewId}`;
     case IssueTargetKind.Variables:
       return "variables";
+    case IssueTargetKind.Rows:
+      return "rows";
     case IssueTargetKind.Form:
       return "form";
     default:

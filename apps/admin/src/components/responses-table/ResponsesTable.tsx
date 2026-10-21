@@ -27,6 +27,7 @@ import React, {
   useState,
 } from "react";
 import { useSearchParams } from "react-router";
+import { assignedRowFields } from "../../lib/assignedRowFields";
 import type {
   FormWithSchema,
   ResponseVariantOption,
@@ -176,9 +177,10 @@ const ResponsesTable: React.FC<ResponsesTableProps> = ({
     () =>
       buildTableColumns({
         questions,
+        rowFields: assignedRowFields(responses),
         hasVariants: (variantOptions?.length ?? 0) > 0,
       }),
-    [questions, variantOptions],
+    [questions, responses, variantOptions],
   );
 
   const columnsById = useMemo(

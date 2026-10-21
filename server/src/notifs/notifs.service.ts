@@ -32,6 +32,7 @@ import {
 } from "./entities/unread-content.entity";
 import { NotificationChannel } from "./notif-utils";
 import {
+  actionCommentContent,
   type ContentTarget,
   type Destination,
   FORMATS_RENDERING_FROM_CONTENT,
@@ -61,7 +62,12 @@ export type CreateNotifParams = Required<
   };
 
 type UnreadContentSource =
-  | { contentType: UnreadContentType.ForumReply; authorId: number }
+  | {
+      contentType: UnreadContentType.ForumReply;
+      authorId: number;
+      /** Set when the recipient authored the action or a post linked to it, so the copy names the action. */
+      actionId?: number;
+    }
   | {
       contentType: UnreadContentType.ActionUpdate;
       /** Unset to follow the update's live text. */
@@ -77,7 +83,12 @@ export type CreateUnreadContentParams = Required<
 function unreadContentFor(source: UnreadContentSource): NotificationContent {
   switch (source.contentType) {
     case UnreadContentType.ForumReply:
-      return forumReplyContent(source.authorId);
+      return source.actionId === undefined
+        ? forumReplyContent(source.authorId)
+        : actionCommentContent({
+            authorId: source.authorId,
+            actionId: source.actionId,
+          });
     case UnreadContentType.ActionUpdate:
       return source.fixedText === undefined
         ? LIVE_ACTION_UPDATE_TEXT

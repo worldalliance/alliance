@@ -26,7 +26,7 @@ serveApi(
   routes({
     "GET /actions/:id/form-variants": () =>
       Response.json({ variants: [], stats }),
-    "GET /tasks/slug/:id": ({ params }) => {
+    "GET /tasks/adminForm/:id": ({ params }) => {
       requested.push(`form ${params.id}`);
       return Response.json({
         id: Number(params.id),
@@ -92,7 +92,7 @@ it("caches each variant's schema where the form's own page reads it", async () =
   const { client, hook } = mount();
 
   await waitFor(() => expect(hook().loading).toBe(false));
-  expect(client.getQueryData(queryKeys.taskForm(5))).toMatchObject({
+  expect(client.getQueryData(queryKeys.taskFormAdmin(5))).toMatchObject({
     title: "Form 5",
   });
 });

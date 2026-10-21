@@ -6,6 +6,7 @@ import {
   FormResponse,
   loadedFormResponseSnapshot,
 } from "./entities/formresponse.entity";
+import { memberSnapshotSchema } from "./form-snapshot-schema";
 
 export class FormResponseHistoryEntryDto extends PickType(FormResponse, [
   "id",
@@ -22,7 +23,10 @@ export class FormResponseHistoryEntryDto extends PickType(FormResponse, [
     this.id = input.id;
     this.answers = input.answers;
     this.formulaChoices = input.formulaChoices;
-    this.schemaSnapshot = loadedFormResponseSnapshot(input).schema;
+    this.schemaSnapshot = memberSnapshotSchema(
+      loadedFormResponseSnapshot(input),
+      null,
+    );
   }
 }
 
@@ -42,7 +46,7 @@ export class FormResponseHistoryDto {
   responses: FormResponseHistoryEntryDto[];
 
   constructor(input: FormResponseHistory) {
-    this.schema = loadedFormSnapshot(input.form).schema;
+    this.schema = memberSnapshotSchema(loadedFormSnapshot(input.form), null);
     this.responses = input.responses.map(
       (response) => new FormResponseHistoryEntryDto(response),
     );

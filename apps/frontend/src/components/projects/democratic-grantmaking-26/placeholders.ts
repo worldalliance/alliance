@@ -6,12 +6,12 @@ export interface ProjectPerson {
 }
 
 export const FEATURED_PEOPLE: ProjectPerson[] = [
-  {
-    name: "Jan Maly",
-    imageSrc: "/assets/democratic-grantmaking-26/jan-maly.jpg",
-    role: "Online Decision-Making, WU Wien",
-    href: "https://janmaly.de/",
-  },
+  // {
+  //   name: "Jan Maly",
+  //   imageSrc: "/assets/democratic-grantmaking-26/jan-maly.jpg",
+  //   role: "Online Decision-Making, WU Wien",
+  //   href: "https://janmaly.de/",
+  // },
   {
     name: "Healy Hamilton",
     imageSrc: "/assets/democratic-grantmaking-26/healy-hamilton.jpg",
@@ -53,6 +53,24 @@ export const FEATURED_PEOPLE: ProjectPerson[] = [
     imageSrc: "/assets/democratic-grantmaking-26/kyle-gracey.png",
     role: "AI Strategy Program Leader, Rethink Priorities",
     href: "https://www.linkedin.com/in/kylegracey/",
+  },
+  {
+    name: "Megan Tompkins-Stange",
+    imageSrc: "/assets/democratic-grantmaking-26/megan.jpg",
+    role: "Associate Professor of Public Policy, University of Michigan",
+    href: "https://www.linkedin.com/in/megan-tompkins-stange-b71b709/",
+  },
+  {
+    name: "Luke Kemp",
+    imageSrc: "/assets/democratic-grantmaking-26/luke-kemp.jpg",
+    role: "Research Affiliate, Centre for the Study of Existential Risk at University of Cambridge",
+    href: "https://www.linkedin.com/in/luke-kemp-689b8271/",
+  },
+  {
+    name: "Samuel Dupret",
+    imageSrc: "/assets/democratic-grantmaking-26/samuel-dupret.jpg",
+    role: "Research manager, Happier Lives Institute",
+    href: "https://www.samueldupret.com/",
   },
 ];
 

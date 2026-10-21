@@ -53,6 +53,20 @@ const issuesOf = (
   });
 
 describe("collectFormIssues", () => {
+  test("sends errors in the row list itself to the Rows tab", () => {
+    const issues = issuesOf(
+      form([{ id: "p1", fields: [text("a")] }], {
+        rowList: { rows: [], keyFields: ["name"] },
+      }),
+    );
+    expect(issues).toContainEqual(
+      expect.objectContaining({
+        target: { kind: IssueTargetKind.Rows },
+        message: "The row list has no rows",
+      }),
+    );
+  });
+
   test("a valid form has none", () => {
     expect(
       issuesOf(

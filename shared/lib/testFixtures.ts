@@ -277,6 +277,7 @@ export function makeFormResponse(
     answers: {},
     publicAnswers: {},
     schemaSnapshot: {},
+    assignedRow: null,
     phDistinctId: null,
     deviceType: null,
     sessionReplayUrl: null,

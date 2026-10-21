@@ -36,7 +36,7 @@ serveApi(
             { id: 1, title: "This one" },
             { id: 9, title: "Survey" },
           ]),
-    "GET /tasks/slug/:id": ({ params }) =>
+    "GET /tasks/adminForm/:id": ({ params }) =>
       params.id === "9"
         ? Response.json({
             id: 9,

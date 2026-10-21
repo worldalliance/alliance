@@ -9,7 +9,7 @@ import {
 } from "@tanstack/react-query";
 import { milliseconds } from "date-fns";
 import { useMemo } from "react";
-import { tasksGetForm } from "../client";
+import { tasksGetFormAdmin } from "../client";
 import { queryKeys } from "./queryKeys";
 
 type FormQuestionFields = {
@@ -36,7 +36,7 @@ function formQuestionFieldsQuery(formId: number) {
   return {
     queryKey: queryKeys.formQuestionFieldsAdmin(formId),
     queryFn: async (): Promise<FormQuestionFields> => {
-      const response = await tasksGetForm({
+      const response = await tasksGetFormAdmin({
         path: { id: formId },
         throwOnError: true,
       });
