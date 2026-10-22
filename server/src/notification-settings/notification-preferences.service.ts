@@ -40,6 +40,14 @@ export function wantsKind(params: {
   });
 }
 
+export const NEW_ACCOUNT_OFF: readonly Pick<
+  NotificationPreference,
+  "kind" | "channel"
+>[] = [
+  { kind: NotificationKind.ActionUpdates, channel: NotificationChannel.Text },
+  { kind: NotificationKind.ActionUpdates, channel: NotificationChannel.Email },
+];
+
 type Cell = Pick<NotificationPreference, "userId" | "kind" | "channel">;
 
 const overrideKey = ({ userId, kind, channel }: Cell) =>
