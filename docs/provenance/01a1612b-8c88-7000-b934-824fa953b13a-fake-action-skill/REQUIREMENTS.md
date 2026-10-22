@@ -1,6 +1,6 @@
 ---
 user: Alex Dorey
-task: Write skills that create fake actions and projects in the local database, populate actions with simulated engagement, record both to local YAML, and re-import them after the database is cleared
+task: Write skills that create fake actions and projects in the local database, populate actions with simulated engagement, modify existing actions, record all of it to local YAML, and re-import it after the database is cleared
 ---
 
 ## User-origin requirements
@@ -21,6 +21,8 @@ task: Write skills that create fake actions and projects in the local database, 
 - When the local API server isn't running, the agent starts it in the background and continues.
 - `/fake-action` and `/fake-engagement` write the faked actions, projects and engagement into local YAML files.
 - An `/import-fakes` skill imports them when the database is cleared.
+- A `/modify-action` skill changes an existing local action: its dates, its order, its theme, or anything else about it. The motivating invocation is `/modify-action move 176 to 3 weeks ago and populate it with engagement`.
+- When anything about a modification is uncertain, the agent asks with the structured question tool (`AskUserQuestion`), with a recommended option.
 
 ## Agent-proposed, user-approved
 
@@ -92,3 +94,14 @@ task: Write skills that create fake actions and projects in the local database, 
 - A faked action whose name already exists is skipped and reported, so importing twice is harmless.
 - When a recorded member no longer exists or isn't eligible, the importer substitutes an eligible member from the action's cohort who has no activity on it yet, and replays the outcome as them.
 - Import runs on demand. `scripts/load_staging_data.sh` prints a reminder to run `/import-fakes` when `.scratch/fakes/` has files.
+
+### Modifying actions
+
+- `/modify-action` may target any local action, staging or fake.
+- Its scope covers:
+  - fields and theme, including form wording;
+  - dates and state;
+  - feed order and project membership;
+  - archiving and soft-deleting.
+- Moving an action shifts its whole history by the same amount, with the `member_action` (launch) date landing on the requested date. Its events, member activity, form responses and updates all keep their spacing.
+- Every modification asks whether to record the change in `.scratch/fakes/`.

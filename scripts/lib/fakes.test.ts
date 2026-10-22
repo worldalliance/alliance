@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { dateShifter, fakeFileSchema, splitEvents } from "./fakes";
+import {
+  dateShifter,
+  type FakeFile,
+  fakeFileSchema,
+  splitEvents,
+  syncFileDates,
+} from "./fakes";
 
 const staging = {
   kind: "staging",
@@ -99,5 +105,47 @@ describe("splitEvents", () => {
     expect(
       splitEvents({ events: [launch, closed, deadline], shift, now }),
     ).toEqual({ before: [launch, deadline], after: [closed] });
+  });
+});
+
+describe("syncFileDates", () => {
+  test("takes the db's dates and moves what the db lacks by the delta", () => {
+    const file = fakeFileSchema.parse({
+      ...staging,
+      events: [
+        {
+          title: "Close",
+          description: "",
+          newStatus: "office_action",
+          date: "2026-10-09T00:00:00Z",
+        },
+      ],
+      participants: [
+        { userId: 1, at: "2026-10-09T12:00:00Z", outcome: "dismissed" },
+        { userId: 2, at: "2026-10-09T13:00:00Z", outcome: "idle" },
+      ],
+    }) satisfies FakeFile;
+    const synced = syncFileDates({
+      file,
+      db: {
+        events: [
+          {
+            title: "Close",
+            newStatus: "office_action",
+            date: "2026-09-20T00:00:00.000Z",
+          },
+        ],
+        activityByUser: new Map([[1, "2026-09-18T08:00:00.000Z"]]),
+        updateByTitle: new Map(),
+      },
+      deltaMs: -864e5,
+      now: new Date("2026-10-22T00:00:00Z"),
+    });
+    expect(synced.recordedAt).toBe("2026-10-22T00:00:00.000Z");
+    expect(synced.events[0].date).toBe("2026-09-20T00:00:00.000Z");
+    expect(synced.participants.map((p) => p.at)).toEqual([
+      "2026-09-18T08:00:00.000Z",
+      "2026-10-08T13:00:00.000Z",
+    ]);
   });
 });

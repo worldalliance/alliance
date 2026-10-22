@@ -156,3 +156,33 @@ A second import skipped it. What the agent flagged led to these changes:
 - `deviceType` limited to the server's values;
 - defined `at` and `recordedAt` times;
 - the snapshot join and the false booleans spelled out.
+
+## Modifying actions
+
+No admin route edits an existing event, so `scripts/shift-action.ts` moves an action with one SQL transaction. It shifts `action_event.date`, `action_activity.createdAt`, the linked `form_response.createdAt`, the `action_update` dates, and `action_cohort_decision.resolvedAt`. Refusals:
+
+- A move that would put existing activity in the future is refused.
+- Suite actions are refused. `syncGeneralUpdateDatesForSuites` runs only on API mutations, so a SQL move would leave the suite's general-update dates stale. The suite routes (`batchUpdateSuiteEvents`) keep them in step.
+
+Some derived state isn't refreshed after a move:
+
+- `usersJoined` is recomputed by its worker within 10 minutes.
+- Existing cohort decisions keep their verdicts, which is what a moved history means.
+- `computedAutocompleteAt` applies only to forum-participation actions.
+
+**Engagement on a past action.** The server refuses completions after the deadline (`computeCompletionBlock`), and cohort enrollment closes there too. So engagement isn't written into the past directly:
+
+1. `--live` shifts the action as late as its existing activity allows, which opens the member phase now.
+2. `/fake-engagement` runs normally.
+3. The final move carries everything to the requested date.
+4. `--spread` re-times the action's activity at random across its member phase.
+
+`--spread-after <activityId>` re-times only activity added after that id, so older activity keeps its times and the new members don't cluster at the launch.
+
+`--live` deletes the action's `resolved_after_deadline` decisions: exclusions made only because the phase had closed. They are deleted rather than soft-deleted. The unique `(actionId, userId)` index covers soft-deleted rows and the server inserts with `orIgnore`, so a soft-deleted exclusion silently blocks the member feed's fresh decision.
+
+A cold agent ran `/modify-action move 176 to 3 weeks ago and populate it with engagement`. It moved the launch 21 days back and added 22 members' engagement and an update, and every activity row landed inside the member phase. It also showed that 207 stale exclusions survived `--live` and covered every new participant. With the deletion fix, re-running the open–feed–move sequence on 176 gave all 19 new members with activity an included `launch` decision.
+
+**Recording.** `--record` rewrites a file's dates from the db: events matched by title and status, participants by user, updates by title. Anything without a db row moves by the same delta. `recordedAt` becomes now, so an import keeps the moved timeline in place rather than re-anchoring it.
+
+**Asking.** The skill asks only what the code and the action can't settle. The recording question is asked on every run, as required. The recommended answer is to record when the action already has a file, and db-only otherwise. Deleting is confirmed first, with archiving as the recommended alternative.

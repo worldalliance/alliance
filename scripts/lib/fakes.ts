@@ -132,3 +132,44 @@ export function splitEvents(params: {
     after: params.events.filter(closesInPast),
   };
 }
+
+export interface RecordedTimes {
+  events: { title: string; newStatus: string; date: string }[];
+  activityByUser: Map<number, string>;
+  updateByTitle: Map<string, string>;
+}
+
+/**
+ * Rewrites a file's dates to the db's after its action moved, so an import
+ * lands the action where it now sits. Anything the db lacks, such as an idle
+ * member, moves by `deltaMs`.
+ */
+export function syncFileDates(params: {
+  file: FakeFile;
+  db: RecordedTimes;
+  deltaMs: number;
+  now: Date;
+}): FakeFile {
+  const { file, db } = params;
+  const shifted = (iso: string) =>
+    new Date(Date.parse(iso) + params.deltaMs).toISOString();
+  return {
+    ...file,
+    recordedAt: params.now.toISOString(),
+    events: file.events.map((event) => ({
+      ...event,
+      date:
+        db.events.find(
+          (e) => e.title === event.title && e.newStatus === event.newStatus,
+        )?.date ?? shifted(event.date),
+    })),
+    participants: file.participants.map((participant) => ({
+      ...participant,
+      at: db.activityByUser.get(participant.userId) ?? shifted(participant.at),
+    })),
+    updates: file.updates.map((update) => ({
+      ...update,
+      date: db.updateByTitle.get(update.title) ?? shifted(update.date),
+    })),
+  };
+}
