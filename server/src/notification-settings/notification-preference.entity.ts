@@ -7,6 +7,7 @@ import { NotificationKind } from "./notification-kind";
 export enum PreferenceSource {
   Member = "member",
   Migrated = "migrated",
+  NewAccount = "new_account",
 }
 
 /** A member's override of one kind on one channel; no row follows the default. */
