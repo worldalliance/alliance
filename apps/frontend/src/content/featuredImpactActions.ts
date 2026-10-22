@@ -38,6 +38,21 @@ export type FeaturedImpactAction = {
 
 export const FEATURED_IMPACT_ACTIONS: readonly FeaturedImpactAction[] = [
   {
+    actionId: 148,
+    emphasis: "We collected a total of 1,022 pieces of trash",
+    rest: "around our communities.",
+    imageSrc:
+      "https://dj92mxbdjuclo.cloudfront.net/1792694944994-4ce45eec-28ba-474c-85ed-2b6b98202850.webp",
+    tags: [ActionPriority.Environment],
+  },
+  {
+    actionId: 153,
+    emphasis:
+      "We held a direct discussion between members and anonymous AI researchers",
+    rest: "to facilitate common understanding of the risks and harms of AI.",
+    tags: [ActionPriority.Technology],
+  },
+  {
     actionId: 132,
     emphasis:
       "7 libraries around the world put up posters on a fact of our choice",
