@@ -48,9 +48,26 @@ export interface Phase {
 export const TIMELINE_HEADING = "How the project works";
 
 export const PHASES: Phase[] = [
-  { label: "Step 1", description: "Description" },
-  { label: "Step 2", description: "Description" },
-  { label: "Step 3", description: "Description" },
+  {
+    label: "Step 1",
+    description:
+      "Volunteers read scenarios of children interacting with a chatbot.",
+  },
+  {
+    label: "Step 2",
+    description:
+      "Volunteers rate the chatbot's responses as 'safe' or 'unsafe'",
+  },
+  {
+    label: "Step 3",
+    description:
+      "KORA takes the volunteer feedback to improve their safety tests, or benchmarks, to reflect what the public believes to be safe.",
+  },
+  {
+    label: "Step 4",
+    description:
+      "Leading AI labs, such as Mistral (EU), use these benchmarks to evaluate their new chatbot models.",
+  },
 ];
 
 export const NEWS_HEADING = "In the News: Child Safety and AI";
