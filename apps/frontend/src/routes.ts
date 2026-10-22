@@ -30,7 +30,7 @@ export default [
     "components/projects/democratic-grantmaking-26/DemocraticGrantmaking26.tsx",
   ),
   route(
-    "/projects/democratic-grantmaking-26-copy",
+    "/projects/safer-chatbots-for-children",
     "components/projects/democratic-grantmaking-26-copy/DemocraticGrantmaking26Copy.tsx",
   ),
   route("/projects/:slug", "pages/static/ProgressProjectPage.tsx"),

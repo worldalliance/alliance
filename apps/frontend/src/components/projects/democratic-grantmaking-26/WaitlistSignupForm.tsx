@@ -71,7 +71,15 @@ function ReferralBanner({ referral }: { referral: WaitlistReferralDto }) {
   );
 }
 
-export function WaitlistSignupForm({ className }: { className?: string }) {
+export function WaitlistSignupForm({
+  className,
+  submitLabel = "Join the Alliance waitlist",
+  note = "When we're ready, we'll send you an invite link.",
+}: {
+  className?: string;
+  submitLabel?: string;
+  note?: string;
+}) {
   const {
     codes,
     hasCode,
@@ -238,7 +246,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
         disabled={restoring || submit.isPending || !referralKnown || linkFailed}
         className={cn(ACCOUNT_BUTTON, "p-4 text-base sm:text-lg")}
       >
-        {submit.isPending ? "Joining…" : "Join the Alliance waitlist"}
+        {submit.isPending ? "Joining…" : submitLabel}
       </Button>
       {submit.isError && !linkFailed && (
         <p className="text-sm text-red-700" role="alert">
@@ -249,9 +257,7 @@ export function WaitlistSignupForm({ className }: { className?: string }) {
           })}
         </p>
       )}
-      <p className="text-center text-base text-[var(--site-ink)]/70">
-        When we&apos;re ready, we&apos;ll send you an invite link.
-      </p>
+      <p className="text-center text-base text-[var(--site-ink)]/70">{note}</p>
     </form>
   );
 }
