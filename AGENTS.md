@@ -29,6 +29,8 @@ Read before the matching task:
 - Determining the provenance of anything in the repository → `(root)/skills/provenance/SKILL.md`
 - Implementing a feature, fixing a bug, or refactoring code → `(root)/skills/implement/SKILL.md`
 - Querying the local Postgres db → `(root)/skills/local-db/SKILL.md`
+- Creating a fake action in the local db and deploying it to every member → `(root)/skills/fake-action/SKILL.md`
+- Populating local actions with fake engagement: member activity, updates, closing old actions → `(root)/skills/fake-engagement/SKILL.md`
 - Using the Linear API → `(root)/skills/linear/SKILL.md`
 - Verifying a change in the browser, driving the mobile app, calling the API, or authenticating as an admin → `(root)/skills/playwright/SKILL.md`
 - Writing or editing any doc an agent reads (`SKILL.md`, `AGENTS.md`, `CLAUDE.md`, docs those point at) → `(root)/skills/writing-for-agents/SKILL.md`
