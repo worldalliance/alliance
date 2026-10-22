@@ -1,32 +1,37 @@
 export const ABOUT_SECTIONS = [
   {
     heading: "What is this?",
-    body: "This is a project that will launch when the Alliance reaches 1,000 members. Outside funders have put up $100,000 for a nonprofit, and Alliance members will help decide which nonprofit will receive the money. ",
+    body: `- Safer Chatbots for Children is a global project, done online by volunteers over the course of 1 month. Volunteers will read short scenarios of children turning to AI assistants and determine if the scenario shows safe behavior or not.
+- Volunteers will review English transcripts of children messaging AI chatbots such as ChatGPT, Claude, and Mistral, then submit feedback on how well the chatbots handled sensitive topics such as fear, academic dishonesty, online data sharing, and body image.`,
   },
   {
     heading: "How do I participate?",
-    body: "Join the waitlist on this page. We'll reach out soon with an invitation to the Alliance. Once the Alliance reaches 1,000 members, this project will begin.",
+    body: `- This project is run by the Alliance and KORA that is accepting signups from the general public from any country.
+- Join the waitlist on this page. We expect the project to begin in Mid-November 2026 and conclude by Mid-December 2026. 
+- Volunteers are encouraged to join the Alliance to continue volunteering on similar tasks after this project concludes.
+`,
+  },
+  {
+    heading: "Why are we doing this?",
+    body: "At the Alliance, we’re assembling people who can count on each other to combat global problems that depend on everyone’s participation. With this project, we are testing the model of “citizen oversight”, where the general public gets a chance to weigh in on disruptive, potentially dangerous technologies such as AI and help shape the direction of these technologies in a healthy, democratic way.",
   },
   {
     heading: "How will this work?",
     body: `1,000 Alliance members and an expert panel will decide how to donate the $100,000. This will happen in a four-step process:
 
-1. Alliance members nominate nonprofits.
-2. Experts analyze how each nonprofit would use the $100,000.
-3. Alliance members use expert analyses to vote on nonprofits.
-4. Experts select the final recipient from members' top choices.`,
-  },
-  {
-    heading: "Why are we doing this?",
-    body: "We're learning how to effectively combine member values and expert analysis to donate money. This process could one day become a transparent giving service for large-scale donors. After the project, we'll work with [Jan Maly](https://janmaly.de/) of [WU Vienna](https://www.wu.ac.at/en/dpkm) to publish our findings.",
+1. Each participant will: Read short scenarios of children interacting with an AI chatbot, then rate each scenario as “safe”, “unsafe”, or “undetermined”
+
+2. Kora, an AI safety nonprofit, will take the aggregated feedback on the scenarios to improve their safety tests (known in the industry as “benchmarks”) to match what is considered safe by the general public.
+
+3. Leading AI companies like Mistral will use these benchmarks to evaluate their models and improve future chatbot releases.`,
   },
 ];
 
-export const SIGNUP_INFO = [
-  "Reviews are expected to take 45-60 minutes. The review period lasts from November 17 to December 15th.",
-  "You will get an email or text when the review period begins.",
-  "Signup form is not active yet. Please come back in a few days.",
-];
+export const WAITLIST_GOAL = 500;
+
+export const SIGNUP_BUTTON = "Join the waitlist for this project";
+
+export const SIGNUP_NOTE = "The project will begin November 17th";
 
 export interface Expert {
   name: string;
@@ -35,8 +40,8 @@ export interface Expert {
 }
 
 export const EXPERTS: Expert[] = [
-  { name: "Expert name", role: "Title" },
-  { name: "Expert name", role: "Title" },
+  { name: "Stéphie Herlin", role: "Head of Product and Research at KORA" },
+  { name: "Pending Name Review", role: "AI Safety Researcher at Meta" },
 ];
 
 export interface Phase {
@@ -44,6 +49,8 @@ export interface Phase {
   description: string;
   imageSrc?: string;
 }
+
+export const SHOW_TIMELINE = false;
 
 export const TIMELINE_HEADING = "How the project works";
 
@@ -70,7 +77,7 @@ export const PHASES: Phase[] = [
   },
 ];
 
-export const NEWS_HEADING = "In the News: Child Safety and AI";
+export const NEWS_HEADING = "Recent news on the dangers of AI and Child Safety";
 
 export interface NewsArticle {
   title: string;

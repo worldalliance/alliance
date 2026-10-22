@@ -4,7 +4,6 @@ import { data } from "react-router";
 import { socialPreviewMeta } from "../../../lib/socialPreviewMeta";
 import { DocProse, DocProseSize } from "../../../site/DocProse";
 import { SiteFooter } from "../../../site/Footer";
-import { WAITLIST_HREF } from "../../../site/links";
 import { NAV_HEIGHT, Navbar } from "../../../site/Navbar";
 import {
   BandHeading,
@@ -15,11 +14,17 @@ import { DisplayHeading, SITE_COL } from "../../../site/ui";
 import { MEMBER_GOAL_LABEL } from "../democratic-grantmaking-26/GrantmakingMemberProgress";
 import { MemberWaitlistBar } from "../democratic-grantmaking-26/MemberWaitlistBar";
 import { useWaitlistCount } from "../democratic-grantmaking-26/useWaitlist";
-import { ABOUT_SECTIONS } from "./copy";
+import { WaitlistSignupForm } from "../democratic-grantmaking-26/WaitlistSignupForm";
+import {
+  ABOUT_SECTIONS,
+  SHOW_TIMELINE,
+  SIGNUP_BUTTON,
+  SIGNUP_NOTE,
+  WAITLIST_GOAL,
+} from "./copy";
 import { ExpertGrid } from "./ExpertGrid";
 import { NewsCollage } from "./NewsCollage";
 import { ProjectTimeline } from "./ProjectTimeline";
-import { SignupInfo } from "./SignupInfo";
 
 export function loader() {
   if (import.meta.env.MODE === "production") throw data(null, { status: 404 });
@@ -30,7 +35,7 @@ export function meta() {
   return socialPreviewMeta({
     title: "Democratic Grantmaking '26 — The Alliance",
     description: `We're planning a project in which an expert panel and ${MEMBER_GOAL_LABEL} members will work together to make a significant grant.`,
-    url: WAITLIST_HREF,
+    url: "/projects/safer-chatbots-for-children",
   });
 }
 
@@ -41,7 +46,11 @@ function ProjectProgress() {
   const waitlist = useWaitlistCount();
   if (members.data !== undefined && waitlist.data !== undefined) {
     return (
-      <MemberWaitlistBar members={members.data} waitlist={waitlist.data} />
+      <MemberWaitlistBar
+        members={members.data}
+        waitlist={waitlist.data}
+        goal={WAITLIST_GOAL}
+      />
     );
   }
   return (
@@ -73,7 +82,7 @@ export default function DemocraticGrantmaking26Copy() {
               )}
             >
               <p className="-mb-2 text-left text-[1.05rem] text-[var(--site-ink)]/70 sm:text-[1.2rem]">
-                An Alliance project / Winter 2026
+                Safer Chatbots for Children project / Winter 2026
               </p>
               <div className="flex flex-col gap-4 lg:col-start-1 lg:row-start-2 lg:gap-[clamp(1rem,2.5vh,2rem)]">
                 <DisplayHeading
@@ -81,8 +90,8 @@ export default function DemocraticGrantmaking26Copy() {
                   leading={1.2}
                   className="text-4xl sm:text-5xl lg:text-[clamp(2.25rem,min(3.75vw,6vh),4.5rem)]"
                 >
-                  A generation is growing up with AI chatbots. It’s time for a
-                  public review of their safety.{" "}
+                  A generation is growing up with AI chatbots. It’s time the
+                  public had a say.{" "}
                 </DisplayHeading>
                 {/* <SiteSubtitle size={SubtitleSize.Page}>
                   Once the Alliance reaches 1,000 members, we will nominate and
@@ -103,20 +112,11 @@ export default function DemocraticGrantmaking26Copy() {
                   worldwide.
                 </p>
               </div>
-              <div className="lg:relative lg:col-start-2 lg:row-start-2 lg:self-stretch">
-                <NewsCollage className="lg:absolute lg:inset-0" />
-              </div>
-            </div>
-            <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
-              <ProjectTimeline currentIdx={0} />
-            </div>
-            <div
-              className={cn(
-                PROJECT_COL,
-                "pt-8 lg:pt-[clamp(1.5rem,4svh,4rem)]",
-              )}
-            >
-              <SignupInfo className="w-full" />
+              <WaitlistSignupForm
+                className="w-full lg:col-start-2 lg:row-start-2 lg:self-center"
+                submitLabel={SIGNUP_BUTTON}
+                note={SIGNUP_NOTE}
+              />
             </div>
             <div
               className={cn(
@@ -126,6 +126,14 @@ export default function DemocraticGrantmaking26Copy() {
             >
               <ProjectProgress />
             </div>
+            <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
+              <NewsCollage />
+            </div>
+            {SHOW_TIMELINE && (
+              <div className={cn(PROJECT_COL, "pt-12 md:pt-16")}>
+                <ProjectTimeline currentIdx={0} />
+              </div>
+            )}
           </div>
           <div
             className={cn(
