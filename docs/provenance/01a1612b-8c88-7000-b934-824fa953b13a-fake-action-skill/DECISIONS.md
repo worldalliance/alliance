@@ -76,7 +76,7 @@ When the API port from `./scripts/with-env.sh` isn't listening, the agent starts
 
 `mint-token.ts` stays in `skills/fake-action/`, and `fake-engagement` calls it by path. One copy keeps a single definition of the token claims. The requirement that the script not move into a shared location for the `playwright` skill still holds.
 
-Both skills need the server step, so `fake-engagement` points to the Server section of `fake-action` rather than repeating it. The `SEND_DEV_NOTIFS` check moves to `fake-engagement`, because contract signing and updates are what can notify; creating an action notifies nobody.
+Every skill needs the server step, so `fake-engagement` and `import-fakes` point to the Server section of `fake-action` rather than repeating it. That section also holds the `SEND_DEV_NOTIFS` check: creating an action notifies nobody, but the other two skills sign contracts and post updates, and they follow that section.
 
 When the agent picks the target action, "little activity" means the fewest `action_activity` rows among actions whose status now is `member_action`. Planned and closed actions can't take participation, but a closed action can still get a wrap-up.
 
@@ -89,3 +89,70 @@ The cast is limited to the target's cohort (`POST /actions/evaluate-cohort`). A 
 A form with `variables`, such as a randomly assigned senator, resolves them per member. The skill points to where that happens so that answers match what each member would have seen.
 
 A second cold dry run followed both skills after the split. It created live action 174, ran `fake-engagement` on it, then ran it with no id, which picked action 170, the live action with no activity. Every call succeeded. What it flagged led to the full withdraw and update bodies, the cohort limit, the per-member variables note, and the definitions of status and active contract.
+
+## Recording format
+
+`fakeFileSchema` (`scripts/lib/fakes.ts`) is a strict zod schema with two kinds:
+
+- **`fake`** carries the whole action: fields, form schema, project, every event.
+- **`staging`** carries only an action name and what the fake skills added to it.
+
+Both carry `recordedAt`, `events`, `participants` and `updates`. Participants are a union on `outcome`, so a completion without answers or a withdrawal without its reason fails validation. Activity dated after `recordedAt` fails too. Server-side shapes the API already validates (form schema, cohort expression, update blocks) stay `unknown`, so there is one validator for each.
+
+The agent writes the files and the importer only reads them, so YAML is parsed with Bun's built-in `Bun.YAML` and no YAML dependency is needed. Since JSON is valid YAML, either form works.
+
+The files never record contract signing. On import, every participant without an active contract signs as they act, which is what the skills do live.
+
+## Importer
+
+`scripts/import-fakes.ts` goes through the API for the same reasons the skills do. It uses SQL only for lookups and for backdating, which is the part the API can't do.
+
+**Ordering.** Events that already ended the member phase are added after participants and updates (`splitEvents`). Otherwise the server would reject submissions on an action that is closed by the time of import.
+
+**Backdating.** These columns are set to their shifted times:
+
+- `action_activity.createdAt`;
+- `form_response.createdAt`;
+- `action_update.date` and `visibleAt`.
+
+Contract events keep the import time. A backdated signing could land before a later suspension and leave the member's contract inactive.
+
+**Idempotency.** A rerun on a database that wasn't cleared changes nothing:
+
+- a `fake` file whose action name exists is skipped;
+- a member who already has activity on the action is skipped, not replaced;
+- an event is skipped when one with the same title and status exists;
+- an update is skipped when one with the same title exists.
+
+**Stand-ins.** A missing or ineligible member is replaced by a random member from the action's cohort who hasn't acted on it. Members with an active contract are preferred, as in the skill. In testing, a stand-in without a contract made the server announce the signing to that member's group, creating 24 in-app "joined" notifications. None were pushed.
+
+**Failures.** One member or file failing doesn't stop the rest. Every failure is printed at the end and the script exits 1.
+
+## Shared helpers
+
+The importer and `mint-token.ts` both need tokens, so minting moved into `scripts/lib/access-token.ts`. `mint-token.ts` is now a thin CLI over it. Signing uses `@nestjs/jwt`, which the server declares, rather than the undeclared transitive `jsonwebtoken`.
+
+`scripts/lib/local-db.ts` gained `execLocalDb` for writes, because Postgres refuses data-modifying statements inside the subquery that `queryLocalDb` wraps. Both share one `psql` invocation, which now stops on the first error.
+
+## Round trip
+
+The importer was tested against the local db:
+
+- **Fake file:** a copy of action 174's real data under a new name, with a project, a closed member phase, an update, and a participant id that doesn't exist. It came back as action 176 with the project, events, 13 activities, 12 form responses and the update, all at their shifted times. The missing member got a stand-in.
+- **Staging file:** a wrap-up on action 162, matched by name.
+- **Missing-action file:** skipped with a note.
+- **Rerun:** a second import skipped everything.
+
+A cold agent then ran the whole loop: it created live action 178 in a new project, recorded engagement on it, soft-deleted the action and project, and imported. Action 179 came back with:
+
+- the same fields and project;
+- events shifted to land on import;
+- 5 completions, 1 withdrawal and 1 dismissal, with identical answers and device types;
+- the update.
+
+A second import skipped it. What the agent flagged led to these changes:
+
+- the withdrawal flags and free-text `reason`;
+- `deviceType` limited to the server's values;
+- defined `at` and `recordedAt` times;
+- the snapshot join and the false booleans spelled out.

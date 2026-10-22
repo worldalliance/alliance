@@ -13,7 +13,18 @@ function envValue(key: string): string {
 
 /** Rows come back JSON-encoded, so timestamps arrive as ISO strings, in UTC. */
 export function queryLocalDb<Row>(sql: string): Row[] {
-  const output = execFileSync(
+  return JSON.parse(
+    runPsql(`SELECT coalesce(json_agg(rows), '[]') FROM (${sql}) rows`),
+  );
+}
+
+/** For writes, which Postgres refuses inside the subquery `queryLocalDb` wraps. */
+export function execLocalDb(sql: string): void {
+  runPsql(sql);
+}
+
+function runPsql(command: string): string {
+  return execFileSync(
     "psql",
     [
       "-h",
@@ -24,8 +35,10 @@ export function queryLocalDb<Row>(sql: string): Row[] {
       envValue("DB_USERNAME"),
       "-d",
       envValue("DB_NAME"),
+      "-v",
+      "ON_ERROR_STOP=1",
       "-Atc",
-      `SELECT coalesce(json_agg(rows), '[]') FROM (${sql}) rows`,
+      command,
     ],
     {
       encoding: "utf8",
@@ -38,5 +51,4 @@ export function queryLocalDb<Row>(sql: string): Row[] {
       stdio: ["ignore", "pipe", "inherit"],
     },
   );
-  return JSON.parse(output);
 }

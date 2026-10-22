@@ -7,8 +7,6 @@ description: Read before populating local actions with fake engagement — membe
 
 Each run plays the members and staff of existing local actions. Activity accumulates across runs. Follow the Conventions and Server sections of `(root)/skills/fake-action/SKILL.md`, then the steps below.
 
-`SEND_DEV_NOTIFS` must be unset, both in `server/.env` and in the running server's environment. Signing contracts and posting updates can notify members, and the server delivers locally only with that flag set.
-
 ## 1. Target
 
 Use the action id the invoker gave. Without one, pick the live action (status now `member_action`) with the fewest `action_activity` rows.
@@ -33,10 +31,10 @@ Draw participants in this order, moving on only when you need more:
 
 To sign, get the current contract from `GET /contract/current`, then `POST /contract/sign/:id` with the member's own name.
 
-Every cast member fetches `GET /actions/loggedIn`, including those who will do nothing. That fetch writes their `action_cohort_decision`. Then they act in character:
+Every cast member fetches `GET /actions/loggedIn`, including those who will do nothing. That fetch admits them to the cohort, except members who signed recently, whom signing admits instead. Then they act in character:
 
-- most complete it with `POST /tasks/submitForm/:formId` and `{answers, actionId, deviceType, formSnapshotId}`, with answers that sound like that person;
-- a few withdraw with `POST /tasks/optout/:formId` and `{actionId, reason, outOfTime, isMoral, partialFormData}`. `reason` is one of `WITHDRAWAL_OPTIONS` in `common/src/actionActivity.ts`, and `partialFormData` is the same body as a submit, with `answers: {}`;
+- most complete it with `POST /tasks/submitForm/:formId` and `{answers, actionId, deviceType, formSnapshotId}`, `deviceType` being `mobile`, `tablet` or `desktop`, with answers that sound like that person;
+- a few withdraw with `POST /tasks/optout/:formId` and `{actionId, reason, outOfTime, isMoral, partialFormData}`. The flags pick the option (`withdrawalFlagsFromOption` in `common/src/actionActivity.ts`), and `reason` is the member's own words, required for moral and other. `partialFormData` is the same body as a submit, with `answers: {}`;
 - a few dismiss with `POST /actions/dismiss/:id`.
 
 Everyone else in the cast does nothing.
@@ -57,7 +55,18 @@ An update takes two calls:
 
 Done when every update you posted has a `visibleAt`.
 
-## 4. Report
+## 4. Record
+
+Record everything this run did in `.scratch/fakes/`, in the shape of `fakeFileSchema` (`scripts/lib/fakes.ts`), so `bun scripts/import-fakes.ts` can replay it after `scripts/load_staging_data.sh` clears the db. For each action you touched:
+
+- An action with a `kind: fake` file of the same `action.name` gets its file extended.
+- Any other action gets `.scratch/fakes/staging-<action-name-slug>.yml`, `kind: staging`, created or extended. Only its `action.name` is recorded, and only what this skill added to it.
+
+Append each participant with their `userId`, the time just before their call as `at` (an idle member's `loggedIn` time), their outcome and its fields, including idle ones; each update with its `blocks`; and each close as an event. Set `recordedAt` to a time after your last write.
+
+Done when `bun scripts/import-fakes.ts --check` passes.
+
+## 5. Report
 
 Report:
 

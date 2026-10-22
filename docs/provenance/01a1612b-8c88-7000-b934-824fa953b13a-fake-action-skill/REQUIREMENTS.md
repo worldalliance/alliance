@@ -1,6 +1,6 @@
 ---
 user: Alex Dorey
-task: Write two skills, one that has an agent create a new action in the local database and deploy it to the full Alliance audience, and one that populates actions with simulated engagement
+task: Write skills that create fake actions and projects in the local database, populate actions with simulated engagement, record both to local YAML, and re-import them after the database is cleared
 ---
 
 ## User-origin requirements
@@ -19,6 +19,8 @@ task: Write two skills, one that has an agent create a new action in the local d
 - The local data is all staging data. A run may optionally close any action that has been open for more than 3 days.
 - A run may post a wrap-up update on a closed action, telling members what their work went towards.
 - When the local API server isn't running, the agent starts it in the background and continues.
+- `/fake-action` and `/fake-engagement` write the faked actions, projects and engagement into local YAML files.
+- An `/import-fakes` skill imports them when the database is cleared.
 
 ## Agent-proposed, user-approved
 
@@ -74,3 +76,19 @@ task: Write two skills, one that has an agent create a new action in the local d
 ### Tooling
 
 - A reusable token-minting script, `skills/fake-action/mint-token.ts <userId>`, prints a JWT. Both skills use it, and the agent makes its own API calls with the token. The `playwright` skill is unchanged.
+
+### Projects
+
+- `/fake-action` also uses the `project` entity, a series of actions run week after week toward one goal. Some runs start a new fake project with the new action as its first step, some add the action as the next step of an existing project (fake or staging), and many actions stay standalone.
+
+### Recording and import
+
+- The YAML files live in `.scratch/fakes/`, which is gitignored and local only.
+- Each faked action gets one declarative YAML file, written or updated at the end of every run: its project, form schema, events, participants with outcomes and answers, and updates. The importer validates every file and fails loudly on anything malformed.
+- Engagement on staging actions (participants, closes, wrap-ups) is recorded too, in a file matched to the action by name on import, because ids can change between dumps. With no action of that name, the importer skips the file and says so.
+- `/import-fakes` runs a deterministic script, `scripts/import-fakes.ts`, that replays the files through the local API. The skill checks the server, runs the script and reports.
+- Dates are re-anchored on import with one shift per file, chosen so that the file's most recent recorded moment lands at import time. Everything keeps its spacing.
+- After the API replay, member activity, form responses and updates are backdated with SQL to their shifted times.
+- A faked action whose name already exists is skipped and reported, so importing twice is harmless.
+- When a recorded member no longer exists or isn't eligible, the importer substitutes an eligible member from the action's cohort who has no activity on it yet, and replays the outcome as them.
+- Import runs on demand. `scripts/load_staging_data.sh` prints a reminder to run `/import-fakes` when `.scratch/fakes/` has files.
