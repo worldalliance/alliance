@@ -16,13 +16,10 @@ import { useActiveSection } from "../../site/hooks";
 import { FAQ_HREF, FOUNDATION_HREF, GOVERNANCE_HREF } from "../../site/links";
 import { NAV_HEIGHT } from "../../site/Navbar";
 import { ContractCard, ImpactCard } from "../../site/PageCards";
-import {
-  BandHeading,
-  BandHeadingSize,
-  BandTone,
-  PageShell,
-} from "../../site/PageShell";
+import { BandHeading, BandHeadingSize, PageShell } from "../../site/PageShell";
 import { SITE_COL, SiteArrow, SitePicture } from "../../site/ui";
+
+const GUIDE_COLUMN = "max-w-7xl";
 
 export function meta() {
   return socialPreviewMeta({
@@ -183,9 +180,11 @@ export default function GuidePage() {
     <PageShell
       title={GUIDE_TITLE}
       subtitle={GUIDE_LEDE}
-      headerTone={BandTone.Primary}
+      columnClassName={GUIDE_COLUMN}
     >
-      <div className={cn(SITE_COL, "pt-16 pb-20 lg:pt-20 lg:pb-28")}>
+      <div
+        className={cn(SITE_COL, GUIDE_COLUMN, "pt-8 pb-20 lg:pt-12 lg:pb-28")}
+      >
         <div className="grid gap-12 lg:grid-cols-[minmax(0,46rem)_minmax(0,18rem)] lg:justify-between lg:gap-16">
           <div className="flex flex-col gap-16">
             {GUIDE_SECTION_ORDER.map((kind) => {
